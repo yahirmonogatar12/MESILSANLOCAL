@@ -83,7 +83,7 @@
             <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-4">
                 <div class="login-container">
                     <div class="logo">
-                        <img src="C:\Users\yahir\Escritorio\ISEMM_MES\app\static\logoLogIn.png" alt="Logo ILSAN" class="img-fluid">
+                        <img src="{{ url_for('static', filename='logoLogIn.png') }}" alt="Logo ILSAN" class="img-fluid">
                         
                     </div>
                     <form id="loginForm">
@@ -115,13 +115,13 @@ function verificarLogin() {
     const pass = document.getElementById('password').value;
 
     if (user === "Materiales01" && pass === "Materiales2025") {
-        window.location.href = "MaterialTemplate.html";
+        window.location.href = "{{ url_for('material') }}";
     } else if (user === "Produccion01" && pass === "Produccion2025") {
         window.location.href = "ProduccionTemplate.html";
     } else if (user === "Calidad01" && pass === "Calidad2025") {
         window.location.href = "CalidadTemplate.html";
     } else if (user === "1111" && pass === "1111") {
-        window.location.href = "MaterialTemplate.html";
+        window.location.href = "{{ url_for('material') }}";
     } else {
         alert("Usuario o contraseña incorrectos. Por favor, intente de nuevo");
     }
