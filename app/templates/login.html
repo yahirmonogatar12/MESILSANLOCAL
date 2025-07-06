@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ILSAN LGMES - Inicio de Sesión</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        input {
+            color: gray;
+        }
+        body {
+            background-color: #23242a;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-container {
+            color: #a0a0a0;
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+            background: #28292d;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            margin: 0 auto;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo img {
+            max-width: 250px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        .logo h3 {
+            color: #e0e0e0;
+            font-weight: 600;
+        }
+        .btn-login {
+            background-color: #6c757d;
+            color: #fff;
+            width: 100%;
+            padding: 12px;
+            font-weight: 600;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .btn-login:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+        }
+        .form-control {
+            background-color: #333438;
+            border: 1px solid #444;
+            color: White;
+        }
+        .form-control:focus {
+            background-color: #333438;
+            border-color: #6c757d;
+            box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.25);
+            color: #e0e0e0;
+        }
+        .form-check-input:checked {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+        .forgot-password {
+            color: #6c757d;
+            transition: color 0.3s ease;
+        }
+        .forgot-password:hover {
+            color: #e0e0e0;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-4">
+                <div class="login-container">
+                    <div class="logo">
+                        <img src="C:\Users\yahir\Escritorio\ISEMM_MES\app\static\logoLogIn.png" alt="Logo ILSAN" class="img-fluid">
+                        
+                    </div>
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Usuario</label>
+                            <input type="text" class="form-control" id="username" name="username" required placeholder="Ingrese su usuario">
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" id="password" name="password" required placeholder="Ingrese su contraseña">
+                        </div>
+                        <button type="submit" class="btn btn-login mb-3">Iniciar Sesión</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    verificarLogin();
+});
+
+function verificarLogin() {
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value;
+
+    if (user === "Materiales01" && pass === "Materiales2025") {
+        window.location.href = "MaterialTemplate.html";
+    } else if (user === "Produccion01" && pass === "Produccion2025") {
+        window.location.href = "ProduccionTemplate.html";
+    } else if (user === "Calidad01" && pass === "Calidad2025") {
+        window.location.href = "CalidadTemplate.html";
+    } else if (user === "1111" && pass === "1111") {
+        window.location.href = "MaterialTemplate.html";
+    } else {
+        alert("Usuario o contraseña incorrectos. Por favor, intente de nuevo");
+    }
+}
+</script>
+
+
+</body>
+</html>

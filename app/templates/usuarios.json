@@ -1,0 +1,6 @@
+[
+  { "usuario": "Materiales01", "contrasena": "Materiales2025", "area": "Materiales" },
+  { "usuario": "Produccion01", "contrasena": "Produccion2025", "area": "Producción" },
+  { "usuario": "Calidad01", "contrasena": "Calidad2025", "area": "Calidad" },
+  { "usuario": "1111", "contrasena": "1111", "area": "Materiales" }
+]
