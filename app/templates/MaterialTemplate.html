@@ -15,7 +15,7 @@
             --sidebar-width: 260px;
             --header-height: 70px;
             --primary-color: #2c3e50;
-            --secondary-color: #34495e;
+            --secondary-color: #28292dbb;
             --accent-color: #3498db;
             --text-light: #ecf0f1;
             --text-dark: #2c3e50;
@@ -460,51 +460,43 @@
                         <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                     </button>
                     <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial">
-                        <li>
-                            <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarEntradas">
-                                <span class="sidebar-icon"><i class="bi bi-box-arrow-in-down"></i></span>
-                                Entradas
-                                <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
-                            </button>
-                            <ul class="collapse sidebar-dropdown-list" id="sidebarEntradas">
-                                <li class="sidebar-link">Entrada de Aéreo</li>
-                                <li class="sidebar-link">Entrada de Contenedor</li>
-                                <li class="sidebar-link">Entrada de LG</li>
-                                <li class="sidebar-link">Entrada de Local Suppliers</li>
-                            </ul>
-                        </li>
-                        <li>
-                            <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarSalidas">
-                                <span class="sidebar-icon"><i class="bi bi-box-arrow-up"></i></span>
-                                Salidas
-                                <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
-                            </button>
-                            <ul class="collapse sidebar-dropdown-list" id="sidebarSalidas">
-                                <li class="sidebar-link">Salida de material</li>
-                            </ul>
-                        </li>
-                        <li>
-                            <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebar">
-                                <span class="sidebar-icon"><i class="bi bi-arrow-return-left"></i></span>
-                                Retorno
-                                <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
-                            </button>
-                            <ul class="collapse sidebar-dropdown-list" id="sidebarSalidas">
-                                <li class="sidebar-link">Retorno de material</li>
-                            </ul>
-                        </li>
-                        <li>
-                            <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebar">
-                                <span class="sidebar-icon"><i class="bi bi-arrow-return-left"></i></span>
-                                PEPS
-                                <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
-                            </button>
-                            <ul class="collapse sidebar-dropdown-list" id="sidebarSalidas">
-                                <li class="sidebar-link">Consulta PEPS</li>
-                            </ul>
-                        </li>
+                        <li class="sidebar-link">Control de material de almacén</li>
+                        <li class="sidebar-link">Control de salida</li>
+                        <li class="sidebar-link">Control de material retorno</li>
+                        <li class="sidebar-link">Recibo y pago del material</li>
+                        <li class="sidebar-link">Historial de material</li>
+                        <li class="sidebar-link">Estatus de material</li>
+                        <li class="sidebar-link">Material sustituto</li>
+                        <li class="sidebar-link">Consultar PEPS</li>
+                        <li class="sidebar-link">Control de Long-Term Inventory</li>
+                        <li class="sidebar-link">Registro de material real</li>
+                        <li class="sidebar-link">Historial de inventario real</li>
+                        <li class="sidebar-link">Ajuste de número de parte</li>
                     </ul>
                 </li>
+                <li class="sidebar-section">
+                    <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL">
+                        <span class="sidebar-icon"><i class="bi bi-box-seam"></i></span>
+                        Control de material MSL
+                        <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                    </button>
+                    <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
+                        <li class="sidebar-link">Control total de material</li>
+                        <li class="sidebar-link">Control de entrada y salida de material</li>
+                        <li class="sidebar-link">Estatus de material MSL</li>
+                    </ul>
+                </li>
+                <li class="sidebar-section">
+                    <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarRefacciones">
+                        <span class="sidebar-icon"><i class="bi bi-box-seam"></i></span>
+                        Control de refacciones
+                        <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                    </button>
+                    <ul class="collapse sidebar-dropdown-list" id="sidebarRefacciones">
+                        <li class="sidebar-link">Estándares sobre refacciones</li>
+                        <li class="sidebar-link">Control de recibo de refacciones</li>
+                        <li class="sidebar-link">Control de salida de refacciones</li>
+                        <li class="sidebar-link">Estatus de inventario de refacciones</li>
             </ul>
         </aside>
 
@@ -807,9 +799,9 @@
                     
                     sidebarLinks.forEach(l => l.classList.remove('active'));
                     this.classList.add('active');
-                    if (this.closest('#sidebarEntradas') && this.textContent.trim() === 'Entrada de Aéreo') {
+                    if (this.textContent.trim() === 'Control de material de almacén') {
                         mainContent.innerHTML = entradaTemplate;
-                    } else if (this.closest('#sidebarSalidas') && this.textContent.trim() === 'Salida de material') {
+                    } else if (this.textContent.trim() === 'Control de salida') {
                         mainContent.innerHTML = salidaTemplate;    
                     } else {
                         mainContent.innerHTML = '';
