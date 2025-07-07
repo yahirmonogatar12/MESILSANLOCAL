@@ -812,11 +812,9 @@
             const tabLinks = document.querySelectorAll('.nav-tabs .nav-link');
             tabLinks.forEach(link => {
                 link.addEventListener('click', function() {
-                    // Mostrar/ocultar sidebar según la pestaña seleccionada
+                    // Mostrar/ocultar sidebar solo para la pestaña de material
                     mainContent.innerHTML = "";
-                    if (this.getAttribute('href') === '#info') {
-                        sidebar.style.display = 'block';
-                    } else if (this.getAttribute('href') === '#material') {
+                    if (this.getAttribute('href') === '#material') {
                         sidebar.style.display = 'block';
                         // Mostrar todas las secciones de material
                         document.querySelectorAll('.sidebar-section').forEach(sec => {
