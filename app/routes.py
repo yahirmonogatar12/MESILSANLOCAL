@@ -1,10 +1,13 @@
 import json
 import os
 from functools import wraps
-from flask import Flask, request, render_template, redirect, url_for, session
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify
+from .db import get_db_connection, init_db
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
+init_db()  # Esto crea la tabla si no existe
 
 def cargar_usuarios():
     ruta = os.path.join(os.path.dirname(__file__), 'database', 'usuarios.json')
@@ -58,3 +61,54 @@ def produccion():
 def logout():
     session.pop('usuario', None)
     return redirect(url_for('login'))
+
+
+# A continuación se definen las rutas para manejar las entradas de materiales aéreos
+@app.route('/guardar_entrada_aereo', methods=['POST'])
+def guardar_entrada_aereo():
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''INSERT INTO entrada_aereo (
+            forma_material, cliente, codigo_material, fecha_fabricacion,
+            origen_material, cantidad_actual, fecha_recibo, lote_material,
+            codigo_recibido, numero_parte, propiedad
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+        (
+            data.get('formaMaterial'),
+            data.get('cliente'),
+            data.get('codigoMaterial'),
+            data.get('fechaFab'),
+            data.get('origenMaterial'),
+            data.get('cantidadActual'),
+            data.get('fechaRecibo'),
+            data.get('loteMaterial'),
+            data.get('codRecibido'),
+            data.get('numParte'),
+            data.get('propiedad')
+        )
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/listar_entradas_aereo')
+def listar_entradas_aereo():
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM entrada_aereo ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+    resultado = [dict(r) for r in rows]
+    return jsonify(resultado)
+
+def get_db_connection():
+    db_path = os.path.join(os.path.dirname(__file__), 'database', 'ISEMM_MES.db')
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
