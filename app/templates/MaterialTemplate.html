@@ -10,87 +10,107 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <!-- Font LG Regular -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/yahirmonogatari/lg-fonts/lg-regular.css">
-    <link rel="stylesheet" href="..\static\style.css">
+    <link rel="stylesheet" href="../static/style.css">
     
 </head>
 <body>
     <header class="app-header">
-        <div class="logo-container">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="Ilsan Electronics Logo" class="logo">
-            <br><div class="welcome">Bienvenido, {{ usuario }}</div>
+    <div class="container">
+        <div class="row header-row">
+            <!-- Logo y bienvenida a la izquierda -->
+            <div class="logo-welcome-container">
+                <div class="">
+                    <img src="../static/logo.png" alt="Ilsan Electronics Logo" class="logo">
+                        <div class="welcome-text">
+                            <span>Bienvenido,</span> {{ usuario }}
+                        </div>
+                </div>
+                
+            </div>
+            
+            <!-- Botones de navegación a la derecha -->
+            <div class="nav-buttons-container">
+                
+                <button class="nav-button" id="Información Basica">
+                    <i class="bi bi-info-circle"></i> Información Basica
+                </button>
+
+                <button class="nav-button" id="Control de material">
+                    <i class="bi bi-box-seam"></i> Control de material
+                </button>
+
+                <button class="nav-button" id="Control de producción">
+                    <i class="bi bi-gear"></i> Control de producción
+                </button>
+
+                <button class="nav-button" id="Control de proceso">
+                    <i class="bi bi-diagram-3"></i> Control de proceso
+                </button>
+
+                <button class="nav-button" id="Control de calidad">
+                    <i class="bi bi-check-circle"></i> Control de calidad
+                </button>
+
+                <button class="nav-button" id="Control de resultados">
+                    <i class="bi bi-graph-up"></i> Control de resultados
+                </button>
+
+                <button class="nav-button" id="Control de resultados">
+                    <i class="bi bi-graph-up"></i> Control de reporte
+                </button>
+
+                <button class="nav-button" id="Configuración de programa">
+                    <i class="bi bi-sliders"></i> Configuración de programa
+                </button>
+
+            </div>
         </div>
-
-        <div class="nav-tabs-container ">
-            <button class="nav-button">Información Basica</button>
-            <button class="nav-button">Control de material</button>
-            <button class="nav-button">Información Basica</button>
-            <button class="nav-button">Información Basica</button>
-            <button class="nav-button">Información Basica</button>
-            <button class="nav-button">Información Basica</button>
-            <button class="nav-button">Información Basica</button>
-        </div>
-    </header>
-
-    <div class="app-container">
-        <aside class="app-sidebar">
-        <ul class="sidebar-menu">
-            <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial">
-                    <span class="sidebar-icon"><i class="bi bi-box-seam"></i></span>
-                    Control de material
-                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
-                </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial">
-                    <li class="sidebar-link" tabindex="0">Control de material de almacén</li>
-                    <li class="sidebar-link" tabindex="0">Control de salida</li>
-                    <li class="sidebar-link" tabindex="0">Control de material retorno</li>
-                    <li class="sidebar-link" tabindex="0">Recibo y pago del material</li>
-                    <li class="sidebar-link" tabindex="0">Historial de material</li>
-                    <li class="sidebar-link" tabindex="0">Estatus de material</li>
-                    <li class="sidebar-link" tabindex="0">Material sustituto</li>
-                    <li class="sidebar-link" tabindex="0">Consultar PEPS</li>
-                    <li class="sidebar-link" tabindex="0">Control de Long-Term Inventory</li>
-                    <li class="sidebar-link" tabindex="0">Registro de material real</li>
-                    <li class="sidebar-link" tabindex="0">Historial de inventario real</li>
-                    <li class="sidebar-link" tabindex="0">Ajuste de número de parte</li>
-                </ul>
-            </li>
-            <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL">
-                    <span class="sidebar-icon"><i class="bi bi-box-seam"></i></span>
-                    Control de material MSL
-                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
-                </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
-                    <li class="sidebar-link" tabindex="0">Control total de material</li>
-                    <li class="sidebar-link" tabindex="0">Control de entrada y salida de material</li>
-                    <li class="sidebar-link" tabindex="0">Estatus de material MSL</li>
-                </ul>
-            </li>
-            <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarRefacciones">
-                    <span class="sidebar-icon"><i class="bi bi-box-seam"></i></span>
-                    Control de refacciones
-                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
-                </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarRefacciones">
-                    <li class="sidebar-link" tabindex="0">Estándares sobre refacciones</li>
-                    <li class="sidebar-link" tabindex="0">Control de recibo de refacciones</li>
-                    <li class="sidebar-link" tabindex="0">Control de salida de refacciones</li>
-                    <li class="sidebar-link" tabindex="0">Estatus de inventario de refacciones</li>
-                </ul>
-            </li>
-        </ul>
-    </aside>
-
-        <div class="overlay"></div>
-
-        <main class="app-content"> 
-        </main>
     </div>
+</header>
+
+    <!-- Contenedor principal para el sidebar -->
+<div class="main-content-container" id="material-container" style="display: none;">
+    <div class="sidebar-content" id="sidebar-content">
+        <div id="informacion-basica-content">
+            {% include "LISTAS/LISTA_INFORMACIONBASICA.html" %}
+        </div>
+        <div id="control-material-content" style="display: none;">
+            {% include "LISTAS/LISTA_DE_MATERIALES.html" %}
+        </div>
+    </div>
+</div>
 
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <script>
+        // Mostrar/ocultar el contenedor de material según el botón
+        document.addEventListener('DOMContentLoaded', function() {
+            const materialContainer = document.getElementById('material-container');
+            const informacionBasicaContent = document.getElementById('informacion-basica-content');
+            const controlMaterialContent = document.getElementById('control-material-content');
+            const navButtons = document.querySelectorAll('.nav-button');
+            
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Ocultar todo el contenido primero
+                    informacionBasicaContent.style.display = 'none';
+                    controlMaterialContent.style.display = 'none';
+                    
+                    if (this.id === 'Información Basica') {
+                        materialContainer.style.display = 'block';
+                        informacionBasicaContent.style.display = 'block';
+                    } else if (this.id === 'Control de material') {
+                        materialContainer.style.display = 'block';
+                        controlMaterialContent.style.display = 'block';
+                    } else {
+                        materialContainer.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Por defecto oculto
+            materialContainer.style.display = 'none';
+        });
+    </script>
 </body>
 </html>

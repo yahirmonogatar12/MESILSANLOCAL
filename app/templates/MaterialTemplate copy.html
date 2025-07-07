@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ilsan Electronics</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Font LG Regular -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/yahirmonogatari/lg-fonts/lg-regular.css">
+    <link rel="stylesheet" href="..\static\style.css">
+    
+</head>
+<body>
+    <header class="app-header">
+    <div class="container">
+        <div class="row header-row">
+            <!-- Logo y bienvenida a la izquierda -->
+            <div class="logo-welcome-container">
+                <div class="">
+                    <img src="../static/logo.png" alt="Ilsan Electronics Logo" class="logo">
+                    <div class="welcome-text">
+                    <span>Bienvenido,</span> {{ usuario }}
+                </div>
+                </div>
+                
+            </div>
+            
+            <!-- Botones de navegación a la derecha -->
+            <div class="nav-buttons-container">
+                <button class="nav-button" id="Información Basica">Información Basica</button>
+                <button class="nav-button" id="Control de material">Control de material</button>
+                <button class="nav-button" id="Control de producción">Control de producción</button>
+                <button class="nav-button" id="Control de proceso">Control de proceso</button>
+                <button class="nav-button" id="Control de calidad">Control de calidad</button>
+                <button class="nav-button" id="Control de resultados">Control de resultados</button>
+                <button class="nav-button" id="Configuración de programa">Configuración de programa</button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Contenedor principal para el sidebar -->
+<div class="main-content-container" id="material-container" style="display: none;">
+    <div class="sidebar-content" id="sidebar-content">
+        <div id="informacion-basica-content">
+            {% include "LISTAS/LISTA_INFORMACIONBASICA.html" %}
+        </div>
+        <div id="control-material-content" style="display: none;">
+            {% include "LISTAS/LISTA_DE_MATERIALES.html" %}
+        </div>
+        <div id="control-produccion-content" style="display: none;">
+            {% include "LISTAS/LISTA_CONTROLDEPRODUCCION.html" %}
+        </div>
+        <div id="control-proceso-content" style="display: none;">
+            {% include "LISTAS/LISTA_CONTROL_DE_PROCESO.html" %}
+        </div>
+        <div id="control-calidad-content" style="display: none;">
+            {% include "LISTAS/LISTA_CONTROL_DE_CALIDAD.html" %}
+        </div>
+        <div id="control-resultados-content" style="display: none;">
+            {% include "LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html" %}
+        </div>
+        <div id="configuracion-programa-content" style="display: none;">
+            {% include "LISTAS/LISTA_DE_CONFIGPG.html" %}
+        </div>
+    </div>
+</div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Mostrar/ocultar el contenedor de material según el botón
+        document.addEventListener('DOMContentLoaded', function() {
+            const materialContainer = document.getElementById('material-container');
+            const informacionBasicaContent = document.getElementById('informacion-basica-content');
+            const controlMaterialContent = document.getElementById('control-material-content');
+            const controlProduccionContent = document.getElementById('control-produccion-content');
+            const controlProcesoContent = document.getElementById('control-proceso-content');
+            const controlCalidadContent = document.getElementById('control-calidad-content');
+            const controlResultadosContent = document.getElementById('control-resultados-content');
+            const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
+            const navButtons = document.querySelectorAll('.nav-button');
+            
+            // Función para ocultar todo el contenido
+            function hideAllContent() {
+                informacionBasicaContent.style.display = 'none';
+                controlMaterialContent.style.display = 'none';
+                controlProduccionContent.style.display = 'none';
+                controlProcesoContent.style.display = 'none';
+                controlCalidadContent.style.display = 'none';
+                controlResultadosContent.style.display = 'none';
+                configuracionProgramaContent.style.display = 'none';
+            }
+            
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Ocultar todo el contenido primero
+                    hideAllContent();
+                    
+                    if (this.id === 'Información Basica') {
+                        materialContainer.style.display = 'block';
+                        informacionBasicaContent.style.display = 'block';
+                    } else if (this.id === 'Control de material') {
+                        materialContainer.style.display = 'block';
+                        controlMaterialContent.style.display = 'block';
+                    } else if (this.id === 'Control de producción') {
+                        materialContainer.style.display = 'block';
+                        controlProduccionContent.style.display = 'block';
+                    } else if (this.id === 'Control de proceso') {
+                        materialContainer.style.display = 'block';
+                        controlProcesoContent.style.display = 'block';
+                    } else if (this.id === 'Control de calidad') {
+                        materialContainer.style.display = 'block';
+                        controlCalidadContent.style.display = 'block';
+                    } else if (this.id === 'Control de resultados') {
+                        materialContainer.style.display = 'block';
+                        controlResultadosContent.style.display = 'block';
+                    } else if (this.id === 'Configuración de programa') {
+                        materialContainer.style.display = 'block';
+                        configuracionProgramaContent.style.display = 'block';
+                    } else {
+                        materialContainer.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Por defecto oculto
+            materialContainer.style.display = 'none';
+        });
+    </script>
+    
+</body>
+</html>
