@@ -1,0 +1,677 @@
+<!-- Estilos específicos para Control de Material que complementan style.css -->
+<style>
+    /* Contenedor principal */
+    .material-container {
+        background-color: #32323E;
+        color: lightgray;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    /* Botonera */
+    .material-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #40424F;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .material-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        background-color: #3498db;
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+        font-weight: 500;
+    }
+
+    .material-btn:hover {
+        background-color: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+
+    .material-btn.secondary {
+        background-color: #95a5a6;
+    }
+
+    .material-btn.secondary:hover {
+        background-color: #7f8c8d;
+    }
+
+    /* Modal */
+    .material-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+    }
+
+    .material-modal-content {
+        background-color: #40424F;
+        margin: 5% auto;
+        padding: 30px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        color: lightgray;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        animation: modalFadeIn 0.3s ease;
+    }
+
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .material-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #3498db;
+    }
+
+    .material-modal-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #3498db;
+        margin: 0;
+    }
+
+    .material-close {
+        color: #e74c3c;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: color 0.3s;
+        line-height: 1;
+        padding: 0;
+        border: none;
+        background: none;
+    }
+
+    .material-close:hover {
+        color: #c0392b;
+    }
+
+    /* Formulario */
+    .material-form-group {
+        margin-bottom: 20px;
+    }
+
+    .material-form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #bdc3c7;
+        font-size: 14px;
+    }
+
+    .material-form-group input,
+    .material-form-group select {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #34495e;
+        border-radius: 6px;
+        background-color: #2c3e50;
+        color: lightgray;
+        font-size: 14px;
+        transition: border-color 0.3s;
+        box-sizing: border-box;
+    }
+
+    .material-form-group input:focus,
+    .material-form-group select:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .material-checkbox-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .material-checkbox-group input[type="checkbox"] {
+        width: auto;
+        margin-right: 12px;
+        transform: scale(1.2);
+        cursor: pointer;
+    }
+
+    .material-checkbox-group label {
+        margin-bottom: 0;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .material-btn-submit {
+        background-color: #27ae60;
+        color: white;
+        padding: 12px 30px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        width: 100%;
+        margin-top: 20px;
+        transition: all 0.3s;
+    }
+
+    .material-btn-submit:hover {
+        background-color: #219a52;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+    }
+
+    /* Tabla */
+    .material-table-container {
+        background-color: #40424F;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow-x: auto;
+    }
+
+    .material-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+        font-size: 11px;
+        background-color: #40424F;
+    }
+
+    .material-table th {
+        background-color: #2c3e50;
+        color: #ecf0f1;
+        padding: 8px 6px;
+        text-align: center;
+        border: 1px solid #34495e;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-size: 10px;
+        line-height: 1.2;
+    }
+
+    .material-table td {
+        padding: 6px 4px;
+        text-align: center;
+        border: 1px solid #34495e;
+        background-color: #40424F;
+        color: lightgray;
+        transition: background-color 0.3s;
+        font-size: 10px;
+        line-height: 1.1;
+    }
+
+    .material-table tr:hover td {
+        background-color: #485563;
+    }
+
+    .material-table tr:nth-child(even) td {
+        background-color: #44475A;
+    }
+
+    .material-table tr:nth-child(even):hover td {
+        background-color: #485563;
+    }
+
+    .material-table input[type="checkbox"] {
+        transform: scale(1.1);
+        cursor: pointer;
+        accent-color: #3498db;
+    }
+
+    .material-table .no-data {
+        text-align: center;
+        padding: 30px;
+        color: #95a5a6;
+        font-style: italic;
+        background-color: #40424F;
+        font-size: 12px;
+    }
+
+    /* Mensajes de estado */
+    .material-loading {
+        text-align: center;
+        padding: 25px;
+        color: #3498db;
+        font-size: 12px;
+    }
+
+    .material-error {
+        text-align: center;
+        padding: 25px;
+        color: #e74c3c;
+        font-size: 12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .material-toolbar {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .material-btn {
+            width: 100%;
+        }
+        
+        .material-modal-content {
+            width: 95%;
+            margin: 10px auto;
+        }
+        
+        .material-table-container {
+            padding: 15px;
+        }
+    }
+</style>
+
+<!-- Contenido principal -->
+<div class="material-container">
+    <!-- Botonera -->
+    <div class="material-toolbar">
+        <button class="material-btn" onclick="mostrarFormulario()">
+            <i class="bi bi-plus-circle"></i> Registrar
+        </button>
+        <button class="material-btn" onclick="consultar()">
+            <i class="bi bi-search"></i> Consultar
+        </button>
+        <button class="material-btn secondary" onclick="exportarExcel()">
+            <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+        </button>
+        <input type="file" id="importarExcel" onchange="importarExcel()" style="display:none" accept=".xlsx,.xls" />
+        <button class="material-btn secondary" onclick="document.getElementById('importarExcel').click()">
+            <i class="bi bi-upload"></i> Importar Excel
+        </button>
+    </div>
+
+    <!-- Modal de registro -->
+    <div id="modalRegistro" class="material-modal">
+        <div class="material-modal-content">
+            <div class="material-modal-header">
+                <h2 class="material-modal-title">Registro de Material</h2>
+                <button class="material-close" onclick="cerrarModal()">&times;</button>
+            </div>
+            <form id="registroForm">
+                <div class="material-form-group">
+                    <label for="codigoMaterial">Código de material *</label>
+                    <input type="text" id="codigoMaterial" name="codigoMaterial" required>
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="numeroParte">Número de parte *</label>
+                    <input type="text" id="numeroParte" name="numeroParte" required>
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="propiedadMaterial">Propiedad de material *</label>
+                    <select id="propiedadMaterial" name="propiedadMaterial" required>
+                        <option value="">Seleccionar</option>
+                        <option value="PART">PART</option>
+                        <option value="ETC">ETC</option>
+                        <option value="PCB">PCB</option>
+                    </select>
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="classification">Classification</label>
+                    <input type="text" id="classification" name="classification">
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="especificacionMaterial">Especificación de material</label>
+                    <input type="text" id="especificacionMaterial" name="especificacionMaterial">
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="unidadEmpaque">Unidad de empaque</label>
+                    <input type="number" id="unidadEmpaque" name="unidadEmpaque" value="0">
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="ubicacionMaterial">Ubicación de material</label>
+                    <input type="text" id="ubicacionMaterial" name="ubicacionMaterial">
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="vendedor">Vendedor</label>
+                    <select id="vendedor" name="vendedor">
+                        <option value="">Seleccionar</option>
+                        <option value="ROHM">ROHM</option>
+                        <option value="MOBIS">MOBIS</option>
+                        <option value="PANASONIC">PANASONIC</option>
+                        <option value="PHYCOMP">PHYCOMP</option>
+                    </select>
+                </div>
+                
+                <div class="material-checkbox-group">
+                    <input type="checkbox" id="prohibidoSacar" name="prohibidoSacar">
+                    <label for="prohibidoSacar">Prohibido sacar</label>
+                </div>
+                
+                <div class="material-checkbox-group">
+                    <input type="checkbox" id="reparable" name="reparable">
+                    <label for="reparable">Reparable</label>
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="nivelMSL">Nivel de MSL</label>
+                    <select id="nivelMSL" name="nivelMSL">
+                        <option value="">Seleccionar</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
+                
+                <div class="material-form-group">
+                    <label for="espesorMSL">Espesor de MSL</label>
+                    <input type="text" id="espesorMSL" name="espesorMSL">
+                </div>
+                
+                <button type="submit" class="material-btn-submit">
+                    <i class="bi bi-check-circle"></i> Registrar Material
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de materiales -->
+    <div class="material-table-container">
+        <table class="material-table" id="tablaMateriales">
+            <thead>
+                <tr>
+                    <th>Código de material</th>
+                    <th>Número de parte</th>
+                    <th>Propiedad de material</th>
+                    <th>Classification</th>
+                    <th>Especificación de material</th>
+                    <th>Unidad de empaque</th>
+                    <th>Ubicación de material</th>
+                    <th>Vendedor</th>
+                    <th>Prohibido sacar</th>
+                    <th>Reparable</th>
+                    <th>Nivel de MSL</th>
+                    <th>Espesor de MSL</th>
+                    <th>Fecha de registro</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="13" class="material-table .no-data">
+                        No hay datos para mostrar. Haga clic en "Consultar" para cargar los materiales.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function cargarDatosEnTabla(datos) {
+        const tbody = document.querySelector('#tablaMateriales tbody');
+        tbody.innerHTML = '';
+        
+        if (!datos || datos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13" class="material-table .no-data">No hay materiales registrados. Use el botón "Registrar" para añadir nuevos materiales.</td></tr>';
+            return;
+        }
+        
+        datos.forEach(item => {
+            const row = document.createElement('tr');
+            
+            // Crear checkboxes - solo marcados si el valor es verdadero/1
+            const prohibidoSacarCheckbox = `<input type="checkbox" ${(item.prohibidoSacar === 1 || item.prohibidoSacar === '1' || item.prohibidoSacar === true) ? 'checked' : ''} onchange="actualizarCampoMaterial('${item.codigoMaterial}', 'prohibidoSacar', this.checked)">`;
+            const reparableCheckbox = `<input type="checkbox" ${(item.reparable === 1 || item.reparable === '1' || item.reparable === true) ? 'checked' : ''} onchange="actualizarCampoMaterial('${item.codigoMaterial}', 'reparable', this.checked)">`;
+            
+            row.innerHTML = `
+                <td>${item.codigoMaterial || ''}</td>
+                <td>${item.numeroParte || ''}</td>
+                <td>${item.propiedadMaterial || ''}</td>
+                <td>${item.classification || ''}</td>
+                <td>${item.especificacionMaterial || ''}</td>
+                <td>${item.unidadEmpaque || '0'}</td>
+                <td>${item.ubicacionMaterial || ''}</td>
+                <td>${item.vendedor || ''}</td>
+                <td>${prohibidoSacarCheckbox}</td>
+                <td>${reparableCheckbox}</td>
+                <td>${item.nivelMSL || ''}</td>
+                <td>${item.espesorMSL || ''}</td>
+                <td>${item.fechaRegistro || ''}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function cargarDatosDesdeServidor() {
+        fetch('/listar_materiales')
+            .then(response => response.json())
+            .then(data => {
+                cargarDatosEnTabla(data);
+            })
+            .catch(error => {
+                console.error('Error al cargar datos:', error);
+                const tbody = document.querySelector('#tablaMateriales tbody');
+                tbody.innerHTML = '<tr><td colspan="13" class="material-error">Error al cargar los datos. Por favor, intente nuevamente.</td></tr>';
+            });
+    }
+
+    function mostrarFormulario() {
+        document.getElementById("modalRegistro").style.display = "block";
+    }
+
+    function cerrarModal() {
+        document.getElementById("modalRegistro").style.display = "none";
+    }
+
+    // Cerrar modal al hacer clic fuera de él
+    window.onclick = function(event) {
+        var modal = document.getElementById("modalRegistro");
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Manejar el envío del formulario
+    document.getElementById("registroForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const nuevoItem = {
+            codigoMaterial: formData.get('codigoMaterial'),
+            numeroParte: formData.get('numeroParte'),
+            propiedadMaterial: formData.get('propiedadMaterial'),
+            classification: formData.get('classification'),
+            especificacionMaterial: formData.get('especificacionMaterial'),
+            unidadEmpaque: formData.get('unidadEmpaque'),
+            ubicacionMaterial: formData.get('ubicacionMaterial'),
+            vendedor: formData.get('vendedor'),
+            prohibidoSacar: formData.get('prohibidoSacar') ? 1 : 0,  // Convertir a entero
+            reparable: formData.get('reparable') ? 1 : 0,            // Convertir a entero
+            nivelMSL: formData.get('nivelMSL'),
+            espesorMSL: formData.get('espesorMSL')
+        };
+        
+        fetch('/guardar_material', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(nuevoItem)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("Material registrado exitosamente! Haga clic en 'Consultar' para ver los datos actualizados.");
+                // NO recargar automáticamente la tabla
+                cerrarModal();
+                this.reset();
+            } else {
+                alert("Error al registrar material: " + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error al registrar material");
+        });
+    });
+
+    function consultar() {
+        // Mostrar indicador de carga
+        const tbody = document.querySelector('#tablaMateriales tbody');
+        tbody.innerHTML = '<tr><td colspan="13" class="material-loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div><div>Cargando materiales...</div></td></tr>';
+        
+        // Cargar datos desde el servidor
+        cargarDatosDesdeServidor();
+    }
+
+    function exportarExcel() {
+        try {
+            // Mostrar mensaje de espera
+            alert('Generando archivo Excel, por favor espere...');
+            
+            // Usar fetch para manejar la respuesta
+            fetch('/exportar_excel', {
+                method: 'GET',
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en el servidor');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Crear URL temporal para el blob
+                const url = window.URL.createObjectURL(blob);
+                
+                // Crear enlace temporal y hacer clic
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `materiales_export_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Limpiar la URL temporal
+                window.URL.revokeObjectURL(url);
+                
+                alert('Archivo Excel descargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error al exportar Excel:', error);
+                alert('Error al exportar el archivo Excel: ' + error.message);
+            });
+            
+        } catch (error) {
+            console.error('Error al exportar Excel:', error);
+            alert('Error al exportar el archivo Excel');
+        }
+    }
+
+    function importarExcel() {
+        const fileInput = document.getElementById('importarExcel');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert("Por favor selecciona un archivo Excel.");
+            return;
+        }
+        
+        if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+            alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        alert("Procesando archivo, por favor espere...");
+        
+        fetch('/importar_excel', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
+                // NO recargar automáticamente la tabla
+                fileInput.value = '';
+            } else {
+                alert("Error al importar: " + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error al importar el archivo");
+        });
+    }
+
+    function actualizarCampoMaterial(codigoMaterial, campo, valor) {
+        // Convertir el valor booleano a entero (0 o 1)
+        const valorEntero = valor ? 1 : 0;
+        
+        fetch('/actualizar_campo_material', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                codigoMaterial: codigoMaterial,
+                campo: campo,
+                valor: valorEntero
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Campo actualizado correctamente');
+            } else {
+                console.error('Error al actualizar campo:', data.error);
+                alert('Error al actualizar el campo: ' + data.error);
+                // Revertir el checkbox si hubo error
+                const checkboxes = document.querySelectorAll(`input[onchange*="${codigoMaterial}"][onchange*="${campo}"]`);
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = !valor;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al actualizar el campo');
+            // Revertir el checkbox si hubo error
+            const checkboxes = document.querySelectorAll(`input[onchange*="${codigoMaterial}"][onchange*="${campo}"]`);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = !valor;
+            });
+        });
+    }
+
+    // La tabla permanece vacía hasta que el usuario haga clic en "Consultar"
+</script>

@@ -14,59 +14,57 @@
     
 </head>
 <body>
+    <div class="main-wrapper"></div>
     <header class="app-header">
-    <div class="container">
-        <div class="row header-row">
+        <div class="header-row">
             <!-- Logo y bienvenida a la izquierda -->
             <div class="logo-welcome-container">
-                <div class="">
-                    <img src="../static/logo.png" alt="Ilsan Electronics Logo" class="logo">
-                        <div class="welcome-text">
-                            <span>Bienvenido,</span> {{ usuario }}
-                        </div>
+                <img src="../static/logo.png" alt="Ilsan Electronics Logo" class="logo">
+                <div class="welcome-text">
+                    <span>Bienvenido,</span> {{ usuario }}
                 </div>
-                
             </div>
             
-            <!-- Botones de navegación a la derecha -->
+            <!-- Botones de navegación al lado -->
             <div class="nav-buttons-container">
-                
                 <button class="nav-button" id="Información Basica">
-                    <i class="bi bi-info-circle"></i> Información Basica
+                    <i class="bi bi-info-circle-fill"></i> Información Basica
                 </button>
 
                 <button class="nav-button" id="Control de material">
-                    <i class="bi bi-box-seam"></i> Control de material
+                    <i class="bi bi-boxes"></i> Control de material
                 </button>
 
                 <button class="nav-button" id="Control de producción">
-                    <i class="bi bi-gear"></i> Control de producción
+                    <i class="bi bi-gear-wide-connected"></i> Control de producción
                 </button>
 
                 <button class="nav-button" id="Control de proceso">
-                    <i class="bi bi-diagram-3"></i> Control de proceso
+                    <i class="bi bi-diagram-3-fill"></i> Control de proceso
                 </button>
 
                 <button class="nav-button" id="Control de calidad">
-                    <i class="bi bi-check-circle"></i> Control de calidad
+                    <i class="bi bi-clipboard-check-fill"></i> Control de calidad
                 </button>
 
                 <button class="nav-button" id="Control de resultados">
-                    <i class="bi bi-graph-up"></i> Control de resultados
+                    <i class="bi bi-file-earmark-bar-graph-fill"></i> Control de resultados
                 </button>
 
-                <button class="nav-button" id="Control de resultados">
-                    <i class="bi bi-graph-up"></i> Control de reporte
+                <button class="nav-button" id="Control de reporte">
+                    <i class="bi bi-bar-chart-fill"></i> Control de reporte
                 </button>
 
                 <button class="nav-button" id="Configuración de programa">
-                    <i class="bi bi-sliders"></i> Configuración de programa
+                    <i class="bi bi-gear-fill"></i> Configuración de programa
                 </button>
-
             </div>
         </div>
-    </div>
-</header>
+    </header>
+
+<div class="block-left col-md-3">
+    
+</div>
 
     <!-- Contenedor principal para el sidebar -->
 <div class="main-content-container" id="material-container" style="display: none;">
@@ -76,6 +74,24 @@
         </div>
         <div id="control-material-content" style="display: none;">
             {% include "LISTAS/LISTA_DE_MATERIALES.html" %}
+        </div>
+        <div id="control-produccion-content" style="display: none;">
+            {% include "LISTAS/LISTA_CONTROLDEPRODUCCION.html" %}
+        </div>
+        <div id="control-proceso-content" style="display: none;">
+            {% include "LISTAS/LISTA_CONTROL_DE_PROCESO.html" %}
+        </div>
+        <div id="control-calidad-content" style="display: none;">
+            {% include "LISTAS/LISTA_CONTROL_DE_CALIDAD.html" %}
+        </div>
+        <div id="control-resultados-content" style="display: none;">
+            {% include "LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html" %}
+        </div>
+        <div id="control-reporte-content" style="display: none;">
+            {% include "LISTAS/LISTA_DE_CONTROL_DE_REPORTE.html" %}
+        </div>
+        <div id="configuracion-programa-content" style="display: none;">
+            {% include "LISTAS/LISTA_DE_CONFIGPG.html" %}
         </div>
     </div>
 </div>
@@ -88,13 +104,30 @@
             const materialContainer = document.getElementById('material-container');
             const informacionBasicaContent = document.getElementById('informacion-basica-content');
             const controlMaterialContent = document.getElementById('control-material-content');
+            const controlProduccionContent = document.getElementById('control-produccion-content');
+            const controlProcesoContent = document.getElementById('control-proceso-content');
+            const controlCalidadContent = document.getElementById('control-calidad-content');
+            const controlResultadosContent = document.getElementById('control-resultados-content');
+            const controlReporteContent = document.getElementById('control-reporte-content');
+            const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
             const navButtons = document.querySelectorAll('.nav-button');
+            
+            // Función para ocultar todo el contenido
+            function hideAllContent() {
+                informacionBasicaContent.style.display = 'none';
+                controlMaterialContent.style.display = 'none';
+                controlProduccionContent.style.display = 'none';
+                controlProcesoContent.style.display = 'none';
+                controlCalidadContent.style.display = 'none';
+                controlResultadosContent.style.display = 'none';
+                if (controlReporteContent) controlReporteContent.style.display = 'none';
+                configuracionProgramaContent.style.display = 'none';
+            }
             
             navButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     // Ocultar todo el contenido primero
-                    informacionBasicaContent.style.display = 'none';
-                    controlMaterialContent.style.display = 'none';
+                    hideAllContent();
                     
                     if (this.id === 'Información Basica') {
                         materialContainer.style.display = 'block';
@@ -102,6 +135,24 @@
                     } else if (this.id === 'Control de material') {
                         materialContainer.style.display = 'block';
                         controlMaterialContent.style.display = 'block';
+                    } else if (this.id === 'Control de producción') {
+                        materialContainer.style.display = 'block';
+                        controlProduccionContent.style.display = 'block';
+                    } else if (this.id === 'Control de proceso') {
+                        materialContainer.style.display = 'block';
+                        controlProcesoContent.style.display = 'block';
+                    } else if (this.id === 'Control de calidad') {
+                        materialContainer.style.display = 'block';
+                        controlCalidadContent.style.display = 'block';
+                    } else if (this.id === 'Control de resultados') {
+                        materialContainer.style.display = 'block';
+                        controlResultadosContent.style.display = 'block';
+                    } else if (this.id === 'Control de reporte') {
+                        materialContainer.style.display = 'block';
+                        if (controlReporteContent) controlReporteContent.style.display = 'block';
+                    } else if (this.id === 'Configuración de programa') {
+                        materialContainer.style.display = 'block';
+                        configuracionProgramaContent.style.display = 'block';
                     } else {
                         materialContainer.style.display = 'none';
                     }
@@ -112,5 +163,6 @@
             materialContainer.style.display = 'none';
         });
     </script>
+    </div>
 </body>
 </html>

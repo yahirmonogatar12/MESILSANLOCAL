@@ -2,12 +2,12 @@
         <aside class="app-sidebar">
         <ul class="sidebar-menu">
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial">
-                    <span class="sidebar-icon"></i></span>
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
                     Administración de usuario
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMaterial">
                     <li class="sidebar-link" tabindex="0">Administración de usuario</li>
                     <li class="sidebar-link" tabindex="0">Administración de menu</li>
                     <li class="sidebar-link" tabindex="0">Administración de autoridad</li>
@@ -17,12 +17,12 @@
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL">
-                    <span class="sidebar-icon"></i></span>
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
                     Control de Proceso
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMSL">
                     <li class="sidebar-link" tabindex="0">Control de departamento</li>
                     <li class="sidebar-link" tabindex="0">Control de proceso</li>
                     <li class="sidebar-link" tabindex="0">Control de orden de proceso</li>
@@ -33,34 +33,34 @@
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial2">
-                    <span class="sidebar-icon"></i></span>
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial2" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
                     Control de material
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial2">
-                    <li class="sidebar-link" tabindex="0">Control de material</li>
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMaterial2">
+                    <li class="sidebar-link" tabindex="0" onclick="cargarControlMaterial()">Control de material</li>
                     <li class="sidebar-link" tabindex="0">Configuracion de MSL</li>
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarCliente">
-                    <span class="sidebar-icon"></i></span>
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarCliente" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
                     Control de cliente
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarCliente">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarCliente">
                     <li class="sidebar-link" tabindex="0">Control de cliente</li>
                     <li class="sidebar-link" tabindex="0">Control de proveedor</li>
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarOtros">
-                    <span class="sidebar-icon"></i></span>
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarOtros" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
                     Otros
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarOtros">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarOtros">
                     <li class="sidebar-link" tabindex="0">Re-iniciar la seccion</li>
                     <li class="sidebar-link" tabindex="0">Cambio de contrasena</li>
                 </ul>
@@ -73,3 +73,46 @@
         <main class="app-content"> 
         </main>
     </div>
+
+<script>
+function cargarControlMaterial() {
+    // Obtener el área de contenido principal
+    const appContent = document.querySelector('.app-content');
+    
+    // Mostrar un indicador de carga
+    appContent.innerHTML = '<div class="text-center p-4"><div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+    
+    // Realizar la petición AJAX
+    fetch('/control_material')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al cargar el contenido');
+            }
+            return response.text();
+        })
+        .then(html => {
+            // Cargar el HTML en el área de contenido
+            appContent.innerHTML = html;
+            
+            // Ejecutar cualquier script que pueda estar en el HTML cargado
+            const scripts = appContent.querySelectorAll('script');
+            scripts.forEach(script => {
+                if (script.src) {
+                    // Script externo
+                    const newScript = document.createElement('script');
+                    newScript.src = script.src;
+                    document.head.appendChild(newScript);
+                } else {
+                    // Script inline
+                    const newScript = document.createElement('script');
+                    newScript.textContent = script.textContent;
+                    document.head.appendChild(newScript);
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            appContent.innerHTML = '<div class="alert alert-danger">Error al cargar el contenido. Por favor, inténtelo de nuevo.</div>';
+        });
+}
+</script>

@@ -339,6 +339,219 @@ function setupMaterialManagement() {
 });
 }
 
+// Funciones para importación de Excel
+function setupExcelImport() {
+    // Crear botón de importar Excel
+    const importButton = document.createElement('button');
+    importButton.type = 'button';
+    importButton.className = 'btn btn-primary';
+    importButton.innerHTML = '<i class="fas fa-file-import"></i> Importar Excel';
+    importButton.onclick = showImportDialog;
+    
+    // Agregar el botón a la barra de acciones
+    const actionButtons = document.querySelector('.action-buttons');
+    if (actionButtons) {
+        actionButtons.appendChild(importButton);
+    }
+}
+
+function showImportDialog() {
+    // Crear modal de importación
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'importModal';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Importar Excel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Seleccionar archivo Excel:</label>
+                        <input type="file" class="form-control" id="excelFile" accept=".xlsx,.xls">
+                        <div class="form-text">
+                            Formatos soportados: .xlsx, .xls<br>
+                            <a href="#" onclick="downloadTemplate()">Descargar plantilla Excel</a>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="clearExisting">
+                            <label class="form-check-label" for="clearExisting">
+                                Limpiar datos existentes antes de importar
+                            </label>
+                        </div>
+                    </div>
+                    <div id="importProgress" class="progress d-none">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div id="importResult" class="alert d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="importExcel()">Importar</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Mostrar modal
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // Limpiar modal cuando se cierre
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+function importExcel() {
+    const fileInput = document.getElementById('excelFile');
+    const progressDiv = document.getElementById('importProgress');
+    const resultDiv = document.getElementById('importResult');
+    
+    if (!fileInput.files.length) {
+        showAlert('Por favor selecciona un archivo Excel', 'warning');
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    // Validar tipo de archivo
+    if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+        showAlert('Por favor selecciona un archivo Excel válido (.xlsx o .xls)', 'danger');
+        return;
+    }
+    
+    // Mostrar progreso
+    progressDiv.classList.remove('d-none');
+    resultDiv.classList.add('d-none');
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Enviar archivo
+    fetch('/importar_excel', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.classList.add('d-none');
+        
+        if (data.success) {
+            resultDiv.className = 'alert alert-success';
+            resultDiv.innerHTML = `
+                <i class="fas fa-check-circle"></i> 
+                ${data.message}
+            `;
+            resultDiv.classList.remove('d-none');
+            
+            // Recargar la tabla de materiales después de unos segundos
+            setTimeout(() => {
+                if (typeof loadMateriales === 'function') {
+                    loadMateriales();
+                }
+                // Cerrar modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
+                if (modal) {
+                    modal.hide();
+                }
+            }, 2000);
+        } else {
+            resultDiv.className = 'alert alert-danger';
+            resultDiv.innerHTML = `
+                <i class="fas fa-exclamation-circle"></i> 
+                Error: ${data.error}
+            `;
+            resultDiv.classList.remove('d-none');
+        }
+    })
+    .catch(error => {
+        progressDiv.classList.add('d-none');
+        resultDiv.className = 'alert alert-danger';
+        resultDiv.innerHTML = `
+            <i class="fas fa-exclamation-circle"></i> 
+            Error de conexión: ${error.message}
+        `;
+        resultDiv.classList.remove('d-none');
+    });
+}
+
+function downloadTemplate() {
+    // Crear datos de ejemplo para la plantilla
+    const templateData = [
+        ['Codigo de material', 'Numero de parte', 'Propiedad de material', 'Classification', 'Especificacion de material', 'Unidad de empaque', 'Ubicacion de material', 'Vendedor', 'Prohibido sacar', 'Reparable', 'Nivel de MSL', 'Espesor de MSL', 'Fecha de registro'],
+        ['EJEMPLO001', 'PART001', 'PART', 'CHIP RESISTOR', 'R-CHIP 10.0.1W F 1608', '5000', 'A1-B2', 'PROVEEDOR1', 'No', 'Si', '3', '0.5', '2024-01-01'],
+        ['EJEMPLO002', 'PART002', 'ETC', 'CAPACITOR', 'C-CAP 100uF 25V', '2000', 'B2-C3', 'PROVEEDOR2', 'Si', 'No', '1', '1.0', '2024-01-02']
+    ];
+    
+    // Crear y descargar archivo CSV (como alternativa a Excel)
+    const csvContent = templateData.map(row => 
+        row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'plantilla_materiales.csv';
+    link.click();
+    
+    showAlert('Plantilla descargada. Puedes convertirla a Excel si es necesario.', 'info');
+}
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Agregar al inicio del contenido principal
+    const mainContent = document.querySelector('.app-content') || document.body;
+    mainContent.insertBefore(alertDiv, mainContent.firstChild);
+    
+    // Auto-eliminar después de 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Función para cargar materiales (si no existe)
+function loadMateriales() {
+    fetch('/listar_materiales')
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.querySelector('.data-table tbody');
+            if (tableBody) {
+                if (data.length > 0) {
+                    tableBody.innerHTML = data.map(material => `
+                        <tr>
+                            <td>${material.codigoMaterial}</td>
+                            <td>${material.numeroParte}</td>
+                            <td>${material.fechaRegistro}</td>
+                            <td>${material.vendedor}</td>
+                            <td>${material.propiedadMaterial}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tableBody.innerHTML = '<tr class="no-data"><td colspan="5">No hay datos registrados</td></tr>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar materiales:', error);
+            showAlert('Error al cargar los materiales', 'danger');
+        });
+}
+
 // Ejecutar cuando el DOM esté listo
 if (document.readyState !== 'loading') {
     setupMaterialManagement();
