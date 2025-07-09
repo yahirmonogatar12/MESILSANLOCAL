@@ -541,7 +541,7 @@ html, body {
   flex: 1 !important;
   background-color: #32323E;
   overflow-y: auto;
-  padding: 30px !important;
+  padding: 4px !important;
   display: block !important;
   min-height: calc(100vh - var(--header-height));
   margin: 0 !important;
@@ -562,7 +562,7 @@ html, body {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 2px;
 }
 
 /* Asegurar que el app-content muestre correctamente los contenedores */
@@ -611,4 +611,64 @@ html, body {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
+}
+
+/* ============================================= */
+/* Global input and select field visibility     */
+/* ============================================= */
+
+/* Ensure all input and select fields are visible with proper contrast */
+input, select, textarea {
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
+    border: 1px solid #95a5a6 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
+    border-color: #3498db !important;
+}
+
+/* Select dropdown options */
+select option {
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
+}
+
+/* Placeholder text */
+input::placeholder, textarea::placeholder {
+    color: #7f8c8d !important;
+    opacity: 1 !important;
+}
+
+/* Ensure webkit select styling doesn't interfere */
+select {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+}
+
+/* More specific rules to override any other styling */
+.material-form-group input,
+.material-form-group select,
+input[type="text"],
+input[type="date"],
+select {
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
+    border: 1px solid #95a5a6 !important;
+    -webkit-text-fill-color: #2c3e50 !important;
+}
+
+/* Specific overrides for problematic fields */
+#forma_material,
+#cliente, 
+#codigoMaterialOriginal,
+#codigoMaterialSelect {
+    background: #ffffff !important;
+    color: #2c3e50 !important;
+    border: 1px solid #95a5a6 !important;
+    -webkit-text-fill-color: #2c3e50 !important;
+    font-size: 9px !important;
 }

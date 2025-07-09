@@ -6,31 +6,37 @@
             background-color: #32323E;
             color: lightgray;
             min-height: 100vh;
-            padding: 12px;
+            padding: 3px;
         }
 
         /* Botonera */
         .material-toolbar {
             display: flex;
             justify-content: flex-end;
-            gap: 6px;
-            margin-bottom: 12px;
-            padding: 8px 12px;
+            gap: 2px;
+            margin-bottom: 2px;
+            padding: 3px 4px;
             background-color: #40424F;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .material-btn {
-            padding: 4px 8px;
+            padding: 2px 4px;
             border: none;
-            border-radius: 3px;
+            border-radius: 2px;
             background-color: #3498db;
             color: white;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 8px;
             transition: all 0.3s;
             font-weight: 500;
+            line-height: 1.0;
+            min-width: 50px;
+            height: 20px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .material-btn:hover {
@@ -78,16 +84,16 @@
         /* Formulario con diseño consistente */
         .material-form-section {
             background-color: #40424F;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 2px;
+            padding: 4px;
+            margin-bottom: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .material-form-row {
             display: grid;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 4px;
+            margin-bottom: 2px;
         }
         
         .material-form-group {
@@ -97,18 +103,92 @@
         
         .material-form-group label {
             font-weight: bold;
-            margin-bottom: 3px;
-            font-size: 11px;
+            margin-bottom: 1px;
+            font-size: 8px;
             color: lightgray;
+            line-height: 1.0;
         }
         
         .material-form-group input, .material-form-group select {
-            padding: 4px 6px;
-            border: 1px solid #7f8c8d;
-            border-radius: 3px;
-            background-color: #ecf0f1;
-            color: #2c3e50;
-            font-size: 11px;
+            padding: 2px 4px;
+            border: 1px solid #95a5a6;
+            border-radius: 2px;
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            font-size: 9px;
+            height: 20px;
+            line-height: 1.0;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        
+        .material-form-group input:focus, .material-form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+        }
+        
+        /* Específico para select dropdowns */
+        .material-form-group select {
+            background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="5" viewBox="0 0 4 5"><path fill="%23666" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 4px center;
+            background-size: 8px 10px;
+            padding-right: 16px;
+        }
+        
+        /* Asegurar que las opciones del select también sean visibles */
+        .material-form-group select option {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            padding: 2px;
+        }
+        
+        /* Placeholder text */
+        .material-form-group input::placeholder {
+            color: #7f8c8d !important;
+            opacity: 1;
+        }
+        
+        /* Reglas específicas para los campos problemáticos */
+        #forma_material, #cliente, #codigoMaterialOriginal, #codigoMaterialSelect {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            border: 1px solid #95a5a6 !important;
+            font-size: 9px !important;
+        }
+        
+        #forma_material:focus, #cliente:focus, #codigoMaterialOriginal:focus, #codigoMaterialSelect:focus {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            border-color: #3498db !important;
+        }
+        
+        /* Opciones de select específicas */
+        #forma_material option, #cliente option, #codigoMaterialSelect option {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+        }
+        
+        /* Reglas adicionales para sobrescribir cualquier estilo inline */
+        input[style*="flex"], select[style*="cursor"] {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            border: 1px solid #95a5a6 !important;
+        }
+        
+        /* Asegurar visibilidad en todos los estados */
+        .material-form-group input[type="text"],
+        .material-form-group select {
+            background: #ffffff !important;
+            color: #2c3e50 !important;
+            -webkit-text-fill-color: #2c3e50 !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
         }
         
         .three-column {
@@ -122,9 +202,9 @@
         /* Tabla */
         .material-table-container {
             background-color: #40424F;
-            border-radius: 6px;
-            padding: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 2px;
+            padding: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             overflow-x: auto;
         }
 
@@ -132,32 +212,32 @@
             width: 100%;
             border-collapse: collapse;
             margin: 0;
-            font-size: 9px;
+            font-size: 6px;
             background-color: #40424F;
         }
 
         .material-table th {
             background-color: #2c3e50;
             color: #ecf0f1;
-            padding: 4px 3px;
+            padding: 2px 2px;
             text-align: center;
             border: 1px solid #34495e;
             font-weight: 600;
             position: sticky;
             top: 0;
             z-index: 10;
-            font-size: 9px;
-            line-height: 1.1;
+            font-size: 6px;
+            line-height: 1.0;
         }
 
         .material-table td {
-            padding: 3px 2px;
+            padding: 1px 2px;
             text-align: center;
             border: 1px solid #34495e;
             background-color: #40424F;
             color: lightgray;
             transition: background-color 0.3s;
-            font-size: 9px;
+            font-size: 6px;
             line-height: 1.0;
         }
 
