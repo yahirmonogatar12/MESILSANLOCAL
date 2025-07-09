@@ -2,7 +2,7 @@ import json
 import os
 from functools import wraps
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
-from .db import get_db_connection, init_db
+from .db import get_db_connection, init_db, guardar_configuracion_usuario, cargar_configuracion_usuario
 import sqlite3
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -47,7 +47,7 @@ def login():
         return render_template('login.html', error="Usuario o contraseña incorrectos. Por favor, intente de nuevo")
     return render_template('login.html')
 
-@app.route('/INICIO')
+@app.route('/ILSAN-ELECTRONICS')
 @login_requerido
 def material():
     usuario = session.get('usuario', 'Invitado')
@@ -57,17 +57,67 @@ def material():
 @login_requerido
 def produccion():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('CONTROL_DE_MATERIAL.html', usuario=usuario)
+    return render_template('Control de material/Control de material de almacen.html', usuario=usuario)
 
 @app.route('/logout')
 def logout():
     session.pop('usuario', None)
     return redirect(url_for('login'))
 
-@app.route('/control_material')
+# Nota: El endpoint /control_material ya no es necesario porque
+# Información Básica ahora usa {% include %} en lugar de AJAX
+
+@app.route('/cargar_template', methods=['POST'])
 @login_requerido
-def control_material():
-    return render_template('INFORMACION BASICA/CONTROL_DE_MATERIAL.html')
+def cargar_template():
+    try:
+        data = request.get_json()
+        template_path = data.get('template_path')
+        
+        if not template_path:
+            return jsonify({'error': 'No se especificó la ruta del template'}), 400
+        
+        # Validar que la ruta del template sea segura
+        if '..' in template_path or template_path.startswith('/'):
+            return jsonify({'error': 'Ruta de template no válida'}), 400
+        
+        # Renderizar el template y devolver el HTML
+        html_content = render_template(template_path)
+        return html_content
+        
+    except Exception as e:
+        print(f"Error al cargar template {template_path}: {str(e)}")
+        return jsonify({'error': f'Error al cargar el template: {str(e)}'}), 500
+
+@app.route('/cargar_template_test', methods=['POST'])
+def cargar_template_test():
+    """Endpoint de prueba sin autenticación para debug"""
+    try:
+        data = request.get_json()
+        template_path = data.get('template_path')
+        
+        print(f"🔍 DEBUG - Cargando template: {template_path}")
+        
+        if not template_path:
+            return jsonify({'error': 'No se especificó la ruta del template'}), 400
+        
+        # Validar que la ruta del template sea segura
+        if '..' in template_path or template_path.startswith('/'):
+            return jsonify({'error': 'Ruta de template no válida'}), 400
+        
+        print(f"🔍 DEBUG - Intentando renderizar: {template_path}")
+        
+        # Renderizar el template y devolver el HTML
+        html_content = render_template(template_path)
+        
+        print(f"🔍 DEBUG - Template renderizado exitosamente, tamaño: {len(html_content)} caracteres")
+        
+        return html_content
+        
+    except Exception as e:
+        error_msg = f"Error al cargar template {template_path}: {str(e)}"
+        print(f"💥 DEBUG - {error_msg}")
+        return jsonify({'error': error_msg}), 500
 
 
 # A continuación se definen las rutas para manejar las entradas de materiales aéreos
@@ -165,195 +215,281 @@ def guardar_material():
 
 @app.route('/listar_materiales')
 def listar_materiales():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM materiales ORDER BY fecha_registro DESC')
-    rows = cursor.fetchall()
-    conn.close()
-    
-    materiales = []
-    for row in rows:
-        materiales.append({
-            'codigoMaterial': row['codigo_material'],
-            'numeroParte': row['numero_parte'],
-            'propiedadMaterial': row['propiedad_material'],
-            'classification': row['classification'],
-            'especificacionMaterial': row['especificacion_material'],
-            'unidadEmpaque': row['unidad_empaque'],
-            'ubicacionMaterial': row['ubicacion_material'],
-            'vendedor': row['vendedor'],
-            'prohibidoSacar': int(row['prohibido_sacar']) if row['prohibido_sacar'] else 0,
-            'reparable': int(row['reparable']) if row['reparable'] else 0,
-            'nivelMSL': row['nivel_msl'],
-            'espesorMSL': row['espesor_msl'],
-            'fechaRegistro': row['fecha_registro']
-        })
-    
-    return jsonify(materiales)
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM materiales ORDER BY fecha_registro DESC')
+        rows = cursor.fetchall()
+        
+        def convertir_a_entero_seguro(valor):
+            """Convierte un valor a entero de forma segura"""
+            if not valor:
+                return 0
+            
+            # Si ya es entero, devolverlo
+            if isinstance(valor, int):
+                return valor
+            
+            # Si es string, intentar conversión
+            if isinstance(valor, str):
+                valor_str = valor.strip().lower()
+                
+                # Valores que se consideran como "true" o "checked"
+                valores_true = ['1', 'true', 'yes', 'sí', 'si', 'checked', 'x', 'on', 'habilitado', 'activo']
+                # Valores que se consideran como "false" o "unchecked"
+                valores_false = ['0', 'false', 'no', 'unchecked', 'off', 'deshabilitado', 'inactivo', '']
+                
+                if valor_str in valores_true:
+                    return 1
+                elif valor_str in valores_false:
+                    return 0
+                else:
+                    # Intentar conversión directa
+                    try:
+                        return int(float(valor_str))
+                    except:
+                        return 0
+            
+            # Para cualquier otro tipo, intentar conversión directa
+            try:
+                return int(valor)
+            except:
+                return 0
+        
+        materiales = []
+        for row in rows:
+            materiales.append({
+                'codigoMaterial': row['codigo_material'],
+                'numeroParte': row['numero_parte'],
+                'propiedadMaterial': row['propiedad_material'],
+                'classification': row['classification'],
+                'especificacionMaterial': row['especificacion_material'],
+                'unidadEmpaque': row['unidad_empaque'],
+                'ubicacionMaterial': row['ubicacion_material'],
+                'vendedor': row['vendedor'],
+                'prohibidoSacar': convertir_a_entero_seguro(row['prohibido_sacar']),
+                'reparable': convertir_a_entero_seguro(row['reparable']),
+                'nivelMSL': row['nivel_msl'],
+                'espesorMSL': row['espesor_msl'],
+                'fechaRegistro': row['fecha_registro']
+            })
+        
+        return jsonify(materiales)
+        
+    except Exception as e:
+        print(f"Error en listar_materiales: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Error al cargar materiales: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
 
 @app.route('/importar_excel', methods=['POST'])
 def importar_excel():
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+    conn = None
+    cursor = None
+    temp_path = None
     
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
-    
-    if file and file.filename.lower().endswith(('.xlsx', '.xls')):
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
         try:
-            # Guardar el archivo temporalmente
-            filename = secure_filename(file.filename)
-            temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
-            file.save(temp_path)
-            
-            # Leer el archivo Excel
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
             try:
-                df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
-            except Exception as e:
-                # Intentar con diferentes engines
-                try:
-                    df = pd.read_excel(temp_path)
-                except Exception as e2:
-                    return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Obtener las columnas del Excel
+        columnas_excel = df.columns.tolist()
+        print(f"Columnas detectadas en Excel: {columnas_excel}")
+        
+        # Mapeo de columnas (flexible para diferentes nombres)
+        mapeo_columnas = {
+            'codigo_material': ['Codigo de material', 'Código de material', 'codigo_material', 'Código+de+material'],
+            'numero_parte': ['Numero de parte', 'Número de parte', 'numero_parte', 'Número+de+parte'],
+            'propiedad_material': ['Propiedad de material', 'propiedad_material', 'Propiedad+de+material'],
+            'classification': ['Classification', 'classification', 'Clasificación', 'Clasificacion'],
+            'especificacion_material': ['Especificacion de material', 'Especificación de material', 'especificacion_material', 'Especificación+de+material'],
+            'unidad_empaque': ['Unidad de empaque', 'unidad_empaque', 'Unidad+de+empaque'],
+            'ubicacion_material': ['Ubicacion de material', 'Ubicación de material', 'ubicacion_material', 'Ubicación+de+material'],
+            'vendedor': ['Vendedor', 'vendedor', 'Proveedor', 'proveedor'],
+            'prohibido_sacar': ['Prohibido sacar', 'prohibido_sacar', 'Prohibido+sacar'],
+            'reparable': ['Reparable', 'reparable'],
+            'nivel_msl': ['Nivel de MSL', 'nivel_msl', 'Nivel+de+MSL'],
+            'espesor_msl': ['Espesor de MSL', 'espesor_msl', 'Espesor+de+MSL']
+        }
+        
+        def obtener_valor_columna(row, campo):
+            """Obtiene el valor de una columna usando el mapeo flexible"""
+            posibles_nombres = mapeo_columnas.get(campo, [campo])
             
-            # Limpiar archivo temporal
+            for nombre in posibles_nombres:
+                if nombre in row:
+                    valor = row[nombre]
+                    if pd.isna(valor) or valor is None:
+                        return ''
+                    return str(valor).strip()
+            
+            # Si no encuentra la columna, usar posición por índice como fallback
             try:
-                os.remove(temp_path)
-            except:
-                pass
-            
-            # Verificar que el DataFrame no esté vacío
-            if df.empty:
-                return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
-            
-            # Obtener las columnas del Excel
-            columnas_excel = df.columns.tolist()
-            print(f"Columnas detectadas en Excel: {columnas_excel}")
-            
-            # Mapeo de columnas (flexible para diferentes nombres)
-            mapeo_columnas = {
-                'codigo_material': ['Codigo de material', 'Código de material', 'codigo_material', 'Código+de+material'],
-                'numero_parte': ['Numero de parte', 'Número de parte', 'numero_parte', 'Número+de+parte'],
-                'propiedad_material': ['Propiedad de material', 'propiedad_material', 'Propiedad+de+material'],
-                'classification': ['Classification', 'classification', 'Clasificación', 'Clasificacion'],
-                'especificacion_material': ['Especificacion de material', 'Especificación de material', 'especificacion_material', 'Especificación+de+material'],
-                'unidad_empaque': ['Unidad de empaque', 'unidad_empaque', 'Unidad+de+empaque'],
-                'ubicacion_material': ['Ubicacion de material', 'Ubicación de material', 'ubicacion_material', 'Ubicación+de+material'],
-                'vendedor': ['Vendedor', 'vendedor', 'Proveedor', 'proveedor'],
-                'prohibido_sacar': ['Prohibido sacar', 'prohibido_sacar', 'Prohibido+sacar'],
-                'reparable': ['Reparable', 'reparable'],
-                'nivel_msl': ['Nivel de MSL', 'nivel_msl', 'Nivel+de+MSL'],
-                'espesor_msl': ['Espesor de MSL', 'espesor_msl', 'Espesor+de+MSL']
-                # Fecha de registro se genera automáticamente, no se mapea desde Excel
-            }
-            
-            def obtener_valor_columna(row, campo):
-                """Obtiene el valor de una columna usando el mapeo flexible"""
-                posibles_nombres = mapeo_columnas.get(campo, [campo])
-                
-                for nombre in posibles_nombres:
-                    if nombre in row:
-                        valor = row[nombre]
+                campos_orden = ['codigo_material', 'numero_parte', 'propiedad_material', 'classification',
+                               'especificacion_material', 'unidad_empaque', 'ubicacion_material', 'vendedor',
+                               'prohibido_sacar', 'reparable', 'nivel_msl', 'espesor_msl']
+                if campo in campos_orden:
+                    idx = campos_orden.index(campo)
+                    if idx < len(columnas_excel):
+                        valor = row.get(columnas_excel[idx], '')
                         if pd.isna(valor) or valor is None:
                             return ''
                         return str(valor).strip()
+            except:
+                pass
+            
+            return ''
+        
+        def convertir_checkbox(valor):
+            """Convierte valores de checkbox del Excel a 0 o 1"""
+            if not valor or pd.isna(valor):
+                return '0'
+            
+            valor_str = str(valor).strip().lower()
+            
+            # Valores que se consideran como "true" o "checked"
+            valores_true = ['1', 'true', 'yes', 'sí', 'si', 'checked', 'x', 'on', 'habilitado', 'activo']
+            # Valores que se consideran como "false" o "unchecked"
+            valores_false = ['0', 'false', 'no', 'unchecked', 'off', 'deshabilitado', 'inactivo', '']
+            
+            if valor_str in valores_true:
+                return '1'
+            elif valor_str in valores_false:
+                return '0'
+            else:
+                # Si no reconoce el valor, asumir false por seguridad
+                return '0'
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Insertar los datos
+        registros_insertados = 0
+        errores = []
+        
+        # Obtener fecha y hora actual de importación
+        from datetime import datetime
+        fecha_importacion = datetime.now().strftime('%d/%m/%Y %H:%M')
+        
+        for index, row in df.iterrows():
+            try:
+                # Obtener valores usando el mapeo flexible
+                codigo_material = obtener_valor_columna(row, 'codigo_material')
+                numero_parte = obtener_valor_columna(row, 'numero_parte')
+                propiedad_material = obtener_valor_columna(row, 'propiedad_material')
+                classification = obtener_valor_columna(row, 'classification')
+                especificacion_material = obtener_valor_columna(row, 'especificacion_material')
+                unidad_empaque = obtener_valor_columna(row, 'unidad_empaque')
+                ubicacion_material = obtener_valor_columna(row, 'ubicacion_material')
+                vendedor = obtener_valor_columna(row, 'vendedor')
                 
-                # Si no encuentra la columna, usar posición por índice como fallback
-                try:
-                    campos_orden = ['codigo_material', 'numero_parte', 'propiedad_material', 'classification',
-                                   'especificacion_material', 'unidad_empaque', 'ubicacion_material', 'vendedor',
-                                   'prohibido_sacar', 'reparable', 'nivel_msl', 'espesor_msl']
-                    if campo in campos_orden:
-                        idx = campos_orden.index(campo)
-                        if idx < len(columnas_excel):
-                            valor = row.get(columnas_excel[idx], '')
-                            if pd.isna(valor) or valor is None:
-                                return ''
-                            return str(valor).strip()
-                except:
-                    pass
+                # Convertir valores de checkbox correctamente
+                prohibido_sacar = convertir_checkbox(obtener_valor_columna(row, 'prohibido_sacar'))
+                reparable = convertir_checkbox(obtener_valor_columna(row, 'reparable'))
                 
-                return ''
-            
-            # Conectar a la base de datos
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # Insertar los datos
-            registros_insertados = 0
-            errores = []
-            
-            # Obtener fecha y hora actual de importación
-            from datetime import datetime
-            fecha_importacion = datetime.now().strftime('%d/%m/%Y %H:%M')
-            
-            for index, row in df.iterrows():
-                try:
-                    # Obtener valores usando el mapeo flexible
-                    codigo_material = obtener_valor_columna(row, 'codigo_material')
-                    numero_parte = obtener_valor_columna(row, 'numero_parte')
-                    propiedad_material = obtener_valor_columna(row, 'propiedad_material')
-                    classification = obtener_valor_columna(row, 'classification')
-                    especificacion_material = obtener_valor_columna(row, 'especificacion_material')
-                    unidad_empaque = obtener_valor_columna(row, 'unidad_empaque')
-                    ubicacion_material = obtener_valor_columna(row, 'ubicacion_material')
-                    vendedor = obtener_valor_columna(row, 'vendedor')
-                    prohibido_sacar = obtener_valor_columna(row, 'prohibido_sacar')
-                    reparable = obtener_valor_columna(row, 'reparable')
-                    nivel_msl = obtener_valor_columna(row, 'nivel_msl')
-                    espesor_msl = obtener_valor_columna(row, 'espesor_msl')
-                    # NO usar la fecha del Excel, usar la fecha actual de importación
-                    fecha_registro = fecha_importacion
-                    
-                    # Validar que al menos el código de material no esté vacío
-                    if not codigo_material:
-                        errores.append(f"Fila {index + 1}: Código de material vacío")
-                        continue
-                    
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO materiales (
-                            codigo_material, numero_parte, propiedad_material, classification,
-                            especificacion_material, unidad_empaque, ubicacion_material, vendedor,
-                            prohibido_sacar, reparable, nivel_msl, espesor_msl, fecha_registro
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
+                nivel_msl = obtener_valor_columna(row, 'nivel_msl')
+                espesor_msl = obtener_valor_columna(row, 'espesor_msl')
+                fecha_registro = fecha_importacion
+                
+                # Validar que al menos el código de material no esté vacío
+                if not codigo_material:
+                    errores.append(f"Fila {index + 1}: Código de material vacío")
+                    continue
+                
+                cursor.execute('''
+                    INSERT OR REPLACE INTO materiales (
                         codigo_material, numero_parte, propiedad_material, classification,
                         especificacion_material, unidad_empaque, ubicacion_material, vendedor,
                         prohibido_sacar, reparable, nivel_msl, espesor_msl, fecha_registro
-                    ))
-                    registros_insertados += 1
-                    
-                except Exception as e:
-                    error_msg = f"Error en fila {index + 1}: {str(e)}"
-                    errores.append(error_msg)
-                    print(error_msg)
-                    continue
-            
-            conn.commit()
-            conn.close()
-            
-            # Preparar respuesta
-            mensaje = f'Se importaron {registros_insertados} registros exitosamente'
-            if errores:
-                mensaje += f'. Se encontraron {len(errores)} errores'
-                if len(errores) <= 5:  # Mostrar solo los primeros 5 errores
-                    mensaje += f': {"; ".join(errores)}'
-            
-            return jsonify({'success': True, 'message': mensaje})
-            
-        except Exception as e:
-            print(f"Error general: {str(e)}")
-            # Limpiar archivo temporal en caso de error
-            try:
-                temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + secure_filename(file.filename))
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-            except:
-                pass
-            return jsonify({'success': False, 'error': f'Error al procesar el archivo: {str(e)}'}), 500
-    
-    return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    codigo_material, numero_parte, propiedad_material, classification,
+                    especificacion_material, unidad_empaque, ubicacion_material, vendedor,
+                    prohibido_sacar, reparable, nivel_msl, espesor_msl, fecha_registro
+                ))
+                registros_insertados += 1
+                
+            except Exception as e:
+                error_msg = f"Error en fila {index + 1}: {str(e)}"
+                errores.append(error_msg)
+                print(error_msg)
+                continue
+        
+        # Commit de la transacción
+        conn.commit()
+        
+        # Preparar respuesta
+        mensaje = f'Se importaron {registros_insertados} registros exitosamente'
+        if errores:
+            mensaje += f'. Se encontraron {len(errores)} errores'
+            if len(errores) <= 5:
+                mensaje += f': {"; ".join(errores)}'
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        print(f"Error general en importar_excel: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'Error al procesar el archivo: {str(e)}'}), 500
+        
+    finally:
+        # Asegurar cierre de recursos
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+        try:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
+        except:
+            pass
 
 @app.route('/actualizar_campo_material', methods=['POST'])
 def actualizar_campo_material():
@@ -487,3 +623,390 @@ def exportar_excel():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/obtener_codigos_material')
+def obtener_codigos_material():
+    """Endpoint para obtener códigos de material para el dropdown del control de almacén"""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT codigo_material, numero_parte, especificacion_material, 
+                   propiedad_material, unidad_empaque
+            FROM materiales 
+            WHERE codigo_material IS NOT NULL AND codigo_material != ''
+            ORDER BY codigo_material ASC
+        ''')
+        rows = cursor.fetchall()
+        
+        codigos = []
+        for row in rows:
+            codigos.append({
+                'codigo': row['codigo_material'],
+                'nombre': row['numero_parte'] or '',
+                'spec': row['especificacion_material'] or '',
+                'numero_parte': row['numero_parte'] or '',
+                'cantidad_estandarizada': row['unidad_empaque'] or '',
+                'propiedad_material': row['propiedad_material'] or '',  # Campo correcto para propiedad
+                'especificacion_material': row['especificacion_material'] or ''
+            })
+        
+        return jsonify(codigos)
+        
+    except Exception as e:
+        print(f"Error en obtener_codigos_material: {str(e)}")
+        return jsonify({'error': f'Error al cargar códigos de material: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+@app.route('/control_almacen')
+@login_requerido
+def control_almacen():
+    return render_template('Control de material/Control de material de almacen.html')
+
+@app.route('/guardar_control_almacen', methods=['POST'])
+@login_requerido
+def guardar_control_almacen():
+    """Endpoint para guardar los datos del formulario de control de material de almacén"""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json()
+        
+        # Validar campos requeridos
+        if not data.get('codigo_material_original'):
+            return jsonify({'success': False, 'error': 'Código de material original es requerido'}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Insertar datos en la tabla
+        cursor.execute('''
+            INSERT INTO control_material_almacen (
+                forma_material, cliente, codigo_material_original, codigo_material,
+                material_importacion_local, fecha_recibo, fecha_fabricacion, cantidad_actual,
+                numero_lote_material, codigo_material_recibido, numero_parte, cantidad_estandarizada,
+                codigo_material_final, propiedad_material, especificacion, material_importacion_local_final,
+                estado_desecho, ubicacion_salida
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('forma_material', ''),
+            data.get('cliente', ''),
+            data.get('codigo_material_original', ''),
+            data.get('codigo_material', ''),
+            data.get('material_importacion_local', ''),
+            data.get('fecha_recibo', ''),
+            data.get('fecha_fabricacion', ''),
+            data.get('cantidad_actual', 0),
+            data.get('numero_lote_material', ''),
+            data.get('codigo_material_recibido', ''),
+            data.get('numero_parte', ''),
+            data.get('cantidad_estandarizada', ''),
+            data.get('codigo_material_final', ''),
+            data.get('propiedad_material', ''),
+            data.get('especificacion', ''),
+            data.get('material_importacion_local_final', ''),
+            data.get('estado_desecho', ''),
+            data.get('ubicacion_salida', '')
+        ))
+        
+        conn.commit()
+        registro_id = cursor.lastrowid
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Registro guardado exitosamente',
+            'id': registro_id
+        })
+        
+    except Exception as e:
+        print(f"Error al guardar control de almacén: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error al guardar: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+@app.route('/consultar_control_almacen', methods=['GET'])
+@login_requerido
+def consultar_control_almacen():
+    """Endpoint para consultar los registros de control de material de almacén"""
+    conn = None
+    cursor = None
+    try:
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Construir query con filtros de fecha si se proporcionan
+        query = '''
+            SELECT * FROM control_material_almacen 
+            WHERE 1=1
+        '''
+        params = []
+        
+        if fecha_inicio:
+            query += ' AND date(fecha_recibo) >= ?'
+            params.append(fecha_inicio)
+            
+        if fecha_fin:
+            query += ' AND date(fecha_recibo) <= ?'
+            params.append(fecha_fin)
+            
+        query += ' ORDER BY fecha_registro DESC'
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        registros = []
+        for row in rows:
+            registros.append({
+                'id': row['id'],
+                'forma_material': row['forma_material'],
+                'cliente': row['cliente'],
+                'codigo_material_original': row['codigo_material_original'],
+                'codigo_material': row['codigo_material'],
+                'material_importacion_local': row['material_importacion_local'],
+                'fecha_recibo': row['fecha_recibo'],
+                'fecha_fabricacion': row['fecha_fabricacion'],
+                'cantidad_actual': row['cantidad_actual'],
+                'numero_lote_material': row['numero_lote_material'],
+                'codigo_material_recibido': row['codigo_material_recibido'],
+                'numero_parte': row['numero_parte'],
+                'cantidad_estandarizada': row['cantidad_estandarizada'],
+                'codigo_material_final': row['codigo_material_final'],
+                'propiedad_material': row['propiedad_material'],
+                'especificacion': row['especificacion'],
+                'material_importacion_local_final': row['material_importacion_local_final'],
+                'estado_desecho': row['estado_desecho'],
+                'ubicacion_salida': row['ubicacion_salida'],
+                'fecha_registro': row['fecha_registro']
+            })
+        
+        return jsonify(registros)
+        
+    except Exception as e:
+        print(f"Error al consultar control de almacén: {str(e)}")
+        return jsonify({'error': f'Error al consultar: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+@app.route('/guardar_cliente_seleccionado', methods=['POST'])
+@login_requerido
+def guardar_cliente_seleccionado():
+    """Guardar la selección de cliente del usuario"""
+    try:
+        data = request.get_json()
+        if not data or 'cliente' not in data:
+            return jsonify({'success': False, 'error': 'Cliente no proporcionado'}), 400
+            
+        cliente = data['cliente']
+        usuario = session.get('usuario', 'default')
+        
+        # Guardar la configuración
+        if guardar_configuracion_usuario(usuario, 'cliente_seleccionado', cliente):
+            return jsonify({'success': True, 'message': 'Cliente guardado exitosamente'})
+        else:
+            return jsonify({'success': False, 'error': 'Error al guardar cliente'}), 500
+            
+    except Exception as e:
+        print(f"Error en guardar_cliente_seleccionado: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+
+@app.route('/cargar_cliente_seleccionado', methods=['GET'])
+@login_requerido  
+def cargar_cliente_seleccionado():
+    """Cargar la última selección de cliente del usuario"""
+    try:
+        usuario = session.get('usuario', 'default')
+        cliente = cargar_configuracion_usuario(usuario, 'cliente_seleccionado', '')
+        
+        return jsonify({'success': True, 'cliente': cliente})
+        
+    except Exception as e:
+        print(f"Error en cargar_cliente_seleccionado: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+
+@app.route('/actualizar_estado_desecho_almacen', methods=['POST'])
+@login_requerido
+def actualizar_estado_desecho_almacen():
+    """Actualizar el estado de desecho de un registro de control de almacén"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No se proporcionaron datos'}), 400
+            
+        registro_id = data.get('id')
+        estado_desecho = data.get('estado_desecho', 0)
+        
+        if not registro_id:
+            return jsonify({'success': False, 'error': 'ID de registro no proporcionado'}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Convertir a entero (0 o 1)
+        estado_valor = 1 if estado_desecho else 0
+        
+        cursor.execute('''
+            UPDATE control_material_almacen 
+            SET estado_desecho = ? 
+            WHERE id = ?
+        ''', (estado_valor, registro_id))
+        
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'error': 'Registro no encontrado'}), 404
+            
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Estado de desecho actualizado correctamente'})
+        
+    except Exception as e:
+        print(f"Error al actualizar estado de desecho: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+@app.route('/obtener_siguiente_secuencial', methods=['GET'])
+def obtener_siguiente_secuencial():
+    """
+    Obtiene el siguiente número secuencial para el código de material recibido.
+    Formato correcto: CODIGO_MATERIAL/YYYYMMDD0001 (donde 0001 incrementa por cada registro del mismo código y fecha)
+    
+    Ejemplos:
+    - OCH1223K678/202507080001 (primer registro del día)
+    - OCH1223K678/202507080002 (segundo registro del día)  
+    - OCH1223K678/202507080003 (tercer registro del día)
+    """
+    try:
+        # Obtener el código de material del parámetro de la URL
+        codigo_material = request.args.get('codigo_material', '')
+        
+        if not codigo_material:
+            return jsonify({
+                'success': False,
+                'error': 'Código de material es requerido',
+                'siguiente_secuencial': 1
+            }), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Obtener la fecha actual en formato YYYYMMDD
+        from datetime import datetime
+        fecha_actual = datetime.now().strftime('%Y%m%d')
+        
+        print(f"🔍 Buscando secuenciales para código: '{codigo_material}' y fecha: {fecha_actual}")
+        
+        # Buscar registros específicos para este código de material y fecha exacta
+        # El formato buscado es: CODIGO_MATERIAL/YYYYMMDD0001 en el campo codigo_material_recibido
+        query = """
+        SELECT codigo_material_recibido, fecha_registro
+        FROM control_material_almacen 
+        WHERE codigo_material_recibido LIKE ?
+        ORDER BY fecha_registro DESC
+        """
+        
+        # Patrón de búsqueda: CODIGO/YYYYMMDD seguido de 4 dígitos
+        patron_busqueda = f"{codigo_material}/{fecha_actual}%"
+        
+        cursor.execute(query, (patron_busqueda,))
+        resultados = cursor.fetchall()
+        
+        print(f"🔍 Encontrados {len(resultados)} registros para el patrón '{patron_busqueda}'")
+        
+        # Buscar el secuencial más alto para este código de material y fecha específica
+        secuencial_mas_alto = 0
+        
+        import re
+        patron_regex = rf'^{re.escape(codigo_material)}/{fecha_actual}(\d{{4}})$'
+        
+        for resultado in resultados:
+            codigo_recibido = resultado['codigo_material_recibido'] or ''
+            
+            print(f"📝 Analizando: codigo_material_recibido='{codigo_recibido}'")
+            
+            # Buscar patrón exacto: CODIGO_MATERIAL/YYYYMMDD0001
+            match = re.match(patron_regex, codigo_recibido)
+            
+            if match:
+                secuencial_encontrado = int(match.group(1))
+                print(f"� Secuencial encontrado: {secuencial_encontrado}")
+                
+                if secuencial_encontrado > secuencial_mas_alto:
+                    secuencial_mas_alto = secuencial_encontrado
+                    print(f"📊 Nuevo secuencial más alto: {secuencial_mas_alto}")
+            else:
+                print(f"⚠️ No coincide con patrón esperado: {codigo_recibido}")
+        
+        siguiente_secuencial = secuencial_mas_alto + 1
+        
+        # Generar el próximo código de material recibido completo
+        siguiente_codigo_completo = f"{codigo_material}/{fecha_actual}{siguiente_secuencial:04d}"
+        
+        print(f"✅ Siguiente secuencial: {siguiente_secuencial}")
+        print(f"✅ Próximo código completo: {siguiente_codigo_completo}")
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'siguiente_secuencial': siguiente_secuencial,
+            'fecha_actual': fecha_actual,
+            'codigo_material': codigo_material,
+            'secuencial_mas_alto_encontrado': secuencial_mas_alto,
+            'patron_busqueda': patron_busqueda,
+            'proximo_codigo_completo': siguiente_codigo_completo
+        })
+        
+    except Exception as e:
+        print(f"❌ Error al obtener siguiente secuencial: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'siguiente_secuencial': 1  # Valor por defecto en caso de error
+        }), 500

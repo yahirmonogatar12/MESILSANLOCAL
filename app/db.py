@@ -47,6 +47,44 @@ def init_db():
         )
     ''')
     
+    # Tabla para control de material de almacén
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS control_material_almacen (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            forma_material TEXT,
+            cliente TEXT,
+            codigo_material_original TEXT,
+            codigo_material TEXT,
+            material_importacion_local TEXT,
+            fecha_recibo TEXT,
+            fecha_fabricacion TEXT,
+            cantidad_actual INTEGER,
+            numero_lote_material TEXT,
+            codigo_material_recibido TEXT,
+            numero_parte TEXT,
+            cantidad_estandarizada TEXT,
+            codigo_material_final TEXT,
+            propiedad_material TEXT,
+            especificacion TEXT,
+            material_importacion_local_final TEXT,
+            estado_desecho INTEGER DEFAULT 0,
+            ubicacion_salida TEXT,
+            fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Tabla para configuraciones de usuario
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS configuraciones_usuario (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT,
+            clave TEXT,
+            valor TEXT,
+            fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(usuario, clave)
+        )
+    ''')
+    
     conn.commit()
     
     # Migrar datos existentes si es necesario
@@ -89,3 +127,41 @@ def init_db():
         print(f"Error durante la migración: {e}")
     
     conn.close()
+
+def guardar_configuracion_usuario(usuario, clave, valor):
+    """Guardar una configuración específica del usuario"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Usar REPLACE para actualizar si existe o insertar si no existe
+        cursor.execute('''
+            INSERT OR REPLACE INTO configuraciones_usuario (usuario, clave, valor, fecha_actualizacion)
+            VALUES (?, ?, ?, datetime('now'))
+        ''', (usuario, clave, valor))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error al guardar configuración: {e}")
+        return False
+    finally:
+        conn.close()
+
+def cargar_configuracion_usuario(usuario, clave, valor_por_defecto=''):
+    """Cargar una configuración específica del usuario"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT valor FROM configuraciones_usuario 
+            WHERE usuario = ? AND clave = ?
+        ''', (usuario, clave))
+        resultado = cursor.fetchone()
+        if resultado:
+            return resultado['valor']
+        else:
+            return valor_por_defecto
+    except Exception as e:
+        print(f"Error al cargar configuración: {e}")
+        return valor_por_defecto
+    finally:
+        conn.close()

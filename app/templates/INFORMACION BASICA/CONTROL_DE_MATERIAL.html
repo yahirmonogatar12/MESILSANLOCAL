@@ -21,13 +21,13 @@
     }
 
     .material-btn {
-        padding: 10px 20px;
+        padding: 6px 12px;
         border: none;
-        border-radius: 6px;
+        border-radius: 4px;
         background-color: #3498db;
         color: white;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 12px;
         transition: all 0.3s;
         font-weight: 500;
     }
@@ -39,11 +39,21 @@
     }
 
     .material-btn.secondary {
-        background-color: #95a5a6;
+        background-color: #009944;
     }
 
     .material-btn.secondary:hover {
-        background-color: #7f8c8d;
+        background-color: #cccccc;
+    }
+
+    .material-btn.purple {
+        background-color: #9b59b6;
+    }
+
+    .material-btn.purple:hover {
+        background-color: #8e44ad;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
     }
 
     /* Modal */
@@ -292,18 +302,18 @@
 <div class="material-container">
     <!-- Botonera -->
     <div class="material-toolbar">
-        <button class="material-btn" onclick="mostrarFormulario()">
-            <i class="bi bi-plus-circle"></i> Registrar
-        </button>
         <button class="material-btn" onclick="consultar()">
-            <i class="bi bi-search"></i> Consultar
+            Consultar
+        </button>
+        <button class="material-btn purple" onclick="mostrarFormulario()">
+            Registrar
         </button>
         <button class="material-btn secondary" onclick="exportarExcel()">
-            <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+            Exportar Excel
         </button>
         <input type="file" id="importarExcel" onchange="importarExcel()" style="display:none" accept=".xlsx,.xls" />
         <button class="material-btn secondary" onclick="document.getElementById('importarExcel').click()">
-            <i class="bi bi-upload"></i> Importar Excel
+            Importar Excel
         </button>
     </div>
 

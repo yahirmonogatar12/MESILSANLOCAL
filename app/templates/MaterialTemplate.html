@@ -18,7 +18,7 @@
     <header class="app-header">
         <div class="header-row">
             <!-- Logo y bienvenida a la izquierda -->
-            <div class="logo-welcome-container">
+            <div class="logo-welcome-container">    
                 <img src="../static/logo.png" alt="Ilsan Electronics Logo" class="logo">
                 <div class="welcome-text">
                     <span>Bienvenido,</span> {{ usuario }}
@@ -28,35 +28,36 @@
             <!-- Botones de navegación al lado -->
             <div class="nav-buttons-container">
                 <button class="nav-button" id="Información Basica">
-                    <i class="bi bi-info-circle-fill"></i> Información Basica
+                    <img src="..\static\icons\info.png" class="logo">Información Basica
                 </button>
 
+
                 <button class="nav-button" id="Control de material">
-                    <i class="bi bi-boxes"></i> Control de material
+                      <img src="..\static\icons\material.png" class="icono-boton">Control de material
                 </button>
 
                 <button class="nav-button" id="Control de producción">
-                    <i class="bi bi-gear-wide-connected"></i> Control de producción
+                    <img src="..\static\icons\produccion.png" class="logo">Control de producción
                 </button>
 
                 <button class="nav-button" id="Control de proceso">
-                    <i class="bi bi-diagram-3-fill"></i> Control de proceso
+                    <img src="..\static\icons\proceso.png" class="logo">Control de proceso
                 </button>
 
                 <button class="nav-button" id="Control de calidad">
-                    <i class="bi bi-clipboard-check-fill"></i> Control de calidad
+                    <img src="..\static\icons\calidad.png" class="logo">Control de calidad
                 </button>
 
                 <button class="nav-button" id="Control de resultados">
-                    <i class="bi bi-file-earmark-bar-graph-fill"></i> Control de resultados
+                    <img src="..\static\icons\resultados.png" class="logo">Control de resultados
                 </button>
 
                 <button class="nav-button" id="Control de reporte">
-                    <i class="bi bi-bar-chart-fill"></i> Control de reporte
+                    <img src="..\static\icons\reporte.png" class="logo">Control de reporte
                 </button>
 
                 <button class="nav-button" id="Configuración de programa">
-                    <i class="bi bi-gear-fill"></i> Configuración de programa
+                    <img src="..\static\icons\configuracion.png" class="logo">Configuración de programa
                 </button>
             </div>
         </div>
@@ -94,6 +95,166 @@
             {% include "LISTAS/LISTA_DE_CONFIGPG.html" %}
         </div>
     </div>
+    
+    <!-- Contenedor específico para el contenido de Control de Material (LADO DERECHO) -->
+    <div class="material-content-area" id="material-content-area" style="display: none;">
+        <!-- Contenedor por defecto con información general -->
+        <div id="material-info-container" style="display: block;">
+            {% include "info.html" %}
+        </div>
+        
+        <div id="control-almacen-container" style="display: none;">
+            {% include "Control de material/Control de material de almacen.html" %}
+        </div>
+        <div id="control-salida-container" style="display: none;">
+            <h2>Control de salida</h2>
+            <p>Contenido para Control de salida - Por implementar</p>
+        </div>
+        <div id="control-retorno-container" style="display: none;">
+            <h2>Control de material retorno</h2>
+            <p>Contenido para Control de material retorno - Por implementar</p>
+        </div>
+        <div id="recibo-pago-container" style="display: none;">
+            <h2>Recibo y pago del material</h2>
+            <p>Contenido para Recibo y pago del material - Por implementar</p>
+        </div>
+        <div id="historial-material-container" style="display: none;">
+            <h2>Historial de material</h2>
+            <p>Contenido para Historial de material - Por implementar</p>
+        </div>
+        <div id="estatus-material-container" style="display: none;">
+            <h2>Estatus de material</h2>
+            <p>Contenido para Estatus de material - Por implementar</p>
+        </div>
+        <div id="material-sustituto-container" style="display: none;">
+            <h2>Material sustituto</h2>
+            <p>Contenido para Material sustituto - Por implementar</p>
+        </div>
+        <div id="consultar-peps-container" style="display: none;">
+            <h2>Consultar PEPS</h2>
+            <p>Contenido para Consultar PEPS - Por implementar</p>
+        </div>
+        <div id="longterm-inventory-container" style="display: none;">
+            <h2>Control de Long-Term Inventory</h2>
+            <p>Contenido para Control de Long-Term Inventory - Por implementar</p>
+        </div>
+        <div id="registro-material-container" style="display: none;">
+            <h2>Registro de material real</h2>
+            <p>Contenido para Registro de material real - Por implementar</p>
+        </div>
+        <div id="historial-inventario-container" style="display: none;">
+            <h2>Historial de inventario real</h2>
+            <p>Contenido para Historial de inventario real - Por implementar</p>
+        </div>
+        <div id="ajuste-numero-container" style="display: none;">
+            <h2>Ajuste de número de parte</h2>
+            <p>Contenido para Ajuste de número de parte - Por implementar</p>
+        </div>
+    </div>
+    
+    <!-- Contenedor específico para el contenido de Información Básica (LADO DERECHO) -->
+    <div class="informacion-basica-content-area" id="informacion-basica-content-area" style="display: none;">
+        <!-- Contenedor por defecto con información general -->
+        <div id="info-basica-default-container" style="display: block;">
+            <h2>Información Básica</h2>
+            <p>Seleccione una opción del menú lateral para ver el contenido correspondiente.</p>
+        </div>
+        
+        <!-- Contenedores para cada opción del sidebar de Información Básica -->
+        <div id="admin-usuario-info-container" style="display: none;">
+            <h2>Administracion de usuario</h2>
+            <p>Contenido para Administracion de usuario - Por implementar</p>
+        </div>
+        
+        <div id="admin-menu-info-container" style="display: none;">
+            <h2>Administración de menú</h2>
+            <p>Contenido para Administración de menú - Por implementar</p>
+        </div>
+        
+        <div id="admin-autoridad-info-container" style="display: none;">
+            <h2>Administración de autoridad</h2>
+            <p>Contenido para Administración de autoridad - Por implementar</p>
+        </div>
+        
+        <div id="control-codigo-info-container" style="display: none;">
+            <h2>Control de lista de código</h2>
+            <p>Contenido para Control de lista de código - Por implementar</p>
+        </div>
+        
+        <div id="admin-itinerario-info-container" style="display: none;">
+            <h2>Administración de itinerario</h2>
+            <p>Contenido para Administración de itinerario - Por implementar</p>
+        </div>
+        
+        <div id="consultar-licencias-info-container" style="display: none;">
+            <h2>Consultar licencias</h2>
+            <p>Contenido para Consultar licencias - Por implementar</p>
+        </div>
+        
+        <div id="control-departamento-info-container" style="display: none;">
+            <h2>Control de departamento</h2>
+            <p>Contenido para Control de departamento - Por implementar</p>
+        </div>
+        
+        <div id="control-proceso-info-container" style="display: none;">
+            <h2>Control de proceso</h2>
+            <p>Contenido para Control de proceso - Por implementar</p>
+        </div>
+        
+        <div id="control-orden-proceso-info-container" style="display: none;">
+            <h2>Control de orden de proceso</h2>
+            <p>Contenido para Control de orden de proceso - Por implementar</p>
+        </div>
+        
+        <div id="control-orden-proceso2-info-container" style="display: none;">
+            <h2>Control de orden de proceso 2</h2>
+            <p>Contenido para Control de orden de proceso 2 - Por implementar</p>
+        </div>
+        
+        <div id="control-defecto-info-container" style="display: none;">
+            <h2>Control de defecto por proceso</h2>
+            <p>Contenido para Control de defecto por proceso - Por implementar</p>
+        </div>
+        
+        <div id="control-interfaces-info-container" style="display: none;">
+            <h2>Control de interfaces de máquina</h2>
+            <p>Contenido para Control de interfaces de máquina - Por implementar</p>
+        </div>
+        
+        <div id="control-interlock-info-container" style="display: none;">
+            <h2>Control de interlock de máquina en línea</h2>
+            <p>Contenido para Control de interlock de máquina en línea - Por implementar</p>
+        </div>
+        
+        <div id="control-material-info-container" style="display: none;">
+            {% include "INFORMACION BASICA/CONTROL_DE_MATERIAL.html" %}
+        </div>
+        
+        <div id="configuracion-msl-info-container" style="display: none;">
+            <h2>Configuración de MSL</h2>
+            <p>Contenido para Configuración de MSL - Por implementar</p>
+        </div>
+        
+        <div id="control-cliente-info-container" style="display: none;">
+            <h2>Control de cliente</h2>
+            <p>Contenido para Control de cliente - Por implementar</p>
+        </div>
+        
+        <div id="control-proveedor-info-container" style="display: none;">
+            <h2>Control de proveedor</h2>
+            <p>Contenido para Control de proveedor - Por implementar</p>
+        </div>
+        
+        <div id="control-moneda-info-container" style="display: none;">
+            <h2>Control de moneda</h2>
+            <p>Contenido para Control de moneda - Por implementar</p>
+        </div>
+        
+        <div id="info-empresa-info-container" style="display: none;">
+            <h2>Información de empresa</h2>
+            <p>Contenido para Información de empresa - Por implementar</p>
+        </div>
+    </div>
 </div>
 
     <!-- Bootstrap JS Bundle with Popper -->
@@ -110,6 +271,21 @@
             const controlResultadosContent = document.getElementById('control-resultados-content');
             const controlReporteContent = document.getElementById('control-reporte-content');
             const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
+            const materialContentArea = document.getElementById('material-content-area');
+            const informacionBasicaContentArea = document.getElementById('informacion-basica-content-area');
+            const materialInfoContainer = document.getElementById('material-info-container');
+            const controlAlmacenContainer = document.getElementById('control-almacen-container');
+            const controlSalidaContainer = document.getElementById('control-salida-container');
+            const controlRetornoContainer = document.getElementById('control-retorno-container');
+            const reciboPagoContainer = document.getElementById('recibo-pago-container');
+            const historialMaterialContainer = document.getElementById('historial-material-container');
+            const estatusMaterialContainer = document.getElementById('estatus-material-container');
+            const materialSustitutoContainer = document.getElementById('material-sustituto-container');
+            const consultarPepsContainer = document.getElementById('consultar-peps-container');
+            const longtermInventoryContainer = document.getElementById('longterm-inventory-container');
+            const registroMaterialContainer = document.getElementById('registro-material-container');
+            const historialInventarioContainer = document.getElementById('historial-inventario-container');
+            const ajusteNumeroContainer = document.getElementById('ajuste-numero-container');
             const navButtons = document.querySelectorAll('.nav-button');
             
             // Función para ocultar todo el contenido
@@ -122,45 +298,445 @@
                 controlResultadosContent.style.display = 'none';
                 if (controlReporteContent) controlReporteContent.style.display = 'none';
                 configuracionProgramaContent.style.display = 'none';
+                
+                // FORZAR ocultar completamente las áreas de contenido
+                materialContentArea.style.display = 'none';
+                informacionBasicaContentArea.style.display = 'none';
+                hideAllMaterialContainers();
+                hideAllInformacionBasicaContainers();
             }
+            
+            // Función para resetear completamente la pestaña de Información Básica
+            function resetInformacionBasica() {
+                console.log('Reseteando Información Básica (sin AJAX)');
+                
+                // Llamar a la función global de reseteo si existe
+                if (typeof window.resetInfoBasicaToDefault === 'function') {
+                    window.resetInfoBasicaToDefault();
+                } else {
+                    console.log('Función resetInfoBasicaToDefault no disponible aún');
+                }
+                
+                // Asegurar que todos los sidebar-links funcionen
+                const sidebarLinks = informacionBasicaContent.querySelectorAll('.sidebar-link');
+                sidebarLinks.forEach(link => {
+                    link.style.pointerEvents = 'auto';
+                    link.style.cursor = 'pointer';
+                });
+                
+                console.log('Sidebar links habilitados:', sidebarLinks.length);
+            }
+            
+            // Función para ocultar todos los contenedores de material
+            function hideAllMaterialContainers() {
+                materialInfoContainer.style.display = 'none';
+                controlAlmacenContainer.style.display = 'none';
+                controlSalidaContainer.style.display = 'none';
+                controlRetornoContainer.style.display = 'none';
+                reciboPagoContainer.style.display = 'none';
+                historialMaterialContainer.style.display = 'none';
+                estatusMaterialContainer.style.display = 'none';
+                materialSustitutoContainer.style.display = 'none';
+                consultarPepsContainer.style.display = 'none';
+                longtermInventoryContainer.style.display = 'none';
+                registroMaterialContainer.style.display = 'none';
+                historialInventarioContainer.style.display = 'none';
+                ajusteNumeroContainer.style.display = 'none';
+            }
+            
+            function hideAllInformacionBasicaContainers() {
+                const containers = [
+                    'info-basica-default-container',
+                    'admin-usuario-info-container', 
+                    'admin-menu-info-container',
+                    'admin-autoridad-info-container',
+                    'control-codigo-info-container',
+                    'admin-itinerario-info-container',
+                    'consultar-licencias-info-container',
+                    'control-departamento-info-container',
+                    'control-proceso-info-container',
+                    'control-orden-proceso-info-container',
+                    'control-orden-proceso2-info-container',
+                    'control-defecto-info-container',
+                    'control-interfaces-info-container',
+                    'control-interlock-info-container',
+                    'control-material-info-container',
+                    'configuracion-msl-info-container',
+                    'control-cliente-info-container',
+                    'control-proveedor-info-container',
+                    'control-moneda-info-container',
+                    'info-empresa-info-container'
+                ];
+                
+                containers.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Hacer la función disponible globalmente
+            window.hideAllInformacionBasicaContainers = hideAllInformacionBasicaContainers;
+            
+            // Funciones globales para mostrar cada contenedor de Información Básica
+            window.mostrarAdminUsuarioInfo = function() {
+                console.log('Mostrando Administración de usuario');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('admin-usuario-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarAdminMenuInfo = function() {
+                console.log('Mostrando Administración de menú');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('admin-menu-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarAdminAutoridadInfo = function() {
+                console.log('Mostrando Administración de autoridad');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('admin-autoridad-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlCodigoInfo = function() {
+                console.log('Mostrando Control de lista de código');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-codigo-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarAdminItinerarioInfo = function() {
+                console.log('Mostrando Administración de itinerario');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('admin-itinerario-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarConsultarLicenciasInfo = function() {
+                console.log('Mostrando Consultar licencias');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('consultar-licencias-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlDepartamentoInfo = function() {
+                console.log('Mostrando Control de departamento');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-departamento-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlProcesoInfo = function() {
+                console.log('Mostrando Control de proceso');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-proceso-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlOrdenProcesoInfo = function() {
+                console.log('Mostrando Control de orden de proceso');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-orden-proceso-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlOrdenProceso2Info = function() {
+                console.log('Mostrando Control de orden de proceso 2');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-orden-proceso2-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlDefectoInfo = function() {
+                console.log('Mostrando Control de defecto por proceso');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-defecto-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlInterfacesInfo = function() {
+                console.log('Mostrando Control de interfaces de máquina');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-interfaces-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlInterlockInfo = function() {
+                console.log('Mostrando Control de interlock de máquina en línea');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-interlock-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarConfiguracionMSLInfo = function() {
+                console.log('Mostrando Configuración de MSL');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('configuracion-msl-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlClienteInfo = function() {
+                console.log('Mostrando Control de cliente');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-cliente-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlProveedorInfo = function() {
+                console.log('Mostrando Control de proveedor');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-proveedor-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            // Función para mostrar el contenido por defecto de material
+            window.mostrarInfoMaterial = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                materialInfoContainer.style.display = 'block';
+            };
+            
+            // Función global para mostrar el contenido de almacén
+            window.mostrarControlAlmacen = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                controlAlmacenContainer.style.display = 'block';
+            };
+            
+            // Funciones para mostrar otros contenidos
+            window.mostrarControlSalida = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                controlSalidaContainer.style.display = 'block';
+            };
+            
+            window.mostrarControlRetorno = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                controlRetornoContainer.style.display = 'block';
+            };
+            
+            window.mostrarReciboPago = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                reciboPagoContainer.style.display = 'block';
+            };
+            
+            window.mostrarHistorialMaterial = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                historialMaterialContainer.style.display = 'block';
+            };
+            
+            window.mostrarEstatusMaterial = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                estatusMaterialContainer.style.display = 'block';
+            };
+            
+            window.mostrarMaterialSustituto = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                materialSustitutoContainer.style.display = 'block';
+            };
+            
+            window.mostrarConsultarPeps = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                consultarPepsContainer.style.display = 'block';
+            };
+            
+            window.mostrarLongtermInventory = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                longtermInventoryContainer.style.display = 'block';
+            };
+            
+            window.mostrarRegistroMaterial = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                registroMaterialContainer.style.display = 'block';
+            };
+            
+            window.mostrarHistorialInventario = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                historialInventarioContainer.style.display = 'block';
+            };
+            
+            window.mostrarAjusteNumero = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                ajusteNumeroContainer.style.display = 'block';
+            };
+            
+            // Función global para ocultar el contenido de almacén
+            window.ocultarControlAlmacen = function() {
+                materialContentArea.style.display = 'none';
+                hideAllMaterialContainers();
+            };
             
             navButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
+                    // Remover la clase 'active' de todos los botones
+                    navButtons.forEach(b => b.classList.remove('active'));
+                    // Agregar la clase 'active' al botón clickeado
+                    this.classList.add('active');
+                    
                     // Ocultar todo el contenido primero
                     hideAllContent();
                     
                     if (this.id === 'Información Basica') {
+                        console.log('Cargando pestaña Información Básica');
                         materialContainer.style.display = 'block';
                         informacionBasicaContent.style.display = 'block';
+                        informacionBasicaContentArea.style.display = 'block';
+                        
+                        // Mostrar contenedor por defecto
+                        hideAllInformacionBasicaContainers();
+                        const defaultContainer = document.getElementById('info-basica-default-container');
+                        if (defaultContainer) {
+                            defaultContainer.style.display = 'block';
+                        }
+                        
+                        console.log('Información Básica cargada correctamente');
+                        
                     } else if (this.id === 'Control de material') {
+                        console.log('Cargando pestaña Control de Material');
                         materialContainer.style.display = 'block';
                         controlMaterialContent.style.display = 'block';
+                        // Mostrar el área de material con información por defecto
+                        mostrarInfoMaterial();
+                        console.log('Control de Material cargado con información por defecto');
+                        
                     } else if (this.id === 'Control de producción') {
                         materialContainer.style.display = 'block';
                         controlProduccionContent.style.display = 'block';
+                        // FORZAR ocultar el área de material cuando no estés en Control de material
+                        materialContentArea.style.display = 'none';
+                        
                     } else if (this.id === 'Control de proceso') {
                         materialContainer.style.display = 'block';
                         controlProcesoContent.style.display = 'block';
+                        // FORZAR ocultar el área de material cuando no estés en Control de material
+                        materialContentArea.style.display = 'none';
+                        
                     } else if (this.id === 'Control de calidad') {
                         materialContainer.style.display = 'block';
                         controlCalidadContent.style.display = 'block';
+                        // FORZAR ocultar el área de material cuando no estés en Control de material
+                        materialContentArea.style.display = 'none';
+                        
                     } else if (this.id === 'Control de resultados') {
                         materialContainer.style.display = 'block';
                         controlResultadosContent.style.display = 'block';
+                        // FORZAR ocultar el área de material cuando no estés en Control de material
+                        materialContentArea.style.display = 'none';
+                        
                     } else if (this.id === 'Control de reporte') {
                         materialContainer.style.display = 'block';
                         if (controlReporteContent) controlReporteContent.style.display = 'block';
+                        // FORZAR ocultar el área de material cuando no estés en Control de material
+                        materialContentArea.style.display = 'none';
+                        
                     } else if (this.id === 'Configuración de programa') {
                         materialContainer.style.display = 'block';
                         configuracionProgramaContent.style.display = 'block';
+                        // FORZAR ocultar el área de material cuando no estés en Control de material
+                        materialContentArea.style.display = 'none';
+                        
                     } else {
                         materialContainer.style.display = 'none';
+                        // FORZAR ocultar el área de material para cualquier otro caso
+                        materialContentArea.style.display = 'none';
                     }
                 });
             });
             
             // Por defecto oculto
             materialContainer.style.display = 'none';
+            
+            // FORZAR estado inicial correcto
+            materialContentArea.style.display = 'none';
+            hideAllMaterialContainers();
+            
+            // Activar por defecto la primera pestaña (Información Básica) si no hay ninguna activa
+            const activeButton = document.querySelector('.nav-button.active');
+            if (!activeButton) {
+                const infoBasicaButton = document.getElementById('Información Basica');
+                if (infoBasicaButton) {
+                    console.log('Activando pestaña por defecto: Información Básica');
+                    infoBasicaButton.click();
+                }
+            }
+            
+            console.log('Sistema de navegación inicializado correctamente');
+            
+            // Función global para mostrar Control de Material en Información Básica
+            window.mostrarControlMaterialInfo = function() {
+                console.log('=== INICIANDO mostrarControlMaterialInfo (NUEVA ESTRUCTURA) ===');
+                
+                // Asegurarse de que estemos en el área correcta
+                if (informacionBasicaContentArea) {
+                    informacionBasicaContentArea.style.display = 'block';
+                    console.log('Área de contenido de Información Básica activada');
+                }
+                
+                // Ocultar todos los contenedores
+                hideAllInformacionBasicaContainers();
+                console.log('Todos los contenedores ocultados');
+                
+                // Mostrar el contenedor específico
+                const container = document.getElementById('control-material-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                    container.style.visibility = 'visible';
+                    container.style.opacity = '1';
+                    console.log('✅ Container control-material-info-container mostrado');
+                    console.log('Display:', window.getComputedStyle(container).display);
+                    console.log('Visibility:', window.getComputedStyle(container).visibility);
+                    console.log('Opacity:', window.getComputedStyle(container).opacity);
+                } else {
+                    console.error('✗ Container control-material-info-container no encontrado');
+                }
+                
+                console.log('=== FIN mostrarControlMaterialInfo ===');
+            };
         });
     </script>
     </div>

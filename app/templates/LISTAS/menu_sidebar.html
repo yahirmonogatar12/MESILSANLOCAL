@@ -1,0 +1,311 @@
+<style>
+/* Estilos para el contenido activo */
+.app-content.contenido-activo {
+    border-left: 3px solid #3498db;
+    background-color: rgba(52, 152, 219, 0.02);
+    transition: all 0.3s ease;
+}
+
+.app-content.contenido-activo::before {
+    content: "📱 Contenido activo - Puedes interactuar libremente";
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    background: #3498db;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    z-index: 1000;
+    opacity: 0.7;
+}
+
+.sidebar-link {
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.sidebar-link:hover {
+    background-color: rgba(52, 152, 219, 0.1) !important;
+    transform: translateX(2px);
+}
+</style>
+
+<div class="app-container">
+    <aside class="app-sidebar">
+        <ul class="sidebar-menu">
+            <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
+                    Control de material
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMaterial">
+                    <li class="sidebar-link" tabindex="0">Control de material de almacén</li>
+                    <li class="sidebar-link" tabindex="0">Control de salida</li>
+                    <li class="sidebar-link" tabindex="0">Control de material retorno</li>
+                    <li class="sidebar-link" tabindex="0">Recibo y pago del material</li>
+                    <li class="sidebar-link" tabindex="0">Historial de material</li>
+                    <li class="sidebar-link" tabindex="0">Estatus de material</li>
+                    <li class="sidebar-link" tabindex="0">Material sustituto</li>
+                    <li class="sidebar-link" tabindex="0">Consultar PEPS</li>
+                    <li class="sidebar-link" tabindex="0">Control de Long-Term Inventory</li>
+                    <li class="sidebar-link" tabindex="0">Registro de material real</li>
+                    <li class="sidebar-link" tabindex="0">Historial de inventario real</li>
+                    <li class="sidebar-link" tabindex="0">Ajuste de número de parte</li>
+                </ul>
+            </li>
+            <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
+                    Control de material MSL
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMSL">
+                    <li class="sidebar-link" tabindex="0">Control total de material</li>
+                    <li class="sidebar-link" tabindex="0">Control de entrada y salida de material</li>
+                    <li class="sidebar-link" tabindex="0">Estatus de material MSL</li>
+                </ul>
+            </li>
+            <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarRefacciones" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
+                    Control de refacciones
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarRefacciones">
+                    <li class="sidebar-link" tabindex="0">Estándares sobre refacciones</li>
+                    <li class="sidebar-link" tabindex="0">Control de recibo de refacciones</li>
+                    <li class="sidebar-link" tabindex="0">Control de salida de refacciones</li>
+                    <li class="sidebar-link" tabindex="0">Estatus de inventario de refacciones</li>
+                </ul>
+            </li>
+        </ul>
+    </aside>
+
+    <div class="overlay"></div>
+
+    <main class="app-content"> 
+        <div style="padding: 20px; text-align: center; color: #95a5a6;">
+            <h4>Panel de Control de Material</h4>
+            <p>Seleccione una opción del menú lateral para comenzar</p>
+        </div>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 LISTA_DE_MATERIALES cargado, inicializando...');
+    
+    // Obtener todos los enlaces de la sidebar
+    const sidebarLinks = document.querySelectorAll('.sidebar-link');
+    const appContent = document.querySelector('.app-content');
+    
+    console.log('📋 Enlaces encontrados:', sidebarLinks.length);
+    console.log('📺 Área de contenido encontrada:', appContent ? 'SÍ' : 'NO');
+    
+    // Función para limpiar todas las selecciones activas
+    function limpiarSeleccionesActivas() {
+        sidebarLinks.forEach(link => {
+            link.classList.remove('active');
+            link.style.backgroundColor = '';
+            link.style.color = '';
+            link.style.borderLeft = '';
+            link.style.fontWeight = '';
+        });
+    }
+    
+    // Función para marcar un enlace como activo
+    function marcarComoActivo(linkElement) {
+        limpiarSeleccionesActivas();
+        linkElement.classList.add('active');
+        linkElement.style.backgroundColor = '#3498db';
+        linkElement.style.color = 'white';
+        linkElement.style.borderLeft = '4px solid #2980b9';
+        linkElement.style.fontWeight = 'bold';
+    }
+    
+    // Mostrar contenido inicial
+    function mostrarContenidoInicial() {
+        // Remover la clase de contenido activo
+        appContent.classList.remove('contenido-activo');
+        
+        appContent.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #95a5a6;">
+                <h4>Panel de Control de Material</h4>
+                <p>Seleccione una opción del menú lateral para comenzar</p>
+                <div style="font-size: 12px; color: #bdc3c7; margin-top: 15px; line-height: 1.4;">
+                    💡 <strong>Tip:</strong> Haz clic en un elemento del menú para seleccionarlo<br>
+                    🔄 Haz clic nuevamente en el elemento seleccionado para deseleccionarlo<br>
+                    🖱️ Haz clic en un área vacía (fuera del menú y contenido) para deseleccionar<br>
+                    📱 Puedes interactuar normalmente con el contenido sin que se cierre
+                </div>
+            </div>
+        `;
+    }
+    
+    sidebarLinks.forEach((link, index) => {
+        console.log(`🔗 Enlace ${index + 1}: "${link.textContent.trim()}"`);
+        
+        // Agregar eventos de clic y teclado
+        link.addEventListener('click', handleLinkInteraction);
+        link.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleLinkInteraction.call(this, e);
+            }
+            if (e.key === 'Escape') {
+                console.log('🔄 Escape presionado - Deseleccionando...');
+                limpiarSeleccionesActivas();
+                mostrarContenidoInicial();
+            }
+        });
+        
+        function handleLinkInteraction(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const linkText = this.textContent.trim();
+            console.log(`👆 Interacción en: "${linkText}"`);
+            
+            // Si este enlace ya está activo, lo deseleccionamos y volvemos al contenido inicial
+            if (this.classList.contains('active')) {
+                console.log('🔄 Deseleccionando elemento activo...');
+                limpiarSeleccionesActivas();
+                mostrarContenidoInicial();
+                return;
+            }
+            
+            // Marcar este enlace como activo
+            marcarComoActivo(this);
+            
+            // Manejar el clic en "Control de material de almacén"
+            if (linkText === 'Control de material de almacén') {
+                console.log('✅ Coincidencia encontrada - Cargando Control de material de almacén...');
+                cargarTemplate('Control de material/Control de material de almacen.html');
+            }
+            // Aquí puedes agregar más condiciones para otros enlaces de la sidebar
+            else if (linkText === 'Control de salida') {
+                console.log('✅ Cargando Control de salida...');
+                cargarTemplate('Control de material/Control de salida.html');
+            }
+            else if (linkText === 'Historial de material') {
+                console.log('✅ Cargando Historial de material...');
+                cargarTemplate('Control de material/Historial de material.html');
+            }
+            else {
+                console.log(`⚠️ No hay acción definida para: "${linkText}"`);
+                appContent.innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: #f39c12;">
+                        <h4>Función en desarrollo</h4>
+                        <p>La función para "<strong>${linkText}</strong>" está en desarrollo.</p>
+                        <p style="font-size: 12px; color: #666;">Se ha registrado tu interacción en la consola.</p>
+                        <p style="font-size: 11px; color: #999; margin-top: 10px;">💡 Haz clic nuevamente para deseleccionar</p>
+                    </div>
+                `;
+            }
+        }
+    });
+    
+    // Agregar evento para deseleccionar cuando se hace clic fuera del sidebar Y del contenido
+    document.addEventListener('click', function(e) {
+        const sidebar = document.querySelector('.app-sidebar');
+        const clickedInsideSidebar = sidebar && sidebar.contains(e.target);
+        const clickedInsideContent = appContent && appContent.contains(e.target);
+        
+        // Solo deseleccionar si el clic NO fue en el sidebar NI en el contenido principal
+        if (!clickedInsideSidebar && !clickedInsideContent) {
+            console.log('🔄 Clic fuera del sidebar y contenido - Deseleccionando...');
+            limpiarSeleccionesActivas();
+            mostrarContenidoInicial();
+        } else if (clickedInsideContent) {
+            console.log('📱 Clic dentro del contenido - Manteniendo selección activa');
+        }
+    });
+    
+    // Inicializar con contenido por defecto
+    mostrarContenidoInicial();
+    
+    // Función para cargar templates dinámicamente
+    function cargarTemplate(templatePath) {
+        console.log(`🚀 Iniciando carga de template: ${templatePath}`);
+        
+        if (!appContent) {
+            console.error('❌ Error: No se encontró el área de contenido (.app-content)');
+            return;
+        }
+        
+        // Mostrar indicador de carga
+        appContent.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; height: 200px; color: #3498db; background-color: #2c3e50; border-radius: 8px; margin: 20px;">
+                <div style="text-align: center;">
+                    <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px;">Cargando ${templatePath}...</div>
+                </div>
+            </div>
+        `;
+        
+        console.log('📡 Enviando petición al servidor...');
+        
+        // Hacer la petición al servidor para cargar el template
+        fetch(`/cargar_template`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                template_path: templatePath 
+            })
+        })
+        .then(response => {
+            console.log(`📥 Respuesta recibida. Status: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            console.log('✅ HTML recibido, cargando en página...');
+            console.log(`📏 Tamaño del HTML: ${html.length} caracteres`);
+            
+            // Cargar el HTML en el área de contenido
+            appContent.innerHTML = html;
+            
+            // Agregar una clase especial para indicar que hay contenido activo
+            appContent.classList.add('contenido-activo');
+            
+            // Si el template contiene scripts, ejecutarlos
+            const scripts = appContent.querySelectorAll('script');
+            console.log(`🔧 Scripts encontrados en el template: ${scripts.length}`);
+            
+            scripts.forEach((script, index) => {
+                console.log(`▶️ Ejecutando script ${index + 1}...`);
+                const newScript = document.createElement('script');
+                if (script.src) {
+                    newScript.src = script.src;
+                } else {
+                    newScript.textContent = script.textContent;
+                }
+                document.head.appendChild(newScript);
+            });
+            
+            console.log(`🎉 Template ${templatePath} cargado exitosamente`);
+        })
+        .catch(error => {
+            console.error('💥 Error al cargar template:', error);
+            appContent.innerHTML = `
+                <div style="padding: 20px; background-color: #e74c3c; color: white; border-radius: 8px; margin: 20px;">
+                    <h4>❌ Error al cargar el contenido</h4>
+                    <p>No se pudo cargar "<strong>${templatePath}</strong>"</p>
+                    <p style="font-size: 12px; margin-top: 10px; opacity: 0.9;">Error técnico: ${error.message}</p>
+                    <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: white; color: #e74c3c; border: none; border-radius: 4px; cursor: pointer;">
+                        🔄 Recargar página
+                    </button>
+                </div>
+            `;
+        });
+    }
+});
+</script>

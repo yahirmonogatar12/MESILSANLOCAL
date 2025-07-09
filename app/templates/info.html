@@ -1,0 +1,111 @@
+<div class="info-content-container">
+    <h2>Información del Sistema</h2>
+    <div class="info-card">
+        <h3>Control de Material</h3>
+        <p>Sistema de gestión integral para el control de materiales en ILSAN ELECTRONICS.</p>
+        
+        <div class="info-features">
+            <div class="feature-item">
+                <h4>Control de Almacén</h4>
+                <p>Gestión completa del inventario y control de stock en tiempo real.</p>
+            </div>
+            
+            <div class="feature-item">
+                <h4>Control de Salida</h4>
+                <p>Seguimiento de materiales que salen del almacén con trazabilidad completa.</p>
+            </div>
+            
+            <div class="feature-item">
+                <h4>Control de Retorno</h4>
+                <p>Manejo de devoluciones y materiales que regresan al inventario.</p>
+            </div>
+            
+            <div class="feature-item">
+                <h4>Historial de Material</h4>
+                <p>Registro histórico completo de todos los movimientos de material.</p>
+            </div>
+        </div>
+        
+        <div class="info-status">
+            <p><strong>Estado del Sistema:</strong> <span class="status-active">Activo</span></p>
+            <p><strong>Última Actualización:</strong> Julio 8, 2025</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-content-container {
+    padding: 20px;
+    background-color: #32323E;
+    color: lightgray;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.info-card {
+    background-color: #40424F;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.info-card h2 {
+    color: #4A90E2;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.info-card h3 {
+    color: #61dafb;
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+.info-card h4 {
+    color: #4A90E2;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.info-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.feature-item {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 6px;
+    border-left: 4px solid #4A90E2;
+}
+
+.feature-item p {
+    margin: 10px 0 0 0;
+    color: #bbb;
+    line-height: 1.5;
+}
+
+.info-status {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-active {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .info-features {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-card {
+        padding: 20px;
+    }
+}
+</style>
