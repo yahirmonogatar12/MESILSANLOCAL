@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Materiales</title>
+    <style>
+        /* ============================================= */
+        /* Variables y estilos base                      */
+        /* ============================================= */
+        :root {
+          --sidebar-width: 260px;
+          --header-height: 100px;
+          --primary-color: #2c3e50;
+          --secondary-color: #28292dbb;
+          --accent-color: #3498db;
+          --text-light: #ecf0f1;
+          --text-dark: #2c3e50;
+          --border-color: #ddd;
+          --default-row-height: 32px;
+        }
+
+        /* Reset y estilos base */
+        html, body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          margin: 0;
+          padding: 0;
+          min-height: 100vh;
+          overflow-x: hidden;
+          color: lightgray;
+          background-color: #32323E;
+          user-select: none;
+        }
+
+        .main-wrapper {
+          max-width: 1200px;
+          min-width: 320px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        /* ============================================= */
+        /* Header Navigation                             */
+        /* ============================================= */
+        .material-header {
+            background-color: #40424F;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .material-dropdown {
+            background-color: #32323E;
+            color: lightgray;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 200px;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .header-btn {
+            padding: 8px 16px;
+            font-size: 11px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            color: white;
+        }
+
+        .btn-consultar { background-color: #6c757d; }
+        .btn-registrar { background-color: #6f42c1; }
+        .btn-eliminar { background-color: #dc3545; }
+        .btn-sustituir { background-color: #fd7e14; }
+        .btn-exportar { background-color: #28a745; }
+        .btn-importar { background-color: #17a2b8; }
+
+        .header-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* ============================================= */
+        /* Contenedor principal de tabla                 */
+        /* ============================================= */
+        .material-table-wrapper {
+            background-color: #32323E;
+            margin: 0;
+            height: calc(100vh - 120px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .material-table-container {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            position: relative;
+            background-color: #32323E;
+        }
+
+        /* ============================================= */
+        /* Tabla de materiales con scroll               */
+        /* ============================================= */
+        .material-data-table {
+            width: 100%;
+            min-width: 1400px; /* Forzar ancho mínimo para scroll horizontal */
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 11px;
+            background-color: #32323E;
+            color: lightgray;
+            table-layout: fixed;
+        }
+
+        .material-data-table thead {
+            background-color: #40424F;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .material-data-table th {
+            background-color: #40424F;
+            color: lightgray;
+            padding: 12px 8px;
+            text-align: left;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 2px solid #3498db;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            height: var(--default-row-height);
+            box-sizing: border-box;
+        }
+
+        .material-data-table tbody tr {
+            transition: background-color 0.2s;
+            height: var(--default-row-height);
+            position: relative;
+        }
+
+        .material-data-table td {
+            padding: 8px;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            white-space: nowrap;
+            background-color: #32323E;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-sizing: border-box;
+            vertical-align: top;
+        }
+
+        .material-data-table tbody tr:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .material-data-table tbody tr:nth-child(even) {
+            background-color: rgba(255,255,255,0.02);
+        }
+
+        .material-data-table tbody tr:nth-child(even):hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        /* ============================================= */
+        /* Redimensionador de filas tipo Excel          */
+        /* ============================================= */
+        .row-resizer {
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            cursor: row-resize;
+            z-index: 15;
+            background-color: transparent;
+            transition: background-color 0.2s;
+        }
+
+        .row-resizer:hover {
+            background-color: rgba(52, 152, 219, 0.5);
+        }
+
+        .row-resizer.resizing {
+            background-color: #3498db;
+        }
+
+        /* Indicador visual al redimensionar */
+        .resize-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #3498db;
+            z-index: 20;
+            display: none;
+            box-shadow: 0 0 4px rgba(52, 152, 219, 0.5);
+        }
+
+        /* ============================================= */
+        /* Columnas específicas                          */
+        /* ============================================= */
+        .col-codigo { min-width: 120px; }
+        .col-numero-parte { min-width: 120px; }
+        .col-side { min-width: 60px; }
+        .col-tipo { min-width: 80px; }
+        .col-clasificacion { min-width: 100px; }
+        .col-especificacion { min-width: 150px; }
+        .col-vender { min-width: 120px; }
+        .col-cantidad-total { min-width: 80px; text-align: center; }
+        .col-cantidad-original { min-width: 80px; text-align: center; }
+
+        /* ============================================= */
+        /* Scrollbar minimalista como en la imagen      */
+        /* ============================================= */
+        .material-table-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .material-table-container::-webkit-scrollbar-track {
+            background-color: transparent;
+        }
+
+        .material-table-container::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .material-table-container::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .material-table-container::-webkit-scrollbar-corner {
+            background-color: transparent;
+        }
+
+        /* Para Firefox */
+        .material-table-container {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        }
+
+        /* ============================================= */
+        /* Footer con información                        */
+        /* ============================================= */
+        .material-table-footer {
+            background-color: #40424F;
+            padding: 8px 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 11px;
+            color: lightgray;
+            position: sticky;
+            bottom: 0;
+            z-index: 5;
+        }
+
+        /* ============================================= */
+        /* Selector de filas                            */
+        /* ============================================= */
+        .row-selector {
+            width: 30px;
+            text-align: center;
+            cursor: pointer;
+            background-color: #40424F;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            position: relative;
+        }
+
+        .material-data-table tbody tr.selected {
+            background-color: rgba(52, 152, 219, 0.3) !important;
+        }
+
+        .row-selector.selected {
+            background-color: #3498db !important;
+        }
+
+        /* ============================================= */
+        /* Estado vacío de la tabla                     */
+        /* ============================================= */
+        .empty-table-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            background-color: #32323E;
+        }
+
+        .empty-table-message .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* ============================================= */
+        /* Cursor personalizado para redimensionar      */
+        /* ============================================= */
+        .resizing-cursor {
+            cursor: row-resize !important;
+        }
+
+        .resizing-cursor * {
+            cursor: row-resize !important;
+        }
+
+        /* ============================================= */
+        /* Media Queries para responsivo                */
+        /* ============================================= */
+        @media (max-width: 768px) {
+            .material-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            
+            .header-buttons {
+                justify-content: center;
+            }
+            
+            .material-dropdown {
+                min-width: 100%;
+            }
+            
+            .material-data-table {
+                min-width: 1200px;
+                font-size: 10px;
+            }
+            
+            .material-data-table th,
+            .material-data-table td {
+                padding: 6px 4px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-btn {
+                padding: 6px 12px;
+                font-size: 10px;
+            }
+            
+            .material-data-table {
+                font-size: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header con controles -->
+    <div class="material-header">
+        <select class="material-dropdown" id="modeloSelect">
+            <option value="">Modelo M156A-0TW100_R013 / M156A-0TW100</option>
+            <option value="M156A-0TW100_R012">Modelo   M156A-0TW100_R012 / M156A-0TW100</option>
+            <option value="M156A-0TW100_R013">Modelo   M156A-0TW100_R013 / M156A-0TW100</option>
+        </select>
+        
+        <div class="header-buttons">
+            <button class="header-btn btn-consultar">Consultar</button>
+            <button class="header-btn btn-registrar">Registrar</button>
+            <button class="header-btn btn-eliminar">Eliminar</button>
+            <button class="header-btn btn-sustituir">Registro de mat. sustituto</button>
+            <button class="header-btn btn-exportar">Exportar al excel</button>
+            <button class="header-btn btn-importar">Importar al excel</button>
+        </div>
+    </div>
+
+    <!-- Contenedor principal de la tabla -->
+    <div class="material-table-wrapper">
+        <div class="material-table-container" id="materialTableContainer">
+            <!-- Línea de redimensionamiento -->
+            <div class="resize-line" id="resizeLine"></div>
+            
+            <table class="material-data-table" id="materialDataTable">
+                <thead>
+                    <tr>
+                        <th class="row-selector"></th>
+                        <th class="col-codigo">Código de material</th>
+                        <th class="col-numero-parte">Número de parte</th>
+                        <th class="col-side">Side</th>
+                        <th class="col-tipo">Tipo de material</th>
+                        <th class="col-clasificacion">Classification</th>
+                        <th class="col-especificacion">Especificación de material</th>
+                        <th class="col-vender">Vender</th>
+                        <th class="col-cantidad-total">Cantidad total</th>
+                        <th class="col-cantidad-original">Cantidad original</th>
+                        <th class="col-ubicacion">Ubicación</th>
+                        <th class="col-material-sustituto">Material sustituto</th>
+                        <th class="col-material-original">Material original</th>
+                        <th class="col-registrador">Registrador</th>
+                        <th class="col-fecha">Fecha de registro</th>
+                    </tr>
+                </thead>
+                <tbody id="materialTableBody">
+                    <!-- Mensaje cuando la tabla está vacía -->
+                    <tr>
+                        <td colspan="15" class="empty-table-message">
+                            <div class="icon">📋</div>
+                            <div>No hay datos disponibles</div>
+                            <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
+                                Seleccione un modelo y haga clic en "Consultar" para cargar datos
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="material-table-footer">
+            <span id="totalRowsIndicator">Total Rows: 0</span>
+        </div>
+    </div>
+
+    <script>
+        // ============================================= //
+        // Sistema de redimensionamiento de filas       //
+        // ============================================= //
+        let isResizing = false;
+        let currentRow = null;
+        let startY = 0;
+        let startHeight = 0;
+        let resizeLine = null;
+
+        function initializeRowResizing() {
+            resizeLine = document.getElementById('resizeLine');
+            
+            // Agregar event listeners al contenedor de la tabla
+            const tableContainer = document.getElementById('materialTableContainer');
+            
+            tableContainer.addEventListener('mousemove', handleMouseMove);
+            tableContainer.addEventListener('mousedown', handleMouseDown);
+            document.addEventListener('mousemove', handleGlobalMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        function handleMouseMove(e) {
+            if (isResizing) return;
+            
+            const table = document.getElementById('materialDataTable');
+            const tbody = table.querySelector('tbody');
+            const rows = tbody.querySelectorAll('tr:not(.empty-table-message)');
+            
+            let foundResizer = false;
+            
+            rows.forEach((row, index) => {
+                const rect = row.getBoundingClientRect();
+                const containerRect = e.currentTarget.getBoundingClientRect();
+                const relativeY = e.clientY - containerRect.top + e.currentTarget.scrollTop;
+                const rowTop = rect.top - containerRect.top + e.currentTarget.scrollTop;
+                const rowBottom = rowTop + rect.height;
+                
+                // Verificar si el mouse está cerca del borde inferior de la fila
+                if (relativeY >= rowBottom - 2 && relativeY <= rowBottom + 2) {
+                    e.currentTarget.style.cursor = 'row-resize';
+                    foundResizer = true;
+                    currentRow = row;
+                    return;
+                }
+            });
+            
+            if (!foundResizer) {
+                e.currentTarget.style.cursor = 'default';
+                currentRow = null;
+            }
+        }
+
+        function handleMouseDown(e) {
+            if (currentRow && e.currentTarget.style.cursor === 'row-resize') {
+                isResizing = true;
+                startY = e.clientY;
+                startHeight = currentRow.offsetHeight;
+                
+                // Mostrar línea de redimensionamiento
+                const rect = currentRow.getBoundingClientRect();
+                const containerRect = e.currentTarget.getBoundingClientRect();
+                resizeLine.style.top = (rect.bottom - containerRect.top + e.currentTarget.scrollTop) + 'px';
+                resizeLine.style.display = 'block';
+                
+                // Agregar clase para cambiar cursor globalmente
+                document.body.classList.add('resizing-cursor');
+                
+                e.preventDefault();
+            }
+        }
+
+        function handleGlobalMouseMove(e) {
+            if (!isResizing || !currentRow) return;
+            
+            const deltaY = e.clientY - startY;
+            const newHeight = Math.max(20, startHeight + deltaY); // Altura mínima de 20px
+            
+            // Actualizar posición de la línea de redimensionamiento
+            const tableContainer = document.getElementById('materialTableContainer');
+            const rect = currentRow.getBoundingClientRect();
+            const containerRect = tableContainer.getBoundingClientRect();
+            resizeLine.style.top = (rect.top - containerRect.top + tableContainer.scrollTop + newHeight) + 'px';
+            
+            e.preventDefault();
+        }
+
+        function handleMouseUp(e) {
+            if (!isResizing || !currentRow) return;
+            
+            const deltaY = e.clientY - startY;
+            const newHeight = Math.max(20, startHeight + deltaY);
+            
+            // Aplicar la nueva altura a la fila
+            currentRow.style.height = newHeight + 'px';
+            currentRow.querySelectorAll('td').forEach(td => {
+                td.style.height = newHeight + 'px';
+            });
+            
+            // Ocultar línea de redimensionamiento
+            resizeLine.style.display = 'none';
+            
+            // Limpiar estado
+            isResizing = false;
+            currentRow = null;
+            document.body.classList.remove('resizing-cursor');
+            
+            e.preventDefault();
+        }
+
+        // ============================================= //
+        // Funciones originales de la tabla             //
+        // ============================================= //
+
+        // Función para alternar selección de fila
+        function toggleRowSelection(selector) {
+            const row = selector.parentElement;
+            const isSelected = row.classList.contains('selected');
+            
+            if (isSelected) {
+                row.classList.remove('selected');
+                selector.classList.remove('selected');
+                selector.innerHTML = '<span style="cursor: pointer;">▶</span>';
+            } else {
+                row.classList.add('selected');
+                selector.classList.add('selected');
+                selector.innerHTML = '<span style="cursor: pointer;">▼</span>';
+            }
+        }
+
+        // Función para limpiar la tabla
+        function clearTable() {
+            const tbody = document.getElementById('materialTableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="15" class="empty-table-message">
+                        <div class="icon">📋</div>
+                        <div>No hay datos disponibles</div>
+                        <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
+                            Seleccione un modelo y haga clic en "Consultar" para cargar datos
+                        </div>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('totalRowsIndicator').textContent = 'Total Rows: 0';
+        }
+
+        // Función para agregar una fila (ejemplo de uso)
+        function addRow(data) {
+            const tbody = document.getElementById('materialTableBody');
+            
+            // Si es la primera fila, limpiar el mensaje vacío
+            if (tbody.querySelector('.empty-table-message')) {
+                tbody.innerHTML = '';
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="row-selector" onclick="toggleRowSelection(this)">
+                    <span style="cursor: pointer;">▶</span>
+                </td>
+                <td class="col-codigo">${data.codigo || ''}</td>
+                <td class="col-numero-parte">${data.numeroParte || ''}</td>
+                <td class="col-side">${data.side || ''}</td>
+                <td class="col-tipo">${data.tipo || ''}</td>
+                <td class="col-clasificacion">${data.clasificacion || ''}</td>
+                <td class="col-especificacion">${data.especificacion || ''}</td>
+                <td class="col-vender">${data.vender || ''}</td>
+                <td class="col-cantidad-total">${data.cantidadTotal || ''}</td>
+                <td class="col-cantidad-original">${data.cantidadOriginal || ''}</td>
+                <td class="col-ubicacion">${data.ubicacion || ''}</td>
+                <td class="col-material-sustituto">${data.materialSustituto || ''}</td>
+                <td class="col-material-original">${data.materialOriginal || ''}</td>
+                <td class="col-registrador">${data.registrador || ''}</td>
+                <td class="col-fecha">${data.fechaRegistro || ''}</td>
+            `;
+            tbody.appendChild(row);
+            
+            // Actualizar contador
+            const rowCount = tbody.querySelectorAll('tr:not(.empty-table-message)').length;
+            document.getElementById('totalRowsIndicator').textContent = `Total Rows: ${rowCount}`;
+        }
+
+        // Función para agregar datos de ejemplo
+        function addSampleData() {
+            const sampleData = [
+                {
+                    codigo: 'M2013310051',
+                    numeroParte: 'M2013310051',
+                    side: 'TOP',
+                    tipo: 'PART',
+                    especificacion: '330UF 35V 1010M',
+                    vender: 'SAM YOUNG',
+                    cantidadTotal: '4',
+                    cantidadOriginal: '2',
+                    ubicacion: 'C196,C198',
+                    registrador: '이명실',
+                    fechaRegistro: '08/10/2024'
+                },
+                {
+                    codigo: 'M2014700020',
+                    numeroParte: 'M2014700020',
+                    side: 'TOP',
+                    tipo: 'PART',
+                    especificacion: '47uF 16V 6352',
+                    vender: 'SAM YOUNG',
+                    cantidadTotal: '2',
+                    cantidadOriginal: '1',
+                    ubicacion: 'C276',
+                    registrador: '이명실',
+                    fechaRegistro: '08/10/2024'
+                },
+                {
+                    codigo: 'M2121000034',
+                    numeroParte: 'M2121000034',
+                    side: 'TOP',
+                    tipo: 'PART',
+                    especificacion: '10PF 50V 1608J',
+                    vender: 'PHYCOMP',
+                    cantidadTotal: '8',
+                    cantidadOriginal: '4',
+                    ubicacion: 'C257,C258,C285,C287',
+                    registrador: '이명실',
+                    fechaRegistro: '08/10/2024'
+                }
+            ];
+
+            sampleData.forEach(data => addRow(data));
+        }
+
+        // Funciones para los botones del header
+        document.querySelector('.btn-consultar').addEventListener('click', function() {
+            const modelo = document.getElementById('modeloSelect').value;
+            console.log('Consultar clicked para modelo:', modelo);
+            // Agregar datos de ejemplo para probar el redimensionamiento
+            addSampleData();
+        });
+
+        document.querySelector('.btn-registrar').addEventListener('click', function() {
+            console.log('Registrar clicked');
+        });
+
+        document.querySelector('.btn-eliminar').addEventListener('click', function() {
+            const selectedRows = document.querySelectorAll('.material-data-table tbody tr.selected');
+            if (selectedRows.length > 0) {
+                if (confirm(`¿Eliminar ${selectedRows.length} elemento(s) seleccionado(s)?`)) {
+                    selectedRows.forEach(row => row.remove());
+                    
+                    // Si no quedan filas, mostrar mensaje vacío
+                    const tbody = document.getElementById('materialTableBody');
+                    if (tbody.children.length === 0) {
+                        clearTable();
+                    } else {
+                        // Actualizar contador
+                        const rowCount = tbody.querySelectorAll('tr').length;
+                        document.getElementById('totalRowsIndicator').textContent = `Total Rows: ${rowCount}`;
+                    }
+                }
+            } else {
+                alert('Seleccione al menos una fila para eliminar');
+            }
+        });
+
+        document.querySelector('.btn-sustituir').addEventListener('click', function() {
+            console.log('Registro de material sustituto clicked');
+        });
+
+        document.querySelector('.btn-exportar').addEventListener('click', function() {
+            console.log('Exportar al excel clicked');
+        });
+
+        document.querySelector('.btn-importar').addEventListener('click', function() {
+            console.log('Importar al excel clicked');
+        });
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', function() {
+            clearTable();
+            initializeRowResizing();
+        });
+    </script>
+</body>
+</html>

@@ -1,418 +1,576 @@
 <!-- Estilos específicos para Control de Material que complementan style.css -->
     <style>
-       /* Encapsular todos los estilos dentro del contenedor de almacén */
-       #control-almacen-container {
-           /* Contenedor principal */
-           background-color: #32323E;
-           color: lightgray;
-           min-height: 100vh;
-           padding: 3px;
-       }
+        /* Contenedor principal */
+        .material-container2 {
+            background-color: #32323E;
+            color: lightgray;
+            min-height: 100vh;
+            padding: 3px;
+        }
 
-       #control-almacen-container .material-toolbar {
-           display: flex;
-           justify-content: flex-end;
-           gap: 2px;
-           margin-bottom: 2px;
-           padding: 3px 4px;
-           background-color: #40424F;
-           border-radius: 2px;
-           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-       }
+        /* Botonera */
+        .material-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 2px;
+            margin-bottom: 2px;
+            padding: 3px 4px;
+            background-color: #40424F;
+            border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
 
-       #control-almacen-container .material-btn {
-           padding: 2px 4px;
-           border: none;
-           border-radius: 2px;
-           background-color: #3498db;
-           color: white;
-           cursor: pointer;
-           font-size: 8px;
-           transition: all 0.3s;
-           font-weight: 500;
-           line-height: 1.0;
-           min-width: 50px;
-           height: 20px;
-           white-space: nowrap;
-           overflow: hidden;
-           text-overflow: ellipsis;
-       }
+        .material-btn {
+            padding: 2px 4px;
+            border: none;
+            border-radius: 2px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            font-size: 8px;
+            transition: all 0.3s;
+            font-weight: 500;
+            line-height: 1.0;
+            min-width: 50px;
+            height: 20px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
-       #control-almacen-container .material-btn:hover {
-           background-color: #2980b9;
-           transform: translateY(-2px);
-           box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-       }
+        .material-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
 
-       #control-almacen-container .material-btn.secondary {
-           background-color: #009944;
-       }
+        .material-btn.secondary {
+            background-color: #009944;
+        }
 
-       #control-almacen-container .material-btn.secondary:hover {
-           background-color: #007d3b;
-       }
+        .material-btn.secondary:hover {
+            background-color: #007d3b;
+        }
 
-       #control-almacen-container .material-btn.purple {
-           background-color: #9b59b6;
-       }
+        .material-btn.purple {
+            background-color: #9b59b6;
+        }
 
-       #control-almacen-container .material-btn.purple:hover {
-           background-color: #8e44ad;
-           transform: translateY(-2px);
-           box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
-       }
+        .material-btn.purple:hover {
+            background-color: #8e44ad;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+        }
 
-       #control-almacen-container .material-btn.orange {
-           background-color: #e67e22;
-       }
+        .material-btn.orange {
+            background-color: #e67e22;
+        }
 
-       #control-almacen-container .material-btn.orange:hover {
-           background-color: #d35400;
-           transform: translateY(-2px);
-           box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
-       }
+        .material-btn.orange:hover {
+            background-color: #d35400;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
 
-       #control-almacen-container .material-btn.gray {
-           background-color: #95a5a6;
-       }
+        .material-btn.gray {
+            background-color: #95a5a6;
+        }
 
-       #control-almacen-container .material-btn.gray:hover {
-           background-color: #7f8c8d;
-       }
+        .material-btn.gray:hover {
+            background-color: #7f8c8d;
+        }
 
-       /* Formulario con diseño consistente */
-       #control-almacen-container .material-form-section {
-           background-color: #40424F;
-           border-radius: 2px;
-           padding: 4px;
-           margin-bottom: 2px;
-           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-       }
-       
-       #control-almacen-container .material-form-row {
-           display: grid;
-           gap: 4px;
-           margin-bottom: 2px;
-       }
-       
-       #control-almacen-container .material-form-group {
-           display: flex;
-           flex-direction: column;
-       }
-       
-       #control-almacen-container .material-form-group label {
-           font-weight: bold;
-           margin-bottom: 1px;
-           font-size: 8px;
-           color: lightgray;
-           line-height: 1.0;
-       }
-       
-       #control-almacen-container .material-form-group input, 
-       #control-almacen-container .material-form-group select {
-           padding: 2px 4px;
-           border: 1px solid #95a5a6;
-           border-radius: 2px;
-           background-color: #ffffff !important;
-           color: #2c3e50 !important;
-           font-size: 9px;
-           height: 20px;
-           line-height: 1.0;
-           -webkit-appearance: none;
-           -moz-appearance: none;
-           appearance: none;
-       }
-       
-       #control-almacen-container .material-form-group input:focus, 
-       #control-almacen-container .material-form-group select:focus {
-           outline: none;
-           border-color: #3498db;
-           box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
-           background-color: #ffffff !important;
-           color: #2c3e50 !important;
-       }
-       
-       /* Específico para select dropdowns */
-       #control-almacen-container .material-form-group select {
-           background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="5" viewBox="0 0 4 5"><path fill="%23666" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
-           background-repeat: no-repeat;
-           background-position: right 4px center;
-           background-size: 8px 10px;
-           padding-right: 16px;
-       }
-       
-       /* Asegurar que las opciones del select también sean visibles */
-       #control-almacen-container .material-form-group select option {
-           background-color: #ffffff !important;
-           color: #2c3e50 !important;
-           padding: 2px;
-       }
-       
-       /* Placeholder text */
-       #control-almacen-container .material-form-group input::placeholder {
-           color: #7f8c8d !important;
-           opacity: 1;
-       }
-       
-       /* Reglas específicas para los campos problemáticos */
-       #control-almacen-container #forma_material, 
-       #control-almacen-container #cliente, 
-       #control-almacen-container #codigoMaterialOriginal, 
-       #control-almacen-container #codigoMaterialSelect {
-           background-color: #ffffff !important;
-           color: #2c3e50 !important;
-           border: 1px solid #95a5a6 !important;
-           font-size: 9px !important;
-       }
-       
-       #control-almacen-container #forma_material:focus, 
-       #control-almacen-container #cliente:focus, 
-       #control-almacen-container #codigoMaterialOriginal:focus, 
-       #control-almacen-container #codigoMaterialSelect:focus {
-           background-color: #ffffff !important;
-           color: #2c3e50 !important;
-           border-color: #3498db !important;
-       }
-       
-       /* Opciones de select específicas */
-       #control-almacen-container #forma_material option, 
-       #control-almacen-container #cliente option, 
-       #control-almacen-container #codigoMaterialSelect option {
-           background-color: #ffffff !important;
-           color: #2c3e50 !important;
-       }
-       
-       /* Reglas adicionales para sobrescribir cualquier estilo inline */
-       #control-almacen-container input[style*="flex"], 
-       #control-almacen-container select[style*="cursor"] {
-           background-color: #ffffff !important;
-           color: #2c3e50 !important;
-           border: 1px solid #95a5a6 !important;
-       }
-       
-       /* Asegurar visibilidad en todos los estados */
-       #control-almacen-container .material-form-group input[type="text"],
-       #control-almacen-container .material-form-group select {
-           background: #ffffff !important;
-           color: #2c3e50 !important;
-           -webkit-text-fill-color: #2c3e50 !important;
-           -webkit-appearance: none !important;
-           -moz-appearance: none !important;
-           appearance: none !important;
-       }
-       
-       #control-almacen-container .three-column {
-           grid-template-columns: 1fr 1fr 1fr;
-       }
-       
-       #control-almacen-container .two-column {
-           grid-template-columns: 1fr 1fr;
-       }
+        /* Formulario con diseño consistente */
+        .material-form-section {
+            background-color: #40424F;
+            border-radius: 2px;
+            padding: 4px;
+            margin-bottom: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .material-form-row {
+            display: grid;
+            gap: 4px;
+            margin-bottom: 2px;
+        }
+        
+        .material-form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .material-form-group label {
+            font-weight: bold;
+            margin-bottom: 1px;
+            font-size: 8px;
+            color: lightgray;
+            line-height: 1.0;
+        }
+        
+        .material-form-group input, .material-form-group select {
+            padding: 2px 4px;
+            border: 1px solid #95a5a6;
+            border-radius: 2px;
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            font-size: 9px;
+            height: 20px;
+            line-height: 1.0;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        
+        .material-form-group input:focus, .material-form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+        }
+        
+        /* Específico para select dropdowns */
+        .material-form-group select {
+            background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="4" height="5" viewBox="0 0 4 5"><path fill="%23666" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 4px center;
+            background-size: 8px 10px;
+            padding-right: 16px;
+        }
+        
+        /* Asegurar que las opciones del select también sean visibles */
+        .material-form-group select option {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            padding: 2px;
+        }
+        
+        /* Placeholder text */
+        .material-form-group input::placeholder {
+            color: #7f8c8d !important;
+            opacity: 1;
+        }
+        
+        /* Reglas específicas para los campos problemáticos */
+        #forma_material, #cliente, #codigoMaterialOriginal, #codigoMaterialSelect {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            border: 1px solid #95a5a6 !important;
+            font-size: 9px !important;
+        }
+        
+        #forma_material:focus, #cliente:focus, #codigoMaterialOriginal:focus, #codigoMaterialSelect:focus {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            border-color: #3498db !important;
+        }
+        
+        /* Opciones de select específicas */
+        #forma_material option, #cliente option, #codigoMaterialSelect option {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+        }
+        
+        /* Reglas adicionales para sobrescribir cualquier estilo inline */
+        input[style*="flex"], select[style*="cursor"] {
+            background-color: #ffffff !important;
+            color: #2c3e50 !important;
+            border: 1px solid #95a5a6 !important;
+        }
+        
+        /* Asegurar visibilidad en todos los estados */
+        .material-form-group input[type="text"],
+        .material-form-group select {
+            background: #ffffff !important;
+            color: #2c3e50 !important;
+            -webkit-text-fill-color: #2c3e50 !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+        }
+        
+        .three-column {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        
+        .two-column {
+            grid-template-columns: 1fr 1fr;
+        }
 
-       /* Tabla */
-       #control-almacen-container .material-table-container {
-           background-color: #40424F;
-           border-radius: 2px;
-           padding: 2px;
-           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-           overflow-x: auto;
-       }
+        /* Tabla */
+        .material-table-container {
+            background-color: #40424F;
+            border-radius: 2px;
+            padding: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
 
-       #control-almacen-container .material-table {
-           width: 100%;
-           border-collapse: collapse;
-           margin: 0;
-           font-size: 6px;
-           background-color: #40424F;
-       }
+        .material-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 6px;
+            background-color: #40424F;
+        }
 
-       #control-almacen-container .material-table th {
-           background-color: #2c3e50;
-           color: #ecf0f1;
-           padding: 2px 2px;
-           text-align: center;
-           border: 1px solid #34495e;
-           font-weight: 600;
-           position: sticky;
-           top: 0;
-           z-index: 10;
-           font-size: 6px;
-           line-height: 1.0;
-       }
+        .material-table th {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 2px 2px;
+            text-align: center;
+            border: 1px solid #34495e;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 6px;
+            line-height: 1.0;
+        }
 
-       #control-almacen-container .material-table td {
-           padding: 1px 2px;
-           text-align: center;
-           border: 1px solid #34495e;
-           background-color: #40424F;
-           color: lightgray;
-           transition: background-color 0.3s;
-           font-size: 6px;
-           line-height: 1.0;
-       }
+        .material-table td {
+            padding: 1px 2px;
+            text-align: center;
+            border: 1px solid #34495e;
+            background-color: #40424F;
+            color: lightgray;
+            transition: background-color 0.3s;
+            font-size: 6px;
+            line-height: 1.0;
+        }
 
-       #control-almacen-container .material-table tr:hover td {
-           background-color: #485563;
-       }
+        .material-table tr:hover td {
+            background-color: #485563;
+        }
 
-       #control-almacen-container .material-table tr:nth-child(even) td {
-           background-color: #44475A;
-       }
+        .material-table tr:nth-child(even) td {
+            background-color: #44475A;
+        }
 
-       #control-almacen-container .material-table tr:nth-child(even):hover td {
-           background-color: #485563;
-       }
+        .material-table tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
 
-       #control-almacen-container .material-table input[type="checkbox"] {
-           transform: scale(1.1);
-           cursor: pointer;
-           accent-color: #3498db;
-       }
+        .material-table input[type="checkbox"] {
+            transform: scale(1.1);
+            cursor: pointer;
+            accent-color: #3498db;
+        }
 
-       #control-almacen-container .material-table .no-data {
-           text-align: center;
-           padding: 15px;
-           color: #95a5a6;
-           font-style: italic;
-           background-color: #40424F;
-           font-size: 10px;
-       }
+        .material-table .no-data {
+            text-align: center;
+            padding: 15px;
+            color: #95a5a6;
+            font-style: italic;
+            background-color: #40424F;
+            font-size: 10px;
+        }
 
-       /* Mensajes de estado */
-       #control-almacen-container .material-loading {
-           text-align: center;
-           padding: 15px;
-           color: #3498db;
-           font-size: 10px;
-       }
+        /* Mensajes de estado */
+        .material-loading {
+            text-align: center;
+            padding: 15px;
+            color: #3498db;
+            font-size: 10px;
+        }
 
-       #control-almacen-container .material-error {
-           text-align: center;
-           padding: 15px;
-           color: #e74c3c;
-           font-size: 10px;
-       }
+        .material-error {
+            text-align: center;
+            padding: 15px;
+            color: #e74c3c;
+            font-size: 10px;
+        }
 
-       /* Sobrescribir cualquier estilo de Bootstrap que pueda interferir */
-       #control-almacen-container .spinner-border {
-           width: 1.5rem !important;
-           height: 1.5rem !important;
-           margin-right: 10px !important;
-       }
+        /* Dropdown modal específico para selección de materiales */
+        .dropdown-modal {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            display: none;
+            max-height: 300px;
+            overflow: hidden;
+            margin-top: 2px;
+            min-width: 400px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: none;
+            border-bottom: 1px solid #e0e0e0;
+            background-color: #f8f9fa;
+            color: #333;
+            font-size: 12px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        
+        .search-input:focus {
+            background-color: #fff;
+            border-bottom-color: #007bff;
+        }
+        
+        .dropdown-table-container {
+            max-height: 250px;
+            overflow-y: auto;
+            background-color: white;
+        }
+        
+        .dropdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            background-color: white;
+        }
+        
+        .dropdown-table th {
+            background-color: #f1f3f4;
+            color: #5f6368;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 11px;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+        }
+        
+        .dropdown-table td {
+            padding: 8px 12px;
+            text-align: left;
+            color: #333;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s;
+        }
+        
+        .dropdown-table tr:hover td {
+            background-color: #e3f2fd;
+        }
+        
+        .dropdown-table tr:last-child td {
+            border-bottom: none;
+        }
 
-       #control-almacen-container .loading-message {
-           text-align: center !important;
-           padding: 25px !important;
-           color: #3498db !important;
-           font-size: 14px !important;
-       }
+        .original-code-btn {
+            background-color: #1abc9c;
+            color: white;
+            padding: 3px 6px;
+            border: none;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 6px;
+        }
 
-       #control-almacen-container .error-message {
-           text-align: center !important;
-           padding: 25px !important;
-           color: #e74c3c !important;
-           font-size: 14px !important;
-       }
-
-       #control-almacen-container .total-info {
-           color: lightgray;
-           font-size: 10px;
-           margin-top: 5px;
-       }
-
-       /* Dropdown modal específico para selección de materiales */
-       #control-almacen-container .dropdown-modal {
-           position: absolute;
-           top: 100%;
-           left: 0;
-           right: 0;
-           background-color: white;
-           border: 1px solid #ccc;
-           border-radius: 6px;
-           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-           z-index: 1000;
-           display: none;
-           max-height: 300px;
-           overflow: hidden;
-           margin-top: 2px;
-           min-width: 400px;
-       }
-
-       #control-almacen-container .search-input {
-           width: 100%;
-           padding: 8px 12px;
-           border: none;
-           border-bottom: 1px solid #e0e0e0;
-           background-color: #f8f9fa;
-           color: #333;
-           font-size: 12px;
-           box-sizing: border-box;
-           outline: none;
-       }
-       
-       #control-almacen-container .search-input:focus {
-           background-color: #fff;
-           border-bottom-color: #007bff;
-       }
-       
-       #control-almacen-container .dropdown-table-container {
-           max-height: 250px;
-           overflow-y: auto;
-           background-color: white;
-       }
-       
-       #control-almacen-container .dropdown-table {
-           width: 100%;
-           border-collapse: collapse;
-           font-size: 11px;
-           background-color: white;
-       }
-       
-       #control-almacen-container .dropdown-table th {
-           background-color: #f1f3f4;
-           color: #5f6368;
-           padding: 8px 12px;
-           text-align: left;
-           font-weight: 500;
-           font-size: 11px;
-           border-bottom: 1px solid #e0e0e0;
-           position: sticky;
-           top: 0;
-       }
-       
-       #control-almacen-container .dropdown-table td {
-           padding: 8px 12px;
-           text-align: left;
-           color: #333;
-           border-bottom: 1px solid #f0f0f0;
-           cursor: pointer;
-           font-size: 11px;
-           transition: background-color 0.2s;
-       }
-       
-       #control-almacen-container .dropdown-table tr:hover td {
-           background-color: #e3f2fd;
-       }
-       
-       #control-almacen-container .dropdown-table tr:last-child td {
-           border-bottom: none;
-       }
-       
-       /* Animación para carga */
-       #control-almacen-container .loading-message {
-           animation: pulse 1.5s ease-in-out infinite alternate;
-       }
-       
-       @keyframes pulse {
-           from { opacity: 0.7; }
-           to { opacity: 1; }
-       }
+        .total-info {
+            color: #95a5a6;
+            margin-top: 6px;
+            font-size: 10px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .material-toolbar {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .material-btn {
+                width: 100%;
+            }
+            
+            .material-table-container {
+                padding: 15px;
+            }
+            
+            .three-column {
+                grid-template-columns: 1fr;
+            }
+            
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="material-container2">
         
-        <!-- Formulario principal -->        <div class="material-form-section">
+        <style>
+        /* Dropdown modal específico para selección de materiales */
+        .dropdown-modal {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            display: none;
+            max-height: 300px;
+            overflow: hidden;
+            margin-top: 2px;
+            min-width: 400px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: none;
+            border-bottom: 1px solid #e0e0e0;
+            background-color: #f8f9fa;
+            color: #333;
+            font-size: 12px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        
+        .search-input:focus {
+            background-color: #fff;
+            border-bottom-color: #007bff;
+        }
+        
+        .dropdown-table-container {
+            max-height: 250px;
+            overflow-y: auto;
+            background-color: white;
+        }
+        
+        .dropdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            background-color: white;
+        }
+        
+        .dropdown-table th {
+            background-color: #f1f3f4;
+            color: #5f6368;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 11px;
+            border-bottom: 1px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+        }
+        
+        .dropdown-table td {
+            padding: 8px 12px;
+            text-align: left;
+            color: #333;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s;
+        }
+        
+        .dropdown-table tr:hover td {
+            background-color: #e3f2fd;
+        }
+        
+        .dropdown-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .original-code-btn {
+            background-color: #1abc9c;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+        }     
+        
+        /* Estilo minimalista para campos de fecha */
+        .material-form-group input[type="date"] {
+            padding: 3px 4px !important;
+            font-size: 10px !important;
+            border: 1px solid #bdc3c7 !important;
+            border-radius: 3px !important;
+            background-color: #f8f9fa !important;
+            color: #495057 !important;
+            width: 110px !important;
+            cursor: pointer;
+        }
+        
+        .material-form-group input[type="date"]:focus {
+            border-color: #3498db !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.1) !important;
+        }
+        
+        .material-form-group input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: opacity(0.6);
+            cursor: pointer;
+            padding: 1px;
+            border-radius: 2px;
+            width: 10px;
+            height: 10px;
+        }
+        
+        .material-form-group input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            filter: opacity(1);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        /* Estilo minimalista para fechas en la toolbar */
+        .material-toolbar input[type="date"] {
+            padding: 2px 4px !important;
+            font-size: 10px !important;
+            border: 1px solid #95a5a6 !important;
+            border-radius: 3px !important;
+            background-color: #ecf0f1 !important;
+            color: #2c3e50 !important;
+            width: 105px !important;
+            cursor: pointer;
+        }
+        
+        .material-toolbar input[type="date"]:focus {
+            border-color: #3498db !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.2) !important;
+        }
+        
+        .material-toolbar input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: opacity(0.5);
+            cursor: pointer;
+            padding: 1px;
+            width: 9px;
+            height: 9px;
+        }
+        
+        .material-toolbar input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            filter: opacity(0.8);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .loading-message {
+            animation: pulse 1.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+        <!-- Formulario con el diseño de CONTROL_DE_MATERIAL -->
+        <div class="material-form-section">
             <!-- Primera fila: 3 columnas -->
             <div class="material-form-row three-column">
                 <div class="material-form-group">
@@ -543,8 +701,6 @@
             </div>
             <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
             <button class="material-btn secondary">Exportar Excel</button>
-            <!-- Botón de test temporal para debugging -->
-            <button class="material-btn purple" onclick="window.testConectividadAlmacen()" style="font-size: 7px;">Test</button>
         </div>
 
         <!-- Tabla de resultados -->
@@ -583,82 +739,13 @@
     <script>
         let codigosMaterial = [];
 
-        // Función global para inicializar cuando se muestra el control de almacén
-        window.inicializarControlAlmacenModule = function() {
-            console.log('🔄 Inicializando módulo Control de Almacén desde función global...');
-            
-            // Pequeño delay para asegurar que el DOM esté completamente renderizado
-            setTimeout(() => {
-                inicializarControlAlmacen();
-                configurarListenersAdicionales();
-                
-                // Test automático cuando se inicializa desde include
-                if (document.getElementById('control-almacen-container')) {
-                    console.log('🧪 Ejecutando test automático en contexto incluido...');
-                    window.testControlAlmacenModule();
-                }
-            }, 100);
-        };
-
-        // Función de test de conectividad básica y simple
-        window.testConectividadAlmacen = function() {
-            console.log('🔗 Probando conectividad con endpoint de almacén...');
-            
-            fetch('/consultar_control_almacen')
-                .then(response => {
-                    console.log('✅ Conectividad OK - Status:', response.status);
-                    if (response.ok) {
-                        return response.json();
-                    } else {
-                        throw new Error('Error HTTP: ' + response.status);
-                    }
-                })
-                .then(data => {
-                    console.log('✅ Datos recibidos:', data ? data.length : 'No array');
-                    alert(`✅ Conectividad OK - Recibidos ${Array.isArray(data) ? data.length : 0} registros`);
-                    
-                    // Cargar automáticamente los datos
-                    cargarDatosEnTabla(data);
-                })
-                .catch(error => {
-                    console.error('❌ Error de conectividad:', error);
-                    alert('❌ Error de conectividad: ' + error.message);
-                });
-        };
-
         // Cargar códigos de material al cargar la página
-        function inicializarControlAlmacen() {
-            console.log('Página cargada - inicializando Control de Almacén...');
-            
-            // Debug: Verificar que los elementos clave estén disponibles
-            const elementos = {
-                'tablaControlAlmacen': document.getElementById('tablaControlAlmacen'),
-                'btnConsultar': document.getElementById('btnConsultar'),
-                'filtro_fecha_inicio': document.getElementById('filtro_fecha_inicio'),
-                'filtro_fecha_fin': document.getElementById('filtro_fecha_fin')
-            };
-            
-            console.log('🔍 Verificando elementos del DOM:');
-            Object.keys(elementos).forEach(key => {
-                if (elementos[key]) {
-                    console.log(`✅ ${key}: Encontrado`);
-                } else {
-                    console.error(`❌ ${key}: NO encontrado`);
-                }
-            });
-            
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Página cargada - inicializando...');
             cargarCodigosMaterial();
             cargarClienteSeleccionado(); // Cargar la última selección de cliente
             cargarSiguienteSecuencial(); // Cargar el siguiente número secuencial
-        }
-
-        // Verificar si el DOM ya está listo o esperar a que lo esté
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarControlAlmacen);
-        } else {
-            // DOM ya está listo, ejecutar inmediatamente
-            inicializarControlAlmacen();
-        }
+        });
 
         // Función para cargar la última selección de cliente
         async function cargarClienteSeleccionado() {
@@ -849,8 +936,10 @@
             }
         });
 
-        // Configurar listeners adicionales cuando la página esté lista
-        function configurarListenersAdicionales() {
+        // Cargar configuraciones cuando se carga la página (sin cargar datos automáticamente)
+        document.addEventListener('DOMContentLoaded', function() {
+            // NO llamar consultarRegistros() aquí - la tabla debe permanecer vacía hasta que el usuario haga clic en "Consultar"
+            
             // Agregar event listener al select de cliente
             const selectCliente = document.getElementById('cliente');
             if (selectCliente) {
@@ -870,30 +959,7 @@
                     }
                 });
             }
-            
-            // Agregar listener adicional al botón de consultar para asegurar que funcione
-            const btnConsultar = document.getElementById('btnConsultar');
-            if (btnConsultar) {
-                console.log('✅ Configurando listener adicional para btnConsultar');
-                btnConsultar.addEventListener('click', function(e) {
-                    // Solo prevenir default si no hay onclick definido
-                    if (!this.onclick) {
-                        e.preventDefault();
-                        consultarRegistros();
-                    }
-                });
-            } else {
-                console.error('❌ No se encontró btnConsultar para configurar listener');
-            }
-        }
-
-        // Verificar si el DOM ya está listo para configurar listeners adicionales
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', configurarListenersAdicionales);
-        } else {
-            // DOM ya está listo, ejecutar inmediatamente
-            configurarListenersAdicionales();
-        }
+        });
 
         function procesarScaneo(event) {
             // Detectar Enter (cuando termina el escaneo)
@@ -1303,21 +1369,20 @@
             console.log('Formulario limpiado. Próximo número secuencial será:', String(contadorSecuencial).padStart(4, '0'));
         }
         
-        // Función para consultar registros (actualizada para usar la nueva función)
+        // Función para consultar registros
         function consultarRegistros() {
-            console.log('🔄 === CONSULTANDO REGISTROS (ACTUALIZADA) ===');
-            console.log('🔄 Llamando a cargarDatosDesdeServidor...');
-            cargarDatosDesdeServidor();
-        }
-
-        // Función principal de carga de datos (actualizada para usar la nueva función)
-        function cargarDatosDesdeServidor() {
-            console.log('🚀 === INICIANDO cargarDatosDesdeServidor (ACTUALIZADA) ===');
+            console.log('🔄 === CONSULTANDO REGISTROS ===');
             
             const fechaInicio = document.getElementById('filtro_fecha_inicio').value;
             const fechaFin = document.getElementById('filtro_fecha_fin').value;
             
             console.log('📅 Filtros:', { fechaInicio, fechaFin });
+            
+            const btnConsultar = document.getElementById('btnConsultar');
+            if (btnConsultar) {
+                btnConsultar.disabled = true;
+                btnConsultar.textContent = 'Consultando...';
+            }
             
             // Construir URL con parámetros
             let url = '/consultar_control_almacen';
@@ -1330,378 +1395,192 @@
                 url += '?' + params.toString();
             }
             
-            console.log('📡 URL final:', url);
+            console.log('🌐 URL de consulta:', url);
             
-            fetch(url)
-                .then(response => {
-                    console.log('📨 Respuesta recibida - Status:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('📊 Datos parseados:', data);
-                    console.log('📊 Cantidad de registros:', data ? data.length : 0);
-                    
-                    console.log('🔄 Llamando a nuevaCargarDatos (función funcional)...');
-                    nuevaCargarDatos(data);
-                    console.log('✅ nuevaCargarDatos ejecutada');
-                })
-                .catch(error => {
-                    console.error('❌ Error completo:', error);
-                    
-                    const tbody = document.querySelector('#tablaControlAlmacen tbody');
-                    if (tbody) {
-                        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #e74c3c;">Error al cargar los datos. Por favor, intente nuevamente.</td></tr>';
-                    }
-                });
-            
-            console.log('🚀 === FIN cargarDatosDesdeServidor (fetch iniciado) ===');
-        }
-        
-        // Función global para acceso directo (como en CONTROL_DE_MATERIAL.html)
-        window.cargarDatosDesdeServidor = cargarDatosDesdeServidor;
-        
-        // NUEVA FUNCIÓN FUNCIONAL PARA REEMPLAZAR cargarDatosEnTabla
-        function nuevaCargarDatos(datos) {
-            const tbody = document.querySelector('#tablaControlAlmacen tbody');
-            tbody.innerHTML = '';
-
-            if (!datos || datos.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" class="material-table .no-data">No hay registros disponibles. Use el botón "Consultar" para cargar datos.</td></tr>';
-                return;
-            }
-
-            datos.forEach(item => {
-                const row = document.createElement('tr');
-
-                row.innerHTML = `
-                    <td>${item.codigo_material_recibido || ''}</td>
-                    <td>${item.codigo_material || ''}</td>
-                    <td>${item.numero_parte || ''}</td>
-                    <td>${item.numero_lote_material || ''}</td>
-                    <td>${item.propiedad_material || ''}</td>
-                    <td>${item.cantidad_actual || ''}</td>
-                    <td>${item.cantidad_estandarizada || ''}</td>
-                    <td>${item.ubicacion_salida || ''}</td>
-                    <td>${item.fecha_recibo || ''}</td>
-                    <td>${item.especificacion || ''}</td>
-                    <td>${item.material_importacion_local || ''}</td>
-                    <td>${item.estado_desecho || ''}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-        
-        // REEMPLAZAR la función original
-        cargarDatosEnTabla = nuevaCargarDatos;
-        
-        // Función de test para la nueva función
-        window.testNuevaFuncionFinal = function() {
-            console.log('🧪 PROBANDO NUEVA FUNCIÓN FINAL');
-            fetch('/consultar_control_almacen')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('📡 Datos recibidos:', data.length);
-                    nuevaCargarDatos(data);
-                })
-                .catch(error => {
-                    console.error('❌ Error:', error);
-                });
-        };
-        
-        // Función de test para verificar la funcionalidad
-        window.testControlAlmacenModule = function() {
-            console.log('🧪 === EJECUTANDO TEST DEL MÓDULO ===');
-            
-            const elementos = {
-                'tablaControlAlmacen': document.getElementById('tablaControlAlmacen'),
-                'btnConsultar': document.getElementById('btnConsultar'),
-                'filtro_fecha_inicio': document.getElementById('filtro_fecha_inicio'),
-                'filtro_fecha_fin': document.getElementById('filtro_fecha_fin'),
-                'tbody': document.querySelector('#tablaControlAlmacen tbody')
-            };
-            
-            let errores = [];
-            
-            Object.keys(elementos).forEach(key => {
-                if (elementos[key]) {
-                    console.log(`✅ ${key}: OK`);
-                } else {
-                    console.error(`❌ ${key}: FALTA`);
-                    errores.push(key);
-                }
-            });
-            
-            // Test de funciones simplificadas
-            const funciones = [
-                'consultarRegistros',
-                'cargarDatosDesdeServidor',
-                'cargarDatosEnTabla',
-                'cargarCodigosMaterial'
-            ];
-            
-            funciones.forEach(func => {
-                if (typeof window[func] === 'function' || typeof eval(func) === 'function') {
-                    console.log(`✅ Función ${func}: OK`);
-                } else {
-                    console.error(`❌ Función ${func}: FALTA`);
-                    errores.push(`Función ${func}`);
-                }
-            });
-            
-            if (errores.length === 0) {
-                console.log('🎉 ¡TODOS LOS TESTS PASARON!');
-                alert('✅ Módulo Control de Almacén: Todos los componentes están funcionando correctamente');
-                
-                // Test adicional: Intentar cargar datos
-                console.log('🔄 Ejecutando test de carga de datos...');
-                cargarDatosDesdeServidor();
-                
-            } else {
-                console.error('❌ ERRORES ENCONTRADOS:', errores);
-                alert('❌ Errores en el módulo:\n' + errores.join('\n'));
-            }
-            
-            return errores.length === 0;
-        };
-
-        // Funciones de test simples para diagnóstico rápido
-        window.testCargarDatos = function() {
-            console.log('🧪 TEST: Probando carga de datos...');
-            cargarDatosDesdeServidor();
-        };
-        
-        window.testConectividad = function() {
-            console.log('🔗 TEST: Conectividad básica...');
-            testConectividadAlmacen();
-        };
-
-        // Función de test específica para diagnosticar el problema de la tabla
-        window.testTablaEspecifico = function() {
-            console.log('🔬 === TEST ESPECÍFICO DE TABLA ===');
-            
-            // 1. Verificar elementos DOM
-            const tabla = document.getElementById('tablaControlAlmacen');
-            const tbody = document.querySelector('#tablaControlAlmacen tbody');
-            const btnConsultar = document.getElementById('btnConsultar');
-            
-            console.log('🔍 Verificación DOM:');
-            console.log('- Tabla:', tabla);
-            console.log('- Tbody:', tbody);
-            console.log('- Botón consultar:', btnConsultar);
-            
-            // 2. Test directo con datos simulados
-            console.log('🧪 Probando con datos simulados...');
-            const datosSimulados = [
-                {
-                    id: 1,
-                    codigo_material_recibido: 'TEST001/20250708001',
-                    codigo_material: 'TEST001',
-                    numero_parte: '0001',
-                    numero_lote_material: 'LOTE001',
-                    propiedad_material: 'Prueba',
-                    cantidad_actual: '1000',
-                    cantidad_estandarizada: '1000',
-                    ubicacion_salida: 'A1',
-                    fecha_recibo: '2025-07-08',
-                    material_importacion_local: 'Local',
-                    estado_desecho: 0
-                }
-            ];
-            
-            console.log('📋 Datos simulados:', datosSimulados);
-            cargarDatosEnTabla(datosSimulados);
-            
-            // 3. Test con datos reales del servidor
-            console.log('🌐 Probando con datos reales del servidor...');
-            setTimeout(() => {
-                cargarDatosDesdeServidor();
-            }, 2000);
-        };
-        
-        // Función para limpiar tabla y probar desde cero
-        window.limpiarYProbar = function() {
-            console.log('🧹 Limpiando tabla y probando...');
+            // Mostrar mensaje de carga
             const tbody = document.querySelector('#tablaControlAlmacen tbody');
             if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px;">Tabla limpiada - ejecutando test...</td></tr>';
-                setTimeout(() => {
-                    testTablaEspecifico();
-                }, 1000);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="12" class="loading-message" style="text-align: center; padding: 25px; color: #3498db; font-size: 14px;">
+                            <div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem; margin-right: 10px;">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            Cargando registros...
+                        </td>
+                    </tr>
+                `;
             }
-        };
-
-        // Función de test para la nueva versión ultra simple
-        window.testNuevaFuncion = function() {
-            console.log('🚀 === PROBANDO NUEVA FUNCIÓN ===');
             
-            const datosTest = [
-                {
-                    id: 1,
-                    codigo_material_recibido: 'TEST001/20250708001',
-                    codigo_material: 'TEST001',
-                    numero_parte: '0001',
-                    numero_lote_material: 'LOTE001',
-                    propiedad_material: 'Material de Prueba',
-                    cantidad_actual: '1000',
-                    cantidad_estandarizada: '1000',
-                    ubicacion_salida: 'A1-01',
-                    fecha_recibo: '2025-07-08',
-                    material_importacion_local: 'Local',
-                    estado_desecho: 0
-                },
-                {
-                    id: 2,
-                    codigo_material_recibido: 'TEST002/20250708002',
-                    codigo_material: 'TEST002',
-                    numero_parte: '0002',
-                    numero_lote_material: 'LOTE002',
-                    propiedad_material: 'Material de Prueba 2',
-                    cantidad_actual: '2000',
-                    cantidad_estandarizada: '2000',
-                    ubicacion_salida: 'B1-01',
-                    fecha_recibo: '2025-07-08',
-                    material_importacion_local: 'Importación',
-                    estado_desecho: 1
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
-            ];
-            
-            console.log('📋 Datos de test:', datosTest);
-            console.log('🔄 Llamando a cargarDatosEnTabla...');
-            cargarDatosEnTabla(datosTest);
-        };
-        
-        // Función para probar con datos reales del servidor
-        window.testConDatosReales = function() {
-            console.log('🌐 === PROBANDO CON DATOS REALES ===');
-            
-            fetch('/consultar_control_almacen')
+            })
                 .then(response => {
-                    console.log('📡 Respuesta:', response.status);
-                    return response.json();
+                    console.log('📡 Respuesta recibida:');
+                    console.log('  - Status:', response.status);
+                    console.log('  - Status Text:', response.statusText);
+                    console.log('  - Content-Type:', response.headers.get('content-type'));
+                    console.log('  - URL:', response.url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    // Verificar si la respuesta es JSON
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        console.log('✅ Respuesta es JSON válida');
+                        return response.json();
+                    } else {
+                        console.error('❌ Respuesta NO es JSON:', contentType);
+                        throw new Error('Respuesta no es JSON - posible redirección a login');
+                    }
                 })
                 .then(data => {
-                    console.log('📊 Datos del servidor:', data);
-                    console.log('📊 Cantidad:', data.length);
-                    console.log('📊 Primer elemento:', data[0]);
+                    console.log('📊 === DATOS PARSEADOS ===');
+                    console.log('Tipo:', typeof data);
+                    console.log('Es array:', Array.isArray(data));
+                    console.log('Datos completos:', data);
                     
-                    console.log('🔄 Llamando a la nueva función...');
-                    cargarDatosEnTabla(data);
+                    if (Array.isArray(data)) {
+                        console.log(`✅ Array válido con ${data.length} elementos`);
+                        cargarDatosEnTabla(data);
+                    } else if (data && data.error) {
+                        console.error('❌ Error del servidor:', data.error);
+                        alert('Error del servidor: ' + data.error);
+                    } else {
+                        console.error('❌ Respuesta inválida:', data);
+                        alert('Respuesta inválida del servidor');
+                    }
                 })
                 .catch(error => {
-                    console.error('❌ Error:', error);
+                    console.error('❌ === ERROR EN FETCH ===');
+                    console.error('Error completo:', error);
+                    console.error('Mensaje:', error.message);
+                    
+                    if (error.message.includes('login') || error.message.includes('autenticado')) {
+                        console.log('🔒 Error de autenticación detectado');
+                        alert('Sesión expirada. Redirigiendo al login...');
+                        window.location.href = '/login';
+                    } else {
+                        console.log('🔧 Error general de red/servidor');
+                        alert('Error al consultar registros: ' + error.message);
+                        
+                        // Mostrar mensaje de error en la tabla
+                        const tbody = document.querySelector('table tbody');
+                        if (tbody) {
+                            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 20px; color: red;">
+                                ❌ Error al cargar datos: ${error.message}<br>
+                                <button onclick="consultarRegistros()" style="margin-top: 10px; padding: 5px 10px;">Reintentar</button>
+                            </td></tr>`;
+                        }
+                    }
+                })
+                .finally(() => {
+                    console.log('🏁 Finalizando consulta...');
+                    if (btnConsultar) {
+                        btnConsultar.disabled = false;
+                        btnConsultar.textContent = 'Consultar';
+                    }
                 });
-        };
-
-        // FUNCIÓN DE PRUEBA ULTRA BÁSICA - SOLO PARA VERIFICAR QUE FUNCIONA
-        function mostrarDatosBasico(datos) {
-            console.log('🟢🟢🟢 FUNCIÓN BÁSICA INICIADA');
-            console.log('🟢 Datos recibidos:', datos);
-            
-            const tbody = document.querySelector('#tablaControlAlmacen tbody');
-            console.log('🟢 Tbody encontrado:', tbody);
-            
-            if (!tbody) {
-                alert('❌ NO SE ENCONTRÓ TBODY');
-                return;
-            }
-            
-            // PASO 1: Mostrar mensaje de prueba visible
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 30px; background-color: lime; color: black; font-size: 16px; font-weight: bold;">✅ FUNCIÓN EJECUTADA - DATOS: ' + (datos ? datos.length : 0) + '</td></tr>';
-            console.log('🟢 MENSAJE VERDE INSERTADO');
-            
-            // PASO 2: Actualizar el contador
-            const totalInfo = document.querySelector('.total-info');
-            if (totalInfo) {
-                totalInfo.textContent = 'FUNCIÓN EJECUTADA ✅ - Total: ' + (datos ? datos.length : 0);
-                totalInfo.style.color = 'lime';
-                totalInfo.style.fontSize = '16px';
-                totalInfo.style.fontWeight = 'bold';
-            }
-            
-            console.log('🟢🟢🟢 FUNCIÓN BÁSICA TERMINADA');
-            alert('✅ Función básica ejecutada - Datos: ' + (datos ? datos.length : 0));
         }
         
-        // FUNCIÓN DE PRUEBA INMEDIATA
-        window.probarFuncionBasica = function() {
-            console.log('🚀 INICIANDO PRUEBA BÁSICA');
+        // Función para cargar datos en la tabla
+        function cargarDatosEnTabla(datos) {
+            const tbody = document.querySelector('#tablaControlAlmacen tbody');
+            if (!tbody) {
+                console.error('No se encontró el tbody de la tabla');
+                return;
+            }
             
-            const datosTest = [
-                { id: 1, codigo_material: 'TEST1', cantidad_actual: '100' },
-                { id: 2, codigo_material: 'TEST2', cantidad_actual: '200' }
-            ];
+            // Limpiar la tabla
+            tbody.innerHTML = '';
             
-            mostrarDatosBasico(datosTest);
-        };
+            if (!datos || datos.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="12" class="no-data">No hay registros disponibles</td>
+                    </tr>
+                `;
+                actualizarTotalRows(0);
+                return;
+            }
+            
+            // Crear filas para cada registro
+            datos.forEach((item) => {
+                const row = tbody.insertRow();
+                
+                row.insertCell(0).textContent = item.codigo_material_recibido || '-';
+                row.insertCell(1).textContent = item.codigo_material_final || item.codigo_material || '-';
+                row.insertCell(2).textContent = item.numero_parte || '-';
+                row.insertCell(3).textContent = item.numero_lote_material || '-';
+                row.insertCell(4).textContent = item.propiedad_material || '-';
+                row.insertCell(5).textContent = item.cantidad_actual || '-';
+                row.insertCell(6).textContent = item.cantidad_estandarizada || '-';
+                row.insertCell(7).textContent = item.ubicacion_salida || 'Pendiente'; // Pendiente para futura integración
+                row.insertCell(8).textContent = item.fecha_recibo || '-';
+                // Mostramos "propiedad de material" en la columna "Especificación"
+                row.insertCell(9).textContent = item.propiedad_material || '-';
+                row.insertCell(10).textContent = item.material_importacion_local || '-';
+                
+                // Crear checkbox para estado de desecho
+                const estadoDesechodCheckbox = `<input type="checkbox" ${(item.estado_desecho === 1 || item.estado_desecho === '1' || item.estado_desecho === true) ? 'checked' : ''} onchange="actualizarEstadoDesecho('${item.id}', this.checked)">`;
+                row.insertCell(11).innerHTML = estadoDesechodCheckbox;
+            });
+            
+            actualizarTotalRows(datos.length);
+        }
         
-        // FUNCIÓN PARA PROBAR CON DATOS REALES
-        window.probarConDatosReales = function() {
-            console.log('🌐 PROBANDO CON DATOS REALES');
+        function actualizarTotalRows(count) {
+            const totalInfo = document.querySelector('.total-info');
+            if (totalInfo) {
+                totalInfo.textContent = `Total Rows: ${count}`;
+            }
+        }
+        
+        // Función para actualizar estado de desecho
+        function actualizarEstadoDesecho(id, estadoDesecho) {
+            console.log('Actualizando estado de desecho:', id, estadoDesecho);
             
-            fetch('/consultar_control_almacen')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('📊 Datos del servidor:', data);
-                    mostrarDatosBasico(data);
+            fetch('/actualizar_estado_desecho_almacen', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: id,
+                    estado_desecho: estadoDesecho
                 })
-                .catch(error => {
-                    console.error('❌ Error:', error);
-                    alert('❌ Error: ' + error.message);
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Estado de desecho actualizado correctamente');
+                    showMessage('Estado de desecho actualizado correctamente', 'success');
+                } else {
+                    console.error('Error al actualizar estado de desecho:', data.error);
+                    showMessage('Error: ' + data.error, 'error');
+                    // Revertir el checkbox si hubo error
+                    const checkboxes = document.querySelectorAll(`input[onchange*="${id}"][onchange*="actualizarEstadoDesecho"]`);
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = !estadoDesecho;
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error en la solicitud:', error);
+                showMessage('Error de conexión', 'error');
+                // Revertir el checkbox si hubo error
+                const checkboxes = document.querySelectorAll(`input[onchange*="${id}"][onchange*="actualizarEstadoDesecho"]`);
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = !estadoDesecho;
                 });
-        };
+            });
+        }
 
-        // Función de test para verificar que el botón consultar funcione
-        window.testBotonConsultar = function() {
-            console.log('🧪 === PROBANDO BOTÓN CONSULTAR ===');
-            
-            // Verificar que la función consultarRegistros esté disponible
-            if (typeof consultarRegistros === 'function') {
-                console.log('✅ consultarRegistros disponible');
-            } else {
-                console.error('❌ consultarRegistros NO disponible');
-                return;
-            }
-            
-            // Verificar que la función cargarDatosDesdeServidor esté disponible
-            if (typeof cargarDatosDesdeServidor === 'function') {
-                console.log('✅ cargarDatosDesdeServidor disponible');
-            } else {
-                console.error('❌ cargarDatosDesdeServidor NO disponible');
-                return;
-            }
-            
-            // Verificar que la función nuevaCargarDatos esté disponible
-            if (typeof nuevaCargarDatos === 'function') {
-                console.log('✅ nuevaCargarDatos disponible');
-            } else {
-                console.error('❌ nuevaCargarDatos NO disponible');
-                return;
-            }
-            
-            // Verificar que el botón exista
-            const btnConsultar = document.getElementById('btnConsultar');
-            if (btnConsultar) {
-                console.log('✅ Botón consultar encontrado');
-                console.log('✅ Onclick:', btnConsultar.onclick);
-                console.log('✅ Atributo onclick:', btnConsultar.getAttribute('onclick'));
-            } else {
-                console.error('❌ Botón consultar NO encontrado');
-                return;
-            }
-            
-            console.log('🚀 Ejecutando consultarRegistros() directamente...');
-            consultarRegistros();
-        };
-        
-        // Función para verificar el flujo completo
-        window.verificarFlujoCompleto = function() {
-            console.log('🔍 === VERIFICANDO FLUJO COMPLETO ===');
-            console.log('1. consultarRegistros -> cargarDatosDesdeServidor -> nuevaCargarDatos');
-            
-            console.log('🔗 Paso 1: consultarRegistros');
-            console.log('🔗 Paso 2: cargarDatosDesdeServidor');
-            console.log('🔗 Paso 3: nuevaCargarDatos');
-            
-            testBotonConsultar();
-        };
+        // La tabla permanece vacía hasta que el usuario haga clic en "Consultar"
     </script>

@@ -1,0 +1,440 @@
+<style>
+/* Specific styles for Control de Salida layout */
+.salida-container {
+    background-color: #32323E;
+    color: lightgray;
+    padding: 15px;
+    font-size: 12px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Updated Grid Layout */
+.salida-form-grid {
+    display: grid;
+    /* Using 6 columns for precise alignment */
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px 15px;
+    background-color: #40424F;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    align-items: end; /* Align items to the bottom of their cell */
+}
+
+.salida-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.salida-form-group label {
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.salida-form-group input[type="text"],
+.salida-form-group input[type="date"],
+.salida-form-group select {
+    padding: 6px 8px;
+    font-size: 12px;
+    height: 28px;
+    box-sizing: border-box;
+}
+
+/* Column Span Helpers */
+.g-col-span-1 { grid-column: span 1; }
+.g-col-span-2 { grid-column: span 2; }
+.g-col-span-3 { grid-column: span 3; }
+.g-col-span-4 { grid-column: span 4; }
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    height: 100%; /* Ensure it takes full cell height */
+    padding-bottom: 5px; /* Align with input fields */
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.salida-btn {
+    border: none;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    transition: background-color 0.3s;
+    height: 28px;
+}
+
+.salida-btn.reiniciar {
+    background-color: #95a5a6;
+    color: white;
+}
+.salida-btn.reiniciar:hover {
+    background-color: #7f8c8d;
+}
+
+.salida-btn.guardar {
+    background-color: #e67e22;
+    color: white;
+}
+.salida-btn.guardar:hover {
+    background-color: #d35400;
+}
+
+.salida-tabs {
+    margin-bottom: 10px;
+}
+
+.salida-tab-btn {
+    background-color: #40424F;
+    color: lightgray;
+    border: 1px solid #2c3e50;
+    border-bottom: none;
+    padding: 8px 15px;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    margin-right: 5px;
+    font-size: 12px;
+}
+
+.salida-tab-btn.active {
+    background-color: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
+.salida-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.salida-tables-container {
+    display: flex;
+    gap: 15px;
+    flex-grow: 1;
+}
+
+.salida-table-wrapper {
+    flex: 1;
+    background-color: #40424F;
+    padding: 10px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+}
+
+.salida-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.salida-table th,
+.salida-table td {
+    border: 1px solid #2c3e50;
+    padding: 6px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.salida-table th {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    position: sticky;
+    top: 0;
+}
+
+.salida-table td {
+    background-color: #44475A;
+}
+
+.salida-table .no-data {
+    height: 200px;
+    text-align: center;
+    vertical-align: middle;
+    color: #95a5a6;
+}
+
+/* Historial de Salida Styles */
+#historial-salida-content {
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.historial-filter-bar {
+    background-color: #40424F;
+    padding: 8px 15px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 2px solid #3498db;
+}
+
+.historial-filter-bar label {
+    font-weight: 500;
+}
+
+.historial-filter-bar input[type="date"],
+.historial-filter-bar input[type="text"] {
+    height: 28px;
+    font-size: 12px;
+    padding: 6px 8px;
+}
+
+.historial-filter-bar .salida-btn {
+    height: 28px;
+    padding: 0 15px;
+}
+
+.historial-filter-bar .consultar {
+    background-color: #3498db;
+    color: white;
+}
+.historial-filter-bar .consultar:hover {
+    background-color: #2980b9;
+}
+
+.historial-filter-bar .exportar {
+    background-color: #27ae60;
+    color: white;
+}
+.historial-filter-bar .exportar:hover {
+    background-color: #219a52;
+}
+
+.historial-table-container {
+    background-color: #40424F;
+    padding: 10px;
+    border-radius: 4px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-x: auto;
+}
+
+.total-rows {
+    margin-top: 10px;
+    font-size: 12px;
+    text-align: right;
+    padding-right: 5px;
+}
+</style>
+
+<div class="salida-container">
+    <!-- Form Grid -->
+    <div class="salida-form-grid">
+        <!-- Row 1 -->
+        <div class="salida-form-group g-col-span-2">
+            <label for="numero_lote">Número de lote:</label>
+            <input type="text" id="numero_lote">
+        </div>
+        <div class="salida-form-group g-col-span-2">
+            <label for="modelo">Modelo:</label>
+            <select id="modelo"><option>Seleccionar</option></select>
+        </div>
+        <div class="salida-form-group g-col-span-2">
+            <label for="depto_salida">Departamento de salida:</label>
+            <select id="depto_salida"><option>Seleccionar</option></select>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="salida-form-group g-col-span-2">
+            <label for="codigo_recibido">Código de material recibido:</label>
+            <input type="text" id="codigo_recibido">
+        </div>
+        <div class="checkbox-group g-col-span-1">
+            <label><input type="checkbox"> Verificación de BOM</label>
+            <label><input type="checkbox"> Validación de código original</label>
+        </div>
+        <div class="checkbox-group g-col-span-1">
+             <label><input type="checkbox"> PEPS</label>
+        </div>
+        <div class="salida-form-group g-col-span-1">
+            <label for="proceso_salida">Proceso de salida:</label>
+            <select id="proceso_salida"><option>Seleccionar</option></select>
+        </div>
+        <div class="button-group g-col-span-1">
+            <button class="salida-btn reiniciar">Reiniciar</button>
+        </div>
+
+        <!-- Row 3 -->
+        <div class="salida-form-group g-col-span-2">
+            <label for="codigo_original">Código de material original:</label>
+            <input type="text" id="codigo_original" style="background-color: #004080 !important; color: white !important; border-color: #004080 !important;">
+        </div>
+        <div class="g-col-span-3">
+            <!-- Empty cell for alignment -->
+        </div>
+        <div class="button-group g-col-span-1">
+            <button class="salida-btn guardar">Guardar</button>
+        </div>
+        
+        <!-- Row 4 -->
+        <div class="salida-form-group g-col-span-2">
+            <label for="disp_codigo_material">Código de material:</label>
+            <input type="text" id="disp_codigo_material" readonly>
+        </div>
+        <div class="salida-form-group g-col-span-4">
+            <label for="disp_especificacion">Especificación de material:</label>
+            <input type="text" id="disp_especificacion" readonly>
+        </div>
+
+        <!-- Row 5 -->
+        <div class="salida-form-group g-col-span-2">
+            <label for="disp_numero_parte">Número de parte:</label>
+            <input type="text" id="disp_numero_parte" readonly>
+        </div>
+        <div class="salida-form-group g-col-span-2">
+            <label for="disp_cantidad_actual">Cantidad actual:</label>
+            <input type="text" id="disp_cantidad_actual" readonly>
+        </div>
+        <div class="salida-form-group g-col-span-2">
+            <label for="disp_lote_material">Número de lote de material:</label>
+            <input type="text" id="disp_lote_material" readonly>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="salida-tabs">
+        <button id="tab-registro" class="salida-tab-btn active" data-target="registro-salida-content">Registro de salida</button>
+        <button id="tab-historial" class="salida-tab-btn" data-target="historial-salida-content">Historial de salida</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="registro-salida-content" class="salida-content" style="display: flex;">
+        <div class="salida-tables-container">
+            <!-- Left Table -->
+            <div class="salida-table-wrapper">
+                <table class="salida-table">
+                    <thead>
+                        <tr>
+                            <th>Proceso</th>
+                            <th>Código de material</th>
+                            <th>Número de parte</th>
+                            <th>Cantidad de salida</th>
+                            <th>Cantidad total</th>
+                            <th>Propiedad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="6" class="no-data">No hay dato registrado</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Right Table -->
+            <div class="salida-table-wrapper">
+                <table class="salida-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Código de material</th>
+                            <th>Número de parte</th>
+                            <th>Cantidad</th>
+                            <th>Número de lote</th>
+                            <th>Propiedad</th>
+                            <th>Nivel</th>
+                            <th>Especificación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="8" class="no-data">No hay dato registrado</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="historial-salida-content" class="salida-content">
+        <!-- Filter Bar -->
+        <div class="historial-filter-bar">
+            <label for="fecha_salida_inicio">Fecha de salida</label>
+            <input type="date" id="fecha_salida_inicio" value="2025-07-09">
+            <span>~</span>
+            <input type="date" id="fecha_salida_fin" value="2025-07-09">
+            <label for="historial_num_lote" style="margin-left: 10px;">Num. de lote</label>
+            <input type="text" id="historial_num_lote">
+            <button class="salida-btn consultar" style="margin-left: auto;">Consultar</button>
+            <button class="salida-btn exportar">Exportar el excel</button>
+        </div>
+        <!-- History Table -->
+        <div class="historial-table-container">
+            <table class="salida-table">
+                <thead>
+                    <tr>
+                        <th>Fecha de salida</th>
+                        <th>Proceso de salida</th>
+                        <th>Código de material recibido</th>
+                        <th>Código de material</th>
+                        <th>Número de parte</th>
+                        <th>Disp.</th>
+                        <th>Hist.</th>
+                        <th>Código de material original</th>
+                        <th>Número de lote</th>
+                        <th>Máquina(Línea)</th>
+                        <th>Departamento de...</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="11" class="no-data">No hay dato registrado</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="total-rows">
+            Total Rows: 0
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.salida-tab-btn');
+    const tabContents = document.querySelectorAll('.salida-content');
+    const formGrid = document.querySelector('.salida-form-grid');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Deactivate all buttons and hide all content
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.style.display = 'none');
+
+            // Activate the clicked button
+            this.classList.add('active');
+
+            // Show/hide the main form based on the selected tab
+            const targetId = this.getAttribute('data-target');
+            if (targetId === 'historial-salida-content') {
+                formGrid.style.display = 'none';
+            } else {
+                formGrid.style.display = 'grid';
+            }
+            
+            // Show the target content
+            const targetContent = document.getElementById(targetId);
+            if (targetContent) {
+                targetContent.style.display = 'flex'; // Use flex for proper layout
+            }
+        });
+    });
+});
+</script>

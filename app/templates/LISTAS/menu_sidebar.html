@@ -181,17 +181,32 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Manejar el clic en "Control de material de almacén"
             if (linkText === 'Control de material de almacén') {
-                console.log('✅ Coincidencia encontrada - Cargando Control de material de almacén...');
-                cargarTemplate('Control de material/Control de material de almacen.html');
+                console.log('✅ Coincidencia encontrada - Mostrando Control de material de almacén...');
+                if (typeof window.mostrarControlAlmacen === 'function') {
+                    window.mostrarControlAlmacen();
+                } else {
+                    console.error('❌ Función mostrarControlAlmacen no disponible');
+                    cargarTemplate('Control de material/Control de material de almacen.html');
+                }
             }
             // Aquí puedes agregar más condiciones para otros enlaces de la sidebar
             else if (linkText === 'Control de salida') {
-                console.log('✅ Cargando Control de salida...');
-                cargarTemplate('Control de material/Control de salida.html');
+                console.log('✅ Mostrando Control de salida...');
+                if (typeof window.mostrarControlSalida === 'function') {
+                    window.mostrarControlSalida();
+                } else {
+                    console.error('❌ Función mostrarControlSalida no disponible');
+                    cargarTemplate('Control de material/Control de salida.html');
+                }
             }
-            else if (linkText === 'Historial de material') {
-                console.log('✅ Cargando Historial de material...');
-                cargarTemplate('Control de material/Historial de material.html');
+            else if (linkText === 'Control de material retorno') {
+                console.log('✅ Mostrando Control de material retorno...');
+                if (typeof window.mostrarControlRetorno === 'function') {
+                    window.mostrarControlRetorno();
+                } else {
+                    console.error('❌ Función mostrarControlRetorno no disponible');
+                    cargarTemplate('Control de material/Control de material retorno.html');
+                }
             }
             else {
                 console.log(`⚠️ No hay acción definida para: "${linkText}"`);

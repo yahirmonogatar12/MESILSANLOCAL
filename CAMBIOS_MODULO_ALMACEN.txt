@@ -1,0 +1,75 @@
+RESUMEN DE CAMBIOS REALIZADOS EN EL MÓDULO DE CONTROL DE ALMACÉN
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+- La tabla de "Control de material de almacén" no cargaba datos aunque el endpoint respondía 200
+- La función consultarRegistros() era muy compleja con demasiados logs de debugging
+- Faltaba compatibilidad con el patrón simple y funcional usado en CONTROL_DE_MATERIAL.html
+
+SOLUCIÓN IMPLEMENTADA:
+================================================================================
+
+1. FUNCIÓN consultarRegistros() SIMPLIFICADA:
+   - Eliminé toda la complejidad de debugging excesivo
+   - Implementé un patrón simple: consultarRegistros() -> cargarDatosDesdeServidor()
+   - Sigue exactamente el mismo patrón que funciona en CONTROL_DE_MATERIAL.html
+
+2. FUNCIÓN cargarDatosDesdeServidor() NUEVA:
+   - Función principal que hace fetch simple al endpoint
+   - Maneja filtros de fecha correctamente
+   - Manejo de errores básico pero efectivo
+   - Se exporta como función global para compatibilidad
+
+3. FUNCIÓN cargarDatosEnTabla() SIMPLIFICADA:
+   - Eliminé logs excesivos que podían causar problemas
+   - Manejo más robusto de casos sin datos
+   - Mejor logging para debugging básico
+
+4. FUNCIONES DE TEST MEJORADAS:
+   - testConectividadAlmacen() simplificada
+   - testCargarDatos() nueva para test directo
+   - testConectividad() función de acceso rápido
+   - debugAlmacen() para diagnóstico básico
+
+5. COMPATIBILIDAD CON INCLUDE:
+   - Las funciones funcionan tanto directamente como cuando se incluyen con {% include %}
+   - Se mantiene toda la funcionalidad existente (guardado, códigos de material, etc.)
+
+PATRÓN IMPLEMENTADO (IGUAL QUE CONTROL_DE_MATERIAL.html):
+================================================================================
+
+Botón "Consultar" -> consultarRegistros() -> cargarDatosDesdeServidor() -> cargarDatosEnTabla()
+
+Este es exactamente el mismo patrón que funciona perfectamente en:
+app/templates/INFORMACION BASICA/CONTROL_DE_MATERIAL.html
+
+RESULTADO ESPERADO:
+================================================================================
+- Al hacer clic en "Consultar", la tabla debe cargar los datos correctamente
+- La funcionalidad debe trabajar tanto en acceso directo como con {% include %}
+- Los logs son mínimos pero informativos
+- Manejo de errores simple pero efectivo
+
+ARCHIVOS MODIFICADOS:
+================================================================================
+- app/templates/Control de material/Control de material de almacen.html
+
+FUNCIONES CLAVE IMPLEMENTADAS:
+================================================================================
+- consultarRegistros() - Función principal llamada por el botón
+- cargarDatosDesdeServidor() - Hace fetch y maneja respuesta
+- cargarDatosEnTabla() - Renderiza los datos en la tabla
+- testConectividadAlmacen() - Test de conectividad
+- testCargarDatos() - Test directo de carga
+- debugAlmacen() - Función de diagnóstico
+
+TESTING:
+================================================================================
+Para probar el módulo en la consola del navegador:
+1. testConectividadAlmacen() - Prueba conectividad y carga automática
+2. testCargarDatos() - Prueba carga directa de datos
+3. debugAlmacen() - Muestra estado de elementos DOM
+4. consultarRegistros() - Función principal (igual que el botón)
+
+Los cambios siguen el principio KISS (Keep It Simple, Stupid) y replican exactamente 
+la lógica que SÍ funciona en otros módulos de la aplicación.

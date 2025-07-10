@@ -1,0 +1,332 @@
+/* ============================================= */
+/* Variables y estilos base                      */
+/* ============================================= */
+:root {
+  --header-height: 100px;
+  --mobile-nav-width: 250px;
+  --hamburger-size: 30px;
+}
+
+/* ============================================= */
+/* Header                                        */
+/* ============================================= */
+.app-header {
+  height: var(--header-height);
+  background-color: #32323E;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  z-index: 100;
+  position: relative;
+  width: 100%;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  gap: 10px;
+}
+
+.logo-welcome-container { 
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 0px;
+}
+
+
+.logo {
+  height: 40px;
+  width: auto;
+  max-width: 220px;
+}
+
+.welcome-text {
+  font-size: 14px;
+  color: lightgray;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+/* Botones de navegación */
+.nav-buttons-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: flex-start;
+  align-items: center;
+  flex-shrink: 0;
+  max-width: none;
+  transition: all 0.3s ease;
+}
+
+.nav-button {
+  border: none;
+  color: lightgray;
+  background-color: #40424F;
+  height: 90px;
+  width: 90px;
+  font-size: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  line-height: 1.1;
+  white-space: normal;
+  transition: all 0.3s;
+  cursor: pointer;
+  padding: 4px 3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+
+.icono-boton {
+  max-height: 35px;
+  max-width: 35px;
+  margin-bottom: 5px;
+}
+
+.nav-button:hover {
+  background-color: #33334D;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+.nav-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.nav-button:focus {
+  background-color: #02A2DE;
+}
+
+/* Estilo para botones de navegación activos */
+.nav-button.active {
+  background-color: #4A90E2 !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+/* Botón de hamburguesa */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: var(--hamburger-size);
+  height: var(--hamburger-size);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 15px;
+}
+
+.hamburger-btn span {
+  width: 100%;
+  height: 3px;
+  background-color: lightgray;
+  transition: all 0.3s linear;
+  position: relative;
+  transform-origin: center;
+}
+
+/* Mobile Navigation */
+@media (max-width: 768px) {
+  .app-header {
+    height: auto;
+    min-height: var(--header-height);
+    padding: 10px;
+    position: relative;
+  }
+  
+  .header-row {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .conatiner-hamburguer{
+    display: flex;
+    flex-direction: margin-right;
+  }
+  .container-logo-welcome-hamburguer {
+    display: flex;
+    flex-direction: margin-right;
+  }
+  
+  .hamburger-btn {
+    display: flex;
+  }
+  
+  .nav-buttons-container {
+    display: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 8px;
+    position: static;
+    width: 100%;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+  }
+  .nav-buttons-container.active {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 80vw;
+    max-width: 320px;
+    height: 100vh;
+    background: #23232b;
+    z-index: 1100;
+    padding: 2rem 1rem 1rem 1rem;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+    overflow-y: auto;
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+    gap: 12px;
+    animation: slideInMenu 0.2s;
+  }
+  @keyframes slideInMenu {
+    from { left: -100vw; opacity: 0; }
+    to { left: 0; opacity: 1; }
+  }
+  .mobile-nav-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+  }
+  .mobile-nav-overlay.active {
+    display: block;
+  }
+  .nav-button {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 70px !important;
+    height: 80px !important;
+    min-width: 60px;
+    max-width: 90px;
+    padding: 6px 2px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+    gap: 4px !important;
+    background: #40424F;
+    border-radius: 10px;
+    margin: 0;
+  }
+  .nav-button .icono-boton,
+  .nav-button img {
+    margin: 0 0 4px 0 !important;
+    height: 28px !important;
+    width: 28px !important;
+    display: block;
+  }
+  .nav-button span,
+  .nav-button label {
+    display: block;
+    font-size: 10px !important;
+    margin: 0;
+    padding: 0;
+    line-height: 1.1;
+    word-break: break-word;
+  }
+}
+
+/* Overlay para cuando el menú está abierto */
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 999;
+}
+
+.mobile-nav-overlay.active {
+  display: block;
+}
+
+/* Estilos para cuando el menú está abierto */
+body.menu-open {
+  overflow: hidden;
+}
+
+/* CSS Responsivo para botones de navegación en pantallas medianas */
+@media (max-width: 1400px) {
+  .nav-buttons-container {
+    gap: 2px;
+  }
+  
+  .nav-button {
+    height: 70px;
+    width: 80px;
+    font-size: 8px;
+    padding: 6px 4px;
+  }
+
+  .header-row {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .nav-buttons-container {
+    gap: 2px;
+  }
+  
+  .nav-button {
+    height: 65px;
+    width: 75px;
+    font-size: 8px;
+    padding: 5px 3px;
+  }
+  .header-row {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 992px) {
+  .nav-buttons-container {
+    margin-left: 0;
+    margin-top: 10px;
+    width: 100%;
+    justify-content: center;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-button {
+    width: 65px;
+    height: 65px;
+    font-size: 7px;
+  }
+  
+  .conatiner-hamburguer{
+  display: flex;
+  flex-direction: margin-right;
+}
+.container-logo-welcome-hamburguer {
+  display: flex;
+  flex-direction: margin-right;
+}
+  .logo {
+    height: 35px;
+  }
+}

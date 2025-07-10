@@ -57,15 +57,12 @@ def material():
 @login_requerido
 def produccion():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('Control de material/Control de material de almacen.html', usuario=usuario)
+    return render_template('Control de material/Control_material.html', usuario=usuario)
 
 @app.route('/logout')
 def logout():
     session.pop('usuario', None)
     return redirect(url_for('login'))
-
-# Nota: El endpoint /control_material ya no es necesario porque
-# Información Básica ahora usa {% include %} en lugar de AJAX
 
 @app.route('/cargar_template', methods=['POST'])
 @login_requerido
