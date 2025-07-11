@@ -19,5 +19,12 @@
         "partNumberLength": 11,
         "lotNumberStart": 35,
         "lotNumberLength": 13
+    },
+    "MOONSTAR": {
+        "character_pattern": "AAAAAAAA XXXXXXXXXXXXXXX)NNNNNN=?AAAXXXXNNN",
+        "partNumberStart": 9,
+        "partNumberLength": 15,
+        "lotNumberStart": 36,
+        "lotNumberLength": 4
     }
 }

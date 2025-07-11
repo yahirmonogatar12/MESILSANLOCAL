@@ -61,13 +61,13 @@ def material():
 @login_requerido
 def produccion():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('Control de material/Control de salida.html', usuario=usuario)
+    return render_template('Control de material/Control de material de almacen.html', usuario=usuario)
 
 @app.route('/DESARROLLO')
 @login_requerido
 def desarrollo():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', usuario=usuario)
+    return render_template('Control de material/Control de salida.html', usuario=usuario)
 
 
 @app.route('/logout')
@@ -758,6 +758,20 @@ def guardar_control_almacen():
         conn.commit()
         registro_id = cursor.lastrowid
         
+        # Actualizar inventario general con la nueva entrada
+        numero_parte = data.get('numero_parte', '').strip()
+        cantidad_actual = float(data.get('cantidad_actual', 0))
+        codigo_material = data.get('codigo_material', '')
+        propiedad_material = data.get('propiedad_material', '')
+        especificacion = data.get('especificacion', '')
+        
+        if numero_parte and cantidad_actual > 0:
+            actualizar_inventario_general_entrada(
+                numero_parte, codigo_material, propiedad_material, 
+                especificacion, cantidad_actual
+            )
+            print(f"📦 Inventario general actualizado: +{cantidad_actual} para {numero_parte}")
+        
         return jsonify({
             'success': True, 
             'message': 'Registro guardado exitosamente',
@@ -1395,7 +1409,7 @@ def consultar_historial_salidas():
 @app.route('/buscar_material_por_codigo', methods=['GET'])
 @login_requerido
 def buscar_material_por_codigo():
-    """Buscar material en control_material_almacen por código de material recibido"""
+    """Buscar material en control_material_almacen por código de material recibido y calcular stock disponible real"""
     try:
         codigo_recibido = request.args.get('codigo_recibido', '').strip()
         
@@ -1405,43 +1419,70 @@ def buscar_material_por_codigo():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Buscar el material por código de material recibido
+        # Buscar el material en almacén (sin filtro de cantidad)
         cursor.execute('''
             SELECT * FROM control_material_almacen 
-            WHERE codigo_material_recibido = ? 
-            AND cantidad_actual > 0
+            WHERE codigo_material_recibido = ?
         ''', (codigo_recibido,))
         
         material = cursor.fetchone()
         
-        if material:
-            # Convertir el resultado a diccionario
-            material_data = {
-                'id': material['id'],
-                'forma_material': material['forma_material'],
-                'cliente': material['cliente'],
-                'codigo_material_original': material['codigo_material_original'],
-                'codigo_material': material['codigo_material'],
-                'material_importacion_local': material['material_importacion_local'],
-                'fecha_recibo': material['fecha_recibo'],
-                'fecha_fabricacion': material['fecha_fabricacion'],
-                'cantidad_actual': material['cantidad_actual'],
-                'numero_lote_material': material['numero_lote_material'],
-                'codigo_material_recibido': material['codigo_material_recibido'],
-                'numero_parte': material['numero_parte'],
-                'cantidad_estandarizada': material['cantidad_estandarizada'],
-                'codigo_material_final': material['codigo_material_final'],
-                'propiedad_material': material['propiedad_material'],
-                'especificacion': material['especificacion'],
-                'material_importacion_local_final': material['material_importacion_local_final'],
-                'estado_desecho': material['estado_desecho'],
-                'ubicacion_salida': material['ubicacion_salida'],
-                'fecha_registro': material['fecha_registro']
-            }
-            
-            return jsonify({'success': True, 'material': material_data})
-        else:
-            return jsonify({'success': False, 'error': 'Material no encontrado o sin cantidad disponible'})
+        if not material:
+            return jsonify({'success': False, 'error': 'Código de material no encontrado en almacén'})
+        
+        # Calcular el total de salidas para este código específico
+        cursor.execute('''
+            SELECT COALESCE(SUM(cantidad_salida), 0) as total_salidas
+            FROM control_material_salida 
+            WHERE codigo_material_recibido = ?
+        ''', (codigo_recibido,))
+        
+        resultado_salidas = cursor.fetchone()
+        total_salidas = float(resultado_salidas['total_salidas']) if resultado_salidas else 0.0
+        
+        # Calcular stock disponible real
+        cantidad_original = float(material['cantidad_actual'])
+        stock_disponible = cantidad_original - total_salidas
+        
+        print(f"📊 STOCK CALCULADO para {codigo_recibido}:")
+        print(f"   - Cantidad original: {cantidad_original}")
+        print(f"   - Total salidas: {total_salidas}")
+        print(f"   - Stock disponible: {stock_disponible}")
+        
+        # Verificar si hay stock disponible
+        if stock_disponible <= 0:
+            return jsonify({
+                'success': False, 
+                'error': f'Material sin stock disponible. Original: {cantidad_original}, Salidas: {total_salidas}, Disponible: {stock_disponible}'
+            })
+        
+        # Convertir el resultado a diccionario con stock actualizado
+        material_data = {
+            'id': material['id'],
+            'forma_material': material['forma_material'],
+            'cliente': material['cliente'],
+            'codigo_material_original': material['codigo_material_original'],
+            'codigo_material': material['codigo_material'],
+            'material_importacion_local': material['material_importacion_local'],
+            'fecha_recibo': material['fecha_recibo'],
+            'fecha_fabricacion': material['fecha_fabricacion'],
+            'cantidad_actual': stock_disponible,  # ← USAR STOCK CALCULADO EN LUGAR DE CANTIDAD ORIGINAL
+            'cantidad_original': cantidad_original,  # ← MANTENER REFERENCIA A LA CANTIDAD ORIGINAL
+            'total_salidas': total_salidas,  # ← INFORMACIÓN ADICIONAL
+            'numero_lote_material': material['numero_lote_material'],
+            'codigo_material_recibido': material['codigo_material_recibido'],
+            'numero_parte': material['numero_parte'],
+            'cantidad_estandarizada': material['cantidad_estandarizada'],
+            'codigo_material_final': material['codigo_material_final'],
+            'propiedad_material': material['propiedad_material'],
+            'especificacion': material['especificacion'],
+            'material_importacion_local_final': material['material_importacion_local_final'],
+            'estado_desecho': material['estado_desecho'],
+            'ubicacion_salida': material['ubicacion_salida'],
+            'fecha_registro': material['fecha_registro']
+        }
+        
+        return jsonify({'success': True, 'material': material_data})
     
     except Exception as e:
         print(f"Error al buscar material por código: {str(e)}")
@@ -1491,25 +1532,48 @@ def procesar_salida_material():
         # Iniciar transacción
         conn.execute('BEGIN TRANSACTION')
         
-        # Buscar el material en almacén
+        # Buscar el material en almacén para obtener información completa
         cursor.execute('''
-            SELECT id, cantidad_actual FROM control_material_almacen 
-            WHERE codigo_material_recibido = ? 
-            AND cantidad_actual > 0
+            SELECT id, cantidad_actual, numero_parte FROM control_material_almacen 
+            WHERE codigo_material_recibido = ?
         ''', (codigo_recibido,))
         
         material = cursor.fetchone()
         
         if not material:
             conn.rollback()
-            return jsonify({'success': False, 'error': 'Material no encontrado o sin cantidad disponible'}), 400
+            return jsonify({'success': False, 'error': 'Material no encontrado en almacén'}), 400
         
-        cantidad_actual = material['cantidad_actual']
+        cantidad_original = material['cantidad_actual']
         material_id = material['id']
+        numero_parte = material['numero_parte'] or ''
         
-        if cantidad_salida > cantidad_actual:
+        # Calcular el total de salidas existentes para este código específico
+        cursor.execute('''
+            SELECT COALESCE(SUM(cantidad_salida), 0) as total_salidas
+            FROM control_material_salida 
+            WHERE codigo_material_recibido = ?
+        ''', (codigo_recibido,))
+        
+        resultado_salidas = cursor.fetchone()
+        total_salidas_previas = float(resultado_salidas['total_salidas']) if resultado_salidas else 0.0
+        
+        # Calcular stock disponible real
+        stock_disponible = cantidad_original - total_salidas_previas
+        
+        print(f"📊 VERIFICACIÓN STOCK PARA SALIDA {codigo_recibido}:")
+        print(f"   - Cantidad original: {cantidad_original}")
+        print(f"   - Salidas previas: {total_salidas_previas}")
+        print(f"   - Stock disponible: {stock_disponible}")
+        print(f"   - Cantidad solicitada: {cantidad_salida}")
+        
+        if stock_disponible <= 0:
             conn.rollback()
-            return jsonify({'success': False, 'error': f'Cantidad insuficiente. Disponible: {cantidad_actual}'}), 400
+            return jsonify({'success': False, 'error': f'Sin stock disponible. Original: {cantidad_original}, Salidas previas: {total_salidas_previas}'}), 400
+        
+        if cantidad_salida > stock_disponible:
+            conn.rollback()
+            return jsonify({'success': False, 'error': f'Cantidad insuficiente. Stock disponible: {stock_disponible}, solicitado: {cantidad_salida}'}), 400
         
         # Registrar la salida en control_material_salida
         from datetime import datetime
@@ -1525,28 +1589,26 @@ def procesar_salida_material():
             proceso_salida, cantidad_salida, fecha_salida, fecha_registro
         ))
         
-        # Actualizar la cantidad en control_material_almacen
-        nueva_cantidad = cantidad_actual - cantidad_salida
+        # IMPORTANTE: Ya NO eliminamos ni actualizamos la cantidad en control_material_almacen
+        # Solo registramos la salida y mantenemos el historial completo
+        nueva_cantidad = stock_disponible - cantidad_salida
         
-        if nueva_cantidad == 0:
-            # Si la cantidad queda en 0, eliminar el registro
-            cursor.execute('DELETE FROM control_material_almacen WHERE id = ?', (material_id,))
-        else:
-            # Actualizar la cantidad
-            cursor.execute('''
-                UPDATE control_material_almacen 
-                SET cantidad_actual = ? 
-                WHERE id = ?
-            ''', (nueva_cantidad, material_id))
+        # Actualizar inventario general por número de parte
+        if numero_parte:
+            actualizar_inventario_general_salida(numero_parte, cantidad_salida)
+            print(f"📦 Inventario general actualizado: -{cantidad_salida} para {numero_parte}")
         
         # Confirmar transacción
         conn.commit()
         
         return jsonify({
             'success': True,
-            'message': f'Salida procesada exitosamente. Cantidad restante: {nueva_cantidad}',
+            'message': f'Salida procesada exitosamente. Stock disponible restante: {nueva_cantidad}',
             'cantidad_restante': nueva_cantidad,
-            'eliminado': nueva_cantidad == 0
+            'eliminado': False,  # Ya no eliminamos registros
+            'cantidad_original': cantidad_original,
+            'total_salidas': total_salidas_previas + cantidad_salida,
+            'nota': 'El inventario se mantiene en el historial de entradas. Consulta el inventario general para totales.'
         })
         
     except Exception as e:
@@ -1566,3 +1628,47 @@ def procesar_salida_material():
                 conn.close()
         except:
             pass
+
+@app.route('/recalcular_inventario_general', methods=['POST'])
+@login_requerido
+def recalcular_inventario_general_endpoint():
+    """Endpoint para recalcular todo el inventario general desde cero"""
+    try:
+        resultado = recalcular_inventario_general()
+        
+        if resultado:
+            return jsonify({
+                'success': True,
+                'message': 'Inventario general recalculado exitosamente'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Error al recalcular inventario general'
+            }), 500
+            
+    except Exception as e:
+        print(f"Error en endpoint recalcular inventario: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        }), 500
+
+@app.route('/obtener_inventario_general', methods=['GET'])
+@login_requerido
+def obtener_inventario_general_endpoint():
+    """Endpoint para obtener el inventario general (para uso futuro)"""
+    try:
+        inventario = obtener_inventario_general()
+        return jsonify({
+            'success': True,
+            'inventario': inventario,
+            'total_items': len(inventario)
+        })
+        
+    except Exception as e:
+        print(f"Error al obtener inventario general: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        }), 500

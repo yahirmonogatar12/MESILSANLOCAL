@@ -413,30 +413,22 @@
         <div class="material-form-section">
             <div class="material-form-row three-column">
                 <div class="material-form-group">
-                    <label>Numero de lote</label>
-                    <input type="text" id="numero_lote" placeholder="Seleccionar">
-                </div>
-                <div class="material-form-group">
                     <label>Modelo</label>
-                    <input type="text" id="modelo" placeholder="Seleccionar">
-                </div>
-                <div class="material-form-group">
-                    <label>Departamento de salida</label>
-                    <input type="text" id="depto_salida" placeholder="Seleccionar">
-                </div>
-            </div>
-            <div class="material-form-row three-column">
-                <div class="material-form-group">
-                    <label>Proceso de salida</label>
-                    <input type="text" id="proceso_salida" placeholder="Seleccionar">
+                    <select id="modelo" required>
+                        <option value="">Seleccionar modelo...</option>
+                        <option value="Modelo A">Modelo A</option>
+                        <option value="Modelo B">Modelo B</option>
+                        <option value="Modelo C">Modelo C</option>
+                        <option value="Producción">Producción</option>
+                        <option value="Calidad">Calidad</option>
+                        <option value="Mantenimiento">Mantenimiento</option>
+                    </select>
                 </div>
                 <div class="material-form-group">
                     <label>Código de material recibido</label>
                     <input type="text" id="codigo_material_recibido" placeholder="Ej: 0RH5602C622/202507100001">
                 </div>
                 <div class="material-form-group">
-                    <label>Validación de código original</label>
-                    <input type="text" id="validacion_codigo" readonly>
                 </div>
             </div>
             <div class="material-form-row three-column">
@@ -469,12 +461,10 @@
             </div>
             <div class="material-form-row three-column">
                 <div class="material-form-group">
-                    <label>Cantidad de salida</label>
-                    <input type="number" id="cantidad_salida" min="0" step="1" placeholder="Ingrese cantidad">
-                </div>
-                <div class="material-form-group">
                     <label>Fecha de salida</label>
                     <input type="date" id="fecha_salida_form" value="">
+                </div>
+                <div class="material-form-group">
                 </div>
                 <div class="material-form-group">
                 </div>
@@ -490,10 +480,6 @@
                     <label>Fecha de salida</label>
                     <input type="date" id="fecha_salida_consulta" value="2025-07-09">
                 </div>
-                <div class="material-form-group">
-                    <label>Num. de lote</label>
-                    <input type="text" id="num_lote_consulta">
-                </div>
                 <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
                 <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
             </div>
@@ -501,18 +487,15 @@
                 <thead>
                     <tr>
                         <th>Fecha de salida</th>
-                        <th>Proceso de salida</th>
                         <th>Código material recibido</th>
-                        <th>Número de lote</th>
                         <th>Modelo</th>
                         <th>Cantidad salida</th>
-                        <th>Departamento</th>
                         <th>Fecha registro</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="8" class="no-data">No hay dato registrado</td>
+                        <td colspan="5" class="no-data">No hay dato registrado</td>
                     </tr>
                 </tbody>
             </table>
@@ -618,6 +601,8 @@
                 if (data.success && data.material) {
                     materialActual = data.material;
                     rellenarCamposMaterial(data.material);
+                    // ✅ OCULTAR mensaje de carga cuando termine exitosamente
+                    // (el mensaje se oculta automáticamente en rellenarCamposMaterial)
                 } else {
                     limpiarCamposMaterial();
                     mostrarError(data.error || 'Material no encontrado');
@@ -632,7 +617,6 @@
         function rellenarCamposMaterial(material) {
             // Rellenar todos los campos con los datos del material
             const campos = {
-                'validacion_codigo': material.codigo_material_original || '',
                 'codigo_material_original': material.codigo_material_original || '',
                 'codigo_material': material.codigo_material || '',
                 'especificacion_material': material.especificacion || '',
@@ -645,35 +629,72 @@
                 const input = document.getElementById(id);
                 if (input) {
                     input.value = campos[id];
+                    
+                    // Colorear el campo de cantidad según el stock disponible
+                    if (id === 'cantidad_actual') {
+                        const stockDisponible = parseFloat(material.cantidad_actual) || 0;
+                        if (stockDisponible <= 0) {
+                            input.style.backgroundColor = '#ffebee';
+                            input.style.color = '#c62828';
+                            input.style.fontWeight = 'bold';
+                        } else if (stockDisponible <= 10) {
+                            input.style.backgroundColor = '#fff3e0';
+                            input.style.color = '#f57c00';
+                            input.style.fontWeight = 'bold';
+                        } else {
+                            input.style.backgroundColor = '#e8f5e8';
+                            input.style.color = '#2e7d32';
+                            input.style.fontWeight = 'bold';
+                        }
+                    }
+                    
+                    // Destacar el número de lote de material cuando se llene
+                    if (id === 'numero_lote_material' && campos[id]) {
+                        input.style.backgroundColor = '#e3f2fd';
+                        input.style.color = '#1565c0';
+                        input.style.fontWeight = 'bold';
+                        input.style.border = '2px solid #2196f3';
+                    }
                 }
             });
 
-            // Establecer el máximo en el campo de cantidad de salida
-            const cantidadSalidaInput = document.getElementById('cantidad_salida');
-            if (cantidadSalidaInput) {
-                cantidadSalidaInput.max = material.cantidad_actual;
-                cantidadSalidaInput.placeholder = `Máximo: ${material.cantidad_actual}`;
+            // Mostrar mensaje más detallado
+            let mensaje = `Material encontrado. Stock disponible: ${material.cantidad_actual}`;
+            
+            if (material.numero_lote_material) {
+                mensaje += ` | Lote: ${material.numero_lote_material}`;
             }
-
-            mostrarExito(`Material encontrado. Cantidad disponible: ${material.cantidad_actual}`);
+            
+            if (material.cantidad_original && material.total_salidas !== undefined) {
+                mensaje += ` (Original: ${material.cantidad_original}, Salidas: ${material.total_salidas})`;
+            }
+            
+            if (parseFloat(material.cantidad_actual) <= 0) {
+                mostrarError(`${mensaje} - NO SE PUEDEN HACER MÁS SALIDAS`);
+            } else if (parseFloat(material.cantidad_actual) <= 10) {
+                mostrarInfo(`${mensaje} - STOCK BAJO`);
+            } else {
+                mostrarExito(mensaje);
+            }
         }
 
         function limpiarCamposMaterial() {
             // Limpiar todos los campos del material
             const campos = [
-                'validacion_codigo', 'codigo_material_original', 'codigo_material',
+                'codigo_material_original', 'codigo_material',
                 'especificacion_material', 'numero_parte', 'cantidad_actual',
-                'numero_lote_material', 'cantidad_salida'
+                'numero_lote_material'
             ];
 
             campos.forEach(campo => {
                 const input = document.getElementById(campo);
                 if (input) {
                     input.value = '';
-                    if (campo === 'cantidad_salida') {
-                        input.max = '';
-                        input.placeholder = 'Ingrese cantidad';
-                    }
+                    // Resetear estilos
+                    input.style.backgroundColor = '';
+                    input.style.color = '';
+                    input.style.fontWeight = '';
+                    input.style.border = '';
                 }
             });
 
@@ -683,8 +704,7 @@
         function reiniciarFormulario() {
             // Limpiar todos los campos del formulario
             const campos = [
-                'numero_lote', 'modelo', 'depto_salida', 'proceso_salida',
-                'codigo_material_recibido', 'cantidad_salida'
+                'codigo_material_recibido'
             ];
 
             campos.forEach(campo => {
@@ -703,22 +723,22 @@
                 fechaSalidaForm.value = hoy;
             }
 
-            mostrarInfo('Formulario reiniciado');
+            mostrarInfo('Formulario reiniciado - El modelo seleccionado se mantiene');
         }
 
         async function guardarSalida() {
             try {
                 // Validar campos requeridos
                 const codigoRecibido = document.getElementById('codigo_material_recibido')?.value.trim() || '';
-                const cantidadSalida = document.getElementById('cantidad_salida')?.value.trim() || '';
+                const modeloSeleccionado = document.getElementById('modelo')?.value || '';
 
                 if (!codigoRecibido) {
                     mostrarError('Debe ingresar el código de material recibido');
                     return;
                 }
 
-                if (!cantidadSalida || parseFloat(cantidadSalida) <= 0) {
-                    mostrarError('Debe ingresar una cantidad de salida válida');
+                if (!modeloSeleccionado) {
+                    mostrarError('Debe seleccionar un modelo');
                     return;
                 }
 
@@ -727,9 +747,17 @@
                     return;
                 }
 
-                const cantidad = parseFloat(cantidadSalida);
-                if (cantidad > materialActual.cantidad_actual) {
-                    mostrarError(`La cantidad de salida no puede ser mayor a la disponible (${materialActual.cantidad_actual})`);
+                // Verificar que el material tenga número de lote
+                if (!materialActual.numero_lote_material) {
+                    mostrarError('El material no tiene número de lote asignado');
+                    return;
+                }
+
+                // Usar automáticamente la cantidad actual como cantidad de salida
+                const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
+                
+                if (cantidadSalida <= 0) {
+                    mostrarError('No hay stock disponible para realizar la salida');
                     return;
                 }
 
@@ -738,11 +766,9 @@
                 // Preparar datos para enviar
                 const datosEnvio = {
                     codigo_material_recibido: codigoRecibido,
-                    cantidad_salida: cantidad,
-                    numero_lote: document.getElementById('numero_lote')?.value.trim() || '',
-                    modelo: document.getElementById('modelo')?.value.trim() || '',
-                    depto_salida: document.getElementById('depto_salida')?.value.trim() || '',
-                    proceso_salida: document.getElementById('proceso_salida')?.value.trim() || '',
+                    cantidad_salida: cantidadSalida,
+                    modelo: modeloSeleccionado,
+                    numero_lote: materialActual.numero_lote_material || '', // Usar el número de lote del material
                     fecha_salida: document.getElementById('fecha_salida_form')?.value || ''
                 };
 
@@ -759,33 +785,47 @@
                 if (data.success) {
                     mostrarExito(data.message);
                     
-                    // Actualizar la cantidad actual en la interfaz
-                    if (data.eliminado) {
-                        limpiarCamposMaterial();
-                        const codigoInput = document.getElementById('codigo_material_recibido');
-                        if (codigoInput) codigoInput.value = '';
-                        mostrarInfo('Material agotado - registro eliminado del inventario');
-                    } else {
-                        materialActual.cantidad_actual = data.cantidad_restante;
+                    // NUEVO COMPORTAMIENTO: Ya no se eliminan registros del almacén
+                    // El historial se preserva completo y el inventario se maneja en otra tabla
+                    
+                    if (data.nota) {
+                        // Mostrar información adicional sobre el nuevo comportamiento
+                        setTimeout(() => {
+                            mostrarInfo(data.nota);
+                        }, 2000);
+                    }
+                    
+                    // Actualizar la interfaz para mostrar la cantidad calculada (no la real del almacén)
+                    if (materialActual && data.cantidad_restante !== undefined) {
+                        // Actualizar cantidad mostrada (calculada)
                         const cantidadActualInput = document.getElementById('cantidad_actual');
-                        const cantidadSalidaInput = document.getElementById('cantidad_salida');
                         
-                        if (cantidadActualInput) cantidadActualInput.value = data.cantidad_restante;
-                        if (cantidadSalidaInput) {
-                            cantidadSalidaInput.max = data.cantidad_restante;
-                            cantidadSalidaInput.placeholder = `Máximo: ${data.cantidad_restante}`;
+                        if (cantidadActualInput) {
+                            cantidadActualInput.value = data.cantidad_restante;
+                            cantidadActualInput.style.color = data.cantidad_restante <= 0 ? '#e74c3c' : '#27ae60';
+                        }
+                        
+                        // Si el stock calculado es 0 o menos, mostrar advertencia
+                        if (data.cantidad_restante <= 0) {
+                            setTimeout(() => {
+                                mostrarInfo('Stock agotado para este lote. El historial se mantiene en almacén.');
+                            }, 3000);
                         }
                     }
 
-                    // Limpiar campos de salida específicos
-                    const camposLimpiar = ['cantidad_salida', 'numero_lote', 'modelo'];
-                    camposLimpiar.forEach(campo => {
-                        const input = document.getElementById(campo);
-                        if (input) input.value = '';
-                    });
+                    // Limpiar solo el código de material para permitir nueva búsqueda
+                    // El modelo se mantiene fijo como solicitado
+                    const codigoInput = document.getElementById('codigo_material_recibido');
+                    if (codigoInput) codigoInput.value = '';
+                    
+                    // Limpiar campos del material encontrado
+                    limpiarCamposMaterial();
 
-                    // Actualizar tabla de consulta
-                    consultarSalidas();
+                    // Esperar un momento para que el usuario vea el mensaje de éxito
+                    // antes de actualizar la tabla
+                    setTimeout(() => {
+                        consultarSalidas();
+                    }, 1000);
 
                 } else {
                     mostrarError(data.error || 'Error al procesar la salida');
@@ -802,16 +842,12 @@
                 mostrarCargando('Consultando salidas...');
 
                 const fechaSalida = document.getElementById('fecha_salida_consulta')?.value || '';
-                const numLote = document.getElementById('num_lote_consulta')?.value.trim() || '';
 
                 let url = '/consultar_historial_salidas';
                 const params = new URLSearchParams();
 
                 if (fechaSalida) {
                     params.append('fecha_salida', fechaSalida);
-                }
-                if (numLote) {
-                    params.append('numero_lote', numLote);
                 }
 
                 if (params.toString()) {
@@ -827,6 +863,8 @@
                     if (totalInfo) {
                         totalInfo.textContent = `Total Rows: ${salidas.length}`;
                     }
+                    // ✅ OCULTAR mensaje de carga cuando termine exitosamente
+                    ocultarMensaje();
                 } else {
                     mostrarError(salidas.error || 'Error al consultar salidas');
                 }
@@ -842,7 +880,7 @@
             if (!tbody) return;
             
             if (salidas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="no-data">No hay dato registrado</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">No hay dato registrado</td></tr>';
                 return;
             }
 
@@ -851,12 +889,9 @@
                 html += `
                     <tr>
                         <td>${salida.fecha_salida || ''}</td>
-                        <td>${salida.proceso_salida || ''}</td>
                         <td>${salida.codigo_material_recibido || ''}</td>
-                        <td>${salida.numero_lote || ''}</td>
                         <td>${salida.modelo || ''}</td>
                         <td>${salida.cantidad_salida || ''}</td>
-                        <td>${salida.depto_salida || ''}</td>
                         <td>${formatearFecha(salida.fecha_registro) || ''}</td>
                     </tr>
                 `;
@@ -898,7 +933,7 @@
                 }
 
                 // Crear CSV
-                let csv = 'Fecha de salida,Proceso de salida,Código material recibido,Número de lote,Modelo,Cantidad salida,Departamento,Fecha registro\n';
+                let csv = 'Fecha de salida,Código material recibido,Modelo,Cantidad salida,Fecha registro\n';
                 
                 filas.forEach(fila => {
                     const celdas = fila.querySelectorAll('td');
@@ -981,11 +1016,21 @@
         }
 
         function mostrarExito(mensaje) {
-            mostrarMensaje(mensaje, 'exito');
+            // Primero ocultar cualquier mensaje anterior (especialmente los de carga)
+            ocultarMensaje();
+            // Pequeña pausa para asegurar que se oculte el anterior
+            setTimeout(() => {
+                mostrarMensaje(mensaje, 'exito');
+            }, 100);
         }
 
         function mostrarError(mensaje) {
-            mostrarMensaje(mensaje, 'error');
+            // Primero ocultar cualquier mensaje anterior (especialmente los de carga)
+            ocultarMensaje();
+            // Pequeña pausa para asegurar que se oculte el anterior
+            setTimeout(() => {
+                mostrarMensaje(mensaje, 'error');
+            }, 100);
         }
 
         function mostrarInfo(mensaje) {
