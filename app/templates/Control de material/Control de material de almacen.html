@@ -103,6 +103,7 @@
                 </div>
             </div>
         </div>
+    <div class="material-form-row four-column">
         <div class="material-form-group">
             <label>Material importación/local</label>
             <select id="material_importacion_local">
@@ -114,6 +115,13 @@
         <div class="material-form-group">
             <label>Fecha de recibo</label>
             <input type="date" id="fecha_recibo" value="2025-07-08">
+        </div>
+        <div class="material-form-group">
+            <label>Especificación de material</label>
+            <input type="text" id="almacen_especificacion_material" readonly placeholder="Se carga automáticamente al seleccionar código">
+        </div>
+        <div class="material-form-group">
+            <!-- Campo vacío para mantener estructura -->
         </div>
     </div>
 
@@ -399,9 +407,13 @@
                 <option value="">Seleccionar</option>
             `;
             
-            // Opcional: También mostrar la información completa visualmente
+            // Mostrar la especificación inmediatamente al seleccionar
             if (codigoCompleto) {
                 select.title = `${codigoCompleto.codigo} - ${codigoCompleto.nombre} - ${codigoCompleto.spec}`;
+                
+                // Llenar inmediatamente el campo de especificación
+                llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || codigoCompleto.spec || '');
+                console.log(`📋 Especificación cargada inmediatamente: ${codigoCompleto.especificacion_material || codigoCompleto.spec}`);
             }
             
             cerrarModalCodigoMaterial();
@@ -682,11 +694,15 @@
                     llenarCampoPorId('cantidad_estandarizada', codigoCompleto.cantidad_estandarizada || '');
                     llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
                     llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
+                    llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || '');
                     llenarCampoPorId('numero_lote_material', '');
+                    
+                    console.log(`📋 Especificación de material cargada: ${codigoCompleto.especificacion_material}`);
                 } else {
                     llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
                     llenarCampoPorId('codigo_material_lower', codigoMaterial);
                     llenarCampoPorId('numero_parte_lower', String(contadorSecuencial).padStart(4, '0'));
+                    llenarCampoPorId('almacen_especificacion_material', '');
                     llenarCampoPorId('numero_lote_material', '');
                 }
             }).catch(error => {
@@ -886,7 +902,8 @@
                     numero_parte: document.getElementById('numero_parte_lower').value,
                     cantidad_estandarizada: document.getElementById('cantidad_estandarizada').value,
                     codigo_material_final: document.getElementById('codigo_material_lower').value,
-                    propiedad_material: document.getElementById('propiedad_material').value
+                    propiedad_material: document.getElementById('propiedad_material').value,
+                    especificacion: document.getElementById('almacen_especificacion_material').value
                 };
                 
                 // Validar campos requeridos

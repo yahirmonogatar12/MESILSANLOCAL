@@ -4,462 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Salida de Material</title>
-    <style>
-        /* Estilos específicos para Control de Material que complementan style.css */
-        /* Sección de escaneo dentro del toolbar del medio */
-        .material-toolbar .scan-field-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            margin-right: 20px;
-            max-width: 300px;
-        }
-
-        .material-toolbar .scan-field-group label {
-            color: white;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 0;
-        }
-
-        .material-toolbar .scan-field-group input {
-            padding: 8px 12px;
-            font-size: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 4px;
-            background-color: rgba(255,255,255,0.9);
-            color: #2c3e50;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            box-sizing: border-box;
-            min-width: 250px;
-        }
-
-        .material-toolbar .scan-field-group input:focus {
-            outline: none;
-            border-color: #3498db;
-            background-color: #fff;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
-        }
-
-        .material-toolbar .scan-field-group input::placeholder {
-            color: #7f8c8d;
-            font-style: italic;
-        }
-
-        /* Contenedor principal */
-        .material-container {
-            font-family: 'LG regular', sans-serif;
-            background-color: #32323E;
-            color: lightgray;
-            min-height: 100vh;
-            padding: 5px;
-        }
-
-        /* Botonera */
-        .material-toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 5px;
-            padding: 15px;
-            background-color: #34334E;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border: #20688C 1px solid;
-        }
-
-        /* Contenedor izquierdo para el campo de escaneo */
-        .material-toolbar .scan-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        /* Contenedor derecho para los checkboxes */
-        .material-toolbar .checkbox-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        /* Color especial para el contenedor de en medio */
-        .material-toolbar:nth-of-type(2) {
-            background-color: #44324b;
-        }
-
-        .material-btn {
-            padding: 6px 12px;  
-            border: none;
-            border-radius: 4px;
-            background-color: #3498db;
-            color: white;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-            font-weight: 500;
-        }
-
-        .material-btn.scan {
-            background-color: #e67e22;
-        }
-
-        .material-btn.scan:hover {
-            background-color: #d35400;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
-        }
-
-        .material-btn:hover {
-            background-color: #2980b9;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-        }
-
-        .material-btn.secondary {
-            background-color: #009944;
-        }
-
-        .material-btn.secondary:hover {
-            background-color: #cccccc;
-        }
-
-        .material-btn.purple {
-            background-color: #9b59b6;
-        }
-
-        .material-btn.purple:hover {
-            background-color: #8e44ad;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
-        }
-
-        .material-btn {
-            background-color: #3C3940;
-            border: #20688C 1px solid;
-        }
-
-        .material-btn.purple {
-            background-color: #502696;
-        }
-
-        .material-btn.secondary {
-            background-color: #456636;
-        }
-
-        /* Formulario con diseño consistente */
-        #control-almacen-container .material-form-section {
-            background-color: #44324b;
-            border-radius: 2px;
-            padding: 12px;
-            margin-bottom: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            border: 1px solid #5a6c7d;
-        }
-        
-        #control-almacen-container .material-form-row {
-            display: grid;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        #control-almacen-container .material-form-group {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        #control-almacen-container .material-form-group label {
-            display: block;
-            margin-bottom: 0;
-            font-weight: 500;
-            color: #ffffff;
-            font-size: 11px;
-            font-family: 'LG regular', sans-serif;
-            white-space: nowrap;
-            min-width: 140px;
-            flex-shrink: 0;
-        }
-        
-        #control-almacen-container .material-form-group input, 
-        #control-almacen-container .material-form-group select {
-            flex: 1;
-            min-width: 150px;
-            max-width: 250px;
-            padding: 6px 8px;
-            border: 1px solid #5a6c7d;
-            border-radius: 2px;
-            background-color: #ffffff;
-            color: #333333;
-            font-size: 11px;
-            font-family: 'LG regular', sans-serif;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            box-sizing: border-box;
-            height: 24px;
-        }
-        
-        #control-almacen-container .material-form-group input:focus, 
-        #control-almacen-container .material-form-group select:focus {
-            outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-        }
-
-        #control-almacen-container .material-form-group input::placeholder {
-            color: #999999;
-            font-style: normal;
-        }
-
-        #control-almacen-container .material-form-group select {
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 8px center;
-            background-size: 16px;
-            padding-right: 32px;
-        }
-        
-        #control-almacen-container .three-column {
-            grid-template-columns: 1fr 1fr 1fr;
-        }
-        
-        #control-almacen-container .four-column {
-            grid-template-columns: 1fr 1fr 1fr 1fr;
-        }
-        
-        #control-almacen-container .two-column {
-            grid-template-columns: 1fr 1fr;
-        }
-
-        /* Tabla */
-        #control-almacen-container .material-table-container {
-            background-color: #40424F;
-            border-radius: 2px;
-            padding: 2px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow-x: auto;
-        }
-
-        #control-almacen-container .material-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 0;
-            font-size: 10px;
-            background-color: #40424F;
-        }
-
-        #control-almacen-container .material-table th {
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            padding: 6px 4px;
-            text-align: center;
-            border: 1px solid #34495e;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            font-size: 10px;
-            line-height: 1.0;
-        }
-
-        #control-almacen-container .material-table td {
-            padding: 4px 6px;
-            text-align: center;
-            border: 1px solid #34495e;
-            background-color: #40424F;
-            color: lightgray;
-            transition: background-color 0.3s;
-            font-size: 10px;
-            line-height: 1.0;
-        }
-
-        #control-almacen-container .material-table tr:hover td {
-            background-color: #485563;
-        }
-
-        #control-almacen-container .material-table tr:nth-child(even) td {
-            background-color: #44475A;
-        }
-
-        #control-almacen-container .material-table tr:nth-child(even):hover td {
-            background-color: #485563;
-        }
-
-        #control-almacen-container .material-table input[type="checkbox"] {
-            transform: scale(1.1);
-            cursor: pointer;
-            accent-color: #3498db;
-        }
-
-        #control-almacen-container .material-table .no-data {
-            text-align: center;
-            padding: 15px;
-            color: #95a5a6;
-            font-style: italic;
-            background-color: #40424F;
-            font-size: 10px;
-        }
-
-        /* Mensajes de estado */
-        #control-almacen-container .material-loading {
-            text-align: center;
-            padding: 25px;
-            color: #3498db;
-            font-size: 14px;
-        }
-
-        #control-almacen-container .material-error {
-            text-align: center;
-            padding: 25px;
-            color: #e74c3c;
-            font-size: 14px;
-        }
-
-        #control-almacen-container .loading-message {
-            text-align: center !important;
-            padding: 25px !important;
-            color: #3498db !important;
-            font-size: 16px !important;
-            animation: pulse 1.5s ease-in-out infinite alternate;
-        }
-
-        #control-almacen-container .error-message {
-            text-align: center !important;
-            padding: 25px !important;
-            color: #e74c3c !important;
-            font-size: 16px !important;
-        }
-
-        #control-almacen-container .total-info {
-            color: lightgray;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
-        /* Animación para carga */
-        @keyframes pulse {
-            from { opacity: 0.7; }
-            to { opacity: 1; }
-        }
-        #control-almacen-container .dropdown-modal {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background-color: #40424F;
-            border: 2px solid #34495e;
-            border-radius: 6px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            display: none;
-            max-height: 300px;
-            overflow: hidden;
-            margin-top: 2px;
-            min-width: 400px;
-        }
-
-        #control-almacen-container .search-input {
-            width: 100%;
-            padding: 12px 15px;
-            border: none;
-            border-bottom: 2px solid #34495e;
-            background-color: #2c3e50;
-            color: lightgray;
-            font-size: 14px;
-            box-sizing: border-box;
-            outline: none;
-        }
-        
-        #control-almacen-container .search-input:focus {
-            background-color: #2c3e50;
-            border-bottom-color: #3498db;
-        }
-        
-        #control-almacen-container .dropdown-table-container {
-            max-height: 250px;
-            overflow-y: auto;
-            background-color: #40424F;
-        }
-        
-        #control-almacen-container .dropdown-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            background-color: #40424F;
-        }
-        
-        #control-almacen-container .dropdown-table th {
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            padding: 12px 15px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 14px;
-            border-bottom: 2px solid #34495e;
-            position: sticky;
-            top: 0;
-        }
-        
-        #control-almacen-container .dropdown-table td {
-            padding: 12px 15px;
-            text-align: left;
-            color: lightgray;
-            border-bottom: 1px solid #34495e;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        #control-almacen-container .dropdown-table tr:hover td {
-            background-color: #485563;
-        }
-        
-        #control-almacen-container .dropdown-table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        /* Animación para carga */
-        #control-almacen-container .loading-message {
-            animation: pulse 1.5s ease-in-out infinite alternate;
-        }
-        
-        @keyframes pulse {
-            from { opacity: 0.7; }
-            to { opacity: 1; }
-        }
-
-        /* Estilos simplificados para registro automático */
-        #control-almacen-container #codigo_material_recibido:focus {
-            border: 2px solid #27ae60;
-            box-shadow: 0 0 5px rgba(39, 174, 96, 0.3);
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/control_salida_material.css">
 </head>
 <body>
-    <div id="control-almacen-container">
+    <div id="control-salida-container">
         <div class="material-toolbar">
             <!-- Contenedor izquierdo: Campo de escaneo -->
             <div class="scan-container">
                 <div class="material-form-group">
                     <label>Código de material recibido</label>
-                    <input type="text" id="codigo_material_recibido" placeholder="Escanear código aquí..." onkeydown="procesarEscaneoRapido(event)" autocomplete="off">
+                    <input type="text" id="salida_codigo_material_recibido" placeholder="Escanear código aquí..." onkeydown="procesarEscaneoRapido(event)" autocomplete="off">
                 </div>
             </div>
             
             <!-- Contenedor derecho: Checkboxes -->
             <div class="checkbox-container">
                 <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="registroAutomatico" style="transform: scale(1.0); accent-color: #27ae60;" checked>
+                    <input type="checkbox" id="salida_registroAutomatico" style="transform: scale(1.0); accent-color: #27ae60;" checked>
                      Registro automático
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="verificacionBOM" style="transform: scale(1.0); accent-color: #8e44ad;">
+                    <input type="checkbox" id="salida_verificacionBOM" style="transform: scale(1.0); accent-color: #8e44ad;">
                     Verificación de BOM
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
-                    <input type="checkbox" id="peps" style="transform: scale(1.0); accent-color: #27ae60;">
+                    <input type="checkbox" id="salida_peps" style="transform: scale(1.0); accent-color: #27ae60;">
                     PEPS
                 </label>
             </div>
@@ -468,7 +37,7 @@
             <div class="material-form-row three-column">
                 <div class="material-form-group">
                     <label>Modelo</label>
-                    <select id="modelo" required>
+                    <select id="salida_modelo" required>
                         <option value="">Seleccionar modelo...</option>
                         <option value="Modelo A">Modelo A</option>
                         <option value="Modelo B">Modelo B</option>
@@ -482,41 +51,41 @@
                     <!-- Campo movido arriba -->
                 </div>
                 <div class="material-form-group">
-                    <button class="material-btn secondary" id="btnGuardarSalida" onclick="procesarSalidaManual()" style="display: none;">Guardar Salida</button>
+                    <button class="material-btn secondary" id="salida_btnGuardarSalida" onclick="procesarSalidaManual()" style="display: none;">Guardar Salida</button>
                 </div>
             </div>
             <div class="material-form-row three-column">
                 <div class="material-form-group">
                     <label>Código de material original</label>
-                    <input type="text" id="codigo_material_original" readonly>
+                    <input type="text" id="salida_codigo_material_original" readonly>
                 </div>
                 <div class="material-form-group">
                     <label>Código de material</label>
-                    <input type="text" id="codigo_material" readonly>
+                    <input type="text" id="salida_codigo_material" readonly>
                 </div>
                 <div class="material-form-group">
                     <label>Especificación de material</label>
-                    <input type="text" id="especificacion_material" readonly>
+                    <input type="text" id="salida_especificacion_material" readonly>
                 </div>
             </div>
             <div class="material-form-row three-column">
                 <div class="material-form-group">
                     <label>Numero de parte</label>
-                    <input type="text" id="numero_parte" readonly>
+                    <input type="text" id="salida_numero_parte" readonly>
                 </div>
                 <div class="material-form-group">
                     <label>Cantidad actual</label>
-                    <input type="text" id="cantidad_actual" readonly>
+                    <input type="text" id="salida_cantidad_actual" readonly>
                 </div>
                 <div class="material-form-group">
                     <label>Numero de lote de material</label>
-                    <input type="text" id="numero_lote_material" readonly>
+                    <input type="text" id="salida_numero_lote_material" readonly>
                 </div>
             </div>
             <div class="material-form-row three-column">
                 <div class="material-form-group">
                     <label>Fecha de salida</label>
-                    <input type="date" id="fecha_salida_form" value="">
+                    <input type="date" id="salida_fecha_salida_form" value="">
                 </div>
                 <div class="material-form-group">
                 </div>
@@ -532,12 +101,12 @@
             <div class="material-table-controls">
                 <div class="material-form-group">
                     <label>Fecha de salida</label>
-                    <input type="date" id="fecha_salida_consulta" value="2025-07-09">
+                    <input type="date" id="salida_fecha_salida_consulta" value="2025-07-09">
                 </div>
                 <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
                 <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
             </div>
-            <table class="material-table" id="tablaSalidas">
+            <table class="material-table" id="salida_tablaSalidas">
                 <thead>
                     <tr>
                         <th>Fecha de salida</th>
@@ -559,7 +128,7 @@
                     </tr>
                 </tbody>
             </table>
-            <div class="total-info" id="totalInfo">Total Rows: 0</div>
+            <div class="total-info" id="salida_totalInfo">Total Rows: 0</div>
         </div>
     </div>
 
@@ -578,8 +147,8 @@
         function inicializarControlSalida() {
             // Establecer fecha actual
             const hoy = new Date().toISOString().split('T')[0];
-            const fechaSalidaForm = document.getElementById('fecha_salida_form');
-            const fechaSalidaConsulta = document.getElementById('fecha_salida_consulta');
+            const fechaSalidaForm = document.getElementById('salida_fecha_salida_form');
+            const fechaSalidaConsulta = document.getElementById('salida_fecha_salida_consulta');
             
             if (fechaSalidaForm) fechaSalidaForm.value = hoy;
             if (fechaSalidaConsulta) fechaSalidaConsulta.value = hoy;
@@ -588,7 +157,7 @@
             configurarRegistroAutomatico();
 
             // Enfocar campo de código
-            const codigoInput = document.getElementById('codigo_material_recibido');
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
             if (codigoInput) {
                 setTimeout(() => codigoInput.focus(), 100);
             }
@@ -599,8 +168,8 @@
 
         // Nueva función para configurar el comportamiento del registro automático
         function configurarRegistroAutomatico() {
-            const checkbox = document.getElementById('registroAutomatico');
-            const btnGuardar = document.getElementById('btnGuardarSalida');
+            const checkbox = document.getElementById('salida_registroAutomatico');
+            const btnGuardar = document.getElementById('salida_btnGuardarSalida');
             
             if (checkbox && btnGuardar) {
                 // Configurar estado inicial
@@ -617,8 +186,8 @@
 
         // Función para actualizar el modo de registro según el checkbox
         function actualizarModoRegistro() {
-            const checkbox = document.getElementById('registroAutomatico');
-            const btnGuardar = document.getElementById('btnGuardarSalida');
+            const checkbox = document.getElementById('salida_registroAutomatico');
+            const btnGuardar = document.getElementById('salida_btnGuardarSalida');
             
             if (checkbox && btnGuardar) {
                 if (checkbox.checked) {
@@ -636,7 +205,7 @@
             if (event.key === 'Enter') {
                 event.preventDefault();
                 
-                const checkbox = document.getElementById('registroAutomatico');
+                const checkbox = document.getElementById('salida_registroAutomatico');
                 const registroAutomatico = checkbox ? checkbox.checked : false;
                 const codigo = event.target.value.trim();
                 
@@ -682,7 +251,7 @@
 
         // Nueva función para procesamiento manual con botón
         async function procesarSalidaManual() {
-            const codigo = document.getElementById('codigo_material_recibido')?.value?.trim();
+            const codigo = document.getElementById('salida_codigo_material_recibido')?.value?.trim();
             
             if (!codigo) {
                 mostrarMensajeSimple('Ingrese código de material', 'error');
@@ -697,7 +266,7 @@
             // PROCESAR SALIDA MANUAL
             try {
                 // 1. Validar modelo
-                const modelo = document.getElementById('modelo')?.value || '';
+                const modelo = document.getElementById('salida_modelo')?.value || '';
                 if (!modelo) {
                     mostrarMensajeSimple('Seleccione modelo', 'error');
                     return;
@@ -719,7 +288,7 @@
                         cantidad_salida: cantidadSalida,
                         modelo: modelo,
                         numero_lote: materialActual.numero_lote_material || '',
-                        fecha_salida: document.getElementById('fecha_salida_form')?.value || '',
+                        fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
                         depto_salida: 'Producción', // Valor por defecto
                         proceso_salida: 'SMT 1st SIDE' // Valor por defecto
                     })
@@ -728,10 +297,15 @@
                 const salidaData = await salidaResponse.json();
 
                 if (salidaData.success) {
-                    mostrarMensajeSimple(`✅ Salida manual procesada: ${cantidadSalida}`, 'success');
-                    
-                    // Actualizar tabla en background
-                    setTimeout(() => consultarSalidas(), 500);
+                    // ✅ OPTIMIZACIÓN: Mostrar mensaje especial para respuesta optimizada
+                    if (salidaData.optimized) {
+                        mostrarMensajeSimple(`Salida procesada: ${cantidadSalida} | Inventario actualizándose`, 'success');
+                    } else {
+                        mostrarMensajeSimple(`Salida manual procesada: ${cantidadSalida}`, 'success');
+                    }
+                    s
+                    // Actualizar tabla en background más rápido
+                    setTimeout(() => consultarSalidas(), 300);
                 } else {
                     mostrarMensajeSimple('Error al procesar salida', 'error');
                 }
@@ -748,7 +322,7 @@
         async function procesarSalidaInmediata(codigo) {
             try {
                 // 1. Validar modelo
-                const modelo = document.getElementById('modelo')?.value || '';
+                const modelo = document.getElementById('salida_modelo')?.value || '';
                 if (!modelo) {
                     mostrarMensajeSimple('Seleccione modelo', 'error');
                     limpiarCodigo();
@@ -788,7 +362,7 @@
                         cantidad_salida: cantidadSalida,
                         modelo: modelo,
                         numero_lote: material.numero_lote_material || '',
-                        fecha_salida: document.getElementById('fecha_salida_form')?.value || '',
+                        fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
                         depto_salida: 'Producción', // Valor por defecto
                         proceso_salida: 'SMT 1st SIDE' // Valor por defecto
                     })
@@ -797,10 +371,15 @@
                 const salidaData = await salidaResponse.json();
 
                 if (salidaData.success) {
-                    mostrarMensajeSimple(`Salida OK: ${cantidadSalida}`, 'success');
+                    // ✅ OPTIMIZACIÓN: Feedback más rápido y claro
+                    if (salidaData.optimized) {
+                        mostrarMensajeSimple(`🚀 ULTRA-RÁPIDO: ${cantidadSalida} | Background processing`, 'success');
+                    } else {
+                        mostrarMensajeSimple(`Salida OK: ${cantidadSalida}`, 'success');
+                    }
                     
-                    // Actualizar tabla en background
-                    setTimeout(() => consultarSalidas(), 500);
+                    // Actualizar tabla más rápido para mostrar el cambio inmediatamente
+                    setTimeout(() => consultarSalidas(), 300);
                 } else {
                     mostrarMensajeSimple('Error en salida', 'error');
                 }
@@ -816,7 +395,7 @@
 
         // FUNCIÓN SIMPLE: Limpiar código y enfocar (pero mantener campos rellenados)
         function limpiarCodigo() {
-            const input = document.getElementById('codigo_material_recibido');
+            const input = document.getElementById('salida_codigo_material_recibido');
             if (input) {
                 input.value = '';
                 setTimeout(() => input.focus(), 200);
@@ -826,10 +405,10 @@
         // FUNCIÓN SIMPLE: Mostrar mensaje breve
         function mostrarMensajeSimple(mensaje, tipo) {
             // Buscar o crear contenedor de mensajes
-            let info = document.getElementById('info-message');
+            let info = document.getElementById('salida-info-message');
             if (!info) {
                 info = document.createElement('div');
-                info.id = 'info-message';
+                info.id = 'salida-info-message';
                 info.style.position = 'fixed';
                 info.style.top = '20px';
                 info.style.right = '20px';
@@ -897,12 +476,12 @@
         function rellenarCamposMaterial(material) {
             // Rellenar todos los campos con los datos del material
             const campos = {
-                'codigo_material_original': material.codigo_material_original || '',
-                'codigo_material': material.codigo_material || '',
-                'especificacion_material': material.especificacion || '',
-                'numero_parte': material.numero_parte || '',
-                'cantidad_actual': material.cantidad_actual || '',
-                'numero_lote_material': material.numero_lote_material || ''
+                'salida_codigo_material_original': material.codigo_material_original || '',
+                'salida_codigo_material': material.codigo_material || '',
+                'salida_especificacion_material': material.especificacion || '',
+                'salida_numero_parte': material.numero_parte || '',
+                'salida_cantidad_actual': material.cantidad_actual || '',
+                'salida_numero_lote_material': material.numero_lote_material || ''
             };
 
             Object.keys(campos).forEach(id => {
@@ -911,7 +490,7 @@
                     input.value = campos[id];
                     
                     // Colorear el campo de cantidad según el stock disponible
-                    if (id === 'cantidad_actual') {
+                    if (id === 'salida_cantidad_actual') {
                         const stockDisponible = parseFloat(material.cantidad_actual) || 0;
                         if (stockDisponible <= 0) {
                             input.style.backgroundColor = '#ffebee';
@@ -929,7 +508,7 @@
                     }
                     
                     // Destacar el número de lote de material cuando se llene
-                    if (id === 'numero_lote_material' && campos[id]) {
+                    if (id === 'salida_numero_lote_material' && campos[id]) {
                         input.style.backgroundColor = '#e3f2fd';
                         input.style.color = '#1565c0';
                         input.style.fontWeight = 'bold';
@@ -961,9 +540,9 @@
         function limpiarCamposMaterial() {
             // Limpiar todos los campos del material
             const campos = [
-                'codigo_material_original', 'codigo_material',
-                'especificacion_material', 'numero_parte', 'cantidad_actual',
-                'numero_lote_material'
+                'salida_codigo_material_original', 'salida_codigo_material',
+                'salida_especificacion_material', 'salida_numero_parte', 'salida_cantidad_actual',
+                'salida_numero_lote_material'
             ];
 
             campos.forEach(campo => {
@@ -984,7 +563,7 @@
         function reiniciarFormulario() {
             // Limpiar todos los campos del formulario
             const campos = [
-                'codigo_material_recibido'
+                'salida_codigo_material_recibido'
             ];
 
             campos.forEach(campo => {
@@ -998,7 +577,7 @@
 
             // Restablecer fecha actual
             const hoy = new Date().toISOString().split('T')[0];
-            const fechaSalidaForm = document.getElementById('fecha_salida_form');
+            const fechaSalidaForm = document.getElementById('salida_fecha_salida_form');
             if (fechaSalidaForm) {
                 fechaSalidaForm.value = hoy;
             }
@@ -1009,8 +588,8 @@
         async function guardarSalida() {
             try {
                 // Validar campos requeridos
-                const codigoRecibido = document.getElementById('codigo_material_recibido')?.value.trim() || '';
-                const modeloSeleccionado = document.getElementById('modelo')?.value || '';
+                const codigoRecibido = document.getElementById('salida_codigo_material_recibido')?.value.trim() || '';
+                const modeloSeleccionado = document.getElementById('salida_modelo')?.value || '';
 
                 if (!codigoRecibido) {
                     mostrarError('Debe ingresar el código de material recibido');
@@ -1049,7 +628,7 @@
                     cantidad_salida: cantidadSalida,
                     modelo: modeloSeleccionado,
                     numero_lote: materialActual.numero_lote_material || '', // Usar el número de lote del material
-                    fecha_salida: document.getElementById('fecha_salida_form')?.value || '',
+                    fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
                     depto_salida: 'Producción', // Valor por defecto
                     proceso_salida: 'SMT 1st SIDE' // Valor por defecto
                 };
@@ -1065,12 +644,22 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    mostrarExito(data.message);
+                    // ✅ OPTIMIZACIÓN: Mensajes más informativos según el tipo de respuesta
+                    if (data.optimized) {
+                        mostrarExito(`🚀 SALIDA ULTRA-RÁPIDA COMPLETADA | Stock restante: ${data.cantidad_restante || 'N/A'}`);
+                        
+                        // Mostrar información adicional sobre optimización
+                        setTimeout(() => {
+                            mostrarInfo('💡 Optimización activa: Inventario general actualizándose en segundo plano');
+                        }, 1500);
+                    } else {
+                        mostrarExito(data.message);
+                    }
                     
                     // NUEVO COMPORTAMIENTO: Ya no se eliminan registros del almacén
                     // El historial se preserva completo y el inventario se maneja en otra tabla
                     
-                    if (data.nota) {
+                    if (data.nota && !data.optimized) {
                         // Mostrar información adicional sobre el nuevo comportamiento
                         setTimeout(() => {
                             mostrarInfo(data.nota);
@@ -1080,7 +669,7 @@
                     // Actualizar la interfaz para mostrar la cantidad calculada (no la real del almacén)
                     if (materialActual && data.cantidad_restante !== undefined) {
                         // Actualizar cantidad mostrada (calculada)
-                        const cantidadActualInput = document.getElementById('cantidad_actual');
+                        const cantidadActualInput = document.getElementById('salida_cantidad_actual');
                         
                         if (cantidadActualInput) {
                             cantidadActualInput.value = data.cantidad_restante;
@@ -1097,17 +686,16 @@
 
                     // Limpiar solo el código de material para permitir nueva búsqueda
                     // El modelo se mantiene fijo como solicitado
-                    const codigoInput = document.getElementById('codigo_material_recibido');
+                    const codigoInput = document.getElementById('salida_codigo_material_recibido');
                     if (codigoInput) codigoInput.value = '';
                     
                     // Limpiar campos del material encontrado
                     limpiarCamposMaterial();
 
-                    // Esperar un momento para que el usuario vea el mensaje de éxito
-                    // antes de actualizar la tabla
+                    // ✅ OPTIMIZACIÓN: Tiempo reducido para actualización de tabla
                     setTimeout(() => {
                         consultarSalidas();
-                    }, 1000);
+                    }, data.optimized ? 300 : 1000);
 
                 } else {
                     mostrarError(data.error || 'Error al procesar la salida');
@@ -1123,7 +711,7 @@
             try {
                 mostrarCargando('Consultando salidas...');
 
-                const fechaSalida = document.getElementById('fecha_salida_consulta')?.value || '';
+                const fechaSalida = document.getElementById('salida_fecha_salida_consulta')?.value || '';
 
                 let url = '/consultar_historial_salidas';
                 const params = new URLSearchParams();
@@ -1142,7 +730,7 @@
 
                 if (Array.isArray(salidas)) {
                     actualizarTablaSalidas(salidas);
-                    const totalInfo = document.getElementById('totalInfo');
+                    const totalInfo = document.getElementById('salida_totalInfo');
                     if (totalInfo) {
                         totalInfo.textContent = `Total Rows: ${salidas.length}`;
                     }
@@ -1159,7 +747,7 @@
         }
 
         function actualizarTablaSalidas(salidas) {
-            const tbody = document.querySelector('#tablaSalidas tbody');
+            const tbody = document.querySelector('#salida_tablaSalidas tbody');
             if (!tbody) return;
             
             if (salidas.length === 0) {
@@ -1212,7 +800,7 @@
         function exportarExcel() {
             try {
                 // Obtener datos de la tabla
-                const tabla = document.getElementById('tablaSalidas');
+                const tabla = document.getElementById('salida_tablaSalidas');
                 if (!tabla) {
                     mostrarError('No se encontró la tabla');
                     return;
@@ -1260,10 +848,10 @@
         // Funciones de utilidad para mostrar mensajes
         function mostrarMensaje(mensaje, tipo) {
             // Buscar contenedor de mensajes existente o crear uno
-            let contenedor = document.getElementById('mensaje-sistema-salida');
+            let contenedor = document.getElementById('salida-mensaje-sistema');
             if (!contenedor) {
                 contenedor = document.createElement('div');
-                contenedor.id = 'mensaje-sistema-salida';
+                contenedor.id = 'salida-mensaje-sistema';
                 contenedor.style.cssText = `
                     position: fixed;
                     top: 20px;
@@ -1335,7 +923,7 @@
         }
 
         function ocultarMensaje() {
-            const contenedor = document.getElementById('mensaje-sistema-salida');
+            const contenedor = document.getElementById('salida-mensaje-sistema');
             if (contenedor) {
                 contenedor.style.display = 'none';
             }
@@ -1344,7 +932,7 @@
         // Función global para limpiar al cambiar de página
         window.limpiarControlSalida = function() {
             window.controlSalidaInicializado = false;
-            const contenedor = document.getElementById('mensaje-sistema-salida');
+            const contenedor = document.getElementById('salida-mensaje-sistema');
             if (contenedor) {
                 contenedor.remove();
             }
@@ -1363,10 +951,10 @@
             return {
                 materialActual: materialActual,
                 elementosDOM: {
-                    codigoInput: !!document.getElementById('codigo_material_recibido'),
-                    tablaSalidas: !!document.getElementById('tablaSalidas'),
-                    checkbox: !!document.getElementById('registroAutomatico'),
-                    modelo: document.getElementById('modelo')?.value || 'No seleccionado'
+                    codigoInput: !!document.getElementById('salida_codigo_material_recibido'),
+                    tablaSalidas: !!document.getElementById('salida_tablaSalidas'),
+                    checkbox: !!document.getElementById('salida_registroAutomatico'),
+                    modelo: document.getElementById('salida_modelo')?.value || 'No seleccionado'
                 }
             };
         };

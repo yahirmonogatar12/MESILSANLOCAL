@@ -1503,7 +1503,8 @@ def buscar_material_por_codigo():
 @app.route('/procesar_salida_material', methods=['POST'])
 @login_requerido
 def procesar_salida_material():
-    """Procesar salida de material y actualizar inventario"""
+    """Procesar salida de material con respuesta inmediata y actualización de inventario en background"""
+    import threading
     conn = None
     cursor = None
     try:
@@ -1529,7 +1530,7 @@ def procesar_salida_material():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Iniciar transacción
+        # Iniciar transacción SOLO para validaciones y registro de salida
         conn.execute('BEGIN TRANSACTION')
         
         # Buscar el material en almacén para obtener información completa
@@ -1589,26 +1590,42 @@ def procesar_salida_material():
             proceso_salida, cantidad_salida, fecha_salida, fecha_registro
         ))
         
-        # IMPORTANTE: Ya NO eliminamos ni actualizamos la cantidad en control_material_almacen
-        # Solo registramos la salida y mantenemos el historial completo
         nueva_cantidad = stock_disponible - cantidad_salida
         
-        # Actualizar inventario general por número de parte
-        if numero_parte:
-            actualizar_inventario_general_salida(numero_parte, cantidad_salida)
-            print(f"📦 Inventario general actualizado: -{cantidad_salida} para {numero_parte}")
-        
-        # Confirmar transacción
+        # Confirmar transacción INMEDIATAMENTE
         conn.commit()
         
+        # ✅ OPTIMIZACIÓN: Actualizar inventario general en BACKGROUND THREAD
+        def actualizar_inventario_background():
+            """Función para actualizar inventario en segundo plano"""
+            try:
+                if numero_parte:
+                    print(f"🔄 BACKGROUND: Actualizando inventario para {numero_parte}")
+                    resultado = actualizar_inventario_general_salida(numero_parte, cantidad_salida)
+                    if resultado:
+                        print(f"✅ BACKGROUND: Inventario actualizado exitosamente: -{cantidad_salida} para {numero_parte}")
+                    else:
+                        print(f"❌ BACKGROUND: Error al actualizar inventario para {numero_parte}")
+            except Exception as e:
+                print(f"❌ BACKGROUND ERROR: {e}")
+        
+        # Ejecutar actualización de inventario en hilo separado
+        if numero_parte:
+            inventario_thread = threading.Thread(target=actualizar_inventario_background)
+            inventario_thread.daemon = True  # Se cierra con la aplicación
+            inventario_thread.start()
+            print(f"🚀 OPTIMIZADO: Salida registrada, inventario actualizándose en background")
+        
+        # ✅ RESPUESTA INMEDIATA AL USUARIO
         return jsonify({
             'success': True,
-            'message': f'Salida procesada exitosamente. Stock disponible restante: {nueva_cantidad}',
+            'message': f'✅ Salida procesada INMEDIATAMENTE. Stock restante: {nueva_cantidad}',
             'cantidad_restante': nueva_cantidad,
-            'eliminado': False,  # Ya no eliminamos registros
+            'eliminado': False,
             'cantidad_original': cantidad_original,
             'total_salidas': total_salidas_previas + cantidad_salida,
-            'nota': 'El inventario se mantiene en el historial de entradas. Consulta el inventario general para totales.'
+            'nota': 'Inventario general actualizándose en segundo plano para máxima velocidad',
+            'optimized': True  # Indicador de que se usó la versión optimizada
         })
         
     except Exception as e:
@@ -1672,3 +1689,66 @@ def obtener_inventario_general_endpoint():
             'success': False,
             'error': f'Error interno: {str(e)}'
         }), 500
+
+@app.route('/verificar_estado_inventario', methods=['GET'])
+@login_requerido
+def verificar_estado_inventario():
+    """Endpoint opcional para verificar si el inventario general está actualizado"""
+    try:
+        numero_parte = request.args.get('numero_parte')
+        
+        if not numero_parte:
+            return jsonify({'success': False, 'error': 'Número de parte requerido'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verificar estado del inventario para este número de parte
+        cursor.execute('''
+            SELECT numero_parte, cantidad_total, fecha_actualizacion 
+            FROM inventario_general 
+            WHERE numero_parte = ?
+        ''', (numero_parte,))
+        
+        resultado = cursor.fetchone()
+        
+        if resultado:
+            from datetime import datetime, timedelta
+            
+            # Verificar si la actualización es reciente (últimos 30 segundos)
+            try:
+                fecha_actualizacion = datetime.strptime(resultado['fecha_actualizacion'], '%Y-%m-%d %H:%M:%S')
+                tiempo_transcurrido = datetime.now() - fecha_actualizacion
+                actualizado_recientemente = tiempo_transcurrido < timedelta(seconds=30)
+            except:
+                actualizado_recientemente = False
+            
+            return jsonify({
+                'success': True,
+                'numero_parte': resultado['numero_parte'],
+                'cantidad_total': resultado['cantidad_total'],
+                'fecha_actualizacion': resultado['fecha_actualizacion'],
+                'actualizado_recientemente': actualizado_recientemente,
+                'mensaje': 'Inventario actualizado' if actualizado_recientemente else 'Inventario estable'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'No se encontró registro de inventario para {numero_parte}'
+            }), 404
+        
+    except Exception as e:
+        print(f"Error al verificar estado de inventario: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+    
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
