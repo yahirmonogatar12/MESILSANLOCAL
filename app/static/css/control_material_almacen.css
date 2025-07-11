@@ -1,4 +1,12 @@
 /* Estilos específicos para Control de Material que complementan style.css */
+.material-container1 {
+    font-family: 'LG regular', sans-serif;
+    background-color: #32323E;
+    color: lightgray;
+    height: 40px;
+    min-height: 20vh;
+    padding: 1px;
+}
 .material-container2 {
     font-family: 'LG regular', sans-serif;
     background-color: #32323E;
@@ -11,23 +19,22 @@
     display: flex;
     justify-content: flex-end;
     gap: 6px;
-    margin-bottom: 4px;
     padding: 8px;
-    background-color: #34334E;
+    background-color: #33334D;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     border: #20688C 1px solid;
 }
 
 /* Color especial para el contenedor de en medio */
 .material-container2 .material-toolbar:nth-of-type(2) {
-    background-color: #44324b;
+    background-color: #33334D;
 }
 
 .material-container2 .material-btn {
     padding: 6px 12px;
-    border: none;
+    border: #20688C 1px solid;
     border-radius: 4px;
-    background-color: #3C3940;
+    background-color: #636779;
     color: white;
     cursor: pointer;
     font-size: 12px;
@@ -42,16 +49,16 @@
 }
 
 .material-container2 .material-btn:hover {
-    background-color: #2980b9;
+    background-color: #949898;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
 .material-container2 .material-btn.orange {
-    background-color: #e67e22;
+    background-color: #833C0D;
 }
 .material-container2 .material-btn.orange:hover {
-    background-color: #d35400;
+    background-color: #9C4910;
 }
 
 .material-container2 .material-btn.secondary {
@@ -71,25 +78,32 @@
 
 /* Formulario con diseño consistente */
 .material-container2 .material-form-section {
-    background-color: #4a4d5c;
+    background-color: #2D363D;
     border-radius: 2px;
-    padding: 12px;
     margin-bottom: 6px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    border: 1px solid #5a6c7d;
+    border: 1px solid #20688C;
+}
+.material-form-section2 {
+    background-color: #44324A;
+    border-radius: 2px;
+    margin-bottom: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    border: 1px solid #20688C;
 }
 
 .material-container2 .material-form-row {
     display: grid;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 2px;
+    padding: 1px 0px 1px 0px;
 }
 
 .material-container2 .material-form-group {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
+    padding: 2px 5px 5px 0px;
 }
 
 .material-container2 .material-form-group label {
@@ -102,23 +116,23 @@
     white-space: nowrap;
     min-width: 140px;
     flex-shrink: 0;
+    padding: 0px 0px 0px 5px; 
 }
 
 .material-container2 .material-form-group input, 
 .material-container2 .material-form-group select {
     flex: 1;
-    min-width: 150px;
-    max-width: 250px;
-    padding: 6px 8px;
-    border: 1px solid #5a6c7d;
-    border-radius: 2px;
-    background-color: #ffffff;
-    color: #333333;
+    min-width: 220px;
+    max-width: 370px;
+    padding: 5px 10px 0px 10px;
+    border: #20688C 1px solid;
+    background-color: #7B8181;
+    color: #ffffff;
     font-size: 11px;
     font-family: 'LG regular', sans-serif;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     box-sizing: border-box;
-    height: 24px;
+    height: 30px;
 }
 
 .material-container2 .material-form-group input:focus, 
@@ -141,6 +155,10 @@
     background-position: right 8px center;
     background-size: 16px;
     padding-right: 32px;
+}
+#registroAutomatico {
+    width: 20px;
+    height: 20px;
 }
 
 .material-container2 .three-column {

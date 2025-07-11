@@ -1,5 +1,7 @@
 import json
 import os
+import re
+import traceback
 from functools import wraps
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
 from .db import (get_db_connection, init_db, guardar_configuracion_usuario, cargar_configuracion_usuario,
@@ -61,7 +63,7 @@ def material():
 @login_requerido
 def produccion():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('Control de material/Control de material de almacen.html', usuario=usuario)
+    return render_template('Control de material/Control de salida.html', usuario=usuario)
 
 @app.route('/DESARROLLO')
 @login_requerido
@@ -959,12 +961,12 @@ def actualizar_estado_desecho_almacen():
 def obtener_siguiente_secuencial():
     """
     Obtiene el siguiente número secuencial para el código de material recibido.
-    Formato correcto: CODIGO_MATERIAL/YYYYMMDD0001 (donde 0001 incrementa por cada registro del mismo código y fecha)
+    Formato correcto: CODIGO_MATERIAL,YYYYMMDD0001 (donde 0001 incrementa por cada registro del mismo código y fecha)
     
     Ejemplos:
-    - OCH1223K678/202507080001 (primer registro del día)
-    - OCH1223K678/202507080002 (segundo registro del día)  
-    - OCH1223K678/202507080003 (tercer registro del día)
+    - OCH1223K678,202507080001 (primer registro del día)
+    - OCH1223K678,202507080002 (segundo registro del día)  
+    - OCH1223K678,202507080003 (tercer registro del día)
     """
     try:
         # Obtener el código de material del parámetro de la URL
@@ -987,7 +989,7 @@ def obtener_siguiente_secuencial():
         print(f"🔍 Buscando secuenciales para código: '{codigo_material}' y fecha: {fecha_actual}")
         
         # Buscar registros específicos para este código de material y fecha exacta
-        # El formato buscado es: CODIGO_MATERIAL/YYYYMMDD0001 en el campo codigo_material_recibido
+        # El formato buscado es: CODIGO_MATERIAL,YYYYMMDD0001 en el campo codigo_material_recibido
         query = """
         SELECT codigo_material_recibido, fecha_registro
         FROM control_material_almacen 
@@ -995,8 +997,8 @@ def obtener_siguiente_secuencial():
         ORDER BY fecha_registro DESC
         """
         
-        # Patrón de búsqueda: CODIGO/YYYYMMDD seguido de 4 dígitos
-        patron_busqueda = f"{codigo_material}/{fecha_actual}%"
+        # Patrón de búsqueda: CODIGO,YYYYMMDD seguido de 4 dígitos (CORRECTO: con coma)
+        patron_busqueda = f"{codigo_material},{fecha_actual}%"
         
         cursor.execute(query, (patron_busqueda,))
         resultados = cursor.fetchall()
@@ -1005,16 +1007,14 @@ def obtener_siguiente_secuencial():
         
         # Buscar el secuencial más alto para este código de material y fecha específica
         secuencial_mas_alto = 0
-        
-        import re
-        patron_regex = rf'^{re.escape(codigo_material)}/{fecha_actual}(\d{{4}})$'
+        patron_regex = rf'^{re.escape(codigo_material)},{fecha_actual}(\d{{4}})$'
         
         for resultado in resultados:
             codigo_recibido = resultado['codigo_material_recibido'] or ''
             
             print(f"📝 Analizando: codigo_material_recibido='{codigo_recibido}'")
             
-            # Buscar patrón exacto: CODIGO_MATERIAL/YYYYMMDD0001
+            # Buscar patrón exacto: CODIGO_MATERIAL,YYYYMMDD0001
             match = re.match(patron_regex, codigo_recibido)
             
             if match:
@@ -1030,7 +1030,7 @@ def obtener_siguiente_secuencial():
         siguiente_secuencial = secuencial_mas_alto + 1
         
         # Generar el próximo código de material recibido completo
-        siguiente_codigo_completo = f"{codigo_material}/{fecha_actual}{siguiente_secuencial:04d}"
+        siguiente_codigo_completo = f"{codigo_material},{fecha_actual}{siguiente_secuencial:04d}"
         
         print(f"✅ Siguiente secuencial: {siguiente_secuencial}")
         print(f"✅ Próximo código completo: {siguiente_codigo_completo}")

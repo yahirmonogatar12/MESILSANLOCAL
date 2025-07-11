@@ -32,138 +32,162 @@
     
 </head>
 <body>
-    <div class="material-container2">
-        
-        <!-- Formulario principal -->        <div class="material-form-section">
+     <!-- Fila 1: SOLO Forma de material, ancho completo -->
+<div class="material-container2">
+
+    <div class="material-form-section">
+        <div class="material-form-group" >
+            <label>
+                    Forma de material
+            </label>
+            <select id="forma_material">
+                <option>
+                    OriginCode
+                </option>
+            </select>
+        </div>
+    </div>
+
+    <div class="material-form-section">    
+        <div class="material-form-row four-column">
             <div class="material-form-group">
-                    <label>Forma de material:</label>
-                    <select id="forma_material">
-                        <option>OriginCode</option>
-                    </select>
-                </div><br
-            <!-- Primera fila: 3 columnas -->
-            <div class="material-form-row three-column">
+                <label>
+                    Cliente
+                </label>
+                <select id="cliente">
+                    <option value="">
+                        Seleccionar
+                    </option>
+                    <option value="LG_REFRIS">
+                        LG_REFRIS
+                    </option>
+                    <option value="LG_ESTUFAS">
+                        LG_ESTUFAS
+                    </option>
+                </select>
+            </div>
+            <div class="material-form-group">
+                <label>
+                    Código de material original
+                </label>
+            <div style="display: flex; align-items: center;">
+                <input type="text" id="codigoMaterialOriginal" style="flex: 1;" placeholder="Escanear código aquí..." onkeydown="procesarScaneo(event)">
+            </div>
+        </div>
+    </div>
+
+    <div class="material-form-row four-column">
+        <div class="material-form-group">
+            <label>Código de material</label>
+            <div style="position: relative;">
+                <select id="codigoMaterialSelect" onclick="event.preventDefault(); abrirModalCodigoMaterial();" readonly style="cursor: pointer;">
+                    <option value="">Seleccionar</option>
+                </select>
                 
-                <div class="material-form-group">
-                    <label>Cliente:</label>
-                    <select id="cliente">
-                        <option value="">Seleccionar</option>
-                        <option value="LG_REFRIS">LG_REFRIS</option>
-                        <option value="LG_ESTUFAS">LG_ESTUFAS</option>
-                    </select>
-                </div>
-                <div class="material-form-group">
-                    <label>Código de material original:</label>
-                    <div style="display: flex; align-items: center;">
-                        <input type="text" id="codigoMaterialOriginal" style="flex: 1;" placeholder="Escanear código aquí..." onkeydown="procesarScaneo(event)">
+          
+                <div id="modalCodigoMaterial" class="dropdown-modal">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Buscar código, nombre o especificación..." onkeyup="filtrarTablaModal()">
+                    <div class="dropdown-table-container">
+                        <table class="dropdown-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Especificación</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaCodigosBody">
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-            </div>
-
-            <!-- Segunda fila: 3 columnas -->
-            <div class="material-form-row three-column">
-                <div class="material-form-group">
-                    <label>Código de material:</label>
-                    <div style="position: relative;">
-                        <select id="codigoMaterialSelect" onclick="event.preventDefault(); abrirModalCodigoMaterial();" readonly style="cursor: pointer;">
-                            <option value="">Seleccionar</option>
-                        </select>
-                        
-                        <!-- Modal dropdown debajo del select -->
-                        <div id="modalCodigoMaterial" class="dropdown-modal">
-                            <input type="text" id="searchInput" class="search-input" placeholder="Buscar código, nombre o especificación..." onkeyup="filtrarTablaModal()">
-                            <div class="dropdown-table-container">
-                                <table class="dropdown-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Código</th>
-                                            <th>Nombre</th>
-                                            <th>Especificación</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tablaCodigosBody">
-                                        <!-- Los datos se cargarán dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="material-form-group">
-                    <label>Material importación/local:</label>
-                    <select id="material_importacion_local">
-                        <option value="Customer Supply">Customer Supply</option>
-                        <option value="Local">Local</option>
-                        <option value="Importación">Importación</option>
-                    </select>
-                </div>
-                <div class="material-form-group">
-                    <label>Fecha de recibo:</label>
-                    <input type="date" id="fecha_recibo" value="2025-07-08">
-                </div>
-            </div>
-
-            <!-- Tercera fila: 3 columnas -->
-            <div class="material-form-row three-column">
-                <div class="material-form-group">
-                    <label>Fecha de fabricación:</label>
-                    <input type="date" id="fecha_fabricacion" value="2025-07-08">
-                </div>
-                <div class="material-form-group">
-                    <label>Cantidad actual:</label>
-                    <input type="text" id="cantidad_actual">
-                </div>
-                <div class="material-form-group">
-                    <label>Número de lote de material:</label>
-                    <input type="text" id="numero_lote_material">
-                </div>
-            </div>
-
-            <!-- Cuarta fila: 3 columnas -->
-            <div class="material-form-row three-column">
-                <div class="material-form-group">
-                    <label>Código de material recibido:</label>
-                    <input type="text" id="codigo_material_recibido">
-                </div>
-                <div class="material-form-group">
-                    <label>Número de parte:</label>
-                    <input type="text" id="numero_parte_lower">
-                </div>
-                <div class="material-form-group">
-                    <label>Cantidad estandarizada:</label>
-                    <input type="text" id="cantidad_estandarizada">
-                </div>
-            </div>
-
-            <!-- Quinta fila: 2 columnas -->
-            <div class="material-form-row two-column">
-                <div class="material-form-group">
-                    <label>Código de material:</label>
-                    <input type="text" id="codigo_material_lower">
-                </div>
-                <div class="material-form-group">
-                    <label>Propiedad de material:</label>
-                    <input type="text" id="propiedad_material">
                 </div>
             </div>
         </div>
+        <div class="material-form-group">
+            <label>Material importación/local</label>
+            <select id="material_importacion_local">
+                <option value="Customer Supply">Customer Supply</option>
+                <option value="Local">Local</option>
+                <option value="Importación">Importación</option>
+            </select>
+        </div>
+        <div class="material-form-group">
+            <label>Fecha de recibo</label>
+            <input type="date" id="fecha_recibo" value="2025-07-08">
+        </div>
+    </div>
+
+    <div class="material-form-row four-column">
+        <div class="material-form-group">
+            <label>Fecha de fabricación</label>
+            <input type="date" id="fecha_fabricacion" value="2025-07-08">
+        </div>
+        <div class="material-form-group">
+            <label>Cantidad actual:</label>
+            <input type="text" id="cantidad_actual">
+        </div>
+        <div class="material-form-group">
+            <label>Número de lote de material</label>
+            <input type="text" id="numero_lote_material">
+        </div>
+    </div>
+        </div>
+        
+    
+<div class="material-form-section2">
+    <div class="material-form-row four-column">
+        <div class="material-form-group">
+            <label>Código de material recibido</label>
+            <input type="text" id="codigo_material_recibido">
+        </div>
+        <div class="material-form-group">
+            <label>Número de parte:</label>
+            <input type="text" id="numero_parte_lower">
+        </div>
+        <div class="material-form-group">
+            <label>Cantidad estandarizada</label>
+            <input type="text" id="cantidad_estandarizada">
+        </div>
+        <button class="material-btn gray">Conf. de impresora</button>
+        <div class="material-form-group">
+            <label>Código de material</label>
+            <input type="text" id="codigo_material_lower">
+        </div>
+        <div class="material-form-group">
+            <label>Propiedad de material</label>
+            <input type="text" id="propiedad_material">
+        </div>
+        <div class="material-form-group"></div>
+        <label style="display: flex; align-items: center; gap: 6px; color: #ffffff; font-size: 11px; cursor: pointer;">
+            <input type="checkbox" id="registroAutomatico" style="transform: scale(1.0); accent-color: #404052;">
+                Registro automático
+        </label>
+        
+        <div class="material-form-group"></div>
+        <div class="material-form-group"></div>
+        <div class="material-form-group"></div>
+         <button class="material-btn orange" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
+           <div class="material-form-group"></div>
+        <div class="material-form-group"></div>
+        <div class="material-form-group"></div>
+        <button class="material-btn">Imprimir</button>
+    </div>
+    
+            
+            
+           
+            
+       
+</div>
 
         <!-- Botonera usando el diseño de CONTROL_DE_MATERIAL -->
-        <div class="material-toolbar">
-            <button class="material-btn gray">Conf. de impresora</button>
-            <label style="display: flex; align-items: center; gap: 6px; color: #63677a; font-size: 11px; cursor: pointer;">
-                <input type="checkbox" id="registroAutomatico" style="transform: scale(1.0); accent-color: #502696;">
-                Registro automático
-            </label>
-            <button class="material-btn orange" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
-            <button class="material-btn">Imprimir</button>
-        </div>
+        
 
         <!-- Sección de filtros usando el diseño de CONTROL_DE_MATERIAL -->
         <div class="material-toolbar">
             <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
-                <label style="margin: 0; color: lightgray; font-size: 11px;">Fecha de recibo:</label>
-                <input type="date" id="filtro_fecha_inicio" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px;">
+                <label style="margin: 0; color: lightgray; font-size: 11px;">Fecha de recibo</label>
+                <input type="date" id="filtro_fecha_inicio" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px; font-family: sans-serif;">
                 <span style="color: lightgray; font-size: 11px;">~</span>
                 <input type="date" id="filtro_fecha_fin" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px;">
             </div>
@@ -516,7 +540,7 @@
                 }
                 
                 // Si no funciona con reglas, usar el método anterior como fallback
-                const partes = codigoCompleto.split('/');
+                const partes = codigoCompleto.split('-');
                 
                 if (partes.length < 8) {
                     alert('Formato de código inválido. No se encontró regla aplicable y no tiene el formato esperado con "/" ');
@@ -591,20 +615,30 @@
                     url += `?codigo_material=${encodeURIComponent(codigoMaterial)}`;
                 }
                 
+                console.log(`🔍 Cargando secuencial desde: ${url}`);
+                
                 const response = await fetch(url);
                 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log(`📊 Respuesta del servidor:`, data);
+                    
                     if (data.success) {
                         contadorSecuencial = data.siguiente_secuencial || 1;
                         proximoCodigoCompleto = data.proximo_codigo_completo || '';
+                        
+                        console.log(`✅ Variables actualizadas:`);
+                        console.log(`   - contadorSecuencial: ${contadorSecuencial}`);
+                        console.log(`   - proximoCodigoCompleto: ${proximoCodigoCompleto}`);
                     } else {
                         contadorSecuencial = 1;
                         proximoCodigoCompleto = '';
+                        console.warn(`⚠️ Respuesta sin éxito, usando valores por defecto`);
                     }
                 } else {
                     contadorSecuencial = 1;
                     proximoCodigoCompleto = '';
+                    console.error(`❌ Error en respuesta HTTP: ${response.status}`);
                 }
             } catch (error) {
                 console.error('❌ Error de conexión al cargar secuencial:', error);
@@ -614,47 +648,56 @@
         }
 
         function llenarCamposInferiores(codigoMaterial) {
+            console.log(`🔍 llenarCamposInferiores llamado con: ${codigoMaterial}`);
+            
             // Buscar la información completa del código de material
             const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
+            console.log(`📦 Información completa encontrada:`, codigoCompleto);
             
-            // Recargar el contador específico para este código de material
+            // FORZAR recarga del contador específico para este código de material
+            console.log(`🔄 Recargando contador para código: ${codigoMaterial}`);
+            
             cargarSiguienteSecuencial(codigoMaterial).then(() => {
-                // Una vez cargado el contador, proceder a llenar los campos
-                llenarCamposConContador(codigoMaterial, codigoCompleto);
-            });
-        }
-        
-        function llenarCamposConContador(codigoMaterial, codigoCompleto) {
-            // Obtener el número de parte del material si está disponible
-            let numeroParte = '';
-            if (codigoCompleto && codigoCompleto.numero_parte) {
-                numeroParte = codigoCompleto.numero_parte;
-            } else {
-                // Si no hay número de parte, dejar vacío o advertir
-                numeroParte = '';
-                console.warn('No se encontró número de parte para el código de material:', codigoMaterial);
-            }
-
-            // Usar número de parte para el código recibido
-            const codigoMaterialRecibidoCompleto = numeroParte
-                ? `${numeroParte}/${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(contadorSecuencial).padStart(4, '0')}`
-                : '';
-
-            // Llenar campos con IDs específicos usando la información de la base de datos
-            if (codigoCompleto) {
-                llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto); // Código completo: NUMERO_PARTE/YYYYMMDD0001
-                llenarCampoPorId('codigo_material_lower', codigoMaterial); // Solo el código base
-                llenarCampoPorId('numero_parte_lower', numeroParte || String(contadorSecuencial).padStart(4, '0'));
-                llenarCampoPorId('cantidad_estandarizada', codigoCompleto.cantidad_estandarizada || '');
-                llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
-                llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
-                llenarCampoPorId('numero_lote_material', '');
-            } else {
+                console.log(`📊 Variables después de cargar:`);
+                console.log(`   - contadorSecuencial: ${contadorSecuencial}`);
+                console.log(`   - proximoCodigoCompleto: ${proximoCodigoCompleto}`);
+                
+                // USAR DIRECTAMENTE proximoCodigoCompleto del servidor
+                let codigoMaterialRecibidoCompleto = proximoCodigoCompleto;
+                
+                // Solo como fallback si el servidor no devuelve el código completo
+                if (!codigoMaterialRecibidoCompleto) {
+                    const fechaActual = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                    const secuenciaFormateada = String(contadorSecuencial).padStart(4, '0');
+                    codigoMaterialRecibidoCompleto = `${codigoMaterial},${fechaActual}${secuenciaFormateada}`;
+                    console.warn(`⚠️ Usando código generado como fallback: ${codigoMaterialRecibidoCompleto}`);
+                }
+                
+                console.log(`🏷️ Código material recibido final: ${codigoMaterialRecibidoCompleto}`);
+                
+                if (codigoCompleto) {
+                    llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
+                    llenarCampoPorId('codigo_material_lower', codigoMaterial);
+                    llenarCampoPorId('numero_parte_lower', String(contadorSecuencial).padStart(4, '0'));
+                    llenarCampoPorId('cantidad_estandarizada', codigoCompleto.cantidad_estandarizada || '');
+                    llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
+                    llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
+                    llenarCampoPorId('numero_lote_material', '');
+                } else {
+                    llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
+                    llenarCampoPorId('codigo_material_lower', codigoMaterial);
+                    llenarCampoPorId('numero_parte_lower', String(contadorSecuencial).padStart(4, '0'));
+                    llenarCampoPorId('numero_lote_material', '');
+                }
+            }).catch(error => {
+                console.error('❌ Error al cargar secuencial:', error);
+                // En caso de error, usar valores por defecto
+                const fechaActual = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const codigoMaterialRecibidoCompleto = `${codigoMaterial},${fechaActual}0001`;
                 llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
                 llenarCampoPorId('codigo_material_lower', codigoMaterial);
-                llenarCampoPorId('numero_parte_lower', String(contadorSecuencial).padStart(4, '0'));
-                llenarCampoPorId('numero_lote_material', '');
-            }
+                llenarCampoPorId('numero_parte_lower', '0001');
+            });
         }
 
         function llenarCampoPorId(idCampo, valor) {
@@ -743,6 +786,88 @@
             }
         }
 
+        // FUNCIÓN DE DIAGNÓSTICO PARA DEBUGGEAR EL SECUENCIAL
+        window.diagnosticarSecuencial = async function(codigoMaterial = '0RH5602C622') {
+            console.log('🔬 === DIAGNÓSTICO COMPLETO DEL SECUENCIAL ===');
+            console.log(`🎯 Código de material a probar: ${codigoMaterial}`);
+            
+            try {
+                // 1. Probar el endpoint directamente
+                const url = `/obtener_siguiente_secuencial?codigo_material=${encodeURIComponent(codigoMaterial)}`;
+                console.log(`📡 URL de prueba: ${url}`);
+                
+                const response = await fetch(url);
+                console.log(`📊 Status de respuesta: ${response.status}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`📋 Respuesta completa del servidor:`, data);
+                    
+                    // 2. Mostrar detalles de la respuesta
+                    console.log('🔍 Detalles de la respuesta:');
+                    console.log(`  - success: ${data.success}`);
+                    console.log(`  - siguiente_secuencial: ${data.siguiente_secuencial}`);
+                    console.log(`  - proximo_codigo_completo: ${data.proximo_codigo_completo}`);
+                    console.log(`  - fecha_actual: ${data.fecha_actual}`);
+                    console.log(`  - secuencial_mas_alto_encontrado: ${data.secuencial_mas_alto_encontrado}`);
+                    console.log(`  - patron_busqueda: ${data.patron_busqueda}`);
+                    
+                    // 3. Actualizar variables globales
+                    contadorSecuencial = data.siguiente_secuencial || 1;
+                    proximoCodigoCompleto = data.proximo_codigo_completo || '';
+                    
+                    console.log('✅ Variables globales actualizadas:');
+                    console.log(`  - contadorSecuencial: ${contadorSecuencial}`);
+                    console.log(`  - proximoCodigoCompleto: ${proximoCodigoCompleto}`);
+                    
+                    // 4. Probar llenar campos
+                    console.log('🔄 Probando llenar campos...');
+                    llenarCamposInferiores(codigoMaterial);
+                    
+                } else {
+                    console.error(`❌ Error HTTP: ${response.status}`);
+                    const text = await response.text();
+                    console.error(`❌ Respuesta de error: ${text}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en diagnóstico:', error);
+            }
+            
+            console.log('🔬 === FIN DIAGNÓSTICO ===');
+        };
+
+        // FUNCIÓN PARA VERIFICAR BASE DE DATOS
+        window.verificarBaseDatos = async function() {
+            console.log('🗃️ === VERIFICANDO BASE DE DATOS ===');
+            
+            try {
+                // Hacer una consulta para ver todos los registros
+                const response = await fetch('/consultar_control_almacen');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`📊 Total de registros en BD: ${data.length}`);
+                    
+                    // Filtrar solo los registros con 0RH5602C622
+                    const registrosFiltrados = data.filter(r => 
+                        r.codigo_material_recibido && 
+                        r.codigo_material_recibido.includes('0RH5602C622')
+                    );
+                    
+                    console.log(`🎯 Registros con 0RH5602C622: ${registrosFiltrados.length}`);
+                    registrosFiltrados.forEach((registro, index) => {
+                        console.log(`  ${index + 1}. ${registro.codigo_material_recibido} - ${registro.fecha_registro}`);
+                    });
+                    
+                } else {
+                    console.error('❌ Error al consultar BD:', response.status);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en verificación BD:', error);
+            }
+        };
+
         // Función para guardar el formulario
         function guardarFormulario() {
             try {
@@ -801,15 +926,21 @@
                     if (data.success) {
                         alert('Registro guardado exitosamente');
                         
-                        // IMPORTANTE: Recargar el siguiente lote para el código actual después de guardar
-                        const codigoActual = document.getElementById('codigoMaterialSelect').value;
-                        if (codigoActual) {
-                            console.log(`🔄 Recargando siguiente lote para código '${codigoActual}' después de guardar...`);
-                            cargarSiguienteSecuencial(codigoActual);
-                        } else {
-                            console.log('🔄 Recargando lote por defecto después de guardar...');
-                            cargarSiguienteSecuencial();
-                        }
+                        // IMPORTANTE: Esperar un poco y luego recargar el siguiente secuencial
+                        setTimeout(async () => {
+                            const codigoActual = document.getElementById('codigoMaterialSelect').value;
+                            if (codigoActual) {
+                                console.log(`🔄 Recargando siguiente lote para código '${codigoActual}' después de guardar...`);
+                                await cargarSiguienteSecuencial(codigoActual);
+                                console.log(`✅ Secuencial recargado: ${contadorSecuencial}`);
+                                
+                                // Después de recargar, actualizar los campos inferiores con la nueva secuencia
+                                llenarCamposInferiores(codigoActual);
+                            } else {
+                                console.log('🔄 Recargando lote por defecto después de guardar...');
+                                await cargarSiguienteSecuencial();
+                            }
+                        }, 500); // Esperar 500ms para asegurar que la BD se actualice
                         
                         // Limpiar formulario
                         limpiarFormulario();
@@ -1766,6 +1897,87 @@ if (document.readyState === 'loading') {
         } else {
             configurarAutocompletadoAlmacen();
         }
+
+        // FUNCIÓN DE DIAGNÓSTICO PARA CONSECUTIVOS
+        window.diagnosticarConsecutivos = async function(codigoMaterial = '0RH5602C622') {
+            console.log('🩺 === DIAGNÓSTICO DE CONSECUTIVOS ===');
+            console.log(`📋 Código de material a usar: ${codigoMaterial}`);
+            
+            try {
+                // 1. Probar endpoint directamente
+                const url = `/obtener_siguiente_secuencial?codigo_material=${encodeURIComponent(codigoMaterial)}`;
+                console.log(`🌐 URL a llamar: ${url}`);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                console.log('📊 Respuesta del servidor:');
+                console.log('   ✅ success:', data.success);
+                console.log('   🔢 siguiente_secuencial:', data.siguiente_secuencial);
+                console.log('   📅 fecha_actual:', data.fecha_actual);
+                console.log('   📦 codigo_material:', data.codigo_material);
+                console.log('   📈 secuencial_mas_alto_encontrado:', data.secuencial_mas_alto_encontrado);
+                console.log('   🔍 patron_busqueda:', data.patron_busqueda);
+                console.log('   📝 proximo_codigo_completo:', data.proximo_codigo_completo);
+                
+                // 2. Verificar variables globales
+                console.log('🔧 Variables globales actuales:');
+                console.log('   contadorSecuencial:', contadorSecuencial);
+                console.log('   proximoCodigoCompleto:', proximoCodigoCompleto);
+                
+                // 3. Probar cargar función
+                console.log('🔄 Probando cargarSiguienteSecuencial...');
+                await cargarSiguienteSecuencial(codigoMaterial);
+                
+                console.log('🔧 Variables después de cargar:');
+                console.log('   contadorSecuencial:', contadorSecuencial);
+                console.log('   proximoCodigoCompleto:', proximoCodigoCompleto);
+                
+                // 4. Probar generar código fallback
+                const fechaHoy = new Date().toISOString().slice(0,10).replace(/-/g,'')
+                const codigoFallback = `${codigoMaterial},${fechaHoy}${String(contadorSecuencial).padStart(4, '0')}`;
+                console.log(`📝 Código fallback generado: ${codigoFallback}`);
+                
+                return data;
+                
+            } catch (error) {
+                console.error('❌ Error en diagnóstico:', error);
+                return null;
+            }
+            
+            console.log('🩺 === FIN DIAGNÓSTICO ===');
+        };
+
+        // FUNCIÓN PARA VERIFICAR REGISTROS EN LA BASE DE DATOS
+        window.verificarRegistrosConsecutivos = async function() {
+            console.log('📋 === VERIFICANDO REGISTROS EN BD ===');
+            
+            try {
+                // Consultar registros recientes
+                const response = await fetch('/consultar_control_almacen?fecha_desde=2025-07-11&fecha_hasta=2025-07-11');
+                const data = await response.json();
+                
+                console.log(`📊 Registros encontrados: ${data.length}`);
+                
+                data.forEach((registro, index) => {
+                    console.log(`📝 Registro ${index + 1}:`);
+                    console.log(`   🆔 ID: ${registro.id}`);
+                    console.log(`   📦 codigo_material_recibido: "${registro.codigo_material_recibido}"`);
+                    console.log(`   📅 fecha_registro: ${registro.fecha_registro}`);
+                    console.log(`   🏷️ codigo_material: ${registro.codigo_material}`);
+                });
+                
+                return data;
+                
+            } catch (error) {
+                console.error('❌ Error al verificar registros:', error);
+                return null;
+            }
+            
+            console.log('📋 === FIN VERIFICACIÓN ===');
+        };
+
+        // ...existing code...
     </script>
 </body>
 </html>

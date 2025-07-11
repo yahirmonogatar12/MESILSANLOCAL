@@ -5,7 +5,7 @@ def limpiar_base_datos():
     cursor = conn.cursor()
     
     # Limpiar tabla de materiales
-    cursor.execute('DELETE FROM materiales')
+    cursor.execute('DELETE FROM control_material_almacen')
     
     conn.commit()
     conn.close()

@@ -1,52 +1,54 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Material de Almacén</title>
+    <title>Control de Salida de Material</title>
     <style>
-        /* Encapsular todos los estilos dentro del contenedor de almacén */
-        #control-almacen-container {
-            /* Contenedor principal */
+        /* Estilos específicos para Control de Material que complementan style.css */
+        /* Sección de escaneo dentro del toolbar del medio */
+        .material-toolbar .scan-field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-right: 20px;
+            max-width: 300px;
+        }
+
+        .material-toolbar .scan-field-group label {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+
+        .material-toolbar .scan-field-group input {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            background-color: rgba(255,255,255,0.9);
+            color: #2c3e50;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            min-width: 250px;
+        }
+
+        .material-toolbar .scan-field-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            background-color: #fff;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+        }
+
+        .material-toolbar .scan-field-group input::placeholder {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        /* Contenedor principal */
+        .material-container {
             font-family: 'LG regular', sans-serif;
             background-color: #32323E;
             color: lightgray;
@@ -54,71 +56,100 @@
             padding: 5px;
         }
 
-        #control-almacen-container .material-toolbar {
+        /* Botonera */
+        .material-toolbar {
             display: flex;
-            justify-content: flex-end;
-            gap: 6px;
-            margin-bottom: 4px;
-            padding: 8px;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            padding: 15px;
             background-color: #34334E;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             border: #20688C 1px solid;
         }
 
+        /* Contenedor izquierdo para el campo de escaneo */
+        .material-toolbar .scan-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Contenedor derecho para los checkboxes */
+        .material-toolbar .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
         /* Color especial para el contenedor de en medio */
-        #control-almacen-container .material-toolbar:nth-of-type(2) {
+        .material-toolbar:nth-of-type(2) {
             background-color: #44324b;
         }
 
-        #control-almacen-container .material-btn {
-            padding: 6px 12px;
+        .material-btn {
+            padding: 6px 12px;  
             border: none;
             border-radius: 4px;
-            background-color: #3C3940;
+            background-color: #3498db;
             color: white;
             cursor: pointer;
             font-size: 12px;
             transition: all 0.3s;
             font-weight: 500;
-            min-width: 70px;
-            font-family: 'LG regular', sans-serif;
-            height: 32px;
-            line-height: 1.2;
-            box-shadow: none;
-            text-shadow: none;
         }
 
-        #control-almacen-container .material-btn:hover {
+        .material-btn.scan {
+            background-color: #e67e22;
+        }
+
+        .material-btn.scan:hover {
+            background-color: #d35400;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
+
+        .material-btn:hover {
             background-color: #2980b9;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
         }
 
-        #control-almacen-container .material-btn.orange {
-            background-color: #e67e22;
-        }
-        #control-almacen-container .material-btn.orange:hover {
-            background-color: #d35400;
-        }
-
-        #control-almacen-container .material-btn.secondary {
+        .material-btn.secondary {
             background-color: #009944;
         }
-        #control-almacen-container .material-btn.secondary:hover {
+
+        .material-btn.secondary:hover {
             background-color: #cccccc;
-            color: #333;
         }
 
-        #control-almacen-container .material-btn.purple {
+        .material-btn.purple {
+            background-color: #9b59b6;
+        }
+
+        .material-btn.purple:hover {
+            background-color: #8e44ad;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+        }
+
+        .material-btn {
+            background-color: #3C3940;
+            border: #20688C 1px solid;
+        }
+
+        .material-btn.purple {
             background-color: #502696;
         }
-        #control-almacen-container .material-btn.purple:hover {
-            background-color: #8e44ad;
+
+        .material-btn.secondary {
+            background-color: #456636;
         }
 
         /* Formulario con diseño consistente */
         #control-almacen-container .material-form-section {
-            background-color: #4a4d5c;
+            background-color: #44324b;
             border-radius: 2px;
             padding: 12px;
             margin-bottom: 6px;
@@ -398,17 +429,40 @@
             from { opacity: 0.7; }
             to { opacity: 1; }
         }
+
+        /* Estilos simplificados para registro automático */
+        #control-almacen-container #codigo_material_recibido:focus {
+            border: 2px solid #27ae60;
+            box-shadow: 0 0 5px rgba(39, 174, 96, 0.3);
+        }
     </style>
 </head>
 <body>
     <div id="control-almacen-container">
         <div class="material-toolbar">
-            <button class="material-btn purple">Verificación de BOM</button>
-            <button class="material-btn secondary">PEPS</button>
-        </div>
-        <div class="material-toolbar">
-            <button class="material-btn" onclick="reiniciarFormulario()">Reiniciar</button>
-            <button class="material-btn orange" onclick="guardarSalida()">Guardar</button>
+            <!-- Contenedor izquierdo: Campo de escaneo -->
+            <div class="scan-container">
+                <div class="material-form-group">
+                    <label>Código de material recibido</label>
+                    <input type="text" id="codigo_material_recibido" placeholder="Escanear código aquí..." onkeydown="procesarEscaneoRapido(event)" autocomplete="off">
+                </div>
+            </div>
+            
+            <!-- Contenedor derecho: Checkboxes -->
+            <div class="checkbox-container">
+                <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="registroAutomatico" style="transform: scale(1.0); accent-color: #27ae60;" checked>
+                     Registro automático
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="verificacionBOM" style="transform: scale(1.0); accent-color: #8e44ad;">
+                    Verificación de BOM
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
+                    <input type="checkbox" id="peps" style="transform: scale(1.0); accent-color: #27ae60;">
+                    PEPS
+                </label>
+            </div>
         </div>
         <div class="material-form-section">
             <div class="material-form-row three-column">
@@ -425,10 +479,10 @@
                     </select>
                 </div>
                 <div class="material-form-group">
-                    <label>Código de material recibido</label>
-                    <input type="text" id="codigo_material_recibido" placeholder="Ej: 0RH5602C622/202507100001">
+                    <!-- Campo movido arriba -->
                 </div>
                 <div class="material-form-group">
+                    <button class="material-btn secondary" id="btnGuardarSalida" onclick="procesarSalidaManual()" style="display: none;">Guardar Salida</button>
                 </div>
             </div>
             <div class="material-form-row three-column">
@@ -487,15 +541,21 @@
                 <thead>
                     <tr>
                         <th>Fecha de salida</th>
-                        <th>Código material recibido</th>
-                        <th>Modelo</th>
-                        <th>Cantidad salida</th>
-                        <th>Fecha registro</th>
+                        <th>Proceso de salida</th>
+                        <th>Código de material recibido</th>
+                        <th>Código de material</th>
+                        <th>Número de parte</th>
+                        <th>Disp.</th>
+                        <th>Hist.</th>
+                        <th>Código de material original</th>
+                        <th>Número de lote</th>
+                        <th>Máquina(linea)</th>
+                        <th>Departamento de salida</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="5" class="no-data">No hay dato registrado</td>
+                        <td colspan="11" class="no-data">No hay dato registrado</td>
                     </tr>
                 </tbody>
             </table>
@@ -509,25 +569,14 @@
 
         // Función global para inicializar cuando se muestra el control de salida (para AJAX)
         window.inicializarControlSalidaModule = function() {
-            console.log('🚀 Inicializando Control de Salida Module (AJAX)...');
-            // Pequeño delay para asegurar que el DOM esté completamente renderizado
             setTimeout(() => {
                 inicializarControlSalida();
-                configurarListenersAdicionales();
             }, 100);
         };
 
-        // Función de inicialización principal
+        // Función de inicialización simplificada
         function inicializarControlSalida() {
-            console.log('🚀 Inicializando Control de Salida...');
-            
-            // Verificar si ya está inicializado para evitar duplicados
-            if (window.controlSalidaInicializado) {
-                console.log('⚠️ Control de Salida ya estaba inicializado');
-                return;
-            }
-
-            // Establecer fecha actual en fecha de salida
+            // Establecer fecha actual
             const hoy = new Date().toISOString().split('T')[0];
             const fechaSalidaForm = document.getElementById('fecha_salida_form');
             const fechaSalidaConsulta = document.getElementById('fecha_salida_consulta');
@@ -535,60 +584,291 @@
             if (fechaSalidaForm) fechaSalidaForm.value = hoy;
             if (fechaSalidaConsulta) fechaSalidaConsulta.value = hoy;
 
-            // Cargar datos iniciales
-            consultarSalidas();
+            // Configurar listeners para el checkbox de registro automático
+            configurarRegistroAutomatico();
 
-            // Marcar como inicializado
-            window.controlSalidaInicializado = true;
-            console.log('✅ Control de Salida inicializado correctamente');
-        }
-
-        // Configurar listeners adicionales
-        function configurarListenersAdicionales() {
-            console.log('🔧 Configurando listeners adicionales...');
-            
-            // Event listener para el código de material recibido
+            // Enfocar campo de código
             const codigoInput = document.getElementById('codigo_material_recibido');
             if (codigoInput) {
-                // Remover listeners existentes para evitar duplicados
-                codigoInput.removeEventListener('input', manejarInputCodigo);
+                setTimeout(() => codigoInput.focus(), 100);
+            }
+
+            // Cargar datos iniciales de la tabla
+            setTimeout(() => consultarSalidas(), 200);
+        }
+
+        // Nueva función para configurar el comportamiento del registro automático
+        function configurarRegistroAutomatico() {
+            const checkbox = document.getElementById('registroAutomatico');
+            const btnGuardar = document.getElementById('btnGuardarSalida');
+            
+            if (checkbox && btnGuardar) {
+                // Configurar estado inicial
+                actualizarModoRegistro();
                 
-                // Agregar nuevo listener
-                codigoInput.addEventListener('input', manejarInputCodigo);
-                console.log('✅ Event listener agregado al campo de código');
+                // Listener para cambios en el checkbox
+                checkbox.addEventListener('change', function() {
+                    actualizarModoRegistro();
+                });
+            } else {
+                console.error('❌ No se pudo configurar registro automático - elementos no encontrados');
             }
         }
 
-        // Función separada para manejar el input del código (para poder removerla si es necesario)
-        let timeoutId;
-        function manejarInputCodigo() {
-            // Limpiar timeout anterior
-            clearTimeout(timeoutId);
+        // Función para actualizar el modo de registro según el checkbox
+        function actualizarModoRegistro() {
+            const checkbox = document.getElementById('registroAutomatico');
+            const btnGuardar = document.getElementById('btnGuardarSalida');
             
-            // Establecer nuevo timeout para evitar consultas excesivas
-            timeoutId = setTimeout(() => {
-                const codigo = this.value.trim();
-                if (codigo.length > 5) { // Solo buscar si tiene al menos 5 caracteres
-                    buscarMaterialPorCodigo(codigo);
+            if (checkbox && btnGuardar) {
+                if (checkbox.checked) {
+                    // Modo automático: ocultar botón
+                    btnGuardar.style.display = 'none';
                 } else {
-                    limpiarCamposMaterial();
+                    // Modo manual: mostrar botón
+                    btnGuardar.style.display = 'block';
                 }
-            }, 500); // Esperar 500ms después de que el usuario deje de escribir
+            }
         }
 
-        // Ejecutar inicialización tanto para carga directa como AJAX
-        if (document.readyState === 'loading') {
-            // Si el documento aún se está cargando, usar DOMContentLoaded
-            document.addEventListener('DOMContentLoaded', function() {
-                inicializarControlSalida();
-                configurarListenersAdicionales();
-            });
-        } else {
-            // Si el documento ya está cargado (caso AJAX), ejecutar inmediatamente
+        // FUNCIÓN PRINCIPAL: Procesar escaneo ultra rápido
+        async function procesarEscaneoRapido(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                
+                const checkbox = document.getElementById('registroAutomatico');
+                const registroAutomatico = checkbox ? checkbox.checked : false;
+                const codigo = event.target.value.trim();
+                
+                if (!codigo) {
+                    return;
+                }
+                
+                if (registroAutomatico) {
+                    // Modo automático: procesar salida inmediatamente
+                    await procesarSalidaInmediata(codigo);
+                } else {
+                    // Modo manual: solo buscar material y rellenar campos, NO guardar
+                    await buscarMaterialSinGuardar(codigo);
+                }
+            }
+        }
+
+        // Nueva función para buscar material sin guardar (modo manual)
+        async function buscarMaterialSinGuardar(codigo) {
+            try {
+                const response = await fetch(`/buscar_material_por_codigo?codigo_recibido=${encodeURIComponent(codigo)}`);
+                const data = await response.json();
+
+                if (!data.success || !data.material) {
+                    mostrarMensajeSimple(data.error || 'Material no encontrado', 'error');
+                    return;
+                }
+
+                const material = data.material;
+                
+                // IMPORTANTE: Solo rellenar campos, NO guardar la salida
+                rellenarCamposMaterial(material);
+                materialActual = material;
+                
+                // Mensaje claro indicando que debe usar el botón
+                mostrarMensajeSimple('Material encontrado - Haga clic en "Guardar Salida" para procesar', 'info');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensajeSimple('Error al buscar material', 'error');
+            }
+        }
+
+        // Nueva función para procesamiento manual con botón
+        async function procesarSalidaManual() {
+            const codigo = document.getElementById('codigo_material_recibido')?.value?.trim();
+            
+            if (!codigo) {
+                mostrarMensajeSimple('Ingrese código de material', 'error');
+                return;
+            }
+            
+            if (!materialActual) {
+                mostrarMensajeSimple('Primero busque el material escaneando o escribiendo código', 'error');
+                return;
+            }
+            
+            // PROCESAR SALIDA MANUAL
+            try {
+                // 1. Validar modelo
+                const modelo = document.getElementById('modelo')?.value || '';
+                if (!modelo) {
+                    mostrarMensajeSimple('Seleccione modelo', 'error');
+                    return;
+                }
+
+                const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
+
+                if (cantidadSalida <= 0) {
+                    mostrarMensajeSimple('Sin stock disponible', 'error');
+                    return;
+                }
+
+                // 2. Procesar salida directa
+                const salidaResponse = await fetch('/procesar_salida_material', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codigo_material_recibido: codigo,
+                        cantidad_salida: cantidadSalida,
+                        modelo: modelo,
+                        numero_lote: materialActual.numero_lote_material || '',
+                        fecha_salida: document.getElementById('fecha_salida_form')?.value || '',
+                        depto_salida: 'Producción', // Valor por defecto
+                        proceso_salida: 'SMT 1st SIDE' // Valor por defecto
+                    })
+                });
+
+                const salidaData = await salidaResponse.json();
+
+                if (salidaData.success) {
+                    mostrarMensajeSimple(`✅ Salida manual procesada: ${cantidadSalida}`, 'success');
+                    
+                    // Actualizar tabla en background
+                    setTimeout(() => consultarSalidas(), 500);
+                } else {
+                    mostrarMensajeSimple('Error al procesar salida', 'error');
+                }
+
+                limpiarCodigo();
+                
+            } catch (error) {
+                console.error('❌ Error en procesamiento manual:', error);
+                mostrarMensajeSimple('Error interno', 'error');
+            }
+        }
+
+        // FUNCIÓN ULTRA SIMPLIFICADA: Salida inmediata
+        async function procesarSalidaInmediata(codigo) {
+            try {
+                // 1. Validar modelo
+                const modelo = document.getElementById('modelo')?.value || '';
+                if (!modelo) {
+                    mostrarMensajeSimple('Seleccione modelo', 'error');
+                    limpiarCodigo();
+                    return;
+                }
+
+                // 2. Buscar material y rellenar campos
+                const response = await fetch(`/buscar_material_por_codigo?codigo_recibido=${encodeURIComponent(codigo)}`);
+                const data = await response.json();
+
+                if (!data.success || !data.material) {
+                    mostrarMensajeSimple(data.error || 'Material no encontrado', 'error');
+                    limpiarCodigo();
+                    return;
+                }
+
+                const material = data.material;
+                
+                // Rellenar campos automáticamente
+                rellenarCamposMaterial(material);
+                materialActual = material;
+                
+                const cantidadSalida = parseFloat(material.cantidad_actual) || 0;
+
+                if (cantidadSalida <= 0) {
+                    mostrarMensajeSimple('Sin stock', 'error');
+                    limpiarCodigo();
+                    return;
+                }
+
+                // 3. Procesar salida directa
+                const salidaResponse = await fetch('/procesar_salida_material', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codigo_material_recibido: codigo,
+                        cantidad_salida: cantidadSalida,
+                        modelo: modelo,
+                        numero_lote: material.numero_lote_material || '',
+                        fecha_salida: document.getElementById('fecha_salida_form')?.value || '',
+                        depto_salida: 'Producción', // Valor por defecto
+                        proceso_salida: 'SMT 1st SIDE' // Valor por defecto
+                    })
+                });
+
+                const salidaData = await salidaResponse.json();
+
+                if (salidaData.success) {
+                    mostrarMensajeSimple(`Salida OK: ${cantidadSalida}`, 'success');
+                    
+                    // Actualizar tabla en background
+                    setTimeout(() => consultarSalidas(), 500);
+                } else {
+                    mostrarMensajeSimple('Error en salida', 'error');
+                }
+
+                limpiarCodigo();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensajeSimple('Error', 'error');
+                limpiarCodigo();
+            }
+        }
+
+        // FUNCIÓN SIMPLE: Limpiar código y enfocar (pero mantener campos rellenados)
+        function limpiarCodigo() {
+            const input = document.getElementById('codigo_material_recibido');
+            if (input) {
+                input.value = '';
+                setTimeout(() => input.focus(), 200);
+            }
+        }
+
+        // FUNCIÓN SIMPLE: Mostrar mensaje breve
+        function mostrarMensajeSimple(mensaje, tipo) {
+            // Buscar o crear contenedor de mensajes
+            let info = document.getElementById('info-message');
+            if (!info) {
+                info = document.createElement('div');
+                info.id = 'info-message';
+                info.style.position = 'fixed';
+                info.style.top = '20px';
+                info.style.right = '20px';
+                info.style.padding = '12px 20px';
+                info.style.borderRadius = '6px';
+                info.style.fontSize = '14px';
+                info.style.fontWeight = 'bold';
+                info.style.zIndex = '1000';
+                info.style.display = 'none';
+                document.body.appendChild(info);
+            }
+            
+            info.textContent = mensaje;
+            info.style.display = 'block';
+            info.style.color = 'white';
+            switch(tipo) {
+                case 'success':
+                    info.style.backgroundColor = '#27ae60';
+                    break;
+                case 'error':
+                    info.style.backgroundColor = '#e74c3c';
+                    break;
+                case 'info':
+                    info.style.backgroundColor = '#3498db';
+                    break;
+                default:
+                    info.style.backgroundColor = '#95a5a6';
+            }
+            
             setTimeout(() => {
-                inicializarControlSalida();
-                configurarListenersAdicionales();
-            }, 50);
+                info.style.display = 'none';
+            }, 3000);
+        }
+
+        // Ejecutar inicialización simplificada
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarControlSalida);
+        } else {
+            setTimeout(inicializarControlSalida, 50);
         }
 
         async function buscarMaterialPorCodigo(codigo) {
@@ -769,7 +1049,9 @@
                     cantidad_salida: cantidadSalida,
                     modelo: modeloSeleccionado,
                     numero_lote: materialActual.numero_lote_material || '', // Usar el número de lote del material
-                    fecha_salida: document.getElementById('fecha_salida_form')?.value || ''
+                    fecha_salida: document.getElementById('fecha_salida_form')?.value || '',
+                    depto_salida: 'Producción', // Valor por defecto
+                    proceso_salida: 'SMT 1st SIDE' // Valor por defecto
                 };
 
                 const response = await fetch('/procesar_salida_material', {
@@ -847,7 +1129,8 @@
                 const params = new URLSearchParams();
 
                 if (fechaSalida) {
-                    params.append('fecha_salida', fechaSalida);
+                    params.append('fecha_inicio', fechaSalida);
+                    params.append('fecha_fin', fechaSalida);
                 }
 
                 if (params.toString()) {
@@ -880,7 +1163,7 @@
             if (!tbody) return;
             
             if (salidas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="no-data">No hay dato registrado</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" class="no-data">No hay dato registrado</td></tr>';
                 return;
             }
 
@@ -889,10 +1172,20 @@
                 html += `
                     <tr>
                         <td>${salida.fecha_salida || ''}</td>
+                        <td>${salida.proceso_salida || ''}</td>
                         <td>${salida.codigo_material_recibido || ''}</td>
-                        <td>${salida.modelo || ''}</td>
-                        <td>${salida.cantidad_salida || ''}</td>
-                        <td>${formatearFecha(salida.fecha_registro) || ''}</td>
+                        <td>${salida.codigo_material || ''}</td>
+                        <td>${salida.numero_parte || ''}</td>
+                        <td style="text-align: center;">
+                            <input type="checkbox" ${salida.disp ? 'checked' : ''} disabled>
+                        </td>
+                        <td style="text-align: center;">
+                            <input type="checkbox" ${salida.hist ? 'checked' : ''} disabled>
+                        </td>
+                        <td>${salida.codigo_material_original || ''}</td>
+                        <td>${salida.numero_lote || ''}</td>
+                        <td>${salida.maquina_linea || ''}</td>
+                        <td>${salida.departamento || ''}</td>
                     </tr>
                 `;
             });
@@ -933,7 +1226,7 @@
                 }
 
                 // Crear CSV
-                let csv = 'Fecha de salida,Código material recibido,Modelo,Cantidad salida,Fecha registro\n';
+                let csv = 'Fecha de salida,Proceso de salida,Código material recibido,Código de material,Número de parte,Disp,Hist,Código material original,Número de lote,Máquina(linea),Departamento de salida\n';
                 
                 filas.forEach(fila => {
                     const celdas = fila.querySelectorAll('td');
@@ -1059,31 +1352,25 @@
 
         // Función de test de conectividad para debugging
         window.testConectividadSalida = function() {
-            console.log('🧪 Probando conectividad de Control de Salida...');
             fetch('/consultar_historial_salidas')
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    } else {
-                        throw new Error('Error HTTP: ' + response.status);
-                    }
-                })
-                .then(data => {
-                    console.log('✅ Conectividad OK, datos:', data);
-                })
-                .catch(error => {
-                    console.error('❌ Error de conectividad:', error);
-                });
+                .then(response => response.ok ? response.json() : Promise.reject('Error HTTP: ' + response.status))
+                .then(data => console.log('✅ Conectividad OK'))
+                .catch(error => console.error('❌ Error de conectividad:', error));
         };
 
         // Función global para acceso directo desde consola (debugging)
         window.debugControlSalida = function() {
-            console.log('🔍 Estado de Control de Salida:');
-            console.log('- Inicializado:', !!window.controlSalidaInicializado);
-            console.log('- Material actual:', materialActual);
-            console.log('- Campo código:', document.getElementById('codigo_material_recibido'));
-            console.log('- Tabla salidas:', document.getElementById('tablaSalidas'));
+            return {
+                materialActual: materialActual,
+                elementosDOM: {
+                    codigoInput: !!document.getElementById('codigo_material_recibido'),
+                    tablaSalidas: !!document.getElementById('tablaSalidas'),
+                    checkbox: !!document.getElementById('registroAutomatico'),
+                    modelo: document.getElementById('modelo')?.value || 'No seleccionado'
+                }
+            };
         };
+
     </script>
 </body>
 </html>
