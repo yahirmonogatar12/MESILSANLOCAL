@@ -2,7 +2,9 @@ import json
 import os
 from functools import wraps
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
-from .db import get_db_connection, init_db, guardar_configuracion_usuario, cargar_configuracion_usuario
+from .db import (get_db_connection, init_db, guardar_configuracion_usuario, cargar_configuracion_usuario,
+                 actualizar_inventario_general_entrada, actualizar_inventario_general_salida, 
+                 obtener_inventario_general, recalcular_inventario_general)
 import sqlite3
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -59,7 +61,7 @@ def material():
 @login_requerido
 def produccion():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('INFORMACION BASICA/CONTROL_DE_MATERIAL.html', usuario=usuario)
+    return render_template('Control de material/Control de salida.html', usuario=usuario)
 
 @app.route('/DESARROLLO')
 @login_requerido
@@ -697,6 +699,16 @@ def obtener_codigos_material():
 def control_almacen():
     return render_template('Control de material/Control de material de almacen.html')
 
+@app.route('/control_salida')
+@login_requerido
+def control_salida():
+    return render_template('Control de material/Control de salida.html')
+
+@app.route('/control_calidad')
+@login_requerido
+def control_calidad():
+    return render_template('Control de material/Control de calidad.html')
+
 @app.route('/guardar_control_almacen', methods=['POST'])
 @login_requerido
 def guardar_control_almacen():
@@ -1153,6 +1165,16 @@ def material_control_salida():
         print(f"Error al cargar Control de salida: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/material/control_calidad')
+@login_requerido
+def material_control_calidad():
+    """Cargar dinámicamente el control de calidad"""
+    try:
+        return render_template('Control de material/Control de calidad.html')
+    except Exception as e:
+        print(f"Error al cargar Control de calidad: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/obtener_reglas_escaneo')
 def obtener_reglas_escaneo():
     """Endpoint para obtener las reglas de escaneo desde rules.json"""
@@ -1171,3 +1193,376 @@ def obtener_reglas_escaneo():
     except Exception as e:
         print(f"❌ Error al cargar reglas de escaneo: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+# === BUSCAR POR CODIGO MATERIAL RECIBIDO ===
+@app.route('/buscar_codigo_recibido')
+@login_requerido
+def buscar_codigo_recibido():
+    codigo = request.args.get('codigo_material_recibido')
+    print(f"🔍 SERVER: Recibida petición para código: '{codigo}'")
+    print(f"🔍 SERVER: Usuario en sesión: {session.get('usuario', 'No logueado')}")
+    
+    if not codigo:
+        print("❌ SERVER: Código no proporcionado")
+        return jsonify({'success': False, 'error': 'Código no proporcionado'})
+    
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        print(f"🔍 SERVER: Buscando en BD: {codigo}")
+        cursor.execute('SELECT * FROM control_material_almacen WHERE codigo_material_recibido = ?', (codigo,))
+        row = cursor.fetchone()
+        
+        if row:
+            print("✅ SERVER: Registro encontrado en BD")
+            # Convertir a dict usando nombres de columna
+            columns = [desc[0] for desc in cursor.description]
+            registro = dict(zip(columns, row))
+            print(f"📦 SERVER: Datos encontrados: {registro}")
+            return jsonify({'success': True, 'registro': registro})
+        else:
+            print("❌ SERVER: Código no encontrado en almacén")
+            return jsonify({'success': False, 'error': 'Código no encontrado en almacén'})
+            
+    except Exception as e:
+        print(f"💥 SERVER: Error en buscar_codigo_recibido: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error al buscar: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+# === GUARDAR SALIDA DE LOTE ===
+@app.route('/guardar_salida_lote', methods=['POST'])
+@login_requerido
+def guardar_salida_lote():
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json()
+        codigo_material_recibido = data.get('codigo_material_recibido')
+        cantidad_salida = data.get('cantidad_salida')
+        
+        if not codigo_material_recibido or not cantidad_salida:
+            return jsonify({'success': False, 'error': 'Faltan datos requeridos'})
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Consultar la fila original
+        cursor.execute('SELECT cantidad_actual FROM control_material_almacen WHERE codigo_material_recibido = ?', (codigo_material_recibido,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'Código no encontrado en almacén'})
+        
+        cantidad_actual = float(row[0]) if row[0] else 0
+        cantidad_salida = float(cantidad_salida)
+        
+        if cantidad_salida > cantidad_actual:
+            return jsonify({'success': False, 'error': f'Cantidad de salida ({cantidad_salida}) mayor a la disponible ({cantidad_actual})'})
+        
+        nueva_cantidad = cantidad_actual - cantidad_salida
+        
+        # Actualizar la cantidad en almacen
+        cursor.execute('UPDATE control_material_almacen SET cantidad_actual = ? WHERE codigo_material_recibido = ?', 
+                      (nueva_cantidad, codigo_material_recibido))
+        
+        # Registrar la salida en control_material_salida
+        cursor.execute('''
+            INSERT INTO control_material_salida (
+                codigo_material_recibido, numero_lote, modelo, depto_salida, 
+                proceso_salida, cantidad_salida, fecha_salida
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            codigo_material_recibido,
+            data.get('numero_lote', ''),
+            data.get('modelo', ''),
+            data.get('depto_salida', ''),
+            data.get('proceso_salida', ''),
+            cantidad_salida,
+            data.get('fecha_salida', '')
+        ))
+        
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Salida registrada exitosamente'})
+        
+    except Exception as e:
+        print(f"Error en guardar_salida_lote: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error al guardar: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+# === CONSULTAR HISTORIAL DE SALIDAS ===
+@app.route('/consultar_historial_salidas')
+@login_requerido
+def consultar_historial_salidas():
+    conn = None
+    cursor = None
+    try:
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        numero_lote = request.args.get('numero_lote', '').strip()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Construir la consulta SQL con JOINs para obtener información completa
+        query = '''
+            SELECT 
+                s.fecha_salida,
+                s.proceso_salida,
+                s.codigo_material_recibido,
+                a.codigo_material,
+                a.numero_parte,
+                s.cantidad_salida as disp,
+                0 as hist,
+                a.codigo_material_original,
+                s.numero_lote,
+                s.modelo as maquina_linea,
+                s.depto_salida as departamento
+            FROM control_material_salida s
+            LEFT JOIN control_material_almacen a ON s.codigo_material_recibido = a.codigo_material_recibido
+            WHERE 1=1
+        '''
+        
+        params = []
+        
+        if fecha_inicio:
+            query += ' AND s.fecha_salida >= ?'
+            params.append(fecha_inicio)
+        
+        if fecha_fin:
+            query += ' AND s.fecha_salida <= ?'
+            params.append(fecha_fin)
+        
+        if numero_lote:
+            query += ' AND s.numero_lote LIKE ?'
+            params.append(f'%{numero_lote}%')
+        
+        query += ' ORDER BY s.fecha_salida DESC, s.fecha_registro DESC'
+        
+        cursor.execute(query, params)
+        resultados = cursor.fetchall()
+        
+        # Convertir a lista de diccionarios
+        columnas = [desc[0] for desc in cursor.description]
+        datos = []
+        for fila in resultados:
+            registro = dict(zip(columnas, fila))
+            datos.append(registro)
+        
+        return jsonify(datos)
+        
+    except Exception as e:
+        print(f"Error al consultar historial de salidas: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+# Nuevas funciones para Control de Salida
+@app.route('/buscar_material_por_codigo', methods=['GET'])
+@login_requerido
+def buscar_material_por_codigo():
+    """Buscar material en control_material_almacen por código de material recibido"""
+    try:
+        codigo_recibido = request.args.get('codigo_recibido', '').strip()
+        
+        if not codigo_recibido:
+            return jsonify({'success': False, 'error': 'Código de material recibido no proporcionado'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Buscar el material por código de material recibido
+        cursor.execute('''
+            SELECT * FROM control_material_almacen 
+            WHERE codigo_material_recibido = ? 
+            AND cantidad_actual > 0
+        ''', (codigo_recibido,))
+        
+        material = cursor.fetchone()
+        
+        if material:
+            # Convertir el resultado a diccionario
+            material_data = {
+                'id': material['id'],
+                'forma_material': material['forma_material'],
+                'cliente': material['cliente'],
+                'codigo_material_original': material['codigo_material_original'],
+                'codigo_material': material['codigo_material'],
+                'material_importacion_local': material['material_importacion_local'],
+                'fecha_recibo': material['fecha_recibo'],
+                'fecha_fabricacion': material['fecha_fabricacion'],
+                'cantidad_actual': material['cantidad_actual'],
+                'numero_lote_material': material['numero_lote_material'],
+                'codigo_material_recibido': material['codigo_material_recibido'],
+                'numero_parte': material['numero_parte'],
+                'cantidad_estandarizada': material['cantidad_estandarizada'],
+                'codigo_material_final': material['codigo_material_final'],
+                'propiedad_material': material['propiedad_material'],
+                'especificacion': material['especificacion'],
+                'material_importacion_local_final': material['material_importacion_local_final'],
+                'estado_desecho': material['estado_desecho'],
+                'ubicacion_salida': material['ubicacion_salida'],
+                'fecha_registro': material['fecha_registro']
+            }
+            
+            return jsonify({'success': True, 'material': material_data})
+        else:
+            return jsonify({'success': False, 'error': 'Material no encontrado o sin cantidad disponible'})
+    
+    except Exception as e:
+        print(f"Error al buscar material por código: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+    
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+@app.route('/procesar_salida_material', methods=['POST'])
+@login_requerido
+def procesar_salida_material():
+    """Procesar salida de material y actualizar inventario"""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json()
+        
+        # Validar campos requeridos
+        required_fields = ['codigo_material_recibido', 'cantidad_salida']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Campo requerido: {field}'}), 400
+        
+        codigo_recibido = data['codigo_material_recibido']
+        cantidad_salida = float(data['cantidad_salida'])
+        numero_lote = data.get('numero_lote', '')
+        modelo = data.get('modelo', '')
+        depto_salida = data.get('depto_salida', '')
+        proceso_salida = data.get('proceso_salida', '')
+        fecha_salida = data.get('fecha_salida', '')
+        
+        if cantidad_salida <= 0:
+            return jsonify({'success': False, 'error': 'La cantidad de salida debe ser mayor a 0'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Iniciar transacción
+        conn.execute('BEGIN TRANSACTION')
+        
+        # Buscar el material en almacén
+        cursor.execute('''
+            SELECT id, cantidad_actual FROM control_material_almacen 
+            WHERE codigo_material_recibido = ? 
+            AND cantidad_actual > 0
+        ''', (codigo_recibido,))
+        
+        material = cursor.fetchone()
+        
+        if not material:
+            conn.rollback()
+            return jsonify({'success': False, 'error': 'Material no encontrado o sin cantidad disponible'}), 400
+        
+        cantidad_actual = material['cantidad_actual']
+        material_id = material['id']
+        
+        if cantidad_salida > cantidad_actual:
+            conn.rollback()
+            return jsonify({'success': False, 'error': f'Cantidad insuficiente. Disponible: {cantidad_actual}'}), 400
+        
+        # Registrar la salida en control_material_salida
+        from datetime import datetime
+        fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        cursor.execute('''
+            INSERT INTO control_material_salida (
+                codigo_material_recibido, numero_lote, modelo, depto_salida,
+                proceso_salida, cantidad_salida, fecha_salida, fecha_registro
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            codigo_recibido, numero_lote, modelo, depto_salida,
+            proceso_salida, cantidad_salida, fecha_salida, fecha_registro
+        ))
+        
+        # Actualizar la cantidad en control_material_almacen
+        nueva_cantidad = cantidad_actual - cantidad_salida
+        
+        if nueva_cantidad == 0:
+            # Si la cantidad queda en 0, eliminar el registro
+            cursor.execute('DELETE FROM control_material_almacen WHERE id = ?', (material_id,))
+        else:
+            # Actualizar la cantidad
+            cursor.execute('''
+                UPDATE control_material_almacen 
+                SET cantidad_actual = ? 
+                WHERE id = ?
+            ''', (nueva_cantidad, material_id))
+        
+        # Confirmar transacción
+        conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Salida procesada exitosamente. Cantidad restante: {nueva_cantidad}',
+            'cantidad_restante': nueva_cantidad,
+            'eliminado': nueva_cantidad == 0
+        })
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error al procesar salida de material: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass

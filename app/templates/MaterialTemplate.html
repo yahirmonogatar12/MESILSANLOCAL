@@ -720,13 +720,35 @@
             
             // Funciones para mostrar otros contenidos
             window.mostrarControlSalida = function() {
+                console.log('🚛 === INICIANDO mostrarControlSalida ===');
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlSalidaContainer.style.display = 'block';
                 
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('control-salida-container', '/material/control_salida')
-                    .catch(error => console.error('Error cargando control de salida:', error));
+                // Cargar contenido dinámicamente con callback de inicialización
+                cargarContenidoDinamico('control-salida-container', '/material/control_salida', () => {
+                    console.log('🔄 Inicializando funciones de control de salida...');
+                    
+                    // Usar la nueva función global del módulo
+                    if (typeof window.inicializarControlSalidaModule === 'function') {
+                        console.log('✅ Ejecutando inicializarControlSalidaModule...');
+                        window.inicializarControlSalidaModule();
+                    } else {
+                        console.warn('⚠️ inicializarControlSalidaModule no disponible');
+                    }
+                    console.log('✅ Inicialización de control de salida completada');
+                })
+                .catch(error => {
+                    console.error('Error cargando control de salida:', error);
+                    // Fallback: ejecutar inicialización sin contenido dinámico
+                    setTimeout(() => {
+                        if (typeof window.inicializarControlSalidaModule === 'function') {
+                            window.inicializarControlSalidaModule();
+                        }
+                    }, 200);
+                });
+                
+                console.log('🚛 === FIN mostrarControlSalida ===');
             };
             
             window.mostrarControlRetorno = function() {

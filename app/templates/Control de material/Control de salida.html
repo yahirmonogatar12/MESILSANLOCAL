@@ -1,440 +1,1044 @@
-<style>
-/* Specific styles for Control de Salida layout */
-.salida-container {
-    background-color: #32323E;
-    color: lightgray;
-    padding: 15px;
-    font-size: 12px;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
 
-/* Updated Grid Layout */
-.salida-form-grid {
-    display: grid;
-    /* Using 6 columns for precise alignment */
-    grid-template-columns: repeat(6, 1fr);
-    gap: 10px 15px;
-    background-color: #40424F;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-    align-items: end; /* Align items to the bottom of their cell */
-}
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
 
-.salida-form-group {
-    display: flex;
-    flex-direction: column;
-}
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
 
-.salida-form-group label {
-    margin-bottom: 5px;
-    font-weight: 500;
-}
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Material de Almacén</title>
+    <style>
+        /* Encapsular todos los estilos dentro del contenedor de almacén */
+        #control-almacen-container {
+            /* Contenedor principal */
+            font-family: 'LG regular', sans-serif;
+            background-color: #32323E;
+            color: lightgray;
+            min-height: 100vh;
+            padding: 5px;
+        }
 
-.salida-form-group input[type="text"],
-.salida-form-group input[type="date"],
-.salida-form-group select {
-    padding: 6px 8px;
-    font-size: 12px;
-    height: 28px;
-    box-sizing: border-box;
-}
+        #control-almacen-container .material-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+            margin-bottom: 4px;
+            padding: 8px;
+            background-color: #34334E;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: #20688C 1px solid;
+        }
 
-/* Column Span Helpers */
-.g-col-span-1 { grid-column: span 1; }
-.g-col-span-2 { grid-column: span 2; }
-.g-col-span-3 { grid-column: span 3; }
-.g-col-span-4 { grid-column: span 4; }
+        /* Color especial para el contenedor de en medio */
+        #control-almacen-container .material-toolbar:nth-of-type(2) {
+            background-color: #44324b;
+        }
 
-.checkbox-group {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 8px;
-    height: 100%; /* Ensure it takes full cell height */
-    padding-bottom: 5px; /* Align with input fields */
-}
+        #control-almacen-container .material-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background-color: #3C3940;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            font-weight: 500;
+            min-width: 70px;
+            font-family: 'LG regular', sans-serif;
+            height: 32px;
+            line-height: 1.2;
+            box-shadow: none;
+            text-shadow: none;
+        }
 
-.checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
+        #control-almacen-container .material-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
 
-.button-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
+        #control-almacen-container .material-btn.orange {
+            background-color: #e67e22;
+        }
+        #control-almacen-container .material-btn.orange:hover {
+            background-color: #d35400;
+        }
 
-.salida-btn {
-    border: none;
-    padding: 6px 12px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 12px;
-    transition: background-color 0.3s;
-    height: 28px;
-}
+        #control-almacen-container .material-btn.secondary {
+            background-color: #009944;
+        }
+        #control-almacen-container .material-btn.secondary:hover {
+            background-color: #cccccc;
+            color: #333;
+        }
 
-.salida-btn.reiniciar {
-    background-color: #95a5a6;
-    color: white;
-}
-.salida-btn.reiniciar:hover {
-    background-color: #7f8c8d;
-}
+        #control-almacen-container .material-btn.purple {
+            background-color: #502696;
+        }
+        #control-almacen-container .material-btn.purple:hover {
+            background-color: #8e44ad;
+        }
 
-.salida-btn.guardar {
-    background-color: #e67e22;
-    color: white;
-}
-.salida-btn.guardar:hover {
-    background-color: #d35400;
-}
-
-.salida-tabs {
-    margin-bottom: 10px;
-}
-
-.salida-tab-btn {
-    background-color: #40424F;
-    color: lightgray;
-    border: 1px solid #2c3e50;
-    border-bottom: none;
-    padding: 8px 15px;
-    cursor: pointer;
-    border-radius: 4px 4px 0 0;
-    margin-right: 5px;
-    font-size: 12px;
-}
-
-.salida-tab-btn.active {
-    background-color: #3498db;
-    color: white;
-    border-color: #3498db;
-}
-
-.salida-content {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.salida-tables-container {
-    display: flex;
-    gap: 15px;
-    flex-grow: 1;
-}
-
-.salida-table-wrapper {
-    flex: 1;
-    background-color: #40424F;
-    padding: 10px;
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-}
-
-.salida-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-}
-
-.salida-table th,
-.salida-table td {
-    border: 1px solid #2c3e50;
-    padding: 6px;
-    text-align: center;
-    white-space: nowrap;
-}
-
-.salida-table th {
-    background-color: #2c3e50;
-    color: #ecf0f1;
-    position: sticky;
-    top: 0;
-}
-
-.salida-table td {
-    background-color: #44475A;
-}
-
-.salida-table .no-data {
-    height: 200px;
-    text-align: center;
-    vertical-align: middle;
-    color: #95a5a6;
-}
-
-/* Historial de Salida Styles */
-#historial-salida-content {
-    display: none; /* Hidden by default */
-    flex-direction: column;
-    flex-grow: 1;
-}
-
-.historial-filter-bar {
-    background-color: #40424F;
-    padding: 8px 15px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    border-bottom: 2px solid #3498db;
-}
-
-.historial-filter-bar label {
-    font-weight: 500;
-}
-
-.historial-filter-bar input[type="date"],
-.historial-filter-bar input[type="text"] {
-    height: 28px;
-    font-size: 12px;
-    padding: 6px 8px;
-}
-
-.historial-filter-bar .salida-btn {
-    height: 28px;
-    padding: 0 15px;
-}
-
-.historial-filter-bar .consultar {
-    background-color: #3498db;
-    color: white;
-}
-.historial-filter-bar .consultar:hover {
-    background-color: #2980b9;
-}
-
-.historial-filter-bar .exportar {
-    background-color: #27ae60;
-    color: white;
-}
-.historial-filter-bar .exportar:hover {
-    background-color: #219a52;
-}
-
-.historial-table-container {
-    background-color: #40424F;
-    padding: 10px;
-    border-radius: 4px;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    overflow-x: auto;
-}
-
-.total-rows {
-    margin-top: 10px;
-    font-size: 12px;
-    text-align: right;
-    padding-right: 5px;
-}
-</style>
-
-<div class="salida-container">
-    <!-- Form Grid -->
-    <div class="salida-form-grid">
-        <!-- Row 1 -->
-        <div class="salida-form-group g-col-span-2">
-            <label for="numero_lote">Número de lote:</label>
-            <input type="text" id="numero_lote">
-        </div>
-        <div class="salida-form-group g-col-span-2">
-            <label for="modelo">Modelo:</label>
-            <select id="modelo"><option>Seleccionar</option></select>
-        </div>
-        <div class="salida-form-group g-col-span-2">
-            <label for="depto_salida">Departamento de salida:</label>
-            <select id="depto_salida"><option>Seleccionar</option></select>
-        </div>
-
-        <!-- Row 2 -->
-        <div class="salida-form-group g-col-span-2">
-            <label for="codigo_recibido">Código de material recibido:</label>
-            <input type="text" id="codigo_recibido">
-        </div>
-        <div class="checkbox-group g-col-span-1">
-            <label><input type="checkbox"> Verificación de BOM</label>
-            <label><input type="checkbox"> Validación de código original</label>
-        </div>
-        <div class="checkbox-group g-col-span-1">
-             <label><input type="checkbox"> PEPS</label>
-        </div>
-        <div class="salida-form-group g-col-span-1">
-            <label for="proceso_salida">Proceso de salida:</label>
-            <select id="proceso_salida"><option>Seleccionar</option></select>
-        </div>
-        <div class="button-group g-col-span-1">
-            <button class="salida-btn reiniciar">Reiniciar</button>
-        </div>
-
-        <!-- Row 3 -->
-        <div class="salida-form-group g-col-span-2">
-            <label for="codigo_original">Código de material original:</label>
-            <input type="text" id="codigo_original" style="background-color: #004080 !important; color: white !important; border-color: #004080 !important;">
-        </div>
-        <div class="g-col-span-3">
-            <!-- Empty cell for alignment -->
-        </div>
-        <div class="button-group g-col-span-1">
-            <button class="salida-btn guardar">Guardar</button>
-        </div>
+        /* Formulario con diseño consistente */
+        #control-almacen-container .material-form-section {
+            background-color: #4a4d5c;
+            border-radius: 2px;
+            padding: 12px;
+            margin-bottom: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border: 1px solid #5a6c7d;
+        }
         
-        <!-- Row 4 -->
-        <div class="salida-form-group g-col-span-2">
-            <label for="disp_codigo_material">Código de material:</label>
-            <input type="text" id="disp_codigo_material" readonly>
-        </div>
-        <div class="salida-form-group g-col-span-4">
-            <label for="disp_especificacion">Especificación de material:</label>
-            <input type="text" id="disp_especificacion" readonly>
-        </div>
+        #control-almacen-container .material-form-row {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #control-almacen-container .material-form-group {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #control-almacen-container .material-form-group label {
+            display: block;
+            margin-bottom: 0;
+            font-weight: 500;
+            color: #ffffff;
+            font-size: 11px;
+            font-family: 'LG regular', sans-serif;
+            white-space: nowrap;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+        
+        #control-almacen-container .material-form-group input, 
+        #control-almacen-container .material-form-group select {
+            flex: 1;
+            min-width: 150px;
+            max-width: 250px;
+            padding: 6px 8px;
+            border: 1px solid #5a6c7d;
+            border-radius: 2px;
+            background-color: #ffffff;
+            color: #333333;
+            font-size: 11px;
+            font-family: 'LG regular', sans-serif;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            box-sizing: border-box;
+            height: 24px;
+        }
+        
+        #control-almacen-container .material-form-group input:focus, 
+        #control-almacen-container .material-form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
 
-        <!-- Row 5 -->
-        <div class="salida-form-group g-col-span-2">
-            <label for="disp_numero_parte">Número de parte:</label>
-            <input type="text" id="disp_numero_parte" readonly>
-        </div>
-        <div class="salida-form-group g-col-span-2">
-            <label for="disp_cantidad_actual">Cantidad actual:</label>
-            <input type="text" id="disp_cantidad_actual" readonly>
-        </div>
-        <div class="salida-form-group g-col-span-2">
-            <label for="disp_lote_material">Número de lote de material:</label>
-            <input type="text" id="disp_lote_material" readonly>
-        </div>
-    </div>
+        #control-almacen-container .material-form-group input::placeholder {
+            color: #999999;
+            font-style: normal;
+        }
 
-    <!-- Tabs -->
-    <div class="salida-tabs">
-        <button id="tab-registro" class="salida-tab-btn active" data-target="registro-salida-content">Registro de salida</button>
-        <button id="tab-historial" class="salida-tab-btn" data-target="historial-salida-content">Historial de salida</button>
-    </div>
+        #control-almacen-container .material-form-group select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 16px;
+            padding-right: 32px;
+        }
+        
+        #control-almacen-container .three-column {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        
+        #control-almacen-container .four-column {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+        }
+        
+        #control-almacen-container .two-column {
+            grid-template-columns: 1fr 1fr;
+        }
 
-    <!-- Tab Content -->
-    <div id="registro-salida-content" class="salida-content" style="display: flex;">
-        <div class="salida-tables-container">
-            <!-- Left Table -->
-            <div class="salida-table-wrapper">
-                <table class="salida-table">
-                    <thead>
-                        <tr>
-                            <th>Proceso</th>
-                            <th>Código de material</th>
-                            <th>Número de parte</th>
-                            <th>Cantidad de salida</th>
-                            <th>Cantidad total</th>
-                            <th>Propiedad</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td colspan="6" class="no-data">No hay dato registrado</td></tr>
-                    </tbody>
-                </table>
+        /* Tabla */
+        #control-almacen-container .material-table-container {
+            background-color: #40424F;
+            border-radius: 2px;
+            padding: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        #control-almacen-container .material-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 10px;
+            background-color: #40424F;
+        }
+
+        #control-almacen-container .material-table th {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 6px 4px;
+            text-align: center;
+            border: 1px solid #34495e;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 10px;
+            line-height: 1.0;
+        }
+
+        #control-almacen-container .material-table td {
+            padding: 4px 6px;
+            text-align: center;
+            border: 1px solid #34495e;
+            background-color: #40424F;
+            color: lightgray;
+            transition: background-color 0.3s;
+            font-size: 10px;
+            line-height: 1.0;
+        }
+
+        #control-almacen-container .material-table tr:hover td {
+            background-color: #485563;
+        }
+
+        #control-almacen-container .material-table tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        #control-almacen-container .material-table tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+
+        #control-almacen-container .material-table input[type="checkbox"] {
+            transform: scale(1.1);
+            cursor: pointer;
+            accent-color: #3498db;
+        }
+
+        #control-almacen-container .material-table .no-data {
+            text-align: center;
+            padding: 15px;
+            color: #95a5a6;
+            font-style: italic;
+            background-color: #40424F;
+            font-size: 10px;
+        }
+
+        /* Mensajes de estado */
+        #control-almacen-container .material-loading {
+            text-align: center;
+            padding: 25px;
+            color: #3498db;
+            font-size: 14px;
+        }
+
+        #control-almacen-container .material-error {
+            text-align: center;
+            padding: 25px;
+            color: #e74c3c;
+            font-size: 14px;
+        }
+
+        #control-almacen-container .loading-message {
+            text-align: center !important;
+            padding: 25px !important;
+            color: #3498db !important;
+            font-size: 16px !important;
+            animation: pulse 1.5s ease-in-out infinite alternate;
+        }
+
+        #control-almacen-container .error-message {
+            text-align: center !important;
+            padding: 25px !important;
+            color: #e74c3c !important;
+            font-size: 16px !important;
+        }
+
+        #control-almacen-container .total-info {
+            color: lightgray;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        /* Animación para carga */
+        @keyframes pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+        #control-almacen-container .dropdown-modal {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #40424F;
+            border: 2px solid #34495e;
+            border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+            max-height: 300px;
+            overflow: hidden;
+            margin-top: 2px;
+            min-width: 400px;
+        }
+
+        #control-almacen-container .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            border-bottom: 2px solid #34495e;
+            background-color: #2c3e50;
+            color: lightgray;
+            font-size: 14px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        
+        #control-almacen-container .search-input:focus {
+            background-color: #2c3e50;
+            border-bottom-color: #3498db;
+        }
+        
+        #control-almacen-container .dropdown-table-container {
+            max-height: 250px;
+            overflow-y: auto;
+            background-color: #40424F;
+        }
+        
+        #control-almacen-container .dropdown-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            background-color: #40424F;
+        }
+        
+        #control-almacen-container .dropdown-table th {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 2px solid #34495e;
+            position: sticky;
+            top: 0;
+        }
+        
+        #control-almacen-container .dropdown-table td {
+            padding: 12px 15px;
+            text-align: left;
+            color: lightgray;
+            border-bottom: 1px solid #34495e;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        #control-almacen-container .dropdown-table tr:hover td {
+            background-color: #485563;
+        }
+        
+        #control-almacen-container .dropdown-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Animación para carga */
+        #control-almacen-container .loading-message {
+            animation: pulse 1.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="control-almacen-container">
+        <div class="material-toolbar">
+            <button class="material-btn purple">Verificación de BOM</button>
+            <button class="material-btn secondary">PEPS</button>
+        </div>
+        <div class="material-toolbar">
+            <button class="material-btn" onclick="reiniciarFormulario()">Reiniciar</button>
+            <button class="material-btn orange" onclick="guardarSalida()">Guardar</button>
+        </div>
+        <div class="material-form-section">
+            <div class="material-form-row three-column">
+                <div class="material-form-group">
+                    <label>Numero de lote</label>
+                    <input type="text" id="numero_lote" placeholder="Seleccionar">
+                </div>
+                <div class="material-form-group">
+                    <label>Modelo</label>
+                    <input type="text" id="modelo" placeholder="Seleccionar">
+                </div>
+                <div class="material-form-group">
+                    <label>Departamento de salida</label>
+                    <input type="text" id="depto_salida" placeholder="Seleccionar">
+                </div>
             </div>
-
-            <!-- Right Table -->
-            <div class="salida-table-wrapper">
-                <table class="salida-table">
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Código de material</th>
-                            <th>Número de parte</th>
-                            <th>Cantidad</th>
-                            <th>Número de lote</th>
-                            <th>Propiedad</th>
-                            <th>Nivel</th>
-                            <th>Especificación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td colspan="8" class="no-data">No hay dato registrado</td></tr>
-                    </tbody>
-                </table>
+            <div class="material-form-row three-column">
+                <div class="material-form-group">
+                    <label>Proceso de salida</label>
+                    <input type="text" id="proceso_salida" placeholder="Seleccionar">
+                </div>
+                <div class="material-form-group">
+                    <label>Código de material recibido</label>
+                    <input type="text" id="codigo_material_recibido" placeholder="Ej: 0RH5602C622/202507100001">
+                </div>
+                <div class="material-form-group">
+                    <label>Validación de código original</label>
+                    <input type="text" id="validacion_codigo" readonly>
+                </div>
+            </div>
+            <div class="material-form-row three-column">
+                <div class="material-form-group">
+                    <label>Código de material original</label>
+                    <input type="text" id="codigo_material_original" readonly>
+                </div>
+                <div class="material-form-group">
+                    <label>Código de material</label>
+                    <input type="text" id="codigo_material" readonly>
+                </div>
+                <div class="material-form-group">
+                    <label>Especificación de material</label>
+                    <input type="text" id="especificacion_material" readonly>
+                </div>
+            </div>
+            <div class="material-form-row three-column">
+                <div class="material-form-group">
+                    <label>Numero de parte</label>
+                    <input type="text" id="numero_parte" readonly>
+                </div>
+                <div class="material-form-group">
+                    <label>Cantidad actual</label>
+                    <input type="text" id="cantidad_actual" readonly>
+                </div>
+                <div class="material-form-group">
+                    <label>Numero de lote de material</label>
+                    <input type="text" id="numero_lote_material" readonly>
+                </div>
+            </div>
+            <div class="material-form-row three-column">
+                <div class="material-form-group">
+                    <label>Cantidad de salida</label>
+                    <input type="number" id="cantidad_salida" min="0" step="1" placeholder="Ingrese cantidad">
+                </div>
+                <div class="material-form-group">
+                    <label>Fecha de salida</label>
+                    <input type="date" id="fecha_salida_form" value="">
+                </div>
+                <div class="material-form-group">
+                </div>
             </div>
         </div>
-    </div>
-
-    <div id="historial-salida-content" class="salida-content">
-        <!-- Filter Bar -->
-        <div class="historial-filter-bar">
-            <label for="fecha_salida_inicio">Fecha de salida</label>
-            <input type="date" id="fecha_salida_inicio" value="2025-07-09">
-            <span>~</span>
-            <input type="date" id="fecha_salida_fin" value="2025-07-09">
-            <label for="historial_num_lote" style="margin-left: 10px;">Num. de lote</label>
-            <input type="text" id="historial_num_lote">
-            <button class="salida-btn consultar" style="margin-left: auto;">Consultar</button>
-            <button class="salida-btn exportar">Exportar el excel</button>
-        </div>
-        <!-- History Table -->
-        <div class="historial-table-container">
-            <table class="salida-table">
+        <div class="material-table-container">
+            <div class="material-table-controls">
+                <button class="material-btn">Registro de salida</button>
+                <button class="material-btn">Historial de salida</button>
+            </div>
+            <div class="material-table-controls">
+                <div class="material-form-group">
+                    <label>Fecha de salida</label>
+                    <input type="date" id="fecha_salida_consulta" value="2025-07-09">
+                </div>
+                <div class="material-form-group">
+                    <label>Num. de lote</label>
+                    <input type="text" id="num_lote_consulta">
+                </div>
+                <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
+                <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
+            </div>
+            <table class="material-table" id="tablaSalidas">
                 <thead>
                     <tr>
                         <th>Fecha de salida</th>
                         <th>Proceso de salida</th>
-                        <th>Código de material recibido</th>
-                        <th>Código de material</th>
-                        <th>Número de parte</th>
-                        <th>Disp.</th>
-                        <th>Hist.</th>
-                        <th>Código de material original</th>
+                        <th>Código material recibido</th>
                         <th>Número de lote</th>
-                        <th>Máquina(Línea)</th>
-                        <th>Departamento de...</th>
+                        <th>Modelo</th>
+                        <th>Cantidad salida</th>
+                        <th>Departamento</th>
+                        <th>Fecha registro</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td colspan="11" class="no-data">No hay dato registrado</td></tr>
+                    <tr>
+                        <td colspan="8" class="no-data">No hay dato registrado</td>
+                    </tr>
                 </tbody>
             </table>
-        </div>
-        <div class="total-rows">
-            Total Rows: 0
+            <div class="total-info" id="totalInfo">Total Rows: 0</div>
         </div>
     </div>
-</div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tabButtons = document.querySelectorAll('.salida-tab-btn');
-    const tabContents = document.querySelectorAll('.salida-content');
-    const formGrid = document.querySelector('.salida-form-grid');
+    <script>
+        // Variables globales
+        let materialActual = null;
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Deactivate all buttons and hide all content
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.style.display = 'none');
+        // Función global para inicializar cuando se muestra el control de salida (para AJAX)
+        window.inicializarControlSalidaModule = function() {
+            console.log('🚀 Inicializando Control de Salida Module (AJAX)...');
+            // Pequeño delay para asegurar que el DOM esté completamente renderizado
+            setTimeout(() => {
+                inicializarControlSalida();
+                configurarListenersAdicionales();
+            }, 100);
+        };
 
-            // Activate the clicked button
-            this.classList.add('active');
-
-            // Show/hide the main form based on the selected tab
-            const targetId = this.getAttribute('data-target');
-            if (targetId === 'historial-salida-content') {
-                formGrid.style.display = 'none';
-            } else {
-                formGrid.style.display = 'grid';
-            }
+        // Función de inicialización principal
+        function inicializarControlSalida() {
+            console.log('🚀 Inicializando Control de Salida...');
             
-            // Show the target content
-            const targetContent = document.getElementById(targetId);
-            if (targetContent) {
-                targetContent.style.display = 'flex'; // Use flex for proper layout
+            // Verificar si ya está inicializado para evitar duplicados
+            if (window.controlSalidaInicializado) {
+                console.log('⚠️ Control de Salida ya estaba inicializado');
+                return;
             }
-        });
-    });
-});
-</script>
+
+            // Establecer fecha actual en fecha de salida
+            const hoy = new Date().toISOString().split('T')[0];
+            const fechaSalidaForm = document.getElementById('fecha_salida_form');
+            const fechaSalidaConsulta = document.getElementById('fecha_salida_consulta');
+            
+            if (fechaSalidaForm) fechaSalidaForm.value = hoy;
+            if (fechaSalidaConsulta) fechaSalidaConsulta.value = hoy;
+
+            // Cargar datos iniciales
+            consultarSalidas();
+
+            // Marcar como inicializado
+            window.controlSalidaInicializado = true;
+            console.log('✅ Control de Salida inicializado correctamente');
+        }
+
+        // Configurar listeners adicionales
+        function configurarListenersAdicionales() {
+            console.log('🔧 Configurando listeners adicionales...');
+            
+            // Event listener para el código de material recibido
+            const codigoInput = document.getElementById('codigo_material_recibido');
+            if (codigoInput) {
+                // Remover listeners existentes para evitar duplicados
+                codigoInput.removeEventListener('input', manejarInputCodigo);
+                
+                // Agregar nuevo listener
+                codigoInput.addEventListener('input', manejarInputCodigo);
+                console.log('✅ Event listener agregado al campo de código');
+            }
+        }
+
+        // Función separada para manejar el input del código (para poder removerla si es necesario)
+        let timeoutId;
+        function manejarInputCodigo() {
+            // Limpiar timeout anterior
+            clearTimeout(timeoutId);
+            
+            // Establecer nuevo timeout para evitar consultas excesivas
+            timeoutId = setTimeout(() => {
+                const codigo = this.value.trim();
+                if (codigo.length > 5) { // Solo buscar si tiene al menos 5 caracteres
+                    buscarMaterialPorCodigo(codigo);
+                } else {
+                    limpiarCamposMaterial();
+                }
+            }, 500); // Esperar 500ms después de que el usuario deje de escribir
+        }
+
+        // Ejecutar inicialización tanto para carga directa como AJAX
+        if (document.readyState === 'loading') {
+            // Si el documento aún se está cargando, usar DOMContentLoaded
+            document.addEventListener('DOMContentLoaded', function() {
+                inicializarControlSalida();
+                configurarListenersAdicionales();
+            });
+        } else {
+            // Si el documento ya está cargado (caso AJAX), ejecutar inmediatamente
+            setTimeout(() => {
+                inicializarControlSalida();
+                configurarListenersAdicionales();
+            }, 50);
+        }
+
+        async function buscarMaterialPorCodigo(codigo) {
+            try {
+                mostrarCargando('Buscando material...');
+                
+                const response = await fetch(`/buscar_material_por_codigo?codigo_recibido=${encodeURIComponent(codigo)}`);
+                const data = await response.json();
+
+                if (data.success && data.material) {
+                    materialActual = data.material;
+                    rellenarCamposMaterial(data.material);
+                } else {
+                    limpiarCamposMaterial();
+                    mostrarError(data.error || 'Material no encontrado');
+                }
+            } catch (error) {
+                console.error('Error al buscar material:', error);
+                mostrarError('Error al buscar material');
+                limpiarCamposMaterial();
+            }
+        }
+
+        function rellenarCamposMaterial(material) {
+            // Rellenar todos los campos con los datos del material
+            const campos = {
+                'validacion_codigo': material.codigo_material_original || '',
+                'codigo_material_original': material.codigo_material_original || '',
+                'codigo_material': material.codigo_material || '',
+                'especificacion_material': material.especificacion || '',
+                'numero_parte': material.numero_parte || '',
+                'cantidad_actual': material.cantidad_actual || '',
+                'numero_lote_material': material.numero_lote_material || ''
+            };
+
+            Object.keys(campos).forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.value = campos[id];
+                }
+            });
+
+            // Establecer el máximo en el campo de cantidad de salida
+            const cantidadSalidaInput = document.getElementById('cantidad_salida');
+            if (cantidadSalidaInput) {
+                cantidadSalidaInput.max = material.cantidad_actual;
+                cantidadSalidaInput.placeholder = `Máximo: ${material.cantidad_actual}`;
+            }
+
+            mostrarExito(`Material encontrado. Cantidad disponible: ${material.cantidad_actual}`);
+        }
+
+        function limpiarCamposMaterial() {
+            // Limpiar todos los campos del material
+            const campos = [
+                'validacion_codigo', 'codigo_material_original', 'codigo_material',
+                'especificacion_material', 'numero_parte', 'cantidad_actual',
+                'numero_lote_material', 'cantidad_salida'
+            ];
+
+            campos.forEach(campo => {
+                const input = document.getElementById(campo);
+                if (input) {
+                    input.value = '';
+                    if (campo === 'cantidad_salida') {
+                        input.max = '';
+                        input.placeholder = 'Ingrese cantidad';
+                    }
+                }
+            });
+
+            materialActual = null;
+        }
+
+        function reiniciarFormulario() {
+            // Limpiar todos los campos del formulario
+            const campos = [
+                'numero_lote', 'modelo', 'depto_salida', 'proceso_salida',
+                'codigo_material_recibido', 'cantidad_salida'
+            ];
+
+            campos.forEach(campo => {
+                const input = document.getElementById(campo);
+                if (input) {
+                    input.value = '';
+                }
+            });
+
+            limpiarCamposMaterial();
+
+            // Restablecer fecha actual
+            const hoy = new Date().toISOString().split('T')[0];
+            const fechaSalidaForm = document.getElementById('fecha_salida_form');
+            if (fechaSalidaForm) {
+                fechaSalidaForm.value = hoy;
+            }
+
+            mostrarInfo('Formulario reiniciado');
+        }
+
+        async function guardarSalida() {
+            try {
+                // Validar campos requeridos
+                const codigoRecibido = document.getElementById('codigo_material_recibido')?.value.trim() || '';
+                const cantidadSalida = document.getElementById('cantidad_salida')?.value.trim() || '';
+
+                if (!codigoRecibido) {
+                    mostrarError('Debe ingresar el código de material recibido');
+                    return;
+                }
+
+                if (!cantidadSalida || parseFloat(cantidadSalida) <= 0) {
+                    mostrarError('Debe ingresar una cantidad de salida válida');
+                    return;
+                }
+
+                if (!materialActual) {
+                    mostrarError('No se ha encontrado información del material');
+                    return;
+                }
+
+                const cantidad = parseFloat(cantidadSalida);
+                if (cantidad > materialActual.cantidad_actual) {
+                    mostrarError(`La cantidad de salida no puede ser mayor a la disponible (${materialActual.cantidad_actual})`);
+                    return;
+                }
+
+                mostrarCargando('Procesando salida...');
+
+                // Preparar datos para enviar
+                const datosEnvio = {
+                    codigo_material_recibido: codigoRecibido,
+                    cantidad_salida: cantidad,
+                    numero_lote: document.getElementById('numero_lote')?.value.trim() || '',
+                    modelo: document.getElementById('modelo')?.value.trim() || '',
+                    depto_salida: document.getElementById('depto_salida')?.value.trim() || '',
+                    proceso_salida: document.getElementById('proceso_salida')?.value.trim() || '',
+                    fecha_salida: document.getElementById('fecha_salida_form')?.value || ''
+                };
+
+                const response = await fetch('/procesar_salida_material', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(datosEnvio)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    mostrarExito(data.message);
+                    
+                    // Actualizar la cantidad actual en la interfaz
+                    if (data.eliminado) {
+                        limpiarCamposMaterial();
+                        const codigoInput = document.getElementById('codigo_material_recibido');
+                        if (codigoInput) codigoInput.value = '';
+                        mostrarInfo('Material agotado - registro eliminado del inventario');
+                    } else {
+                        materialActual.cantidad_actual = data.cantidad_restante;
+                        const cantidadActualInput = document.getElementById('cantidad_actual');
+                        const cantidadSalidaInput = document.getElementById('cantidad_salida');
+                        
+                        if (cantidadActualInput) cantidadActualInput.value = data.cantidad_restante;
+                        if (cantidadSalidaInput) {
+                            cantidadSalidaInput.max = data.cantidad_restante;
+                            cantidadSalidaInput.placeholder = `Máximo: ${data.cantidad_restante}`;
+                        }
+                    }
+
+                    // Limpiar campos de salida específicos
+                    const camposLimpiar = ['cantidad_salida', 'numero_lote', 'modelo'];
+                    camposLimpiar.forEach(campo => {
+                        const input = document.getElementById(campo);
+                        if (input) input.value = '';
+                    });
+
+                    // Actualizar tabla de consulta
+                    consultarSalidas();
+
+                } else {
+                    mostrarError(data.error || 'Error al procesar la salida');
+                }
+
+            } catch (error) {
+                console.error('Error al guardar salida:', error);
+                mostrarError('Error interno al procesar la salida');
+            }
+        }
+
+        async function consultarSalidas() {
+            try {
+                mostrarCargando('Consultando salidas...');
+
+                const fechaSalida = document.getElementById('fecha_salida_consulta')?.value || '';
+                const numLote = document.getElementById('num_lote_consulta')?.value.trim() || '';
+
+                let url = '/consultar_historial_salidas';
+                const params = new URLSearchParams();
+
+                if (fechaSalida) {
+                    params.append('fecha_salida', fechaSalida);
+                }
+                if (numLote) {
+                    params.append('numero_lote', numLote);
+                }
+
+                if (params.toString()) {
+                    url += '?' + params.toString();
+                }
+
+                const response = await fetch(url);
+                const salidas = await response.json();
+
+                if (Array.isArray(salidas)) {
+                    actualizarTablaSalidas(salidas);
+                    const totalInfo = document.getElementById('totalInfo');
+                    if (totalInfo) {
+                        totalInfo.textContent = `Total Rows: ${salidas.length}`;
+                    }
+                } else {
+                    mostrarError(salidas.error || 'Error al consultar salidas');
+                }
+
+            } catch (error) {
+                console.error('Error al consultar salidas:', error);
+                mostrarError('Error al consultar salidas');
+            }
+        }
+
+        function actualizarTablaSalidas(salidas) {
+            const tbody = document.querySelector('#tablaSalidas tbody');
+            if (!tbody) return;
+            
+            if (salidas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="no-data">No hay dato registrado</td></tr>';
+                return;
+            }
+
+            let html = '';
+            salidas.forEach(salida => {
+                html += `
+                    <tr>
+                        <td>${salida.fecha_salida || ''}</td>
+                        <td>${salida.proceso_salida || ''}</td>
+                        <td>${salida.codigo_material_recibido || ''}</td>
+                        <td>${salida.numero_lote || ''}</td>
+                        <td>${salida.modelo || ''}</td>
+                        <td>${salida.cantidad_salida || ''}</td>
+                        <td>${salida.depto_salida || ''}</td>
+                        <td>${formatearFecha(salida.fecha_registro) || ''}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function formatearFecha(fechaISO) {
+            if (!fechaISO) return '';
+            try {
+                const fecha = new Date(fechaISO);
+                return fecha.toLocaleString('es-ES', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                return fechaISO;
+            }
+        }
+
+        function exportarExcel() {
+            try {
+                // Obtener datos de la tabla
+                const tabla = document.getElementById('tablaSalidas');
+                if (!tabla) {
+                    mostrarError('No se encontró la tabla');
+                    return;
+                }
+
+                const filas = tabla.querySelectorAll('tbody tr');
+                
+                if (filas.length === 1 && filas[0].querySelector('.no-data')) {
+                    mostrarError('No hay datos para exportar');
+                    return;
+                }
+
+                // Crear CSV
+                let csv = 'Fecha de salida,Proceso de salida,Código material recibido,Número de lote,Modelo,Cantidad salida,Departamento,Fecha registro\n';
+                
+                filas.forEach(fila => {
+                    const celdas = fila.querySelectorAll('td');
+                    if (celdas.length > 1) { // Evitar la fila de "no hay datos"
+                        const valores = Array.from(celdas).map(celda => 
+                            '"' + celda.textContent.replace(/"/g, '""') + '"'
+                        );
+                        csv += valores.join(',') + '\n';
+                    }
+                });
+
+                // Descargar archivo
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `salidas_material_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                mostrarExito('Archivo exportado exitosamente');
+
+            } catch (error) {
+                console.error('Error al exportar:', error);
+                mostrarError('Error al exportar el archivo');
+            }
+        }
+
+        // Funciones de utilidad para mostrar mensajes
+        function mostrarMensaje(mensaje, tipo) {
+            // Buscar contenedor de mensajes existente o crear uno
+            let contenedor = document.getElementById('mensaje-sistema-salida');
+            if (!contenedor) {
+                contenedor = document.createElement('div');
+                contenedor.id = 'mensaje-sistema-salida';
+                contenedor.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    color: white;
+                    font-weight: bold;
+                    z-index: 10000;
+                    max-width: 400px;
+                    word-wrap: break-word;
+                `;
+                document.body.appendChild(contenedor);
+            }
+
+            // Establecer el color según el tipo
+            switch (tipo) {
+                case 'exito':
+                    contenedor.style.backgroundColor = '#27ae60';
+                    break;
+                case 'error':
+                    contenedor.style.backgroundColor = '#e74c3c';
+                    break;
+                case 'info':
+                    contenedor.style.backgroundColor = '#3498db';
+                    break;
+                case 'cargando':
+                    contenedor.style.backgroundColor = '#f39c12';
+                    break;
+                default:
+                    contenedor.style.backgroundColor = '#95a5a6';
+            }
+
+            contenedor.textContent = mensaje;
+            contenedor.style.display = 'block';
+
+            // Auto-ocultar después de cierto tiempo (excepto para "cargando")
+            if (tipo !== 'cargando') {
+                setTimeout(() => {
+                    contenedor.style.display = 'none';
+                }, tipo === 'error' ? 5000 : 3000);
+            }
+        }
+
+        function mostrarExito(mensaje) {
+            mostrarMensaje(mensaje, 'exito');
+        }
+
+        function mostrarError(mensaje) {
+            mostrarMensaje(mensaje, 'error');
+        }
+
+        function mostrarInfo(mensaje) {
+            mostrarMensaje(mensaje, 'info');
+        }
+
+        function mostrarCargando(mensaje) {
+            mostrarMensaje(mensaje, 'cargando');
+        }
+
+        function ocultarMensaje() {
+            const contenedor = document.getElementById('mensaje-sistema-salida');
+            if (contenedor) {
+                contenedor.style.display = 'none';
+            }
+        }
+
+        // Función global para limpiar al cambiar de página
+        window.limpiarControlSalida = function() {
+            window.controlSalidaInicializado = false;
+            const contenedor = document.getElementById('mensaje-sistema-salida');
+            if (contenedor) {
+                contenedor.remove();
+            }
+        };
+
+        // Función de test de conectividad para debugging
+        window.testConectividadSalida = function() {
+            console.log('🧪 Probando conectividad de Control de Salida...');
+            fetch('/consultar_historial_salidas')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Error HTTP: ' + response.status);
+                    }
+                })
+                .then(data => {
+                    console.log('✅ Conectividad OK, datos:', data);
+                })
+                .catch(error => {
+                    console.error('❌ Error de conectividad:', error);
+                });
+        };
+
+        // Función global para acceso directo desde consola (debugging)
+        window.debugControlSalida = function() {
+            console.log('🔍 Estado de Control de Salida:');
+            console.log('- Inicializado:', !!window.controlSalidaInicializado);
+            console.log('- Material actual:', materialActual);
+            console.log('- Campo código:', document.getElementById('codigo_material_recibido'));
+            console.log('- Tabla salidas:', document.getElementById('tablaSalidas'));
+        };
+    </script>
+</body>
+</html>

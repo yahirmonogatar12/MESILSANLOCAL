@@ -73,6 +73,38 @@ def init_db():
         )
     ''')
     
+    # Tabla para control de salida de material
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS control_material_salida (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo_material_recibido TEXT,
+            numero_lote TEXT,
+            modelo TEXT,
+            depto_salida TEXT,
+            proceso_salida TEXT,
+            cantidad_salida REAL,
+            fecha_salida TEXT,
+            fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (codigo_material_recibido) REFERENCES control_material_almacen(codigo_material_recibido)
+        )
+    ''')
+    
+    # Tabla para inventario general (unificado por número de parte)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS inventario_general (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero_parte TEXT UNIQUE NOT NULL,
+            codigo_material TEXT,
+            propiedad_material TEXT,
+            especificacion TEXT,
+            cantidad_total REAL DEFAULT 0,
+            cantidad_entradas REAL DEFAULT 0,
+            cantidad_salidas REAL DEFAULT 0,
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Tabla para configuraciones de usuario
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS configuraciones_usuario (
@@ -163,5 +195,195 @@ def cargar_configuracion_usuario(usuario, clave, valor_por_defecto=''):
     except Exception as e:
         print(f"Error al cargar configuración: {e}")
         return valor_por_defecto
+    finally:
+        conn.close()
+
+# ========== FUNCIONES PARA INVENTARIO GENERAL ==========
+
+def actualizar_inventario_general_entrada(numero_parte, codigo_material, propiedad_material, especificacion, cantidad_entrada):
+    """
+    Actualizar el inventario general al registrar una entrada.
+    Unifica por número de parte y suma las cantidades.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Verificar si ya existe el número de parte
+        cursor.execute('''
+            SELECT * FROM inventario_general WHERE numero_parte = ?
+        ''', (numero_parte,))
+        existente = cursor.fetchone()
+        
+        if existente:
+            # Actualizar registro existente
+            nueva_cantidad_entradas = existente['cantidad_entradas'] + cantidad_entrada
+            nueva_cantidad_total = nueva_cantidad_entradas - existente['cantidad_salidas']
+            
+            cursor.execute('''
+                UPDATE inventario_general 
+                SET cantidad_entradas = ?,
+                    cantidad_total = ?,
+                    fecha_actualizacion = datetime('now')
+                WHERE numero_parte = ?
+            ''', (nueva_cantidad_entradas, nueva_cantidad_total, numero_parte))
+            
+            print(f"✅ Inventario actualizado para {numero_parte}: +{cantidad_entrada} (Total: {nueva_cantidad_total})")
+        else:
+            # Crear nuevo registro
+            cursor.execute('''
+                INSERT INTO inventario_general (
+                    numero_parte, codigo_material, propiedad_material, especificacion,
+                    cantidad_total, cantidad_entradas, cantidad_salidas
+                ) VALUES (?, ?, ?, ?, ?, ?, 0)
+            ''', (numero_parte, codigo_material, propiedad_material, especificacion, cantidad_entrada, cantidad_entrada))
+            
+            print(f"✅ Nuevo registro en inventario para {numero_parte}: {cantidad_entrada}")
+        
+        conn.commit()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error al actualizar inventario general (entrada): {e}")
+        return False
+    finally:
+        conn.close()
+
+def actualizar_inventario_general_salida(numero_parte, cantidad_salida):
+    """
+    Actualizar el inventario general al registrar una salida.
+    Resta de la cantidad total del número de parte.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Buscar el registro existente
+        cursor.execute('''
+            SELECT * FROM inventario_general WHERE numero_parte = ?
+        ''', (numero_parte,))
+        existente = cursor.fetchone()
+        
+        if existente:
+            # Actualizar registro existente
+            nueva_cantidad_salidas = existente['cantidad_salidas'] + cantidad_salida
+            nueva_cantidad_total = existente['cantidad_entradas'] - nueva_cantidad_salidas
+            
+            # Validar que no quede en negativo
+            if nueva_cantidad_total < 0:
+                print(f"⚠️ ADVERTENCIA: Inventario negativo para {numero_parte}: {nueva_cantidad_total}")
+                # Podrías decidir si permitir negativos o no
+            
+            cursor.execute('''
+                UPDATE inventario_general 
+                SET cantidad_salidas = ?,
+                    cantidad_total = ?,
+                    fecha_actualizacion = datetime('now')
+                WHERE numero_parte = ?
+            ''', (nueva_cantidad_salidas, nueva_cantidad_total, numero_parte))
+            
+            print(f"✅ Inventario actualizado para {numero_parte}: -{cantidad_salida} (Total: {nueva_cantidad_total})")
+            conn.commit()
+            return True
+        else:
+            print(f"❌ ERROR: No existe registro en inventario para {numero_parte}")
+            return False
+        
+    except Exception as e:
+        print(f"❌ Error al actualizar inventario general (salida): {e}")
+        return False
+    finally:
+        conn.close()
+
+def obtener_inventario_general():
+    """
+    Obtener todo el inventario general (para uso futuro).
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT * FROM inventario_general 
+            ORDER BY numero_parte ASC
+        ''')
+        registros = cursor.fetchall()
+        return [dict(registro) for registro in registros]
+        
+    except Exception as e:
+        print(f"❌ Error al obtener inventario general: {e}")
+        return []
+    finally:
+        conn.close()
+
+def recalcular_inventario_general():
+    """
+    Función para recalcular todo el inventario general desde cero.
+    Útil para sincronizar si hay inconsistencias.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        print("🔄 Recalculando inventario general...")
+        
+        # Limpiar tabla de inventario
+        cursor.execute('DELETE FROM inventario_general')
+        
+        # Obtener todas las entradas agrupadas por número de parte
+        cursor.execute('''
+            SELECT 
+                numero_parte,
+                codigo_material,
+                propiedad_material,
+                especificacion,
+                SUM(cantidad_actual) as total_entradas
+            FROM control_material_almacen 
+            WHERE numero_parte IS NOT NULL AND numero_parte != ''
+            GROUP BY numero_parte
+        ''')
+        entradas = cursor.fetchall()
+        
+        # Insertar entradas en inventario general
+        for entrada in entradas:
+            cursor.execute('''
+                INSERT INTO inventario_general (
+                    numero_parte, codigo_material, propiedad_material, especificacion,
+                    cantidad_entradas, cantidad_salidas, cantidad_total
+                ) VALUES (?, ?, ?, ?, ?, 0, ?)
+            ''', (
+                entrada['numero_parte'],
+                entrada['codigo_material'],
+                entrada['propiedad_material'],
+                entrada['especificacion'],
+                entrada['total_entradas'],
+                entrada['total_entradas']
+            ))
+        
+        # Obtener todas las salidas agrupadas por número de parte
+        cursor.execute('''
+            SELECT 
+                a.numero_parte,
+                SUM(s.cantidad_salida) as total_salidas
+            FROM control_material_salida s
+            JOIN control_material_almacen a ON s.codigo_material_recibido = a.codigo_material_recibido
+            WHERE a.numero_parte IS NOT NULL AND a.numero_parte != ''
+            GROUP BY a.numero_parte
+        ''')
+        salidas = cursor.fetchall()
+        
+        # Actualizar salidas en inventario general
+        for salida in salidas:
+            cursor.execute('''
+                UPDATE inventario_general 
+                SET cantidad_salidas = ?,
+                    cantidad_total = cantidad_entradas - ?,
+                    fecha_actualizacion = datetime('now')
+                WHERE numero_parte = ?
+            ''', (salida['total_salidas'], salida['total_salidas'], salida['numero_parte']))
+        
+        conn.commit()
+        print("✅ Inventario general recalculado exitosamente")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error al recalcular inventario general: {e}")
+        return False
     finally:
         conn.close()
