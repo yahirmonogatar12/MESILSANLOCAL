@@ -27,12 +27,12 @@
            background-color: #3498db;
            color: white;
            cursor: pointer;
-           font-size: 8px;
+           font-size: 12px;
            transition: all 0.3s;
            font-weight: 500;
            line-height: 1.0;
            min-width: 50px;
-           height: 20px;
+           height: 28px;
            white-space: nowrap;
            overflow: hidden;
            text-overflow: ellipsis;
@@ -103,7 +103,7 @@
        #control-almacen-container .material-form-group label {
            font-weight: bold;
            margin-bottom: 1px;
-           font-size: 8px;
+           font-size: 11px;
            color: lightgray;
            line-height: 1.0;
        }
@@ -115,8 +115,8 @@
            border-radius: 2px;
            background-color: #ffffff !important;
            color: #2c3e50 !important;
-           font-size: 9px;
-           height: 20px;
+           font-size: 12px;
+           height: 28px;
            line-height: 1.0;
            -webkit-appearance: none;
            -moz-appearance: none;
@@ -162,7 +162,7 @@
            background-color: #ffffff !important;
            color: #2c3e50 !important;
            border: 1px solid #95a5a6 !important;
-           font-size: 9px !important;
+           font-size: 12px !important;
        }
        
        #control-almacen-container #forma_material:focus, 
@@ -222,32 +222,32 @@
            width: 100%;
            border-collapse: collapse;
            margin: 0;
-           font-size: 6px;
+           font-size: 10px;
            background-color: #40424F;
        }
 
        #control-almacen-container .material-table th {
            background-color: #2c3e50;
            color: #ecf0f1;
-           padding: 2px 2px;
+           padding: 6px 4px;
            text-align: center;
            border: 1px solid #34495e;
            font-weight: 600;
            position: sticky;
            top: 0;
            z-index: 10;
-           font-size: 6px;
+           font-size: 10px;
            line-height: 1.0;
        }
 
        #control-almacen-container .material-table td {
-           padding: 1px 2px;
+           padding: 4px 6px;
            text-align: center;
            border: 1px solid #34495e;
            background-color: #40424F;
            color: lightgray;
            transition: background-color 0.3s;
-           font-size: 6px;
+           font-size: 10px;
            line-height: 1.0;
        }
 
@@ -316,7 +316,7 @@
 
        #control-almacen-container .total-info {
            color: lightgray;
-           font-size: 10px;
+           font-size: 14px;
            margin-top: 5px;
        }
 
@@ -364,7 +364,7 @@
        #control-almacen-container .dropdown-table {
            width: 100%;
            border-collapse: collapse;
-           font-size: 11px;
+           font-size: 14px;
            background-color: white;
        }
        
@@ -374,7 +374,7 @@
            padding: 8px 12px;
            text-align: left;
            font-weight: 500;
-           font-size: 11px;
+           font-size: 14px;
            border-bottom: 1px solid #e0e0e0;
            position: sticky;
            top: 0;
@@ -386,7 +386,7 @@
            color: #333;
            border-bottom: 1px solid #f0f0f0;
            cursor: pointer;
-           font-size: 11px;
+           font-size: 14px;
            transition: background-color 0.2s;
        }
        
@@ -543,8 +543,6 @@
             </div>
             <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
             <button class="material-btn secondary">Exportar Excel</button>
-            <!-- Botón de test temporal para debugging -->
-            <button class="material-btn purple" onclick="window.testConectividadAlmacen()" style="font-size: 7px;">Test</button>
         </div>
 
         <!-- Tabla de resultados -->
@@ -585,28 +583,17 @@
 
         // Función global para inicializar cuando se muestra el control de almacén
         window.inicializarControlAlmacenModule = function() {
-            console.log('🔄 Inicializando módulo Control de Almacén desde función global...');
-            
             // Pequeño delay para asegurar que el DOM esté completamente renderizado
             setTimeout(() => {
                 inicializarControlAlmacen();
                 configurarListenersAdicionales();
-                
-                // Test automático cuando se inicializa desde include
-                if (document.getElementById('control-almacen-container')) {
-                    console.log('🧪 Ejecutando test automático en contexto incluido...');
-                    window.testControlAlmacenModule();
-                }
             }, 100);
         };
 
         // Función de test de conectividad básica y simple
         window.testConectividadAlmacen = function() {
-            console.log('🔗 Probando conectividad con endpoint de almacén...');
-            
             fetch('/consultar_control_almacen')
                 .then(response => {
-                    console.log('✅ Conectividad OK - Status:', response.status);
                     if (response.ok) {
                         return response.json();
                     } else {
@@ -614,38 +601,20 @@
                     }
                 })
                 .then(data => {
-                    console.log('✅ Datos recibidos:', data ? data.length : 'No array');
-                    alert(`✅ Conectividad OK - Recibidos ${Array.isArray(data) ? data.length : 0} registros`);
-                    
-                    // Cargar automáticamente los datos
-                    cargarDatosEnTabla(data);
+                    // NO cargar automáticamente los datos, solo verificar conectividad
                 })
                 .catch(error => {
                     console.error('❌ Error de conectividad:', error);
-                    alert('❌ Error de conectividad: ' + error.message);
                 });
         };
 
         // Cargar códigos de material al cargar la página
         function inicializarControlAlmacen() {
-            console.log('Página cargada - inicializando Control de Almacén...');
-            
-            // Debug: Verificar que los elementos clave estén disponibles
-            const elementos = {
-                'tablaControlAlmacen': document.getElementById('tablaControlAlmacen'),
-                'btnConsultar': document.getElementById('btnConsultar'),
-                'filtro_fecha_inicio': document.getElementById('filtro_fecha_inicio'),
-                'filtro_fecha_fin': document.getElementById('filtro_fecha_fin')
-            };
-            
-            console.log('🔍 Verificando elementos del DOM:');
-            Object.keys(elementos).forEach(key => {
-                if (elementos[key]) {
-                    console.log(`✅ ${key}: Encontrado`);
-                } else {
-                    console.error(`❌ ${key}: NO encontrado`);
-                }
-            });
+            // *** OCULTAR LA TABLA INICIALMENTE ***
+            const tabla = document.getElementById('tablaControlAlmacen');
+            if (tabla) {
+                tabla.style.display = 'none';
+            }
             
             cargarCodigosMaterial();
             cargarClienteSeleccionado(); // Cargar la última selección de cliente
@@ -670,11 +639,8 @@
                         const selectCliente = document.getElementById('cliente');
                         if (selectCliente) {
                             selectCliente.value = data.cliente;
-                            console.log('✅ Cliente cargado:', data.cliente);
                         }
                     }
-                } else {
-                    console.warn('Error al cargar cliente:', response.status);
                 }
             } catch (error) {
                 console.error('Error al cargar cliente seleccionado:', error);
@@ -684,7 +650,6 @@
         // Función para guardar la selección de cliente
         async function guardarClienteSeleccionado(cliente) {
             try {
-                console.log('💾 Guardando cliente seleccionado:', cliente);
                 const response = await fetch('/guardar_cliente_seleccionado', {
                     method: 'POST',
                     headers: {
@@ -695,13 +660,9 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.success) {
-                        console.log('✅ Cliente guardado exitosamente en BD:', cliente);
-                    } else {
+                    if (!data.success) {
                         console.error('❌ Error al guardar cliente:', data.error);
                     }
-                } else {
-                    console.warn('⚠️ Error en respuesta al guardar cliente:', response.status);
                 }
             } catch (error) {
                 console.error('❌ Error de conexión al guardar cliente:', error);
@@ -714,13 +675,6 @@
                 
                 if (response.ok) {
                     codigosMaterial = await response.json();
-                    console.log('✅ Códigos de material cargados:', codigosMaterial.length);
-                    
-                    // Mostrar algunos ejemplos para verificar que incluyen cantidad_estandarizada
-                    if (codigosMaterial.length > 0) {
-                        console.log('📋 Ejemplo de material cargado:', codigosMaterial[0]);
-                        console.log('🔍 Campos disponibles:', Object.keys(codigosMaterial[0]));
-                    }
                 } else {
                     console.error('Error al cargar códigos de material, status:', response.status);
                     // Si hay error, usar datos de prueba
@@ -729,7 +683,6 @@
                         {codigo: 'M2609109005', nombre: 'M2609109005', spec: '91F 1608', cantidad_estandarizada: '2000', propiedad_material: '91F 1608'},
                         {codigo: 'NFM961W550504', nombre: 'NFM961W550504', spec: 'S7882_10.1_NOKEY_FW0F', cantidad_estandarizada: '500', propiedad_material: 'S7882_10.1_NOKEY_FW0F'}
                     ];
-                    console.log('⚠️ Usando datos de prueba con cantidad_estandarizada');
                 }
             } catch (error) {
                 console.error('Error en fetch:', error);
@@ -739,7 +692,6 @@
                     {codigo: 'M2609109005', nombre: 'M2609109005', spec: '91F 1608', cantidad_estandarizada: '2000', propiedad_material: '91F 1608'},
                     {codigo: 'NFM961W550504', nombre: 'NFM961W550504', spec: 'S7882_10.1_NOKEY_FW0F', cantidad_estandarizada: '500', propiedad_material: 'S7882_10.1_NOKEY_FW0F'}
                 ];
-                console.log('⚠️ Usando datos de prueba por error de conexión');
             }
         }
 
@@ -857,7 +809,6 @@
                 selectCliente.addEventListener('change', function() {
                     const clienteSeleccionado = this.value;
                     if (clienteSeleccionado) {
-                        console.log('Cliente seleccionado:', clienteSeleccionado);
                         guardarClienteSeleccionado(clienteSeleccionado);
                         
                         // Resaltar visualmente que se guardó
@@ -874,7 +825,6 @@
             // Agregar listener adicional al botón de consultar para asegurar que funcione
             const btnConsultar = document.getElementById('btnConsultar');
             if (btnConsultar) {
-                console.log('✅ Configurando listener adicional para btnConsultar');
                 btnConsultar.addEventListener('click', function(e) {
                     // Solo prevenir default si no hay onclick definido
                     if (!this.onclick) {
@@ -882,8 +832,6 @@
                         consultarRegistros();
                     }
                 });
-            } else {
-                console.error('❌ No se encontró btnConsultar para configurar listener');
             }
         }
 
@@ -918,50 +866,59 @@
             }
         }
 
-        function parsearYDistribuirCodigo(codigoCompleto) {
-            console.log('Código escaneado:', codigoCompleto);
-            
-            // Dividir por "/" para obtener las partes
-            const partes = codigoCompleto.split('/');
-            
-            if (partes.length < 8) {
-                alert('Formato de código inválido. Debe contener al menos 8 secciones separadas por "/"');
-                return;
-            }
-            
-            // Extraer los datos según tu especificación
-            const codigoMaterial = partes[0];           // M2124740058
-            const cantidadActual = partes[2];           // 4000  
-            const numeroLote = partes[7];               // IA3116H14
-            
-            // Distribuir a los campos correspondientes
-            if (codigoMaterial) {
-                // Buscar y seleccionar el código de material en el dropdown
-                buscarYSeleccionarCodigoMaterial(codigoMaterial);
-            }
-            
-            if (cantidadActual) {
-                const inputCantidad = document.getElementById('cantidad_actual');
-                if (inputCantidad) {
-                    inputCantidad.value = cantidadActual;
+        async function parsearYDistribuirCodigo(codigoCompleto) {
+            try {
+                // Primero intentar con las reglas de trazabilidad
+                const resultado = await aplicarReglasEscaneo(codigoCompleto);
+                
+                if (resultado) {
+                    // Si se encontró una regla que coincide, usar esos datos
+                    if (resultado.partNumber) {
+                        // Usar el partNumber como código de material
+                        buscarYSeleccionarCodigoMaterial(resultado.partNumber);
+                    }
+                    
+                    if (resultado.lotNumber) {
+                        const inputLote = document.getElementById('numero_lote_material');
+                        if (inputLote) {
+                            inputLote.value = resultado.lotNumber;
+                        }
+                    }
+                    
+                    mostrarNotificacionEscaneo(resultado.partNumber, null, resultado.lotNumber);
+                    return;
                 }
-            }
-            
-            if (numeroLote) {
-                const inputLote = document.getElementById('numero_lote_material');
-                if (inputLote) {
-                    inputLote.value = numeroLote;
+                
+                // Si no funciona con reglas, usar el método anterior como fallback
+                const partes = codigoCompleto.split('/');
+                
+                if (partes.length < 8) {
+                    alert('Formato de código inválido. No se encontró regla aplicable y no tiene el formato esperado con "/" ');
+                    return;
                 }
+                
+                // Extraer SOLO el código de material y número de lote (método anterior)
+                const codigoMaterial = partes[0];           // M2124740058
+                const numeroLote = partes[7];               // IA3116H14
+                
+                // Distribuir a los campos correspondientes
+                if (codigoMaterial) {
+                    buscarYSeleccionarCodigoMaterial(codigoMaterial);
+                }
+                
+                if (numeroLote) {
+                    const inputLote = document.getElementById('numero_lote_material');
+                    if (inputLote) {
+                        inputLote.value = numeroLote;
+                    }
+                }
+                
+                mostrarNotificacionEscaneo(codigoMaterial, null, numeroLote);
+                
+            } catch (error) {
+                console.error('Error al procesar código escaneado:', error);
+                alert('Error al procesar el código escaneado');
             }
-            
-            // Mostrar resumen de lo procesado
-            console.log('Datos extraídos:');
-            console.log('- Código de material:', codigoMaterial);
-            console.log('- Cantidad actual:', cantidadActual);
-            console.log('- Número de lote:', numeroLote);
-            
-            // Opcional: Mostrar notificación visual
-            mostrarNotificacionEscaneo(codigoMaterial, cantidadActual, numeroLote);
         }
 
         function buscarYSeleccionarCodigoMaterial(codigo) {
@@ -971,8 +928,6 @@
             if (codigoEncontrado) {
                 // Si existe, seleccionarlo automáticamente
                 seleccionarCodigo(codigo);
-                console.log('Código de material encontrado y seleccionado:', codigo);
-                console.log('Datos del material:', codigoEncontrado);
             } else {
                 // Si no existe, mostrar en el dropdown pero sin seleccionar
                 const select = document.getElementById('codigoMaterialSelect');
@@ -1004,13 +959,10 @@
         // Función para cargar el siguiente número secuencial desde la base de datos
         async function cargarSiguienteSecuencial(codigoMaterial = '') {
             try {
-                console.log('🔄 Cargando siguiente número secuencial desde BD...');
-                
                 // Construir URL con código de material si está disponible
                 let url = '/obtener_siguiente_secuencial';
                 if (codigoMaterial) {
                     url += `?codigo_material=${encodeURIComponent(codigoMaterial)}`;
-                    console.log(`📋 Solicitando secuencial para código: ${codigoMaterial}`);
                 }
                 
                 const response = await fetch(url);
@@ -1020,19 +972,11 @@
                     if (data.success) {
                         contadorSecuencial = data.siguiente_secuencial || 1;
                         proximoCodigoCompleto = data.proximo_codigo_completo || '';
-                        
-                        console.log(`✅ Siguiente secuencial cargado desde BD: ${contadorSecuencial}`);
-                        console.log(`📅 Fecha actual: ${data.fecha_actual}`);
-                        console.log(`🔍 Código material: ${data.codigo_material || 'Sin código'}`);
-                        console.log(`📊 Secuencial más alto encontrado: ${data.secuencial_mas_alto_encontrado}`);
-                        console.log(`🔢 Próximo código completo: ${proximoCodigoCompleto}`);
                     } else {
-                        console.warn('⚠️ Error en respuesta del secuencial:', data.error);
                         contadorSecuencial = 1;
                         proximoCodigoCompleto = '';
                     }
                 } else {
-                    console.error('❌ Error HTTP al cargar secuencial:', response.status);
                     contadorSecuencial = 1;
                     proximoCodigoCompleto = '';
                 }
@@ -1048,7 +992,6 @@
             const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
             
             // Recargar el contador específico para este código de material
-            console.log(`🔄 Recargando contador para código de material: ${codigoMaterial}`);
             cargarSiguienteSecuencial(codigoMaterial).then(() => {
                 // Una vez cargado el contador, proceder a llenar los campos
                 llenarCamposConContador(codigoMaterial, codigoCompleto);
@@ -1056,12 +999,16 @@
         }
         
         function llenarCamposConContador(codigoMaterial, codigoCompleto) {
-            // Usar el próximo código completo obtenido del backend (formato: CODIGO/YYYYMMDD0001)
-            const codigoMaterialRecibidoCompleto = proximoCodigoCompleto || `${codigoMaterial}/${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(contadorSecuencial).padStart(4, '0')}`;
+            // Obtener el número de parte del material si está disponible
+            const numeroParte = codigoCompleto ? (codigoCompleto.numero_parte || codigoMaterial) : codigoMaterial;
+            
+            // *** CAMBIO: Usar número de parte en lugar de código de material para el código recibido ***
+            const codigoMaterialRecibidoCompleto = proximoCodigoCompleto || `${numeroParte}/${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(contadorSecuencial).padStart(4, '0')}`;
             
             console.log('Llenando campos inferiores:');
             console.log('- Código de material base:', codigoMaterial);
-            console.log('- Código de material recibido completo:', codigoMaterialRecibidoCompleto);
+            console.log('- Número de parte:', numeroParte);
+            console.log('- Código de material recibido completo (con número de parte):', codigoMaterialRecibidoCompleto);
             console.log('- Contador secuencial:', contadorSecuencial);
             
             // Llenar campos con IDs específicos usando la información de la base de datos
@@ -1069,7 +1016,7 @@
                 console.log('- Información del material encontrada:', codigoCompleto);
                 
                 // Llenar campos con IDs específicos
-                llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto); // Código completo: CODIGO/YYYYMMDD0001
+                llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto); // Código completo: NUMERO_PARTE/YYYYMMDD0001
                 llenarCampoPorId('codigo_material_lower', codigoMaterial); // Solo el código base
                 llenarCampoPorId('numero_parte_lower', codigoCompleto.numero_parte || String(contadorSecuencial).padStart(4, '0'));
                 llenarCampoPorId('cantidad_estandarizada', codigoCompleto.cantidad_estandarizada || ''); // Usar standarpack
@@ -1165,7 +1112,7 @@
         function forzarRecargaContador() {
             console.log('🔄 Forzando recarga del contador secuencial...');
             cargarSiguienteSecuencial().then(() => {
-                alert(`Contador recargado. Próximo secuencial: ${String(contadorSecuencial).padStart(4, '0')}`);
+                console.log(`✅ Contador recargado. Próximo secuencial: ${String(contadorSecuencial).padStart(4, '0')}`);
             });
         }
 
@@ -1299,6 +1246,13 @@
             document.getElementById('codigo_material_lower').value = '';
             document.getElementById('propiedad_material').value = '';
             
+            // *** OCULTAR LA TABLA AL LIMPIAR FORMULARIO ***
+            const tabla = document.getElementById('tablaControlAlmacen');
+            if (tabla) {
+                tabla.style.display = 'none';
+                console.log('✅ Tabla ocultada después de limpiar formulario');
+            }
+            
             // El contador secuencial se recarga desde BD después de cada guardado exitoso
             console.log('Formulario limpiado. Próximo número secuencial será:', String(contadorSecuencial).padStart(4, '0'));
         }
@@ -1362,11 +1316,18 @@
         
         // NUEVA FUNCIÓN FUNCIONAL PARA REEMPLAZAR cargarDatosEnTabla
         function nuevaCargarDatos(datos) {
+            const tabla = document.getElementById('tablaControlAlmacen');
             const tbody = document.querySelector('#tablaControlAlmacen tbody');
+            
+            // *** MOSTRAR LA TABLA CUANDO SE CARGAN DATOS ***
+            if (tabla) {
+                tabla.style.display = 'table';
+            }
+            
             tbody.innerHTML = '';
 
             if (!datos || datos.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" class="material-table .no-data">No hay registros disponibles. Use el botón "Consultar" para cargar datos.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="material-table .no-data">No hay registros disponibles.</td></tr>';
                 return;
             }
 
@@ -1450,7 +1411,7 @@
             
             if (errores.length === 0) {
                 console.log('🎉 ¡TODOS LOS TESTS PASARON!');
-                alert('✅ Módulo Control de Almacén: Todos los componentes están funcionando correctamente');
+                console.log('✅ Módulo Control de Almacén: Todos los componentes están funcionando correctamente');
                 
                 // Test adicional: Intentar cargar datos
                 console.log('🔄 Ejecutando test de carga de datos...');
@@ -1458,7 +1419,7 @@
                 
             } else {
                 console.error('❌ ERRORES ENCONTRADOS:', errores);
-                alert('❌ Errores en el módulo:\n' + errores.join('\n'));
+                console.warn('❌ Errores en el módulo: ' + errores.join(', '));
             }
             
             return errores.length === 0;
@@ -1601,7 +1562,7 @@
             console.log('🟢 Tbody encontrado:', tbody);
             
             if (!tbody) {
-                alert('❌ NO SE ENCONTRÓ TBODY');
+                console.error('❌ NO SE ENCONTRÓ TBODY');
                 return;
             }
             
@@ -1619,7 +1580,7 @@
             }
             
             console.log('🟢🟢🟢 FUNCIÓN BÁSICA TERMINADA');
-            alert('✅ Función básica ejecutada - Datos: ' + (datos ? datos.length : 0));
+            console.log('✅ Función básica ejecutada - Datos: ' + (datos ? datos.length : 0));
         }
         
         // FUNCIÓN DE PRUEBA INMEDIATA
@@ -1646,7 +1607,7 @@
                 })
                 .catch(error => {
                     console.error('❌ Error:', error);
-                    alert('❌ Error: ' + error.message);
+                    console.warn('❌ Error: ' + error.message);
                 });
         };
 
@@ -1704,4 +1665,305 @@
             
             testBotonConsultar();
         };
+
+        // Función para aplicar reglas de escaneo desde rules.json
+        async function aplicarReglasEscaneo(texto) {
+            try {
+                console.log('=== APLICANDO REGLAS DE ESCANEO ===');
+                console.log('Texto escaneado:', texto);
+                console.log('Longitud del texto:', texto.length);
+                
+                // Obtener las reglas del servidor
+                const response = await fetch('/obtener_reglas_escaneo');
+                if (!response.ok) {
+                    console.warn('No se pudieron obtener las reglas de escaneo');
+                    return null;
+                }
+                
+                const reglas = await response.json();
+                console.log('Reglas de escaneo cargadas:', reglas);
+                
+                // Probar cada regla hasta encontrar una que coincida
+                for (const [proveedor, regla] of Object.entries(reglas)) {
+                    console.log(`\n--- Probando regla para proveedor: ${proveedor} ---`);
+                    console.log('Tipo de regla:', regla.creation_mode || 'no especificado');
+                    
+                    const resultado = aplicarRegla(texto, regla);
+                    if (resultado) {
+                        console.log(`✅ REGLA ${proveedor} APLICADA EXITOSAMENTE:`);
+                        console.log('- Proveedor:', proveedor);
+                        console.log('- Part Number:', resultado.partNumber);
+                        console.log('- Lot Number:', resultado.lotNumber);
+                        console.log('- Part Number length:', resultado.partNumber.length);
+                        console.log('- Lot Number length:', resultado.lotNumber.length);
+                        
+                        return {
+                            supplier: proveedor,
+                            partNumber: resultado.partNumber,
+                            lotNumber: resultado.lotNumber
+                        };
+                    } else {
+                        console.log(`❌ Regla ${proveedor} no coincide`);
+                    }
+                }
+                
+                console.log('❌ Ninguna regla coincide con el texto escaneado');
+                return null;
+                
+            } catch (error) {
+                console.error('Error al aplicar reglas de escaneo:', error);
+                return null;
+            }
+        }
+        
+        // Función para aplicar una regla específica
+        function aplicarRegla(texto, regla) {
+            try {
+                console.log('Aplicando regla:', regla);
+                
+                // Manejar diferentes tipos de reglas según tu rules.json
+                if ('sequence_pattern' in regla) {
+                    return aplicarReglaSecuencias(texto, regla);
+                } else if ('character_pattern' in regla) {
+                    return aplicarReglaCaracteres(texto, regla);
+                } else if ('pattern' in regla) {
+                    return aplicarReglaRegex(texto, regla);
+                } else {
+                    console.warn('Tipo de regla no soportado:', regla);
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error aplicando regla:', error);
+                return null;
+            }
+        }
+        
+        // Función para aplicar regla de secuencias (como ROHM)
+        function aplicarReglaSecuencias(texto, regla) {
+            try {
+                console.log('Aplicando regla de secuencias para:', texto);
+                console.log('Regla:', regla);
+                
+                const secuencias = regla.sequence_pattern;
+                const indicePart = regla.partNumberIndex;
+                const indiceLote = regla.lotNumberIndex;
+                const maxLongitudPart = regla.partNumberMaxLength;
+                const maxLongitudLote = regla.lotNumberMaxLength;
+                
+                // Dividir el texto según las secuencias
+                let partes = [texto];
+                
+                for (const secuencia of secuencias) {
+                    let nuevasPartes = [];
+                    
+                    for (const parte of partes) {
+                        if (secuencia.type === 'spaces') {
+                            // Dividir por la cantidad exacta de espacios consecutivos
+                            const espacios = ' '.repeat(secuencia.count);
+                            const subpartes = parte.split(espacios); // Dividir por todos los separadores
+                            nuevasPartes.push(...subpartes);
+                        } else if (secuencia.type === 'tabs') {
+                            const tabs = '\t'.repeat(secuencia.count);
+                            const subpartes = parte.split(tabs);
+                            nuevasPartes.push(...subpartes);
+                        } else if (secuencia.type === 'newlines') {
+                            const newlines = '\n'.repeat(secuencia.count);
+                            const subpartes = parte.split(newlines);
+                            nuevasPartes.push(...subpartes);
+                        } else if (secuencia.type === 'custom') {
+                            const custom = (secuencia.separator || '').repeat(secuencia.count);
+                            const subpartes = parte.split(custom);
+                            nuevasPartes.push(...subpartes);
+                        } else {
+                            nuevasPartes.push(parte);
+                        }
+                    }
+                    
+                    partes = nuevasPartes;
+                }
+                
+                console.log('Partes divididas:', partes);
+                
+                // Verificar que tengamos suficientes partes
+                if (partes.length <= Math.max(indicePart, indiceLote)) {
+                    console.log('No suficientes partes para extraer datos');
+                    return null;
+                }
+                
+                let partNumber = (partes[indicePart] || '').trim();
+                let lotNumber = (partes[indiceLote] || '').trim();
+                
+                // Aplicar longitudes máximas si están definidas (como en Python)
+                if (maxLongitudPart && partNumber.length > maxLongitudPart) {
+                    partNumber = partNumber.substring(0, maxLongitudPart);
+                }
+                if (maxLongitudLote && lotNumber.length > maxLongitudLote) {
+                    lotNumber = lotNumber.substring(0, maxLongitudLote);
+                }
+                
+                // *** NUEVA FUNCIONALIDAD: Extracción específica del lote ***
+                if (regla.lotNumberStart !== undefined && regla.lotNumberLength !== undefined) {
+                    const startPos = regla.lotNumberStart;
+                    const length = regla.lotNumberLength;
+                    
+                    console.log('🎯 Aplicando extracción específica del lote:');
+                    console.log('- Lote original:', lotNumber);
+                    console.log('- Posición inicio:', startPos);
+                    console.log('- Longitud:', length);
+                    console.log('- Lote original length:', lotNumber.length);
+                    
+                    if (lotNumber.length >= startPos + length) {
+                        lotNumber = lotNumber.substring(startPos, startPos + length).trim();
+                        console.log('- Lote extraído:', lotNumber);
+                    } else {
+                        console.log('❌ Lote muy corto para extracción específica');
+                    }
+                }
+                
+                console.log('Datos extraídos por secuencias:');
+                console.log('- Part Number:', partNumber);
+                console.log('- Lot Number:', lotNumber);
+                console.log('- Part Number length:', partNumber.length);
+                console.log('- Lot Number length:', lotNumber.length);
+                
+                return {
+                    partNumber: partNumber,
+                    lotNumber: lotNumber
+                };
+                
+            } catch (error) {
+                console.error('Error en aplicarReglaSecuencias:', error);
+                return null;
+            }
+        }
+        
+        // Función para aplicar regla de regex (como LEGACY)
+        function aplicarReglaRegex(texto, regla) {
+            try {
+                console.log('Aplicando regla regex para:', texto);
+                
+                const patron = new RegExp(regla.pattern);
+                const indicePart = regla.partNumberIndex;
+                const indiceLote = regla.lotNumberIndex;
+                
+                const coincidencia = texto.match(patron);
+                
+                if (!coincidencia) {
+                    console.log('El texto no coincide con el patrón regex');
+                    return null;
+                }
+                
+                console.log('Coincidencias regex:', coincidencia);
+                
+                const partNumber = coincidencia[indicePart]?.trim() || '';
+                const lotNumber = coincidencia[indiceLote]?.trim() || '';
+                
+                console.log('Datos extraídos por regex:');
+                console.log('- Part Number:', partNumber);
+                console.log('- Lot Number:', lotNumber);
+                
+                return {
+                    partNumber: partNumber,
+                    lotNumber: lotNumber
+                };
+                
+            } catch (error) {
+                console.error('Error en aplicarReglaRegex:', error);
+                return null;
+            }
+        }
+        
+        // Función para aplicar regla de patrón de caracteres
+        function aplicarReglaCaracteres(texto, regla) {
+            try {
+                const patronCaracteres = regla.character_pattern;
+                const inicioPartNumber = regla.partNumberStart;
+                const longitudPartNumber = regla.partNumberLength;
+                const inicioLotNumber = regla.lotNumberStart;
+                const longitudLotNumber = regla.lotNumberLength;
+                
+                console.log('Aplicando regla de caracteres:');
+                console.log('- Patrón:', patronCaracteres);
+                console.log('- Texto:', texto);
+                console.log('- Texto length:', texto.length);
+                console.log('- Patrón length:', patronCaracteres.length);
+                console.log('- Part Number: posición', inicioPartNumber, 'longitud', longitudPartNumber);
+                console.log('- Lot Number: posición', inicioLotNumber, 'longitud', longitudLotNumber);
+                
+                // Verificar longitud mínima (igual que Python)
+                const longitudMinima = Math.max(inicioPartNumber + longitudPartNumber, inicioLotNumber + longitudLotNumber);
+                if (texto.length < longitudMinima) {
+                    console.log(`❌ Texto muy corto. Esperado: ${longitudMinima}, Actual: ${texto.length}`);
+                    return null;
+                }
+                
+                // VALIDACIÓN ESTRICTA DE PATRÓN (igual que Python)
+                if (texto.length !== patronCaracteres.length) {
+                    console.log(`❌ Longitud no coincide. Patrón: ${patronCaracteres.length}, Texto: ${texto.length}`);
+                    return null;
+                }
+                
+                // Verificar patrón carácter por carácter (igual que Python)
+                for (let i = 0; i < texto.length; i++) {
+                    const charTexto = texto[i];
+                    const charPatron = patronCaracteres[i];
+                    
+                    if (charPatron === 'X') {
+                        // X = cualquier carácter
+                        continue;
+                    } else if (charPatron === 'N') {
+                        // N = cualquier número
+                        if (!/\d/.test(charTexto)) {
+                            console.log(`❌ Carácter en posición ${i} no es número. Esperado: N, Actual: "${charTexto}"`);
+                            return null;
+                        }
+                    } else if (charPatron === 'A') {
+                        // A = cualquier letra
+                        if (!/[a-zA-Z]/.test(charTexto)) {
+                            console.log(`❌ Carácter en posición ${i} no es letra. Esperado: A, Actual: "${charTexto}"`);
+                            return null;
+                        }
+                    } else if (charPatron === 'AN') {
+                        // AN = alfanumérico
+                        if (!/[a-zA-Z0-9]/.test(charTexto)) {
+                            console.log(`❌ Carácter en posición ${i} no es alfanumérico. Esperado: AN, Actual: "${charTexto}"`);
+                            return null;
+                        }
+                    } else {
+                        // Carácter específico debe coincidir exactamente
+                        if (charTexto !== charPatron) {
+                            console.log(`❌ Carácter en posición ${i} no coincide. Esperado: "${charPatron}", Actual: "${charTexto}"`);
+                            return null;
+                        }
+                    }
+                }
+                
+                console.log('✅ Patrón validado correctamente');
+                
+                // Extraer partNumber y lotNumber según las posiciones EXACTAS (igual que Python)
+                const partNumber = texto.substring(inicioPartNumber, inicioPartNumber + longitudPartNumber).trim();
+                const lotNumber = texto.substring(inicioLotNumber, inicioLotNumber + longitudLotNumber).trim();
+                
+                console.log('Extracción exacta:');
+                console.log(`- Part Number extraído: "${partNumber}" (de posición ${inicioPartNumber} a ${inicioPartNumber + longitudPartNumber})`);
+                console.log(`- Lot Number extraído: "${lotNumber}" (de posición ${inicioLotNumber} a ${inicioLotNumber + longitudLotNumber})`);
+                console.log('- Part Number length extraído:', partNumber.length);
+                console.log('- Lot Number length extraído:', lotNumber.length);
+                
+                console.log('✅ Datos finales extraídos:');
+                console.log('- Part Number final:', partNumber);
+                console.log('- Lot Number final:', lotNumber);
+                
+                return {
+                    partNumber: partNumber,
+                    lotNumber: lotNumber
+                };
+                
+            } catch (error) {
+                console.error('Error en aplicarReglaCaracteres:', error);
+                return null;
+            }
+        }
     </script>
+</body>
+</html>

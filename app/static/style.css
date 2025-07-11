@@ -237,9 +237,15 @@ html, body {
 @media (max-width: 1200px) {
   :root {
     --sidebar-width: 220px;
+    
   }
 }
-
+@media (max-width: 1920px) {
+  .app-header {
+  
+    height: 80px;
+  }
+}
 @media (max-width: 992px) {
   .welcome-text {
     display: none;
@@ -275,7 +281,7 @@ html, body {
   }
   
   .app-header {
-    height: 140px;
+    height: 80px;
   }
   
   .header-row {
@@ -346,7 +352,7 @@ html, body {
   display: flex !important;
   flex-direction: row !important;
   height: calc(100vh - var(--header-height));
-  background-color: #32323E;
+  background-color: #4D505F;
   width: 100%;
 }
 
@@ -360,7 +366,7 @@ html, body {
 
 .material-content-area {
   flex: 1 !important;
-  background-color: #32323E;
+  background-color: #4D505F;
   overflow-y: auto;
   padding: 4px !important;
   display: block !important;
@@ -492,4 +498,110 @@ select {
     border: 1px solid #95a5a6 !important;
     -webkit-text-fill-color: #2c3e50 !important;
     font-size: 9px !important;
+}
+
+/* ============================================= */
+/* Scrollbar minimalista global                 */
+/* ============================================= */
+
+/* Estilo principal para todas las barras de desplazamiento */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+::-webkit-scrollbar-corner {
+    background-color: transparent;
+}
+
+/* Para Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Estilos específicos para contenedores de tabla */
+.material-table-container::-webkit-scrollbar,
+.material-table-wrapper::-webkit-scrollbar,
+.table-responsive::-webkit-scrollbar,
+.sidebar-content::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.material-table-container::-webkit-scrollbar-track,
+.material-table-wrapper::-webkit-scrollbar-track,
+.table-responsive::-webkit-scrollbar-track,
+.sidebar-content::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+.material-table-container::-webkit-scrollbar-thumb,
+.material-table-wrapper::-webkit-scrollbar-thumb,
+.table-responsive::-webkit-scrollbar-thumb,
+.sidebar-content::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.material-table-container::-webkit-scrollbar-thumb:hover,
+.material-table-wrapper::-webkit-scrollbar-thumb:hover,
+.table-responsive::-webkit-scrollbar-thumb:hover,
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+.material-table-container::-webkit-scrollbar-corner,
+.material-table-wrapper::-webkit-scrollbar-corner,
+.table-responsive::-webkit-scrollbar-corner,
+.sidebar-content::-webkit-scrollbar-corner {
+    background-color: transparent;
+}
+
+/* Para Firefox en contenedores específicos */
+.material-table-container,
+.material-table-wrapper,
+.table-responsive,
+.sidebar-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Estilo para modales */
+.modal-content::-webkit-scrollbar,
+.material-modal-content::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track,
+.material-modal-content::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb,
+.material-modal-content::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover,
+.material-modal-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.6);
 }

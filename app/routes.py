@@ -43,6 +43,8 @@ def login():
                 return redirect(url_for('material'))
             elif user.startswith("Produccion") or user == "2222":
                 return redirect(url_for('produccion'))
+            elif user.startswith("DDESARROLLO") or user == "3333":
+                return redirect(url_for('desarrollo'))
             # Puedes agregar más roles aquí si lo necesitas
         return render_template('login.html', error="Usuario o contraseña incorrectos. Por favor, intente de nuevo")
     return render_template('login.html')
@@ -53,11 +55,18 @@ def material():
     usuario = session.get('usuario', 'Invitado')
     return render_template('MaterialTemplate.html', usuario=usuario)
 
-@app.route('/produccion')
+@app.route('/Prueba')
 @login_requerido
 def produccion():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('Control de material/Control_material.html', usuario=usuario)
+    return render_template('INFORMACION BASICA/CONTROL_DE_MATERIAL.html', usuario=usuario)
+
+@app.route('/DESARROLLO')
+@login_requerido
+def desarrollo():
+    usuario = session.get('usuario', 'Invitado')
+    return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', usuario=usuario)
+
 
 @app.route('/logout')
 def logout():
@@ -369,7 +378,7 @@ def importar_excel():
                     if idx < len(columnas_excel):
                         valor = row.get(columnas_excel[idx], '')
                         if pd.isna(valor) or valor is None:
-                            return ''
+                            return ''                   
                         return str(valor).strip()
             except:
                 pass
@@ -396,6 +405,21 @@ def importar_excel():
                 # Si no reconoce el valor, asumir false por seguridad
                 return '0'
         
+        def limpiar_numero(valor):
+            """Limpia números eliminando decimales innecesarios (.0)"""
+            if not valor or pd.isna(valor):
+                return ''
+            
+            try:
+                numero = float(valor)
+                if numero % 1 == 0:  # Es un número entero
+                    return str(int(numero))  # Devolver como entero sin decimales
+                else:
+                    return str(numero)  # Mantener decimales si son necesarios
+            except (ValueError, TypeError):
+                # Si no es un número válido, devolver como string
+                return str(valor).strip()
+        
         # Conectar a la base de datos
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -416,7 +440,7 @@ def importar_excel():
                 propiedad_material = obtener_valor_columna(row, 'propiedad_material')
                 classification = obtener_valor_columna(row, 'classification')
                 especificacion_material = obtener_valor_columna(row, 'especificacion_material')
-                unidad_empaque = obtener_valor_columna(row, 'unidad_empaque')
+                unidad_empaque = limpiar_numero(obtener_valor_columna(row, 'unidad_empaque'))
                 ubicacion_material = obtener_valor_columna(row, 'ubicacion_material')
                 vendedor = obtener_valor_columna(row, 'vendedor')
                 
@@ -424,7 +448,7 @@ def importar_excel():
                 prohibido_sacar = convertir_checkbox(obtener_valor_columna(row, 'prohibido_sacar'))
                 reparable = convertir_checkbox(obtener_valor_columna(row, 'reparable'))
                 
-                nivel_msl = obtener_valor_columna(row, 'nivel_msl')
+                nivel_msl = limpiar_numero(obtener_valor_columna(row, 'nivel_msl'))
                 espesor_msl = obtener_valor_columna(row, 'espesor_msl')
                 fecha_registro = fecha_importacion
                 
@@ -1007,3 +1031,143 @@ def obtener_siguiente_secuencial():
             'error': str(e),
             'siguiente_secuencial': 1  # Valor por defecto en caso de error
         }), 500
+
+@app.route('/informacion_basica/control_de_material')
+@login_requerido
+def control_de_material_ajax():
+    """Ruta para cargar dinámicamente el contenido de Control de Material"""
+    try:
+        return render_template('INFORMACION BASICA/CONTROL_DE_MATERIAL.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de Material: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+# Rutas para cargar contenido dinámicamente (AJAX)
+@app.route('/listas/informacion_basica')
+@login_requerido
+def lista_informacion_basica():
+    """Cargar dinámicamente la lista de Información Básica"""
+    try:
+        return render_template('LISTAS/LISTA_INFORMACIONBASICA.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_INFORMACIONBASICA: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/listas/control_material')
+@login_requerido
+def lista_control_material():
+    """Cargar dinámicamente la lista de Control de Material"""
+    try:
+        return render_template('LISTAS/LISTA_DE_MATERIALES.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_DE_MATERIALES: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/listas/control_produccion')
+@login_requerido
+def lista_control_produccion():
+    """Cargar dinámicamente la lista de Control de Producción"""
+    try:
+        return render_template('LISTAS/LISTA_CONTROLDEPRODUCCION.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_CONTROLDEPRODUCCION: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/listas/control_proceso')
+@login_requerido
+def lista_control_proceso():
+    """Cargar dinámicamente la lista de Control de Proceso"""
+    try:
+        return render_template('LISTAS/LISTA_CONTROL_DE_PROCESO.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_CONTROL_DE_PROCESO: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/listas/control_calidad')
+@login_requerido
+def lista_control_calidad():
+    """Cargar dinámicamente la lista de Control de Calidad"""
+    try:
+        return render_template('LISTAS/LISTA_CONTROL_DE_CALIDAD.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_CONTROL_DE_CALIDAD: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/listas/control_resultados')
+@login_requerido
+def lista_control_resultados():
+    """Cargar dinámicamente la lista de Control de Resultados"""
+    try:
+        return render_template('LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_DE_CONTROL_DE_RESULTADOS: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/listas/control_reporte')
+@login_requerido
+def lista_control_reporte():
+    """Cargar dinámicamente la lista de Control de Reporte"""
+    try:
+        return render_template('LISTAS/LISTA_DE_CONTROL_DE_REPORTE.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_DE_CONTROL_DE_REPORTE: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/listas/configuracion_programa')
+@login_requerido
+def lista_configuracion_programa():
+    """Cargar dinámicamente la lista de Configuración de Programa"""
+    try:
+        return render_template('LISTAS/LISTA_DE_CONFIGPG.html')
+    except Exception as e:
+        print(f"Error al cargar LISTA_DE_CONFIGPG: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/info')
+@login_requerido
+def material_info():
+    """Cargar dinámicamente la información general de material"""
+    try:
+        return render_template('info.html')
+    except Exception as e:
+        print(f"Error al cargar info.html: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/control_almacen')
+@login_requerido
+def material_control_almacen():
+    """Cargar dinámicamente el control de almacén"""
+    try:
+        return render_template('Control de material/Control de material de almacen.html')
+    except Exception as e:
+        print(f"Error al cargar Control de material de almacen: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/control_salida')
+@login_requerido
+def material_control_salida():
+    """Cargar dinámicamente el control de salida"""
+    try:
+        return render_template('Control de material/Control de salida.html')
+    except Exception as e:
+        print(f"Error al cargar Control de salida: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/obtener_reglas_escaneo')
+def obtener_reglas_escaneo():
+    """Endpoint para obtener las reglas de escaneo desde rules.json"""
+    try:
+        ruta_rules = os.path.join(os.path.dirname(__file__), 'database', 'rules.json')
+        ruta_rules = os.path.abspath(ruta_rules)
+        
+        if os.path.exists(ruta_rules):
+            with open(ruta_rules, 'r', encoding='utf-8') as f:
+                reglas = json.load(f)
+            return jsonify(reglas)
+        else:
+            print(f"❌ Archivo rules.json no encontrado en: {ruta_rules}")
+            return jsonify({}), 404
+            
+    except Exception as e:
+        print(f"❌ Error al cargar reglas de escaneo: {str(e)}")
+        return jsonify({'error': str(e)}), 500

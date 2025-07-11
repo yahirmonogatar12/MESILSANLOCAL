@@ -65,6 +65,7 @@
   flex-shrink: 0;
   max-width: none;
   transition: all 0.3s ease;
+  margin-left: 10px;
 }
 
 .nav-button {

@@ -1,0 +1,23 @@
+{
+    "SMART": {
+        "character_pattern": "XXXXXXXXXXX!NNNN!XXXXXXXXX!NNNN",
+        "partNumberStart": 0,
+        "partNumberLength": 11,
+        "lotNumberStart": 17,
+        "lotNumberLength": 9
+    },
+    "ROHM": {
+        "character_pattern": "XXXXXXXXXXXX       NNNNNNNNNNXXXXXXANN",
+        "partNumberStart": 0,
+        "partNumberLength": 12,
+        "lotNumberStart": 29,
+        "lotNumberLength": 6
+    },
+    "SAMWHA": {
+        "character_pattern": "XXXXXXXXXXX!NNN!AANNNNXNANNNANNNAA!XXXXXXXXXXXXX!NNNNN",
+        "partNumberStart": 0,
+        "partNumberLength": 11,
+        "lotNumberStart": 35,
+        "lotNumberLength": 13
+    }
+}

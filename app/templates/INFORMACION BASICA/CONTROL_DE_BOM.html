@@ -29,7 +29,6 @@
           overflow-x: hidden;
           color: lightgray;
           background-color: #32323E;
-          user-select: none;
         }
 
         .main-wrapper {
@@ -96,14 +95,17 @@
             background-color: #32323E;
             margin: 0;
             height: calc(100vh - 120px);
-            overflow: hidden;
+            overflow-x: scroll;
+            overflow-y: hidden;
             position: relative;
         }
 
         .material-table-container {
             width: 100%;
             height: 100%;
-            overflow: auto;
+            overflow-x: auto;
+            overflow-y: auto;
+            white-space: nowrap;
             position: relative;
             background-color: #32323E;
         }
@@ -113,7 +115,7 @@
         /* ============================================= */
         .material-data-table {
             width: 100%;
-            min-width: 1400px; /* Forzar ancho mínimo para scroll horizontal */
+            min-width: 100%; /* Cambiar de 1400px a 100% para adaptarse al contenedor */
             border-collapse: separate;
             border-spacing: 0;
             font-size: 11px;
@@ -142,6 +144,7 @@
             top: 0;
             height: var(--default-row-height);
             box-sizing: border-box;
+            position: relative;
         }
 
         .material-data-table tbody tr {
@@ -160,6 +163,7 @@
             text-overflow: ellipsis;
             box-sizing: border-box;
             vertical-align: top;
+            position: relative;
         }
 
         .material-data-table tbody tr:hover {
@@ -175,7 +179,7 @@
         }
 
         /* ============================================= */
-        /* Redimensionador de filas tipo Excel          */
+        /* Redimensionadores de filas y columnas        */
         /* ============================================= */
         .row-resizer {
             position: absolute;
@@ -197,16 +201,45 @@
             background-color: #3498db;
         }
 
+        .column-resizer {
+            position: absolute;
+            top: 0;
+            right: -2px;
+            bottom: 0;
+            width: 4px;
+            cursor: col-resize;
+            z-index: 15;
+            background-color: transparent;
+            transition: background-color 0.2s;
+        }
+
+        .column-resizer:hover {
+            background-color: rgba(52, 152, 219, 0.5);
+        }
+
+        .column-resizer.resizing {
+            background-color: #3498db;
+        }
+
         /* Indicador visual al redimensionar */
         .resize-line {
             position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
             background-color: #3498db;
             z-index: 20;
             display: none;
             box-shadow: 0 0 4px rgba(52, 152, 219, 0.5);
+        }
+
+        .resize-line.horizontal {
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .resize-line.vertical {
+            top: 0;
+            bottom: 0;
+            width: 2px;
         }
 
         /* ============================================= */
@@ -223,7 +256,7 @@
         .col-cantidad-original { min-width: 80px; text-align: center; }
 
         /* ============================================= */
-        /* Scrollbar minimalista como en la imagen      */
+        /* Scrollbar minimalista restaurado             */
         /* ============================================= */
         .material-table-container::-webkit-scrollbar {
             width: 8px;
@@ -250,6 +283,35 @@
 
         /* Para Firefox */
         .material-table-container {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        }
+
+        /* Ajustar el estilo de la barra de desplazamiento horizontal para que coincida con el vertical */
+        .material-table-wrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .material-table-wrapper::-webkit-scrollbar-track {
+            background-color: transparent;
+        }
+
+        .material-table-wrapper::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .material-table-wrapper::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .material-table-wrapper::-webkit-scrollbar-corner {
+            background-color: transparent;
+        }
+
+        /* Para Firefox */
+        .material-table-wrapper {
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
         }
@@ -308,14 +370,22 @@
         }
 
         /* ============================================= */
-        /* Cursor personalizado para redimensionar      */
+        /* Cursores para redimensionar                  */
         /* ============================================= */
-        .resizing-cursor {
+        .resizing-row {
             cursor: row-resize !important;
         }
 
-        .resizing-cursor * {
+        .resizing-row * {
             cursor: row-resize !important;
+        }
+
+        .resizing-column {
+            cursor: col-resize !important;
+        }
+
+        .resizing-column * {
+            cursor: col-resize !important;
         }
 
         /* ============================================= */
@@ -381,8 +451,9 @@
     <!-- Contenedor principal de la tabla -->
     <div class="material-table-wrapper">
         <div class="material-table-container" id="materialTableContainer">
-            <!-- Línea de redimensionamiento -->
-            <div class="resize-line" id="resizeLine"></div>
+            <!-- Líneas de redimensionamiento -->
+            <div class="resize-line horizontal" id="resizeLineH"></div>
+            <div class="resize-line vertical" id="resizeLineV"></div>
             
             <table class="material-data-table" id="materialDataTable">
                 <thead>
@@ -426,18 +497,23 @@
 
     <script>
         // ============================================= //
-        // Sistema de redimensionamiento de filas       //
+        // Sistema de redimensionamiento mejorado       //
         // ============================================= //
-        let isResizing = false;
+        let isResizingRow = false;
+        let isResizingColumn = false;
         let currentRow = null;
+        let currentColumn = null;
         let startY = 0;
+        let startX = 0;
         let startHeight = 0;
-        let resizeLine = null;
+        let startWidth = 0;
+        let resizeLineH = null;
+        let resizeLineV = null;
 
-        function initializeRowResizing() {
-            resizeLine = document.getElementById('resizeLine');
+        function initializeResizing() {
+            resizeLineH = document.getElementById('resizeLineH');
+            resizeLineV = document.getElementById('resizeLineV');
             
-            // Agregar event listeners al contenedor de la tabla
             const tableContainer = document.getElementById('materialTableContainer');
             
             tableContainer.addEventListener('mousemove', handleMouseMove);
@@ -447,89 +523,149 @@
         }
 
         function handleMouseMove(e) {
-            if (isResizing) return;
+            if (isResizingRow || isResizingColumn) return;
             
             const table = document.getElementById('materialDataTable');
+            let foundRowResizer = false;
+            let foundColumnResizer = false;
+            
+            // Verificar redimensionamiento de filas
             const tbody = table.querySelector('tbody');
             const rows = tbody.querySelectorAll('tr:not(.empty-table-message)');
             
-            let foundResizer = false;
-            
-            rows.forEach((row, index) => {
+            rows.forEach((row) => {
                 const rect = row.getBoundingClientRect();
                 const containerRect = e.currentTarget.getBoundingClientRect();
                 const relativeY = e.clientY - containerRect.top + e.currentTarget.scrollTop;
                 const rowTop = rect.top - containerRect.top + e.currentTarget.scrollTop;
                 const rowBottom = rowTop + rect.height;
                 
-                // Verificar si el mouse está cerca del borde inferior de la fila
-                if (relativeY >= rowBottom - 2 && relativeY <= rowBottom + 2) {
+                if (relativeY >= rowBottom - 3 && relativeY <= rowBottom + 3) {
                     e.currentTarget.style.cursor = 'row-resize';
-                    foundResizer = true;
+                    foundRowResizer = true;
                     currentRow = row;
                     return;
                 }
             });
             
-            if (!foundResizer) {
+            // Verificar redimensionamiento de columnas si no hay redimensionador de fila
+            if (!foundRowResizer) {
+                const headers = table.querySelectorAll('thead th');
+                
+                headers.forEach((header) => {
+                    const rect = header.getBoundingClientRect();
+                    const containerRect = e.currentTarget.getBoundingClientRect();
+                    const relativeX = e.clientX - containerRect.left + e.currentTarget.scrollLeft;
+                    const headerLeft = rect.left - containerRect.left + e.currentTarget.scrollLeft;
+                    const headerRight = headerLeft + rect.width;
+                    
+                    if (relativeX >= headerRight - 3 && relativeX <= headerRight + 3) {
+                        e.currentTarget.style.cursor = 'col-resize';
+                        foundColumnResizer = true;
+                        currentColumn = header;
+                        return;
+                    }
+                });
+            }
+            
+            if (!foundRowResizer && !foundColumnResizer) {
                 e.currentTarget.style.cursor = 'default';
                 currentRow = null;
+                currentColumn = null;
             }
         }
 
         function handleMouseDown(e) {
-            if (currentRow && e.currentTarget.style.cursor === 'row-resize') {
-                isResizing = true;
+            const cursor = e.currentTarget.style.cursor;
+            
+            if (currentRow && cursor === 'row-resize') {
+                isResizingRow = true;
                 startY = e.clientY;
                 startHeight = currentRow.offsetHeight;
                 
-                // Mostrar línea de redimensionamiento
                 const rect = currentRow.getBoundingClientRect();
                 const containerRect = e.currentTarget.getBoundingClientRect();
-                resizeLine.style.top = (rect.bottom - containerRect.top + e.currentTarget.scrollTop) + 'px';
-                resizeLine.style.display = 'block';
+                resizeLineH.style.top = (rect.bottom - containerRect.top + e.currentTarget.scrollTop) + 'px';
+                resizeLineH.style.display = 'block';
                 
-                // Agregar clase para cambiar cursor globalmente
-                document.body.classList.add('resizing-cursor');
+                document.body.classList.add('resizing-row');
+                e.preventDefault();
+            } else if (currentColumn && cursor === 'col-resize') {
+                isResizingColumn = true;
+                startX = e.clientX;
+                startWidth = currentColumn.offsetWidth;
                 
+                const rect = currentColumn.getBoundingClientRect();
+                const containerRect = e.currentTarget.getBoundingClientRect();
+                resizeLineV.style.left = (rect.right - containerRect.left + e.currentTarget.scrollLeft) + 'px';
+                resizeLineV.style.display = 'block';
+                
+                document.body.classList.add('resizing-column');
                 e.preventDefault();
             }
         }
 
         function handleGlobalMouseMove(e) {
-            if (!isResizing || !currentRow) return;
-            
-            const deltaY = e.clientY - startY;
-            const newHeight = Math.max(20, startHeight + deltaY); // Altura mínima de 20px
-            
-            // Actualizar posición de la línea de redimensionamiento
-            const tableContainer = document.getElementById('materialTableContainer');
-            const rect = currentRow.getBoundingClientRect();
-            const containerRect = tableContainer.getBoundingClientRect();
-            resizeLine.style.top = (rect.top - containerRect.top + tableContainer.scrollTop + newHeight) + 'px';
-            
-            e.preventDefault();
+            if (isResizingRow && currentRow) {
+                const deltaY = e.clientY - startY;
+                const newHeight = Math.max(20, startHeight + deltaY);
+                
+                const tableContainer = document.getElementById('materialTableContainer');
+                const rect = currentRow.getBoundingClientRect();
+                const containerRect = tableContainer.getBoundingClientRect();
+                resizeLineH.style.top = (rect.top - containerRect.top + tableContainer.scrollTop + newHeight) + 'px';
+                
+                e.preventDefault();
+            } else if (isResizingColumn && currentColumn) {
+                const deltaX = e.clientX - startX;
+                const newWidth = Math.max(50, startWidth + deltaX);
+                
+                const tableContainer = document.getElementById('materialTableContainer');
+                const rect = currentColumn.getBoundingClientRect();
+                const containerRect = tableContainer.getBoundingClientRect();
+                resizeLineV.style.left = (rect.left - containerRect.left + tableContainer.scrollLeft + newWidth) + 'px';
+                
+                e.preventDefault();
+            }
         }
 
         function handleMouseUp(e) {
-            if (!isResizing || !currentRow) return;
-            
-            const deltaY = e.clientY - startY;
-            const newHeight = Math.max(20, startHeight + deltaY);
-            
-            // Aplicar la nueva altura a la fila
-            currentRow.style.height = newHeight + 'px';
-            currentRow.querySelectorAll('td').forEach(td => {
-                td.style.height = newHeight + 'px';
-            });
-            
-            // Ocultar línea de redimensionamiento
-            resizeLine.style.display = 'none';
-            
-            // Limpiar estado
-            isResizing = false;
-            currentRow = null;
-            document.body.classList.remove('resizing-cursor');
+            if (isResizingRow && currentRow) {
+                const deltaY = e.clientY - startY;
+                const newHeight = Math.max(20, startHeight + deltaY);
+                
+                currentRow.style.height = newHeight + 'px';
+                currentRow.querySelectorAll('td').forEach(td => {
+                    td.style.height = newHeight + 'px';
+                });
+                
+                resizeLineH.style.display = 'none';
+                isResizingRow = false;
+                currentRow = null;
+                document.body.classList.remove('resizing-row');
+            } else if (isResizingColumn && currentColumn) {
+                const deltaX = e.clientX - startX;
+                const newWidth = Math.max(50, startWidth + deltaX);
+                
+                currentColumn.style.width = newWidth + 'px';
+                
+                // Aplicar el mismo ancho a todas las celdas de esa columna
+                const columnIndex = Array.from(currentColumn.parentElement.children).indexOf(currentColumn);
+                const table = document.getElementById('materialDataTable');
+                const rows = table.querySelectorAll('tbody tr');
+                
+                rows.forEach(row => {
+                    const cell = row.children[columnIndex];
+                    if (cell) {
+                        cell.style.width = newWidth + 'px';
+                    }
+                });
+                
+                resizeLineV.style.display = 'none';
+                isResizingColumn = false;
+                currentColumn = null;
+                document.body.classList.remove('resizing-column');
+            }
             
             e.preventDefault();
         }
@@ -538,7 +674,6 @@
         // Funciones originales de la tabla             //
         // ============================================= //
 
-        // Función para alternar selección de fila
         function toggleRowSelection(selector) {
             const row = selector.parentElement;
             const isSelected = row.classList.contains('selected');
@@ -554,7 +689,6 @@
             }
         }
 
-        // Función para limpiar la tabla
         function clearTable() {
             const tbody = document.getElementById('materialTableBody');
             tbody.innerHTML = `
@@ -571,11 +705,9 @@
             document.getElementById('totalRowsIndicator').textContent = 'Total Rows: 0';
         }
 
-        // Función para agregar una fila (ejemplo de uso)
         function addRow(data) {
             const tbody = document.getElementById('materialTableBody');
             
-            // Si es la primera fila, limpiar el mensaje vacío
             if (tbody.querySelector('.empty-table-message')) {
                 tbody.innerHTML = '';
             }
@@ -602,12 +734,10 @@
             `;
             tbody.appendChild(row);
             
-            // Actualizar contador
             const rowCount = tbody.querySelectorAll('tr:not(.empty-table-message)').length;
             document.getElementById('totalRowsIndicator').textContent = `Total Rows: ${rowCount}`;
         }
 
-        // Función para agregar datos de ejemplo
         function addSampleData() {
             const sampleData = [
                 {
@@ -654,11 +784,10 @@
             sampleData.forEach(data => addRow(data));
         }
 
-        // Funciones para los botones del header
+        // Event listeners para botones
         document.querySelector('.btn-consultar').addEventListener('click', function() {
             const modelo = document.getElementById('modeloSelect').value;
             console.log('Consultar clicked para modelo:', modelo);
-            // Agregar datos de ejemplo para probar el redimensionamiento
             addSampleData();
         });
 
@@ -672,7 +801,6 @@
                 if (confirm(`¿Eliminar ${selectedRows.length} elemento(s) seleccionado(s)?`)) {
                     selectedRows.forEach(row => row.remove());
                     
-                    // Si no quedan filas, mostrar mensaje vacío
                     const tbody = document.getElementById('materialTableBody');
                     if (tbody.children.length === 0) {
                         clearTable();
@@ -702,7 +830,7 @@
         // Inicializar la aplicación
         document.addEventListener('DOMContentLoaded', function() {
             clearTable();
-            initializeRowResizing();
+            initializeResizing();
         });
     </script>
 </body>

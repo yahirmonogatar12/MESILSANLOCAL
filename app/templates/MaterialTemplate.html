@@ -79,28 +79,28 @@
 <div class="main-content-container" id="material-container" style="display: none;">
     <div class="sidebar-content" id="sidebar-content">
         <div id="informacion-basica-content">
-            {% include "LISTAS/LISTA_INFORMACIONBASICA.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-material-content" style="display: none;">
-            {% include "LISTAS/LISTA_DE_MATERIALES.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-produccion-content" style="display: none;">
-            {% include "LISTAS/LISTA_CONTROLDEPRODUCCION.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-proceso-content" style="display: none;">
-            {% include "LISTAS/LISTA_CONTROL_DE_PROCESO.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-calidad-content" style="display: none;">
-            {% include "LISTAS/LISTA_CONTROL_DE_CALIDAD.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-resultados-content" style="display: none;">
-            {% include "LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-reporte-content" style="display: none;">
-            {% include "LISTAS/LISTA_DE_CONTROL_DE_REPORTE.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="configuracion-programa-content" style="display: none;">
-            {% include "LISTAS/LISTA_DE_CONFIGPG.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
     </div>
     
@@ -108,14 +108,14 @@
     <div class="material-content-area" id="material-content-area" style="display: none;">
         <!-- Contenedor por defecto con información general -->
         <div id="material-info-container" style="display: block;">
-            {% include "info.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         
         <div id="control-almacen-container" style="display: none;">
-            {% include "Control de material/Control de material de almacen.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-salida-container" style="display: none;">
-            {% include "Control de material/Control de salida.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-retorno-container" style="display: none;">
             <h2>Control de material retorno</h2>
@@ -234,7 +234,7 @@
         </div>
         
         <div id="control-material-info-container" style="display: none;">
-            {% include "INFORMACION BASICA/CONTROL_DE_MATERIAL.html" %}
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         
         <div id="configuracion-msl-info-container" style="display: none;">
@@ -260,6 +260,37 @@
         <div id="info-empresa-info-container" style="display: none;">
             <h2>Información de empresa</h2>
             <p>Contenido para Información de empresa - Por implementar</p>
+        </div>
+        
+        <!-- Contenedores adicionales para funciones del sidebar -->
+        <div id="control-modelos-info-container" style="display: none;">
+            <h2>Control de modelos</h2>
+            <p>Contenido para Control de modelos - Por implementar</p>
+        </div>
+        
+        <div id="control-bom-info-container" style="display: none;">
+            <h2>Control de BOM</h2>
+            <p>Contenido para Control de BOM - Por implementar</p>
+        </div>
+        
+        <div id="control-bom-smt-info-container" style="display: none;">
+            <h2>Control de BOM de SMT</h2>
+            <p>Contenido para Control de BOM de SMT - Por implementar</p>
+        </div>
+        
+        <div id="control-maquina-inf-info-container" style="display: none;">
+            <h2>Control de máquina</h2>
+            <p>Contenido para Control de máquina - Por implementar</p>
+        </div>
+        
+        <div id="control-maquina-info-container" style="display: none;">
+            <h2>Control de defecto por proceso (máquina)</h2>
+            <p>Contenido para Control de defecto por proceso (máquina) - Por implementar</p>
+        </div>
+        
+        <div id="control-maquina-linea-info-container" style="display: none;">
+            <h2>Control de máquina en línea</h2>
+            <p>Contenido para Control de máquina en línea - Por implementar</p>
         </div>
     </div>
 </div>
@@ -395,7 +426,14 @@
                     'control-cliente-info-container',
                     'control-proveedor-info-container',
                     'control-moneda-info-container',
-                    'info-empresa-info-container'
+                    'info-empresa-info-container',
+                    // Contenedores adicionales para sidebar
+                    'control-modelos-info-container',
+                    'control-bom-info-container',
+                    'control-bom-smt-info-container',
+                    'control-maquina-inf-info-container',
+                    'control-maquina-info-container',
+                    'control-maquina-linea-info-container'
                 ];
                 
                 containers.forEach(containerId => {
@@ -554,11 +592,70 @@
                 }
             };
             
+            // Funciones adicionales para el sidebar de Información Básica
+            window.mostrarControlModelosInfo = function() {
+                console.log('Mostrando Control de modelos');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-modelos-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlBOMInfo = function() {
+                console.log('Mostrando Control de BOM');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-bom-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlBOMSMTInfo = function() {
+                console.log('Mostrando Control de BOM de SMT');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-bom-smt-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.Controlmaquinainf = function() {
+                console.log('Mostrando Control de máquina');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-maquina-inf-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlMaquinaInfo = function() {
+                console.log('Mostrando Control de defecto por proceso (máquina)');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-maquina-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
+            window.mostrarControlMaquinaLineaInfo = function() {
+                console.log('Mostrando Control de máquina en línea');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-maquina-linea-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
+            };
+            
             // Función para mostrar el contenido por defecto de material
             window.mostrarInfoMaterial = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 materialInfoContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('material-info-container', '/material/info')
+                    .catch(error => console.error('Error cargando info material:', error));
             };
             
             // Función global para mostrar el contenido de almacén
@@ -568,8 +665,8 @@
                 materialContentArea.style.display = 'block';
                 controlAlmacenContainer.style.display = 'block';
                 
-                // Inicializar el contenido de control de almacén después de mostrarlo
-                setTimeout(() => {
+                // Cargar contenido dinámicamente con callback de inicialización
+                cargarContenidoDinamico('control-almacen-container', '/material/control_almacen', () => {
                     console.log('🔄 Inicializando funciones de control de almacén...');
                     
                     // Usar la nueva función global del módulo
@@ -606,8 +703,18 @@
                             }
                         }
                     }
-                    console.log('🏁 Inicialización de control de almacén completada');
-                }, 200);
+                    console.log('� Inicialización de control de almacén completada');
+                })
+                .catch(error => {
+                    console.error('Error cargando control de almacén:', error);
+                    // Fallback: ejecutar inicialización sin contenido dinámico
+                    setTimeout(() => {
+                        if (typeof window.inicializarControlAlmacenModule === 'function') {
+                            window.inicializarControlAlmacenModule();
+                        }
+                    }, 200);
+                });
+                
                 console.log('🏪 === FIN mostrarControlAlmacen ===');
             };
             
@@ -616,6 +723,10 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlSalidaContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('control-salida-container', '/material/control_salida')
+                    .catch(error => console.error('Error cargando control de salida:', error));
             };
             
             window.mostrarControlRetorno = function() {
@@ -700,58 +811,102 @@
                         informacionBasicaContent.style.display = 'block';
                         informacionBasicaContentArea.style.display = 'block';
                         
-                        // Mostrar contenedor por defecto
-                        hideAllInformacionBasicaContainers();
-                        const defaultContainer = document.getElementById('info-basica-default-container');
-                        if (defaultContainer) {
-                            defaultContainer.style.display = 'block';
-                        }
-                        
-                        console.log('Información Básica cargada correctamente');
+                        // Cargar contenido dinámicamente y mostrar contenedor por defecto
+                        cargarContenidoDinamico('informacion-basica-content', '/listas/informacion_basica')
+                            .then(() => {
+                                // Asegurar que el área de contenido esté visible
+                                informacionBasicaContentArea.style.display = 'block';
+                                hideAllInformacionBasicaContainers();
+                                const defaultContainer = document.getElementById('info-basica-default-container');
+                                if (defaultContainer) {
+                                    defaultContainer.style.display = 'block';
+                                    console.log('✅ Contenedor por defecto mostrado');
+                                } else {
+                                    console.error('❌ Contenedor por defecto no encontrado');
+                                }
+                                console.log('Información Básica cargada correctamente');
+                            })
+                            .catch(error => {
+                                console.error('Error cargando Información Básica:', error);
+                                // Fallback: mostrar contenedor por defecto aunque falle la carga
+                                informacionBasicaContentArea.style.display = 'block';
+                                hideAllInformacionBasicaContainers();
+                                const defaultContainer = document.getElementById('info-basica-default-container');
+                                if (defaultContainer) {
+                                    defaultContainer.style.display = 'block';
+                                }
+                            });
                         
                     } else if (this.id === 'Control de material') {
                         console.log('Cargando pestaña Control de Material');
                         materialContainer.style.display = 'block';
                         controlMaterialContent.style.display = 'block';
-                        // Mostrar el área de material con información por defecto
-                        mostrarInfoMaterial();
-                        console.log('Control de Material cargado con información por defecto');
+                        
+                        // Cargar contenido dinámicamente y mostrar el área de material
+                        cargarContenidoDinamico('control-material-content', '/listas/control_material')
+                            .then(() => {
+                                mostrarInfoMaterial();
+                                console.log('Control de Material cargado con información por defecto');
+                            })
+                            .catch(error => {
+                                console.error('Error cargando Control de Material:', error);
+                                // Fallback: mostrar área sin contenido dinámico
+                                mostrarInfoMaterial();
+                            });
                         
                     } else if (this.id === 'Control de producción') {
                         materialContainer.style.display = 'block';
                         controlProduccionContent.style.display = 'block';
-                        // FORZAR ocultar el área de material cuando no estés en Control de material
                         materialContentArea.style.display = 'none';
+                        
+                        // Cargar contenido dinámicamente
+                        cargarContenidoDinamico('control-produccion-content', '/listas/control_produccion')
+                            .catch(error => console.error('Error cargando Control de Producción:', error));
                         
                     } else if (this.id === 'Control de proceso') {
                         materialContainer.style.display = 'block';
                         controlProcesoContent.style.display = 'block';
-                        // FORZAR ocultar el área de material cuando no estés en Control de material
                         materialContentArea.style.display = 'none';
+                        
+                        // Cargar contenido dinámicamente
+                        cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso')
+                            .catch(error => console.error('Error cargando Control de Proceso:', error));
                         
                     } else if (this.id === 'Control de calidad') {
                         materialContainer.style.display = 'block';
                         controlCalidadContent.style.display = 'block';
-                        // FORZAR ocultar el área de material cuando no estés en Control de material
                         materialContentArea.style.display = 'none';
+                        
+                        // Cargar contenido dinámicamente
+                        cargarContenidoDinamico('control-calidad-content', '/listas/control_calidad')
+                            .catch(error => console.error('Error cargando Control de Calidad:', error));
                         
                     } else if (this.id === 'Control de resultados') {
                         materialContainer.style.display = 'block';
                         controlResultadosContent.style.display = 'block';
-                        // FORZAR ocultar el área de material cuando no estés en Control de material
                         materialContentArea.style.display = 'none';
+                        
+                        // Cargar contenido dinámicamente
+                        cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
+                            .catch(error => console.error('Error cargando Control de Resultados:', error));
                         
                     } else if (this.id === 'Control de reporte') {
                         materialContainer.style.display = 'block';
                         if (controlReporteContent) controlReporteContent.style.display = 'block';
-                        // FORZAR ocultar el área de material cuando no estés en Control de material
                         materialContentArea.style.display = 'none';
+                        
+                        // Cargar contenido dinámicamente
+                        cargarContenidoDinamico('control-reporte-content', '/listas/control_reporte')
+                            .catch(error => console.error('Error cargando Control de Reporte:', error));
                         
                     } else if (this.id === 'Configuración de programa') {
                         materialContainer.style.display = 'block';
                         configuracionProgramaContent.style.display = 'block';
-                        // FORZAR ocultar el área de material cuando no estés en Control de material
                         materialContentArea.style.display = 'none';
+                        
+                        // Cargar contenido dinámicamente
+                        cargarContenidoDinamico('configuracion-programa-content', '/listas/configuracion_programa')
+                            .catch(error => console.error('Error cargando Configuración de Programa:', error));
                         
                     } else {
                         materialContainer.style.display = 'none';
@@ -780,36 +935,152 @@
             
             console.log('Sistema de navegación inicializado correctamente');
             
-            // Función global para mostrar Control de Material en Información Básica
-            window.mostrarControlMaterialInfo = function() {
-                console.log('=== INICIANDO mostrarControlMaterialInfo (NUEVA ESTRUCTURA) ===');
+            // Función genérica para cargar contenido dinámicamente
+            window.cargarContenidoDinamico = function(containerId, templatePath, initCallback = null) {
+                console.log(`=== CARGANDO CONTENIDO DINÁMICO: ${containerId} ===`);
                 
-                // Asegurarse de que estemos en el área correcta
-                if (informacionBasicaContentArea) {
-                    informacionBasicaContentArea.style.display = 'block';
-                    console.log('Área de contenido de Información Básica activada');
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    console.error(`✗ Container ${containerId} no encontrado`);
+                    return Promise.reject(`Container ${containerId} no encontrado`);
                 }
                 
-                // Ocultar todos los contenedores
-                hideAllInformacionBasicaContainers();
-                console.log('Todos los contenedores ocultados');
+                // Verificar si ya tiene contenido cargado
+                const placeholder = '<!-- El contenido se cargará dinámicamente con JavaScript -->';
+                if (container.innerHTML.trim() === placeholder) {
+                    console.log('Cargando contenido dinámicamente...');
+                    
+                    // Mostrar indicador de carga
+                    container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
+                    
+                    // Cargar el contenido dinámicamente
+                    return fetch(templatePath)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Error al cargar el contenido: ' + response.status);
+                            }
+                            return response.text();
+                        })
+                        .then(html => {
+                            container.innerHTML = html;
+                            console.log(`✅ Contenido cargado dinámicamente en ${containerId}`);
+                            
+                            // Ejecutar cualquier script que pueda estar en el HTML cargado
+                            const scripts = container.querySelectorAll('script');
+                            scripts.forEach(script => {
+                                const newScript = document.createElement('script');
+                                if (script.src) {
+                                    newScript.src = script.src;
+                                } else {
+                                    newScript.textContent = script.textContent;
+                                }
+                                document.head.appendChild(newScript);
+                            });
+                            
+                            // Ejecutar callback de inicialización si se proporciona
+                            if (initCallback && typeof initCallback === 'function') {
+                                setTimeout(() => {
+                                    console.log(`🔄 Ejecutando callback de inicialización para ${containerId}`);
+                                    initCallback();
+                                }, 100);
+                            }
+                            
+                            return html;
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar el contenido:', error);
+                            container.innerHTML = '<div class="error-message">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
+                            throw error;
+                        });
+                } else {
+                    console.log(`✅ Contenido ya cargado en ${containerId}`);
+                    
+                    // Ejecutar callback de inicialización si se proporciona
+                    if (initCallback && typeof initCallback === 'function') {
+                        setTimeout(() => {
+                            console.log(`🔄 Ejecutando callback de inicialización para ${containerId} (contenido ya cargado)`);
+                            initCallback();
+                        }, 50);
+                    }
+                    
+                    return Promise.resolve(container.innerHTML);
+                }
+            };
+            
+            // Función global para mostrar Control de Material en Información Básica
+            window.mostrarControlMaterialInfoGlobal = function() {
+                console.log('=== INICIANDO mostrarControlMaterialInfoGlobal (INFORMACIÓN BÁSICA) ===');
+                console.log('🏷️ Esta es la función global del MaterialTemplate');
                 
-                // Mostrar el contenedor específico
+                // Primero asegurar que estamos en la pestaña correcta
+                const infoBasicaButton = document.getElementById('Información Basica');
+                if (infoBasicaButton && !infoBasicaButton.classList.contains('active')) {
+                    console.log('⚠️ Cambiando a pestaña Información Básica primero...');
+                    infoBasicaButton.click();
+                    // Esperar un poco a que se cargue
+                    setTimeout(() => {
+                        window.mostrarControlMaterialInfo();
+                    }, 500);
+                    return;
+                }
+                
+                // Asegurarse de que estemos en el área correcta
+                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
+                if (informacionBasicaArea) {
+                    informacionBasicaArea.style.display = 'block';
+                    console.log('✅ Área de contenido de Información Básica activada');
+                } else {
+                    console.error('❌ informacion-basica-content-area no encontrado');
+                    return;
+                }
+                
+                // Ocultar todos los contenedores de Información Básica
+                if (typeof hideAllInformacionBasicaContainers === 'function') {
+                    hideAllInformacionBasicaContainers();
+                    console.log('✅ Todos los contenedores de Información Básica ocultados');
+                } else {
+                    console.error('❌ hideAllInformacionBasicaContainers no disponible');
+                }
+                
+                // Obtener el contenedor específico
                 const container = document.getElementById('control-material-info-container');
                 if (container) {
+                    // Mostrar el contenedor primero
                     container.style.display = 'block';
                     container.style.visibility = 'visible';
                     container.style.opacity = '1';
-                    console.log('✅ Container control-material-info-container mostrado');
-                    console.log('Display:', window.getComputedStyle(container).display);
-                    console.log('Visibility:', window.getComputedStyle(container).visibility);
-                    console.log('Opacity:', window.getComputedStyle(container).opacity);
+                    
+                    console.log('📋 Container control-material-info-container encontrado y mostrado');
+                    
+                    // Cargar contenido dinámicamente
+                    cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material')
+                        .then(() => {
+                            console.log('✅ Contenido CONTROL_DE_MATERIAL.html cargado exitosamente en Información Básica');
+                            console.log('📍 Ubicación: Información Básica → Control de material → Control de material');
+                            console.log('Display:', window.getComputedStyle(container).display);
+                            console.log('Visibility:', window.getComputedStyle(container).visibility);
+                            console.log('Opacity:', window.getComputedStyle(container).opacity);
+                        })
+                        .catch(error => {
+                            console.error('❌ Error en mostrarControlMaterialInfo:', error);
+                            container.innerHTML = '<div style="color: red; padding: 20px;">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
+                        });
                 } else {
-                    console.error('✗ Container control-material-info-container no encontrado');
+                    console.error('❌ Container control-material-info-container no encontrado');
+                    // Debug: listar todos los contenedores disponibles
+                    const allContainers = document.querySelectorAll('[id*="container"]');
+                    console.log('🔍 Contenedores disponibles:', Array.from(allContainers).map(c => c.id));
                 }
                 
-                console.log('=== FIN mostrarControlMaterialInfo ===');
+                console.log('=== FIN mostrarControlMaterialInfoGlobal ===');
             };
+            
+            // Marcar la función como global
+            window.mostrarControlMaterialInfoGlobal._isGlobal = true;
+            
+            // También mantener la función original como alias para compatibilidad
+            window.mostrarControlMaterialInfo = window.mostrarControlMaterialInfoGlobal;
+            window.mostrarControlMaterialInfo._isGlobal = true;
         });
 
 

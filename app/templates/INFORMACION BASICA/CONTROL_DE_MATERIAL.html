@@ -2,10 +2,11 @@
 <style>
     /* Contenedor principal */
     .material-container {
+        font-family: 'LG regular', sans-serif;
         background-color: #32323E;
         color: lightgray;
         min-height: 100vh;
-        padding: 20px;
+        padding: 5px;
     }
 
     /* Botonera */
@@ -13,15 +14,15 @@
         display: flex;
         justify-content: flex-end;
         gap: 10px;
-        margin-bottom: 20px;
+        margin-bottom: 5px;
         padding: 15px;
-        background-color: #40424F;
-        border-radius: 8px;
+        background-color: #34334E;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border: #20688C 1px solid;
     }
 
     .material-btn {
-        padding: 6px 12px;
+        padding: 6px 12px;  
         border: none;
         border-radius: 4px;
         background-color: #3498db;
@@ -30,6 +31,16 @@
         font-size: 12px;
         transition: all 0.3s;
         font-weight: 500;
+    }
+
+    .material-btn.scan {
+        background-color: #e67e22;
+    }
+
+    .material-btn.scan:hover {
+        background-color: #d35400;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
     }
 
     .material-btn:hover {
@@ -171,6 +182,18 @@
         cursor: pointer;
         font-size: 14px;
     }
+    .material-btn {
+        background-color: #3C3940;
+        border: #20688C 1px solid;
+    }
+
+    .material-btn.purple {
+        background-color: #502696;
+    }
+
+    .material-btn.secondary {
+        background-color: #456636;
+    }
 
     .material-btn-submit {
         background-color: #27ae60;
@@ -195,10 +218,11 @@
     /* Tabla */
     .material-table-container {
         background-color: #40424F;
-        border-radius: 8px;
-        padding: 15px;
+        padding: 0px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         overflow-x: auto;
+        width: 100%;
+        max-width: 100%;
     }
 
     .material-table {
@@ -207,26 +231,34 @@
         margin: 0;
         font-size: 11px;
         background-color: #40424F;
+        table-layout: fixed; /* <-- Importante para que funcione el resize */
+        max-width: 100%;
     }
 
     .material-table th {
-        background-color: #2c3e50;
+        background-color: #172A46;
         color: #ecf0f1;
         padding: 8px 6px;
         text-align: center;
-        border: 1px solid #34495e;
+        border: 1px solid #20688C;
         font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis; /* <-- Añadido */
         position: sticky;
         top: 0;
         z-index: 10;
         font-size: 10px;
         line-height: 1.2;
+        min-width: 60px;
+        max-width: 300px;
+        resize: horizontal; /* <-- Permite redimensionar con flechas nativas */
     }
 
     .material-table td {
         padding: 6px 4px;
         text-align: center;
-        border: 1px solid #34495e;
+        border: 1px solid #5F6375;
         background-color: #40424F;
         color: lightgray;
         transition: background-color 0.3s;
@@ -431,7 +463,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="13" class="material-table .no-data">
+                    <td colspan="13" class="no-data">
                         No hay datos para mostrar. Haga clic en "Consultar" para cargar los materiales.
                     </td>
                 </tr>
@@ -446,12 +478,22 @@
         tbody.innerHTML = '';
         
         if (!datos || datos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="13" class="material-table .no-data">No hay materiales registrados. Use el botón "Registrar" para añadir nuevos materiales.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="no-data">No hay materiales registrados. Use el botón "Registrar" para añadir nuevos materiales.</td></tr>';
             return;
         }
         
         datos.forEach(item => {
             const row = document.createElement('tr');
+            
+            // Función para limpiar decimales innecesarios en números
+            function limpiarNumero(valor) {
+                if (!valor) return '';
+                const numero = parseFloat(valor);
+                if (!isNaN(numero) && numero % 1 === 0) {
+                    return numero.toString(); // Elimina .0
+                }
+                return valor.toString();
+            }
             
             // Crear checkboxes - solo marcados si el valor es verdadero/1
             const prohibidoSacarCheckbox = `<input type="checkbox" ${(item.prohibidoSacar === 1 || item.prohibidoSacar === '1' || item.prohibidoSacar === true) ? 'checked' : ''} onchange="actualizarCampoMaterial('${item.codigoMaterial}', 'prohibidoSacar', this.checked)">`;
@@ -463,12 +505,12 @@
                 <td>${item.propiedadMaterial || ''}</td>
                 <td>${item.classification || ''}</td>
                 <td>${item.especificacionMaterial || ''}</td>
-                <td>${item.unidadEmpaque || '0'}</td>
+                <td>${limpiarNumero(item.unidadEmpaque || '0')}</td>
                 <td>${item.ubicacionMaterial || ''}</td>
                 <td>${item.vendedor || ''}</td>
                 <td>${prohibidoSacarCheckbox}</td>
                 <td>${reparableCheckbox}</td>
-                <td>${item.nivelMSL || ''}</td>
+                <td>${limpiarNumero(item.nivelMSL || '')}</td>
                 <td>${item.espesorMSL || ''}</td>
                 <td>${item.fechaRegistro || ''}</td>
             `;
@@ -552,7 +594,7 @@
     function consultar() {
         // Mostrar indicador de carga
         const tbody = document.querySelector('#tablaMateriales tbody');
-        tbody.innerHTML = '<tr><td colspan="13" class="material-loading"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div><div>Cargando materiales...</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="material-loading"><div>Cargando materiales...</div></td></tr>';
         
         // Cargar datos desde el servidor
         cargarDatosDesdeServidor();
@@ -682,4 +724,47 @@
     }
 
     // La tabla permanece vacía hasta que el usuario haga clic en "Consultar"
+
+    // Permitir redimensionar columnas tipo Excel
+document.addEventListener('DOMContentLoaded', function () {
+    const table = document.getElementById('tablaMateriales');
+    const thElements = table.querySelectorAll('th');
+    thElements.forEach(function (th) {
+        // Crear un "grip" para el resize
+        const resizer = document.createElement('div');
+        resizer.style.width = '5px';
+        resizer.style.height = '100%';
+        resizer.style.position = 'absolute';
+        resizer.style.right = '0';
+        resizer.style.top = '0';
+        resizer.style.cursor = 'col-resize';
+        resizer.style.userSelect = 'none';
+        resizer.style.zIndex = '100';
+        resizer.classList.add('th-resizer');
+        th.style.position = 'relative';
+        th.appendChild(resizer);
+
+        let startX, startWidth;
+
+        resizer.addEventListener('mousedown', function (e) {
+            startX = e.pageX;
+            startWidth = th.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+
+            function onMouseMove(e) {
+                const newWidth = startWidth + (e.pageX - startX);
+                th.style.width = newWidth + 'px';
+            }
+
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.body.style.cursor = '';
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    });
+});
 </script>

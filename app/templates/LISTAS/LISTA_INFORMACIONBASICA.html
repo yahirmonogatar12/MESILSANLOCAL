@@ -33,6 +33,21 @@
                 </ul>
             </li>
             <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL" aria-expanded="true">
+                    <span class="sidebar-icon"></span>
+                    Control de produccion
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMSL">
+                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlModelos()">Control de modelos</li>
+                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlBOM()">Control de BOM</li>
+                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlBOMSMT()">Control de BOM de SMT</li>
+                    <li class="sidebar-link" tabindex="0" onclick="Controlmaquinainf()">Control de maquina</li>
+                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlMaquina()">Control de defecto por proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlMaquinaLinea()">Control de maquina en linea</li>   
+                </ul>
+            </li>
+            <li class="sidebar-section">
                 <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial2" aria-expanded="true">
                     <span class="sidebar-icon"></span>
                     Control de material
@@ -151,16 +166,47 @@ function mostrarControlInterlock() {
     }
 }
 
-// Función principal que usa la función global de MaterialTemplate.html
+// Función que llama a la función global de MaterialTemplate.html
 function mostrarControlMaterialInfo() {
-    console.log('🎯 Llamando a función global mostrarControlMaterialInfo...');
+    console.log('🎯 [LOCAL] mostrarControlMaterialInfo ejecutándose...');
     
-    // Llamar a la función global del template principal
-    if (window.mostrarControlMaterialInfo) {
-        window.mostrarControlMaterialInfo();
-    } else {
-        console.error('❌ Función global mostrarControlMaterialInfo no encontrada');
+    // Verificar si existe la función global específica
+    if (typeof window.mostrarControlMaterialInfoGlobal === 'function') {
+        console.log('✅ Delegando a función global específica...');
+        window.mostrarControlMaterialInfoGlobal();
+        return;
     }
+    
+    // Ejecutar AJAX directamente
+    console.log('📡 [LOCAL] Ejecutando AJAX directamente...');
+    
+    const container = document.getElementById('control-material-info-container');
+    if (!container) {
+        console.error('❌ [LOCAL] Container control-material-info-container no encontrado');
+        return;
+    }
+    
+    // Mostrar el container
+    container.style.display = 'block';
+    container.style.visibility = 'visible';
+    container.style.opacity = '1';
+    
+    // Realizar fetch
+    fetch('/informacion_basica/control_de_material')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            container.innerHTML = html;
+            console.log('✅ [LOCAL] Contenido cargado exitosamente');
+        })
+        .catch(error => {
+            console.error('❌ [LOCAL] Error en fetch:', error);
+            container.innerHTML = '<p>Error al cargar el contenido. Por favor, intente de nuevo.</p>';
+        });
 }
 
 function mostrarConfiguracionMSL() {
@@ -189,9 +235,9 @@ function mostrarCambioContrasena() {
     console.log('mostrarCambioContrasena - por implementar');
 }
 
-function mostrarControlProduccion() {
-    if (window.mostrarControlProduccionInfo) {
-        window.mostrarControlProduccionInfo();
+function Controlmaquinainf() {
+    if (window.Controlmaquinainf) {
+        window.Controlmaquinainf();
     }
 }
 
