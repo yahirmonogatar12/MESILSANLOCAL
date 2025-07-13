@@ -480,28 +480,8 @@ select {
 }
 
 /* More specific rules to override any other styling */
-.material-form-group input,
-.material-form-group select,
-input[type="text"],
-input[type="date"],
-select {
-    background-color: #ffffff !important;
-    color: #2c3e50 !important;
-    border: 1px solid #95a5a6 !important;
-    -webkit-text-fill-color: #2c3e50 !important;
-}
 
 /* Specific overrides for problematic fields */
-#forma_material,
-#cliente, 
-#codigoMaterialOriginal,
-#codigoMaterialSelect {
-    background: #ffffff !important;
-    color: #2c3e50 !important;
-    border: 1px solid #95a5a6 !important;
-    -webkit-text-fill-color: #2c3e50 !important;
-    font-size: 9px !important;
-}
 
 /* ============================================= */
 /* Scrollbar minimalista global                 */
