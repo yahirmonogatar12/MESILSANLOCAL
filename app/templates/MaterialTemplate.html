@@ -605,7 +605,69 @@
                 const navButtons = navContainer.querySelectorAll('.nav-button');
                 navButtons.forEach(button => {
                     button.addEventListener('click', function() {
+                        const buttonText = this.textContent.trim();
+                        console.log(`📱 Click en botón móvil: ${buttonText}`);
+                        
                         if (isMobile()) {
+                            // Mapeo de botones a funciones de carga de contenido
+                            const buttonActions = {
+                                'Información Básica': () => {
+                                    window.mostrarInformacionBasica();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('informacion-basica-content', '/listas/informacion_basica');
+                                    }, 100);
+                                },
+                                'Control de material': () => {
+                                    window.mostrarControlMaterial();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('control-material-content', '/listas/control_material');
+                                    }, 100);
+                                },
+                                'Control de producción': () => {
+                                    window.mostrarControlProduccion();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('control-produccion-content', '/listas/control_produccion');
+                                    }, 100);
+                                },
+                                'Control de proceso': () => {
+                                    window.mostrarControlProceso();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso');
+                                    }, 100);
+                                },
+                                'Control de calidad': () => {
+                                    window.mostrarControlCalidad();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('control-calidad-content', '/listas/control_calidad');
+                                    }, 100);
+                                },
+                                'Control de resultados': () => {
+                                    window.mostrarControlResultados();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados');
+                                    }, 100);
+                                },
+                                'Control de reporte': () => {
+                                    window.mostrarControlReporte();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('control-reporte-content', '/listas/control_reporte');
+                                    }, 100);
+                                },
+                                'Configuración de programa': () => {
+                                    window.mostrarConfiguracionPrograma();
+                                    setTimeout(() => {
+                                        cargarContenidoDinamico('configuracion-programa-content', '/listas/configuracion_programa');
+                                    }, 100);
+                                }
+                            };
+                            
+                            // Ejecutar la acción correspondiente
+                            if (buttonActions[buttonText]) {
+                                buttonActions[buttonText]();
+                            } else {
+                                console.warn(`⚠️ No se encontró acción para: ${buttonText}`);
+                            }
+                            
                             setTimeout(closeMenu, 300); // Pequeño delay para mejor UX
                         }
                     });
