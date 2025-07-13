@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISEMM MES - Test Móvil</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            background-color: #f8f9fa;
+        }
+        .test-item.success {
+            border-left-color: #27ae60;
+            background-color: #d4edda;
+        }
+        .test-item.warning {
+            border-left-color: #f39c12;
+            background-color: #fff3cd;
+        }
+        .test-item.error {
+            border-left-color: #e74c3c;
+            background-color: #f8d7da;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 5px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn.secondary {
+            background-color: #6c757d;
+        }
+        .btn.secondary:hover {
+            background-color: #5a6268;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .device-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 ISEMM MES - Test de Funcionalidad Móvil</h1>
+        
+        <div class="device-info" id="device-info">
+            <strong>Información del dispositivo:</strong><br>
+            <span id="device-details">Cargando...</span>
+        </div>
+        
+        <h2>✅ Tests de Funcionalidad</h2>
+        
+        <div class="test-item" id="viewport-test">
+            <strong>📱 Viewport Responsivo:</strong> Verificando...
+        </div>
+        
+        <div class="test-item" id="touch-test">
+            <strong>👆 Soporte Touch:</strong> Verificando...
+        </div>
+        
+        <div class="test-item" id="pwa-test">
+            <strong>📲 PWA Support:</strong> Verificando...
+        </div>
+        
+        <div class="test-item" id="service-worker-test">
+            <strong>⚙️ Service Worker:</strong> Verificando...
+        </div>
+        
+        <div class="test-item" id="offline-test">
+            <strong>📶 Capacidades Offline:</strong> Verificando...
+        </div>
+        
+        <div class="test-item" id="gesture-test">
+            <strong>🤏 Detección de Gestos:</strong> Verificando...
+        </div>
+        
+        <h2>🎮 Tests Interactivos</h2>
+        
+        <button class="btn" onclick="testVibration()">📳 Test Vibración</button>
+        <button class="btn" onclick="testOrientation()">🔄 Test Orientación</button>
+        <button class="btn secondary" onclick="testFullscreen()">⛶ Test Pantalla Completa</button>
+        
+        <div style="margin-top: 30px;">
+            <a href="MaterialTemplate.html" class="btn">🏠 Ir a la Aplicación Principal</a>
+        </div>
+        
+        <h2>📊 Resultados del Test</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        let testResults = [];
+        
+        function addTestResult(test, status, message) {
+            testResults.push({ test, status, message });
+            updateTestDisplay(test, status, message);
+        }
+        
+        function updateTestDisplay(test, status, message) {
+            const element = document.getElementById(test + '-test');
+            if (element) {
+                element.className = `test-item ${status}`;
+                element.innerHTML = `<strong>${element.querySelector('strong').textContent}</strong> ${message}`;
+            }
+        }
+        
+        // Test 1: Viewport Responsivo
+        function testViewport() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            
+            if (width <= 768) {
+                addTestResult('viewport', 'success', `✅ Móvil detectado (${width}x${height}, DPR: ${devicePixelRatio})`);
+            } else {
+                addTestResult('viewport', 'warning', `⚠️ Desktop/Tablet (${width}x${height}, DPR: ${devicePixelRatio})`);
+            }
+        }
+        
+        // Test 2: Soporte Touch
+        function testTouch() {
+            const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            if (hasTouch) {
+                addTestResult('touch', 'success', '✅ Soporte touch detectado');
+            } else {
+                addTestResult('touch', 'error', '❌ Sin soporte touch');
+            }
+        }
+        
+        // Test 3: PWA Support
+        function testPWA() {
+            const hasServiceWorker = 'serviceWorker' in navigator;
+            const hasManifest = document.querySelector('link[rel="manifest"]');
+            const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+            
+            if (hasServiceWorker && hasManifest) {
+                const mode = isStandalone ? ' (Ejecutándose como PWA)' : ' (Puede instalarse)';
+                addTestResult('pwa', 'success', '✅ PWA compatible' + mode);
+            } else {
+                addTestResult('pwa', 'error', '❌ PWA no compatible');
+            }
+        }
+        
+        // Test 4: Service Worker
+        function testServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    if (registrations.length > 0) {
+                        addTestResult('service-worker', 'success', `✅ Service Worker activo (${registrations.length} registrado(s))`);
+                    } else {
+                        addTestResult('service-worker', 'warning', '⚠️ Service Worker disponible pero no registrado');
+                    }
+                });
+            } else {
+                addTestResult('service-worker', 'error', '❌ Service Worker no soportado');
+            }
+        }
+        
+        // Test 5: Capacidades Offline
+        function testOffline() {
+            const isOnline = navigator.onLine;
+            const hasCache = 'caches' in window;
+            
+            if (hasCache) {
+                caches.keys().then(cacheNames => {
+                    const status = isOnline ? 'online' : 'offline';
+                    addTestResult('offline', 'success', `✅ Cache disponible (${cacheNames.length} caches, ${status})`);
+                });
+            } else {
+                addTestResult('offline', 'error', '❌ Cache no soportado');
+            }
+        }
+        
+        // Test 6: Detección de Gestos
+        function testGestures() {
+            let gestureDetected = false;
+            
+            // Detectar si mobile-enhancements.js está cargado
+            if (typeof window.mobileUtils !== 'undefined') {
+                addTestResult('gesture', 'success', '✅ Sistema de gestos cargado');
+            } else {
+                addTestResult('gesture', 'warning', '⚠️ Sistema de gestos no detectado');
+            }
+        }
+        
+        // Información del dispositivo
+        function displayDeviceInfo() {
+            const info = {
+                'User Agent': navigator.userAgent,
+                'Pantalla': `${screen.width}x${screen.height}`,
+                'Viewport': `${window.innerWidth}x${window.innerHeight}`,
+                'Device Pixel Ratio': window.devicePixelRatio || 1,
+                'Touch Points': navigator.maxTouchPoints || 0,
+                'Conexión': navigator.onLine ? 'Online' : 'Offline',
+                'Plataforma': navigator.platform,
+                'Idioma': navigator.language
+            };
+            
+            let infoHtml = '';
+            for (const [key, value] of Object.entries(info)) {
+                infoHtml += `<strong>${key}:</strong> ${value}<br>`;
+            }
+            
+            document.getElementById('device-details').innerHTML = infoHtml;
+        }
+        
+        // Tests interactivos
+        function testVibration() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+                alert('📳 Vibración activada (si tu dispositivo la soporta)');
+            } else {
+                alert('❌ Vibración no soportada en este dispositivo');
+            }
+        }
+        
+        function testOrientation() {
+            if (screen.orientation) {
+                alert(`🔄 Orientación actual: ${screen.orientation.type} (${screen.orientation.angle}°)`);
+            } else if (window.orientation !== undefined) {
+                alert(`🔄 Orientación actual: ${window.orientation}°`);
+            } else {
+                alert('❌ API de orientación no soportada');
+            }
+        }
+        
+        function testFullscreen() {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen()
+                    .then(() => alert('⛶ Pantalla completa activada. Presiona ESC para salir.'))
+                    .catch(err => alert('❌ Error al activar pantalla completa: ' + err));
+            } else {
+                alert('❌ Pantalla completa no soportada');
+            }
+        }
+        
+        // Ejecutar todos los tests
+        function runAllTests() {
+            displayDeviceInfo();
+            testViewport();
+            testTouch();
+            testPWA();
+            setTimeout(testServiceWorker, 1000); // Dar tiempo al service worker
+            setTimeout(testOffline, 1500);
+            testGestures();
+        }
+        
+        // Escuchar cambios de orientación
+        window.addEventListener('orientationchange', function() {
+            setTimeout(() => {
+                testViewport();
+                displayDeviceInfo();
+            }, 500);
+        });
+        
+        // Escuchar cambios de conectividad
+        window.addEventListener('online', () => testOffline());
+        window.addEventListener('offline', () => testOffline());
+        
+        // Ejecutar tests al cargar
+        document.addEventListener('DOMContentLoaded', runAllTests);
+        
+        console.log('🧪 Test de funcionalidad móvil iniciado');
+    </script>
+</body>
+</html>

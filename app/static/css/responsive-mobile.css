@@ -1,0 +1,728 @@
+/* ============================================= */
+/* RESPONSIVE DESIGN - MOBILE FIRST             */
+/* ============================================= */
+
+/* Variables para breakpoints */
+:root {
+  --mobile-breakpoint: 768px;
+  --tablet-breakpoint: 1024px;
+  --mobile-padding: 10px;
+  --mobile-header-height: 80px;
+  --touch-target-size: 44px;
+}
+
+/* ============================================= */
+/* BASE MOBILE STYLES                            */
+/* ============================================= */
+
+/* Asegurar que todos los elementos sean touch-friendly */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Optimizaciones para móviles */
+body {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+}
+
+/* ============================================= */
+/* HEADER RESPONSIVE                             */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  .app-header {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    height: var(--mobile-header-height);
+    background-color: var(--primary-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+
+  .header-row {
+    height: 100%;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .container-logo-welcome-hamburguer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: none;
+  }
+
+  .logo-welcome-container {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .logo {
+    height: 40px;
+    width: auto;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  .welcome-text {
+    font-size: 14px;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .welcome-text span {
+    display: none; /* Ocultar "Bienvenido," en móviles */
+  }
+
+  /* Botón hamburguesa */
+  .conatiner-hamburguer {
+    display: block;
+    margin-left: 10px;
+  }
+
+  .hamburger-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: var(--touch-target-size);
+    height: var(--touch-target-size);
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+  }
+
+  .hamburger-btn:hover,
+  .hamburger-btn:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    outline: none;
+  }
+
+  .hamburger-btn span {
+    display: block;
+    height: 3px;
+    width: 25px;
+    background-color: var(--text-light);
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    transform-origin: center;
+  }
+
+  /* Animación del botón hamburguesa */
+  .hamburger-btn.active span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+  }
+
+  .hamburger-btn.active span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .hamburger-btn.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+  }
+
+  /* Navegación móvil */
+  .nav-buttons-container {
+    position: fixed;
+    top: var(--mobile-header-height);
+    left: -100%;
+    width: 280px;
+    height: calc(100vh - var(--mobile-header-height));
+    background-color: var(--secondary-color);
+    transition: left 0.3s ease;
+    z-index: 999;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .nav-buttons-container.active {
+    left: 0;
+  }
+
+  .nav-button {
+    width: 100%;
+    padding: 15px 20px;
+    border: none;
+    background-color: transparent;
+    color: var(--text-light);
+    text-align: left;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    min-height: var(--touch-target-size);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .nav-button:hover,
+  .nav-button:focus,
+  .nav-button.active {
+    background-color: var(--accent-color);
+    outline: none;
+  }
+
+  .nav-button .icono-boton {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Overlay para cerrar menú */
+  .mobile-nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-nav-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Prevenir scroll del body cuando el menú está abierto */
+  body.menu-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+}
+
+/* ============================================= */
+/* CONTENIDO PRINCIPAL RESPONSIVE               */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  .main-content-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    z-index: 1001 !important;
+    background-color: var(--secondary-color) !important;
+    display: none !important; /* Oculto por defecto */
+    overflow: hidden;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  /* Cuando está activo en móvil */
+  .main-content-container.mobile-active {
+    display: block !important;
+    transform: translateX(0) !important;
+  }
+
+  .sidebar-content {
+    width: 100%;
+    height: 100%;
+    background-color: var(--secondary-color);
+    padding: 60px 0 0 0; /* Espacio para header */
+    border: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ocultar el contenedor cuando no está en uso */
+  .main-content-container:not(.mobile-active) {
+    display: none !important;
+  }
+
+  .material-content-area,
+  .informacion-basica-content-area {
+    width: 100%;
+    padding: 15px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background-color: #32323E;
+  }
+
+  /* Sidebar links en móvil */
+  .sidebar-link {
+    display: block;
+    padding: 12px 15px;
+    margin: 5px 0;
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-light);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    min-height: var(--touch-target-size);
+    display: flex;
+    align-items: center;
+  }
+
+  .sidebar-link:hover,
+  .sidebar-link:focus,
+  .sidebar-link.active {
+    background-color: var(--accent-color);
+    transform: none; /* Remover transformaciones en móvil */
+    text-decoration: none;
+    color: white;
+  }
+
+  /* Formularios responsivos */
+  .form-container {
+    padding: 15px;
+    margin: 10px 0;
+    background-color: rgba(255,255,255,0.05);
+    border-radius: 8px;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px; /* Prevenir zoom en iOS */
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-light);
+    min-height: var(--touch-target-size);
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+  }
+
+  .btn {
+    min-height: var(--touch-target-size);
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  .btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+  }
+
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: #2980b9;
+    outline: none;
+  }
+
+  /* Tablas responsivas */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 15px 0;
+  }
+
+  .table {
+    min-width: 600px;
+    font-size: 14px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px;
+    white-space: nowrap;
+  }
+
+  /* Cards y contenedores */
+  .card {
+    margin: 10px 0;
+    padding: 15px;
+    background-color: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+
+  .card-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .card-title {
+    font-size: 18px;
+    margin: 0;
+    color: var(--text-light);
+  }
+
+  /* Loading indicators */
+  .loading-indicator {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-light);
+    font-size: 16px;
+  }
+
+  .error-message {
+    background-color: #e74c3c;
+    color: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    text-align: center;
+  }
+
+  /* Success messages */
+  .success-message {
+    background-color: #27ae60;
+    color: white;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    text-align: center;
+  }
+}
+
+/* ============================================= */
+/* TABLET RESPONSIVE (768px - 1024px)           */
+/* ============================================= */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .nav-buttons-container {
+    padding: 10px 5px;
+  }
+
+  .nav-button {
+    font-size: 14px;
+    padding: 8px 12px;
+    margin: 2px 0;
+  }
+
+  .nav-button .icono-boton {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+  }
+
+  .main-content-container {
+    padding: 10px;
+  }
+
+  .sidebar-content {
+    padding: 15px;
+  }
+
+  .material-content-area,
+  .informacion-basica-content-area {
+    padding: 20px;
+  }
+}
+
+/* ============================================= */
+/* UTILITIES MÓVILES                             */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  /* Ocultar elementos en móvil */
+  .hidden-mobile {
+    display: none !important;
+  }
+
+  /* Mostrar solo en móvil */
+  .mobile-only {
+    display: block !important;
+  }
+
+  /* Texto más pequeño en móvil */
+  .text-mobile-small {
+    font-size: 12px !important;
+  }
+
+  /* Márgenes reducidos en móvil */
+  .m-mobile-0 { margin: 0 !important; }
+  .p-mobile-0 { padding: 0 !important; }
+  .mt-mobile-1 { margin-top: 5px !important; }
+  .mb-mobile-1 { margin-bottom: 5px !important; }
+  .p-mobile-1 { padding: 10px !important; }
+
+  /* Grid responsivo */
+  .row-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .col-mobile-12 {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  /* Scroll horizontal para tablas */
+  .scroll-x-mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ============================================= */
+/* LANDSCAPE MÓVIL                               */
+/* ============================================= */
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .app-header {
+    height: 60px;
+  }
+
+  .nav-buttons-container {
+    top: 60px;
+    height: calc(100vh - 60px);
+  }
+
+  .main-content-container {
+    margin-top: 60px;
+    min-height: calc(100vh - 60px);
+  }
+
+  .sidebar-content {
+    max-height: 30vh;
+  }
+}
+
+/* ============================================= */
+/* PERFORMANCE OPTIMIZATIONS                    */
+/* ============================================= */
+
+/* Optimizaciones de rendimiento para móviles */
+@media (max-width: 768px) {
+  * {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+
+  /* Reducir animaciones en dispositivos más lentos */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Optimizar imágenes */
+  img {
+    max-width: 100%;
+    height: auto;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* Optimizar scrolling */
+  .scrollable {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+  }
+}
+
+/* ============================================= */
+/* ACCESSIBILITY MÓVIL                          */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  /* Mejorar contraste para pantallas pequeñas */
+  .high-contrast {
+    background-color: #000 !important;
+    color: #fff !important;
+  }
+
+  /* Focus visible mejorado */
+  *:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+  }
+
+  /* Tamaños de texto accesibles */
+  .text-large-mobile {
+    font-size: 18px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Espaciado mejorado para touch */
+  .touch-friendly {
+    min-height: var(--touch-target-size);
+    min-width: var(--touch-target-size);
+    padding: 12px;
+  }
+}
+
+/* ============================================= */
+/* DARK MODE MÓVIL                               */
+/* ============================================= */
+
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  .app-header {
+    background-color: #1a1a1a;
+  }
+
+  .nav-buttons-container {
+    background-color: #2a2a2a;
+  }
+
+  .material-content-area,
+  .informacion-basica-content-area {
+    background-color: #1e1e1e;
+  }
+}
+
+/* ============================================= */
+/* SIDEBAR MÓVIL                                */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  /* Header del sidebar móvil */
+  .mobile-sidebar-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    z-index: 1002;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+
+  .mobile-sidebar-title {
+    color: var(--text-light);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .mobile-sidebar-close {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+  }
+
+  .mobile-sidebar-close:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Overlay para cerrar sidebar móvil */
+  .mobile-sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Contenido del sidebar - cada sección */
+  .sidebar-content > div {
+    padding: 20px;
+    display: none;
+  }
+
+  .sidebar-content > div.active {
+    display: block !important;
+  }
+
+  /* Estilos para las listas dentro del sidebar */
+  .sidebar-content .sidebar-link {
+    display: block;
+    padding: 15px;
+    margin: 8px 0;
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-light);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    min-height: var(--touch-target-size);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .sidebar-content .sidebar-link:hover,
+  .sidebar-content .sidebar-link:focus {
+    background-color: var(--accent-color);
+    transform: none;
+    text-decoration: none;
+    color: white;
+  }
+
+  /* Botón de volver */
+  .mobile-back-button {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-light);
+    border: none;
+    padding: 15px;
+    margin: 10px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    width: calc(100% - 20px);
+  }
+
+  .mobile-back-button:hover {
+    background-color: rgba(255,255,255,0.2);
+  }
+
+  /* Ocultar otros elementos en móvil */
+  .block-left {
+    display: none !important;
+  }
+}
