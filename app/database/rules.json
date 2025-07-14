@@ -1,30 +1,247 @@
 {
     "SMART": {
-        "character_pattern": "XXXXXXXXXXX!NNNN!XXXXXXXXX!NNNN",
+        "character_pattern": "XXXXXXXXXXXNNNN XXXXXXXXXX",
         "partNumberStart": 0,
         "partNumberLength": 11,
-        "lotNumberStart": 17,
-        "lotNumberLength": 9
+        "lotNumberStart": 16,
+        "lotNumberLength": 10
     },
     "ROHM": {
-        "character_pattern": "XXXXXXXXXXXX       NNNNNNNNNNXXXXXXANN",
+        "character_pattern": "XXXXXXXXX'AAAAN    XXXXXXXXXXXXXXXXXXX",
         "partNumberStart": 0,
-        "partNumberLength": 12,
-        "lotNumberStart": 29,
-        "lotNumberLength": 6
+        "partNumberLength": 9,
+        "lotNumberStart": 19,
+        "lotNumberLength": 19
     },
     "SAMWHA": {
-        "character_pattern": "XXXXXXXXXXX!NNN!AANNNNXNANNNANNNAA!XXXXXXXXXXXXX!NNNNN",
+        "character_pattern": "XXXXXXXX XXXXXXXXXXXXXXXXXXXXXXX",
         "partNumberStart": 0,
-        "partNumberLength": 11,
-        "lotNumberStart": 35,
-        "lotNumberLength": 13
+        "partNumberLength": 8,
+        "lotNumberStart": 9,
+        "lotNumberLength": 23
     },
     "MOONSTAR": {
-        "character_pattern": "AAAAAAAA XXXXXXXXXXXXXXX)NNNNNN=?AAAXXXXNNN",
+        "character_pattern": "AAAAAAAA XXXXXXXXXXXXXXXX)NNNNNN=XXXXXXX",
         "partNumberStart": 9,
+        "partNumberLength": 16,
+        "lotNumberStart": 33,
+        "lotNumberLength": 7
+    },
+    "MURATA": {
+        "character_pattern": "XXXXXXXXXXXX'AN XXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 12,
+        "lotNumberStart": 16,
+        "lotNumberLength": 9
+    },
+    "FH": {
+        "character_pattern": "\"ANNNNANNNANNNAA\"XXXXXXXXXXXXXXXX\"AAANNNNNNNNNNNNN\"ANNNNN\"AXXXXXXXXXXX\"AAAA'NNNNNNNN'NNNN\"ANNNAA\"AA\u00b1NN%\"A\"ANANNA\"AA\"ANNNNN",
+        "partNumberStart": 59,
+        "partNumberLength": 11,
+        "lotNumberStart": 17,
+        "lotNumberLength": 16
+    },
+    "LUXPIA": {
+        "character_pattern": "XXXXXXXXXXXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 12,
+        "lotNumberStart": 12,
+        "lotNumberLength": 9
+    },
+    "EVERLIGTH": {
+        "character_pattern": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 12,
+        "lotNumberStart": 12,
+        "lotNumberLength": 21
+    },
+    "SANKEN ELECTRIC CO": {
+        "character_pattern": "(XXXXXXXXXX'NNNNNNNNNNNNNNNN( (XXXXXXXXXXXXXXXXXXXXXXXX(",
+        "partNumberStart": 1,
+        "partNumberLength": 10,
+        "lotNumberStart": 31,
+        "lotNumberLength": 24
+    },
+    "LG ELECTRONICS INC": {
+        "character_pattern": "XXXXXXXXXXXXXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 12,
+        "lotNumberStart": 12,
+        "lotNumberLength": 11
+    },
+    "VISHAY": {
+        "character_pattern": "XXXXXXXXXXX XXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 11,
+        "lotNumberStart": 12,
+        "lotNumberLength": 8
+    },
+    "ALPHA & OMEGA SEMICONDUCTOR": {
+        "character_pattern": "AAANNNNNNNN!NNN!XXXXXXX?NNN!XXXXXXXXXX!NNNNN\u00b4",
+        "partNumberStart": 16,
+        "partNumberLength": 7,
+        "lotNumberStart": 28,
+        "lotNumberLength": 10
+    },
+    "INFINEON": {
+        "character_pattern": "XXXXXXXXXXXXXXXXXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 14,
+        "lotNumberStart": 14,
+        "lotNumberLength": 13
+    },
+    "TDK": {
+        "character_pattern": "AXXXXXXXXXXX XXXXXXXXXXXX\u00a1ANNNNNNNNN",
+        "partNumberStart": 1,
+        "partNumberLength": 11,
+        "lotNumberStart": 13,
+        "lotNumberLength": 12
+    },
+    "SHINDENGEN ELECTRIC MFG": {
+        "character_pattern": "NNNNNNNNNNNNNXXXXXXX                 NNNNNNNNNN      XXXXX NNNNNN      NNNNNN      NNNNNN      NNNNNN      NNNNNN      NNNNNN      NNNNNN      NNNNNN      NNNNNN      NNNNNNNNNNNNNNNNNNNNNNNNN            NNAA",
+        "partNumberStart": 13,
+        "partNumberLength": 7,
+        "lotNumberStart": 53,
+        "lotNumberLength": 5
+    },
+    "POWER INTREGRATIONS INC.": {
+        "character_pattern": "NAXXXXXXXANNNN'ANNN'XXXXXXXXXXXXX'NNNNN",
+        "partNumberStart": 2,
+        "partNumberLength": 7,
+        "lotNumberStart": 20,
+        "lotNumberLength": 13
+    },
+    "STMICROELECTRONICS": {
+        "character_pattern": "XXXXXXXXXXXXX XXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 13,
+        "lotNumberStart": 14,
+        "lotNumberLength": 12
+    },
+    "YEONHO ELECTRONICS": {
+        "character_pattern": "XXXXXXXXXXX XXXXXXXXXXXXX!NNNA!NNNNN",
+        "partNumberStart": 0,
+        "partNumberLength": 11,
+        "lotNumberStart": 12,
+        "lotNumberLength": 13
+    },
+    "KEC": {
+        "character_pattern": "XXXXXXXXXXXXXX XXXXXXXXXXXXXNNNN",
+        "partNumberStart": 0,
+        "partNumberLength": 14,
+        "lotNumberStart": 15,
+        "lotNumberLength": 13
+    },
+    "SANKEN": {
+        "character_pattern": "NNNNNNNNNN]]XXXXXXXXXXX]]NNNN]]]] (XXXXXXXXXXXXXXXXXNNNNNNN(",
+        "partNumberStart": 12,
+        "partNumberLength": 11,
+        "lotNumberStart": 35,
+        "lotNumberLength": 17
+    },
+    "TOSHIBA": {
+        "character_pattern": "XXXXXXXXXXXXXXXXXXXX              )A=                                              NNNNNNNNANNNNN      XAANNNNNNNNNNN         NNNNAAANNNNAAAANN A                                                  N NAA",
+        "partNumberStart": 9,
+        "partNumberLength": 11,
+        "lotNumberStart": 0,
+        "lotNumberLength": 9
+    },
+    "NUVOTON": {
+        "character_pattern": "\u00b4=:NNNAXXXXXXXXXXXANAAANNNNNNN XXXXXXXXXXXXXXANNNNAAAANNNNNNNNNNANNNNNNAANNAANNAANNANNNNNNNNNNANNNANNNNNNAANNANNNAANNAAANANANANA",
+        "partNumberStart": 7,
+        "partNumberLength": 10,
+        "lotNumberStart": 31,
+        "lotNumberLength": 14
+    },
+    "SILICON WORKS": {
+        "character_pattern": "XXXXXXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 8,
+        "lotNumberStart": 8,
+        "lotNumberLength": 8
+    },
+    "ABOV SEMICONDUCTOR": {
+        "character_pattern": "XXXXXXXXXXXXXXXXXXXXXXXXX         ANNNN",
+        "partNumberStart": 0,
+        "partNumberLength": 14,
+        "lotNumberStart": 14,
+        "lotNumberLength": 11
+    },
+    "INSUNG": {
+        "character_pattern": "XXXXXXXX'AAA XXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 8,
+        "lotNumberStart": 13,
+        "lotNumberLength": 11
+    },
+    "LITEON": {
+        "character_pattern": "AAAXXXXXXXX'AA'A'AAXXXXXXXXXNANNNNAAAAAANNNNNNNNNNNANNNNAAAAA AA AAAAAAAA",
+        "partNumberStart": 3,
+        "partNumberLength": 8,
+        "lotNumberStart": 19,
+        "lotNumberLength": 9
+    },
+    "TEXAS INTRUMENTS": {
+        "character_pattern": "\u00b4=:NNANAXXXXXXXXAAAANANAAANNNNANNNNNNNNANNNNNNNAAANAAAAANNNNNNAXXXXXXXXXXNNAAANNNAAAANNAAAANNAAAAAANNAN-NNNA-NAAAAA--ANNNNNNANNNNNAANN",
+        "partNumberStart": 8,
+        "partNumberLength": 8,
+        "lotNumberStart": 63,
+        "lotNumberLength": 10
+    },
+    "POWER INTEGRATIONS INC": {
+        "character_pattern": "NAXXXXXXXXNNNN'ANNN'XXXXXXXXXXXXX'NNNNNAA",
+        "partNumberStart": 2,
+        "partNumberLength": 8,
+        "lotNumberStart": 20,
+        "lotNumberLength": 13
+    },
+    "JST": {
+        "character_pattern": "XXXXXXXXANNNNNNNNXXXXXXXXNNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN      NNNNNNNNNN",
+        "partNumberStart": 0,
+        "partNumberLength": 8,
+        "lotNumberStart": 17,
+        "lotNumberLength": 8
+    },
+    "PANASONIC": {
+        "character_pattern": "XXXXXXXXXXXXXXXNAN XXXXXXXXXXXNNNNNN",
+        "partNumberStart": 0,
         "partNumberLength": 15,
-        "lotNumberStart": 36,
-        "lotNumberLength": 4
+        "lotNumberStart": 19,
+        "lotNumberLength": 11
+    },
+    "SEJIN": {
+        "character_pattern": "XXXXXXXXXXX'XXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 11,
+        "lotNumberStart": 12,
+        "lotNumberLength": 7
+    },
+    "BUSSMANN": {
+        "character_pattern": "\u00b4=:NNAXXXXXXXXXXXXXANNNNNNANAAAAAAXXXXXXXXXXNAAAAA AA AAAAANAANN.",
+        "partNumberStart": 6,
+        "partNumberLength": 13,
+        "lotNumberStart": 34,
+        "lotNumberLength": 10
+    },
+    "SAMYOUNG": {
+        "character_pattern": "XXXXXXXXXXXXXXXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 12,
+        "lotNumberStart": 12,
+        "lotNumberLength": 13
+    },
+    "KUFEELUX": {
+        "character_pattern": "XXXXXXXXXXX'AA'AA'NNNNN'NNNN          XXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 11,
+        "lotNumberStart": 38,
+        "lotNumberLength": 8
+    },
+    "NAMAE ELECTRONICS": {
+        "character_pattern": "XXXXXXXXXXXAANXXXXXXXNNNNNNNNNN",
+        "partNumberStart": 0,
+        "partNumberLength": 11,
+        "lotNumberStart": 14,
+        "lotNumberLength": 7
     }
 }

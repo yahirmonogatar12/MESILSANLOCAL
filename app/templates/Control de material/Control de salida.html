@@ -93,42 +93,113 @@
                 </div>
             </div>
         </div>
+
         <div class="material-table-container">
             <div class="material-table-controls">
-                <button class="material-btn">Registro de salida</button>
-                <button class="material-btn">Historial de salida</button>
+                <button class="material-btn" id="btnRegistroSalida" onclick="mostrarRegistroSalida()">Registro de salida</button>
+                <button class="material-btn" id="btnHistorialSalida" onclick="mostrarHistorialSalida()">Historial de salida</button>
             </div>
-            <div class="material-table-controls">
-                <div class="material-form-group">
-                    <label>Fecha de salida</label>
-                    <input type="date" id="salida_fecha_salida_consulta" value="2025-07-09">
+
+            <!-- Tablas para modo Registro de salida - siempre visibles -->
+            <div id="tablasRegistroSalida" class="registro-tablas-container" style="display: flex; gap: 20px; margin: 20px 0;">
+                <!-- Primera tabla -->
+                <div class="tabla-container" style="flex: 1;">
+                    <table class="material-table">
+                        <thead>
+                            <tr>
+                                <th>Proceso</th>
+                                <th>Código de material</th>
+                                <th>Número de parte</th>
+                                <th>Cantidad disponible</th>
+                                <th>Cantidad total</th>
+                                <th>Propiedad de material</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="no-data">No hay datos registrados</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
-                <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
+
+                <!-- Divisor vertical -->
+                <div style="width: 2px; background-color: #bdc3c7; margin: 0 10px; border-radius: 1px;"></div>
+
+                <!-- Segunda tabla -->
+                <div class="tabla-container" style="flex: 1;">
+                    <table class="material-table">
+                        <thead>
+                            <tr>
+                                <th>Código de material</th>
+                                <th>Código de material original</th>
+                                <th>Número de parte</th>
+                                <th>Cantidad</th>
+                                <th>Número de lote</th>
+                                <th>Propiedad</th>
+                                <th>Nivel de acceso</th>
+                                <th>Especificación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="no-data">No hay datos registrados</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <table class="material-table" id="salida_tablaSalidas">
-                <thead>
-                    <tr>
-                        <th>Fecha de salida</th>
-                        <th>Proceso de salida</th>
-                        <th>Código de material recibido</th>
-                        <th>Código de material</th>
-                        <th>Número de parte</th>
-                        <th>Disp.</th>
-                        <th>Hist.</th>
-                        <th>Código de material original</th>
-                        <th>Número de lote</th>
-                        <th>Máquina(linea)</th>
-                        <th>Departamento de salida</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td colspan="11" class="no-data">No hay dato registrado</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="total-info" id="salida_totalInfo">Total Rows: 0</div>
+
+            <!-- Controles y tabla de historial -->
+            <div id="historialSection" style="display: none;">
+                <div class="material-table-controls" id="historialControles" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+                    <!-- Filtros de fecha - lado izquierdo -->
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div class="material-form-group">
+                            <label>Fecha desde</label>
+                            <input type="date" id="salida_fecha_desde">
+                        </div>
+                        <div class="material-form-group">
+                            <label>Fecha hasta</label>
+                            <input type="date" id="salida_fecha_hasta">
+                        </div>
+                    </div>
+                    
+                    <!-- Controles principales - lado derecho -->
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div class="material-form-group">
+                            <label>Código de material recibido</label>
+                            <input type="text" id="salida_filtro_codigo" placeholder="Buscar por código...">
+                        </div>
+                        <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
+                        <button class="material-btn" onclick="limpiarFiltros()" style="background-color: #95a5a6;">Limpiar filtros</button>
+                        <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
+                    </div>
+                </div>
+                <table class="material-table" id="salida_tablaSalidas">
+                    <thead>
+                        <tr>
+                            <th>Fecha de salida</th>
+                            <th>Proceso de salida</th>
+                            <th>Código de material recibido</th>
+                            <th>Código de material</th>
+                            <th>Número de parte</th>
+                            <th>Disp.</th>
+                            <th>Hist.</th>
+                            <th>Código de material original</th>
+                            <th>Número de lote</th>
+                            <th>Máquina(linea)</th>
+                            <th>Departamento de salida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="11" class="no-data">No hay dato registrado</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="total-info" id="salida_totalInfo">Total Rows: 0</div>
+            </div>
         </div>
     </div>
 
@@ -148,10 +219,15 @@
             // Establecer fecha actual
             const hoy = new Date().toISOString().split('T')[0];
             const fechaSalidaForm = document.getElementById('salida_fecha_salida_form');
-            const fechaSalidaConsulta = document.getElementById('salida_fecha_salida_consulta');
             
             if (fechaSalidaForm) fechaSalidaForm.value = hoy;
-            if (fechaSalidaConsulta) fechaSalidaConsulta.value = hoy;
+
+            // Establecer fecha actual en los filtros de historial
+            const fechaDesde = document.getElementById('salida_fecha_desde');
+            const fechaHasta = document.getElementById('salida_fecha_hasta');
+            
+            if (fechaDesde) fechaDesde.value = hoy;
+            if (fechaHasta) fechaHasta.value = hoy;
 
             // Configurar listeners para el checkbox de registro automático
             configurarRegistroAutomatico();
@@ -162,8 +238,10 @@
                 setTimeout(() => codigoInput.focus(), 100);
             }
 
-            // Cargar datos iniciales de la tabla
-            setTimeout(() => consultarSalidas(), 200);
+            // Mostrar por defecto las tablas de registro
+            mostrarRegistroSalida();
+
+            // No cargar datos automáticamente - solo cuando se haga clic en "Consultar"
         }
 
         // Nueva función para configurar el comportamiento del registro automático
@@ -303,9 +381,12 @@
                     } else {
                         mostrarMensajeSimple(`Salida manual procesada: ${cantidadSalida}`, 'success');
                     }
-                    s
-                    // Actualizar tabla en background más rápido
-                    setTimeout(() => consultarSalidas(), 300);
+                    
+                    // Actualizar tabla en background más rápido (solo si está visible)
+                    const historialSection = document.getElementById('historialSection');
+                    if (historialSection && historialSection.style.display !== 'none') {
+                        setTimeout(() => consultarSalidas(), 300);
+                    }
                 } else {
                     mostrarMensajeSimple('Error al procesar salida', 'error');
                 }
@@ -378,8 +459,11 @@
                         mostrarMensajeSimple(`Salida OK: ${cantidadSalida}`, 'success');
                     }
                     
-                    // Actualizar tabla más rápido para mostrar el cambio inmediatamente
-                    setTimeout(() => consultarSalidas(), 300);
+                    // Actualizar tabla más rápido para mostrar el cambio inmediatamente (solo si está visible)
+                    const historialSection = document.getElementById('historialSection');
+                    if (historialSection && historialSection.style.display !== 'none') {
+                        setTimeout(() => consultarSalidas(), 300);
+                    }
                 } else {
                     mostrarMensajeSimple('Error en salida', 'error');
                 }
@@ -448,6 +532,43 @@
             document.addEventListener('DOMContentLoaded', inicializarControlSalida);
         } else {
             setTimeout(inicializarControlSalida, 50);
+        }
+
+        // Funciones para controlar la visibilidad de la tabla
+        function mostrarRegistroSalida() {
+            // Mostrar tablas de registro (siempre visibles)
+            document.getElementById('tablasRegistroSalida').style.display = 'flex';
+            
+            // Ocultar sección de historial
+            document.getElementById('historialSection').style.display = 'none';
+            
+            // Cambiar estado visual de los botones
+            document.getElementById('btnRegistroSalida').style.backgroundColor = '#3498db';
+            document.getElementById('btnHistorialSalida').style.backgroundColor = '';
+        }
+
+        function mostrarHistorialSalida() {
+            // Ocultar tablas de registro
+            document.getElementById('tablasRegistroSalida').style.display = 'none';
+            
+            // Mostrar sección de historial
+            document.getElementById('historialSection').style.display = 'block';
+            
+            // Establecer fecha actual en los filtros de fecha
+            const hoy = new Date().toISOString().split('T')[0];
+            const fechaDesde = document.getElementById('salida_fecha_desde');
+            const fechaHasta = document.getElementById('salida_fecha_hasta');
+            
+            if (fechaDesde && !fechaDesde.value) {
+                fechaDesde.value = hoy;
+            }
+            if (fechaHasta && !fechaHasta.value) {
+                fechaHasta.value = hoy;
+            }
+            
+            // Cambiar estado visual de los botones
+            document.getElementById('btnHistorialSalida').style.backgroundColor = '#3498db';
+            document.getElementById('btnRegistroSalida').style.backgroundColor = '';
         }
 
         async function buscarMaterialPorCodigo(codigo) {
@@ -692,10 +813,13 @@
                     // Limpiar campos del material encontrado
                     limpiarCamposMaterial();
 
-                    // ✅ OPTIMIZACIÓN: Tiempo reducido para actualización de tabla
-                    setTimeout(() => {
-                        consultarSalidas();
-                    }, data.optimized ? 300 : 1000);
+                    // ✅ OPTIMIZACIÓN: Tiempo reducido para actualización de tabla (solo si está visible)
+                    const historialSection = document.getElementById('historialSection');
+                    if (historialSection && historialSection.style.display !== 'none') {
+                        setTimeout(() => {
+                            consultarSalidas();
+                        }, data.optimized ? 300 : 1000);
+                    }
 
                 } else {
                     mostrarError(data.error || 'Error al procesar la salida');
@@ -709,41 +833,107 @@
 
         async function consultarSalidas() {
             try {
-                mostrarCargando('Consultando salidas...');
+                const codigoFiltro = document.getElementById('salida_filtro_codigo')?.value?.trim() || '';
+                const fechaDesde = document.getElementById('salida_fecha_desde')?.value || '';
+                const fechaHasta = document.getElementById('salida_fecha_hasta')?.value || '';
 
-                const fechaSalida = document.getElementById('salida_fecha_salida_consulta')?.value || '';
+                // Validación de fechas
+                if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+                    mostrarError('La fecha desde no puede ser mayor que la fecha hasta');
+                    return;
+                }
+
+                // Mostrar mensaje específico según los filtros aplicados
+                let mensajeCarga = 'Consultando salidas...';
+                if (fechaDesde || fechaHasta || codigoFiltro) {
+                    mensajeCarga = 'Aplicando filtros y consultando...';
+                }
+                mostrarCargando(mensajeCarga);
 
                 let url = '/consultar_historial_salidas';
                 const params = new URLSearchParams();
 
-                if (fechaSalida) {
-                    params.append('fecha_inicio', fechaSalida);
-                    params.append('fecha_fin', fechaSalida);
+                // Agregar filtro de código de material
+                if (codigoFiltro) {
+                    params.append('codigo_material', codigoFiltro);
+                }
+
+                // Agregar filtros de fecha
+                if (fechaDesde) {
+                    params.append('fecha_desde', fechaDesde);
+                }
+                if (fechaHasta) {
+                    params.append('fecha_hasta', fechaHasta);
                 }
 
                 if (params.toString()) {
                     url += '?' + params.toString();
                 }
 
+                // Debug: mostrar la URL que se está enviando
+                console.log('🔍 Consultando URL:', url);
+                console.log('📅 Filtros aplicados:', {
+                    codigo: codigoFiltro,
+                    fechaDesde: fechaDesde,
+                    fechaHasta: fechaHasta
+                });
+
                 const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const salidas = await response.json();
+
+                console.log('📊 Respuesta del servidor:', salidas);
 
                 if (Array.isArray(salidas)) {
                     actualizarTablaSalidas(salidas);
                     const totalInfo = document.getElementById('salida_totalInfo');
                     if (totalInfo) {
-                        totalInfo.textContent = `Total Rows: ${salidas.length}`;
+                        const mensaje = `Total Rows: ${salidas.length}`;
+                        const filtros = [];
+                        if (codigoFiltro) {
+                            filtros.push(`Código: ${codigoFiltro}`);
+                        }
+                        if (fechaDesde) {
+                            filtros.push(`Desde: ${fechaDesde}`);
+                        }
+                        if (fechaHasta) {
+                            filtros.push(`Hasta: ${fechaHasta}`);
+                        }
+                        
+                        totalInfo.textContent = filtros.length > 0 ? 
+                            `${mensaje} | Filtros: ${filtros.join(', ')}` : mensaje;
                     }
+                    
                     // ✅ OCULTAR mensaje de carga cuando termine exitosamente
                     ocultarMensaje();
                 } else {
+                    console.error('❌ Error en respuesta:', salidas);
                     mostrarError(salidas.error || 'Error al consultar salidas');
                 }
 
             } catch (error) {
-                console.error('Error al consultar salidas:', error);
-                mostrarError('Error al consultar salidas');
+                console.error('❌ Error al consultar salidas:', error);
+                mostrarError('Error al consultar salidas: ' + error.message);
             }
+        }
+
+        function limpiarFiltros() {
+            const codigoFiltro = document.getElementById('salida_filtro_codigo');
+            const fechaDesde = document.getElementById('salida_fecha_desde');
+            const fechaHasta = document.getElementById('salida_fecha_hasta');
+            
+            if (codigoFiltro) codigoFiltro.value = '';
+            if (fechaDesde) fechaDesde.value = '';
+            if (fechaHasta) fechaHasta.value = '';
+            
+            // Consultar automáticamente con filtros limpiados
+            consultarSalidas();
+            
+            mostrarMensajeSimple('Filtros limpiados', 'info');
         }
 
         function actualizarTablaSalidas(salidas) {

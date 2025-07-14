@@ -2,10 +2,13 @@
 // MENÚ MÓVIL ESPECÍFICO PARA LISTAS
 // ===============================================
 
+
+// Prefijo único para evitar conflictos de IDs/clases
+const MLM_PREFIX = 'mlm-';
+
 class MobileListas {
     constructor() {
         this.isMobile = window.innerWidth <= 768;
-        
         if (this.isMobile) {
             this.init();
         }
@@ -19,21 +22,25 @@ class MobileListas {
     }
 
     createMobileMenu() {
+        // Eliminar menú anterior si existe (evita duplicados)
+        const oldMenu = document.getElementById(MLM_PREFIX + 'mobileListas');
+        if (oldMenu) oldMenu.remove();
+
         // Crear un menú flotante específico para móvil
         const mobileMenuHTML = `
-            <div class="mobile-listas-menu" id="mobileListas">
-                <button class="mobile-listas-toggle" id="toggleMobileListas">
+            <div class="mobile-listas-menu" id="${MLM_PREFIX}mobileListas" aria-label="Menú móvil de listas" role="navigation">
+                <button class="mobile-listas-toggle" id="${MLM_PREFIX}toggleMobileListas" aria-haspopup="true" aria-controls="${MLM_PREFIX}mobileListasDropdown" aria-expanded="false">
                     📋 Listas
                 </button>
-                <div class="mobile-listas-dropdown" id="mobileListasDropdown" style="display: none;">
-                    <div class="mobile-lista-item" data-lista="informacion-basica">📋 Información Básica</div>
-                    <div class="mobile-lista-item" data-lista="control-material">🔧 Control de Material</div>
-                    <div class="mobile-lista-item" data-lista="control-produccion">🏭 Control de Producción</div>
-                    <div class="mobile-lista-item" data-lista="control-proceso">⚙️ Control de Proceso</div>
-                    <div class="mobile-lista-item" data-lista="control-calidad">✅ Control de Calidad</div>
-                    <div class="mobile-lista-item" data-lista="control-resultados">📊 Control de Resultados</div>
-                    <div class="mobile-lista-item" data-lista="control-reporte">📄 Control de Reporte</div>
-                    <div class="mobile-lista-item" data-lista="configuracion">⚙️ Configuración</div>
+                <div class="mobile-listas-dropdown" id="${MLM_PREFIX}mobileListasDropdown" style="display: none;">
+                    <div class="mobile-lista-item" data-lista="informacion-basica" tabindex="0">📋 Información Básica</div>
+                    <div class="mobile-lista-item" data-lista="control-material" tabindex="0">🔧 Control de Material</div>
+                    <div class="mobile-lista-item" data-lista="control-produccion" tabindex="0">🏭 Control de Producción</div>
+                    <div class="mobile-lista-item" data-lista="control-proceso" tabindex="0">⚙️ Control de Proceso</div>
+                    <div class="mobile-lista-item" data-lista="control-calidad" tabindex="0">✅ Control de Calidad</div>
+                    <div class="mobile-lista-item" data-lista="control-resultados" tabindex="0">📊 Control de Resultados</div>
+                    <div class="mobile-lista-item" data-lista="control-reporte" tabindex="0">📄 Control de Reporte</div>
+                    <div class="mobile-lista-item" data-lista="configuracion" tabindex="0">⚙️ Configuración</div>
                 </div>
             </div>
         `;
@@ -43,31 +50,26 @@ class MobileListas {
     }
 
     setupMenuEvents() {
-        const toggle = document.getElementById('toggleMobileListas');
-        const dropdown = document.getElementById('mobileListasDropdown');
-        const items = document.querySelectorAll('.mobile-lista-item');
+        const toggle = document.getElementById(MLM_PREFIX + 'toggleMobileListas');
+        const dropdown = document.getElementById(MLM_PREFIX + 'mobileListasDropdown');
+        const items = dropdown.querySelectorAll('.mobile-lista-item');
 
         // Toggle del menú
         toggle.addEventListener('click', (e) => {
             e.stopPropagation();
             const isVisible = dropdown.style.display !== 'none';
             dropdown.style.display = isVisible ? 'none' : 'block';
+            toggle.setAttribute('aria-expanded', !isVisible);
         });
 
         // Cerrar menú al hacer click fuera - SOLO EN MÓVIL
         this.globalClickListener = (e) => {
-            // VERIFICACIÓN MÚLTIPLE para asegurar que solo funcione en móvil
             if (!this.isMobile || window.innerWidth > 768) return;
-            
-            // Verificar que el dropdown existe y está visible
             if (!dropdown || dropdown.style.display === 'none') return;
-            
-            // No cerrar si el click es en el toggle o dropdown mismo
             if (toggle.contains(e.target) || dropdown.contains(e.target)) return;
-            
             dropdown.style.display = 'none';
+            toggle.setAttribute('aria-expanded', 'false');
         };
-        
         document.addEventListener('click', this.globalClickListener);
 
         // Eventos de los elementos de lista
@@ -76,23 +78,34 @@ class MobileListas {
                 e.stopPropagation();
                 const lista = item.getAttribute('data-lista');
                 const titulo = item.textContent;
-                
                 console.log('📋 Seleccionada lista:', lista, titulo);
                 this.openListaModal(lista, titulo);
                 dropdown.style.display = 'none';
+                toggle.setAttribute('aria-expanded', 'false');
+            });
+            // Accesibilidad: permitir enter/space para seleccionar
+            item.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    item.click();
+                }
             });
         });
     }
 
     createModal() {
+        // Eliminar modal anterior si existe (evita duplicados)
+        const oldModal = document.getElementById(MLM_PREFIX + 'mobileListaModalNew');
+        if (oldModal) oldModal.remove();
+
         const modalHTML = `
-            <div class="mobile-lista-modal-new" id="mobileListaModalNew">
+            <div class="mobile-lista-modal-new" id="${MLM_PREFIX}mobileListaModalNew" role="dialog" aria-modal="true" aria-labelledby="${MLM_PREFIX}mobileListaTitleNew">
                 <div class="mobile-lista-content-new">
                     <div class="mobile-lista-header-new">
-                        <h3 class="mobile-lista-title-new">Lista</h3>
-                        <button class="mobile-lista-close-new" id="closeMobileModalNew">×</button>
+                        <h3 class="mobile-lista-title-new" id="${MLM_PREFIX}mobileListaTitleNew">Lista</h3>
+                        <button class="mobile-lista-close-new" id="${MLM_PREFIX}closeMobileModalNew" aria-label="Cerrar modal">×</button>
                     </div>
-                    <div class="mobile-lista-body-new" id="mobileListaBodyNew">
+                    <div class="mobile-lista-body-new" id="${MLM_PREFIX}mobileListaBodyNew">
                         <p style="text-align: center; padding: 40px; color: white;">Cargando...</p>
                     </div>
                 </div>
@@ -100,15 +113,13 @@ class MobileListas {
         `;
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        this.modal = document.getElementById('mobileListaModalNew');
-        this.modalBody = document.getElementById('mobileListaBodyNew');
-        
+        this.modal = document.getElementById(MLM_PREFIX + 'mobileListaModalNew');
+        this.modalBody = document.getElementById(MLM_PREFIX + 'mobileListaBodyNew');
+
         // Event listeners del modal
-        document.getElementById('closeMobileModalNew').addEventListener('click', () => {
+        document.getElementById(MLM_PREFIX + 'closeMobileModalNew').addEventListener('click', () => {
             this.closeModal();
         });
-
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) {
                 this.closeModal();
@@ -193,6 +204,10 @@ class MobileListas {
     showModal() {
         this.modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        // Accesibilidad: enfocar el modal
+        setTimeout(() => {
+            this.modal.focus && this.modal.focus();
+        }, 10);
     }
 
     closeModal() {
@@ -201,7 +216,7 @@ class MobileListas {
     }
 
     setTitle(titulo) {
-        const titleElement = document.querySelector('.mobile-lista-title-new');
+        const titleElement = document.getElementById(MLM_PREFIX + 'mobileListaTitleNew');
         if (titleElement) {
             titleElement.textContent = titulo;
         }
@@ -211,19 +226,16 @@ class MobileListas {
         window.addEventListener('resize', () => {
             const wasMobile = this.isMobile;
             this.isMobile = window.innerWidth <= 768;
-            
             // Limpiar listener global si cambió a desktop
             if (wasMobile && !this.isMobile && this.globalClickListener) {
                 document.removeEventListener('click', this.globalClickListener);
                 this.globalClickListener = null;
             }
-            
             // Mostrar/ocultar menú según el tamaño
-            const menu = document.getElementById('mobileListas');
+            const menu = document.getElementById(MLM_PREFIX + 'mobileListas');
             if (menu) {
                 menu.style.display = this.isMobile ? 'block' : 'none';
             }
-            
             // Cerrar modal si cambió a desktop
             if (wasMobile && !this.isMobile && this.modal && this.modal.style.display === 'flex') {
                 this.closeModal();
@@ -231,12 +243,19 @@ class MobileListas {
         });
     }
     
-    // Método para limpiar event listeners
+    // Método para limpiar event listeners y DOM
     cleanup() {
+        // Eliminar listener global
         if (this.globalClickListener) {
             document.removeEventListener('click', this.globalClickListener);
             this.globalClickListener = null;
         }
+        // Eliminar menú del DOM
+        const menu = document.getElementById(MLM_PREFIX + 'mobileListas');
+        if (menu) menu.remove();
+        // Eliminar modal del DOM
+        const modal = document.getElementById(MLM_PREFIX + 'mobileListaModalNew');
+        if (modal) modal.remove();
     }
 }
 

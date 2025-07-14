@@ -1068,6 +1068,16 @@ def control_de_material_ajax():
         print(f"Error al cargar template Control de Material: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/informacion_basica/control_de_bom')
+@login_requerido
+def control_de_bom_ajax():
+    """Ruta para cargar dinámicamente el contenido de Control de BOM"""
+    try:
+        return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de BOM: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 # Rutas para cargar contenido dinámicamente (AJAX)
 @app.route('/listas/informacion_basica')
 @login_requerido
@@ -1290,7 +1300,7 @@ def guardar_salida_lote():
         nueva_cantidad = cantidad_actual - cantidad_salida
         
         # Actualizar la cantidad en almacen
-        cursor.execute('UPDATE control_material_almacen SET cantidad_actual = ? WHERE codigo_material_recibido = ?', 
+        cursor.execute('UPDATE control_material SET cantidad_actual = ? WHERE codigo_material_recibido = ?', 
                       (nueva_cantidad, codigo_material_recibido))
         
         # Registrar la salida en control_material_salida
@@ -1335,9 +1345,13 @@ def consultar_historial_salidas():
     conn = None
     cursor = None
     try:
-        fecha_inicio = request.args.get('fecha_inicio')
-        fecha_fin = request.args.get('fecha_fin')
+        # Obtener parámetros de filtro (soportar ambos nombres para compatibilidad)
+        fecha_inicio = request.args.get('fecha_inicio') or request.args.get('fecha_desde')
+        fecha_fin = request.args.get('fecha_fin') or request.args.get('fecha_hasta')
         numero_lote = request.args.get('numero_lote', '').strip()
+        codigo_material = request.args.get('codigo_material', '').strip()
+        
+        print(f"🔍 Filtros recibidos - fecha_desde: {fecha_inicio}, fecha_hasta: {fecha_fin}, codigo_material: {codigo_material}, numero_lote: {numero_lote}")
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1364,18 +1378,25 @@ def consultar_historial_salidas():
         params = []
         
         if fecha_inicio:
-            query += ' AND s.fecha_salida >= ?'
+            query += ' AND DATE(s.fecha_salida) >= ?'
             params.append(fecha_inicio)
         
         if fecha_fin:
-            query += ' AND s.fecha_salida <= ?'
+            query += ' AND DATE(s.fecha_salida) <= ?'
             params.append(fecha_fin)
         
         if numero_lote:
             query += ' AND s.numero_lote LIKE ?'
             params.append(f'%{numero_lote}%')
+            
+        if codigo_material:
+            query += ' AND (s.codigo_material_recibido LIKE ? OR a.codigo_material LIKE ? OR a.codigo_material_original LIKE ?)'
+            params.extend([f'%{codigo_material}%', f'%{codigo_material}%', f'%{codigo_material}%'])
         
         query += ' ORDER BY s.fecha_salida DESC, s.fecha_registro DESC'
+        
+        print(f"📊 SQL Query: {query}")
+        print(f"📊 SQL Params: {params}")
         
         cursor.execute(query, params)
         resultados = cursor.fetchall()

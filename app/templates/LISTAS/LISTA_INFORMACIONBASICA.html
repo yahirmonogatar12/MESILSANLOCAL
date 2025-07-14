@@ -8,12 +8,12 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarAdminUsuario()">Administración de usuario</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarAdminMenu()">Administración de menu</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarAdminAutoridad()">Administración de autoridad</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlCodigo()">Control de lista de codigo</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarAdminItinerario()">Administracion de itinerario</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarConsultarLicencias()">Consultar licencias</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminUsuarioInfo()">Administración de usuario</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminMenuInfo()">Administración de menu</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminAutoridadInfo()">Administración de autoridad</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlCodigoInfo()">Control de lista de codigo</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminItinerarioInfo()">Administracion de itinerario</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarConsultarLicenciasInfo()">Consultar licencias</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -23,13 +23,13 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlDepartamento()">Control de departamento</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlProceso()">Control de proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlOrdenProceso()">Control de orden de proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlOrdenProceso2()">Control de orden de proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlDefecto()">Control de defecto por proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlInterfaces()">Control de interfaces de maquina</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlInterlock()">Control de interlock de maquina en linea</li>   
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlDepartamentoInfo()">Control de departamento</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlProcesoInfo()">Control de proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlOrdenProcesoInfo()">Control de orden de proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlOrdenProceso2Info()">Control de orden de proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlDefectoInfo()">Control de defecto por proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlInterfacesInfo()">Control de interfaces de maquina</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlInterlockInfo()">Control de interlock de maquina en linea</li>   
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -39,12 +39,12 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarProduccion">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlModelos()">Control de modelos</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlBOM()">Control de BOM</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlBOMSMT()">Control de BOM de SMT</li>
-                    <li class="sidebar-link" tabindex="0" onclick="Controlmaquinainf()">Control de maquina</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlMaquina()">Control de defecto por proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlMaquinaLinea()">Control de maquina en linea</li>   
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlModelosInfo()">Control de modelos</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMInfo()">Control de BOM</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMSMTInfo()">Control de BOM de SMT</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.Controlmaquinainf()">Control de maquina</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaquinaInfo()">Control de defecto por proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaquinaLineaInfo()">Control de maquina en linea</li>   
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -54,8 +54,8 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial2">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlMaterialInfo()">Control de material</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarConfiguracionMSL()">Configuracion de MSL</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaterialInfo()">Control de material</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarConfiguracionMSLInfo()">Configuracion de MSL</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -65,8 +65,8 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarCliente">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlCliente()">Control de cliente</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlProveedor()">Control de proveedor</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlClienteInfo()">Control de cliente</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlProveedorInfo()">Control de proveedor</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -76,7 +76,7 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarOtros">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarReiniciarSeccion()">Re-iniciar la seccion</li>
+                    <li class="sidebar-link" tabindex="0" onclick="console.log('Reiniciar sección - por implementar')">Re-iniciar la seccion</li>
         </ul>
     </aside>
 
@@ -84,190 +84,3 @@
 
         <!-- El contenido ahora se muestra en informacion-basica-content-area de MaterialTemplate.html -->
     </div>
-
-<script>
-// Funciones para manejar la navegación en Información Básica (redirigiendo a MaterialTemplate.html)
-
-function mostrarAdminUsuario() {
-    if (window.mostrarAdminUsuarioInfo) {
-        window.mostrarAdminUsuarioInfo();
-    }
-}
-
-function mostrarAdminMenu() {
-    if (window.mostrarAdminMenuInfo) {
-        window.mostrarAdminMenuInfo();
-    }
-}
-
-function mostrarAdminAutoridad() {
-    if (window.mostrarAdminAutoridadInfo) {
-        window.mostrarAdminAutoridadInfo();
-    }
-}
-
-function mostrarControlCodigo() {
-    if (window.mostrarControlCodigoInfo) {
-        window.mostrarControlCodigoInfo();
-    }
-}
-
-function mostrarAdminItinerario() {
-    if (window.mostrarAdminItinerarioInfo) {
-        window.mostrarAdminItinerarioInfo();
-    }
-}
-
-function mostrarConsultarLicencias() {
-    if (window.mostrarConsultarLicenciasInfo) {
-        window.mostrarConsultarLicenciasInfo();
-    }
-}
-
-function mostrarControlDepartamento() {
-    if (window.mostrarControlDepartamentoInfo) {
-        window.mostrarControlDepartamentoInfo();
-    }
-}
-
-function mostrarControlProceso() {
-    if (window.mostrarControlProcesoInfo) {
-        window.mostrarControlProcesoInfo();
-    }
-}
-
-function mostrarControlOrdenProceso() {
-    if (window.mostrarControlOrdenProcesoInfo) {
-        window.mostrarControlOrdenProcesoInfo();
-    }
-}
-
-function mostrarControlOrdenProceso2() {
-    if (window.mostrarControlOrdenProceso2Info) {
-        window.mostrarControlOrdenProceso2Info();
-    }
-}
-
-function mostrarControlDefecto() {
-    if (window.mostrarControlDefectoInfo) {
-        window.mostrarControlDefectoInfo();
-    }
-}
-
-function mostrarControlInterfaces() {
-    if (window.mostrarControlInterfacesInfo) {
-        window.mostrarControlInterfacesInfo();
-    }
-}
-
-function mostrarControlInterlock() {
-    if (window.mostrarControlInterlockInfo) {
-        window.mostrarControlInterlockInfo();
-    }
-}
-
-// Función que llama a la función global de MaterialTemplate.html
-function mostrarControlMaterialInfo() {
-    console.log('🎯 [LOCAL] mostrarControlMaterialInfo ejecutándose...');
-    
-    // Verificar si existe la función global específica
-    if (typeof window.mostrarControlMaterialInfoGlobal === 'function') {
-        console.log('✅ Delegando a función global específica...');
-        window.mostrarControlMaterialInfoGlobal();
-        return;
-    }
-    
-    // Ejecutar AJAX directamente
-    console.log('📡 [LOCAL] Ejecutando AJAX directamente...');
-    
-    const container = document.getElementById('control-material-info-container');
-    if (!container) {
-        console.error('❌ [LOCAL] Container control-material-info-container no encontrado');
-        return;
-    }
-    
-    // Mostrar el container
-    container.style.display = 'block';
-    container.style.visibility = 'visible';
-    container.style.opacity = '1';
-    
-    // Realizar fetch
-    fetch('/informacion_basica/control_de_material')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(html => {
-            container.innerHTML = html;
-            console.log('✅ [LOCAL] Contenido cargado exitosamente');
-        })
-        .catch(error => {
-            console.error('❌ [LOCAL] Error en fetch:', error);
-            container.innerHTML = '<p>Error al cargar el contenido. Por favor, intente de nuevo.</p>';
-        });
-}
-
-function mostrarConfiguracionMSL() {
-    if (window.mostrarConfiguracionMSLInfo) {
-        window.mostrarConfiguracionMSLInfo();
-    }
-}
-
-function mostrarControlCliente() {
-    if (window.mostrarControlClienteInfo) {
-        window.mostrarControlClienteInfo();
-    }
-}
-
-function mostrarControlProveedor() {
-    if (window.mostrarControlProveedorInfo) {
-        window.mostrarControlProveedorInfo();
-    }
-}
-
-function mostrarReiniciarSeccion() {
-    console.log('mostrarReiniciarSeccion - por implementar');
-}
-
-function mostrarCambioContrasena() {
-    console.log('mostrarCambioContrasena - por implementar');
-}
-
-function Controlmaquinainf() {
-    if (window.Controlmaquinainf) {
-        window.Controlmaquinainf();
-    }
-}
-
-function mostrarControlModelos() {
-    if (window.mostrarControlModelosInfo) {
-        window.mostrarControlModelosInfo();
-    }
-}
-
-function mostrarControlBOM() {
-    if (window.mostrarControlBOMInfo) {
-        window.mostrarControlBOMInfo();
-    }
-}
-
-function mostrarControlBOMSMT() {
-    if (window.mostrarControlBOMSMTInfo) {
-        window.mostrarControlBOMSMTInfo();
-    }
-}
-
-function mostrarControlMaquina() {
-    if (window.mostrarControlMaquinaInfo) {
-        window.mostrarControlMaquinaInfo();
-    }
-}
-
-function mostrarControlMaquinaLinea() {
-    if (window.mostrarControlMaquinaLineaInfo) {
-        window.mostrarControlMaquinaLineaInfo();
-    }
-}
-</script>
