@@ -414,6 +414,7 @@
                 // Llenar inmediatamente el campo de especificación
                 llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || codigoCompleto.spec || '');
                 console.log(`📋 Especificación cargada inmediatamente: ${codigoCompleto.especificacion_material || codigoCompleto.spec}`);
+                console.log(`📋 Número de parte disponible: ${codigoCompleto.numero_parte}`);
             }
             
             cerrarModalCodigoMaterial();
@@ -690,18 +691,21 @@
                 if (codigoCompleto) {
                     llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
                     llenarCampoPorId('codigo_material_lower', codigoMaterial);
-                    llenarCampoPorId('numero_parte_lower', String(contadorSecuencial).padStart(4, '0'));
+                    // ✅ CORREGIDO: Usar el verdadero número de parte de la base de datos
+                    llenarCampoPorId('numero_parte_lower', codigoCompleto.numero_parte || '');
                     llenarCampoPorId('cantidad_estandarizada', codigoCompleto.cantidad_estandarizada || '');
                     llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
                     llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
                     llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || '');
                     llenarCampoPorId('numero_lote_material', '');
                     
+                    console.log(`📋 Número de parte de DB cargado: ${codigoCompleto.numero_parte}`);
                     console.log(`📋 Especificación de material cargada: ${codigoCompleto.especificacion_material}`);
                 } else {
                     llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
                     llenarCampoPorId('codigo_material_lower', codigoMaterial);
-                    llenarCampoPorId('numero_parte_lower', String(contadorSecuencial).padStart(4, '0'));
+                    // ✅ CORREGIDO: Si no hay información completa, dejar vacío en lugar de usar secuencial
+                    llenarCampoPorId('numero_parte_lower', '');
                     llenarCampoPorId('almacen_especificacion_material', '');
                     llenarCampoPorId('numero_lote_material', '');
                 }
@@ -712,7 +716,9 @@
                 const codigoMaterialRecibidoCompleto = `${codigoMaterial},${fechaActual}0001`;
                 llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
                 llenarCampoPorId('codigo_material_lower', codigoMaterial);
-                llenarCampoPorId('numero_parte_lower', '0001');
+                // ✅ CORREGIDO: Si hay error, usar el número de parte de la selección (si existe)
+                const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
+                llenarCampoPorId('numero_parte_lower', codigoCompleto ? (codigoCompleto.numero_parte || '') : '');
             });
         }
 
