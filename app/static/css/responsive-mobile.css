@@ -431,6 +431,181 @@ body {
 }
 
 /* ============================================= */
+/* MENÚ HAMBURGUESA PARA LISTAS EN MÓVIL        */
+/* ============================================= */
+
+@media (max-width: 768px) {
+  /* Ocultar sidebar de listas en móvil */
+  .app-sidebar {
+    display: none !important;
+  }
+  
+  /* Contenedor del botón hamburguesa de listas */
+  .mobile-lists-hamburger {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: none; /* Inicialmente oculto */
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+  }
+  
+  .mobile-lists-hamburger:hover {
+    transform: scale(1.1);
+    background-color: var(--accent-color);
+  }
+  
+  .mobile-lists-hamburger .hamburger-icon {
+    color: white;
+    font-size: 24px;
+  }
+  
+  /* Menú desplegable de listas */
+  .mobile-lists-menu {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--secondary-color);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 1049;
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+  }
+  
+  .mobile-lists-menu.active {
+    transform: translateY(0);
+  }
+  
+  .mobile-lists-header {
+    padding: 20px;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    border-radius: 20px 20px 0 0;
+    position: relative;
+  }
+  
+  .mobile-lists-close {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .mobile-lists-content {
+    padding: 0;
+  }
+  
+  /* Secciones de listas en móvil */
+  .mobile-sidebar-section {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  .mobile-sidebar-dropdown-btn {
+    width: 100%;
+    padding: 15px 20px;
+    background-color: var(--secondary-color);
+    border: none;
+    color: var(--text-light);
+    text-align: left;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+  }
+  
+  .mobile-sidebar-dropdown-btn:hover,
+  .mobile-sidebar-dropdown-btn.active {
+    background-color: var(--accent-color);
+  }
+  
+  .mobile-sidebar-caret {
+    transition: transform 0.3s ease;
+  }
+  
+  .mobile-sidebar-dropdown-btn.active .mobile-sidebar-caret {
+    transform: rotate(180deg);
+  }
+  
+  .mobile-sidebar-dropdown-list {
+    background-color: rgba(0,0,0,0.2);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  
+  .mobile-sidebar-dropdown-list.active {
+    max-height: 500px;
+  }
+  
+  .mobile-sidebar-link {
+    display: block;
+    padding: 12px 40px;
+    color: var(--text-light);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+  }
+  
+  .mobile-sidebar-link:hover,
+  .mobile-sidebar-link:focus {
+    background-color: var(--accent-color);
+    color: white;
+    text-decoration: none;
+    padding-left: 45px;
+  }
+  
+  /* Overlay para cerrar menú de listas */
+  .mobile-lists-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 1048;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .mobile-lists-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* ============================================= */
 /* UTILITIES MÓVILES                             */
 /* ============================================= */
 
