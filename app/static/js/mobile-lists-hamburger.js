@@ -26,7 +26,7 @@ class MobileListsHamburger {
         const mobileListsHTML = `
             <!-- Botón hamburguesa flotante -->
             <button class="mobile-lists-hamburger" id="mobileListsToggle">
-                <span class="hamburger-icon">📋</span>
+                <span class="hamburger-icon">▲</span>
             </button>
             
             <!-- Overlay -->
@@ -269,10 +269,11 @@ class MobileListsHamburger {
         const overlay = document.getElementById('mobileListsOverlay');
         const toggle = document.getElementById('mobileListsToggle');
 
-        if (menu && overlay) {
+        if (menu && overlay && toggle) {
             menu.classList.add('active');
             overlay.classList.add('active');
-            toggle.style.display = 'none';
+            toggle.classList.add('active'); // Agregar clase active para rotar la flecha
+            // No ocultar el botón para ver la animación
             document.body.style.overflow = 'hidden';
             this.menuOpen = true;
         }
@@ -283,10 +284,10 @@ class MobileListsHamburger {
         const overlay = document.getElementById('mobileListsOverlay');
         const toggle = document.getElementById('mobileListsToggle');
 
-        if (menu && overlay) {
+        if (menu && overlay && toggle) {
             menu.classList.remove('active');
             overlay.classList.remove('active');
-            toggle.style.display = 'flex';
+            toggle.classList.remove('active'); // Remover clase active para volver flecha normal
             document.body.style.overflow = '';
             this.menuOpen = false;
         }
