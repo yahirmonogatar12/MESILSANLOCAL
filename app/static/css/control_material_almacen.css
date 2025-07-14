@@ -1,4 +1,17 @@
 /* Estilos específicos para Control de Material que complementan style.css */
+
+/* Hacer el formulario más compacto - 90% del tamaño original */
+.material-container2 {
+    transform: scale(0.9);
+    transform-origin: top left;
+    width: 111.11%; /* 100/0.9 para compensar la escala */
+    font-family: 'LG regular', sans-serif;
+    background-color: #32323E;
+    color: lightgray;
+    min-height: 100vh;
+    padding: 5px;
+}
+
 .material-container1 {
     font-family: 'LG regular', sans-serif;
     background-color: #32323E;
@@ -7,13 +20,7 @@
     min-height: 20vh;
     padding: 1px;
 }
-.material-container2 {
-    font-family: 'LG regular', sans-serif;
-    background-color: #32323E;
-    color: lightgray;
-    min-height: 100vh;
-    padding: 5px;
-}
+/* Definición original eliminada - se usa la versión con scale arriba */
 
 .material-container2 .material-toolbar {
     display: flex;
@@ -156,9 +163,34 @@
     background-size: 16px;
     padding-right: 32px;
 }
-#registroAutomatico {
-    width: 20px;
-    height: 20px;
+/* Estilos únicos para el checkbox Registro automático del almacén */
+#checkbox_registro_almacen {
+    width: auto !important;
+    min-width: auto !important;
+    transform: scale(1.0) !important;
+    accent-color: #27ae60 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: none !important;
+}
+
+.checkbox-label-almacen {
+    gap: 8px !important;
+    min-width: auto !important;
+    width: auto !important;
+    flex: none !important;
+}
+
+.checkbox-almacen {
+    width: auto !important;
+    min-width: auto !important;
+    flex: none !important;
+}
+
+/* Botones más largos para Guardar e Imprimir */
+.botones-almacen {
+    min-width: 120px !important;
+    width: 120px !important;
 }
 
 .material-container2 .three-column {

@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=LG+regular&display=swap" rel="stylesheet">
     
     <!-- Estilos globales -->
-    <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/control_material_almacen.css">
     
     <!-- Scripts necesarios -->
@@ -67,20 +66,18 @@
                 </select>
             </div>
             <div class="material-form-group">
-                <label>
-                    Código de material original
-                </label>
-            <div style="display: flex; align-items: center;">
-                <input type="text" id="codigoMaterialOriginal" style="flex: 1;" placeholder="Escanear código aquí..." onkeydown="procesarScaneo(event)">
+                <label>Código de material original</label>
+                <div style="display: flex; align-items: center; min-width: 0;">
+                    <input type="text" id="codigoMaterialOriginal" style="flex: 1; min-width: 0;" placeholder="Escanear código aquí..." onkeydown="procesarScaneo(event)">
+                </div>
             </div>
-        </div>
     </div>
 
     <div class="material-form-row four-column">
         <div class="material-form-group">
             <label>Código de material</label>
-            <div style="position: relative;">
-                <select id="codigoMaterialSelect" onclick="event.preventDefault(); abrirModalCodigoMaterial();" readonly style="cursor: pointer;">
+            <div style="position: relative; min-width: 0;">
+                <select id="codigoMaterialSelect" onclick="event.preventDefault(); abrirModalCodigoMaterial();" readonly style="cursor: pointer; width: 100%;">
                     <option value="">Seleccionar</option>
                 </select>
                 
@@ -103,7 +100,6 @@
                 </div>
             </div>
         </div>
-    <div class="material-form-row four-column">
         <div class="material-form-group">
             <label>Material importación/local</label>
             <select id="material_importacion_local">
@@ -117,8 +113,18 @@
             <input type="date" id="fecha_recibo" value="2025-07-08">
         </div>
         <div class="material-form-group">
-            <label>Especificación de material</label>
-            <input type="text" id="almacen_especificacion_material" readonly placeholder="Se carga automáticamente al seleccionar código">
+            <!-- Campo vacío para mantener estructura -->
+        </div>
+    </div>
+    <div class="material-form-row four-column">
+        <div class="material-form-group">
+            <!-- Campo vacío para mantener estructura -->
+        </div>
+        <div class="material-form-group">
+            <!-- Campo vacío para mantener estructura -->
+        </div>
+        <div class="material-form-group">
+            <!-- Campo vacío para mantener estructura -->
         </div>
         <div class="material-form-group">
             <!-- Campo vacío para mantener estructura -->
@@ -143,7 +149,7 @@
         
     
 <div class="material-form-section2">
-    <div class="material-form-row four-column">
+    <div class="material-form-row four-column" style="align-items: center;">
         <div class="material-form-group">
             <label>Código de material recibido</label>
             <input type="text" id="codigo_material_recibido">
@@ -154,9 +160,15 @@
         </div>
         <div class="material-form-group">
             <label>Cantidad estandarizada</label>
-            <input type="text" id="cantidad_estandarizada">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="cantidad_estandarizada" style="flex: 1;">
+                <button class="material-btn gray" style="white-space: nowrap;">Conf. de impresora</button>
+            </div>
         </div>
-        <button class="material-btn gray">Conf. de impresora</button>
+        <div class="material-form-group">
+            <!-- Campo vacío para mantener estructura -->
+        </div>
+        
         <div class="material-form-group">
             <label>Código de material</label>
             <input type="text" id="codigo_material_lower">
@@ -165,27 +177,31 @@
             <label>Propiedad de material</label>
             <input type="text" id="propiedad_material">
         </div>
+        <div class="material-form-group">
+            <label>Especificación de material</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="almacen_especificacion_material" readonly placeholder="Se carga automáticamente al seleccionar código" style="flex: 1;">
+                <label class="checkbox-label-almacen" style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer; white-space: nowrap;">
+                    <input type="checkbox" id="checkbox_registro_almacen" class="checkbox-almacen" style="transform: scale(1.0); accent-color: #27ae60;">
+                    Registro automático
+                </label>
+            </div>
+        </div>
+        <div class="material-form-group">
+            <!-- Campo vacío para mantener estructura -->
+        </div>
         <div class="material-form-group"></div>
-        <label style="display: flex; align-items: center; gap: 6px; color: #ffffff; font-size: 11px; cursor: pointer;">
-            <input type="checkbox" id="registroAutomatico" style="transform: scale(1.0); accent-color: #404052;">
-                Registro automático
-        </label>
-        
         <div class="material-form-group"></div>
-        <div class="material-form-group"></div>
-        <div class="material-form-group"></div>
-         <button class="material-btn orange" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
-           <div class="material-form-group"></div>
-        <div class="material-form-group"></div>
-        <div class="material-form-group"></div>
-        <button class="material-btn">Imprimir</button>
+        <div class="material-form-group" style="justify-self: end;">
+             <div style="display: flex; gap: 4px; align-items: center;">
+                <button class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
+                <button class="material-btn botones-almacen">Imprimir</button>
+            </div>
+        </div>
+        <div class="material-form-group">
+            <!-- Campo vacío para mantener estructura -->
+        </div>
     </div>
-    
-            
-            
-           
-            
-       
 </div>
 
         <!-- Botonera usando el diseño de CONTROL_DE_MATERIAL -->
@@ -193,14 +209,16 @@
 
         <!-- Sección de filtros usando el diseño de CONTROL_DE_MATERIAL -->
         <div class="material-toolbar">
-            <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
-                <label style="margin: 0; color: lightgray; font-size: 11px;">Fecha de recibo</label>
-                <input type="date" id="filtro_fecha_inicio" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px; font-family: sans-serif;">
+            <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden;">
+                <label style="margin: 0; color: lightgray; font-size: 11px; white-space: nowrap;">Fecha de recibo</label>
+                <input type="date" id="filtro_fecha_inicio" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px; font-family: sans-serif; min-width: 100px;">
                 <span style="color: lightgray; font-size: 11px;">~</span>
-                <input type="date" id="filtro_fecha_fin" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px;">
+                <input type="date" id="filtro_fecha_fin" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px; min-width: 100px;">
             </div>
-            <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
-            <button class="material-btn secondary" onclick="exportarExcel()">Exportar Excel</button>
+            <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
+                <button class="material-btn secondary" onclick="exportarExcel()">Exportar Excel</button>
+            </div>
         </div>
 
         <!-- Tabla de resultados -->
@@ -268,10 +286,10 @@
 
         // Cargar códigos de material al cargar la página
         function inicializarControlAlmacen() {
-            // *** OCULTAR LA TABLA INICIALMENTE ***
+            // *** TABLA VISIBLE POR DEFECTO PARA DEBUGGING ***
             const tabla = document.getElementById('tablaControlAlmacen');
             if (tabla) {
-                tabla.style.display = 'none';
+                tabla.style.display = 'table';
             }
             
             cargarCodigosMaterial();
