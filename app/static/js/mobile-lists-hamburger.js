@@ -8,8 +8,10 @@ class MobileListsHamburger {
         this.menuOpen = false;
         this.currentListTitle = 'Listas';
         
+        // SOLO inicializar si estamos en móvil
         if (this.isMobile) {
             this.init();
+            this.interceptListsContent(); // Solo interceptar en móvil
         }
         
         this.handleResize();
@@ -18,7 +20,7 @@ class MobileListsHamburger {
     init() {
         console.log('📱 Inicializando menú hamburguesa de listas...');
         this.createMobileListsMenu();
-        this.interceptListsContent();
+        // interceptListsContent se llama desde el constructor
     }
 
     createMobileListsMenu() {
@@ -79,6 +81,9 @@ class MobileListsHamburger {
     interceptListsContent() {
         // Observar cuando se cargan listas para convertirlas al formato móvil
         const observer = new MutationObserver((mutations) => {
+            // SOLO procesar si estamos en móvil
+            if (!this.isMobile) return;
+            
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === 1) { // Element node
@@ -96,17 +101,13 @@ class MobileListsHamburger {
                         // Buscar contenido de sidebar específico
                         if (node.classList && node.classList.contains('sidebar-content')) {
                             console.log('🔄 Sidebar-content detectado, ocultando en móvil...');
-                            if (this.isMobile) {
-                                node.style.display = 'none';
-                            }
+                            node.style.display = 'none';
                         }
                         
                         // Buscar cualquier elemento con ID que contenga 'sidebar'
                         if (node.id && node.id.includes('sidebar')) {
                             console.log('🔄 Elemento sidebar detectado por ID, ocultando en móvil...');
-                            if (this.isMobile) {
-                                node.style.display = 'none';
-                            }
+                            node.style.display = 'none';
                         }
                     }
                 });
@@ -356,11 +357,13 @@ class MobileListsHamburger {
     }
 }
 
-// Inicializar cuando el DOM esté listo
+// Inicializar cuando el DOM esté listo - SOLO EN MÓVIL
 document.addEventListener('DOMContentLoaded', () => {
     if (window.innerWidth <= 768) {
         window.mobileListsHamburger = new MobileListsHamburger();
         console.log('✅ Menú hamburguesa de listas móvil inicializado');
+    } else {
+        console.log('🖥️ Desktop detectado - menú hamburguesa NO inicializado');
     }
 });
 
@@ -368,6 +371,11 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('resize', () => {
     if (window.innerWidth <= 768 && !window.mobileListsHamburger) {
         window.mobileListsHamburger = new MobileListsHamburger();
+        console.log('✅ Menú hamburguesa inicializado al cambiar a móvil');
+    } else if (window.innerWidth > 768 && window.mobileListsHamburger) {
+        // Destruir la instancia si cambiamos a desktop
+        console.log('🖥️ Cambiando a desktop - limpiando menú hamburguesa');
+        delete window.mobileListsHamburger;
     }
 });
 

@@ -54,10 +54,21 @@ class MobileListas {
             dropdown.style.display = isVisible ? 'none' : 'block';
         });
 
-        // Cerrar menú al hacer click fuera
-        document.addEventListener('click', () => {
+        // Cerrar menú al hacer click fuera - SOLO EN MÓVIL
+        this.globalClickListener = (e) => {
+            // VERIFICACIÓN MÚLTIPLE para asegurar que solo funcione en móvil
+            if (!this.isMobile || window.innerWidth > 768) return;
+            
+            // Verificar que el dropdown existe y está visible
+            if (!dropdown || dropdown.style.display === 'none') return;
+            
+            // No cerrar si el click es en el toggle o dropdown mismo
+            if (toggle.contains(e.target) || dropdown.contains(e.target)) return;
+            
             dropdown.style.display = 'none';
-        });
+        };
+        
+        document.addEventListener('click', this.globalClickListener);
 
         // Eventos de los elementos de lista
         items.forEach(item => {
@@ -201,6 +212,12 @@ class MobileListas {
             const wasMobile = this.isMobile;
             this.isMobile = window.innerWidth <= 768;
             
+            // Limpiar listener global si cambió a desktop
+            if (wasMobile && !this.isMobile && this.globalClickListener) {
+                document.removeEventListener('click', this.globalClickListener);
+                this.globalClickListener = null;
+            }
+            
             // Mostrar/ocultar menú según el tamaño
             const menu = document.getElementById('mobileListas');
             if (menu) {
@@ -213,19 +230,32 @@ class MobileListas {
             }
         });
     }
+    
+    // Método para limpiar event listeners
+    cleanup() {
+        if (this.globalClickListener) {
+            document.removeEventListener('click', this.globalClickListener);
+            this.globalClickListener = null;
+        }
+    }
 }
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.innerWidth <= 768) {
+    // SOLO en móvil y si no existe ya
+    if (window.innerWidth <= 768 && !window.mobileListas) {
         window.mobileListas = new MobileListas();
         console.log('✅ Menú móvil de listas inicializado');
     }
 });
 
-// También verificar en resize
+// También verificar en resize - CON LIMPIEZA
 window.addEventListener('resize', () => {
     if (window.innerWidth <= 768 && !window.mobileListas) {
         window.mobileListas = new MobileListas();
+    } else if (window.innerWidth > 768 && window.mobileListas) {
+        // Limpiar en desktop
+        window.mobileListas.cleanup();
+        window.mobileListas = null;
     }
 });

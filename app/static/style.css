@@ -4,7 +4,7 @@
 :root {
   --sidebar-width: 260px;
   --header-height: 100px;
-  --primary-color: #2c3e50;
+  --primary-color: ##32323e;
   --secondary-color: #28292dbb;
   --accent-color: #3498db;
   --text-light: #ecf0f1;
@@ -98,8 +98,9 @@ html, body {
 
 .sidebar-caret {
   margin-left: auto;
-  transition: transform 0.3s;
+  transition: transform 0.3s ease;
   background-color: #40424F;
+  color: lightgray;
 }
 
 .sidebar-dropdown-btn[aria-expanded="true"] .sidebar-caret {
@@ -111,6 +112,22 @@ html, body {
   padding: 0;
   margin: 0;
   background-color: #40424F;
+}
+
+/* Bootstrap Collapse Classes - Restaurar animaciones */
+.sidebar-dropdown-list.collapse {
+  display: none;
+}
+
+.sidebar-dropdown-list.collapse.show {
+  display: block !important;
+}
+
+/* Animación para collapsing */
+.sidebar-dropdown-list.collapsing {
+  height: 0;
+  overflow: hidden;
+  transition: height 0.35s ease;
 }
 
 .sidebar-link {
@@ -686,13 +703,6 @@ select {
       text-overflow: ellipsis !important;
     }
     
-    /* Dropdown buttons en móvil */
-    .sidebar-dropdown-btn {
-      padding: 12px 15px !important;
-      font-size: 13px !important;
-      min-height: 44px !important;
-      width: 100% !important;
-    }
     
     /* Prevenir cualquier scroll horizontal */
     * {

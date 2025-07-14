@@ -322,7 +322,6 @@ function setupMaterialManagement() {
                 document.querySelectorAll('.sidebar-section').forEach(sec => {
                     sec.style.display = 'none';
                 });
-                document.querySelector('#sidebarMaterial').closest('.sidebar-section').style.display = 'block';
             } else {
                 sidebar.style.display = 'none';
             }
