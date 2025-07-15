@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initBalancedDropdowns() {
+    // Primero, eliminamos cualquier instancia de dropdown anterior
+    cleanupAllDropdowns();
+    
     const dropdownButtons = document.querySelectorAll('.sidebar-dropdown-btn[data-bs-toggle="collapse"]');
     
     console.log(`🔍 Encontrados ${dropdownButtons.length} botones de dropdown`);
@@ -48,6 +51,11 @@ function initBalancedDropdowns() {
         
         // Configurar estado inicial
         newButton.setAttribute('aria-expanded', isInitiallyOpen.toString());
+        
+        // IMPORTANTE: Eliminar cualquier instancia de bootstrap collapse anterior
+        if (targetElement._bsCollapse) {
+            delete targetElement._bsCollapse;
+        }
         
         // Event listener principal
         newButton.addEventListener('click', function(e) {
@@ -77,27 +85,8 @@ function initBalancedDropdowns() {
             
             console.log(`📊 Estado: ${isCurrentlyOpen ? 'abierto' : 'cerrado'} → ${willOpen ? 'abierto' : 'cerrado'}`);
             
-            // Usar Bootstrap pero con protección
-            if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
-                try {
-                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(targetElement, {
-                        toggle: false // No auto-toggle para mayor control
-                    });
-                    
-                    if (willOpen) {
-                        bsCollapse.show();
-                    } else {
-                        bsCollapse.hide();
-                    }
-                } catch (error) {
-                    console.warn('Error con Bootstrap, usando fallback:', error);
-                    // Fallback manual
-                    toggleManually(targetElement, newButton, willOpen);
-                }
-            } else {
-                // Fallback manual si Bootstrap no está disponible
-                toggleManually(targetElement, newButton, willOpen);
-            }
+            // Usar nuestro método manual para mayor control
+            toggleManually(targetElement, newButton, willOpen);
             
             // Resetear flag después de un tiempo
             setTimeout(() => {
@@ -109,25 +98,6 @@ function initBalancedDropdowns() {
             e.preventDefault();
             e.stopPropagation();
             return false;
-        });
-        
-        // Listeners para eventos de Bootstrap (para debugging)
-        targetElement.addEventListener('show.bs.collapse', function() {
-            console.log(`🔄 Bootstrap show: ${targetSelector}`);
-            newButton.setAttribute('aria-expanded', 'true');
-        });
-        
-        targetElement.addEventListener('hide.bs.collapse', function() {
-            console.log(`🔄 Bootstrap hide: ${targetSelector}`);
-            newButton.setAttribute('aria-expanded', 'false');
-        });
-        
-        targetElement.addEventListener('shown.bs.collapse', function() {
-            console.log(`✅ Bootstrap shown: ${targetSelector}`);
-        });
-        
-        targetElement.addEventListener('hidden.bs.collapse', function() {
-            console.log(`❌ Bootstrap hidden: ${targetSelector}`);
         });
         
         console.log(`✅ Dropdown balanceado configurado: ${targetSelector}`);
@@ -162,11 +132,12 @@ function toggleManually(targetElement, button, willOpen) {
     } else {
         // Cerrar con animación manual
         targetElement.style.height = targetElement.scrollHeight + 'px';
-        targetElement.classList.remove('collapse', 'show');
-        targetElement.classList.add('collapsing');
         
         // Forzar reflow
         targetElement.offsetHeight;
+        
+        targetElement.classList.remove('collapse', 'show');
+        targetElement.classList.add('collapsing');
         
         // Animar cierre
         targetElement.style.height = '0px';
@@ -184,13 +155,41 @@ function toggleManually(targetElement, button, willOpen) {
     }
 }
 
+// Función para limpiar todos los dropdowns
+function cleanupAllDropdowns() {
+    // Busca todos los elementos collapse y elimina listeners y referencias
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(btn => {
+        const target = btn.getAttribute('data-bs-target');
+        if (target) {
+            const targetEl = document.querySelector(target);
+            if (targetEl && targetEl._bsCollapse) {
+                // Eliminar la instancia de Bootstrap
+                delete targetEl._bsCollapse;
+                console.log(`🧹 Limpiado dropdown: ${target}`);
+            }
+        }
+    });
+    
+    // Eliminar también cualquier instancia de collapse en todos los elementos
+    document.querySelectorAll('.collapse').forEach(el => {
+        if (el._bsCollapse) {
+            delete el._bsCollapse;
+        }
+    });
+}
+
 // Verificar cambios de ventana
 window.addEventListener('resize', function() {
     if (window.innerWidth > 768) {
-        setTimeout(() => {
-            console.log('📱→🖥️ Cambiando a desktop, reinicializando dropdowns balanceados...');
-            initBalancedDropdowns();
-        }, 300);
+        // Solo reinicializar si no estaba ya en desktop
+        const wasDesktop = !window.mobileListas;
+        if (!wasDesktop) {
+            setTimeout(() => {
+                console.log('📱→🖥️ Cambiando a desktop, reinicializando dropdowns balanceados...');
+                cleanupAllDropdowns(); // Primero limpiar todo
+                initBalancedDropdowns();
+            }, 300);
+        }
     }
 });
 

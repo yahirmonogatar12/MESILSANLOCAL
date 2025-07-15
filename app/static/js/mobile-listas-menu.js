@@ -9,8 +9,13 @@ const MLM_PREFIX = 'mlm-';
 class MobileListas {
     constructor() {
         this.isMobile = window.innerWidth <= 768;
+        
+        // VERIFICACIÓN ESTRICTA - Solo inicializar en móvil
         if (this.isMobile) {
+            console.log('📱 MobileListas: Iniciando en entorno móvil');
             this.init();
+        } else {
+            console.log('🖥️ MobileListas: No inicializando en desktop');
         }
     }
 
@@ -268,13 +273,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// También verificar en resize - CON LIMPIEZA
+// Variable para prevenir múltiples ejecuciones rápidas en resize
+let resizeTimeout;
+
+// También verificar en resize - CON LIMPIEZA y DEBOUNCE
 window.addEventListener('resize', () => {
-    if (window.innerWidth <= 768 && !window.mobileListas) {
-        window.mobileListas = new MobileListas();
-    } else if (window.innerWidth > 768 && window.mobileListas) {
-        // Limpiar en desktop
-        window.mobileListas.cleanup();
-        window.mobileListas = null;
-    }
+    // Limpiamos el timeout anterior si existe
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    
+    // Establecemos un nuevo timeout para debounce
+    resizeTimeout = setTimeout(() => {
+        console.log('📏 Cambio de tamaño detectado:', window.innerWidth <= 768 ? 'móvil' : 'desktop');
+        
+        if (window.innerWidth <= 768 && !window.mobileListas) {
+            // Cambio a móvil: inicializar
+            window.mobileListas = new MobileListas();
+        } else if (window.innerWidth > 768 && window.mobileListas) {
+            // Cambio a desktop: limpiar
+            console.log('🧹 Limpiando instancia de menú móvil...');
+            window.mobileListas.cleanup();
+            window.mobileListas = null;
+            
+            // Forzar reinicio del fix de dropdowns
+            if (typeof initBalancedDropdowns === 'function') {
+                console.log('🔄 Reinicializando dropdowns de desktop...');
+                setTimeout(() => initBalancedDropdowns(), 100);
+            }
+        }
+    }, 250); // Esperar 250ms después del último evento resize
 });
