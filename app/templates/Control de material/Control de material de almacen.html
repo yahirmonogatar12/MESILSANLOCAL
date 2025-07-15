@@ -29,6 +29,7 @@
     <script src="/static/js/control_material_almacen.js"></script>
     
     <!-- QR Scanner Library -->
+    <!-- Versión más reciente y estable de Html5Qrcode -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
 </head>
@@ -328,7 +329,7 @@
                         throw new Error('Error HTTP: ' + response.status);
                     }
                 })
-                .then(data => {
+                .then data => {
                     // NO cargar automáticamente los datos, solo verificar conectividad
                 })
                 .catch(error => {
@@ -2140,40 +2141,56 @@ if (document.readyState === 'loading') {
             mostrarEstadoQR('', 'none');
         }
 
-        // Función para inicializar el escáner QR
+        // Función para inicializar el escáner QR (OPTIMIZADA PARA ANDROID)
         async function inicializarEscanerQR() {
             try {
                 mostrarEstadoQR('🔄 Inicializando cámara...', 'info');
                 
-                // Detectar si es Android
+                // Detectar dispositivo y características
                 const isAndroid = /Android/i.test(navigator.userAgent);
+                const isChrome = /Chrome/i.test(navigator.userAgent);
                 const isHttps = location.protocol === 'https:';
+                const isMobile = /Mobile|Tablet|Android|iPhone|iPad/i.test(navigator.userAgent);
                 
                 console.log(`📱 Dispositivo Android: ${isAndroid}`);
+                console.log(`🌐 Chrome: ${isChrome}`);
                 console.log(`🔒 HTTPS: ${isHttps}`);
+                console.log(`📱 Mobile: ${isMobile}`);
                 
-                // Para Android, intentar con configuración específica
-                if (isAndroid && !isHttps) {
-                    mostrarEstadoQR('⚠️ Android requiere HTTPS para cámara. Probando configuración alternativa...', 'warning');
+                // Verificar compatibilidad de cámara
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Tu navegador no soporta acceso a cámara');
                 }
                 
-                // Intentar obtener permisos explícitamente
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                // Para Android, solicitar permisos explícitamente ANTES de usar Html5Qrcode
+                if (isAndroid || isMobile) {
                     try {
-                        // Solicitar permisos de cámara explícitamente
+                        console.log('📱 Solicitando permisos de cámara para móvil...');
                         const stream = await navigator.mediaDevices.getUserMedia({ 
                             video: { 
-                                facingMode: isAndroid ? { ideal: 'environment' } : 'environment'
+                                facingMode: 'environment',
+                                width: { ideal: 1280 },
+                                height: { ideal: 720 }
                             } 
                         });
                         
-                        // Detener el stream inmediatamente, solo era para obtener permisos
+                        // Detener el stream inmediatamente, solo queríamos verificar permisos
                         stream.getTracks().forEach(track => track.stop());
-                        console.log('✅ Permisos de cámara obtenidos');
+                        console.log('✅ Permisos de cámara concedidos');
                         
                     } catch (permissionError) {
                         console.error('❌ Error de permisos:', permissionError);
-                        mostrarEstadoQR('❌ Error de permisos de cámara. Permita el acceso en su navegador.', 'error');
+                        
+                        let errorMsg = '❌ No se pudo acceder a la cámara.';
+                        
+                        if (isAndroid && !isHttps) {
+                            errorMsg = '⚠️ Android requiere HTTPS. Abra esta página en Chrome con https://';
+                        } else if (isAndroid) {
+                            errorMsg = '📱 Para Android: 1) Use Chrome 2) Permita cámara en configuración del sitio 3) Recargue la página';
+                        }
+                        
+                        mostrarEstadoQR(errorMsg, 'error');
+                        setTimeout(() => mostrarEntradaManual(), 2000);
                         return;
                     }
                 }
@@ -2187,80 +2204,122 @@ if (document.readyState === 'loading') {
                     console.log(`📷 Cámara ${index}: ${device.label} (${device.id})`);
                 });
                 
-                if (devices && devices.length > 0) {
-                    // Para Android, usar configuración específica de cámara
-                    if (isAndroid) {
-                        // Buscar cámara trasera para Android
-                        currentCameraId = devices.find(device => 
-                            device.label.toLowerCase().includes('back') || 
-                            device.label.toLowerCase().includes('rear') ||
-                            device.label.toLowerCase().includes('environment') ||
-                            device.label.includes('0') // A veces la cámara trasera es la primera
-                        )?.id || devices[devices.length - 1].id; // Última como fallback
-                    } else {
-                        // Para otros dispositivos
-                        currentCameraId = devices.find(device => 
-                            device.label.toLowerCase().includes('back') || 
-                            device.label.toLowerCase().includes('rear') ||
-                            device.label.toLowerCase().includes('environment')
-                        )?.id || devices[0].id;
-                    }
-                    
-                    console.log(`📷 Usando cámara: ${currentCameraId}`);
-                    
-                    // Mostrar/ocultar botón de cambiar cámara
-                    const btnCambiarCamara = document.getElementById('btnCambiarCamara');
-                    btnCambiarCamara.style.display = devices.length > 1 ? 'inline-block' : 'none';
-                    
-                    // Inicializar el escáner con configuración específica para Android
-                    html5QrCode = new Html5Qrcode("qrReader");
-                    
-                    const config = isAndroid ? {
-                        fps: 5, // Menor FPS para Android
-                        qrbox: { width: 200, height: 200 }, // Menor área de escaneo
-                        aspectRatio: 1.0,
-                        disableFlip: false,
-                        videoConstraints: {
-                            facingMode: { ideal: "environment" },
-                            advanced: [{ focusMode: "continuous" }]
-                        }
-                    } : {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 },
-                        aspectRatio: 1.0,
-                        disableFlip: false
-                    };
-                    
-                    console.log('📷 Configuración de escáner:', config);
-                    
-                    await html5QrCode.start(
-                        currentCameraId,
-                        config,
-                        onScanSuccess,
-                        onScanFailure
+                if (!devices || devices.length === 0) {
+                    throw new Error('No se encontraron cámaras disponibles');
+                }
+                
+                // Seleccionar cámara trasera preferentemente para móviles
+                let selectedCameraId;
+                if (isMobile) {
+                    // Buscar cámara trasera (environment) primero
+                    const backCamera = devices.find(device => 
+                        device.label.toLowerCase().includes('back') ||
+                        device.label.toLowerCase().includes('rear') ||
+                        device.label.toLowerCase().includes('environment')
                     );
-                    
-                    mostrarEstadoQR('📷 Cámara lista - Apunte hacia el código', 'success');
-                    
+                    selectedCameraId = backCamera?.id || devices[devices.length - 1].id;
+                    console.log(`📷 Cámara seleccionada para móvil: ${selectedCameraId}`);
                 } else {
-                    mostrarEstadoQR('❌ No se encontraron cámaras disponibles', 'error');
+                    selectedCameraId = devices[0].id;
+                    console.log(`📷 Cámara seleccionada para desktop: ${selectedCameraId}`);
+                }
+                
+                currentCameraId = selectedCameraId;
+                
+                // Mostrar/ocultar botón de cambiar cámara
+                const btnCambiarCamara = document.getElementById('btnCambiarCamara');
+                if (btnCambiarCamara) {
+                    btnCambiarCamara.style.display = devices.length > 1 ? 'inline-block' : 'none';
+                }
+                
+                // Inicializar Html5QrCode
+                html5QrCode = new Html5Qrcode("qrReader");
+                
+                // Configuración optimizada para diferentes dispositivos
+                let qrConfig = {
+                    fps: isAndroid ? 5 : 10, // FPS más bajo para Android
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        // Hacer la caja de escaneo responsive
+                        const minEdgePercentage = 0.5; // 50% del área más pequeña
+                        const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                        const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                        return {
+                            width: qrboxSize,
+                            height: qrboxSize
+                        };
+                    },
+                    aspectRatio: 1.0,
+                    disableFlip: false,
+                    experimentalFeatures: {
+                        useBarCodeDetectorIfSupported: true
+                    }
+                };
+                
+                // Configuración de video específica para móviles
+                let videoConfig = {
+                    deviceId: { exact: selectedCameraId }
+                };
+                
+                if (isMobile) {
+                    videoConfig = {
+                        facingMode: "environment", // Cámara trasera
+                        width: { ideal: 1280, max: 1920 },
+                        height: { ideal: 720, max: 1080 }
+                    };
+                }
+                
+                console.log('🔧 Configuración de video:', videoConfig);
+                console.log('� Configuración de QR:', qrConfig);
+                
+                mostrarEstadoQR('📷 Iniciando cámara...', 'info');
+                
+                // Iniciar el escáner
+                await html5QrCode.start(
+                    videoConfig,
+                    qrConfig,
+                    onScanSuccess,
+                    onScanFailure
+                );
+                
+                console.log('✅ Escáner QR iniciado exitosamente');
+                mostrarEstadoQR('✅ Cámara lista. Apunte hacia el código QR', 'success');
+                
+                // Para Android, mostrar consejos adicionales
+                if (isAndroid) {
+                    setTimeout(() => {
+                        mostrarEstadoQR('📱 Consejo Android: Mantenga el código a 15-20cm de distancia', 'info');
+                    }, 3000);
                 }
                 
             } catch (err) {
-                console.error('❌ Error al inicializar escáner QR:', err);
+                console.error('❌ Error completo al inicializar escáner QR:', err);
                 
-                // Mensajes de error específicos para Android
+                // Análisis detallado del error
+                let errorMessage = '❌ Error al acceder a la cámara.';
+                
                 const isAndroid = /Android/i.test(navigator.userAgent);
                 const isHttps = location.protocol === 'https:';
                 
-                let errorMessage = '❌ Error al acceder a la cámara.';
-                
-                if (isAndroid && !isHttps) {
-                    errorMessage = '❌ Android requiere HTTPS para acceder a la cámara. Use Chrome y permita el acceso.';
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    if (isAndroid) {
+                        errorMessage = '🚫 Permisos denegados. Para Android: Configuración → Sitios → Esta página → Cámara → Permitir';
+                    } else {
+                        errorMessage = '🚫 Permisos de cámara denegados. Haga clic en el icono de candado y permita el acceso a la cámara.';
+                    }
+                } else if (err.name === 'NotFoundError') {
+                    errorMessage = '📷 No se encontró cámara disponible.';
+                } else if (err.name === 'NotSupportedError') {
+                    if (isAndroid && !isHttps) {
+                        errorMessage = '⚠️ Android requiere HTTPS para cámara. Use: https://su-dominio.com';
+                    } else {
+                        errorMessage = '❌ Su navegador no soporta acceso a cámara.';
+                    }
+                } else if (err.name === 'OverconstrainedError') {
+                    errorMessage = '⚙️ Configuración de cámara no compatible. Probando entrada manual...';
+                } else if (isAndroid && !isHttps) {
+                    errorMessage = '🔒 Android necesita HTTPS. Abra con: https://';
                 } else if (isAndroid) {
-                    errorMessage = '❌ Error en Android. Intente: 1) Recargar página 2) Permitir cámara en configuración 3) Usar Chrome.';
-                } else {
-                    errorMessage = '❌ Error al acceder a la cámara. Verifique los permisos en su navegador.';
+                    errorMessage = '📱 Error Android. Soluciones: 1) Use Chrome 2) Reinicie app 3) Limpie caché del navegador';
                 }
                 
                 mostrarEstadoQR(errorMessage, 'error');
@@ -2268,21 +2327,36 @@ if (document.readyState === 'loading') {
                 // Mostrar automáticamente la entrada manual después de error
                 setTimeout(() => {
                     mostrarEntradaManual();
-                }, 1500);
+                }, 2500);
+                
+                // Para casos específicos de Android, ofrecer soluciones adicionales
+                if (isAndroid) {
+                    setTimeout(() => {
+                        const container = document.getElementById('entradaManualContainer');
+                        if (container && container.style.display === 'block') {
+                            const input = document.getElementById('codigoManualQR');
+                            if (input) {
+                                input.placeholder = '📱 Android: Pegue el código aquí o use otra app de QR';
+                            }
+                        }
+                    }, 3000);
+                }
                 
                 // Ofrecer fallback manual adicional (mantener el código existente también)
                 setTimeout(() => {
                     const statusDiv = document.getElementById('qrStatus');
-                    statusDiv.innerHTML = `
-                        <div style="margin-top: 10px;">
-                            <p style="color: #666; font-size: 12px;">
-                                💡 <strong>Alternativa:</strong> Puede escribir o pegar el código manualmente en el campo de texto principal.
-                            </p>
-                            <button onclick="cerrarEscanerQR()" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                Usar entrada manual
-                            </button>
-                        </div>
-                    `;
+                    if (statusDiv) {
+                        statusDiv.innerHTML = `
+                            <div style="margin-top: 10px;">
+                                <p style="color: #666; font-size: 12px;">
+                                    💡 <strong>Alternativa:</strong> Puede escribir o pegar el código manualmente en el campo de texto principal.
+                                </p>
+                                <button onclick="cerrarEscanerQR()" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    Usar entrada manual
+                                </button>
+                            </div>
+                        `;
+                    }
                 }, 2000);
             }
         }
@@ -2319,7 +2393,7 @@ if (document.readyState === 'loading') {
             // console.log('Escaneando...', error);
         }
 
-        // Función para cambiar entre cámaras disponibles
+        // Función para cambiar entre cámaras disponibles (OPTIMIZADA PARA ANDROID)
         async function cambiarCamara() {
             if (availableCameras.length <= 1) {
                 mostrarEstadoQR('ℹ️ Solo hay una cámara disponible', 'info');
@@ -2338,28 +2412,63 @@ if (document.readyState === 'loading') {
                 currentCameraId = availableCameras[nextIndex].id;
                 
                 console.log(`📷 Cambiando a cámara: ${currentCameraId}`);
+                console.log(`📷 Cámara ${nextIndex}: ${availableCameras[nextIndex].label}`);
                 mostrarEstadoQR('🔄 Cambiando cámara...', 'info');
                 
-                // Reiniciar con la nueva cámara
-                const config = {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
+                // Detectar si es móvil para configuración específica
+                const isMobile = /Mobile|Tablet|Android|iPhone|iPad/i.test(navigator.userAgent);
+                const isAndroid = /Android/i.test(navigator.userAgent);
+                
+                // Configuración optimizada según dispositivo
+                let qrConfig = {
+                    fps: isAndroid ? 5 : 10,
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        const minEdgePercentage = 0.5;
+                        const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                        const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                        return {
+                            width: qrboxSize,
+                            height: qrboxSize
+                        };
+                    },
                     aspectRatio: 1.0,
                     disableFlip: false
                 };
                 
+                // Configuración de video
+                let videoConfig = {
+                    deviceId: { exact: currentCameraId }
+                };
+                
+                if (isMobile) {
+                    videoConfig = {
+                        facingMode: "environment",
+                        width: { ideal: 1280, max: 1920 },
+                        height: { ideal: 720, max: 1080 }
+                    };
+                }
+                
+                console.log('🔧 Nueva configuración de video:', videoConfig);
+                
+                // Reiniciar con la nueva cámara
                 await html5QrCode.start(
-                    currentCameraId,
-                    config,
+                    videoConfig,
+                    qrConfig,
                     onScanSuccess,
                     onScanFailure
                 );
                 
-                mostrarEstadoQR('📷 Cámara cambiada - Apunte hacia el código', 'success');
+                const cameraLabel = availableCameras[nextIndex].label || `Cámara ${nextIndex + 1}`;
+                mostrarEstadoQR(`📷 Usando: ${cameraLabel}`, 'success');
                 
             } catch (err) {
                 console.error('❌ Error al cambiar cámara:', err);
-                mostrarEstadoQR('❌ Error al cambiar cámara', 'error');
+                mostrarEstadoQR('❌ Error al cambiar cámara. Intentando entrada manual...', 'error');
+                
+                // Si falla el cambio de cámara, mostrar entrada manual
+                setTimeout(() => {
+                    mostrarEntradaManual();
+                }, 1500);
             }
         }
 
