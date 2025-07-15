@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import pandas as pd
 
 def get_db_connection():
     db_path = os.path.join(os.path.dirname(__file__), 'database', 'ISEMM_MES.db')
@@ -98,66 +99,34 @@ def init_db():
             propiedad_material TEXT,
             especificacion TEXT,
             cantidad_total REAL DEFAULT 0,
-            cantidad_entradas REAL DEFAULT 0,
-            cantidad_salidas REAL DEFAULT 0,
-            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
             fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
-    # Tabla para configuraciones de usuario
+    # Tabla para BOM (Bill of Materials)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS configuraciones_usuario (
+        CREATE TABLE IF NOT EXISTS bom (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario TEXT,
-            clave TEXT,
-            valor TEXT,
-            fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(usuario, clave)
+            modelo TEXT NOT NULL,
+            codigo_material TEXT,
+            numero_parte TEXT,
+            side TEXT,
+            tipo_material TEXT,
+            classification TEXT,
+            especificacion_material TEXT,
+            vender TEXT,
+            cantidad_total REAL,
+            cantidad_original REAL,
+            ubicacion TEXT,
+            material_sustituto TEXT,
+            material_original TEXT,
+            registrador TEXT,
+            fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(modelo, numero_parte, side)
         )
     ''')
     
     conn.commit()
-    
-    # Migrar datos existentes si es necesario
-    try:
-        cursor.execute("PRAGMA table_info(materiales)")
-        columns = cursor.fetchall()
-        
-        # Verificar si las columnas necesitan ser actualizadas
-        prohibido_sacar_type = None
-        reparable_type = None
-        
-        for column in columns:
-            if column[1] == 'prohibido_sacar':
-                prohibido_sacar_type = column[2]
-            elif column[1] == 'reparable':
-                reparable_type = column[2]
-        
-        # Si las columnas son TEXT, convertir a INTEGER
-        if prohibido_sacar_type == 'TEXT':
-            cursor.execute('''
-                UPDATE materiales 
-                SET prohibido_sacar = CASE 
-                    WHEN prohibido_sacar = '1' OR prohibido_sacar = 'true' OR prohibido_sacar = 'True' THEN 1
-                    ELSE 0
-                END
-            ''')
-            
-        if reparable_type == 'TEXT':
-            cursor.execute('''
-                UPDATE materiales 
-                SET reparable = CASE 
-                    WHEN reparable = '1' OR reparable = 'true' OR reparable = 'True' THEN 1
-                    ELSE 0
-                END
-            ''')
-            
-        conn.commit()
-        
-    except Exception as e:
-        print(f"Error durante la migración: {e}")
-    
     conn.close()
 
 def guardar_configuracion_usuario(usuario, clave, valor):
@@ -387,3 +356,72 @@ def recalcular_inventario_general():
         return False
     finally:
         conn.close()
+
+def get_bom(modelo):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM bom WHERE modelo = ?", (modelo,))
+    bom_data = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in bom_data]
+
+def exportar_bom_a_dataframe():
+    conn = get_db_connection()
+    df = pd.read_sql_query("SELECT * FROM bom", conn)
+    conn.close()
+    return df
+
+def insertar_bom_desde_dataframe(df, modelo, registrador):
+    conn = get_db_connection()
+    # Renombrar columnas del DataFrame para que coincidan con la BD
+    column_mapping = {
+        'Código de material': 'codigo_material',
+        'Número de parte': 'numero_parte',
+        'Side': 'side',
+        'Tipo de material': 'tipo_material',
+        'Classification': 'classification',
+        'Especificación de material': 'especificacion_material',
+        'Vender': 'vender',
+        'Cantidad total': 'cantidad_total',
+        'Cantidad original': 'cantidad_original',
+        'Ubicación': 'ubicacion',
+        'Material sustituto': 'material_sustituto',
+        'Material original': 'material_original'
+    }
+    df = df.rename(columns=column_mapping)
+
+    # Asegurarse de que todas las columnas esperadas existan
+    expected_cols = list(column_mapping.values())
+    for col in expected_cols:
+        if col not in df.columns:
+            df[col] = None # O un valor por defecto apropiado
+
+    with conn:
+        for _, row in df.iterrows():
+            # Usar .get() para evitar errores si una columna no existe en la fila
+            numero_parte = row.get('numero_parte')
+            side = row.get('side')
+
+            if not numero_parte:
+                continue # O manejar el error como prefieras
+
+            # Usar INSERT OR IGNORE y luego UPDATE para manejar conflictos
+            conn.execute('''
+                INSERT OR IGNORE INTO bom (modelo, numero_parte, side, registrador)
+                VALUES (?, ?, ?, ?)
+            ''', (modelo, numero_parte, side, registrador))
+
+            # Actualizar la fila con el resto de los datos
+            conn.execute('''
+                UPDATE bom SET
+                    codigo_material = ?, tipo_material = ?, classification = ?, 
+                    especificacion_material = ?, vender = ?, cantidad_total = ?, 
+                    cantidad_original = ?, ubicacion = ?, material_sustituto = ?, 
+                    material_original = ?, fecha_registro = CURRENT_TIMESTAMP
+                WHERE modelo = ? AND numero_parte = ? AND (side = ? OR (side IS NULL AND ? IS NULL))
+            ''', (
+                row.get('codigo_material'), row.get('tipo_material'), row.get('classification'),
+                row.get('especificacion_material'), row.get('vender'), row.get('cantidad_total'),
+                row.get('cantidad_original'), row.get('ubicacion'), row.get('material_sustituto'),
+                row.get('material_original'), modelo, numero_parte, side, side
+            ))
