@@ -29,8 +29,7 @@
     <script src="/static/js/control_material_almacen.js"></script>
     
     <!-- QR Scanner Library -->
-    <!-- Versión más reciente y estable de Html5Qrcode -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
 </head>
 <body>
@@ -71,10 +70,8 @@
             <div class="material-form-group">
                 <label>Código de material original</label>
                 <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                    <input type="text" id="codigoMaterialOriginal" style="flex: 1; min-width: 0;" placeholder="Escanear código aquí..." onkeydown="procesarScaneo(event)">
-                    <button type="button" id="btnCameraQR" onclick="abrirEscanerQR()" style="padding: 8px 12px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-                        QR
-                    </button>
+                    <input type="text" id="codigoMaterialOriginal" style="flex: 1; min-width: 0;" placeholder="Escanear o ingresar código..." onkeydown="procesarScaneo(event)">
+                    <button type="button" onclick="abrirEscanerQR()" class="material-btn" title="Escanear QR con cámara" style="padding: 5px 12px; font-size: 16px; line-height: 1;">📸</button>
                 </div>
             </div>
     </div>
@@ -258,53 +255,6 @@
             <p class="total-info">Total Rows: 0</p>
         </div>
 
-    </div>
-
-    <!-- Modal para Escáner QR -->
-    <div id="modalQRScanner" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">
-        <div style="position: relative; margin: 5% auto; padding: 20px; width: 90%; max-width: 600px; background-color: #fff; border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
-                <h3 style="margin: 0; color: #3498db;">📷 Escáner QR/Código de Barras</h3>
-                <button onclick="cerrarEscanerQR()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #e74c3c;">×</button>
-            </div>
-            
-            <div id="qrReaderContainer" style="width: 100%; max-width: 500px; margin: 0 auto;">
-                <div id="qrReader" style="width: 100%;"></div>
-            </div>
-            
-            <div style="margin-top: 20px; text-align: center;">
-                <p style="color: #666; font-size: 14px;">
-                    🎯 Apunte la cámara hacia el código QR o código de barras<br>
-                    📱 El escaneo se realizará automáticamente cuando se detecte el código
-                </p>
-                <div id="qrStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; display: none;">
-                    <span id="qrStatusText"></span>
-                </div>
-                
-                <!-- Entrada manual alternativa -->
-                <div id="entradaManualContainer" style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 4px; border: 1px solid #e9ecef; display: none;">
-                    <p style="margin: 0 0 10px 0; color: #666; font-size: 12px;">💡 <strong>Entrada Manual:</strong></p>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" id="codigoManualQR" placeholder="Pegue el código aquí..." onkeydown="if(event.key==='Enter') procesarCodigoManualQR()" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                        <button onclick="procesarCodigoManualQR()" style="padding: 8px 12px; background-color: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">
-                            ✅ Usar
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="margin-top: 20px; text-align: center;">
-                <button onclick="cambiarCamara()" id="btnCambiarCamara" style="padding: 8px 16px; background-color: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                    🔄 Cambiar Cámara
-                </button>
-                <button onclick="mostrarEntradaManual()" style="padding: 8px 16px; background-color: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                    ⌨️ Entrada Manual
-                </button>
-                <button onclick="cerrarEscanerQR()" style="padding: 8px 16px; background-color: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Cancelar
-                </button>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -2071,346 +2021,133 @@ if (document.readyState === 'loading') {
             console.log('📋 === FIN VERIFICACIÓN ===');
         };
 
-        // ...existing code...
-
         // ==================== QR SCANNER FUNCTIONALITY ====================
         let html5QrCode = null;
-        let currentCameraId = null;
-        let availableCameras = [];
-
-        // Función para procesar código manual desde el modal QR
-        function procesarCodigoManualQR() {
-            const input = document.getElementById('codigoManualQR');
-            const codigo = input.value.trim();
-            
-            if (codigo) {
-                // Cerrar el modal del escáner
-                cerrarEscanerQR();
-                
-                // Poner el código en el campo principal
-                document.getElementById('codigoMaterialOriginal').value = codigo;
-                
-                // Procesar el código
-                parsearYDistribuirCodigo(codigo);
-                
-                console.log('✅ Código procesado manualmente:', codigo);
-            } else {
-                alert('Por favor, ingrese un código válido');
-                input.focus();
-            }
-        }
-
-        // Función para mostrar la entrada manual cuando falla la cámara
-        function mostrarEntradaManual() {
-            const container = document.getElementById('entradaManualContainer');
-            if (container) {
-                container.style.display = 'block';
-                
-                // Enfocar el input después de un breve delay
-                setTimeout(() => {
-                    const input = document.getElementById('codigoManualQR');
-                    if (input) {
-                        input.focus();
-                    }
-                }, 300);
-            }
-        }
 
         // Función para abrir el escáner QR
         function abrirEscanerQR() {
-            const modal = document.getElementById('modalQRScanner');
-            modal.style.display = 'block';
+            // Si ya existe un modal, lo eliminamos para recrearlo
+            const existingModal = document.getElementById('modalQRScanner');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Crear el contenido del modal
+            const modalHTML = `
+                <div id="modalQRScanner" style="display: flex; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;">
+                    <div style="position: relative; padding: 20px; width: 90%; max-width: 500px; background-color: #fff; border-radius: 8px; text-align: center;">
+                        <button onclick="cerrarEscanerQR()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+                        <h3 style="margin-bottom: 20px;">Escanear Código QR</h3>
+                        <p style="margin-bottom: 20px;">Tome una foto del código QR para escanearlo.</p>
+                        
+                        <!-- Botón estilizado que activa el input de archivo -->
+                        <button onclick="document.getElementById('qr-input-file').click()" style="padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                            📸 Tomar Foto
+                        </button>
+                        
+                        <!-- Input de archivo oculto -->
+                        <input type="file" id="qr-input-file" accept="image/*" capture="environment" style="display: none;">
+                        
+                        <div id="qr-status" style="margin-top: 20px; font-weight: bold;"></div>
+                        <img id="qr-image-preview" style="max-width: 100%; max-height: 200px; margin-top: 15px; display: none;" />
+                    </div>
+                </div>
+            `;
+
+            // Añadir el modal al body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
             
-            // Pequeño delay para asegurar que el DOM esté renderizado
+            // Configurar el listener para el input de archivo
+            const qrInput = document.getElementById('qr-input-file');
+            qrInput.addEventListener('change', handleFileSelect);
+
+            // Pequeño delay para la animación de entrada
             setTimeout(() => {
-                inicializarEscanerQR();
-            }, 100);
+                const modal = document.getElementById('modalQRScanner');
+                if(modal) modal.style.opacity = '1';
+            }, 10);
         }
 
         // Función para cerrar el escáner QR
         function cerrarEscanerQR() {
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => {
-                    console.log('📷 Escáner QR detenido');
-                }).catch(err => {
-                    console.error('❌ Error al detener escáner:', err);
-                });
+            const modal = document.getElementById('modalQRScanner');
+            if (modal) {
+                modal.remove();
             }
-            
-            document.getElementById('modalQRScanner').style.display = 'none';
-            mostrarEstadoQR('', 'none');
         }
 
-        // Función para inicializar el escáner QR
-        async function inicializarEscanerQR() {
+        // Función para manejar la selección de archivo (foto tomada)
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const statusDiv = document.getElementById('qr-status');
+            const imagePreview = document.getElementById('qr-image-preview');
+            
+            statusDiv.textContent = 'Procesando imagen...';
+            statusDiv.style.color = '#007bff';
+            imagePreview.style.display = 'block';
+            imagePreview.src = URL.createObjectURL(file);
+
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("qr-status", { verbose: false });
+            }
+
             try {
-                mostrarEstadoQR('🔄 Inicializando cámara...', 'info');
-                
-                // Detectar si es Android
-                const isAndroid = /Android/i.test(navigator.userAgent);
-                const isHttps = location.protocol === 'https:';
-                
-                console.log(`📱 Dispositivo Android: ${isAndroid}`);
-                console.log(`🔒 HTTPS: ${isHttps}`);
-                
-                // Para Android, intentar con configuración específica
-                if (isAndroid && !isHttps) {
-                    mostrarEstadoQR('⚠️ Android requiere HTTPS para cámara. Probando configuración alternativa...', 'warning');
-                }
-                
-                // Intentar obtener permisos explícitamente
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    try {
-                        // Solicitar permisos de cámara explícitamente
-                        const stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { 
-                                facingMode: isAndroid ? { ideal: 'environment' } : 'environment'
-                            } 
-                        });
-                        
-                        // Detener el stream inmediatamente, solo era para obtener permisos
-                        stream.getTracks().forEach(track => track.stop());
-                        console.log('✅ Permisos de cámara obtenidos');
-                        
-                    } catch (permissionError) {
-                        console.error('❌ Error de permisos:', permissionError);
-                        mostrarEstadoQR('❌ Error de permisos de cámara. Permita el acceso en su navegador.', 'error');
-                        return;
-                    }
-                }
-                
-                // Obtener las cámaras disponibles
-                const devices = await Html5Qrcode.getCameras();
-                availableCameras = devices;
-                
-                console.log(`📷 Cámaras encontradas: ${devices.length}`);
-                devices.forEach((device, index) => {
-                    console.log(`📷 Cámara ${index}: ${device.label} (${device.id})`);
-                });
-                
-                if (devices && devices.length > 0) {
-                    // Para Android, usar configuración específica de cámara
-                    if (isAndroid) {
-                        // Buscar cámara trasera para Android
-                        currentCameraId = devices.find(device => 
-                            device.label.toLowerCase().includes('back') || 
-                            device.label.toLowerCase().includes('rear') ||
-                            device.label.toLowerCase().includes('environment') ||
-                            device.label.includes('0') // A veces la cámara trasera es la primera
-                        )?.id || devices[devices.length - 1].id; // Última como fallback
-                    } else {
-                        // Para otros dispositivos
-                        currentCameraId = devices.find(device => 
-                            device.label.toLowerCase().includes('back') || 
-                            device.label.toLowerCase().includes('rear') ||
-                            device.label.toLowerCase().includes('environment')
-                        )?.id || devices[0].id;
-                    }
-                    
-                    console.log(`📷 Usando cámara: ${currentCameraId}`);
-                    
-                    // Mostrar/ocultar botón de cambiar cámara
-                    const btnCambiarCamara = document.getElementById('btnCambiarCamara');
-                    btnCambiarCamara.style.display = devices.length > 1 ? 'inline-block' : 'none';
-                    
-                    // Inicializar el escáner con configuración específica para Android
-                    html5QrCode = new Html5Qrcode("qrReader");
-                    
-                    const config = isAndroid ? {
-                        fps: 5, // Menor FPS para Android
-                        qrbox: { width: 200, height: 200 }, // Menor área de escaneo
-                        aspectRatio: 1.0,
-                        disableFlip: false,
-                        videoConstraints: {
-                            facingMode: { ideal: "environment" },
-                            advanced: [{ focusMode: "continuous" }]
-                        }
-                    } : {
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 },
-                        aspectRatio: 1.0,
-                        disableFlip: false
-                    };
-                    
-                    console.log('📷 Configuración de escáner:', config);
-                    
-                    await html5QrCode.start(
-                        currentCameraId,
-                        config,
-                        onScanSuccess,
-                        onScanFailure
-                    );
-                    
-                    mostrarEstadoQR('📷 Cámara lista - Apunte hacia el código', 'success');
-                    
-                } else {
-                    mostrarEstadoQR('❌ No se encontraron cámaras disponibles', 'error');
-                }
-                
+                const decodedText = await html5QrCode.scanFile(file, false);
+                onScanSuccess(decodedText);
             } catch (err) {
-                console.error('❌ Error al inicializar escáner QR:', err);
-                
-                // Mensajes de error específicos para Android
-                const isAndroid = /Android/i.test(navigator.userAgent);
-                const isHttps = location.protocol === 'https:';
-                
-                let errorMessage = '❌ Error al acceder a la cámara.';
-                
-                if (isAndroid && !isHttps) {
-                    errorMessage = '❌ Android requiere HTTPS para acceder a la cámara. Use Chrome y permita el acceso.';
-                } else if (isAndroid) {
-                    errorMessage = '❌ Error en Android. Intente: 1) Recargar página 2) Permitir cámara en configuración 3) Usar Chrome.';
-                } else {
-                    errorMessage = '❌ Error al acceder a la cámara. Verifique los permisos en su navegador.';
-                }
-                
-                mostrarEstadoQR(errorMessage, 'error');
-                
-                // Mostrar automáticamente la entrada manual después de error
-                setTimeout(() => {
-                    mostrarEntradaManual();
-                }, 1500);
-                
-                // Ofrecer fallback manual adicional (mantener el código existente también)
-                setTimeout(() => {
-                    const statusDiv = document.getElementById('qrStatus');
-                    statusDiv.innerHTML = `
-                        <div style="margin-top: 10px;">
-                            <p style="color: #666; font-size: 12px;">
-                                💡 <strong>Alternativa:</strong> Puede escribir o pegar el código manualmente en el campo de texto principal.
-                            </p>
-                            <button onclick="cerrarEscanerQR()" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                Usar entrada manual
-                            </button>
-                        </div>
-                    `;
-                }, 2000);
+                console.error('Error al escanear la imagen:', err);
+                statusDiv.textContent = '❌ No se pudo detectar un código QR. Intente de nuevo.';
+                statusDiv.style.color = 'red';
+                imagePreview.style.display = 'none';
             }
         }
 
         // Función llamada cuando se escanea exitosamente
-        function onScanSuccess(decodedText, decodedResult) {
+        function onScanSuccess(decodedText) {
             console.log('✅ QR escaneado:', decodedText);
-            mostrarEstadoQR('✅ ¡Código escaneado exitosamente!', 'success');
+            
+            const statusDiv = document.getElementById('qr-status');
+            if (statusDiv) {
+                statusDiv.textContent = '✅ ¡Código escaneado exitosamente!';
+                statusDiv.style.color = 'green';
+            }
             
             // Llenar el campo de texto con el código escaneado
             const inputCodigo = document.getElementById('codigoMaterialOriginal');
-            inputCodigo.value = decodedText;
+            if (inputCodigo) {
+                inputCodigo.value = decodedText;
+                
+                // Resaltar el campo
+                inputCodigo.style.backgroundColor = '#d4edda';
+                inputCodigo.style.borderColor = '#28a745';
+            }
             
-            // Resaltar el campo
-            inputCodigo.style.backgroundColor = '#d4edda';
-            inputCodigo.style.borderColor = '#28a745';
-            
-            // Procesar el código automáticamente
+            // Procesar el código automáticamente y cerrar el modal
             setTimeout(() => {
                 parsearYDistribuirCodigo(decodedText);
                 cerrarEscanerQR();
                 
                 // Restaurar estilos del campo después de un tiempo
-                setTimeout(() => {
-                    inputCodigo.style.backgroundColor = '';
-                    inputCodigo.style.borderColor = '';
-                }, 3000);
-            }, 500);
-        }
-
-        // Función llamada cuando falla el escaneo (normal, se ejecuta continuamente)
-        function onScanFailure(error) {
-            // No hacer nada, esto es normal durante el escaneo continuo
-            // console.log('Escaneando...', error);
-        }
-
-        // Función para cambiar entre cámaras disponibles
-        async function cambiarCamara() {
-            if (availableCameras.length <= 1) {
-                mostrarEstadoQR('ℹ️ Solo hay una cámara disponible', 'info');
-                return;
-            }
-            
-            try {
-                // Detener el escáner actual
-                if (html5QrCode && html5QrCode.isScanning) {
-                    await html5QrCode.stop();
+                if (inputCodigo) {
+                    setTimeout(() => {
+                        inputCodigo.style.backgroundColor = '';
+                        inputCodigo.style.borderColor = '';
+                    }, 3000);
                 }
-                
-                // Encontrar la siguiente cámara
-                const currentIndex = availableCameras.findIndex(cam => cam.id === currentCameraId);
-                const nextIndex = (currentIndex + 1) % availableCameras.length;
-                currentCameraId = availableCameras[nextIndex].id;
-                
-                console.log(`📷 Cambiando a cámara: ${currentCameraId}`);
-                mostrarEstadoQR('🔄 Cambiando cámara...', 'info');
-                
-                // Reiniciar con la nueva cámara
-                const config = {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0,
-                    disableFlip: false
-                };
-                
-                await html5QrCode.start(
-                    currentCameraId,
-                    config,
-                    onScanSuccess,
-                    onScanFailure
-                );
-                
-                mostrarEstadoQR('📷 Cámara cambiada - Apunte hacia el código', 'success');
-                
-            } catch (err) {
-                console.error('❌ Error al cambiar cámara:', err);
-                mostrarEstadoQR('❌ Error al cambiar cámara', 'error');
-            }
+            }, 1000);
         }
 
-        // Función para mostrar estados del escáner
-        function mostrarEstadoQR(mensaje, tipo) {
-            const statusDiv = document.getElementById('qrStatus');
-            const statusText = document.getElementById('qrStatusText');
-            
-            if (tipo === 'none') {
-                statusDiv.style.display = 'none';
-                return;
-            }
-            
-            statusDiv.style.display = 'block';
-            statusText.textContent = mensaje;
-            
-            // Colores según el tipo
-            switch(tipo) {
-                case 'success':
-                    statusDiv.style.backgroundColor = '#d4edda';
-                    statusDiv.style.color = '#155724';
-                    statusDiv.style.borderLeft = '4px solid #28a745';
-                    break;
-                case 'error':
-                    statusDiv.style.backgroundColor = '#f8d7da';
-                    statusDiv.style.color = '#721c24';
-                    statusDiv.style.borderLeft = '4px solid #dc3545';
-                    break;
-                case 'info':
-                    statusDiv.style.backgroundColor = '#d1ecf1';
-                    statusDiv.style.color = '#0c5460';
-                    statusDiv.style.borderLeft = '4px solid #17a2b8';
-                    break;
-                default:
-                    statusDiv.style.backgroundColor = '#fff3cd';
-                    statusDiv.style.color = '#856404';
-                    statusDiv.style.borderLeft = '4px solid #ffc107';
-            }
-        }
-
-        // Cerrar modal al hacer clic fuera de él
+        // Cerrar modal al hacer clic fuera de él (si se necesita)
         document.addEventListener('click', function(event) {
             const modal = document.getElementById('modalQRScanner');
-            const modalContent = modal.querySelector('div > div');
-            
-            if (event.target === modal && !modalContent.contains(event.target)) {
+            if (modal && event.target === modal) {
                 cerrarEscanerQR();
             }
         });
-
         // ==================== FIN QR SCANNER FUNCTIONALITY ====================
 
     </script>
