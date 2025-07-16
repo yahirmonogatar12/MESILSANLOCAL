@@ -271,5 +271,20 @@
         "partNumberLength": 11,
         "lotNumberStart": 14,
         "lotNumberLength": 7
-    }
+    },
+    "ROHM2": {
+        "character_pattern": "XXXXXXXXXXXXX      XXXXXXXXXXXXXXXXXXX",
+        "partNumberStart": 0,
+        "partNumberLength": 13,
+        "lotNumberStart": 19,
+        "lotNumberLength": 19
+    },
+  "FH3": {
+    "character_pattern": "\"ANNNNANNNANNNAA\"AXXXXXXXXXXXANNN\"AAANNNNNNNNNNNNN\"ANNNNN\"AXXXXXXXXXXX\"AAAA'NNNNNNNN'NNNN\"ANNNAA\"ANN%\"A\"ANANNA\"AA\"ANNNNN",
+    "lotNumberLength": 11,
+    "lotNumberStart": 18,
+    "partNumberLength": 11,
+    "partNumberStart": 59
+  }
 }
+

@@ -379,6 +379,35 @@
         accent-color: #3498db;
     }
 
+    /* Estilos específicos para checkboxes de estado */
+    .bom-table input[type="checkbox"]:checked {
+        accent-color: #27ae60;
+    }
+
+    .bom-table input[type="checkbox"]:not(:checked) {
+        accent-color: #95a5a6;
+    }
+
+    /* Estilos para checkboxes deshabilitados/readonly */
+    .bom-table input[type="checkbox"]:disabled {
+        cursor: not-allowed !important;
+        pointer-events: none;
+        opacity: 0.8;
+    }
+
+    .bom-table input[type="checkbox"]:disabled:checked {
+        accent-color: #27ae60 !important;
+    }
+
+    .bom-table input[type="checkbox"]:disabled:not(:checked) {
+        accent-color: #95a5a6 !important;
+    }
+
+    /* Animación suave para cambios de estado */
+    .bom-table input[type="checkbox"] {
+        transition: accent-color 0.3s ease;
+    }
+
     .bom-table .no-data {
         text-align: center;
         padding: 20px;
@@ -429,9 +458,8 @@
     <!-- Botonera -->
     <div class="bom-toolbar">
         <div class="bom-search-container">
-            <input type="text" class="bom-search-dropdown" id="bomModeloSearch" placeholder="Buscar modelo (ej: 9301, 9302, 9363...)" onkeyup="filtrarModelos()" onclick="mostrarDropdown()" />
+            <input type="text" class="bom-search-dropdown" id="bomModeloSearch" placeholder="Seleccione un modelo" onkeyup="filtrarModelos()" onclick="mostrarDropdown()" />
             <div class="bom-dropdown-list" id="bomDropdownList" style="display: none;">
-                <div class="bom-dropdown-item" data-value="todos" onclick="seleccionarModelo('todos')">Todos los modelos</div>
                 {% if modelos %}
                     {% for modelo in modelos %}
                     <div class="bom-dropdown-item" data-value="{{ modelo.modelo }}" onclick="seleccionarModelo('{{ modelo.modelo }}')">{{ modelo.modelo }}</div>
@@ -477,18 +505,14 @@
                     <th class="col-cantidad-total" title="Cantidad total requerida">Cantidad total</th>
                     <th class="col-cantidad-original" title="Cantidad original especificada">Cantidad original</th>
                     <th class="col-ubicacion" title="Ubicación física del material">Ubicación</th>
-                    <th class="col-material-sustituto" title="Material alternativo o sustituto">Material sustituto</th>
-                    <th class="col-material-original" title="Material original especificado">Material original</th>
+                    <th class="col-material-sustituto" title="Estado de material sustituto (solo lectura)">Material sustituto</th>
+                    <th class="col-material-original" title="Estado de material original (solo lectura)">Material original</th>
                     <th class="col-registrador" title="Usuario que registró el elemento">Registrador</th>
                     <th class="col-fecha" title="Fecha y hora de registro">Fecha de registro</th>
                 </tr>
             </thead>
             <tbody id="bomTableBody">
-                <tr>
-                    <td colspan="15" class="no-data">
-                        No hay datos para mostrar. Seleccione un modelo y haga clic en "Consultar" para cargar los datos.
-                    </td>
-                </tr>
+                <!-- Tabla vacía inicialmente -->
             </tbody>
         </table>
     </div>
@@ -507,6 +531,15 @@
         // Si se pasa un string (modelo), cargar desde servidor
         if (typeof datos === 'string') {
             const modelo = datos;
+            
+            // Validar que no se intente cargar todos los modelos
+            if (modelo === 'todos' || !modelo || modelo.trim() === '') {
+                showCustomAlert('⚠️ Debe seleccionar un modelo específico.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
+                const tbody = document.querySelector('#bomTableBody');
+                tbody.innerHTML = '<tr><td colspan="15" class="no-data">Seleccione un modelo específico para visualizar los datos de BOM.</td></tr>';
+                return;
+            }
+            
             console.log(`🔍 Cargando datos para modelo: ${modelo}`);
             
             fetch('/listar_bom', {
@@ -580,6 +613,26 @@
                     return `<td>${textoLimpio}</td>`;
                 }
             }
+
+            // Función para crear celda con checkbox para CHECKED/UNCHECKED
+            function crearCeldaCheckbox(valor, rowIndex, columnName) {
+                const textoLimpio = (valor || '').toString().trim().toUpperCase();
+                if (textoLimpio === 'CHECKED' || textoLimpio === 'UNCHECKED') {
+                    const isChecked = textoLimpio === 'CHECKED';
+                    const checkboxId = `checkbox_${rowIndex}_${columnName}`;
+                    return `<td style="text-align: center;">
+                        <input type="checkbox" 
+                               id="${checkboxId}" 
+                               ${isChecked ? 'checked' : ''} 
+                               disabled
+                               readonly
+                               style="transform: scale(1.2); cursor: not-allowed; accent-color: ${isChecked ? '#27ae60' : '#95a5a6'}; pointer-events: none;">
+                    </td>`;
+                } else {
+                    // Si no es CHECKED/UNCHECKED, usar la función normal
+                    return crearCelda(valor);
+                }
+            }
             
             row.innerHTML = `
                 <td>${selectorCheckbox}</td>
@@ -593,8 +646,8 @@
                 ${crearCelda(limpiarNumero(item.cantidadTotal || '0'))}
                 ${crearCelda(limpiarNumero(item.cantidadOriginal || '0'))}
                 ${crearCelda(item.ubicacion)}
-                ${crearCelda(item.materialSustituto)}
-                ${crearCelda(item.materialOriginal)}
+                ${crearCeldaCheckbox(item.materialSustituto, index, 'materialSustituto')}
+                ${crearCeldaCheckbox(item.materialOriginal, index, 'materialOriginal')}
                 ${crearCelda(item.registrador)}
                 ${crearCelda(item.fechaRegistro)}
             `;
@@ -620,9 +673,19 @@
 
     function exportarExcelBOM() {
         try {
-            alert('Generando archivo Excel de BOM, por favor espere...');
+            // Obtener el modelo seleccionado
+            const modeloSeleccionado = document.getElementById('bomModeloSearch').value;
             
-            fetch('/exportar_excel_bom', {
+            // Validar que haya un modelo seleccionado
+            if (!modeloSeleccionado || modeloSeleccionado.trim() === '' || modeloSeleccionado === 'todos') {
+                showCustomAlert('⚠️ Debe seleccionar un modelo específico antes de exportar.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
+                return;
+            }
+            
+            alert(`Generando archivo Excel de BOM para modelo: ${modeloSeleccionado}, por favor espere...`);
+            
+            // Enviar el modelo como parámetro en la URL
+            fetch(`/exportar_excel_bom?modelo=${encodeURIComponent(modeloSeleccionado)}`, {
                 method: 'GET',
             })
             .then(response => {
@@ -635,14 +698,14 @@
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `bom_export_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
+                link.download = `bom_export_${modeloSeleccionado}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
                 
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 
                 window.URL.revokeObjectURL(url);
-                alert('Archivo Excel de BOM descargado exitosamente');
+                alert(`Archivo Excel de BOM para modelo ${modeloSeleccionado} descargado exitosamente`);
             })
             .catch(error => {
                 console.error('Error al exportar Excel de BOM:', error);
@@ -697,6 +760,12 @@
     function seleccionarFilaBOM(index, seleccionado) {
         console.log(`Fila ${index} ${seleccionado ? 'seleccionada' : 'deseleccionada'}`);
         // Aquí puedes agregar lógica adicional para manejar la selección
+    }
+
+    function actualizarEstadoCheckbox(rowIndex, columnName, isChecked) {
+        // Los checkboxes están deshabilitados, esta función no debería ejecutarse
+        console.warn(`⚠️ Intento de modificar checkbox deshabilitado: Fila ${rowIndex}, Columna ${columnName}`);
+        return false;
     }
 
     function cargarModelosBOM() {
@@ -782,15 +851,21 @@
         const searchInput = document.getElementById('bomModeloSearch');
         const dropdownList = document.getElementById('bomDropdownList');
         
+        // Validar que no se seleccione "todos"
+        if (modelo === 'todos') {
+            showCustomAlert('⚠️ Debe seleccionar un modelo específico.<br><br>Por favor elija un modelo de la lista para evitar saturar la pantalla.');
+            dropdownList.style.display = 'none';
+            return;
+        }
+        
         searchInput.value = modelo;
         dropdownList.style.display = 'none';
         
-        // Cargar datos del modelo seleccionado
-        if (modelo === 'todos') {
-            cargarDatosBOMEnTabla();
-        } else {
-            cargarDatosBOMEnTabla(modelo);
-        }
+        console.log(`✅ Modelo seleccionado desde dropdown: ${modelo}`);
+        
+        // Limpiar tabla previa
+        const tbody = document.querySelector('#bomTableBody');
+        tbody.innerHTML = '';
     }
 
     // Event listener para cerrar dropdown cuando se hace clic fuera
@@ -920,22 +995,25 @@
         }
     }
 
-    // Función modificada para consultar BOM con el nuevo buscador
+    // Función modificada para consultar BOM con validación de modelo obligatorio
     function consultarBOMOriginal() {
-        // Mostrar indicador de carga
-        const tbody = document.querySelector('#bomTableBody');
-        tbody.innerHTML = '<tr><td colspan="15" class="bom-loading"><div>Cargando datos de BOM...</div></td></tr>';
-        
         // Obtener el modelo seleccionado del buscador
         const modeloSeleccionado = document.getElementById('bomModeloSearch').value;
         
-        // Si no hay modelo seleccionado, cargar todos
-        const modelo = modeloSeleccionado && modeloSeleccionado.trim() !== '' ? modeloSeleccionado : 'todos';
+        // Validar que haya un modelo seleccionado
+        if (!modeloSeleccionado || modeloSeleccionado.trim() === '' || modeloSeleccionado === 'todos') {
+            showCustomAlert('⚠️ Debe seleccionar un modelo específico antes de consultar.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
+            return;
+        }
         
-        console.log(`🔍 Consultando BOM para modelo: ${modelo}`);
+        // Mostrar indicador de carga
+        const tbody = document.querySelector('#bomTableBody');
+        tbody.innerHTML = '<tr><td colspan="15" class="bom-loading"><div>Cargando datos de BOM para modelo: ' + modeloSeleccionado + '...</div></td></tr>';
+        
+        console.log(`🔍 Consultando BOM para modelo: ${modeloSeleccionado}`);
         
         // Cargar datos desde el servidor
-        cargarDatosBOMEnTabla(modelo);
+        cargarDatosBOMEnTabla(modeloSeleccionado);
     }
 
     // Función de prueba inmediata
@@ -971,12 +1049,6 @@
                 console.log("🧪 Botón de prueba agregado");
             }
         }, 500);
-        
-        // Si hay datos en la base, cargar automáticamente todos los registros
-        setTimeout(() => {
-            console.log("⏰ Ejecutando consulta automática...");
-            consultarBOM();
-        }, 1000);
         
         // Modal: cerrar con Escape/Enter y bloquear tabulación fuera del modal
         document.addEventListener('keydown', function(e) {

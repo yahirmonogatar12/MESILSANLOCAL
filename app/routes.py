@@ -173,15 +173,26 @@ def listar_bom():
 @login_requerido
 def exportar_excel_bom():
     """
-    Exporta todos los datos de BOM a un archivo Excel
+    Exporta datos de BOM a un archivo Excel, filtrados por modelo si se especifica
     """
     try:
-        archivo_temp = exportar_bom_a_excel()
+        # Obtener el modelo del parámetro de consulta
+        modelo = request.args.get('modelo', None)
+        
+        if modelo and modelo.strip() and modelo != 'todos':
+            # Exportar solo el modelo específico
+            archivo_temp = exportar_bom_a_excel(modelo)
+            download_name = f'bom_export_{modelo}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        else:
+            # Exportar todos los datos (comportamiento anterior)
+            archivo_temp = exportar_bom_a_excel()
+            download_name = f'bom_export_todos_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        
         if archivo_temp:
             return send_file(
                 archivo_temp,
                 as_attachment=True,
-                download_name=f'bom_export_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+                download_name=download_name,
                 mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
         else:
@@ -2189,6 +2200,233 @@ def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
     except Exception as e:
         error_msg = f'Error en impresión por red: {str(e)}'
         print(f"❌ ZEBRA RED CRITICAL ERROR: {error_msg}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+@app.route('/imprimir_etiqueta_qr', methods=['POST'])
+@login_requerido
+def imprimir_etiqueta_qr():
+    """
+    Endpoint optimizado para impresión automática directa de etiquetas QR
+    Sin confirmaciones, imprime inmediatamente al guardar material
+    """
+    import socket
+    import subprocess
+    import tempfile
+    import os
+    import time
+    from datetime import datetime
+    
+    try:
+        data = request.get_json()
+        codigo = data.get('codigo', '')
+        comando_zpl = data.get('comando_zpl', '')
+        metodo = data.get('metodo', 'usb')  # 'usb' o 'red'
+        ip = data.get('ip', '192.168.1.100')
+        
+        print(f"🎯 IMPRESIÓN DIRECTA: Código={codigo}, Método={metodo}")
+        
+        if not codigo or not comando_zpl:
+            return jsonify({
+                'success': False,
+                'error': 'Código y comando ZPL son requeridos'
+            }), 400
+        
+        # Log del intento de impresión
+        timestamp = datetime.now().isoformat()
+        usuario = session.get('usuario', 'unknown')
+        print(f"📊 PRINT LOG: {timestamp} - User: {usuario} - Code: {codigo} - Method: {metodo}")
+        
+        if metodo == 'usb':
+            return imprimir_directo_usb(comando_zpl, codigo)
+        else:
+            return imprimir_directo_red(comando_zpl, codigo, ip)
+            
+    except Exception as e:
+        error_msg = f'Error en impresión directa: {str(e)}'
+        print(f"❌ IMPRESIÓN DIRECTA ERROR: {error_msg}")
+        print(f"❌ TRACEBACK: {traceback.format_exc()}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+def imprimir_directo_usb(comando_zpl, codigo):
+    """
+    Impresión directa por USB - envía inmediatamente a la impresora predeterminada
+    """
+    from datetime import datetime
+    import subprocess
+    import tempfile
+    import os
+    
+    try:
+        print("🔌 IMPRESIÓN USB DIRECTA: Iniciando...")
+        
+        # Crear archivo temporal
+        temp_dir = 'C:\\temp'
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"etiqueta_{codigo.replace(',', '_')}_{timestamp}.zpl"
+        filepath = os.path.join(temp_dir, filename)
+        
+        # Escribir comando ZPL
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(comando_zpl)
+        
+        print(f"📄 Archivo creado: {filepath}")
+        
+        # MÉTODO 1: Intentar impresión directa usando copy command a puerto LPT1
+        try:
+            print("🖨️ Intentando impresión directa vía copy command...")
+            result = subprocess.run(
+                ['copy', filepath, 'LPT1:'], 
+                shell=True, 
+                capture_output=True, 
+                text=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                print("✅ Impresión exitosa vía LPT1")
+                return jsonify({
+                    'success': True,
+                    'message': 'Etiqueta enviada directamente a impresora USB',
+                    'metodo': 'copy_lpt1',
+                    'codigo': codigo,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e1:
+            print(f"⚠️ LPT1 falló: {str(e1)}")
+        
+        # MÉTODO 2: Usar comando de Windows para imprimir directamente
+        try:
+            print("🖨️ Intentando con comando print de Windows...")
+            result = subprocess.run(
+                ['print', '/D:USB001', filepath],
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=15
+            )
+            
+            if result.returncode == 0:
+                print("✅ Impresión exitosa vía print command")
+                return jsonify({
+                    'success': True,
+                    'message': 'Etiqueta enviada directamente a impresora USB',
+                    'metodo': 'windows_print',
+                    'codigo': codigo,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e2:
+            print(f"⚠️ Windows print falló: {str(e2)}")
+        
+        # MÉTODO 3: Usar PowerShell para imprimir
+        try:
+            print("🖨️ Intentando con PowerShell...")
+            ps_command = f'Get-Content "{filepath}" | Out-Printer -Name "ZDesigner ZT230-300dpi ZPL"'
+            result = subprocess.run(
+                ['powershell', '-Command', ps_command],
+                capture_output=True,
+                text=True,
+                timeout=20
+            )
+            
+            if result.returncode == 0:
+                print("✅ Impresión exitosa vía PowerShell")
+                return jsonify({
+                    'success': True,
+                    'message': 'Etiqueta enviada directamente a impresora Zebra',
+                    'metodo': 'powershell',
+                    'codigo': codigo,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e3:
+            print(f"⚠️ PowerShell falló: {str(e3)}")
+        
+        # MÉTODO 4: Fallback - crear archivo y abrir carpeta
+        print("📁 Fallback: Creando archivo para impresión manual...")
+        
+        try:
+            os.startfile(temp_dir)
+        except:
+            pass
+        
+        return jsonify({
+            'success': True,
+            'message': 'Archivo de etiqueta creado. Revisar carpeta temp.',
+            'metodo': 'file_fallback',
+            'archivo': filepath,
+            'codigo': codigo,
+            'instrucciones': [
+                f'Archivo guardado en: {filepath}',
+                'Se abrió la carpeta automáticamente',
+                'Haga doble clic en el archivo para imprimir'
+            ],
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        error_msg = f'Error en impresión USB directa: {str(e)}'
+        print(f"❌ USB DIRECTO ERROR: {error_msg}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+def imprimir_directo_red(comando_zpl, codigo, ip):
+    """
+    Impresión directa por red - envía inmediatamente vía socket TCP
+    """
+    import socket
+    from datetime import datetime
+    
+    try:
+        print(f"🌐 IMPRESIÓN RED DIRECTA: {ip}:9100")
+        
+        # Configuración de socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)  # Timeout de 10 segundos
+        
+        # Conectar y enviar
+        sock.connect((ip, 9100))
+        sock.send(comando_zpl.encode('utf-8'))
+        sock.close()
+        
+        print(f"✅ Etiqueta enviada exitosamente a {ip}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Etiqueta enviada directamente a impresora {ip}',
+            'metodo': 'socket_directo',
+            'codigo': codigo,
+            'ip': ip,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except socket.timeout:
+        error_msg = f'Timeout al conectar con {ip}:9100'
+        print(f"⏰ RED DIRECTA ERROR: {error_msg}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 408
+        
+    except Exception as e:
+        error_msg = f'Error de conexión de red: {str(e)}'
+        print(f"❌ RED DIRECTA ERROR: {error_msg}")
         
         return jsonify({
             'success': False,

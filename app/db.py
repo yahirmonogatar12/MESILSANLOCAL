@@ -563,9 +563,12 @@ def listar_bom_por_modelo(modelo=None):
     finally:
         conn.close()
 
-def exportar_bom_a_excel():
+def exportar_bom_a_excel(modelo=None):
     """
-    Exporta todos los datos de BOM a un archivo Excel
+    Exporta datos de BOM a un archivo Excel
+    
+    Args:
+        modelo (str, optional): Modelo específico a exportar. Si es None, exporta todos los datos.
     """
     import pandas as pd
     import tempfile
@@ -573,17 +576,30 @@ def exportar_bom_a_excel():
     conn = get_db_connection()
     
     try:
-        # Obtener todos los datos de BOM
-        query = '''
-            SELECT modelo, codigo_material, numero_parte, side, tipo_material,
-                   classification, especificacion_material, vender, cantidad_total,
-                   cantidad_original, ubicacion, material_sustituto, material_original,
-                   registrador, fecha_registro
-            FROM bom 
-            ORDER BY modelo, numero_parte
-        '''
-        
-        df = pd.read_sql_query(query, conn)
+        # Construir query base
+        if modelo and modelo.strip() and modelo != 'todos':
+            # Exportar solo el modelo específico
+            query = '''
+                SELECT modelo, codigo_material, numero_parte, side, tipo_material,
+                       classification, especificacion_material, vender, cantidad_total,
+                       cantidad_original, ubicacion, material_sustituto, material_original,
+                       registrador, fecha_registro
+                FROM bom 
+                WHERE modelo = ?
+                ORDER BY numero_parte
+            '''
+            df = pd.read_sql_query(query, conn, params=[modelo])
+        else:
+            # Exportar todos los datos (comportamiento original)
+            query = '''
+                SELECT modelo, codigo_material, numero_parte, side, tipo_material,
+                       classification, especificacion_material, vender, cantidad_total,
+                       cantidad_original, ubicacion, material_sustituto, material_original,
+                       registrador, fecha_registro
+                FROM bom 
+                ORDER BY modelo, numero_parte
+            '''
+            df = pd.read_sql_query(query, conn)
         
         # Renombrar columnas para Excel
         df.columns = [
@@ -595,7 +611,14 @@ def exportar_bom_a_excel():
         
         # Crear archivo temporal
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-        df.to_excel(temp_file.name, index=False, sheet_name='BOM_Export')
+        
+        # Nombre de la hoja según el contenido
+        if modelo and modelo.strip() and modelo != 'todos':
+            sheet_name = f'BOM_{modelo}'
+        else:
+            sheet_name = 'BOM_Todos_Modelos'
+        
+        df.to_excel(temp_file.name, index=False, sheet_name=sheet_name)
         
         return temp_file.name
         
