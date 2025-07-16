@@ -31,6 +31,15 @@
     <!-- QR Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
+    <!-- QR Generator Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- QR Generator Module -->
+    <script src="/static/js/qr-generator.js"></script>
+    
+    <!-- QR Almacén Simple - NO MODIFICA FUNCIONES EXISTENTES -->
+    <script src="/static/js/qr-almacen-simple.js"></script>
+    
 </head>
 <body>
      <!-- Fila 1: SOLO Forma de material, ancho completo -->
@@ -113,7 +122,7 @@
         </div>
         <div class="material-form-group">
             <label>Fecha de recibo</label>
-            <input type="date" id="fecha_recibo" value="2025-07-08">
+            <input type="date" id="fecha_recibo">
         </div>
         <div class="material-form-group">
             <!-- Campo vacío para mantener estructura -->
@@ -137,7 +146,7 @@
     <div class="material-form-row four-column">
         <div class="material-form-group">
             <label>Fecha de fabricación</label>
-            <input type="date" id="fecha_fabricacion" value="2025-07-08">
+            <input type="date" id="fecha_fabricacion">
         </div>
         <div class="material-form-group">
             <label>Cantidad actual:</label>
@@ -165,7 +174,7 @@
             <label>Cantidad estandarizada</label>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <input type="text" id="cantidad_estandarizada" style="flex: 1;">
-                <button class="material-btn gray" style="white-space: nowrap;">Conf. de impresora</button>
+                <button class="material-btn gray" style="white-space: nowrap;" onclick="configurarImpresoraZebra()">Conf. de impresora</button>
             </div>
         </div>
         <div class="material-form-group">
@@ -214,9 +223,9 @@
         <div class="material-toolbar">
             <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden;">
                 <label style="margin: 0; color: lightgray; font-size: 11px; white-space: nowrap;">Fecha de recibo</label>
-                <input type="date" id="filtro_fecha_inicio" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px; font-family: sans-serif; min-width: 100px;">
+                <input type="date" id="filtro_fecha_inicio" style="width: 130px; height: 24px; font-size: 10px; font-family: sans-serif; min-width: 100px;">
                 <span style="color: lightgray; font-size: 11px;">~</span>
-                <input type="date" id="filtro_fecha_fin" value="2025-07-08" style="width: 130px; height: 24px; font-size: 10px; min-width: 100px;">
+                <input type="date" id="filtro_fecha_fin" style="width: 130px; height: 24px; font-size: 10px; min-width: 100px;">
             </div>
             <div style="display: flex; gap: 6px; flex-shrink: 0;">
                 <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
@@ -266,6 +275,8 @@
             setTimeout(() => {
                 inicializarControlAlmacen();
                 configurarListenersAdicionales();
+                // Asegurar que las fechas siempre estén actuales al cambiar de módulo
+                establecerFechasActuales();
             }, 100);
         };
 
@@ -295,9 +306,35 @@
                 tabla.style.display = 'table';
             }
             
+            // Establecer fecha actual en todos los campos de fecha
+            establecerFechasActuales();
+            
             cargarCodigosMaterial();
             cargarClienteSeleccionado(); // Cargar la última selección de cliente
             cargarSiguienteSecuencial(); // Cargar el siguiente número secuencial
+        }
+
+        // Nueva función para establecer fechas actuales
+        function establecerFechasActuales() {
+            // Usar el mismo método que setFechasHoy() para evitar problemas de zona horaria
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const fechaHoy = `${year}-${month}-${day}`;
+            
+            // Establecer fecha actual en campos principales
+            const fechaRecibo = document.getElementById('fecha_recibo');
+            const fechaFabricacion = document.getElementById('fecha_fabricacion');
+            const filtroFechaInicio = document.getElementById('filtro_fecha_inicio');
+            const filtroFechaFin = document.getElementById('filtro_fecha_fin');
+            
+            if (fechaRecibo) fechaRecibo.value = fechaHoy;
+            if (fechaFabricacion) fechaFabricacion.value = fechaHoy;
+            if (filtroFechaInicio) filtroFechaInicio.value = fechaHoy;
+            if (filtroFechaFin) filtroFechaFin.value = fechaHoy;
+            
+            console.log(`📅 Fechas establecidas a: ${fechaHoy}`);
         }
 
         // Verificar si el DOM ya está listo o esperar a que lo esté
@@ -970,6 +1007,32 @@
                     if (data.success) {
                         alert('Registro guardado exitosamente');
                         
+                        // *** NUEVA FUNCIONALIDAD: Generar QR después de guardar exitosamente ***
+                        const codigoMaterialRecibido = formData.codigo_material_recibido;
+                        if (codigoMaterialRecibido && codigoMaterialRecibido.trim() !== '') {
+                            console.log('🎯 Generando QR para código:', codigoMaterialRecibido);
+                            
+                            // Verificar si hay configuración de Zebra
+                            const configZebra = localStorage.getItem('zebra_config');
+                            
+                            if (configZebra) {
+                                // Imprimir automáticamente en Zebra
+                                console.log('🦓 Imprimiendo automáticamente en Zebra...');
+                                setTimeout(() => {
+                                    if (window.QRAlmacenSimple && typeof QRAlmacenSimple.imprimirZebra === 'function') {
+                                        QRAlmacenSimple.imprimirZebra(codigoMaterialRecibido);
+                                    }
+                                }, 500);
+                            } else {
+                                // Mostrar QR normal si no hay configuración de Zebra
+                                setTimeout(() => {
+                                    if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
+                                        QRAlmacenSimple.generarQR(codigoMaterialRecibido);
+                                    }
+                                }, 500);
+                            }
+                        }
+                        
                         // IMPORTANTE: Esperar un poco y luego recargar el siguiente secuencial
                         setTimeout(async () => {
                             const codigoActual = document.getElementById('codigoMaterialSelect').value;
@@ -1226,30 +1289,30 @@ if (document.readyState === 'loading') {
                 'cargarCodigosMaterial'
             ];
             
-            funciones.forEach(func => {
-                if (typeof window[func] === 'function' || typeof eval(func) === 'function') {
-                    console.log(`✅ Función ${func}: OK`);
-                } else {
-                    console.error(`❌ Función ${func}: FALTA`);
-                    errores.push(`Función ${func}`);
-                }
-            });
-            
-            if (errores.length === 0) {
-                console.log('🎉 ¡TODOS LOS TESTS PASARON!');
-                console.log('✅ Módulo Control de Almacén: Todos los componentes están funcionando correctamente');
-                
-                // Test adicional: Intentar cargar datos
-                console.log('🔄 Ejecutando test de carga de datos...');
-                cargarDatosDesdeServidor();
-                
+        funciones.forEach(func => {
+            if (typeof window[func] === 'function' || typeof eval(func) === 'function') {
+                console.log(`✅ Función ${func}: OK`);
             } else {
-                console.error('❌ ERRORES ENCONTRADOS:', errores);
-                console.warn('❌ Errores en el módulo: ' + errores.join(', '));
+                console.error(`❌ Función ${func}: FALTA`);
+                errores.push(`Función ${func}`);
             }
+        });
+
+        if (errores.length === 0) {
+            console.log('🎉 ¡TODOS LOS TESTS PASARON!');
+            console.log('✅ Módulo Control de Almacén: Todos los componentes están funcionando correctamente');
             
-            return errores.length === 0;
-        };
+            // Test adicional: Intentar cargar datos
+            console.log('🔄 Ejecutando test de carga de datos...');
+            cargarDatosDesdeServidor();
+            
+        } else {
+            console.error('❌ ERRORES ENCONTRADOS:', errores);
+            console.warn('❌ Errores en el módulo: ' + errores.join(', '));
+        }
+        
+        return errores.length === 0;
+    };
 
         // Funciones de test simples para diagnóstico rápido
         window.testCargarDatos = function() {
@@ -2151,5 +2214,61 @@ if (document.readyState === 'loading') {
         // ==================== FIN QR SCANNER FUNCTIONALITY ====================
 
     </script>
+
+    <!-- Script para QR automático después de guardar - NO MODIFICA FUNCIONES EXISTENTES -->
+    <script>
+        // Función simple para generar QR cuando se llame explícitamente
+        window.generarQRMaterialRecibido = function() {
+            // Obtener el código de material recibido
+            const codigoMaterialRecibido = document.getElementById('codigo_material_recibido');
+            
+            if (codigoMaterialRecibido && codigoMaterialRecibido.value.trim() !== '') {
+                console.log('🎯 Generando QR para código:', codigoMaterialRecibido.value.trim());
+                
+                // Usar el generador QR simple
+                if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
+                    QRAlmacenSimple.generarQR(codigoMaterialRecibido.value.trim());
+                } else {
+                    console.warn('⚠️ Generador QR no disponible');
+                }
+            } else {
+                console.warn('⚠️ No hay código de material recibido para generar QR');
+            }
+        };
+
+        console.log('✅ Función QR manual disponible: generarQRMaterialRecibido()');
+        
+        // Función para mostrar estado de configuración de impresora al cargar
+        function mostrarEstadoImpresora() {
+            const config = localStorage.getItem('zebra_config');
+            if (config) {
+                const cfg = JSON.parse(config);
+                const tipoTexto = cfg.tipo === 'simple' ? 'Simple' : 'Completa';
+                const metodoTexto = cfg.metodo === 'usb' ? 'USB' : `Red ${cfg.ip}`;
+                console.log(`🦓 ZT230 configurada: ${metodoTexto} (${tipoTexto}) - Impresión automática activada`);
+                
+                // Cambiar color del botón para indicar que está configurado
+                setTimeout(() => {
+                    const btnConfig = document.querySelector('button[onclick="configurarImpresoraZebra()"]');
+                    if (btnConfig) {
+                        btnConfig.style.background = '#28a745';
+                        btnConfig.style.color = 'white';
+                        btnConfig.innerHTML = '🦓 ZT230 Configurada';
+                        btnConfig.title = `ZT230 | Conexión: ${metodoTexto} | Tipo: ${tipoTexto}`;
+                    }
+                }, 1000);
+            } else {
+                console.log('⚠️ ZT230 no configurada - QR se mostrará en modal');
+            }
+        }
+        
+        // Ejecutar al cargar la página
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', mostrarEstadoImpresora);
+        } else {
+            mostrarEstadoImpresora();
+        }
+    </script>
+
 </body>
 </html>

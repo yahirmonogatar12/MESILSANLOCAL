@@ -1,0 +1,24 @@
+{
+    "zebra_config": {
+        "default_ip": "192.168.1.100",
+        "puerto": 9100,
+        "timeout": 10,
+        "nombre_impresora": "Zebra ZD421",
+        "configuracion_etiqueta": {
+            "ancho": 400,
+            "alto": 300,
+            "dpi": 203,
+            "orientacion": "normal"
+        },
+        "comandos_zpl": {
+            "template_material": {
+                "descripcion": "Etiqueta para control de material",
+                "comando": "^XA^CI28^CFO,30,20^FO50,30^FD{codigo}^FS^FO50,70^FDCONTROL DE MATERIAL - ALMACEN^FS^FO50,100^FDFecha: {fecha}^FS^FO50,130^FDSistema: ISEMM MES^FS^FO300,30^BQN,2,6^FDLA,{codigo}^FS^XZ"
+            },
+            "template_simple": {
+                "descripcion": "Etiqueta simple con QR",
+                "comando": "^XA^FO50,50^BQN,2,8^FDLA,{codigo}^FS^FO50,250^CFO,20,10^FD{codigo}^FS^XZ"
+            }
+        }
+    }
+}

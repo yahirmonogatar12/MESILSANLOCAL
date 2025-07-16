@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Modelos BOM</title>
+    <style>
+        body { font-family: Arial; margin: 20px; background: #2c3e50; color: white; }
+        .test-container { max-width: 800px; margin: 0 auto; }
+        select { padding: 10px; margin: 10px; min-width: 300px; }
+        button { padding: 10px 20px; margin: 10px; }
+        .log { background: #34495e; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; }
+        .error { color: #e74c3c; }
+        .success { color: #2ecc71; }
+        .info { color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test de Carga de Modelos BOM</h1>
+        
+        <div>
+            <h3>Login y Test:</h3>
+            <button onclick="hacerLogin()">1. Hacer Login</button>
+            <button onclick="cargarModelos()">2. Cargar Modelos</button>
+            <button onclick="limpiarLog()">Limpiar Log</button>
+        </div>
+        
+        <div>
+            <h3>Dropdown de Modelos:</h3>
+            <select id="testModeloSelect">
+                <option>Haz clic en "Cargar Modelos"</option>
+            </select>
+        </div>
+        
+        <div id="logContainer" class="log">
+            <div class="info">📋 Log de operaciones:</div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            logContainer.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(message);
+        }
+
+        function limpiarLog() {
+            document.getElementById('logContainer').innerHTML = '<div class="info">📋 Log de operaciones:</div>';
+        }
+
+        function hacerLogin() {
+            log("🔑 Intentando hacer login...");
+            
+            const formData = new FormData();
+            formData.append('username', '1111');
+            formData.append('password', '1111');
+            
+            fetch('/login', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                log(`📡 Login response - Status: ${response.status}`);
+                if (response.ok) {
+                    log("✅ Login exitoso!", 'success');
+                    log("🔍 Ahora puedes cargar modelos", 'info');
+                } else {
+                    log("❌ Error en login", 'error');
+                }
+            })
+            .catch(error => {
+                log(`❌ Error en login: ${error.message}`, 'error');
+            });
+        }
+
+        function cargarModelos() {
+            log("🚀 Iniciando carga de modelos...");
+            
+            fetch('/listar_modelos_bom', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                log(`📡 Respuesta recibida - Status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(modelos => {
+                log(`✅ Datos recibidos: ${modelos.length} modelos`, 'success');
+                
+                const select = document.getElementById('testModeloSelect');
+                select.innerHTML = '<option value="">Selecciona un modelo</option>';
+                
+                modelos.forEach((modelo, index) => {
+                    const option = document.createElement('option');
+                    option.value = modelo.modelo;
+                    option.textContent = modelo.modelo;
+                    select.appendChild(option);
+                    
+                    if (index < 5) { // Solo loggear los primeros 5
+                        log(`  📋 Modelo ${index + 1}: ${modelo.modelo}`);
+                    }
+                });
+                
+                if (modelos.length > 5) {
+                    log(`  ... y ${modelos.length - 5} modelos más`);
+                }
+                
+                // Buscar específicamente los modelos 9301, 9302, 9361
+                const buscados = ['9301', '9302', '9361'];
+                buscados.forEach(buscar => {
+                    const encontrados = modelos.filter(m => m.modelo.includes(buscar));
+                    if (encontrados.length > 0) {
+                        log(`🎯 Encontrado modelo con '${buscar}': ${encontrados[0].modelo}`, 'success');
+                    } else {
+                        log(`❌ No encontrado modelo con '${buscar}'`, 'error');
+                    }
+                });
+                
+                log("🎉 Carga completada exitosamente!", 'success');
+            })
+            .catch(error => {
+                log(`❌ Error: ${error.message}`, 'error');
+                log(`📍 Verifica que estés logueado y que el servidor esté funcionando`, 'error');
+            });
+        }
+
+        // Cargar automáticamente al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            log("🌟 Página cargada");
+            log("📋 Instrucciones: 1) Hacer Login, 2) Cargar Modelos");
+        });
+    </script>
+</body>
+</html>

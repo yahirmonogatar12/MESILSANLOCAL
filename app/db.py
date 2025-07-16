@@ -99,7 +99,22 @@ def init_db():
             propiedad_material TEXT,
             especificacion TEXT,
             cantidad_total REAL DEFAULT 0,
+            cantidad_entradas REAL DEFAULT 0,
+            cantidad_salidas REAL DEFAULT 0,
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
             fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Tabla para configuraciones de usuario
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS configuraciones_usuario (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT,
+            clave TEXT,
+            valor TEXT,
+            fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(usuario, clave)
         )
     ''')
 
@@ -109,7 +124,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             modelo TEXT NOT NULL,
             codigo_material TEXT,
-            numero_parte TEXT,
+            numero_parte TEXT NOT NULL,
             side TEXT,
             tipo_material TEXT,
             classification TEXT,
@@ -127,6 +142,46 @@ def init_db():
     ''')
     
     conn.commit()
+    
+    # Migrar datos existentes si es necesario
+    try:
+        cursor.execute("PRAGMA table_info(materiales)")
+        columns = cursor.fetchall()
+        
+        # Verificar si las columnas necesitan ser actualizadas
+        prohibido_sacar_type = None
+        reparable_type = None
+        
+        for column in columns:
+            if column[1] == 'prohibido_sacar':
+                prohibido_sacar_type = column[2]
+            elif column[1] == 'reparable':
+                reparable_type = column[2]
+        
+        # Si las columnas son TEXT, convertir a INTEGER
+        if prohibido_sacar_type == 'TEXT':
+            cursor.execute('''
+                UPDATE materiales 
+                SET prohibido_sacar = CASE 
+                    WHEN prohibido_sacar = '1' OR prohibido_sacar = 'true' OR prohibido_sacar = 'True' THEN 1
+                    ELSE 0
+                END
+            ''')
+            
+        if reparable_type == 'TEXT':
+            cursor.execute('''
+                UPDATE materiales 
+                SET reparable = CASE 
+                    WHEN reparable = '1' OR reparable = 'true' OR reparable = 'True' THEN 1
+                    ELSE 0
+                END
+            ''')
+            
+        conn.commit()
+        
+    except Exception as e:
+        print(f"Error durante la migración: {e}")
+    
     conn.close()
 
 def guardar_configuracion_usuario(usuario, clave, valor):
@@ -357,24 +412,16 @@ def recalcular_inventario_general():
     finally:
         conn.close()
 
-def get_bom(modelo):
+def insertar_bom_desde_dataframe(df, registrador):
+    """
+    Inserta o actualiza registros de BOM desde un DataFrame de pandas.
+    Es más robusto y devuelve un conteo de las operaciones.
+    """
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM bom WHERE modelo = ?", (modelo,))
-    bom_data = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in bom_data]
-
-def exportar_bom_a_dataframe():
-    conn = get_db_connection()
-    df = pd.read_sql_query("SELECT * FROM bom", conn)
-    conn.close()
-    return df
-
-def insertar_bom_desde_dataframe(df, modelo, registrador):
-    conn = get_db_connection()
-    # Renombrar columnas del DataFrame para que coincidan con la BD
+    
+    # Mapeo de columnas del Excel a la base de datos
     column_mapping = {
+        'Modelo': 'modelo',
         'Código de material': 'codigo_material',
         'Número de parte': 'numero_parte',
         'Side': 'side',
@@ -386,30 +433,35 @@ def insertar_bom_desde_dataframe(df, modelo, registrador):
         'Cantidad original': 'cantidad_original',
         'Ubicación': 'ubicacion',
         'Material sustituto': 'material_sustituto',
-        'Material original': 'material_original'
+        'Material original': 'material_original',
+        'Registrador': 'registrador_excel' # Nombre temporal para no confundir
     }
-    df = df.rename(columns=column_mapping)
-
-    # Asegurarse de que todas las columnas esperadas existan
-    expected_cols = list(column_mapping.values())
-    for col in expected_cols:
-        if col not in df.columns:
-            df[col] = None # O un valor por defecto apropiado
-
+    
+    df_renamed = df.rename(columns=column_mapping)
+    
+    insertados_actualizados = 0
+    omitidos = 0
+    
     with conn:
-        for _, row in df.iterrows():
-            # Usar .get() para evitar errores si una columna no existe en la fila
+        for _, row in df_renamed.iterrows():
+            modelo = row.get('modelo')
             numero_parte = row.get('numero_parte')
-            side = row.get('side')
 
-            if not numero_parte:
-                continue # O manejar el error como prefieras
+            # --- Verificación CRÍTICA ---
+            # Si falta el modelo o el número de parte, se omite la fila
+            if pd.isna(modelo) or pd.isna(numero_parte) or not modelo or not numero_parte:
+                omitidos += 1
+                continue
 
-            # Usar INSERT OR IGNORE y luego UPDATE para manejar conflictos
+            # Determinar el registrador: usa el del Excel si existe, si no, el de la sesión
+            registrador_final = row.get('registrador_excel', registrador)
+
+            # Usar INSERT OR IGNORE para evitar errores de duplicados y luego actualizar
+            # Esto asegura que los registros nuevos se creen y los existentes se actualicen
             conn.execute('''
                 INSERT OR IGNORE INTO bom (modelo, numero_parte, side, registrador)
                 VALUES (?, ?, ?, ?)
-            ''', (modelo, numero_parte, side, registrador))
+            ''', (str(modelo), str(numero_parte), str(row.get('side', '')), str(registrador_final)))
 
             # Actualizar la fila con el resto de los datos
             conn.execute('''
@@ -417,11 +469,138 @@ def insertar_bom_desde_dataframe(df, modelo, registrador):
                     codigo_material = ?, tipo_material = ?, classification = ?, 
                     especificacion_material = ?, vender = ?, cantidad_total = ?, 
                     cantidad_original = ?, ubicacion = ?, material_sustituto = ?, 
-                    material_original = ?, fecha_registro = CURRENT_TIMESTAMP
-                WHERE modelo = ? AND numero_parte = ? AND (side = ? OR (side IS NULL AND ? IS NULL))
+                    material_original = ?, registrador = ?, fecha_registro = CURRENT_TIMESTAMP
+                WHERE modelo = ? AND numero_parte = ? AND side = ?
             ''', (
-                row.get('codigo_material'), row.get('tipo_material'), row.get('classification'),
-                row.get('especificacion_material'), row.get('vender'), row.get('cantidad_total'),
-                row.get('cantidad_original'), row.get('ubicacion'), row.get('material_sustituto'),
-                row.get('material_original'), modelo, numero_parte, side, side
+                str(row.get('codigo_material', '')), str(row.get('tipo_material', '')), str(row.get('classification', '')),
+                str(row.get('especificacion_material', '')), str(row.get('vender', '')), row.get('cantidad_total'),
+                row.get('cantidad_original'), str(row.get('ubicacion', '')), str(row.get('material_sustituto', '')),
+                str(row.get('material_original', '')), str(registrador_final),
+                str(modelo), str(numero_parte), str(row.get('side', ''))
             ))
+            insertados_actualizados += 1
+            
+    return {'insertados': insertados_actualizados, 'omitidos': omitidos}
+
+def obtener_modelos_bom():
+    """
+    Obtiene una lista de modelos únicos de la tabla BOM
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            SELECT DISTINCT modelo 
+            FROM bom 
+            WHERE modelo IS NOT NULL AND modelo != '' 
+            ORDER BY modelo
+        ''')
+        modelos = cursor.fetchall()
+        return [{'modelo': row[0]} for row in modelos]
+    except Exception as e:
+        print(f"Error al obtener modelos BOM: {e}")
+        return []
+    finally:
+        conn.close()
+
+def listar_bom_por_modelo(modelo=None):
+    """
+    Lista todos los registros de BOM o filtra por modelo específico
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if modelo and modelo != 'todos':
+            cursor.execute('''
+                SELECT id, modelo, codigo_material, numero_parte, side, tipo_material,
+                       classification, especificacion_material, vender, cantidad_total,
+                       cantidad_original, ubicacion, material_sustituto, material_original,
+                       registrador, fecha_registro
+                FROM bom 
+                WHERE modelo = ? 
+                ORDER BY numero_parte
+            ''', (modelo,))
+        else:
+            cursor.execute('''
+                SELECT id, modelo, codigo_material, numero_parte, side, tipo_material,
+                       classification, especificacion_material, vender, cantidad_total,
+                       cantidad_original, ubicacion, material_sustituto, material_original,
+                       registrador, fecha_registro
+                FROM bom 
+                ORDER BY modelo, numero_parte
+            ''')
+        
+        rows = cursor.fetchall()
+        
+        bom_list = []
+        for row in rows:
+            bom_list.append({
+                'id': row[0],
+                'modelo': row[1],
+                'codigoMaterial': row[2],
+                'numeroParte': row[3],
+                'side': row[4],
+                'tipoMaterial': row[5],
+                'classification': row[6],
+                'especificacionMaterial': row[7],
+                'vender': row[8],
+                'cantidadTotal': row[9],
+                'cantidadOriginal': row[10],
+                'ubicacion': row[11],
+                'materialSustituto': row[12],
+                'materialOriginal': row[13],
+                'registrador': row[14],
+                'fechaRegistro': row[15]
+            })
+        
+        return bom_list
+        
+    except Exception as e:
+        print(f"Error al listar BOM: {e}")
+        return []
+    finally:
+        conn.close()
+
+def exportar_bom_a_excel():
+    """
+    Exporta todos los datos de BOM a un archivo Excel
+    """
+    import pandas as pd
+    import tempfile
+    
+    conn = get_db_connection()
+    
+    try:
+        # Obtener todos los datos de BOM
+        query = '''
+            SELECT modelo, codigo_material, numero_parte, side, tipo_material,
+                   classification, especificacion_material, vender, cantidad_total,
+                   cantidad_original, ubicacion, material_sustituto, material_original,
+                   registrador, fecha_registro
+            FROM bom 
+            ORDER BY modelo, numero_parte
+        '''
+        
+        df = pd.read_sql_query(query, conn)
+        
+        # Renombrar columnas para Excel
+        df.columns = [
+            'Modelo', 'Código de material', 'Número de parte', 'Side', 'Tipo de material',
+            'Classification', 'Especificación de material', 'Vender', 'Cantidad total',
+            'Cantidad original', 'Ubicación', 'Material sustituto', 'Material original',
+            'Registrador', 'Fecha de registro'
+        ]
+        
+        # Crear archivo temporal
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        df.to_excel(temp_file.name, index=False, sheet_name='BOM_Export')
+        
+        return temp_file.name
+        
+    except Exception as e:
+        print(f"Error al exportar BOM a Excel: {e}")
+        return None
+    finally:
+        conn.close()
