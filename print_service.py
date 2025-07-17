@@ -1,5 +1,6 @@
 """
-Servicio de Impresión Automática para Zebra ZT230
+Servicio de Impresión LOCAL para Zebra ZT230
+IMPORTANTE: Este servicio debe ejecutarse en CADA máquina cliente
 Implementa impresión directa via Win32 API sin diálogos ni confirmaciones
 """
 from flask import Flask, request, abort, jsonify
@@ -10,14 +11,20 @@ import os
 import tempfile
 import json
 import logging
+import socket
+import os
 from datetime import datetime
+
+# Obtener el directorio donde está el script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+log_file = os.path.join(script_dir, 'print_service.log')
 
 # Configurar logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('print_service.log'),
+        logging.FileHandler(log_file),
         logging.StreamHandler()
     ]
 )
@@ -43,6 +50,28 @@ PRINTER_CONFIGS = {
     'zebra_usb_alt2': r"ZT230",
     'zebra_usb_alt3': r"ZDesigner ZT230-300dpi ZPL USB002"
 }
+
+def get_local_machine_info():
+    """Obtiene información de la máquina local"""
+    try:
+        hostname = socket.gethostname()
+        
+        # Obtener IP local
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        
+        return {
+            'hostname': hostname,
+            'local_ip': local_ip
+        }
+    except Exception as e:
+        logging.warning(f"Error obteniendo info de máquina: {e}")
+        return {
+            'hostname': 'unknown',
+            'local_ip': 'localhost'
+        }
 
 def get_available_printers():
     """Obtiene lista de impresoras disponibles en el sistema"""
@@ -118,14 +147,18 @@ def status():
     """Endpoint de estado del servicio"""
     available_printers = get_available_printers()
     zebra_printer = find_zebra_printer()
+    machine_info = get_local_machine_info()
     
     return jsonify({
-        "service": "ILSAN Print Service",
+        "service": "ILSAN Print Service LOCAL",
         "status": "active",
         "timestamp": datetime.now().isoformat(),
+        "machine": machine_info['hostname'],
+        "local_ip": machine_info['local_ip'],
         "zebra_printer": zebra_printer,
         "available_printers": available_printers,
-        "printer_configs": PRINTER_CONFIGS
+        "printer_configs": PRINTER_CONFIGS,
+        "note": "Este servicio imprime LOCALMENTE en esta máquina"
     })
 
 @app.route("/print", methods=["POST"])
@@ -169,9 +202,11 @@ def api_print():
                 "codigo": codigo,
                 "bytes": bytes_written,
                 "printer": find_zebra_printer() if not printer_name else printer_name,
+                "machine": get_local_machine_info()['hostname'],
+                "local_ip": get_local_machine_info()['local_ip'],
                 "timestamp": datetime.now().isoformat()
             }
-            logging.info(f"Impresión exitosa: {response}")
+            logging.info(f"Impresión exitosa LOCAL: {response}")
             return jsonify(response)
         else:
             raise Exception("La impresión no se completó correctamente")
@@ -245,10 +280,15 @@ def list_printers():
         }), 500
 
 if __name__ == "__main__":
+    machine_info = get_local_machine_info()
+    
     print("\n" + "="*60)
-    print("🖨️  ILSAN Print Service - Zebra ZT230")
+    print("🖨️  ILSAN Print Service LOCAL - Zebra ZT230")
     print("="*60)
     print(f"🕒 Iniciado: {datetime.now()}")
+    print(f"💻 Máquina: {machine_info['hostname']}")
+    print(f"🌐 IP Local: {machine_info['local_ip']}")
+    print("📋 IMPORTANTE: Este servicio imprime LOCALMENTE en esta máquina")
     
     # Verificar impresoras al inicio
     available_printers = get_available_printers()
@@ -273,15 +313,18 @@ if __name__ == "__main__":
     print("   POST /print    - Impresión de ZPL")
     print("="*60)
     print("🚀 Ejecutándose en:")
-    print("   http://localhost:5002")
-    print("   http://127.0.0.1:5002") 
-    print("   http://192.168.0.211:5002")
+    print("   http://localhost:5003")
+    print("   http://127.0.0.1:5003") 
+    print(f"   http://{machine_info['local_ip']}:5003")
+    print("="*60)
+    print("⚠️  CADA MÁQUINA DEBE EJECUTAR SU PROPIO SERVICIO")
+    print("✅ Este servicio imprime en la impresora LOCAL de esta máquina")
     print("="*60)
     
     # Ejecutar el servicio Flask
     app.run(
         host="0.0.0.0",  # Permite conexiones externas
-        port=5002,       # Cambio de puerto para evitar conflictos
+        port=5003,       # Puerto diferente para servicio local
         debug=False,     # Cambiar a True para desarrollo
         threaded=True    # Permite múltiples requests simultáneos
     )

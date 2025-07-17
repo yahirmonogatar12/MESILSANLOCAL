@@ -2535,7 +2535,7 @@ if (document.readyState === 'loading') {
                     // server_url: 'http://192.168.0.211:5000', // Para servidor específico
                     
                     // Servicio de impresión (SIEMPRE local en cada PC)
-                    service_url: 'http://localhost:5002'
+                    service_url: 'http://localhost:5003'
                 };
                 
                 // 🔧 FUNCIONES HELPER PARA URLs
@@ -2608,7 +2608,7 @@ if (document.readyState === 'loading') {
                     tipo: 'material',
                     metodo: 'usb',
                     server_url: 'http://localhost:5000',
-                    service_url: 'http://localhost:5002'
+                    service_url: 'http://localhost:5003'
                 };
                 
                 if (config) {
@@ -2651,7 +2651,7 @@ if (document.readyState === 'loading') {
          * Función para enviar al servicio Win32 de impresión
          */
         async function enviarAServicioWin32(comandoZPL, codigo, configuracion) {
-            const serviceUrl = configuracion.service_url || 'http://localhost:5002';
+            const serviceUrl = configuracion.service_url || 'http://localhost:5003';
             
             try {
                 console.log(`🌐 Conectando al servicio Win32: ${serviceUrl}`);
@@ -3281,13 +3281,13 @@ if (document.readyState === 'loading') {
         window.testServicioWin32 = async function() {
             console.log('🧪 === TEST SERVICIO WIN32 LOCAL ===');
             
-            const serviceUrl = 'http://localhost:5002';
+            const serviceUrl = 'http://localhost:5003';
             
             try {
                 console.log('📡 Probando URLs...');
                 const urls = [
-                    'http://localhost:5002',
-                    'http://127.0.0.1:5002'
+                    'http://localhost:5003',
+                    'http://127.0.0.1:5003'
                 ];
                 
                 for (const url of urls) {
@@ -3410,7 +3410,7 @@ if (document.readyState === 'loading') {
                     ip: '192.168.1.100',
                     tipo: 'material',
                     metodo: 'usb',
-                    service_url: 'http://localhost:5002',
+                    service_url: 'http://localhost:5003',
                     use_win32_service: true
                 };
                 
@@ -3436,7 +3436,7 @@ if (document.readyState === 'loading') {
             
             // Actualizar configuración existente para incluir servicio Win32
             if (!configActual.service_url) {
-                configActual.service_url = 'http://localhost:5002';
+                configActual.service_url = 'http://localhost:5003';
                 configActual.use_win32_service = true;
                 localStorage.setItem('zebra_config', JSON.stringify(configActual));
                 console.log('🔄 Configuración actualizada con servicio Win32 local');
@@ -3563,7 +3563,7 @@ if (document.readyState === 'loading') {
             
             // 3. Simular envío al servicio
             console.log('📡 Simulando envío al servicio Win32...');
-            console.log('🌐 URL destino: http://localhost:5002/print');
+            console.log('🌐 URL destino: http://localhost:5003/print');
             console.log('📦 Datos a enviar:');
             console.log({
                 zpl: comandoZPL,
@@ -3598,7 +3598,7 @@ if (document.readyState === 'loading') {
             console.log('🔧 === VERIFICANDO SERVICIO WIN32 ===');
             
             try {
-                const response = await fetch('http://localhost:5002/', {
+                const response = await fetch('http://localhost:5003/', {
                     method: 'GET',
                     timeout: 5000
                 });

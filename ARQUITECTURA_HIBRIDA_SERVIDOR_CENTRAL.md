@@ -9,15 +9,15 @@
    └── 🌍 Acceso web desde cualquier dispositivo
 
 📍 PC ESTACIÓN #1 (192.168.0.212):
-   ├── 🖨️ Servicio Impresión Local (localhost:5002)
+   ├── 🖨️ Servicio Impresión Local (localhost:5003)
    └── 🖨️ Zebra ZT230 #1 (USB)
 
 📍 PC ESTACIÓN #2 (192.168.0.213):
-   ├── 🖨️ Servicio Impresión Local (localhost:5002)
+   ├── 🖨️ Servicio Impresión Local (localhost:5003)
    └── 🖨️ Zebra ZT230 #2 (USB)
 
 📍 PC ESTACIÓN #3 (192.168.0.214):
-   ├── 🖨️ Servicio Impresión Local (localhost:5002)
+   ├── 🖨️ Servicio Impresión Local (localhost:5003)
    └── 🖨️ Zebra ZT230 #3 (USB)
 ```
 
@@ -86,7 +86,7 @@ app.run(host='localhost', port=5002)  # Solo local
 ### **Frontend (HTML):**
 ```javascript
 // Configuración híbrida
-service_url: 'http://localhost:5002'  // Impresión local
+service_url: 'http://localhost:5003'  // Impresión local
 web_url: 'http://192.168.0.211:5000'  // Aplicación central
 ```
 

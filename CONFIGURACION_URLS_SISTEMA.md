@@ -2,7 +2,7 @@
 
 ## 🎯 **CONFIGURACIÓN ACTUAL**
 
-El sistema ahora está preparado para funcionar con **cualquier servidor o dominio**:
+El sistema ahora está preparagetPrintServiceUrl('/print')               // ✅ Siempre localhost:5003o para funcionar con **cualquier servidor o dominio**:
 
 ### **📁 ARCHIVOS MODIFICADOS:**
 
@@ -29,7 +29,7 @@ let configuracion = {
     // server_url: 'http://192.168.0.211:5000', // Para servidor específico
     
     // Servicio de impresión (SIEMPRE local en cada PC)
-    service_url: 'http://localhost:5002'
+    service_url: 'http://localhost:5003'
 };
 ```
 
@@ -153,7 +153,7 @@ getPrintServiceUrl('/print')               // ✅ Siempre localhost:5002
 
 ## 🖨️ **IMPRESIÓN (NO CAMBIA)**
 
-El servicio de impresión **SIEMPRE** usa `localhost:5002` porque:
+El servicio de impresión **SIEMPRE** usa `localhost:5003` porque:
 
 - ✅ Cada PC tiene su propia Zebra
 - ✅ Impresión directa sin latencia

@@ -134,3 +134,106 @@
 2025-07-16 13:29:10,870 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
 2025-07-16 13:29:10,872 - INFO - Impresión exitosa: {'status': 'printed', 'codigo': '0RH5602C622,202507160022', 'bytes': 239, 'printer': 'ZDesigner ZT230-300dpi ZPL', 'timestamp': '2025-07-16T13:29:10.872681'}
 2025-07-16 13:29:10,877 - INFO - 127.0.0.1 - - [16/Jul/2025 13:29:10] "POST /print HTTP/1.1" 200 -
+2025-07-17 12:44:56,555 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:44:56,561 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:44:56,597 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5003
+ * Running on http://192.168.0.211:5003
+2025-07-17 12:44:56,599 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-17 12:46:14,478 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:46:14,487 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:46:14,494 - INFO - 127.0.0.1 - - [17/Jul/2025 12:46:14] "GET / HTTP/1.1" 200 -
+2025-07-17 12:46:14,502 - INFO - 127.0.0.1 - - [17/Jul/2025 12:46:14] "OPTIONS /print HTTP/1.1" 200 -
+2025-07-17 12:46:14,513 - INFO - Solicitud de impresión recibida para código: 0RH5602C622,202507170029
+2025-07-17 12:46:14,518 - INFO - ZPL command: CT~~CD,~CC^~CT~
+^XA
+~TA000
+~JSN
+^LT37
+^MNW
+^MTT
+^PON
+^PMN
+^LH0,0
+^JMA
+^PR4,4
+~SD15
+^JUS
+^LRN
+^CI27
+^...
+2025-07-17 12:46:14,533 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:46:14,538 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:46:14,543 - INFO - Iniciando impresión en: ZDesigner ZT230-300dpi ZPL
+2025-07-17 12:46:14,550 - INFO - Datos a imprimir: 612 bytes
+2025-07-17 12:46:14,612 - INFO - Job ID creado: 37
+2025-07-17 12:46:14,621 - INFO - Impresión completada exitosamente. Bytes escritos: 612
+2025-07-17 12:46:14,627 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:46:14,632 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:46:14,637 - INFO - Impresión exitosa LOCAL: {'status': 'printed', 'codigo': '0RH5602C622,202507170029', 'bytes': 612, 'printer': 'ZDesigner ZT230-300dpi ZPL', 'machine': 'MSI', 'local_ip': '192.168.0.211', 'timestamp': '2025-07-17T12:46:14.637179'}
+2025-07-17 12:46:14,642 - INFO - 127.0.0.1 - - [17/Jul/2025 12:46:14] "POST /print HTTP/1.1" 200 -
+2025-07-17 12:47:44,156 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:47:44,162 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:47:44,174 - INFO - 127.0.0.1 - - [17/Jul/2025 12:47:44] "GET / HTTP/1.1" 200 -
+2025-07-17 12:47:44,204 - INFO - 127.0.0.1 - - [17/Jul/2025 12:47:44] "OPTIONS /print HTTP/1.1" 200 -
+2025-07-17 12:47:44,213 - INFO - Solicitud de impresión recibida para código: 0RH5602C622,202507170030
+2025-07-17 12:47:44,219 - INFO - ZPL command: CT~~CD,~CC^~CT~
+^XA
+~TA000
+~JSN
+^LT37
+^MNW
+^MTT
+^PON
+^PMN
+^LH0,0
+^JMA
+^PR4,4
+~SD15
+^JUS
+^LRN
+^CI27
+^...
+2025-07-17 12:47:44,226 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:47:44,232 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:47:44,237 - INFO - Iniciando impresión en: ZDesigner ZT230-300dpi ZPL
+2025-07-17 12:47:44,242 - INFO - Datos a imprimir: 612 bytes
+2025-07-17 12:47:44,277 - INFO - Job ID creado: 38
+2025-07-17 12:47:44,286 - INFO - Impresión completada exitosamente. Bytes escritos: 612
+2025-07-17 12:47:44,292 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:47:44,297 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:47:44,303 - INFO - Impresión exitosa LOCAL: {'status': 'printed', 'codigo': '0RH5602C622,202507170030', 'bytes': 612, 'printer': 'ZDesigner ZT230-300dpi ZPL', 'machine': 'MSI', 'local_ip': '192.168.0.211', 'timestamp': '2025-07-17T12:47:44.303188'}
+2025-07-17 12:47:44,308 - INFO - 127.0.0.1 - - [17/Jul/2025 12:47:44] "POST /print HTTP/1.1" 200 -
+2025-07-17 12:48:19,655 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:48:19,665 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:48:19,677 - INFO - 127.0.0.1 - - [17/Jul/2025 12:48:19] "GET / HTTP/1.1" 200 -
+2025-07-17 12:48:19,698 - INFO - 127.0.0.1 - - [17/Jul/2025 12:48:19] "OPTIONS /print HTTP/1.1" 200 -
+2025-07-17 12:48:19,727 - INFO - Solicitud de impresión recibida para código: 0RH5602C622,202507170031
+2025-07-17 12:48:19,740 - INFO - ZPL command: CT~~CD,~CC^~CT~
+^XA
+~TA000
+~JSN
+^LT37
+^MNW
+^MTT
+^PON
+^PMN
+^LH0,0
+^JMA
+^PR4,4
+~SD15
+^JUS
+^LRN
+^CI27
+^...
+2025-07-17 12:48:19,755 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:48:19,768 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:48:19,781 - INFO - Iniciando impresión en: ZDesigner ZT230-300dpi ZPL
+2025-07-17 12:48:19,790 - INFO - Datos a imprimir: 612 bytes
+2025-07-17 12:48:19,827 - INFO - Job ID creado: 39
+2025-07-17 12:48:19,842 - INFO - Impresión completada exitosamente. Bytes escritos: 612
+2025-07-17 12:48:19,850 - INFO - Impresoras disponibles: ['ZDesigner ZT230-300dpi ZPL', 'OneNote (Desktop)', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 12:48:19,855 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb)
+2025-07-17 12:48:19,861 - INFO - Impresión exitosa LOCAL: {'status': 'printed', 'codigo': '0RH5602C622,202507170031', 'bytes': 612, 'printer': 'ZDesigner ZT230-300dpi ZPL', 'machine': 'MSI', 'local_ip': '192.168.0.211', 'timestamp': '2025-07-17T12:48:19.861556'}
+2025-07-17 12:48:19,874 - INFO - 127.0.0.1 - - [17/Jul/2025 12:48:19] "POST /print HTTP/1.1" 200 -
