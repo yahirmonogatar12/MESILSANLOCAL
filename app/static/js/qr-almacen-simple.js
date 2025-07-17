@@ -770,6 +770,48 @@ ${result.comando_manual || 'Use clic derecho → Imprimir'}
         });
     }
     
+    // Función robusta para obtener cantidad actual con múltiples fallbacks
+    function getCantidadActual() {
+        console.log('🔍 getCantidadActual: Iniciando búsqueda de cantidad...');
+        
+        // 1. Prioridad 1: Campo cantidad_actual específico
+        const cantidadActualField = document.getElementById('cantidad_actual');
+        if (cantidadActualField && cantidadActualField.value && cantidadActualField.value.trim() !== '') {
+            const valor = cantidadActualField.value.trim();
+            console.log('✅ getCantidadActual: Encontrado en cantidad_actual =', valor);
+            return valor;
+        }
+        
+        // 2. Prioridad 2: Campo cantidad_estandarizada
+        const cantidadEstandarizadaField = document.getElementById('cantidad_estandarizada');
+        if (cantidadEstandarizadaField && cantidadEstandarizadaField.value && cantidadEstandarizadaField.value.trim() !== '') {
+            const valor = cantidadEstandarizadaField.value.trim();
+            console.log('✅ getCantidadActual: Encontrado en cantidad_estandarizada =', valor);
+            return valor;
+        }
+        
+        // 3. Prioridad 3: Buscar en array codigosMaterial si existe el código seleccionado
+        try {
+            if (typeof codigosMaterial !== 'undefined' && Array.isArray(codigosMaterial)) {
+                const codigoSeleccionado = document.getElementById('codigoMaterialSelect')?.value;
+                if (codigoSeleccionado) {
+                    const material = codigosMaterial.find(m => m.codigo === codigoSeleccionado);
+                    if (material && material.cantidad_estandarizada) {
+                        const valor = material.cantidad_estandarizada.toString();
+                        console.log('✅ getCantidadActual: Encontrado en codigosMaterial array =', valor);
+                        return valor;
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ getCantidadActual: Error accediendo a codigosMaterial:', error);
+        }
+        
+        // 4. Último recurso: Valor por defecto con mensaje de advertencia
+        console.warn('⚠️ getCantidadActual: No se encontró cantidad en ningún lado, usando valor mínimo por defecto');
+        return '1';
+    }
+    
     // Función para generar comando ZPL
     function generarComandoZPL(codigo, tipo = 'material') {
         const fechaHora = new Date().toLocaleString('es-ES');
@@ -796,12 +838,9 @@ ${result.comando_manual || 'Use clic derecho → Imprimir'}
             numeroSerie = '';
         }
         
-        // Obtener valores de los campos del formulario si están disponibles
+        // Obtener valores de los campos del formulario usando función robusta
         try {
-            const cantidadField = document.getElementById('cantidad_estandarizada');
-            if (cantidadField && cantidadField.value) {
-                cantidadEstandarizada = cantidadField.value;
-            }
+            cantidadEstandarizada = getCantidadActual();
             
             const numeroParteField = document.getElementById('numero_parte_lower');
             if (numeroParteField && numeroParteField.value) {
@@ -983,6 +1022,102 @@ CT~~CD,~CC^~CT~
         }
     }
     
+    // Funciones de diagnóstico y prueba
+    function testGetCantidadActual() {
+        console.log('🧪 === TEST getCantidadActual() ===');
+        
+        // Mostrar estado de todos los campos relevantes
+        const campos = [
+            'cantidad_actual',
+            'cantidad_estandarizada', 
+            'codigoMaterialSelect'
+        ];
+        
+        campos.forEach(id => {
+            const campo = document.getElementById(id);
+            if (campo) {
+                console.log(`📋 ${id}: "${campo.value}" (tipo: ${typeof campo.value})`);
+            } else {
+                console.log(`❌ ${id}: Campo no encontrado`);
+            }
+        });
+        
+        // Mostrar estado del array codigosMaterial
+        if (typeof codigosMaterial !== 'undefined') {
+            console.log(`📦 codigosMaterial: Array de ${codigosMaterial.length} elementos`);
+            const codigoSeleccionado = document.getElementById('codigoMaterialSelect')?.value;
+            if (codigoSeleccionado) {
+                const material = codigosMaterial.find(m => m.codigo === codigoSeleccionado);
+                console.log(`🎯 Material seleccionado:`, material);
+            }
+        } else {
+            console.log('❌ codigosMaterial: No definido');
+        }
+        
+        // Ejecutar función y mostrar resultado
+        const resultado = getCantidadActual();
+        console.log(`🎯 RESULTADO FINAL: "${resultado}"`);
+        console.log('🧪 === FIN TEST ===');
+        
+        return resultado;
+    }
+    
+    function verificarCamposCantidad() {
+        console.log('🔍 === VERIFICACIÓN CAMPOS CANTIDAD ===');
+        
+        const verificaciones = [
+            {
+                id: 'cantidad_actual',
+                descripcion: 'Campo Cantidad Actual (prioritario)'
+            },
+            {
+                id: 'cantidad_estandarizada', 
+                descripcion: 'Campo Cantidad Estandarizada (fallback)'
+            }
+        ];
+        
+        verificaciones.forEach(({id, descripcion}) => {
+            const campo = document.getElementById(id);
+            if (campo) {
+                const valor = campo.value;
+                const estado = valor && valor.trim() !== '' ? '✅ TIENE VALOR' : '❌ VACÍO';
+                console.log(`${estado} ${descripcion}: "${valor}"`);
+            } else {
+                console.log(`❌ CAMPO NO EXISTE: ${descripcion}`);
+            }
+        });
+        
+        console.log('🔍 === FIN VERIFICACIÓN ===');
+    }
+    
+    function verificarCantidadBD() {
+        console.log('🗄️ === VERIFICACIÓN BASE DE DATOS ===');
+        
+        if (typeof codigosMaterial === 'undefined') {
+            console.log('❌ Array codigosMaterial no está disponible');
+            return;
+        }
+        
+        console.log(`📦 Total materiales en BD: ${codigosMaterial.length}`);
+        
+        const codigoSeleccionado = document.getElementById('codigoMaterialSelect')?.value;
+        if (codigoSeleccionado) {
+            console.log(`🎯 Código actualmente seleccionado: "${codigoSeleccionado}"`);
+            
+            const material = codigosMaterial.find(m => m.codigo === codigoSeleccionado);
+            if (material) {
+                console.log('✅ Material encontrado en BD:', material);
+                console.log(`📊 Cantidad en BD: "${material.cantidad_estandarizada}"`);
+            } else {
+                console.log('❌ Material NO encontrado en BD');
+            }
+        } else {
+            console.log('⚠️ No hay código seleccionado');
+        }
+        
+        console.log('🗄️ === FIN VERIFICACIÓN BD ===');
+    }
+    
     // API pública del módulo
     return {
         generarQR: generarQR,
@@ -990,9 +1125,38 @@ CT~~CD,~CC^~CT~
         descargarQR: descargarQR,
         imprimirQR: imprimirQR,
         imprimirZebra: imprimirZebra,
-        configurarImpresora: mostrarModalConfiguracionZebra
+        configurarImpresora: mostrarModalConfiguracionZebra,
+        // Funciones de diagnóstico
+        testGetCantidadActual: testGetCantidadActual,
+        verificarCamposCantidad: verificarCamposCantidad,
+        verificarCantidadBD: verificarCantidadBD,
+        getCantidadActual: getCantidadActual
     };
 
 })();
 
 console.log('✅ QR Almacén Simple cargado correctamente');
+
+// Funciones globales para debugging
+window.testCantidad = function() {
+    return QRAlmacenSimple.testGetCantidadActual();
+};
+
+window.verificarCantidad = function() {
+    QRAlmacenSimple.verificarCamposCantidad();
+    QRAlmacenSimple.verificarCantidadBD();
+};
+
+window.diagnosticarCantidad = function() {
+    console.log('🔬 === DIAGNÓSTICO COMPLETO DE CANTIDAD ===');
+    QRAlmacenSimple.verificarCamposCantidad();
+    QRAlmacenSimple.verificarCantidadBD();
+    const resultado = QRAlmacenSimple.testGetCantidadActual();
+    console.log('🔬 === FIN DIAGNÓSTICO ===');
+    return resultado;
+};
+
+console.log('🔧 Funciones de diagnóstico disponibles:');
+console.log('   - window.testCantidad() : Prueba la función getCantidadActual()');
+console.log('   - window.verificarCantidad() : Verifica estado de campos y BD');
+console.log('   - window.diagnosticarCantidad() : Diagnóstico completo');

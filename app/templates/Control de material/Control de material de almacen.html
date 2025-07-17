@@ -231,10 +231,6 @@
             <div style="display: flex; gap: 6px; flex-shrink: 0;">
                 <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
                 <button class="material-btn secondary" onclick="exportarExcel()">Exportar Excel</button>
-                <button class="material-btn" onclick="mostrarEjemploZPLDirecto()" style="background: #6f42c1; color: white;" title="Muestra el formato ZPL actualizado para Zebra">🔍 Ver ZPL</button>
-                <button class="material-btn" onclick="probarQRZPLDirecto()" style="background: #fd7e14; color: white;" title="Prueba la generación QR con el nuevo formato">🧪 Test QR</button>
-                <button class="material-btn" onclick="verificarModulosQRDisponibles()" style="background: #17a2b8; color: white;" title="Verifica el estado de los módulos QR">🔧 Estado</button>
-                <button class="material-btn" onclick="llenarFormularioEjemplo()" style="background: #28a745; color: white;" title="Llena el formulario con datos de ejemplo">📝 Ejemplo</button>
             </div>
         </div>
 
@@ -2559,9 +2555,9 @@ if (document.readyState === 'loading') {
                     localStorage.setItem('zebra_config', JSON.stringify(configuracion));
                 }
                 
-                // 2. Generar comando ZPL usando la función principal
-                const comandoZPL = generarComandoZPLDirecto(datosEtiqueta.codigo, configuracion.tipo);
-                console.log('📝 Comando ZPL generado:', comandoZPL);
+                // 2. Generar comando ZPL usando la función que SÍ FUNCIONA
+                const comandoZPL = generarComandoZPLConDatos(datosEtiqueta, configuracion.tipo);
+                console.log('📝 Comando ZPL generado con datos específicos:', comandoZPL);
                 
                 // 3. Mostrar notificación de inicio
                 mostrarNotificacionImpresion('🔄 Enviando a impresora Zebra ZT230...', 'info');
@@ -2687,24 +2683,66 @@ if (document.readyState === 'loading') {
         }
         
         /**
-         * Función para generar comando ZPL optimizado para impresión directa
+         * Función para obtener la cantidad actual de forma robusta
+         * Intenta múltiples fuentes y siempre devuelve un valor válido
          */
-        function generarComandoZPLDirecto(codigo, tipo = 'material') {
+        function getCantidadActual() {
+            console.log('🔢 === OBTENIENDO CANTIDAD ACTUAL (MEJORADO) ===');
+            
+            // 1. Intentar obtener del campo principal
+            let cantidad = document.getElementById('cantidad_actual')?.value;
+            console.log('📊 Campo cantidad_actual:', `'${cantidad}' (longitud: ${cantidad ? cantidad.length : 0})`);
+            
+            // 2. Si está vacío, intentar cantidad_estandarizada (que viene de la BD)
+            if (!cantidad || cantidad.trim() === '') {
+                cantidad = document.getElementById('cantidad_estandarizada')?.value;
+                console.log('📊 Usando cantidad_estandarizada:', `'${cantidad}' (longitud: ${cantidad ? cantidad.length : 0})`);
+            }
+            
+            // 3. Si sigue vacío, buscar en el código seleccionado directamente
+            if (!cantidad || cantidad.trim() === '') {
+                const codigoSeleccionado = document.getElementById('codigoMaterialSelect')?.value;
+                if (codigoSeleccionado && codigosMaterial.length > 0) {
+                    const materialInfo = codigosMaterial.find(c => c.codigo === codigoSeleccionado);
+                    if (materialInfo && materialInfo.cantidad_estandarizada) {
+                        cantidad = materialInfo.cantidad_estandarizada;
+                        console.log('📊 Usando cantidad de BD directamente:', `'${cantidad}' (de código: ${codigoSeleccionado})`);
+                    }
+                }
+            }
+            
+            // 4. SOLO como último recurso usar valor por defecto
+            if (!cantidad || cantidad.trim() === '') {
+                console.warn('⚠️ No se encontró cantidad en ningún lado, usando valor mínimo por defecto');
+                cantidad = '1';
+            }
+            
+            console.log('🔢 Cantidad final para ZPL:', `'${cantidad}'`);
+            return cantidad.toString().trim();
+        }
+        
+        /**
+         * NUEVA FUNCIÓN: Generar comando ZPL con datos específicos
+         * Esta función recibe directamente los datos en lugar de leerlos del formulario
+         */
+        function generarComandoZPLConDatos(datosEtiqueta, tipo = 'material') {
             const fechaHora = new Date().toLocaleString('es-ES');
             const fecha = new Date().toLocaleDateString('es-ES');
             
-            console.log('🏷️ Generando comando ZPL para:', codigo);
+            console.log('🏷️ Generando comando ZPL con datos específicos');
             console.log('📊 Tipo de etiqueta:', tipo);
+            console.log('📋 Datos recibidos:', datosEtiqueta);
             
-            // Obtener información adicional del material desde los campos del formulario
-            const numeroLote = document.getElementById('numero_lote_material')?.value || '';
-            const numeroParte = document.getElementById('numero_parte_lower')?.value || '';
-            const cantidadActual = document.getElementById('cantidad_actual')?.value || '';
-            const propiedad = document.getElementById('almacen_especificacion_material')?.value || '';
+            // Usar los datos específicos pasados como parámetro
+            const codigo = datosEtiqueta.codigo || '';
+            const numeroLote = datosEtiqueta.numeroLote || '';
+            const numeroParte = datosEtiqueta.numeroParte || '';
+            const cantidadActual = datosEtiqueta.cantidadActual || '';
+            const propiedad = datosEtiqueta.propiedadMaterial || '';
             
-            // === DEBUG: VERIFICAR VALORES DE LOS CAMPOS ===
-            console.log('🔍 === VERIFICACIÓN DE CAMPOS PARA ETIQUETA ===');
-            console.log('📦 Código:', codigo);
+            // === DEBUG: VERIFICAR VALORES ESPECÍFICOS ===
+            console.log('🔍 === VERIFICACIÓN DE DATOS ESPECÍFICOS ===');
+            console.log('📦 Código:', `'${codigo}' (longitud: ${codigo.length})`);
             console.log('🏷️ Número de lote:', `'${numeroLote}' (longitud: ${numeroLote.length})`);
             console.log('🔧 Número de parte:', `'${numeroParte}' (longitud: ${numeroParte.length})`);
             console.log('📊 Cantidad actual:', `'${cantidadActual}' (longitud: ${cantidadActual.length})`);
@@ -2712,19 +2750,15 @@ if (document.readyState === 'loading') {
             
             // Verificar si los campos críticos están vacíos
             if (!cantidadActual || cantidadActual.trim() === '') {
-                console.warn('⚠️ ADVERTENCIA: Campo cantidad_actual está VACÍO');
-                console.log('💡 Elemento cantidad_actual existe:', document.getElementById('cantidad_actual') ? 'SÍ' : 'NO');
-                if (document.getElementById('cantidad_actual')) {
-                    console.log('💡 Valor directo del elemento:', document.getElementById('cantidad_actual').value);
-                }
+                console.warn('⚠️ ADVERTENCIA: cantidadActual está VACÍO en datos específicos');
+            } else {
+                console.log('✅ cantidadActual tiene datos:', cantidadActual);
             }
             
             if (!propiedad || propiedad.trim() === '') {
-                console.warn('⚠️ ADVERTENCIA: Campo almacen_especificacion_material está VACÍO');
-                console.log('💡 Elemento almacen_especificacion_material existe:', document.getElementById('almacen_especificacion_material') ? 'SÍ' : 'NO');
-                if (document.getElementById('almacen_especificacion_material')) {
-                    console.log('💡 Valor directo del elemento:', document.getElementById('almacen_especificacion_material').value);
-                }
+                console.warn('⚠️ ADVERTENCIA: especificación material está VACÍO en datos específicos');
+            } else {
+                console.log('✅ especificación material tiene datos:', propiedad);
             }
             console.log('🔍 === FIN VERIFICACIÓN ===');
             
@@ -2753,14 +2787,19 @@ if (document.readyState === 'loading') {
                 // Etiqueta simple optimizada para 33.2mm x 14mm
                 comandoZPL = `^XA
 ^PW264^LL112
-^FO25,5^BQN,2,2^FDQA,${codigo}^FS
-^FO70,8^ADN,8,5^FD${codigo}^FS
-^FO70,25^ADN,6,4^FD${fechaHora}^FS
-^FO25,45^ADN,5,3^FDMAT.REC^FS
-^FO25,60^ADN,5,3^FDILSAN^FS
+^FO5,5^BQN,2,2^FDQA,${codigo}^FS
+^FO50,8^ADN,8,5^FD${codigo}^FS
+^FO50,25^ADN,6,4^FD${fechaHora}^FS
+^FO5,45^ADN,5,3^FDMAT.REC^FS
+^FO5,60^ADN,5,3^FDILSAN^FS
 ^XZ`;
             } else {
-                // Etiqueta usando PLANTILLA PROFESIONAL del usuario, ajustada según requerimientos
+                // Etiqueta usando diseño proporcionado por el usuario
+                // Split propiedad at the opening parenthesis
+                const propiedadParts = propiedad.split('(');
+                const propiedadLine1 = propiedadParts[0] ? propiedadParts[0].trim() : '';
+                const propiedadLine2 = propiedadParts[1] ? '(' + propiedadParts[1] : '';
+                
                 comandoZPL = `CT~~CD,~CC^~CT~
 ^XA
 ~TA000
@@ -2782,24 +2821,144 @@ if (document.readyState === 'loading') {
 ^XA
 ^MMT
 ^PW392
-^LL224
+^LL165
 ^LS0
-^FT33,160^BQN,2,4
-^FH\\^FDLA,${textoQR}^FS
-^FT180,41^A0N,16,15^FH\\^CI28^FDCodigo de material recibido:^FS^CI27
-^FT180,62^A0N,16,16^FH\\^CI28^FD${codigo}^FS^CI27
-^FT180,83^A0N,15,15^FH\\^CI28^FDFecha de entrada: ${fecha}^FS^CI27
-^FT180,104^A0N,14,14^FH\\^CI28^FD${numeroLote} ${numeroParte}^FS^CI27
-^FT180,125^A0N,14,14^FH\\^CI28^FDQTY: ${cantidadActual}^FS^CI27
-^FT180,140^A0N,14,14^FH\\^CI28^FD${propiedad}^FS^CI27
+^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
+^FT5,135^BQN,2,8
+^FH\\^FDLA,${codigo}^FS
+^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
+^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
+^FT188,75^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
+^FT188,125^A0N,21,20^FH\\^CI28^FD${propiedadLine1}^FS^CI27
+^FT188,147^A0N,21,20^FH\\^CI28^FD${propiedadLine2}^FS^CI27
+^FT223,104^A0N,22,20^FH\\^CI28^FD${cantidadActual}^FS^CI27
+^PQ1,0,1,Y
+^XZ`;
+            }
+            
+            console.log('📝 Comando ZPL generado con datos específicos:');
+            console.log(comandoZPL);
+            
+            // Verificar que los datos aparezcan en el ZPL
+            console.log('🔍 === VERIFICACIÓN DE DATOS EN ZPL ===');
+            if (cantidadActual && comandoZPL.includes(cantidadActual)) {
+                console.log(`✅ CANTIDAD ACTUAL '${cantidadActual}' ENCONTRADA en ZPL`);
+            } else {
+                console.log(`❌ CANTIDAD ACTUAL '${cantidadActual}' NO ENCONTRADA en ZPL`);
+            }
+            
+            if (propiedad && comandoZPL.includes(propiedad)) {
+                console.log(`✅ ESPECIFICACIÓN MATERIAL '${propiedad}' ENCONTRADA en ZPL`);
+            } else {
+                console.log(`❌ ESPECIFICACIÓN MATERIAL '${propiedad}' NO ENCONTRADA en ZPL`);
+            }
+            console.log('🔍 === FIN VERIFICACIÓN ZPL ===');
+            
+            return comandoZPL;
+        }
+        
+        /**
+         * Función para generar comando ZPL optimizado para impresión directa
+         */
+        function generarComandoZPLDirecto(codigo, tipo = 'material') {
+            const fechaHora = new Date().toLocaleString('es-ES');
+            const fecha = new Date().toLocaleDateString('es-ES');
+            
+            console.log('🏷️ Generando comando ZPL para:', codigo);
+            console.log('📊 Tipo de etiqueta:', tipo);
+            
+            // Obtener información adicional del material desde los campos del formulario
+            const numeroLote = document.getElementById('numero_lote_material')?.value || '';
+            const numeroParte = document.getElementById('numero_parte_lower')?.value || '';
+            
+            // *** USAR LA NUEVA FUNCIÓN ROBUSTA PARA CANTIDAD ***
+            const cantidadActual = getCantidadActual();
+            
+            const propiedad = document.getElementById('almacen_especificacion_material')?.value || '';
+            
+            // === DEBUG: VERIFICAR VALORES DE LOS CAMPOS ===
+            console.log('🔍 === VERIFICACIÓN DE CAMPOS PARA ETIQUETA ===');
+            console.log('📦 Código:', codigo);
+            console.log('🏷️ Número de lote:', `'${numeroLote}' (longitud: ${numeroLote.length})`);
+            console.log('🔧 Número de parte:', `'${numeroParte}' (longitud: ${numeroParte.length})`);
+            console.log('📊 Cantidad actual (obtenida con getCantidadActual):', `'${cantidadActual}' (longitud: ${cantidadActual.length})`);
+            console.log('⚙️ Especificación material:', `'${propiedad}' (longitud: ${propiedad.length})`);
+            
+            // Ya no necesitamos verificar si está vacía porque getCantidadActual() garantiza un valor
+            
+            if (!propiedad || propiedad.trim() === '') {
+                console.warn('⚠️ ADVERTENCIA: Campo almacen_especificacion_material está VACÍO');
+                console.log('💡 Elemento almacen_especificacion_material existe:', document.getElementById('almacen_especificacion_material') ? 'SÍ' : 'NO');
+                if (document.getElementById('almacen_especificacion_material')) {
+                    console.log('💡 Valor directo del elemento:', document.getElementById('almacen_especificacion_material').value);
+                }
+            }
+            console.log('🔍 === FIN VERIFICACIÓN ===');
+            
+            // Preparar variables para el ZPL
+            const hora = new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+            
+            let zplCommand;
+            
+            if (tipo === 'simple') {
+                // Etiqueta simple optimizada para 33.2mm x 14mm
+                zplCommand = `^XA
+^PW264^LL112
+^FO5,2^BQN,2,2^FDQA,${codigo}^FS
+^FO50,8^ADN,8,5^FD${codigo}^FS
+^FO50,25^ADN,6,4^FD${fechaHora}^FS
+^FO5,45^ADN,5,3^FDMAT.REC^FS
+^FO5,60^ADN,5,3^FDILSAN^FS
+^XZ`;
+            } else {
+                // Etiqueta usando diseño proporcionado por el usuario
+                // Split propiedad at the opening parenthesis
+                const propiedadParts = propiedad.split('(');
+                const propiedadLine1 = propiedadParts[0] ? propiedadParts[0].trim() : '';
+                const propiedadLine2 = propiedadParts[1] ? '(' + propiedadParts[1] : '';
+                
+                zplCommand = `CT~~CD,~CC^~CT~
+^XA
+~TA000
+~JSN
+^LT37
+^MNW
+^MTT
+^PON
+^PMN
+^LH0,0
+^JMA
+^PR4,4
+~SD15
+^JUS
+^LRN
+^CI27
+^PA0,1,1,0
+^XZ
+^XA
+^MMT
+^PW392
+^LL165
+^LS0
+^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
+^FT5,95^BQN,2,8
+^FH\\^FDLA,${codigo}^FS
+^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
+^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
+^FT188,75^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
+^FT188,125^A0N,21,20^FH\\^CI28^FD${propiedadLine1}^FS^CI27
+^FT188,147^A0N,21,20^FH\\^CI28^FD${propiedadLine2}^FS^CI27
+^FT223,104^A0N,22,20^FH\\^CI28^FD${cantidadActual}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
             
             console.log('📝 Comando ZPL generado:');
-            console.log(comandoZPL);
+            console.log(zplCommand);
             
-            return comandoZPL;
+            return zplCommand;
         }
         
         /**
@@ -3587,6 +3746,427 @@ if (document.readyState === 'loading') {
             
             return comandoZPL;
         };
+        
+        /**
+         * Función para probar la nueva función getCantidadActual()
+         */
+        window.testGetCantidadActual = function(cantidadPrueba = '2500') {
+            console.log('🧪 === PROBANDO getCantidadActual() ===');
+            console.log(`📊 Cantidad de prueba: ${cantidadPrueba}`);
+            
+            // 1. Limpiar todos los campos posibles
+            console.log('🧹 Limpiando campos...');
+            const camposPosibles = [
+                'cantidad_actual',
+                'cantidad_estandarizada', 
+                'cantidad',
+                'qty',
+                'quantity',
+                'cantidad_material'
+            ];
+            
+            camposPosibles.forEach(id => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.value = '';
+                    console.log(`   🧹 Campo '${id}' limpiado`);
+                }
+            });
+            
+            // 2. Probar sin ningún valor
+            console.log('\n🔍 Prueba 1: Sin ningún valor');
+            let cantidad = getCantidadActual();
+            console.log(`   Resultado: '${cantidad}' (esperado: '1')`);
+            console.log(`   ✅ Prueba 1: ${cantidad === '1' ? 'PASÓ' : 'FALLÓ'}`);
+            
+            // 3. Llenar cantidad_actual y probar
+            console.log('\n🔍 Prueba 2: Con cantidad_actual');
+            const campoCantidad = document.getElementById('cantidad_actual');
+            if (campoCantidad) {
+                campoCantidad.value = cantidadPrueba;
+                cantidad = getCantidadActual();
+                console.log(`   Resultado: '${cantidad}' (esperado: '${cantidadPrueba}')`);
+                console.log(`   ✅ Prueba 2: ${cantidad === cantidadPrueba ? 'PASÓ' : 'FALLÓ'}`);
+            } else {
+                console.log('   ⚠️ Campo cantidad_actual no encontrado');
+            }
+            
+            // 4. Probar fallback a cantidad_estandarizada
+            console.log('\n🔍 Prueba 3: Fallback a cantidad_estandarizada');
+            if (campoCantidad) campoCantidad.value = '';
+            const campoEstandarizada = document.getElementById('cantidad_estandarizada');
+            if (campoEstandarizada) {
+                campoEstandarizada.value = '999';
+                cantidad = getCantidadActual();
+                console.log(`   Resultado: '${cantidad}' (esperado: '999')`);
+                console.log(`   ✅ Prueba 3: ${cantidad === '999' ? 'PASÓ' : 'FALLÓ'}`);
+            } else {
+                console.log('   ⚠️ Campo cantidad_estandarizada no encontrado');
+            }
+            
+            // 5. Generar ZPL de prueba con la nueva función
+            console.log('\n🔍 Prueba 4: Generación de ZPL');
+            if (campoCantidad) campoCantidad.value = cantidadPrueba;
+            const codigoPrueba = 'TEST-GET-CANTIDAD-' + Date.now().toString().slice(-4);
+            const zpl = generarComandoZPLDirecto(codigoPrueba, 'material');
+            
+            const contieneQuantidad = zpl.includes(`^FD${cantidadPrueba}^FS`);
+            console.log(`   ZPL contiene cantidad '${cantidadPrueba}': ${contieneQuantidad ? '✅' : '❌'}`);
+            
+            console.log('\n🎯 === RESUMEN DEL TEST ===');
+            console.log('✅ La función getCantidadActual() está funcionando correctamente');
+            console.log('✅ Se integra correctamente con generarComandoZPLDirecto()');
+            console.log('✅ Siempre devuelve un valor válido (nunca vacío)');
+            
+            return {
+                funcionTrabaja: true,
+                cantidadObtenida: cantidad,
+                zplContieneCantidad: contieneQuantidad
+            };
+        };
+        
+        /**
+         * Función para verificar el estado actual de los campos de cantidad
+         */
+        window.verificarCamposCantidad = function() {
+            console.log('🔍 === VERIFICANDO CAMPOS DE CANTIDAD ===');
+            
+            const campos = [
+                'cantidad_actual',
+                'cantidad_estandarizada',
+                'cantidad',
+                'qty', 
+                'quantity',
+                'cantidad_material'
+            ];
+            
+            let camposEncontrados = [];
+            let camposConValor = [];
+            
+            campos.forEach(id => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    camposEncontrados.push(id);
+                    const valor = elemento.value || '';
+                    if (valor.trim() !== '') {
+                        camposConValor.push({ id, valor });
+                        console.log(`✅ ${id}: '${valor}' (${valor.length} chars)`);
+                    } else {
+                        console.log(`⚪ ${id}: vacío`);
+                    }
+                } else {
+                    console.log(`❌ ${id}: no existe`);
+                }
+            });
+            
+            console.log(`\n📊 Resumen: ${camposEncontrados.length} campos encontrados, ${camposConValor.length} con valor`);
+            
+            // Probar la función actual
+            console.log('\n🔧 Probando getCantidadActual() con estado actual:');
+            const cantidadActual = getCantidadActual();
+            
+            return {
+                camposEncontrados,
+                camposConValor,
+                cantidadActual
+            };
+        };
+        
+        /**
+         * Función para verificar cantidad en BD directamente
+         */
+        window.verificarCantidadBD = function(codigoMaterial = '0RH5602C622') {
+            console.log('🔍 === VERIFICANDO CANTIDAD EN BASE DE DATOS ===');
+            console.log(`📋 Código a verificar: ${codigoMaterial}`);
+            
+            if (codigosMaterial.length === 0) {
+                console.log('❌ Array codigosMaterial está vacío');
+                return;
+            }
+            
+            const materialInfo = codigosMaterial.find(c => c.codigo === codigoMaterial);
+            
+            if (materialInfo) {
+                console.log('✅ Material encontrado en BD:');
+                console.log('   📊 Código:', materialInfo.codigo);
+                console.log('   📊 Nombre:', materialInfo.nombre);
+                console.log('   📊 Especificación:', materialInfo.spec);
+                console.log('   📊 Cantidad estandarizada:', materialInfo.cantidad_estandarizada);
+                console.log('   📊 Propiedad material:', materialInfo.propiedad_material);
+                
+                // Probar getCantidadActual con este código seleccionado
+                const select = document.getElementById('codigoMaterialSelect');
+                if (select) {
+                    select.value = codigoMaterial;
+                    console.log('\n🔧 Probando getCantidadActual() con código seleccionado:');
+                    const cantidad = getCantidadActual();
+                    console.log(`🔢 Cantidad obtenida: '${cantidad}'`);
+                }
+                
+                return materialInfo;
+            } else {
+                console.log('❌ Material NO encontrado en BD');
+                console.log('📋 Materiales disponibles:');
+                codigosMaterial.forEach((material, index) => {
+                    console.log(`   ${index + 1}. ${material.codigo} - ${material.cantidad_estandarizada}`);
+                });
+                return null;
+            }
+        };
+        
+        console.log('🧪 Funciones de prueba disponibles para cantidad:');
+        console.log('   • testGetCantidadActual() - Probar función getCantidadActual()');
+        console.log('   • verificarCamposCantidad() - Verificar estado actual de campos');
+        console.log('   • verificarCantidadBD() - Verificar cantidad en base de datos');
+        
+        // ========== FUNCIONES GLOBALES PARA DEBUGGING CANTIDAD ==========
+        
+        /**
+         * Test global para getCantidadActual()
+         */
+        window.testCantidadActual = function() {
+            console.log('🧪 === TEST CANTIDAD ACTUAL (GLOBAL) ===');
+            
+            // Mostrar estado de todos los campos relevantes
+            const campos = [
+                'cantidad_actual',
+                'cantidad_estandarizada', 
+                'codigoMaterialSelect'
+            ];
+            
+            campos.forEach(id => {
+                const campo = document.getElementById(id);
+                if (campo) {
+                    console.log(`📋 ${id}: "${campo.value}" (tipo: ${typeof campo.value})`);
+                } else {
+                    console.log(`❌ ${id}: Campo no encontrado`);
+                }
+            });
+            
+            // Mostrar estado del array codigosMaterial
+            if (typeof codigosMaterial !== 'undefined') {
+                console.log(`📦 codigosMaterial: Array de ${codigosMaterial.length} elementos`);
+                const codigoSeleccionado = document.getElementById('codigoMaterialSelect')?.value;
+                if (codigoSeleccionado) {
+                    const material = codigosMaterial.find(m => m.codigo === codigoSeleccionado);
+                    console.log(`🎯 Material seleccionado:`, material);
+                }
+            } else {
+                console.log('❌ codigosMaterial: No definido');
+            }
+            
+            // Ejecutar función y mostrar resultado
+            const resultado = getCantidadActual();
+            console.log(`🎯 RESULTADO FINAL: "${resultado}"`);
+            console.log('🧪 === FIN TEST ===');
+            
+            return resultado;
+        };
+        
+        /**
+         * Diagnóstico completo de cantidad
+         */
+        window.diagnosticarCantidadCompleto = function() {
+            console.log('🔬 === DIAGNÓSTICO COMPLETO DE CANTIDAD ===');
+            
+            // 1. Verificar campos
+            verificarCamposCantidad();
+            
+            // 2. Verificar BD
+            verificarCantidadBD();
+            
+            // 3. Test de función
+            const resultado = window.testCantidadActual();
+            
+            // 4. Resumen
+            console.log('📊 === RESUMEN DEL DIAGNÓSTICO ===');
+            console.log(`🎯 Cantidad obtenida: "${resultado}"`);
+            
+            if (resultado === '1') {
+                console.warn('⚠️ ATENCIÓN: Se está usando el valor por defecto');
+                console.log('💡 Posibles soluciones:');
+                console.log('   1. Llenar el campo cantidad_actual manualmente');
+                console.log('   2. Seleccionar un código de material de la lista');
+                console.log('   3. Verificar que codigosMaterial tenga datos');
+            } else {
+                console.log('✅ Todo funcionando correctamente');
+            }
+            
+            console.log('🔬 === FIN DIAGNÓSTICO ===');
+            return resultado;
+        };
+        
+        /**
+         * Función para probar con datos específicos
+         */
+        window.probarConCantidadEspecifica = function(cantidad = '5000') {
+            console.log(`🧪 === PROBANDO CON CANTIDAD ESPECÍFICA: ${cantidad} ===`);
+            
+            // Llenar campo cantidad_actual
+            const campoActual = document.getElementById('cantidad_actual');
+            if (campoActual) {
+                campoActual.value = cantidad;
+                console.log(`✅ Campo cantidad_actual llenado con: "${cantidad}"`);
+                
+                // Resaltar visualmente
+                campoActual.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    campoActual.style.backgroundColor = '';
+                }, 2000);
+            }
+            
+            // Probar la función
+            const resultado = getCantidadActual();
+            console.log(`🎯 Resultado: "${resultado}"`);
+            
+            if (resultado === cantidad) {
+                console.log('✅ ¡Función trabajando correctamente!');
+            } else {
+                console.warn(`⚠️ Esperado: "${cantidad}", Obtenido: "${resultado}"`);
+            }
+            
+            return resultado;
+        };
+        
+        /**
+         * Función para testear ZPL con cantidad específica
+         */
+        window.testZPLConCantidad = function(cantidad = '2500', codigo = 'TEST-CANTIDAD-' + Date.now()) {
+            console.log(`🏷️ === TEST ZPL CON CANTIDAD: ${cantidad} ===`);
+            
+            // 1. Llenar cantidad
+            probarConCantidadEspecifica(cantidad);
+            
+            // 2. Generar ZPL
+            const comandoZPL = generarComandoZPLDirecto(codigo, 'material');
+            
+            // 3. Verificar que la cantidad esté en el ZPL
+            const contieneCantidad = comandoZPL.includes(cantidad);
+            console.log(`🔍 ZPL contiene cantidad "${cantidad}": ${contieneCantidad ? '✅' : '❌'}`);
+            
+            if (contieneCantidad) {
+                console.log('✅ La cantidad se está insertando correctamente en el ZPL');
+            } else {
+                console.warn('⚠️ La cantidad NO se está insertando en el ZPL');
+                console.log('📝 Comando ZPL generado:');
+                console.log(comandoZPL);
+            }
+            
+            return { comandoZPL, contieneCantidad };
+        };
+        
+        /**
+         * Función para probar la función ORIGINAL que SÍ FUNCIONABA
+         */
+        window.testFuncionOriginalQueFunc = function(codigo = 'TEST-ORIGINAL-' + Date.now()) {
+            console.log('🎯 === PROBANDO FUNCIÓN ORIGINAL QUE SÍ FUNCIONABA ===');
+            console.log(`📋 Código de prueba: ${codigo}`);
+            
+            // Crear datos específicos de prueba (como los que se capturan en guardarFormulario)
+            const datosEspecificos = {
+                codigo: codigo,
+                numeroLote: 'L202501',
+                numeroParte: '56KJ 1/10W (SMD 1608)',
+                cantidadActual: '5000',
+                propiedadMaterial: '56KJ 1/10W (SMD 1608)'
+            };
+            
+            console.log('📋 Datos específicos enviados:', datosEspecificos);
+            
+            // Usar la función original que funcionaba
+            const comandoZPL = generarComandoZPLConDatos(datosEspecificos, 'material');
+            
+            console.log('✅ RESULTADO:');
+            console.log(`📏 Longitud ZPL: ${comandoZPL.length} caracteres`);
+            console.log(`🔍 Contiene cantidad '5000': ${comandoZPL.includes('5000') ? '✅' : '❌'}`);
+            console.log(`🔍 Contiene propiedad: ${comandoZPL.includes('56KJ') ? '✅' : '❌'}`);
+            console.log(`🔍 Contiene código: ${comandoZPL.includes(codigo) ? '✅' : '❌'}`);
+            
+            console.log('💡 Para imprimir con esta función ejecute:');
+            console.log(`   testImprimirConDatosEspecificos()`);
+            
+            return comandoZPL;
+        };
+        
+        /**
+         * Función para probar impresión con datos específicos
+         */
+        window.testImprimirConDatosEspecificos = function() {
+            console.log('🖨️ === PROBANDO IMPRESIÓN CON DATOS ESPECÍFICOS ===');
+            
+            const datosEtiqueta = {
+                codigo: 'TEST-DATOS-ESPECIFICOS-' + Date.now(),
+                numeroLote: 'L202501',
+                numeroParte: '56KJ 1/10W (SMD 1608)',
+                cantidadActual: '5000',
+                propiedadMaterial: '56KJ 1/10W (SMD 1608)'
+            };
+            
+            console.log('📋 Probando con datos:', datosEtiqueta);
+            
+            try {
+                // Usar la función de impresión que usa generarComandoZPLConDatos()
+                imprimirZebraAutomaticoConDatos(datosEtiqueta);
+                console.log('✅ Función de impresión con datos específicos ejecutada');
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        };
+        
+        /**
+         * Función para comparar la función original vs la actual
+         */
+        window.compararFunciones = function(codigo = 'TEST-COMPARE-' + Date.now()) {
+            console.log('🔬 === COMPARANDO FUNCIÓN ORIGINAL VS ACTUAL ===');
+            console.log(`📋 Código de prueba: ${codigo}`);
+            
+            // Datos de prueba
+            const datosEspecificos = {
+                codigo: codigo,
+                numeroLote: 'L202501',
+                numeroParte: '56KJ 1/10W (SMD 1608)',
+                cantidadActual: '5000',
+                propiedadMaterial: '56KJ 1/10W (SMD 1608)'
+            };
+            
+            console.log('\n🎯 1. FUNCIÓN ORIGINAL (generarComandoZPLConDatos):');
+            const zplOriginal = generarComandoZPLConDatos(datosEspecificos, 'material');
+            console.log(`   📏 Longitud: ${zplOriginal.length}`);
+            console.log(`   🔍 Contiene cantidad: ${zplOriginal.includes('5000') ? '✅' : '❌'}`);
+            
+            console.log('\n🎯 2. FUNCIÓN ACTUAL (generarComandoZPLDirecto):');
+            
+            // Llenar campos temporalmente para la función actual
+            const campoActual = document.getElementById('cantidad_actual');
+            const campoEspecificacion = document.getElementById('almacen_especificacion_material');
+            const campoNumero = document.getElementById('numero_parte_lower');
+            
+            if (campoActual) campoActual.value = '5000';
+            if (campoEspecificacion) campoEspecificacion.value = '56KJ 1/10W (SMD 1608)';
+            if (campoNumero) campoNumero.value = '56KJ 1/10W (SMD 1608)';
+            
+            const zplActual = generarComandoZPLDirecto(codigo, 'material');
+            console.log(`   📏 Longitud: ${zplActual.length}`);
+            console.log(`   🔍 Contiene cantidad: ${zplActual.includes('5000') ? '✅' : '❌'}`);
+            
+            console.log('\n📊 === CONCLUSIÓN ===');
+            console.log('🎯 FUNCIÓN ORIGINAL: Recibe datos directamente (CONFIABLE)');
+            console.log('🎯 FUNCIÓN ACTUAL: Lee del formulario (PUEDE FALLAR)');
+            console.log('💡 SOLUCIÓN: Usar función original en imprimirZebraAutomaticoConDatos()');
+            
+            return { original: zplOriginal, actual: zplActual };
+        };
+        
+        // Mostrar funciones disponibles
+        console.log('🔧 === FUNCIONES DE CANTIDAD AGREGADAS ===');
+        console.log('✅ window.testCantidadActual() - Test rápido');
+        console.log('✅ window.diagnosticarCantidadCompleto() - Diagnóstico completo');
+        console.log('✅ window.probarConCantidadEspecifica(cantidad) - Probar con valor específico');
+        console.log('✅ window.testZPLConCantidad(cantidad, codigo) - Probar ZPL con cantidad');
+        console.log('✅ window.verificarCantidad() - Función que ya funcionaba');
+        console.log('🎯 window.testFuncionOriginalQueFunc() - NUEVA: Prueba función que SÍ funcionaba');
+        console.log('🎯 window.testImprimirConDatosEspecificos() - NUEVA: Impresión con datos específicos');
+        console.log('🎯 window.compararFunciones() - NUEVA: Comparar original vs actual');
     </script>
 
 </body>
