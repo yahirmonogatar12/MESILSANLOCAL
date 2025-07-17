@@ -1,4 +1,0 @@
-# Dependencias para el servicio de impresión automática
-flask>=2.0.0
-flask-cors>=4.0.0
-pywin32>=306
