@@ -175,10 +175,7 @@
         </div>
         <div class="material-form-group">
             <label>Cantidad estandarizada</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="text" id="cantidad_estandarizada" style="flex: 1;">
-                <button class="material-btn gray" style="white-space: nowrap;" onclick="configurarImpresoraZebra()">Conf. de impresora</button>
-            </div>
+            <input type="text" id="cantidad_estandarizada">
         </div>
         <div class="material-form-group">
             <!-- Campo vacío para mantener estructura -->
@@ -523,24 +520,6 @@
                 // Asegurar que las fechas siempre estén actuales al cambiar de módulo
                 establecerFechasActuales();
             }, 100);
-        };
-
-        // Función de test de conectividad básica y simple
-        window.testConectividadAlmacen = function() {
-            fetch('/consultar_control_almacen')
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    } else {
-                        throw new Error('Error HTTP: ' + response.status);
-                    }
-                })
-                .then(data => {
-                    // NO cargar automáticamente los datos, solo verificar conectividad
-                })
-                .catch(error => {
-                    console.error('❌ Error de conectividad:', error);
-                });
         };
 
         // Cargar códigos de material al cargar la página
@@ -1163,36 +1142,6 @@
         };
 
         // FUNCIÓN PARA VERIFICAR BASE DE DATOS
-        window.verificarBaseDatos = async function() {
-            console.log('🗃️ === VERIFICANDO BASE DE DATOS ===');
-            
-            try {
-                // Hacer una consulta para ver todos los registros
-                const response = await fetch('/consultar_control_almacen');
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`📊 Total de registros en BD: ${data.length}`);
-                    
-                    // Filtrar solo los registros con 0RH5602C622
-                    const registrosFiltrados = data.filter(r => 
-                        r.codigo_material_recibido && 
-                        r.codigo_material_recibido.includes('0RH5602C622')
-                    );
-                    
-                    console.log(`🎯 Registros con 0RH5602C622: ${registrosFiltrados.length}`);
-                    registrosFiltrados.forEach((registro, index) => {
-                        console.log(`  ${index + 1}. ${registro.codigo_material_recibido} - ${registro.fecha_registro}`);
-                    });
-                    
-                } else {
-                    console.error('❌ Error al consultar BD:', response.status);
-                }
-                
-            } catch (error) {
-                console.error('❌ Error en verificación BD:', error);
-            }
-        };
-
         // Función para guardar el formulario
         function guardarFormulario() {
             try {
@@ -2488,16 +2437,7 @@ if (document.readyState === 'loading') {
                 const metodoTexto = cfg.metodo === 'usb' ? 'USB' : `Red ${cfg.ip}`;
                 console.log(`🦓 ZT230 configurada: ${metodoTexto} (${tipoTexto}) - Impresión automática activada`);
                 
-                // Cambiar color del botón para indicar que está configurado
-                setTimeout(() => {
-                    const btnConfig = document.querySelector('button[onclick="configurarImpresoraZebra()"]');
-                    if (btnConfig) {
-                        btnConfig.style.background = '#28a745';
-                        btnConfig.style.color = 'white';
-                        btnConfig.innerHTML = '🦓 ZT230 Configurada';
-                        btnConfig.title = `ZT230 | Conexión: ${metodoTexto} | Tipo: ${tipoTexto}`;
-                    }
-                }, 1000);
+                // Configuración activada - no hay botón que actualizar
             } else {
                 console.log('⚠️ ZT230 no configurada - QR se mostrará en modal');
             }
@@ -2619,9 +2559,9 @@ if (document.readyState === 'loading') {
                     localStorage.setItem('zebra_config', JSON.stringify(configuracion));
                 }
                 
-                // 2. Generar comando ZPL con los datos específicos
-                const comandoZPL = generarComandoZPLConDatos(datosEtiqueta, configuracion.tipo);
-                console.log('📝 Comando ZPL generado con datos específicos:', comandoZPL);
+                // 2. Generar comando ZPL usando la función principal
+                const comandoZPL = generarComandoZPLDirecto(datosEtiqueta.codigo, configuracion.tipo);
+                console.log('📝 Comando ZPL generado:', comandoZPL);
                 
                 // 3. Mostrar notificación de inicio
                 mostrarNotificacionImpresion('🔄 Enviando a impresora Zebra ZT230...', 'info');
@@ -2863,143 +2803,6 @@ if (document.readyState === 'loading') {
         }
         
         /**
-         * NUEVA FUNCIÓN: Generar comando ZPL con datos específicos
-         * Esta función recibe directamente los datos en lugar de leerlos del formulario
-         */
-        function generarComandoZPLConDatos(datosEtiqueta, tipo = 'material') {
-            const fechaHora = new Date().toLocaleString('es-ES');
-            const fecha = new Date().toLocaleDateString('es-ES');
-            
-            console.log('🏷️ Generando comando ZPL con datos específicos');
-            console.log('📊 Tipo de etiqueta:', tipo);
-            console.log('📋 Datos recibidos:', datosEtiqueta);
-            
-            // Usar los datos específicos pasados como parámetro
-            const codigo = datosEtiqueta.codigo || '';
-            const numeroLote = datosEtiqueta.numeroLote || '';
-            const numeroParte = datosEtiqueta.numeroParte || '';
-            const cantidadActual = datosEtiqueta.cantidadActual || '';
-            const propiedad = datosEtiqueta.propiedadMaterial || '';
-            
-            // === DEBUG: VERIFICAR VALORES ESPECÍFICOS ===
-            console.log('🔍 === VERIFICACIÓN DE DATOS ESPECÍFICOS ===');
-            console.log('📦 Código:', `'${codigo}' (longitud: ${codigo.length})`);
-            console.log('🏷️ Número de lote:', `'${numeroLote}' (longitud: ${numeroLote.length})`);
-            console.log('🔧 Número de parte:', `'${numeroParte}' (longitud: ${numeroParte.length})`);
-            console.log('📊 Cantidad actual:', `'${cantidadActual}' (longitud: ${cantidadActual.length})`);
-            console.log('⚙️ Especificación material:', `'${propiedad}' (longitud: ${propiedad.length})`);
-            
-            // Verificar si los campos críticos están vacíos
-            if (!cantidadActual || cantidadActual.trim() === '') {
-                console.warn('⚠️ ADVERTENCIA: cantidadActual está VACÍO en datos específicos');
-            } else {
-                console.log('✅ cantidadActual tiene datos:', cantidadActual);
-            }
-            
-            if (!propiedad || propiedad.trim() === '') {
-                console.warn('⚠️ ADVERTENCIA: especificación material está VACÍO en datos específicos');
-            } else {
-                console.log('✅ especificación material tiene datos:', propiedad);
-            }
-            console.log('🔍 === FIN VERIFICACIÓN ===');
-            
-            // Crear datos para el QR con información COMPACTA para evitar "STRING TOO LONG"
-            const datosQR = {
-                c: codigo.substring(0, 15),  // Código acortado
-                f: fecha.substring(0, 10),   // Solo fecha, sin hora
-                l: numeroLote.substring(0, 8), // Lote acortado
-                p: numeroParte.substring(0, 8), // Parte acortado
-                q: cantidadActual.substring(0, 6), // Cantidad acortada
-                m: propiedad.substring(0, 6), // Material acortado
-                s: 'OK',  // Estado simplificado
-                e: 'ILSAN' // Empresa acortada
-            };
-            
-            // Convertir a JSON ultra compacto para el QR
-            const textoQR = JSON.stringify(datosQR).replace(/"/g, '').replace(/:/g, '=').replace(/,/g, '|');
-            
-            console.log('📋 Datos para QR (COMPACTOS):', datosQR);
-            console.log('📱 Texto QR generado (COMPACTO):', textoQR);
-            console.log('📏 Longitud del QR:', textoQR.length, 'caracteres');
-            
-            let comandoZPL;
-            
-            if (tipo === 'simple') {
-                // Etiqueta simple optimizada para 33.2mm x 14mm
-                comandoZPL = `^XA
-^PW264^LL112
-^FO5,5^BQN,2,2^FDQA,${codigo}^FS
-^FO50,8^ADN,8,5^FD${codigo}^FS
-^FO50,25^ADN,6,4^FD${fechaHora}^FS
-^FO5,45^ADN,5,3^FDMAT.REC^FS
-^FO5,60^ADN,5,3^FDILSAN^FS
-^XZ`;
-            } else {
-                // Etiqueta usando diseño proporcionado por el usuario
-                // Split propiedad at the opening parenthesis
-                const propiedadParts = propiedad.split('(');
-                const propiedadLine1 = propiedadParts[0] ? propiedadParts[0].trim() : '';
-                const propiedadLine2 = propiedadParts[1] ? '(' + propiedadParts[1] : '';
-                
-                comandoZPL = `CT~~CD,~CC^~CT~
-^XA
-~TA000
-~JSN
-^LT37
-^MNW
-^MTT
-^PON
-^PMN
-^LH0,0
-^JMA
-^PR4,4
-~SD15
-^JUS
-^LRN
-^CI27
-^PA0,1,1,0
-^XZ
-^XA
-^MMT
-^PW392
-^LL165
-^LS0
-^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
-^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
-^FT5,135^BQN,2,8
-^FH\\^FDLA,${codigo}^FS
-^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
-^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
-^FT188,75^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
-^FT188,125^A0N,21,20^FH\\^CI28^FD${propiedadLine1}^FS^CI27
-^FT188,147^A0N,21,20^FH\\^CI28^FD${propiedadLine2}^FS^CI27
-^FT223,104^A0N,22,20^FH\\^CI28^FD${cantidadActual}^FS^CI27
-^PQ1,0,1,Y
-^XZ`;
-            }
-            
-            console.log('📝 Comando ZPL generado con datos específicos:');
-            console.log(comandoZPL);
-            
-            // Verificar que los datos aparezcan en el ZPL
-            console.log('🔍 === VERIFICACIÓN DE DATOS EN ZPL ===');
-            if (cantidadActual && comandoZPL.includes(cantidadActual)) {
-                console.log(`✅ CANTIDAD ACTUAL '${cantidadActual}' ENCONTRADA en ZPL`);
-            } else {
-                console.log(`❌ CANTIDAD ACTUAL '${cantidadActual}' NO ENCONTRADA en ZPL`);
-            }
-            
-            if (propiedad && comandoZPL.includes(propiedad)) {
-                console.log(`✅ ESPECIFICACIÓN MATERIAL '${propiedad}' ENCONTRADA en ZPL`);
-            } else {
-                console.log(`❌ ESPECIFICACIÓN MATERIAL '${propiedad}' NO ENCONTRADA en ZPL`);
-            }
-            console.log('🔍 === FIN VERIFICACIÓN ZPL ===');
-            
-            return comandoZPL;
-        }
-        
-        /**
          * Envío por USB (método principal para impresoras conectadas localmente)
          */
         async function enviarPorUSB(comandoZPL, codigo) {
@@ -3142,262 +2945,6 @@ if (document.readyState === 'loading') {
             }, duracion);
         }
         
-        // Función global para test manual de impresión
-        window.testImpresionDirecta = function(codigo = 'TEST123,20250716001') {
-            console.log('🧪 === TEST IMPRESIÓN DIRECTA ===');
-            imprimirZebraAutomatico(codigo);
-        };
-        
-        // === NUEVA FUNCIÓN DE DEBUG PARA VERIFICAR CAMPOS ===
-        window.verificarCamposEtiqueta = function() {
-            console.log('🔍 === VERIFICACIÓN MANUAL DE CAMPOS ===');
-            
-            const campos = [
-                { id: 'numero_lote_material', nombre: 'Número de Lote' },
-                { id: 'numero_parte_lower', nombre: 'Número de Parte' },
-                { id: 'cantidad_actual', nombre: 'Cantidad Actual' },
-                { id: 'almacen_especificacion_material', nombre: 'Especificación Material' },
-                { id: 'codigo_material_recibido', nombre: 'Código Material Recibido' }
-            ];
-            
-            campos.forEach(campo => {
-                const elemento = document.getElementById(campo.id);
-                if (elemento) {
-                    const valor = elemento.value;
-                    console.log(`✅ ${campo.nombre} (${campo.id}): "${valor}" (longitud: ${valor.length})`);
-                    
-                    if (!valor || valor.trim() === '') {
-                        console.warn(`⚠️ ${campo.nombre} está VACÍO`);
-                    }
-                } else {
-                    console.error(`❌ ${campo.nombre} (${campo.id}): ELEMENTO NO ENCONTRADO`);
-                }
-            });
-            
-            // Test de generación de ZPL con valores actuales
-            const codigo = document.getElementById('codigo_material_recibido')?.value || 'TEST-MANUAL';
-            console.log('🧪 Probando generación de ZPL con valores actuales...');
-            const zpl = generarComandoZPLDirecto(codigo, 'material');
-            
-            return {
-                campos_verificados: campos.length,
-                codigo_usado: codigo,
-                zpl_longitud: zpl.length
-            };
-        };
-        
-        // === FUNCIÓN PARA LLENAR CAMPOS DE TEST ===
-        window.llenarCamposTest = function() {
-            console.log('🧪 === LLENANDO CAMPOS DE TEST ===');
-            
-            document.getElementById('codigo_material_recibido').value = 'TEST123,20250716001';
-            document.getElementById('numero_lote_material').value = 'LOT123';
-            document.getElementById('numero_parte_lower').value = 'PART456';
-            document.getElementById('cantidad_actual').value = '1000';
-            document.getElementById('almacen_especificacion_material').value = '68F 1608';
-            
-            console.log('✅ Campos llenados con datos de test');
-            
-            // Verificar que se llenaron correctamente
-            setTimeout(() => {
-                verificarCamposEtiqueta();
-            }, 100);
-        };
-        
-        // === FUNCIÓN PARA PROBAR IMPRESIÓN CON DATOS REALES ===
-        window.testImpresionConDatos = function() {
-            console.log('🧪 === TEST IMPRESIÓN CON DATOS REALES ===');
-            
-            // Llenar campos
-            llenarCamposTest();
-            
-            // Esperar y luego imprimir
-            setTimeout(() => {
-                const codigo = document.getElementById('codigo_material_recibido').value;
-                console.log('🖨️ Imprimiendo con código:', codigo);
-                imprimirZebraAutomatico(codigo);
-            }, 500);
-        };
-        
-        // === FUNCIÓN PARA PROBAR LA NUEVA FUNCIONALIDAD CON DATOS ESPECÍFICOS ===
-        window.testImpresionConDatosEspecificos = function() {
-            console.log('🧪 === TEST IMPRESIÓN CON DATOS ESPECÍFICOS ===');
-            
-            const datosTest = {
-                codigo: 'TEST123,20250716001',
-                numeroLote: 'LOT123',
-                numeroParte: 'PART456',
-                cantidadActual: '1000',
-                propiedadMaterial: '68F 1608'
-            };
-            
-            console.log('📋 Datos de test:', datosTest);
-            console.log('🖨️ Imprimiendo con función nueva...');
-            
-            imprimirZebraAutomaticoConDatos(datosTest);
-        };
-        
-        // === FUNCIÓN PARA SIMULAR GUARDAR MATERIAL COMPLETO ===
-        window.testSimularGuardar = function() {
-            console.log('🧪 === TEST SIMULAR GUARDAR MATERIAL ===');
-            
-            // 1. Llenar campos
-            llenarCamposTest();
-            
-            // 2. Esperar y simular el proceso de guardado
-            setTimeout(() => {
-                console.log('💾 Simulando guardado...');
-                
-                // 3. Capturar datos ANTES de limpiar (como en guardarFormulario)
-                const datosParaEtiqueta = {
-                    codigo: document.getElementById('codigo_material_recibido').value,
-                    numeroLote: document.getElementById('numero_lote_material').value || '',
-                    numeroParte: document.getElementById('numero_parte_lower').value || '',
-                    cantidadActual: document.getElementById('cantidad_actual').value || '',
-                    propiedadMaterial: document.getElementById('almacen_especificacion_material').value || ''
-                };
-                
-                console.log('🏷️ Datos capturados para etiqueta:', datosParaEtiqueta);
-                
-                // 4. Limpiar formulario (como en la función real)
-                document.getElementById('codigo_material_recibido').value = '';
-                document.getElementById('numero_lote_material').value = '';
-                document.getElementById('numero_parte_lower').value = '';
-                document.getElementById('cantidad_actual').value = '';
-                document.getElementById('almacen_especificacion_material').value = '';
-                
-                console.log('🗑️ Formulario limpiado');
-                
-                // 5. Imprimir con datos capturados
-                setTimeout(() => {
-                    console.log('🖨️ Imprimiendo con datos capturados DESPUÉS de limpiar...');
-                    imprimirZebraAutomaticoConDatos(datosParaEtiqueta);
-                }, 500);
-                
-            }, 1000);
-        };
-        
-        // Función para probar el servicio Win32
-        window.testServicioWin32 = async function() {
-            console.log('🧪 === TEST SERVICIO WIN32 LOCAL ===');
-            
-            const serviceUrl = 'http://localhost:5003';
-            
-            try {
-                console.log('📡 Probando URLs...');
-                const urls = [
-                    'http://localhost:5003',
-                    'http://127.0.0.1:5003'
-                ];
-                
-                for (const url of urls) {
-                    try {
-                        console.log(`🔍 Probando: ${url}`);
-                        const response = await fetch(`${url}/`, { 
-                            method: 'GET',
-                            mode: 'cors',
-                            cache: 'no-cache'
-                        });
-                        
-                        if (response.ok) {
-                            const contentType = response.headers.get('content-type');
-                            console.log(`📋 Content-Type: ${contentType}`);
-                            
-                            const rawText = await response.text();
-                            console.log(`📄 Raw response: ${rawText.substring(0, 200)}...`);
-                            
-                            if (contentType && contentType.includes('application/json')) {
-                                try {
-                                    const data = JSON.parse(rawText);
-                                    console.log(`✅ ${url} - JSON válido:`, data);
-                                } catch (jsonError) {
-                                    console.log(`❌ ${url} - Error parsing JSON:`, jsonError.message);
-                                    console.log(`📄 Raw text: ${rawText}`);
-                                }
-                            } else {
-                                console.log(`✅ ${url} - Respuesta (no JSON): ${rawText}`);
-                            }
-                        } else {
-                            console.log(`❌ ${url} - Error HTTP:`, response.status);
-                        }
-                    } catch (error) {
-                        console.log(`❌ ${url} - Error:`, error.message);
-                    }
-                }
-                
-                // 1. Verificar estado del servicio
-                console.log('📡 Verificando estado del servicio principal...');
-                const statusResponse = await fetch(`${serviceUrl}/`);
-                
-                if (!statusResponse.ok) {
-                    throw new Error(`HTTP ${statusResponse.status}: ${statusResponse.statusText}`);
-                }
-                
-                const statusText = await statusResponse.text();
-                console.log('📄 Raw status response:', statusText.substring(0, 200));
-                
-                let statusData;
-                try {
-                    statusData = JSON.parse(statusText);
-                } catch (parseError) {
-                    console.error('❌ Error parsing status JSON:', parseError.message);
-                    console.log('📄 Full response text:', statusText);
-                    throw new Error('Respuesta del servicio no es JSON válido');
-                }
-                
-                console.log('📊 Estado del servicio:', statusData);
-                console.log(`🖨️  Impresora Zebra detectada: ${statusData.zebra_printer}`);
-                console.log(`📋 Total impresoras: ${statusData.available_printers.length}`);
-                
-                // 2. Listar impresoras
-                console.log('🔍 Listando todas las impresoras...');
-                const printersResponse = await fetch(`${serviceUrl}/printers`);
-                
-                if (!printersResponse.ok) {
-                    throw new Error(`HTTP ${printersResponse.status}: ${printersResponse.statusText}`);
-                }
-                
-                const printersText = await printersResponse.text();
-                console.log('📄 Raw printers response:', printersText.substring(0, 200));
-                
-                let printersData;
-                try {
-                    printersData = JSON.parse(printersText);
-                } catch (parseError) {
-                    console.error('❌ Error parsing printers JSON:', parseError.message);
-                    console.log('📄 Full response text:', printersText);
-                    throw new Error('Respuesta de impresoras no es JSON válido');
-                }
-                
-                console.log('🖨️  Impresoras disponibles:');
-                printersData.available_printers.forEach((printer, index) => {
-                    const marker = printer === printersData.zebra_printer_detected ? '✅' : '  ';
-                    console.log(`   ${marker} ${index + 1}. ${printer}`);
-                });
-                
-                // 3. Ejecutar test de impresión
-                console.log('🖨️  Ejecutando test de impresión...');
-                const testResponse = await fetch(`${serviceUrl}/test`, { method: 'POST' });
-                const testData = await testResponse.json();
-                
-                if (testData.status === 'test_printed') {
-                    console.log('✅ Test de impresión exitoso:', testData);
-                    alert('✅ Test exitoso! Verifique que se haya impreso la etiqueta de prueba.');
-                } else {
-                    throw new Error(testData.error || 'Test de impresión falló');
-                }
-                
-            } catch (error) {
-                console.error('❌ Error en test de servicio:', error);
-                
-                if (error.message.includes('Failed to fetch')) {
-                    alert('❌ No se puede conectar al servicio de impresión.\n\nPor favor:\n1. Execute start_print_service.bat\n2. Verifique que Python esté instalado\n3. Verifique que el puerto 5000 esté libre');
-                } else {
-                    alert('❌ Error en servicio: ' + error.message);
-                }
-            }
-        };
-        
         // Función para configurar automáticamente la impresora si no está configurada
         function configurarImpresoraAutomatica() {
             const config = localStorage.getItem('zebra_config');
@@ -3418,16 +2965,7 @@ if (document.readyState === 'loading') {
                 
                 console.log('✅ Impresora configurada automáticamente:', configDefault);
                 
-                // Actualizar el botón de configuración
-                setTimeout(() => {
-                    const btnConfig = document.querySelector('button[onclick="configurarImpresoraZebra()"]');
-                    if (btnConfig) {
-                        btnConfig.style.background = '#007bff';
-                        btnConfig.style.color = 'white';
-                        btnConfig.innerHTML = '🖨️ ZT230 Win32';
-                        btnConfig.title = 'ZT230 | Win32 Service | USB | Auto-configurada';
-                    }
-                }, 500);
+                // Configuración automática completada - no hay botón que actualizar
                 
                 return configDefault;
             }
@@ -3505,13 +3043,7 @@ if (document.readyState === 'loading') {
                         const data = await response.json();
                         console.log('🖨️ Servicio Win32 detectado:', data.zebra_printer);
                         
-                        // Actualizar botón para mostrar que el servicio está activo
-                        const btnConfig = document.querySelector('button[onclick="configurarImpresoraZebra()"]');
-                        if (btnConfig && data.zebra_printer) {
-                            btnConfig.style.background = '#28a745';
-                            btnConfig.innerHTML = '✅ ZT230 Activo';
-                            btnConfig.title = `ZT230 Activo | ${data.zebra_printer}`;
-                        }
+                        // Servicio detectado - ya no hay botón que actualizar
                     }
                 } catch (error) {
                     console.log('⚠️ Servicio Win32 no disponible (normal si no está iniciado)');
@@ -3863,39 +3395,6 @@ if (document.readyState === 'loading') {
             
             console.log(resumen);
             alert(resumen);
-        };
-
-        /**
-         * Función para verificar que el QR contiene toda la información
-         */
-        window.verificarQRCompleto = function() {
-            console.log('🔍 === VERIFICANDO CONTENIDO DEL QR ===');
-            
-            // Datos de ejemplo
-            const datosEjemplo = {
-                codigo: '0RH5602C622,20250716001',
-                fecha: '16/07/2025',
-                lote: 'L2025001',
-                parte: 'P12345',
-                cantidad: '100',
-                propiedad: 'RESISTOR',
-                estado: 'ACTIVO',
-                empresa: 'ILSAN_ELECTRONICS'
-            };
-            
-            const textoQR = JSON.stringify(datosEjemplo);
-            
-            console.log('📱 Texto que se guardará en el QR:');
-            console.log(textoQR);
-            console.log(`📏 Longitud: ${textoQR.length} caracteres`);
-            
-            console.log('🔧 Comando ZPL del QR:');
-            console.log(`^FO30,20^BQN,2,6^FDQA,${textoQR}^FS`);
-            
-            console.log('✅ El QR incluye TODA la información del material');
-            console.log('📱 Al escanear el QR se obtendrá un JSON con todos los datos');
-            
-            return textoQR;
         };
         
         console.log('🧪 Funciones de prueba disponibles:');
