@@ -2813,14 +2813,14 @@ if (document.readyState === 'loading') {
                 // Etiqueta simple optimizada para 33.2mm x 14mm
                 comandoZPL = `^XA
 ^PW264^LL112
-^FO5,5^BQN,2,2^FDQA,${codigo}^FS
-^FO50,8^ADN,8,5^FD${codigo}^FS
-^FO50,25^ADN,6,4^FD${fechaHora}^FS
-^FO5,45^ADN,5,3^FDMAT.REC^FS
-^FO5,60^ADN,5,3^FDILSAN^FS
+^FO25,5^BQN,2,2^FDQA,${codigo}^FS
+^FO70,8^ADN,8,5^FD${codigo}^FS
+^FO70,25^ADN,6,4^FD${fechaHora}^FS
+^FO25,45^ADN,5,3^FDMAT.REC^FS
+^FO25,60^ADN,5,3^FDILSAN^FS
 ^XZ`;
             } else {
-                // Etiqueta usando PLANTILLA PROFESIONAL del usuario
+                // Etiqueta usando PLANTILLA PROFESIONAL del usuario, ajustada según requerimientos
                 comandoZPL = `CT~~CD,~CC^~CT~
 ^XA
 ~TA000
@@ -2844,16 +2844,14 @@ if (document.readyState === 'loading') {
 ^PW392
 ^LL224
 ^LS0
-^FT13,160^BQN,2,4
+^FT33,160^BQN,2,4
 ^FH\\^FDLA,${textoQR}^FS
-^FT160,20^A0N,18,18^FH\\^CI28^FDILSAN ELECTRONICS MES^FS^CI27
-^FT160,41^A0N,16,15^FH\\^CI28^FDCodigo de material recibido:^FS^CI27
-^FT160,62^A0N,16,16^FH\\^CI28^FD${codigo}^FS^CI27
-^FT160,83^A0N,15,15^FH\\^CI28^FDFecha de entrada: ${fecha}^FS^CI27
-^FT160,104^A0N,14,14^FH\\^CI28^FD${numeroLote} ${numeroParte}^FS^CI27
-^FT160,125^A0N,14,14^FH\\^CI28^FD${cantidadActual}^FS^CI27
-^FT160,140^A0N,14,14^FH\\^CI28^FD${propiedad}^FS^CI27
-^FT164,158^A0N,17,18^FH\\^CI28^FDHora: ${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2,'0')}:${String(new Date().getSeconds()).padStart(2,'0')}^FS^CI27
+^FT180,41^A0N,16,15^FH\\^CI28^FDCodigo de material recibido:^FS^CI27
+^FT180,62^A0N,16,16^FH\\^CI28^FD${codigo}^FS^CI27
+^FT180,83^A0N,15,15^FH\\^CI28^FDFecha de entrada: ${fecha}^FS^CI27
+^FT180,104^A0N,14,14^FH\\^CI28^FD${numeroLote} ${numeroParte}^FS^CI27
+^FT180,125^A0N,14,14^FH\\^CI28^FDQTY: ${cantidadActual}^FS^CI27
+^FT180,140^A0N,14,14^FH\\^CI28^FD${propiedad}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
@@ -2937,7 +2935,12 @@ if (document.readyState === 'loading') {
 ^FO5,60^ADN,5,3^FDILSAN^FS
 ^XZ`;
             } else {
-                // Etiqueta usando PLANTILLA PROFESIONAL del usuario
+                // Etiqueta usando diseño proporcionado por el usuario
+                // Split propiedad at the opening parenthesis
+                const propiedadParts = propiedad.split('(');
+                const propiedadLine1 = propiedadParts[0] ? propiedadParts[0].trim() : '';
+                const propiedadLine2 = propiedadParts[1] ? '(' + propiedadParts[1] : '';
+                
                 comandoZPL = `CT~~CD,~CC^~CT~
 ^XA
 ~TA000
@@ -2959,18 +2962,18 @@ if (document.readyState === 'loading') {
 ^XA
 ^MMT
 ^PW392
-^LL224
+^LL165
 ^LS0
-^FT13,160^BQN,2,4
-^FH\\^FDLA,${textoQR}^FS
-^FT160,20^A0N,18,18^FH\\^CI28^FDILSAN ELECTRONICS MES^FS^CI27
-^FT160,41^A0N,16,15^FH\\^CI28^FDCodigo de material recibido:^FS^CI27
-^FT160,62^A0N,16,16^FH\\^CI28^FD${codigo}^FS^CI27
-^FT160,83^A0N,15,15^FH\\^CI28^FDFecha de entrada: ${fecha}^FS^CI27
-^FT160,104^A0N,14,14^FH\\^CI28^FD${numeroLote} ${numeroParte}^FS^CI27
-^FT160,125^A0N,14,14^FH\\^CI28^FD${cantidadActual}^FS^CI27
-^FT160,140^A0N,14,14^FH\\^CI28^FD${propiedad}^FS^CI27
-^FT164,158^A0N,17,18^FH\\^CI28^FDHora: ${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2,'0')}:${String(new Date().getSeconds()).padStart(2,'0')}^FS^CI27
+^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
+^FT5,135^BQN,2,8
+^FH\\^FDLA,${codigo}^FS
+^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
+^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
+^FT188,75^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
+^FT188,125^A0N,21,20^FH\\^CI28^FD${propiedadLine1}^FS^CI27
+^FT188,147^A0N,21,20^FH\\^CI28^FD${propiedadLine2}^FS^CI27
+^FT223,104^A0N,22,20^FH\\^CI28^FD${cantidadActual}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
