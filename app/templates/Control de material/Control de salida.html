@@ -16,7 +16,11 @@
                     <input type="text" id="salida_codigo_material_recibido" placeholder="Escanear código aquí..." onkeydown="procesarEscaneoRapido(event)" autocomplete="off">
                 </div>
             </div>
-            
+            <div class="material-form-group" style="margin-left: -200px;">
+                <label>Verificación de salida (Requerido)</label>
+                <input type="text" id="salida_verificacion_codigo" placeholder="Escanear código de verificación..." onkeydown="procesarVerificacion(event)" autocomplete="off" style="margin-left: 10px; border: 2px solid #e74c3c;">
+            </div>
+
             <!-- Contenedor derecho: Checkboxes -->
             <div class="checkbox-container">
                 <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
@@ -88,8 +92,10 @@
                     <input type="date" id="salida_fecha_salida_form" value="">
                 </div>
                 <div class="material-form-group">
+                    <!-- Campo vacío -->
                 </div>
                 <div class="material-form-group">
+                    <!-- Campo vacío -->
                 </div>
             </div>
         </div>
@@ -152,22 +158,29 @@
 
             <!-- Controles y tabla de historial -->
             <div id="historialSection" style="display: none;">
-                <div class="material-table-controls" id="historialControles" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: end;">
-                    <div class="material-form-group" style="width: 140px;">
-                        <label style="font-size: 11px;">Fecha desde</label>
-                        <input type="date" id="salida_fecha_desde" value="2025-07-09" style="font-size: 11px; padding: 4px;">
+                <div class="material-table-controls" id="historialControles" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+                    <!-- Filtros de fecha - lado izquierdo -->
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div class="material-form-group">
+                            <label>Fecha desde</label>
+                            <input type="date" id="salida_fecha_desde">
+                        </div>
+                        <div class="material-form-group">
+                            <label>Fecha hasta</label>
+                            <input type="date" id="salida_fecha_hasta">
+                        </div>
                     </div>
-                    <div class="material-form-group" style="width: 140px;">
-                        <label style="font-size: 11px;">Fecha hasta</label>
-                        <input type="date" id="salida_fecha_hasta" value="2025-07-09" style="font-size: 11px; padding: 4px;">
+                    
+                    <!-- Controles principales - lado derecho -->
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div class="material-form-group">
+                            <label>Código de material recibido</label>
+                            <input type="text" id="salida_filtro_codigo" placeholder="Buscar por código...">
+                        </div>
+                        <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
+                        <button class="material-btn" onclick="limpiarFiltros()" style="background-color: #95a5a6;">Limpiar filtros</button>
+                        <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
                     </div>
-                    <div class="material-form-group">
-                        <label>Código de material recibido</label>
-                        <input type="text" id="salida_filtro_codigo" placeholder="Buscar por código...">
-                    </div>
-                    <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
-                    <button class="material-btn" onclick="limpiarFiltros()" style="background-color: #95a5a6;">Limpiar filtros</button>
-                    <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
                 </div>
                 <table class="material-table" id="salida_tablaSalidas">
                     <thead>
@@ -199,6 +212,7 @@
     <script>
         // Variables globales
         let materialActual = null;
+        let verificacionCompletada = false;
 
         // Función global para inicializar cuando se muestra el control de salida (para AJAX)
         window.inicializarControlSalidaModule = function() {
@@ -212,10 +226,13 @@
             // Establecer fecha actual
             const hoy = new Date().toISOString().split('T')[0];
             const fechaSalidaForm = document.getElementById('salida_fecha_salida_form');
+            
+            if (fechaSalidaForm) fechaSalidaForm.value = hoy;
+
+            // Establecer fecha actual en los filtros de historial
             const fechaDesde = document.getElementById('salida_fecha_desde');
             const fechaHasta = document.getElementById('salida_fecha_hasta');
             
-            if (fechaSalidaForm) fechaSalidaForm.value = hoy;
             if (fechaDesde) fechaDesde.value = hoy;
             if (fechaHasta) fechaHasta.value = hoy;
 
@@ -230,9 +247,6 @@
 
             // Mostrar por defecto las tablas de registro
             mostrarRegistroSalida();
-
-            // Configurar validación de fechas
-            configurarValidacionFechas();
 
             // No cargar datos automáticamente - solo cuando se haga clic en "Consultar"
         }
@@ -271,25 +285,105 @@
             }
         }
 
-        // Nueva función para configurar validación de fechas
-        function configurarValidacionFechas() {
-            const fechaDesde = document.getElementById('salida_fecha_desde');
-            const fechaHasta = document.getElementById('salida_fecha_hasta');
-            
-            if (fechaDesde && fechaHasta) {
-                fechaDesde.addEventListener('change', function() {
-                    if (fechaHasta.value && fechaDesde.value > fechaHasta.value) {
-                        fechaHasta.value = fechaDesde.value;
-                        mostrarMensajeSimple('Fecha "hasta" ajustada automáticamente', 'info');
-                    }
-                });
+        // Nueva función para procesar verificación de salida
+        function procesarVerificacion(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
                 
-                fechaHasta.addEventListener('change', function() {
-                    if (fechaDesde.value && fechaHasta.value < fechaDesde.value) {
-                        fechaDesde.value = fechaHasta.value;
-                        mostrarMensajeSimple('Fecha "desde" ajustada automáticamente', 'info');
+                const codigoVerificacion = event.target.value.trim();
+                
+                if (!codigoVerificacion) {
+                    return;
+                }
+                
+                if (!materialActual) {
+                    mostrarMensajeSimple('Primero debe escanear un material', 'error');
+                    event.target.value = '';
+                    return;
+                }
+                
+                // Verificar si el código escaneado coincide con algún número del material actual
+                const coincidencias = verificarCoincidencias(codigoVerificacion, materialActual);
+                
+                if (coincidencias.length > 0) {
+                    mostrarMensajeSimple(`✅ Verificado: ${coincidencias.join(', ')}`, 'success');
+                    verificacionCompletada = true;
+                    
+                    // Cambiar el borde del campo de verificación a verde
+                    event.target.style.border = '2px solid #27ae60';
+                    event.target.readOnly = true;
+                    
+                    // VERIFICAR SI REGISTRO AUTOMÁTICO ESTÁ ACTIVADO
+                    const checkbox = document.getElementById('salida_registroAutomatico');
+                    const registroAutomatico = checkbox ? checkbox.checked : false;
+                    
+                    if (registroAutomatico) {
+                        // Procesar salida automáticamente después de verificación exitosa
+                        setTimeout(async () => {
+                            await procesarSalidaAutomaticaDespuesVerificacion();
+                        }, 500);
+                    } else {
+                        // Modo manual: mostrar mensaje para usar botón
+                        mostrarMensajeSimple('Verificación completada - Haga clic en "Guardar Salida"', 'info');
                     }
-                });
+                    
+                } else {
+                    mostrarMensajeSimple('❌ Código no coincide con el material', 'error');
+                    verificacionCompletada = false;
+                    event.target.value = '';
+                    event.target.focus();
+                }
+            }
+        }
+
+        // Función para verificar coincidencias entre el código escaneado y los datos del material
+        function verificarCoincidencias(codigoVerificacion, material) {
+            const coincidencias = [];
+            
+            // Lista de campos a verificar
+            const camposAVerificar = [
+                { campo: 'codigo_material_recibido', nombre: 'Código Recibido' },
+                { campo: 'codigo_material', nombre: 'Código Material' },
+                { campo: 'codigo_material_original', nombre: 'Código Original' },
+                { campo: 'numero_parte', nombre: 'Número de Parte' },
+                { campo: 'numero_lote_material', nombre: 'Lote' }
+            ];
+            
+            camposAVerificar.forEach(item => {
+                const valorCampo = material[item.campo];
+                if (valorCampo && codigoVerificacion.includes(valorCampo)) {
+                    coincidencias.push(item.nombre);
+                }
+                // También verificar coincidencia parcial o completa
+                if (valorCampo && valorCampo.includes(codigoVerificacion)) {
+                    if (!coincidencias.includes(item.nombre)) {
+                        coincidencias.push(item.nombre);
+                    }
+                }
+            });
+            
+            return coincidencias;
+        }
+
+        // Función para limpiar verificación cuando se cambie de material
+        function limpiarVerificacion() {
+            const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+            
+            if (campoVerificacion) {
+                campoVerificacion.value = '';
+                campoVerificacion.style.border = '2px solid #e74c3c';
+                campoVerificacion.readOnly = false;
+            }
+            
+            verificacionCompletada = false;
+        }
+
+        // FUNCIÓN SIMPLE: Limpiar código y enfocar (pero mantener campos rellenados)
+        function limpiarCodigo() {
+            const input = document.getElementById('salida_codigo_material_recibido');
+            if (input) {
+                input.value = '';
+                setTimeout(() => input.focus(), 100);
             }
         }
 
@@ -298,21 +392,103 @@
             if (event.key === 'Enter') {
                 event.preventDefault();
                 
-                const checkbox = document.getElementById('salida_registroAutomatico');
-                const registroAutomatico = checkbox ? checkbox.checked : false;
                 const codigo = event.target.value.trim();
                 
                 if (!codigo) {
                     return;
                 }
                 
-                if (registroAutomatico) {
-                    // Modo automático: procesar salida inmediatamente
-                    await procesarSalidaInmediata(codigo);
-                } else {
-                    // Modo manual: solo buscar material y rellenar campos, NO guardar
-                    await buscarMaterialSinGuardar(codigo);
+                try {
+                    // 1. Buscar material primero
+                    const response = await fetch(`/buscar_material_por_codigo?codigo_recibido=${encodeURIComponent(codigo)}`);
+                    const data = await response.json();
+
+                    if (!data.success || !data.material) {
+                        mostrarMensajeSimple(data.error || 'Material no encontrado', 'error');
+                        return;
+                    }
+
+                    const material = data.material;
+                    
+                    // 2. Rellenar campos del material
+                    rellenarCamposMaterial(material);
+                    materialActual = material;
+                    
+                    // 3. Limpiar verificación anterior
+                    limpiarVerificacion();
+                    
+                    // 4. AUTOMÁTICAMENTE pasar al campo de verificación
+                    const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+                    if (campoVerificacion) {
+                        setTimeout(() => {
+                            campoVerificacion.focus();
+                        }, 300);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarMensajeSimple('Error al buscar material', 'error');
                 }
+            }
+        }
+
+        // Nueva función para procesamiento automático después de verificación exitosa
+        async function procesarSalidaAutomaticaDespuesVerificacion() {
+            try {
+                const codigo = document.getElementById('salida_codigo_material_recibido')?.value?.trim();
+                
+                if (!codigo || !materialActual || !verificacionCompletada) {
+                    mostrarMensajeSimple('Error: faltan datos para procesar salida', 'error');
+                    return;
+                }
+                
+                // 1. Validar modelo
+                const modelo = document.getElementById('salida_modelo')?.value || '';
+                if (!modelo) {
+                    mostrarMensajeSimple('Seleccione modelo primero', 'error');
+                    return;
+                }
+
+                const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
+
+                if (cantidadSalida <= 0) {
+                    mostrarMensajeSimple('Sin stock disponible', 'error');
+                    return;
+                }
+
+                // 2. Procesar salida automática
+                const salidaResponse = await fetch('/procesar_salida_material', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codigo_material_recibido: codigo,
+                        cantidad_salida: cantidadSalida,
+                        modelo: modelo,
+                        numero_lote: materialActual.numero_lote_material || '',
+                        fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
+                        depto_salida: 'Producción',
+                        proceso_salida: 'SMT 1st SIDE',
+                        codigo_verificacion: document.getElementById('salida_verificacion_codigo')?.value || ''
+                    })
+                });
+
+                const salidaData = await salidaResponse.json();
+
+                if (salidaData.success) {
+                    mostrarMensajeSimple(`✅ Salida automática procesada: ${cantidadSalida}`, 'success');
+                    
+                    // Limpiar TODOS los campos para siguiente escaneo
+                    setTimeout(() => {
+                        limpiarCamposMaterial();
+                    }, 1000);
+                    
+                } else {
+                    mostrarMensajeSimple('Error al procesar salida automática', 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en procesamiento automático:', error);
+                mostrarMensajeSimple('Error interno en procesamiento automático', 'error');
             }
         }
 
@@ -333,8 +509,17 @@
                 rellenarCamposMaterial(material);
                 materialActual = material;
                 
+                // Limpiar verificación anterior para el nuevo material
+                limpiarVerificacion();
+                
                 // Mensaje claro indicando que debe usar el botón
-                mostrarMensajeSimple('Material encontrado - Haga clic en "Guardar Salida" para procesar', 'info');
+                mostrarMensajeSimple('Material encontrado - Complete verificación y haga clic en "Guardar Salida"', 'info');
+                
+                // Enfocar el campo de verificación
+                const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+                if (campoVerificacion) {
+                    setTimeout(() => campoVerificacion.focus(), 500);
+                }
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -353,6 +538,16 @@
             
             if (!materialActual) {
                 mostrarMensajeSimple('Primero busque el material escaneando o escribiendo código', 'error');
+                return;
+            }
+            
+            // VALIDAR VERIFICACIÓN REQUERIDA
+            if (!verificacionCompletada) {
+                mostrarMensajeSimple('Debe completar la verificación de salida primero', 'error');
+                const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+                if (campoVerificacion) {
+                    campoVerificacion.focus();
+                }
                 return;
             }
             
@@ -383,7 +578,8 @@
                         numero_lote: materialActual.numero_lote_material || '',
                         fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
                         depto_salida: 'Producción', // Valor por defecto
-                        proceso_salida: 'SMT 1st SIDE' // Valor por defecto
+                        proceso_salida: 'SMT 1st SIDE', // Valor por defecto
+                        codigo_verificacion: document.getElementById('salida_verificacion_codigo')?.value || ''
                     })
                 });
 
@@ -402,11 +598,15 @@
                     if (historialSection && historialSection.style.display !== 'none') {
                         setTimeout(() => consultarSalidas(), 300);
                     }
+                    
+                    // Limpiar TODOS los campos después de procesar exitosamente
+                    setTimeout(() => {
+                        limpiarCamposMaterial();
+                    }, 1000);
+                    
                 } else {
                     mostrarMensajeSimple('Error al procesar salida', 'error');
                 }
-
-                limpiarCodigo();
                 
             } catch (error) {
                 console.error('❌ Error en procesamiento manual:', error);
@@ -441,12 +641,25 @@
                 rellenarCamposMaterial(material);
                 materialActual = material;
                 
+                // Limpiar verificación anterior para el nuevo material
+                limpiarVerificacion();
+                
                 const cantidadSalida = parseFloat(material.cantidad_actual) || 0;
 
                 if (cantidadSalida <= 0) {
                     mostrarMensajeSimple('Sin stock', 'error');
                     limpiarCodigo();
                     return;
+                }
+
+                // VALIDAR VERIFICACIÓN REQUERIDA PARA MODO AUTOMÁTICO
+                if (!verificacionCompletada) {
+                    mostrarMensajeSimple('Complete la verificación primero', 'warning');
+                    const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+                    if (campoVerificacion) {
+                        campoVerificacion.focus();
+                    }
+                    return; // No limpiar código para permitir reintento
                 }
 
                 // 3. Procesar salida directa
@@ -460,7 +673,8 @@
                         numero_lote: material.numero_lote_material || '',
                         fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
                         depto_salida: 'Producción', // Valor por defecto
-                        proceso_salida: 'SMT 1st SIDE' // Valor por defecto
+                        proceso_salida: 'SMT 1st SIDE', // Valor por defecto
+                        codigo_verificacion: document.getElementById('salida_verificacion_codigo')?.value || ''
                     })
                 });
 
@@ -484,12 +698,57 @@
                 }
 
                 limpiarCodigo();
+                limpiarVerificacion(); // Limpiar verificación después de procesar
                 
             } catch (error) {
                 console.error('Error:', error);
                 mostrarMensajeSimple('Error', 'error');
                 limpiarCodigo();
             }
+        }
+
+        // FUNCIÓN NUEVA: Limpiar todos los campos del material
+        function limpiarCamposMaterial() {
+            // Limpiar campo de código de material recibido
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
+            if (codigoInput) {
+                codigoInput.value = '';
+            }
+            
+            // Limpiar todos los campos del material
+            const camposALimpiar = [
+                'salida_codigo_material_original',
+                'salida_codigo_material', 
+                'salida_especificacion_material',
+                'salida_numero_parte',
+                'salida_cantidad_actual',
+                'salida_numero_lote_material'
+            ];
+            
+            camposALimpiar.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.value = '';
+                    // Resetear estilos
+                    input.style.backgroundColor = '';
+                    input.style.color = '';
+                    input.style.fontWeight = '';
+                }
+            });
+            
+            // Limpiar verificación
+            limpiarVerificacion();
+            
+            // Resetear variables globales
+            materialActual = null;
+            verificacionCompletada = false;
+            
+            // Enfocar nuevamente el campo de código
+            setTimeout(() => {
+                if (codigoInput) {
+                    codigoInput.focus();
+                }
+            }, 100);
         }
 
         // FUNCIÓN SIMPLE: Limpiar código y enfocar (pero mantener campos rellenados)
@@ -509,14 +768,19 @@
                 info = document.createElement('div');
                 info.id = 'salida-info-message';
                 info.style.position = 'fixed';
-                info.style.top = '20px';
-                info.style.right = '20px';
-                info.style.padding = '12px 20px';
-                info.style.borderRadius = '6px';
-                info.style.fontSize = '14px';
-                info.style.fontWeight = 'bold';
-                info.style.zIndex = '1000';
+                info.style.top = '10px';
+                info.style.left = '50%';
+                info.style.transform = 'translateX(-50%)';
+                info.style.padding = '6px 12px';
+                info.style.borderRadius = '4px';
+                info.style.fontSize = '12px';
+                info.style.fontWeight = '500';
+                info.style.zIndex = '9999';
                 info.style.display = 'none';
+                info.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                info.style.maxWidth = '400px';
+                info.style.textAlign = 'center';
+                info.style.transition = 'all 0.3s ease';
                 document.body.appendChild(info);
             }
             
@@ -539,7 +803,7 @@
             
             setTimeout(() => {
                 info.style.display = 'none';
-            }, 3000);
+            }, 2500);
         }
 
         // Ejecutar inicialización simplificada
@@ -568,6 +832,18 @@
             
             // Mostrar sección de historial
             document.getElementById('historialSection').style.display = 'block';
+            
+            // Establecer fecha actual en los filtros de fecha
+            const hoy = new Date().toISOString().split('T')[0];
+            const fechaDesde = document.getElementById('salida_fecha_desde');
+            const fechaHasta = document.getElementById('salida_fecha_hasta');
+            
+            if (fechaDesde && !fechaDesde.value) {
+                fechaDesde.value = hoy;
+            }
+            if (fechaHasta && !fechaHasta.value) {
+                fechaHasta.value = hoy;
+            }
             
             // Cambiar estado visual de los botones
             document.getElementById('btnHistorialSalida').style.backgroundColor = '#3498db';
@@ -662,26 +938,46 @@
         }
 
         function limpiarCamposMaterial() {
+            // Limpiar campo de código de material recibido
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
+            if (codigoInput) {
+                codigoInput.value = '';
+            }
+            
             // Limpiar todos los campos del material
-            const campos = [
-                'salida_codigo_material_original', 'salida_codigo_material',
-                'salida_especificacion_material', 'salida_numero_parte', 'salida_cantidad_actual',
+            const camposALimpiar = [
+                'salida_codigo_material_original',
+                'salida_codigo_material', 
+                'salida_especificacion_material',
+                'salida_numero_parte',
+                'salida_cantidad_actual',
                 'salida_numero_lote_material'
             ];
-
-            campos.forEach(campo => {
-                const input = document.getElementById(campo);
+            
+            camposALimpiar.forEach(id => {
+                const input = document.getElementById(id);
                 if (input) {
                     input.value = '';
                     // Resetear estilos
                     input.style.backgroundColor = '';
                     input.style.color = '';
                     input.style.fontWeight = '';
-                    input.style.border = '';
                 }
             });
-
+            
+            // Limpiar verificación
+            limpiarVerificacion();
+            
+            // Resetear variables globales
             materialActual = null;
+            verificacionCompletada = false;
+            
+            // Enfocar nuevamente el campo de código
+            setTimeout(() => {
+                if (codigoInput) {
+                    codigoInput.focus();
+                }
+            }, 100);
         }
 
         function reiniciarFormulario() {
@@ -836,34 +1132,60 @@
 
         async function consultarSalidas() {
             try {
-                mostrarCargando('Consultando salidas...');
-
+                const codigoFiltro = document.getElementById('salida_filtro_codigo')?.value?.trim() || '';
                 const fechaDesde = document.getElementById('salida_fecha_desde')?.value || '';
                 const fechaHasta = document.getElementById('salida_fecha_hasta')?.value || '';
-                const codigoFiltro = document.getElementById('salida_filtro_codigo')?.value?.trim() || '';
+
+                // Validación de fechas
+                if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+                    mostrarError('La fecha desde no puede ser mayor que la fecha hasta');
+                    return;
+                }
+
+                // Mostrar mensaje específico según los filtros aplicados
+                let mensajeCarga = 'Consultando salidas...';
+                if (fechaDesde || fechaHasta || codigoFiltro) {
+                    mensajeCarga = 'Aplicando filtros y consultando...';
+                }
+                mostrarCargando(mensajeCarga);
 
                 let url = '/consultar_historial_salidas';
                 const params = new URLSearchParams();
-
-                // Agregar filtros de fecha
-                if (fechaDesde) {
-                    params.append('fecha_inicio', fechaDesde);
-                }
-                if (fechaHasta) {
-                    params.append('fecha_fin', fechaHasta);
-                }
 
                 // Agregar filtro de código de material
                 if (codigoFiltro) {
                     params.append('codigo_material', codigoFiltro);
                 }
 
+                // Agregar filtros de fecha
+                if (fechaDesde) {
+                    params.append('fecha_desde', fechaDesde);
+                }
+                if (fechaHasta) {
+                    params.append('fecha_hasta', fechaHasta);
+                }
+
                 if (params.toString()) {
                     url += '?' + params.toString();
                 }
 
+                // Debug: mostrar la URL que se está enviando
+                console.log('🔍 Consultando URL:', url);
+                console.log('📅 Filtros aplicados:', {
+                    codigo: codigoFiltro,
+                    fechaDesde: fechaDesde,
+                    fechaHasta: fechaHasta
+                });
+
                 const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const salidas = await response.json();
+
+                console.log('📊 Respuesta del servidor:', salidas);
 
                 if (Array.isArray(salidas)) {
                     actualizarTablaSalidas(salidas);
@@ -871,42 +1193,41 @@
                     if (totalInfo) {
                         const mensaje = `Total Rows: ${salidas.length}`;
                         const filtros = [];
-                        if (fechaDesde && fechaHasta) {
-                            if (fechaDesde === fechaHasta) {
-                                filtros.push(`Fecha: ${fechaDesde}`);
-                            } else {
-                                filtros.push(`Período: ${fechaDesde} - ${fechaHasta}`);
-                            }
-                        }
                         if (codigoFiltro) {
                             filtros.push(`Código: ${codigoFiltro}`);
+                        }
+                        if (fechaDesde) {
+                            filtros.push(`Desde: ${fechaDesde}`);
+                        }
+                        if (fechaHasta) {
+                            filtros.push(`Hasta: ${fechaHasta}`);
                         }
                         
                         totalInfo.textContent = filtros.length > 0 ? 
                             `${mensaje} | Filtros: ${filtros.join(', ')}` : mensaje;
                     }
+                    
                     // ✅ OCULTAR mensaje de carga cuando termine exitosamente
                     ocultarMensaje();
                 } else {
+                    console.error('❌ Error en respuesta:', salidas);
                     mostrarError(salidas.error || 'Error al consultar salidas');
                 }
 
             } catch (error) {
-                console.error('Error al consultar salidas:', error);
-                mostrarError('Error al consultar salidas');
+                console.error('❌ Error al consultar salidas:', error);
+                mostrarError('Error al consultar salidas: ' + error.message);
             }
         }
 
         function limpiarFiltros() {
-            // Establecer fecha actual en ambos campos
-            const hoy = new Date().toISOString().split('T')[0];
+            const codigoFiltro = document.getElementById('salida_filtro_codigo');
             const fechaDesde = document.getElementById('salida_fecha_desde');
             const fechaHasta = document.getElementById('salida_fecha_hasta');
-            const codigoFiltro = document.getElementById('salida_filtro_codigo');
             
-            if (fechaDesde) fechaDesde.value = hoy;
-            if (fechaHasta) fechaHasta.value = hoy;
             if (codigoFiltro) codigoFiltro.value = '';
+            if (fechaDesde) fechaDesde.value = '';
+            if (fechaHasta) fechaHasta.value = '';
             
             // Consultar automáticamente con filtros limpiados
             consultarSalidas();

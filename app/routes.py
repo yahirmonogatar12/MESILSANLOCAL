@@ -2,11 +2,14 @@ import json
 import os
 import re
 import traceback
+import tempfile
+import subprocess
 from functools import wraps
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
 from .db import (get_db_connection, init_db, guardar_configuracion_usuario, cargar_configuracion_usuario,
                  actualizar_inventario_general_entrada, actualizar_inventario_general_salida, 
-                 obtener_inventario_general, recalcular_inventario_general)
+                 obtener_inventario_general, recalcular_inventario_general, insertar_bom_desde_dataframe,
+                 obtener_modelos_bom, listar_bom_por_modelo, exportar_bom_a_excel)
 import sqlite3
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -98,6 +101,106 @@ def cargar_template():
     except Exception as e:
         print(f"Error al cargar template {template_path}: {str(e)}")
         return jsonify({'error': f'Error al cargar el template: {str(e)}'}), 500
+
+@app.route('/importar_excel_bom', methods=['POST'])
+@login_requerido
+def importar_excel_bom():
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No se encontró el archivo'})
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No se seleccionó ningún archivo'})
+
+    try:
+        print("--- Iniciando importación de BOM ---")
+        df = pd.read_excel(file)
+        
+        # Imprime las columnas detectadas para depuración
+        print(f"Columnas detectadas en el Excel: {df.columns.tolist()}")
+        
+        registrador = session.get('usuario', 'desconocido')
+        
+        # Llamar a la nueva función de la base de datos
+        resultado = insertar_bom_desde_dataframe(df, registrador)
+        
+        insertados = resultado.get('insertados', 0)
+        omitidos = resultado.get('omitidos', 0)
+        
+        mensaje = f"Importación completada: {insertados} registros guardados."
+        if omitidos > 0:
+            mensaje += f" Se omitieron {omitidos} filas por no tener 'Modelo' o 'Número de parte'."
+        
+        print(f"--- Finalizando importación: {mensaje} ---")
+        
+        return jsonify({'success': True, 'message': mensaje})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f"Ocurrió un error: {str(e)}"})
+
+@app.route('/listar_modelos_bom', methods=['GET'])
+@login_requerido
+def listar_modelos_bom():
+    """
+    Devuelve la lista de modelos únicos disponibles en la tabla BOM
+    """
+    try:
+        modelos = obtener_modelos_bom()
+        return jsonify(modelos)
+    except Exception as e:
+        print(f"Error al obtener modelos BOM: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/listar_bom', methods=['POST'])
+@login_requerido
+def listar_bom():
+    """
+    Lista los registros de BOM, opcionalmente filtrados por modelo
+    """
+    try:
+        data = request.get_json()
+        modelo = data.get('modelo', 'todos') if data else 'todos'
+        
+        bom_data = listar_bom_por_modelo(modelo)
+        return jsonify(bom_data)
+        
+    except Exception as e:
+        print(f"Error al listar BOM: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/exportar_excel_bom', methods=['GET'])
+@login_requerido
+def exportar_excel_bom():
+    """
+    Exporta datos de BOM a un archivo Excel, filtrados por modelo si se especifica
+    """
+    try:
+        # Obtener el modelo del parámetro de consulta
+        modelo = request.args.get('modelo', None)
+        
+        if modelo and modelo.strip() and modelo != 'todos':
+            # Exportar solo el modelo específico
+            archivo_temp = exportar_bom_a_excel(modelo)
+            download_name = f'bom_export_{modelo}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        else:
+            # Exportar todos los datos (comportamiento anterior)
+            archivo_temp = exportar_bom_a_excel()
+            download_name = f'bom_export_todos_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        
+        if archivo_temp:
+            return send_file(
+                archivo_temp,
+                as_attachment=True,
+                download_name=download_name,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:
+            return jsonify({'error': 'Error al generar el archivo Excel'}), 500
+            
+    except Exception as e:
+        print(f"Error al exportar BOM: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/cargar_template_test', methods=['POST'])
 def cargar_template_test():
@@ -1068,6 +1171,18 @@ def control_de_material_ajax():
         print(f"Error al cargar template Control de Material: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/informacion_basica/control_de_bom')
+@login_requerido
+def control_de_bom_ajax():
+    """Ruta para cargar dinámicamente el contenido de Control de BOM"""
+    try:
+        # Obtener modelos para pasarlos al template
+        modelos = obtener_modelos_bom()
+        return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', modelos=modelos)
+    except Exception as e:
+        print(f"Error al cargar template Control de BOM: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 # Rutas para cargar contenido dinámicamente (AJAX)
 @app.route('/listas/informacion_basica')
 @login_requerido
@@ -1290,7 +1405,7 @@ def guardar_salida_lote():
         nueva_cantidad = cantidad_actual - cantidad_salida
         
         # Actualizar la cantidad en almacen
-        cursor.execute('UPDATE control_material_almacen SET cantidad_actual = ? WHERE codigo_material_recibido = ?', 
+        cursor.execute('UPDATE control_material SET cantidad_actual = ? WHERE codigo_material_recibido = ?', 
                       (nueva_cantidad, codigo_material_recibido))
         
         # Registrar la salida en control_material_salida
@@ -1335,9 +1450,13 @@ def consultar_historial_salidas():
     conn = None
     cursor = None
     try:
-        fecha_inicio = request.args.get('fecha_inicio')
-        fecha_fin = request.args.get('fecha_fin')
+        # Obtener parámetros de filtro (soportar ambos nombres para compatibilidad)
+        fecha_inicio = request.args.get('fecha_inicio') or request.args.get('fecha_desde')
+        fecha_fin = request.args.get('fecha_fin') or request.args.get('fecha_hasta')
         numero_lote = request.args.get('numero_lote', '').strip()
+        codigo_material = request.args.get('codigo_material', '').strip()
+        
+        print(f"🔍 Filtros recibidos - fecha_desde: {fecha_inicio}, fecha_hasta: {fecha_fin}, codigo_material: {codigo_material}, numero_lote: {numero_lote}")
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1364,18 +1483,25 @@ def consultar_historial_salidas():
         params = []
         
         if fecha_inicio:
-            query += ' AND s.fecha_salida >= ?'
+            query += ' AND DATE(s.fecha_salida) >= ?'
             params.append(fecha_inicio)
         
         if fecha_fin:
-            query += ' AND s.fecha_salida <= ?'
+            query += ' AND DATE(s.fecha_salida) <= ?'
             params.append(fecha_fin)
         
         if numero_lote:
             query += ' AND s.numero_lote LIKE ?'
             params.append(f'%{numero_lote}%')
+            
+        if codigo_material:
+            query += ' AND (s.codigo_material_recibido LIKE ? OR a.codigo_material LIKE ? OR a.codigo_material_original LIKE ?)'
+            params.extend([f'%{codigo_material}%', f'%{codigo_material}%', f'%{codigo_material}%'])
         
         query += ' ORDER BY s.fecha_salida DESC, s.fecha_registro DESC'
+        
+        print(f"📊 SQL Query: {query}")
+        print(f"📊 SQL Params: {params}")
         
         cursor.execute(query, params)
         resultados = cursor.fetchall()
@@ -1752,3 +1878,562 @@ def verificar_estado_inventario():
                 conn.close()
         except:
             pass
+
+@app.route('/imprimir_zebra', methods=['POST'])
+@login_requerido
+def imprimir_zebra():
+    """
+    Endpoint para enviar comandos ZPL a impresora Zebra ZT230 (USB o Red)
+    """
+    import socket
+    import subprocess
+    import tempfile
+    import os
+    import time
+    import traceback
+    from datetime import datetime
+    
+    try:
+        data = request.get_json()
+        metodo_conexion = data.get('metodo_conexion', 'usb')  # 'usb' o 'red'
+        ip_impresora = data.get('ip_impresora')
+        comando_zpl = data.get('comando_zpl')
+        codigo = data.get('codigo', '')
+        
+        print(f"🦓 ZT230: Método: {metodo_conexion}")
+        print(f"🦓 ZT230: Código: {codigo}")
+        print(f"🦓 ZT230: Comando ZPL: {comando_zpl}")
+        
+        if not comando_zpl:
+            return jsonify({
+                'success': False, 
+                'error': 'Comando ZPL es requerido'
+            }), 400
+        
+        if metodo_conexion == 'usb':
+            # Impresión por USB para ZT230
+            return imprimir_zebra_usb(comando_zpl, codigo)
+        else:
+            # Impresión por red para ZT230
+            return imprimir_zebra_red(ip_impresora, comando_zpl, codigo)
+            
+    except Exception as e:
+        error_msg = f'Error interno del servidor: {str(e)}'
+        print(f"❌ ZT230 CRITICAL ERROR: {error_msg}")
+        print(f"❌ ZT230 TRACEBACK: {traceback.format_exc()}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+def imprimir_zebra_usb(comando_zpl, codigo):
+    """
+    Imprime en Zebra ZT230 usando diálogo nativo de Windows para seleccionar impresora
+    """
+    from datetime import datetime
+    import subprocess
+    import tempfile
+    import os
+    import threading
+    import time
+    
+    try:
+        print("🖨️ ZT230: Iniciando impresión local con diálogo de selección...")
+        print(f"🔍 ZT230: Código: {codigo}")
+        print(f"🔍 ZT230: Comando ZPL: {len(comando_zpl)} caracteres")
+        
+        # Crear directorio temporal si no existe
+        temp_dir = 'C:\\temp'
+        try:
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir)
+        except:
+            temp_dir = tempfile.gettempdir()
+        
+        # Crear archivo ZPL con nombre descriptivo
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"etiqueta_{codigo.replace('/', '_').replace('\\', '_')}_{timestamp}.zpl"
+        filepath = os.path.join(temp_dir, filename)
+        
+        # Escribir comando ZPL al archivo
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(comando_zpl)
+        
+        print(f"� ZT230: Archivo creado: {filepath}")
+        
+        # MÉTODO PRINCIPAL: Abrir diálogo de impresión de Windows directamente
+        try:
+            print("🖨️ ZT230: Abriendo diálogo de Windows con el archivo ZPL...")
+            
+            # Usar rundll32 para abrir el diálogo de impresión directamente
+            cmd = f'rundll32.exe shell32.dll,ShellExec_RunDLL "{filepath}"'
+            
+            # Ejecutar comando en segundo plano
+            subprocess.Popen(cmd, shell=True)
+            
+            # Esperar un momento y luego mostrar instrucciones
+            time.sleep(1)
+            
+            # Crear y mostrar ventana de instrucciones
+            instrucciones_script = f'''
+@echo off
+title Instrucciones de Impresion ZT230
+color 0A
+echo.
+echo ================================================================
+echo                    IMPRESION ZT230 - ETIQUETA
+echo ================================================================
+echo.
+echo Codigo: {codigo}
+echo Archivo: {filename}
+echo.
+echo INSTRUCCIONES:
+echo.
+echo 1. Se abrio automaticamente el archivo de etiqueta
+echo 2. Presione Ctrl+P en la ventana que se abrio
+echo 3. En el dialogo de impresion:
+echo    - Seleccione "ZDesigner ZT230-300dpi ZPL"
+echo    - O seleccione su impresora Zebra ZT230
+echo 4. Haga clic en "Imprimir"
+echo.
+echo Si no se abrio automaticamente:
+echo - Navegue a: {temp_dir}
+echo - Haga doble clic en: {filename}
+echo - Siga los pasos anteriores
+echo.
+echo ================================================================
+echo.
+pause
+'''
+            
+            # Crear archivo .bat temporal para instrucciones
+            bat_path = os.path.join(temp_dir, f"instrucciones_{timestamp}.bat")
+            with open(bat_path, 'w', encoding='utf-8') as f:
+                f.write(instrucciones_script)
+            
+            # Ejecutar ventana de instrucciones
+            subprocess.Popen(['cmd', '/c', bat_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
+            
+            # Programar limpieza automática
+            def cleanup_files():
+                time.sleep(60)  # Esperar 1 minuto
+                try:
+                    os.unlink(filepath)
+                    os.unlink(bat_path)
+                    print("🗑️ ZT230: Archivos temporales limpiados")
+                except:
+                    pass
+            
+            cleanup_thread = threading.Thread(target=cleanup_files)
+            cleanup_thread.daemon = True
+            cleanup_thread.start()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Diálogo de impresión abierto - Seleccione su impresora ZT230',
+                'metodo': 'dialogo_nativo_windows',
+                'archivo': filepath,
+                'codigo': codigo,
+                'instrucciones': [
+                    'Se abrió automáticamente el archivo de etiqueta',
+                    'Presione Ctrl+P para abrir el diálogo de impresión',
+                    'Seleccione "ZDesigner ZT230-300dpi ZPL" en la lista de impresoras',
+                    'Haga clic en "Imprimir" para enviar la etiqueta a la ZT230',
+                    'Siga las instrucciones en la ventana que apareció'
+                ],
+                'timestamp': datetime.now().isoformat()
+            })
+            
+        except Exception as e:
+            print(f"❌ ZT230: Error abriendo diálogo principal: {str(e)}")
+            
+            # MÉTODO ALTERNATIVO: Usar notepad directamente
+            try:
+                print("�️ ZT230: Intentando con notepad...")
+                subprocess.Popen(['notepad', filepath])
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Archivo abierto en Notepad - Use Ctrl+P para imprimir',
+                    'metodo': 'notepad_manual',
+                    'archivo': filepath,
+                    'codigo': codigo,
+                    'instrucciones': [
+                        'Se abrió el archivo en Notepad',
+                        'Presione Ctrl+P para abrir el diálogo de impresión',
+                        'Seleccione su impresora ZT230',
+                        'Confirme la impresión'
+                    ],
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+            except Exception as e2:
+                print(f"❌ ZT230: Error con notepad: {str(e2)}")
+                
+                # MÉTODO FINAL: Solo crear archivo e instrucciones
+                print("📁 ZT230: Creando archivo para impresión manual...")
+                
+                # Abrir carpeta donde está el archivo
+                try:
+                    os.startfile(temp_dir)
+                except:
+                    pass
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Archivo creado para impresión manual',
+                    'metodo': 'archivo_manual',
+                    'archivo': filepath,
+                    'codigo': codigo,
+                    'instrucciones': [
+                        f'Se abrió la carpeta: {temp_dir}',
+                        f'Busque el archivo: {filename}',
+                        'Haga doble clic en el archivo',
+                        'Presione Ctrl+P y seleccione su impresora ZT230',
+                        'O haga clic derecho → Imprimir'
+                    ],
+                    'timestamp': datetime.now().isoformat()
+                })
+        
+    except Exception as e:
+        error_msg = f'Error en impresión local ZT230: {str(e)}'
+        print(f"❌ ZT230 ERROR: {error_msg}")
+        import traceback
+        print(f"❌ ZT230 TRACEBACK: {traceback.format_exc()}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg,
+            'suggestion': 'Verifique que la impresora ZT230 esté conectada y configurada'
+        }), 500
+
+def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
+    """
+    Imprime en Zebra ZT230 por red (protocolo estándar)
+    """
+    import socket
+    from datetime import datetime
+    
+    try:
+        if not ip_impresora:
+            return jsonify({
+                'success': False, 
+                'error': 'IP de impresora es requerida para conexión por red'
+            }), 400
+        
+        # Configuración de conexión Zebra ZD421
+        puerto_zebra = 9100  # Puerto estándar para impresoras Zebra
+        timeout = 10  # 10 segundos timeout
+        
+        try:
+            # Crear socket TCP
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            
+            print(f"🔌 ZEBRA RED: Conectando a {ip_impresora}:{puerto_zebra}")
+            
+            # Conectar a la impresora
+            sock.connect((ip_impresora, puerto_zebra))
+            print("✅ ZEBRA RED: Conexión establecida")
+            
+            # Enviar comando ZPL
+            comando_bytes = comando_zpl.encode('utf-8')
+            sock.send(comando_bytes)
+            print(f"📤 ZEBRA RED: Comando enviado ({len(comando_bytes)} bytes)")
+            
+            # Pequeña pausa para procesamiento
+            import time
+            time.sleep(1)
+            
+            # Cerrar conexión
+            sock.close()
+            print("✅ ZEBRA RED: Etiqueta enviada exitosamente")
+            
+            # Log del evento
+            print(f"📊 ZEBRA LOG: {datetime.now()} - Usuario: {session.get('usuario')} - Código: {codigo} - IP: {ip_impresora}")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Etiqueta enviada a impresora Zebra {ip_impresora}',
+                'metodo': 'red',
+                'codigo': codigo,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+        except socket.timeout:
+            error_msg = f'Timeout al conectar con la impresora en {ip_impresora}:{puerto_zebra}'
+            print(f"⏰ ZEBRA RED ERROR: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'suggestion': 'Verifique que la impresora esté encendida y conectada a la red'
+            }), 408
+            
+        except socket.gaierror as e:
+            error_msg = f'No se pudo resolver la dirección IP: {ip_impresora}'
+            print(f"🌐 ZEBRA RED ERROR: {error_msg} - {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'suggestion': 'Verifique que la IP sea correcta'
+            }), 400
+            
+        except ConnectionRefusedError:
+            error_msg = f'Conexión rechazada por {ip_impresora}:{puerto_zebra}'
+            print(f"🚫 ZEBRA RED ERROR: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'suggestion': 'Verifique que la impresora esté encendida y el puerto 9100 esté abierto'
+            }), 503
+            
+        except Exception as socket_error:
+            error_msg = f'Error de conexión: {str(socket_error)}'
+            print(f"💥 ZEBRA RED ERROR: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'suggestion': 'Verifique la configuración de red de la impresora'
+            }), 500
+        
+    except Exception as e:
+        error_msg = f'Error en impresión por red: {str(e)}'
+        print(f"❌ ZEBRA RED CRITICAL ERROR: {error_msg}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+@app.route('/imprimir_etiqueta_qr', methods=['POST'])
+@login_requerido
+def imprimir_etiqueta_qr():
+    """
+    Endpoint optimizado para impresión automática directa de etiquetas QR
+    Sin confirmaciones, imprime inmediatamente al guardar material
+    """
+    import socket
+    import subprocess
+    import tempfile
+    import os
+    import time
+    from datetime import datetime
+    
+    try:
+        data = request.get_json()
+        codigo = data.get('codigo', '')
+        comando_zpl = data.get('comando_zpl', '')
+        metodo = data.get('metodo', 'usb')  # 'usb' o 'red'
+        ip = data.get('ip', '192.168.1.100')
+        
+        print(f"🎯 IMPRESIÓN DIRECTA: Código={codigo}, Método={metodo}")
+        
+        if not codigo or not comando_zpl:
+            return jsonify({
+                'success': False,
+                'error': 'Código y comando ZPL son requeridos'
+            }), 400
+        
+        # Log del intento de impresión
+        timestamp = datetime.now().isoformat()
+        usuario = session.get('usuario', 'unknown')
+        print(f"📊 PRINT LOG: {timestamp} - User: {usuario} - Code: {codigo} - Method: {metodo}")
+        
+        if metodo == 'usb':
+            return imprimir_directo_usb(comando_zpl, codigo)
+        else:
+            return imprimir_directo_red(comando_zpl, codigo, ip)
+            
+    except Exception as e:
+        error_msg = f'Error en impresión directa: {str(e)}'
+        print(f"❌ IMPRESIÓN DIRECTA ERROR: {error_msg}")
+        print(f"❌ TRACEBACK: {traceback.format_exc()}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+def imprimir_directo_usb(comando_zpl, codigo):
+    """
+    Impresión directa por USB - envía inmediatamente a la impresora predeterminada
+    """
+    from datetime import datetime
+    import subprocess
+    import tempfile
+    import os
+    
+    try:
+        print("🔌 IMPRESIÓN USB DIRECTA: Iniciando...")
+        
+        # Crear archivo temporal
+        temp_dir = 'C:\\temp'
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"etiqueta_{codigo.replace(',', '_')}_{timestamp}.zpl"
+        filepath = os.path.join(temp_dir, filename)
+        
+        # Escribir comando ZPL
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(comando_zpl)
+        
+        print(f"📄 Archivo creado: {filepath}")
+        
+        # MÉTODO 1: Intentar impresión directa usando copy command a puerto LPT1
+        try:
+            print("🖨️ Intentando impresión directa vía copy command...")
+            result = subprocess.run(
+                ['copy', filepath, 'LPT1:'], 
+                shell=True, 
+                capture_output=True, 
+                text=True,
+                timeout=10
+            )
+            
+            if result.returncode == 0:
+                print("✅ Impresión exitosa vía LPT1")
+                return jsonify({
+                    'success': True,
+                    'message': 'Etiqueta enviada directamente a impresora USB',
+                    'metodo': 'copy_lpt1',
+                    'codigo': codigo,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e1:
+            print(f"⚠️ LPT1 falló: {str(e1)}")
+        
+        # MÉTODO 2: Usar comando de Windows para imprimir directamente
+        try:
+            print("🖨️ Intentando con comando print de Windows...")
+            result = subprocess.run(
+                ['print', '/D:USB001', filepath],
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=15
+            )
+            
+            if result.returncode == 0:
+                print("✅ Impresión exitosa vía print command")
+                return jsonify({
+                    'success': True,
+                    'message': 'Etiqueta enviada directamente a impresora USB',
+                    'metodo': 'windows_print',
+                    'codigo': codigo,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e2:
+            print(f"⚠️ Windows print falló: {str(e2)}")
+        
+        # MÉTODO 3: Usar PowerShell para imprimir
+        try:
+            print("🖨️ Intentando con PowerShell...")
+            ps_command = f'Get-Content "{filepath}" | Out-Printer -Name "ZDesigner ZT230-300dpi ZPL"'
+            result = subprocess.run(
+                ['powershell', '-Command', ps_command],
+                capture_output=True,
+                text=True,
+                timeout=20
+            )
+            
+            if result.returncode == 0:
+                print("✅ Impresión exitosa vía PowerShell")
+                return jsonify({
+                    'success': True,
+                    'message': 'Etiqueta enviada directamente a impresora Zebra',
+                    'metodo': 'powershell',
+                    'codigo': codigo,
+                    'timestamp': datetime.now().isoformat()
+                })
+                
+        except Exception as e3:
+            print(f"⚠️ PowerShell falló: {str(e3)}")
+        
+        # MÉTODO 4: Fallback - crear archivo y abrir carpeta
+        print("📁 Fallback: Creando archivo para impresión manual...")
+        
+        try:
+            os.startfile(temp_dir)
+        except:
+            pass
+        
+        return jsonify({
+            'success': True,
+            'message': 'Archivo de etiqueta creado. Revisar carpeta temp.',
+            'metodo': 'file_fallback',
+            'archivo': filepath,
+            'codigo': codigo,
+            'instrucciones': [
+                f'Archivo guardado en: {filepath}',
+                'Se abrió la carpeta automáticamente',
+                'Haga doble clic en el archivo para imprimir'
+            ],
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        error_msg = f'Error en impresión USB directa: {str(e)}'
+        print(f"❌ USB DIRECTO ERROR: {error_msg}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+def imprimir_directo_red(comando_zpl, codigo, ip):
+    """
+    Impresión directa por red - envía inmediatamente vía socket TCP
+    """
+    import socket
+    from datetime import datetime
+    
+    try:
+        print(f"🌐 IMPRESIÓN RED DIRECTA: {ip}:9100")
+        
+        # Configuración de socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)  # Timeout de 10 segundos
+        
+        # Conectar y enviar
+        sock.connect((ip, 9100))
+        sock.send(comando_zpl.encode('utf-8'))
+        sock.close()
+        
+        print(f"✅ Etiqueta enviada exitosamente a {ip}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Etiqueta enviada directamente a impresora {ip}',
+            'metodo': 'socket_directo',
+            'codigo': codigo,
+            'ip': ip,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except socket.timeout:
+        error_msg = f'Timeout al conectar con {ip}:9100'
+        print(f"⏰ RED DIRECTA ERROR: {error_msg}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 408
+        
+    except Exception as e:
+        error_msg = f'Error de conexión de red: {str(e)}'
+        print(f"❌ RED DIRECTA ERROR: {error_msg}")
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+
+@app.route('/test_modelos')
+def test_modelos():
+    """Página de prueba para verificar la carga de modelos"""
+    return render_template('test_modelos.html')

@@ -32,8 +32,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <!-- Font LG Regular -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/yahirmonogatari/lg-fonts/lg-regular.css">
+    <!-- Font LG Regular - COMENTADO: Problema MIME -->
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/yahirmonogatari/lg-fonts/lg-regular.css"> -->
     <link rel="stylesheet" href="../static/style.css">
     <link rel="stylesheet" href="../static/styleHeader.css">
     <link rel="stylesheet" href="../static/css/responsive-mobile.css">
@@ -557,7 +557,7 @@
         // Verificar estado inicial
         updateOnlineStatus();
         
-        console.log('🚀 PWA functionality initialized');
+
     </script>
     <script>
         // ============================================= 
@@ -612,7 +612,6 @@
                 navButtons.forEach(button => {
                     button.addEventListener('click', function() {
                         const buttonText = this.textContent.trim();
-                        console.log(`📱 Click en botón móvil: ${buttonText}`);
                         
                         if (isMobile()) {
                             // Mapeo de botones a funciones de carga de contenido
@@ -789,13 +788,105 @@
                 setTimeout(setViewportHeight, 500);
             });
             
-            console.log('🚀 Mobile enhancements initialized');
+
         });    
     </script>
 
     <script>    
         // Mostrar/ocultar el contenedor de material según el botón
         document.addEventListener('DOMContentLoaded', function() {
+            
+            // ===============================================
+            // DEFINIR TODAS LAS FUNCIONES AL INICIO
+            // ===============================================
+            
+            // Control de debugging - Cambia a true si necesitas mensajes de consola para debugging
+            const DEBUG_MODE = false;
+            
+            // Función de logging condicional
+            function debugLog(...args) {
+                if (DEBUG_MODE) {
+                    console.log(...args);
+                }
+            }
+            
+            // NUEVA FUNCIÓN: Cerrar todos los dropdowns en un contenedor
+            function cerrarTodosLosDropdowns(container = document) {
+                // Buscar todos los elementos con class "show" y "collapse"
+                const elementosAbiertos = container.querySelectorAll('.collapse.show');
+                elementosAbiertos.forEach(elemento => {
+                    elemento.classList.remove('show');
+                });
+                
+                // Buscar todos los botones con aria-expanded="true"
+                const botonesExpandidos = container.querySelectorAll('[aria-expanded="true"]');
+                botonesExpandidos.forEach(boton => {
+                    boton.setAttribute('aria-expanded', 'false');
+                });
+            }
+            
+            // Hacer la función disponible globalmente para debugging
+            window.cerrarTodosLosDropdowns = cerrarTodosLosDropdowns;
+            
+            // Función genérica para cargar contenido dinámicamente
+            window.cargarContenidoDinamico = function(containerId, templatePath, initCallback = null) {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    console.error(`✗ Container ${containerId} no encontrado`);
+                    return Promise.reject(`Container ${containerId} no encontrado`);
+                }
+                
+                // SIEMPRE limpiar el contenedor antes de cargar nuevo contenido
+                container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
+                
+                // Cargar el contenido dinámicamente
+                return fetch(templatePath)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error al cargar el contenido: ' + response.status);
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        container.innerHTML = html;
+                        
+                        // Forzar cierre de dropdowns después de cargar
+                        setTimeout(() => {
+                            cerrarTodosLosDropdowns(container);
+                        }, 100);
+                        
+                        // Ejecutar cualquier script que pueda estar en el HTML cargado
+                        const scripts = container.querySelectorAll('script');
+                        scripts.forEach(script => {
+                            const newScript = document.createElement('script');
+                            if (script.src) {
+                                newScript.src = script.src;
+                            } else {
+                                newScript.textContent = script.textContent;
+                            }
+                            document.head.appendChild(newScript);
+                        });
+                        
+                        // Ejecutar callback de inicialización si se proporciona
+                        if (initCallback && typeof initCallback === 'function') {
+                            setTimeout(() => {
+                                initCallback();
+                            }, 100);
+                        }
+                        
+                        return html;
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar el contenido:', error);
+                        container.innerHTML = '<div class="error-message">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
+                        throw error;
+                    });
+            };
+            
+            // ===============================================
+            // AHORA INICIALIZAR VARIABLES Y ELEMENTOS
+            // ===============================================
+            
             const materialContainer = document.getElementById('material-container');
             const informacionBasicaContent = document.getElementById('informacion-basica-content');
             const controlMaterialContent = document.getElementById('control-material-content');
@@ -824,6 +915,7 @@
             
             // Función para ocultar todo el contenido
             function hideAllContent() {
+                // Ocultar todos los contenedores principales
                 informacionBasicaContent.style.display = 'none';
                 controlMaterialContent.style.display = 'none';
                 controlProduccionContent.style.display = 'none';
@@ -836,19 +928,36 @@
                 // FORZAR ocultar completamente las áreas de contenido
                 materialContentArea.style.display = 'none';
                 informacionBasicaContentArea.style.display = 'none';
+                
+                // Limpiar contenido de los contenedores principales para evitar superposición
+                const containersToClean = [
+                    'informacion-basica-content',
+                    'control-material-content', 
+                    'control-produccion-content',
+                    'control-proceso-content',
+                    'control-calidad-content',
+                    'control-resultados-content',
+                    'control-reporte-content',
+                    'configuracion-programa-content'
+                ];
+                
+                containersToClean.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container && container.innerHTML.trim() !== '') {
+                        // Solo limpiar si tiene contenido, mantener un placeholder
+                        container.innerHTML = '<!-- El contenido se cargará dinámicamente con JavaScript -->';
+                    }
+                });
+                
                 hideAllMaterialContainers();
                 hideAllInformacionBasicaContainers();
             }
             
             // Función para resetear completamente la pestaña de Información Básica
             function resetInformacionBasica() {
-                console.log('Reseteando Información Básica (sin AJAX)');
-                
                 // Llamar a la función global de reseteo si existe
                 if (typeof window.resetInfoBasicaToDefault === 'function') {
                     window.resetInfoBasicaToDefault();
-                } else {
-                    console.log('Función resetInfoBasicaToDefault no disponible aún');
                 }
                 
                 // Asegurar que todos los sidebar-links funcionen
@@ -857,8 +966,6 @@
                     link.style.pointerEvents = 'auto';
                     link.style.cursor = 'pointer';
                 });
-                
-                console.log('Sidebar links habilitados:', sidebarLinks.length);
             }
             
             // Función para ocultar todos los contenedores de material
@@ -922,7 +1029,6 @@
             
             // Funciones globales para mostrar cada contenedor de Información Básica
             window.mostrarAdminUsuarioInfo = function() {
-                console.log('Mostrando Administración de usuario');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-usuario-info-container');
                 if (container) {
@@ -931,7 +1037,6 @@
             };
             
             window.mostrarAdminMenuInfo = function() {
-                console.log('Mostrando Administración de menú');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-menu-info-container');
                 if (container) {
@@ -940,7 +1045,7 @@
             };
             
             window.mostrarAdminAutoridadInfo = function() {
-                console.log('Mostrando Administración de autoridad');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-autoridad-info-container');
                 if (container) {
@@ -949,7 +1054,7 @@
             };
             
             window.mostrarControlCodigoInfo = function() {
-                console.log('Mostrando Control de lista de código');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-codigo-info-container');
                 if (container) {
@@ -958,7 +1063,7 @@
             };
             
             window.mostrarAdminItinerarioInfo = function() {
-                console.log('Mostrando Administración de itinerario');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-itinerario-info-container');
                 if (container) {
@@ -967,7 +1072,7 @@
             };
             
             window.mostrarConsultarLicenciasInfo = function() {
-                console.log('Mostrando Consultar licencias');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('consultar-licencias-info-container');
                 if (container) {
@@ -976,7 +1081,7 @@
             };
             
             window.mostrarControlDepartamentoInfo = function() {
-                console.log('Mostrando Control de departamento');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-departamento-info-container');
                 if (container) {
@@ -985,7 +1090,6 @@
             };
             
             window.mostrarControlProcesoInfo = function() {
-                console.log('Mostrando Control de proceso');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-proceso-info-container');
                 if (container) {
@@ -994,7 +1098,7 @@
             };
             
             window.mostrarControlOrdenProcesoInfo = function() {
-                console.log('Mostrando Control de orden de proceso');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-orden-proceso-info-container');
                 if (container) {
@@ -1003,7 +1107,6 @@
             };
             
             window.mostrarControlOrdenProceso2Info = function() {
-                console.log('Mostrando Control de orden de proceso 2');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-orden-proceso2-info-container');
                 if (container) {
@@ -1012,7 +1115,7 @@
             };
             
             window.mostrarControlDefectoInfo = function() {
-                console.log('Mostrando Control de defecto por proceso');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-defecto-info-container');
                 if (container) {
@@ -1021,7 +1124,7 @@
             };
             
             window.mostrarControlInterfacesInfo = function() {
-                console.log('Mostrando Control de interfaces de máquina');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-interfaces-info-container');
                 if (container) {
@@ -1030,7 +1133,7 @@
             };
             
             window.mostrarControlInterlockInfo = function() {
-                console.log('Mostrando Control de interlock de máquina en línea');
+
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-interlock-info-container');
                 if (container) {
@@ -1039,7 +1142,6 @@
             };
             
             window.mostrarConfiguracionMSLInfo = function() {
-                console.log('Mostrando Configuración de MSL');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('configuracion-msl-info-container');
                 if (container) {
@@ -1048,7 +1150,6 @@
             };
             
             window.mostrarControlClienteInfo = function() {
-                console.log('Mostrando Control de cliente');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-cliente-info-container');
                 if (container) {
@@ -1057,7 +1158,6 @@
             };
             
             window.mostrarControlProveedorInfo = function() {
-                console.log('Mostrando Control de proveedor');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-proveedor-info-container');
                 if (container) {
@@ -1065,9 +1165,28 @@
                 }
             };
             
+            // NUEVA FUNCIÓN: Control de material para Información Básica
+            window.mostrarControlMaterialInfo = function() {
+                console.log('🎯 Cargando Control de Material de Información Básica');
+                hideAllInformacionBasicaContainers();
+                const container = document.getElementById('control-material-info-container');
+                if (container) {
+                    container.style.display = 'block';
+                    
+                    // Cargar el contenido dinámicamente del endpoint específico
+                    cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material')
+                        .then(() => {
+                            console.log('✅ Control de Material de Información Básica cargado exitosamente');
+                        })
+                        .catch(error => {
+                            console.error('❌ Error cargando Control de Material de Información Básica:', error);
+                            container.innerHTML = '<div class="error-message"><h3>Error al cargar el contenido</h3><p>No se pudo cargar Control de Material. Por favor, intente nuevamente.</p></div>';
+                        });
+                }
+            };
+            
             // Funciones adicionales para el sidebar de Información Básica
             window.mostrarControlModelosInfo = function() {
-                console.log('Mostrando Control de modelos');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-modelos-info-container');
                 if (container) {
@@ -1076,16 +1195,25 @@
             };
             
             window.mostrarControlBOMInfo = function() {
-                console.log('Mostrando Control de BOM');
+                console.log('🎯 Cargando Control de BOM de Información Básica');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-bom-info-container');
                 if (container) {
                     container.style.display = 'block';
+                    
+                    // Cargar el contenido dinámicamente del endpoint específico
+                    cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom')
+                        .then(() => {
+                            console.log('✅ Control de BOM de Información Básica cargado exitosamente');
+                        })
+                        .catch(error => {
+                            console.error('❌ Error cargando Control de BOM de Información Básica:', error);
+                            container.innerHTML = '<div class="error-message"><h3>Error al cargar el contenido</h3><p>No se pudo cargar Control de BOM. Por favor, intente nuevamente.</p></div>';
+                        });
                 }
             };
             
             window.mostrarControlBOMSMTInfo = function() {
-                console.log('Mostrando Control de BOM de SMT');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-bom-smt-info-container');
                 if (container) {
@@ -1094,7 +1222,6 @@
             };
             
             window.Controlmaquinainf = function() {
-                console.log('Mostrando Control de máquina');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-maquina-inf-info-container');
                 if (container) {
@@ -1103,7 +1230,6 @@
             };
             
             window.mostrarControlMaquinaInfo = function() {
-                console.log('Mostrando Control de defecto por proceso (máquina)');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-maquina-info-container');
                 if (container) {
@@ -1112,7 +1238,6 @@
             };
             
             window.mostrarControlMaquinaLineaInfo = function() {
-                console.log('Mostrando Control de máquina en línea');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-maquina-linea-info-container');
                 if (container) {
@@ -1133,95 +1258,54 @@
             
             // Función global para mostrar el contenido de almacén
             window.mostrarControlAlmacen = function() {
-                console.log('🏪 === INICIANDO mostrarControlAlmacen ===');
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlAlmacenContainer.style.display = 'block';
                 
                 // Cargar contenido dinámicamente con callback de inicialización
                 cargarContenidoDinamico('control-almacen-container', '/material/control_almacen', () => {
-                    console.log('🔄 Inicializando funciones de control de almacén...');
+
                     
-                    // Usar la nueva función global del módulo
+                    // Intentar inicializar funciones de control de almacén (sin mensajes de advertencia)
                     if (typeof window.inicializarControlAlmacenModule === 'function') {
-                        console.log('✅ Ejecutando inicializarControlAlmacenModule...');
                         window.inicializarControlAlmacenModule();
+                    } else if (typeof window.inicializarControlAlmacen === 'function') {
+                        window.inicializarControlAlmacen();
                     } else {
-                        console.warn('⚠️ inicializarControlAlmacenModule no disponible, intentando métodos individuales');
-                        
-                        // Fallback a la función anterior
-                        if (typeof window.inicializarControlAlmacen === 'function') {
-                            console.log('✅ Ejecutando inicializarControlAlmacen...');
-                            window.inicializarControlAlmacen();
-                        } else {
-                            console.warn('⚠️ inicializarControlAlmacen no disponible, usando métodos individuales');
-                            // Fallback a métodos individuales
-                            if (typeof cargarCodigosMaterial === 'function') {
-                                console.log('✅ Ejecutando cargarCodigosMaterial...');
-                                cargarCodigosMaterial();
-                            } else {
-                                console.warn('⚠️ cargarCodigosMaterial no disponible');
-                            }
-                            if (typeof cargarClienteSeleccionado === 'function') {
-                                console.log('✅ Ejecutando cargarClienteSeleccionado...');
-                                cargarClienteSeleccionado();
-                            } else {
-                                console.warn('⚠️ cargarClienteSeleccionado no disponible');
-                            }
-                            if (typeof cargarSiguienteSecuencial === 'function') {
-                                console.log('✅ Ejecutando cargarSiguienteSecuencial...');
-                                cargarSiguienteSecuencial();
-                            } else {
-                                console.warn('⚠️ cargarSiguienteSecuencial no disponible');
-                            }
-                        }
+                        // Intentar métodos individuales sin mensajes de error
+                        if (typeof cargarCodigosMaterial === 'function') cargarCodigosMaterial();
+                        if (typeof cargarClienteSeleccionado === 'function') cargarClienteSeleccionado();
+                        if (typeof cargarSiguienteSecuencial === 'function') cargarSiguienteSecuencial();
                     }
-                    console.log('� Inicialización de control de almacén completada');
                 })
                 .catch(error => {
                     console.error('Error cargando control de almacén:', error);
-                    // Fallback: ejecutar inicialización sin contenido dinámico
-                    setTimeout(() => {
-                        if (typeof window.inicializarControlAlmacenModule === 'function') {
-                            window.inicializarControlAlmacenModule();
-                        }
-                    }, 200);
                 });
                 
-                console.log('🏪 === FIN mostrarControlAlmacen ===');
+
             };
             
             // Funciones para mostrar otros contenidos
             window.mostrarControlSalida = function() {
-                console.log('🚛 === INICIANDO mostrarControlSalida ===');
+
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlSalidaContainer.style.display = 'block';
                 
                 // Cargar contenido dinámicamente con callback de inicialización
                 cargarContenidoDinamico('control-salida-container', '/material/control_salida', () => {
-                    console.log('🔄 Inicializando funciones de control de salida...');
+
                     
-                    // Usar la nueva función global del módulo
+                    // Intentar inicializar funciones de control de salida (sin mensajes de advertencia)
                     if (typeof window.inicializarControlSalidaModule === 'function') {
-                        console.log('✅ Ejecutando inicializarControlSalidaModule...');
                         window.inicializarControlSalidaModule();
-                    } else {
-                        console.warn('⚠️ inicializarControlSalidaModule no disponible');
                     }
-                    console.log('✅ Inicialización de control de salida completada');
                 })
                 .catch(error => {
                     console.error('Error cargando control de salida:', error);
-                    // Fallback: ejecutar inicialización sin contenido dinámico
-                    setTimeout(() => {
-                        if (typeof window.inicializarControlSalidaModule === 'function') {
-                            window.inicializarControlSalidaModule();
-                        }
-                    }, 200);
                 });
                 
-                console.log('🚛 === FIN mostrarControlSalida ===');
+
             };
             
             window.mostrarControlRetorno = function() {
@@ -1301,7 +1385,6 @@
                     hideAllContent();
                     
                     if (this.id === 'Información Basica') {
-                        console.log('Cargando pestaña Información Básica');
                         materialContainer.style.display = 'block';
                         informacionBasicaContent.style.display = 'block';
                         informacionBasicaContentArea.style.display = 'block';
@@ -1315,11 +1398,7 @@
                                 const defaultContainer = document.getElementById('info-basica-default-container');
                                 if (defaultContainer) {
                                     defaultContainer.style.display = 'block';
-                                    console.log('✅ Contenedor por defecto mostrado');
-                                } else {
-                                    console.error('❌ Contenedor por defecto no encontrado');
                                 }
-                                console.log('Información Básica cargada correctamente');
                             })
                             .catch(error => {
                                 console.error('Error cargando Información Básica:', error);
@@ -1333,20 +1412,26 @@
                             });
                         
                     } else if (this.id === 'Control de material') {
-                        console.log('Cargando pestaña Control de Material');
                         materialContainer.style.display = 'block';
                         controlMaterialContent.style.display = 'block';
                         
-                        // Cargar contenido dinámicamente y mostrar el área de material
+                        // Cargar contenido dinámicamente del sidebar de materiales
                         cargarContenidoDinamico('control-material-content', '/listas/control_material')
                             .then(() => {
-                                mostrarInfoMaterial();
-                                console.log('Control de Material cargado con información por defecto');
+                                // No mostrar material-content-area, solo el sidebar
+                                materialContentArea.style.display = 'none';
+                                hideAllMaterialContainers();
+                                // IMPORTANTE: Ocultar también los contenedores de información básica
+                                hideAllInformacionBasicaContainers();
+                                informacionBasicaContentArea.style.display = 'none';
                             })
                             .catch(error => {
                                 console.error('Error cargando Control de Material:', error);
-                                // Fallback: mostrar área sin contenido dinámico
-                                mostrarInfoMaterial();
+                                // Fallback: ocultar el área de material y información básica
+                                materialContentArea.style.display = 'none';
+                                hideAllMaterialContainers();
+                                hideAllInformacionBasicaContainers();
+                                informacionBasicaContentArea.style.display = 'none';
                             });
                         
                     } else if (this.id === 'Control de producción') {
@@ -1423,249 +1508,9 @@
             if (!activeButton) {
                 const infoBasicaButton = document.getElementById('Información Basica');
                 if (infoBasicaButton) {
-                    console.log('Activando pestaña por defecto: Información Básica');
                     infoBasicaButton.click();
                 }
             }
-            
-            console.log('Sistema de navegación inicializado correctamente');
-            
-            // Función genérica para cargar contenido dinámicamente
-            window.cargarContenidoDinamico = function(containerId, templatePath, initCallback = null) {
-                console.log(`=== CARGANDO CONTENIDO DINÁMICO: ${containerId} ===`);
-                
-                const container = document.getElementById(containerId);
-                if (!container) {
-                    console.error(`✗ Container ${containerId} no encontrado`);
-                    return Promise.reject(`Container ${containerId} no encontrado`);
-                }
-                
-                // Verificar si ya tiene contenido cargado
-                const placeholder = '<!-- El contenido se cargará dinámicamente con JavaScript -->';
-                if (container.innerHTML.trim() === placeholder) {
-                    console.log('Cargando contenido dinámicamente...');
-                    
-                    // Mostrar indicador de carga
-                    container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
-                    
-                    // Cargar el contenido dinámicamente
-                    return fetch(templatePath)
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Error al cargar el contenido: ' + response.status);
-                            }
-                            return response.text();
-                        })
-                        .then(html => {
-                            container.innerHTML = html;
-                            console.log(`✅ Contenido cargado dinámicamente en ${containerId}`);
-                            
-                            // Ejecutar cualquier script que pueda estar en el HTML cargado
-                            const scripts = container.querySelectorAll('script');
-                            scripts.forEach(script => {
-                                const newScript = document.createElement('script');
-                                if (script.src) {
-                                    newScript.src = script.src;
-                                } else {
-                                    newScript.textContent = script.textContent;
-                                }
-                                document.head.appendChild(newScript);
-                            });
-                            
-                            // Ejecutar callback de inicialización si se proporciona
-                            if (initCallback && typeof initCallback === 'function') {
-                                setTimeout(() => {
-                                    console.log(`🔄 Ejecutando callback de inicialización para ${containerId}`);
-                                    initCallback();
-                                }, 100);
-                            }
-                            
-                            return html;
-                        })
-                        .catch(error => {
-                            console.error('Error al cargar el contenido:', error);
-                            container.innerHTML = '<div class="error-message">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
-                            throw error;
-                        });
-                } else {
-                    console.log(`✅ Contenido ya cargado en ${containerId}`);
-                    
-                    // Ejecutar callback de inicialización si se proporciona
-                    if (initCallback && typeof initCallback === 'function') {
-                        setTimeout(() => {
-                            console.log(`🔄 Ejecutando callback de inicialización para ${containerId} (contenido ya cargado)`);
-                            initCallback();
-                        }, 50);
-                    }
-                    
-                    return Promise.resolve(container.innerHTML);
-                }
-            };
-            
-            // ============================================= 
-            // FUNCIONES DE OPTIMIZACIÓN MÓVIL
-            // ============================================= 
-            
-            // Función para optimizar contenido para móvil
-            function optimizarContenidoParaMovil(container) {
-                console.log('🔧 Optimizando contenido para móvil...');
-                
-                // Hacer tablas responsivas
-                const tables = container.querySelectorAll('table');
-                tables.forEach(table => {
-                    if (!table.parentElement.classList.contains('table-responsive')) {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'table-responsive';
-                        table.parentNode.insertBefore(wrapper, table);
-                        wrapper.appendChild(table);
-                    }
-                });
-                
-                // Optimizar formularios
-                const inputs = container.querySelectorAll('input, select, textarea');
-                inputs.forEach(input => {
-                    if (!input.classList.contains('form-control')) {
-                        input.classList.add('form-control');
-                    }
-                    // Prevenir zoom en iOS
-                    if (input.type !== 'file' && parseFloat(getComputedStyle(input).fontSize) < 16) {
-                        input.style.fontSize = '16px';
-                    }
-                });
-                
-                // Optimizar botones
-                const buttons = container.querySelectorAll('button:not(.hamburger-btn)');
-                buttons.forEach(button => {
-                    if (!button.classList.contains('btn')) {
-                        button.classList.add('btn', 'btn-primary');
-                    }
-                    button.style.minHeight = '44px'; // Touch target size
-                });
-                
-                // Hacer enlaces touch-friendly
-                const links = container.querySelectorAll('a');
-                links.forEach(link => {
-                    link.style.minHeight = '44px';
-                    link.style.display = 'inline-flex';
-                    link.style.alignItems = 'center';
-                    link.style.padding = '8px';
-                });
-                
-                // Optimizar imágenes
-                const images = container.querySelectorAll('img');
-                images.forEach(img => {
-                    img.style.maxWidth = '100%';
-                    img.style.height = 'auto';
-                });
-                
-                // Añadir smooth scrolling
-                container.style.webkitOverflowScrolling = 'touch';
-                
-                console.log('✅ Optimización móvil completada');
-            }
-            
-            // Hacer la función disponible globalmente
-            window.optimizarContenidoParaMovil = optimizarContenidoParaMovil;
-            
-            // Función para detectar si es dispositivo móvil
-            window.isMobileDevice = function() {
-                return window.innerWidth <= 768 || 
-                       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            };
-            
-            // Aplicar optimizaciones al cargar contenido
-            const originalCargarContenidoDinamico = window.cargarContenidoDinamico;
-            window.cargarContenidoDinamico = function(containerId, templatePath, initCallback = null) {
-                return originalCargarContenidoDinamico(containerId, templatePath, function() {
-                    // Ejecutar callback original si existe
-                    if (initCallback && typeof initCallback === 'function') {
-                        initCallback();
-                    }
-                    
-                    // Aplicar optimizaciones móviles
-                    if (window.isMobileDevice()) {
-                        const container = document.getElementById(containerId);
-                        if (container) {
-                            optimizarContenidoParaMovil(container);
-                        }
-                    }
-                });
-            };
-            
-            // Función global para mostrar Control de Material en Información Básica
-            window.mostrarControlMaterialInfoGlobal = function() {
-                console.log('=== INICIANDO mostrarControlMaterialInfoGlobal (INFORMACIÓN BÁSICA) ===');
-                console.log('🏷️ Esta es la función global del MaterialTemplate');
-                
-                // Primero asegurar que estamos en la pestaña correcta
-                const infoBasicaButton = document.getElementById('Información Basica');
-                if (infoBasicaButton && !infoBasicaButton.classList.contains('active')) {
-                    console.log('⚠️ Cambiando a pestaña Información Básica primero...');
-                    infoBasicaButton.click();
-                    // Esperar un poco a que se cargue
-                    setTimeout(() => {
-                        window.mostrarControlMaterialInfo();
-                    }, 500);
-                    return;
-                }
-                
-                // Asegurarse de que estemos en el área correcta
-                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
-                if (informacionBasicaArea) {
-                    informacionBasicaArea.style.display = 'block';
-                    console.log('✅ Área de contenido de Información Básica activada');
-                } else {
-                    console.error('❌ informacion-basica-content-area no encontrado');
-                    return;
-                }
-                
-                // Ocultar todos los contenedores de Información Básica
-                if (typeof hideAllInformacionBasicaContainers === 'function') {
-                    hideAllInformacionBasicaContainers();
-                    console.log('✅ Todos los contenedores de Información Básica ocultados');
-                } else {
-                    console.error('❌ hideAllInformacionBasicaContainers no disponible');
-                }
-                
-                // Obtener el contenedor específico
-                const container = document.getElementById('control-material-info-container');
-                if (container) {
-                    // Mostrar el contenedor primero
-                    container.style.display = 'block';
-                    container.style.visibility = 'visible';
-                    container.style.opacity = '1';
-                    
-                    console.log('📋 Container control-material-info-container encontrado y mostrado');
-                    
-                    // Cargar contenido dinámicamente
-                    cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material')
-                        .then(() => {
-                            console.log('✅ Contenido CONTROL_DE_MATERIAL.html cargado exitosamente en Información Básica');
-                            console.log('📍 Ubicación: Información Básica → Control de material → Control de material');
-                            console.log('Display:', window.getComputedStyle(container).display);
-                            console.log('Visibility:', window.getComputedStyle(container).visibility);
-                            console.log('Opacity:', window.getComputedStyle(container).opacity);
-                        })
-                        .catch(error => {
-                            console.error('❌ Error en mostrarControlMaterialInfo:', error);
-                            container.innerHTML = '<div style="color: red; padding: 20px;">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
-                        });
-                } else {
-                    console.error('❌ Container control-material-info-container no encontrado');
-                    // Debug: listar todos los contenedores disponibles
-                    const allContainers = document.querySelectorAll('[id*="container"]');
-                    console.log('🔍 Contenedores disponibles:', Array.from(allContainers).map(c => c.id));
-                }
-                
-                console.log('=== FIN mostrarControlMaterialInfoGlobal ===');
-            };
-            
-            // Marcar la función como global
-            window.mostrarControlMaterialInfoGlobal._isGlobal = true;
-            
-            // También mantener la función original como alias para compatibilidad
-            window.mostrarControlMaterialInfo = window.mostrarControlMaterialInfoGlobal;
-            window.mostrarControlMaterialInfo._isGlobal = true;
         });
 
 
@@ -1673,13 +1518,8 @@
     </script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const controlAlmacenContainer = document.getElementById('control-almacen-container');
-        if (controlAlmacenContainer) {
-            console.log('🔄 Inicializando módulo Control de Almacén desde MaterialTemplate...');
-            window.inicializarControlAlmacenModule();
-        } else {
-            console.warn('⚠️ Contenedor de Control de Almacén no encontrado en MaterialTemplate.');
-        }
+        // Lógica de inicialización se maneja dentro de las funciones de carga dinámica
+        // No es necesario ejecutar nada aquí ya que se carga dinámicamente
     });
 </script>
 </div>

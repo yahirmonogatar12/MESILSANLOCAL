@@ -404,25 +404,38 @@
                     
                     if (this.id === 'Información Basica') {
                         console.log('Cargando pestaña Información Básica');
-                        materialContainer.style.display = 'block';
-                        informacionBasicaContent.style.display = 'block';
-                        informacionBasicaContentArea.style.display = 'block';
                         
-                        // Mostrar contenedor por defecto
-                        hideAllInformacionBasicaContainers();
-                        const defaultContainer = document.getElementById('info-basica-default-container');
-                        if (defaultContainer) {
-                            defaultContainer.style.display = 'block';
+                        // Usar la función global de MaterialTemplate.html si está disponible
+                        if (typeof window.mostrarInformacionBasica === 'function') {
+                            console.log('Usando función global mostrarInformacionBasica');
+                            window.mostrarInformacionBasica();
+                        } else {
+                            console.log('Función global no disponible, usando fallback básico');
+                            // Fallback básico
+                            materialContainer.style.display = 'block';
+                            informacionBasicaContent.style.display = 'block';
+                            informacionBasicaContentArea.style.display = 'block';
+                            hideAllInformacionBasicaContainers();
+                            const defaultContainer = document.getElementById('info-basica-default-container');
+                            if (defaultContainer) {
+                                defaultContainer.style.display = 'block';
+                            }
                         }
-                        
-                        console.log('Información Básica cargada correctamente');
                         
                     } else if (this.id === 'Control de material') {
                         console.log('Cargando pestaña Control de Material');
-                        materialContainer.style.display = 'block';
-                        controlMaterialContent.style.display = 'block';
-                        // Mostrar el área de material con información por defecto
-                        mostrarInfoMaterial();
+                        
+                        // Usar la función global de MaterialTemplate.html si está disponible
+                        if (typeof window.mostrarControlMaterial === 'function') {
+                            console.log('Usando función global mostrarControlMaterial');
+                            window.mostrarControlMaterial();
+                        } else {
+                            console.log('Función global no disponible, usando fallback básico');
+                            // Fallback básico
+                            materialContainer.style.display = 'block';
+                            controlMaterialContent.style.display = 'block';
+                            mostrarInfoMaterial();
+                        }
                         console.log('Control de Material cargado con información por defecto');
                         
                     } else if (this.id === 'Control de producción') {
@@ -488,34 +501,6 @@
             
             console.log('Sistema de navegación inicializado correctamente');
             
-            // Función global para mostrar Control de Material en Información Básica
-            window.mostrarControlMaterialInfo = function() {
-                console.log('=== INICIANDO mostrarControlMaterialInfo (NUEVA ESTRUCTURA) ===');
-                
-                // Asegurarse de que estemos en el área correcta
-                if (informacionBasicaContentArea) {
-                    informacionBasicaContentArea.style.display = 'block';
-                    console.log('Área de contenido de Información Básica activada');
-                }
-                
-                // Ocultar todos los contenedores
-                hideAllInformacionBasicaContainers();
-                console.log('Todos los contenedores ocultados');
-                
-                // Mostrar el contenedor específico
-                const container = document.getElementById('control-material-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                    container.style.visibility = 'visible';
-                    container.style.opacity = '1';
-                    console.log('✅ Container control-material-info-container mostrado');
-                    console.log('Display:', window.getComputedStyle(container).display);
-                    console.log('Visibility:', window.getComputedStyle(container).visibility);
-                    console.log('Opacity:', window.getComputedStyle(container).opacity);
-                } else {
-                    console.error('✗ Container control-material-info-container no encontrado');
-                }
-                
-                console.log('=== FIN mostrarControlMaterialInfo ===');
-            };
+            // NOTA: mostrarControlMaterialInfo está definida en MaterialTemplate.html con AJAX
+            // No redefinir aquí para evitar conflictos
         });
