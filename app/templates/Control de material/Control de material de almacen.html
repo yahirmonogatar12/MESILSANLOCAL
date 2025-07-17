@@ -40,6 +40,9 @@
     <!-- QR Almacén Simple - NO MODIFICA FUNCIONES EXISTENTES -->
     <script src="/static/js/qr-almacen-simple.js"></script>
     
+    <!-- QR Almacén Integration - Funciones de utilidad y demostración ZPL -->
+    <script src="/static/js/qr-almacen-integration.js"></script>
+    
 </head>
 <body>
      <!-- Fila 1: SOLO Forma de material, ancho completo -->
@@ -208,6 +211,7 @@
              <div style="display: flex; gap: 4px; align-items: center;">
                 <button class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
                 <button class="material-btn botones-almacen">Imprimir</button>
+                <button class="material-btn" onclick="probarQRZPLDirecto()" style="background: #6f42c1; color: white;" title="Genera QR con formato ZPL">🦓 Test ZPL</button>
             </div>
         </div>
         <div class="material-form-group">
@@ -230,6 +234,10 @@
             <div style="display: flex; gap: 6px; flex-shrink: 0;">
                 <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
                 <button class="material-btn secondary" onclick="exportarExcel()">Exportar Excel</button>
+                <button class="material-btn" onclick="mostrarEjemploZPLDirecto()" style="background: #6f42c1; color: white;" title="Muestra el formato ZPL actualizado para Zebra">🔍 Ver ZPL</button>
+                <button class="material-btn" onclick="probarQRZPLDirecto()" style="background: #fd7e14; color: white;" title="Prueba la generación QR con el nuevo formato">🧪 Test QR</button>
+                <button class="material-btn" onclick="verificarModulosQRDisponibles()" style="background: #17a2b8; color: white;" title="Verifica el estado de los módulos QR">🔧 Estado</button>
+                <button class="material-btn" onclick="llenarFormularioEjemplo()" style="background: #28a745; color: white;" title="Llena el formulario con datos de ejemplo">📝 Ejemplo</button>
             </div>
         </div>
 
@@ -268,6 +276,243 @@
 
     <script>
         let codigosMaterial = [];
+
+        // FUNCIONES DIRECTAS PARA BOTONES DE PRUEBA ZPL
+        function mostrarEjemploZPLDirecto() {
+            const datosEjemplo = {
+                codigoCompleto: '0RH5602C622,202507170003',
+                codigoMaterial: '0RH5602C622',
+                numeroSerie: '202507170003',
+                fecha: '17/07/2025',
+                cantidadEstandarizada: '5000',
+                descripcionMaterial: '56KJ 1/10W (SMD 1608)'
+            };
+            
+            const zplEjemplo = `CT~~CD,~CC^~CT~
+^XA
+~TA000
+~JSN
+^LT37
+^MNW
+^MTT
+^PON
+^PMN
+^LH0,0
+^JMA
+^PR4,4
+~SD15
+^JUS
+^LRN
+^CI27
+^PA0,1,1,0
+^XZ
+^XA
+^MMT
+^PW392
+^LL165
+^LS0
+^FT168,75^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT167,122^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
+^FT5,175^BQN,2,6
+^FH\\^FDLA,${datosEjemplo.codigoCompleto}^FS
+^FT168,26^A0N,25,25^FH\\^CI28^FD${datosEjemplo.codigoMaterial}^FS^CI27
+^FT168,57^A0N,25,25^FH\\^CI28^FD${datosEjemplo.numeroSerie}^FS^CI27
+^FT168,97^A0N,21,20^FH\\^CI28^FD${datosEjemplo.fecha}^FS^CI27
+^FT168,151^A0N,21,20^FH\\^CI28^FD${datosEjemplo.descripcionMaterial}^FS^CI27
+^FT203,124^A0N,22,20^FH\\^CI28^FD${datosEjemplo.cantidadEstandarizada}^FS^CI27
+^PQ1,0,1,Y
+^XZ`;
+            
+            // Crear modal
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.8); display: flex; justify-content: center; 
+                align-items: center; z-index: 10003; padding: 20px; box-sizing: border-box;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+                    <h3 style="margin: 0 0 20px 0; color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+                        📋 Formato ZPL Actualizado - Zebra ZD421
+                    </h3>
+                    
+                    <div style="margin: 20px 0;">
+                        <h4 style="color: #6f42c1; margin-bottom: 10px;">📊 Variables que se insertan automáticamente:</h4>
+                        <ul style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 0;">
+                            <li><strong>Código completo:</strong> ${datosEjemplo.codigoCompleto}</li>
+                            <li><strong>Código material:</strong> ${datosEjemplo.codigoMaterial}</li>
+                            <li><strong>Número serie:</strong> ${datosEjemplo.numeroSerie}</li>
+                            <li><strong>Fecha entrada:</strong> ${datosEjemplo.fecha}</li>
+                            <li><strong>Cantidad:</strong> ${datosEjemplo.cantidadEstandarizada}</li>
+                            <li><strong>Descripción:</strong> ${datosEjemplo.descripcionMaterial}</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin: 20px 0;">
+                        <h4 style="color: #28a745; margin-bottom: 10px;">🖨️ Comando ZPL Generado:</h4>
+                        <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 12px; border: 1px solid #dee2e6;">${zplEjemplo}</pre>
+                    </div>
+                    
+                    <div style="margin: 20px 0;">
+                        <h4 style="color: #dc3545; margin-bottom: 10px;">⚡ Características del formato:</h4>
+                        <ul style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 0; border: 1px solid #ffeaa7;">
+                            <li>✅ Compatible con Zebra ZD421</li>
+                            <li>✅ Código QR automático con datos completos</li>
+                            <li>✅ Variables dinámicas del formulario</li>
+                            <li>✅ Formato de fecha DD/MM/YYYY</li>
+                            <li>✅ Campos de cantidad y descripción configurables</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <button onclick="this.closest('div').parentNode.remove()" 
+                            style="padding: 12px 30px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 500;">
+                            ✓ Entendido
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+            
+            document.body.appendChild(modal);
+            console.log('📋 Modal ZPL mostrado correctamente');
+        }
+
+        function probarQRZPLDirecto() {
+            const codigoPrueba = '0RH5602C622,202507170003';
+            console.log('🧪 Probando generación QR con código:', codigoPrueba);
+            
+            // Intentar usar el módulo QR si está disponible
+            if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
+                console.log('✅ Usando QRAlmacenSimple');
+                QRAlmacenSimple.generarQR(codigoPrueba);
+            } else if (window.qrGeneratorModule && typeof qrGeneratorModule.generarQR === 'function') {
+                console.log('✅ Usando qrGeneratorModule');
+                qrGeneratorModule.generarQR(codigoPrueba);
+            } else {
+                // Fallback: crear QR básico con API externa
+                console.log('⚠️ Usando fallback básico');
+                mostrarQRBasico(codigoPrueba);
+            }
+        }
+
+        function mostrarQRBasico(codigo) {
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(codigo)}`;
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.8); display: flex; justify-content: center; 
+                align-items: center; z-index: 10002;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 10px; text-align: center; max-width: 400px;">
+                    <h3>📱 Código QR - Test ZPL</h3>
+                    <img src="${qrUrl}" alt="QR Code" style="max-width: 100%; margin: 20px 0;"/>
+                    <p style="font-family: monospace; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px;">
+                        ${codigo}
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        Este QR usará el nuevo formato ZPL de Zebra ZD421 cuando se imprima
+                    </p>
+                    <button onclick="this.closest('div').parentNode.remove()" 
+                        style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Cerrar
+                    </button>
+                </div>
+            `;
+            
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+            
+            document.body.appendChild(modal);
+        }
+
+        // Función para verificar y mostrar estado de módulos QR
+        function verificarModulosQRDisponibles() {
+            console.log('🔍 === VERIFICANDO MÓDULOS QR ===');
+            
+            const modulos = {
+                'QRAlmacenSimple': window.QRAlmacenSimple,
+                'qrGeneratorModule': window.qrGeneratorModule,
+                'QRAlmacenIntegration': window.QRAlmacenIntegration
+            };
+            
+            let modulosDisponibles = [];
+            let modulosNoDisponibles = [];
+            
+            Object.entries(modulos).forEach(([nombre, modulo]) => {
+                if (modulo) {
+                    modulosDisponibles.push(nombre);
+                    console.log(`✅ ${nombre}: Disponible`);
+                } else {
+                    modulosNoDisponibles.push(nombre);
+                    console.log(`❌ ${nombre}: No disponible`);
+                }
+            });
+            
+            // Mostrar resumen en consola
+            console.log(`📊 Módulos disponibles: ${modulosDisponibles.length}/${Object.keys(modulos).length}`);
+            console.log(`✅ Disponibles: ${modulosDisponibles.join(', ')}`);
+            if (modulosNoDisponibles.length > 0) {
+                console.log(`❌ No disponibles: ${modulosNoDisponibles.join(', ')}`);
+            }
+            
+            // Mostrar en modal si se llama directamente
+            if (arguments.length === 0) {
+                const statusColor = modulosDisponibles.length === Object.keys(modulos).length ? '#28a745' : '#ffc107';
+                alert(`🔍 Estado de Módulos QR:\n\n✅ Disponibles: ${modulosDisponibles.join(', ')}\n\n${modulosNoDisponibles.length > 0 ? '❌ No disponibles: ' + modulosNoDisponibles.join(', ') : 'Todos los módulos están cargados correctamente'}\n\nRevisa la consola para más detalles.`);
+            }
+            
+            return { disponibles: modulosDisponibles, noDisponibles: modulosNoDisponibles };
+        }
+
+        // Ejecutar verificación al cargar la página
+        setTimeout(() => {
+            verificarModulosQRDisponibles();
+        }, 2000);
+
+        // Función para llenar formulario con datos de ejemplo para testing
+        function llenarFormularioEjemplo() {
+            console.log('🎯 Llenando formulario con datos de ejemplo...');
+            
+            // Llenar campos básicos
+            document.getElementById('forma_material').value = 'OriginCode';
+            document.getElementById('cliente').value = 'LG_REFRIS';
+            document.getElementById('codigoMaterialOriginal').value = '0RH5602C622-ejemplo-test';
+            document.getElementById('material_importacion_local').value = 'Local';
+            
+            // Llenar campos de cantidad y descripción que usa el ZPL
+            document.getElementById('cantidad_estandarizada').value = '5000';
+            document.getElementById('numero_parte_lower').value = '56KJ 1/10W (SMD 1608)';
+            document.getElementById('codigo_material_lower').value = '0RH5602C622';
+            document.getElementById('codigo_material_recibido').value = '0RH5602C622,202507170003';
+            document.getElementById('propiedad_material').value = '56KJ 1/10W (SMD 1608)';
+            document.getElementById('cantidad_actual').value = '5000';
+            
+            // Resaltar campos llenados
+            const campos = ['forma_material', 'cliente', 'codigoMaterialOriginal', 'cantidad_estandarizada', 
+                           'numero_parte_lower', 'codigo_material_lower', 'codigo_material_recibido'];
+            
+            campos.forEach(campo => {
+                const elemento = document.getElementById(campo);
+                if (elemento) {
+                    elemento.style.backgroundColor = '#d4edda';
+                    elemento.style.transition = 'background-color 0.3s';
+                    setTimeout(() => {
+                        elemento.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+            
+            console.log('✅ Formulario llenado con datos de ejemplo para testing ZPL');
+        }
 
         // Función global para inicializar cuando se muestra el control de almacén
         window.inicializarControlAlmacenModule = function() {

@@ -773,13 +773,48 @@ ${result.comando_manual || 'Use clic derecho → Imprimir'}
     // Función para generar comando ZPL
     function generarComandoZPL(codigo, tipo = 'material') {
         const fechaHora = new Date().toLocaleString('es-ES');
-        const fecha = new Date().toLocaleDateString('es-ES');
+        const fecha = new Date().toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit', 
+            year: 'numeric'
+        });
         const hora = new Date().toLocaleTimeString('es-ES');
+        
+        // Parsear el código para extraer variables
+        let codigoMaterial = '';
+        let numeroSerie = '';
+        let cantidadEstandarizada = '5000'; // Valor por defecto
+        let descripcionMaterial = '56KJ 1/10W (SMD 1608)'; // Valor por defecto
+        
+        // Intentar extraer información del código (formato: CodigoMaterial,NumeroSerie)
+        if (codigo && codigo.includes(',')) {
+            const partes = codigo.split(',');
+            codigoMaterial = partes[0] || '';
+            numeroSerie = partes[1] || '';
+        } else {
+            codigoMaterial = codigo || '';
+            numeroSerie = '';
+        }
+        
+        // Obtener valores de los campos del formulario si están disponibles
+        try {
+            const cantidadField = document.getElementById('cantidad_estandarizada');
+            if (cantidadField && cantidadField.value) {
+                cantidadEstandarizada = cantidadField.value;
+            }
+            
+            const numeroParteField = document.getElementById('numero_parte_lower');
+            if (numeroParteField && numeroParteField.value) {
+                descripcionMaterial = numeroParteField.value;
+            }
+        } catch (error) {
+            console.log('📝 Usando valores por defecto para descripción y cantidad');
+        }
         
         let zplCommand;
         
         if (tipo === 'simple') {
-            // Etiqueta simple optimizada para ZT230 - Solo QR y código
+            // Etiqueta simple - Solo QR y código básico
             zplCommand = `
 ^XA
 ^CI28
@@ -791,32 +826,55 @@ ${result.comando_manual || 'Use clic derecho → Imprimir'}
 ^XZ
             `.trim();
         } else {
-            // Etiqueta completa para ZT230 - Control de material
+            // Etiqueta completa usando el formato ZPL proporcionado
             zplCommand = `
+CT~~CD,~CC^~CT~
 ^XA
-^CI28
+~TA000
+~JSN
+^LT37
+^MNW
+^MTT
+^PON
+^PMN
 ^LH0,0
-^PW600
-^LL400
-^CFO,20,12
-^FO30,30^FD*** CONTROL DE MATERIAL - ALMACEN ***^FS
-^CFO,18,10
-^FO30,60^FDCodigo Material Recibido:^FS
-^CFO,25,15
-^FO30,85^FD${codigo}^FS
-^CFO,15,10
-^FO30,120^FDFecha: ${fecha}^FS
-^FO30,140^FDHora: ${hora}^FS
-^FO30,160^FDSistema: ISEMM MES^FS
-^FO30,180^FDUsuario: ${window.usuario || 'N/A'}^FS
-^FO320,60^BQN,2,6^FDLA,${codigo}^FS
-^CFO,12,8
-^FO30,220^FD*** ZEBRA ZT230 ***^FS
+^JMA
+^PR4,4
+~SD15
+^JUS
+^LRN
+^CI27
+^PA0,1,1,0
+^XZ
+^XA
+^MMT
+^PW392
+^LL165
+^LS0
+^FT168,75^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT167,122^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
+^FT5,175^BQN,2,6
+^FH\\^FDLA,${codigo}^FS
+^FT168,26^A0N,25,25^FH\\^CI28^FD${codigoMaterial}^FS^CI27
+^FT168,57^A0N,25,25^FH\\^CI28^FD${numeroSerie}^FS^CI27
+^FT168,97^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
+^FT168,151^A0N,21,20^FH\\^CI28^FD${descripcionMaterial}^FS^CI27
+^FT203,124^A0N,22,20^FH\\^CI28^FD${cantidadEstandarizada}^FS^CI27
+^PQ1,0,1,Y
 ^XZ
             `.trim();
         }
         
-        console.log('📝 Comando ZPL ZT230 generado:', zplCommand);
+        console.log('📝 Comando ZPL ZD421 generado:', zplCommand);
+        console.log('📊 Variables utilizadas:', {
+            codigo: codigo,
+            codigoMaterial: codigoMaterial,
+            numeroSerie: numeroSerie,
+            fecha: fecha,
+            cantidadEstandarizada: cantidadEstandarizada,
+            descripcionMaterial: descripcionMaterial
+        });
+        
         return zplCommand;
     }
     
