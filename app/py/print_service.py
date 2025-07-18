@@ -11,6 +11,7 @@ import os
 import tempfile
 import json
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import socket
 import os
 from datetime import datetime
@@ -19,12 +20,22 @@ from datetime import datetime
 script_dir = os.path.dirname(os.path.abspath(__file__))
 log_file = os.path.join(script_dir, 'print_service.log')
 
-# Configurar logging
+# Configurar rotación automática de logs cada 1 hora
+time_handler = TimedRotatingFileHandler(
+    log_file,
+    when='H',        # 'H' = cada hora
+    interval=1,      # cada 1 hora
+    backupCount=24,  # mantener 24 archivos (24 horas)
+    encoding='utf-8'
+)
+time_handler.suffix = '%Y%m%d_%H'  # Formato: print_service.log.20250717_18
+
+# Configurar logging con rotación automática
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(log_file),
+        time_handler,
         logging.StreamHandler()
     ]
 )
@@ -77,6 +88,28 @@ def get_local_machine_info():
             'hostname': 'unknown',
             'local_ip': 'localhost'
         }
+
+def mostrar_info_logs():
+    """Muestra información sobre la configuración de logs"""
+    try:
+        # Contar archivos de log existentes
+        log_dir = os.path.dirname(log_file)
+        log_files = [f for f in os.listdir(log_dir) if f.startswith('print_service.log')]
+        
+        print(f"📝 Configuración de logs:")
+        print(f"   📁 Directorio: {log_dir}")
+        print(f"   🔄 Rotación: Cada 1 hora")
+        print(f"   💾 Historial: 24 horas (24 archivos)")
+        print(f"   📊 Archivos actuales: {len(log_files)}")
+        print(f"   📝 Formato: print_service.log.YYYYMMDD_HH")
+        
+        if len(log_files) > 1:
+            print(f"   📋 Últimos logs:")
+            for log_file_name in sorted(log_files)[-3:]:  # Mostrar últimos 3
+                print(f"      • {log_file_name}")
+        
+    except Exception as e:
+        print(f"⚠️  Error verificando logs: {e}")
 
 def get_available_printers():
     """Obtiene lista de impresoras disponibles en el sistema"""
@@ -314,11 +347,14 @@ if __name__ == "__main__":
     print(f"🌐 IP Local: {machine_info['local_ip']}")
     print("📋 IMPORTANTE: Este servicio imprime LOCALMENTE en esta máquina")
     
+    # Mostrar información de logs
+    mostrar_info_logs()
+    
     # Verificar impresoras al inicio
     available_printers = get_available_printers()
     zebra_printer = find_zebra_printer()
     
-    print(f"🖨️  Impresoras disponibles: {len(available_printers)}")
+    print(f"\n🖨️  Impresoras disponibles: {len(available_printers)}")
     for i, printer in enumerate(available_printers, 1):
         marker = "✅" if printer == zebra_printer else "  "
         print(f"   {marker} {i}. {printer}")
@@ -343,6 +379,7 @@ if __name__ == "__main__":
     print("="*60)
     print("⚠️  CADA MÁQUINA DEBE EJECUTAR SU PROPIO SERVICIO")
     print("✅ Este servicio imprime en la impresora LOCAL de esta máquina")
+    print("🔄 Los logs rotan automáticamente cada 1 hora")
     print("="*60)
     
     # Ejecutar el servicio Flask

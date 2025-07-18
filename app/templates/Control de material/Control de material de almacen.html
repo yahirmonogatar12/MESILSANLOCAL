@@ -208,7 +208,7 @@
              <div style="display: flex; gap: 4px; align-items: center;">
                 <button class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
                 <button class="material-btn botones-almacen">Imprimir</button>
-                <button class="material-btn" onclick="probarQRZPLDirecto()" style="background: #6f42c1; color: white;" title="Genera QR con formato ZPL">🦓 Test ZPL</button>
+                <button class="material-btn botones-almacen" id="btnConfigImpresora" onclick="verificarImpresoraZebra()" style="background: #6c757d; font-size: 9px; padding: 6px 8px; min-width: 80px; text-align: center;">CONF. DE IMPRESORA</button>
             </div>
         </div>
         <div class="material-form-group">
@@ -373,138 +373,6 @@
             
             document.body.appendChild(modal);
             console.log('📋 Modal ZPL mostrado correctamente');
-        }
-
-        function probarQRZPLDirecto() {
-            const codigoPrueba = '0RH5602C622,202507170003';
-            console.log('🧪 Probando generación QR con código:', codigoPrueba);
-            
-            // Intentar usar el módulo QR si está disponible
-            if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
-                console.log('✅ Usando QRAlmacenSimple');
-                QRAlmacenSimple.generarQR(codigoPrueba);
-            } else if (window.qrGeneratorModule && typeof qrGeneratorModule.generarQR === 'function') {
-                console.log('✅ Usando qrGeneratorModule');
-                qrGeneratorModule.generarQR(codigoPrueba);
-            } else {
-                // Fallback: crear QR básico con API externa
-                console.log('⚠️ Usando fallback básico');
-                mostrarQRBasico(codigoPrueba);
-            }
-        }
-
-        function mostrarQRBasico(codigo) {
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(codigo)}`;
-            
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                background: rgba(0,0,0,0.8); display: flex; justify-content: center; 
-                align-items: center; z-index: 10002;
-            `;
-            
-            modal.innerHTML = `
-                <div style="background: white; padding: 30px; border-radius: 10px; text-align: center; max-width: 400px;">
-                    <h3>📱 Código QR - Test ZPL</h3>
-                    <img src="${qrUrl}" alt="QR Code" style="max-width: 100%; margin: 20px 0;"/>
-                    <p style="font-family: monospace; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px;">
-                        ${codigo}
-                    </p>
-                    <p style="color: #666; font-size: 14px;">
-                        Este QR usará el nuevo formato ZPL de Zebra ZD421 cuando se imprima
-                    </p>
-                    <button onclick="this.closest('div').parentNode.remove()" 
-                        style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                        Cerrar
-                    </button>
-                </div>
-            `;
-            
-            modal.onclick = (e) => {
-                if (e.target === modal) modal.remove();
-            };
-            
-            document.body.appendChild(modal);
-        }
-
-        // Función para verificar y mostrar estado de módulos QR
-        function verificarModulosQRDisponibles() {
-            console.log('🔍 === VERIFICANDO MÓDULOS QR ===');
-            
-            const modulos = {
-                'QRAlmacenSimple': window.QRAlmacenSimple,
-                'qrGeneratorModule': window.qrGeneratorModule,
-                'QRAlmacenIntegration': window.QRAlmacenIntegration
-            };
-            
-            let modulosDisponibles = [];
-            let modulosNoDisponibles = [];
-            
-            Object.entries(modulos).forEach(([nombre, modulo]) => {
-                if (modulo) {
-                    modulosDisponibles.push(nombre);
-                    console.log(`✅ ${nombre}: Disponible`);
-                } else {
-                    modulosNoDisponibles.push(nombre);
-                    console.log(`❌ ${nombre}: No disponible`);
-                }
-            });
-            
-            // Mostrar resumen en consola
-            console.log(`📊 Módulos disponibles: ${modulosDisponibles.length}/${Object.keys(modulos).length}`);
-            console.log(`✅ Disponibles: ${modulosDisponibles.join(', ')}`);
-            if (modulosNoDisponibles.length > 0) {
-                console.log(`❌ No disponibles: ${modulosNoDisponibles.join(', ')}`);
-            }
-            
-            // Mostrar en modal si se llama directamente
-            if (arguments.length === 0) {
-                const statusColor = modulosDisponibles.length === Object.keys(modulos).length ? '#28a745' : '#ffc107';
-                alert(`🔍 Estado de Módulos QR:\n\n✅ Disponibles: ${modulosDisponibles.join(', ')}\n\n${modulosNoDisponibles.length > 0 ? '❌ No disponibles: ' + modulosNoDisponibles.join(', ') : 'Todos los módulos están cargados correctamente'}\n\nRevisa la consola para más detalles.`);
-            }
-            
-            return { disponibles: modulosDisponibles, noDisponibles: modulosNoDisponibles };
-        }
-
-        // Ejecutar verificación al cargar la página
-        setTimeout(() => {
-            verificarModulosQRDisponibles();
-        }, 2000);
-
-        // Función para llenar formulario con datos de ejemplo para testing
-        function llenarFormularioEjemplo() {
-            console.log('🎯 Llenando formulario con datos de ejemplo...');
-            
-            // Llenar campos básicos
-            document.getElementById('forma_material').value = 'OriginCode';
-            document.getElementById('cliente').value = 'LG_REFRIS';
-            document.getElementById('codigoMaterialOriginal').value = '0RH5602C622-ejemplo-test';
-            document.getElementById('material_importacion_local').value = 'Local';
-            
-            // Llenar campos de cantidad y descripción que usa el ZPL
-            document.getElementById('cantidad_estandarizada').value = '5000';
-            document.getElementById('numero_parte_lower').value = '56KJ 1/10W (SMD 1608)';
-            document.getElementById('codigo_material_lower').value = '0RH5602C622';
-            document.getElementById('codigo_material_recibido').value = '0RH5602C622,202507170003';
-            document.getElementById('propiedad_material').value = '56KJ 1/10W (SMD 1608)';
-            document.getElementById('cantidad_actual').value = '5000';
-            
-            // Resaltar campos llenados
-            const campos = ['forma_material', 'cliente', 'codigoMaterialOriginal', 'cantidad_estandarizada', 
-                           'numero_parte_lower', 'codigo_material_lower', 'codigo_material_recibido'];
-            
-            campos.forEach(campo => {
-                const elemento = document.getElementById(campo);
-                if (elemento) {
-                    elemento.style.backgroundColor = '#d4edda';
-                    elemento.style.transition = 'background-color 0.3s';
-                    setTimeout(() => {
-                        elemento.style.backgroundColor = '';
-                    }, 2000);
-                }
-            });
-            
-            console.log('✅ Formulario llenado con datos de ejemplo para testing ZPL');
         }
 
         // Función global para inicializar cuando se muestra el control de almacén
@@ -1086,58 +954,6 @@
             }
         }
 
-        // FUNCIÓN DE DIAGNÓSTICO PARA DEBUGGEAR EL SECUENCIAL
-        window.diagnosticarSecuencial = async function(codigoMaterial = '0RH5602C622') {
-            console.log('🔬 === DIAGNÓSTICO COMPLETO DEL SECUENCIAL ===');
-            console.log(`🎯 Código de material a probar: ${codigoMaterial}`);
-            
-            try {
-                // 1. Probar el endpoint directamente
-                const url = `/obtener_siguiente_secuencial?codigo_material=${encodeURIComponent(codigoMaterial)}`;
-                console.log(`📡 URL de prueba: ${url}`);
-                
-                const response = await fetch(url);
-                console.log(`📊 Status de respuesta: ${response.status}`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`📋 Respuesta completa del servidor:`, data);
-                    
-                    // 2. Mostrar detalles de la respuesta
-                    console.log('🔍 Detalles de la respuesta:');
-                    console.log(`  - success: ${data.success}`);
-                    console.log(`  - siguiente_secuencial: ${data.siguiente_secuencial}`);
-                    console.log(`  - proximo_codigo_completo: ${data.proximo_codigo_completo}`);
-                    console.log(`  - fecha_actual: ${data.fecha_actual}`);
-                    console.log(`  - secuencial_mas_alto_encontrado: ${data.secuencial_mas_alto_encontrado}`);
-                    console.log(`  - patron_busqueda: ${data.patron_busqueda}`);
-                    
-                    // 3. Actualizar variables globales
-                    contadorSecuencial = data.siguiente_secuencial || 1;
-                    proximoCodigoCompleto = data.proximo_codigo_completo || '';
-                    
-                    console.log('✅ Variables globales actualizadas:');
-                    console.log(`  - contadorSecuencial: ${contadorSecuencial}`);
-                    console.log(`  - proximoCodigoCompleto: ${proximoCodigoCompleto}`);
-                    
-                    // 4. Probar llenar campos
-                    console.log('🔄 Probando llenar campos...');
-                    llenarCamposInferiores(codigoMaterial);
-                    
-                } else {
-                    console.error(`❌ Error HTTP: ${response.status}`);
-                    const text = await response.text();
-                    console.error(`❌ Respuesta de error: ${text}`);
-                }
-                
-            } catch (error) {
-                console.error('❌ Error en diagnóstico:', error);
-            }
-            
-            console.log('🔬 === FIN DIAGNÓSTICO ===');
-        };
-
-        // FUNCIÓN PARA VERIFICAR BASE DE DATOS
         // Función para guardar el formulario
         function guardarFormulario() {
             try {
@@ -1195,7 +1011,7 @@
                 })
                 .then(data => {
                     if (data.success) {
-                        alert('Registro guardado exitosamente');
+                        mostrarNotificacionImpresion('Registro guardado exitosamente', 'success');
                         
                         // *** CAPTURAR DATOS ANTES DE LIMPIAR FORMULARIO ***
                         const datosParaEtiqueta = {
@@ -1240,7 +1056,7 @@
                         // Recargar tabla automáticamente
                         consultarRegistros();
                     } else {
-                        alert('Error al guardar: ' + data.error);
+                        mostrarNotificacionImpresion('Error al guardar: ' + data.error, 'error');
                     }
                 })
                 .catch(error => {
@@ -1249,7 +1065,7 @@
                         alert('Sesión expirada. Por favor, inicie sesión nuevamente.');
                         window.location.href = '/login';
                     } else {
-                        alert('Error al guardar el registro: ' + error.message);
+                        mostrarNotificacionImpresion('Error al guardar el registro: ' + error.message, 'error');
                     }
                 })
                 .finally(() => {
@@ -1260,7 +1076,7 @@
                 
             } catch (error) {
                 console.error('Error al procesar formulario:', error);
-                alert('Error al procesar el formulario');
+                mostrarNotificacionImpresion('Error al procesar el formulario', 'error');
             }
         }
         
@@ -1430,317 +1246,8 @@ if (document.readyState === 'loading') {
             totalInfo.textContent = `Total Rows: ${filasDatos.length}`;
         }
         
-        // Función de test para la nueva función
-        window.testNuevaFuncionFinal = function() {
-            console.log('🧪 PROBANDO NUEVA FUNCIÓN FINAL');
-            fetch('/consultar_control_almacen')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('📡 Datos recibidos:', data.length);
-                    nuevaCargarDatos(data);
-                })
-                .catch(error => {
-                    console.error('❌ Error:', error);
-                });
-        };
-        
-        // Función de test para verificar la funcionalidad
-        window.testControlAlmacenModule = function() {
-            console.log('🧪 === EJECUTANDO TEST DEL MÓDULO ===');
-            
-            const elementos = {
-                'tablaControlAlmacen': document.getElementById('tablaControlAlmacen'),
-                'btnConsultar': document.getElementById('btnConsultar'),
-                'filtro_fecha_inicio': document.getElementById('filtro_fecha_inicio'),
-                'filtro_fecha_fin': document.getElementById('filtro_fecha_fin'),
-                'tbody': document.querySelector('#tablaControlAlmacen tbody')
-            };
-            
-            let errores = [];
-            
-            Object.keys(elementos).forEach(key => {
-                if (elementos[key]) {
-                    console.log(`✅ ${key}: OK`);
-                } else {
-                    console.error(`❌ ${key}: FALTA`);
-                    errores.push(key);
-                }
-            });
-            
-            // Test de funciones simplificadas
-            const funciones = [
-                'consultarRegistros',
-                'cargarDatosDesdeServidor',
-                'cargarDatosEnTabla',
-                'cargarCodigosMaterial'
-            ];
-            
-        funciones.forEach(func => {
-            if (typeof window[func] === 'function' || typeof eval(func) === 'function') {
-                console.log(`✅ Función ${func}: OK`);
-            } else {
-                console.error(`❌ Función ${func}: FALTA`);
-                errores.push(`Función ${func}`);
-            }
-        });
 
-        if (errores.length === 0) {
-            console.log('🎉 ¡TODOS LOS TESTS PASARON!');
-            console.log('✅ Módulo Control de Almacén: Todos los componentes están funcionando correctamente');
-            
-            // Test adicional: Intentar cargar datos
-            console.log('🔄 Ejecutando test de carga de datos...');
-            cargarDatosDesdeServidor();
-            
-        } else {
-            console.error('❌ ERRORES ENCONTRADOS:', errores);
-            console.warn('❌ Errores en el módulo: ' + errores.join(', '));
-        }
         
-        return errores.length === 0;
-    };
-
-        // Funciones de test simples para diagnóstico rápido
-        window.testCargarDatos = function() {
-            console.log('🧪 TEST: Probando carga de datos...');
-            cargarDatosDesdeServidor();
-        };
-        
-        window.testConectividad = function() {
-            console.log('🔗 TEST: Conectividad básica...');
-            testConectividadAlmacen();
-        };
-
-        // Función de test específica para diagnosticar el problema de la tabla
-        window.testTablaEspecifico = function() {
-            console.log('🔬 === TEST ESPECÍFICO DE TABLA ===');
-            
-            // 1. Verificar elementos DOM
-            const tabla = document.getElementById('tablaControlAlmacen');
-            const tbody = document.querySelector('#tablaControlAlmacen tbody');
-            const btnConsultar = document.getElementById('btnConsultar');
-            
-            console.log('🔍 Verificación DOM:');
-            console.log('- Tabla:', tabla);
-            console.log('- Tbody:', tbody);
-            console.log('- Botón consultar:', btnConsultar);
-            
-            // 2. Test directo con datos simulados
-            console.log('🧪 Probando con datos simulados...');
-            const datosSimulados = [
-                {
-                    id: 1,
-                    codigo_material_recibido: 'TEST001/20250708001',
-                    codigo_material: 'TEST001',
-                    numero_parte: '0001',
-                    numero_lote_material: 'LOTE001',
-                    propiedad_material: 'Prueba',
-                    cantidad_actual: '1000',
-                    cantidad_estandarizada: '1000',
-                    ubicacion_salida: 'A1',
-                    fecha_recibo: '2025-07-08',
-                    material_importacion_local: 'Local',
-                    estado_desecho: 0
-                }
-            ];
-            
-            console.log('📋 Datos simulados:', datosSimulados);
-            cargarDatosEnTabla(datosSimulados);
-            
-            // 3. Test con datos reales del servidor
-            console.log('🌐 Probando con datos reales del servidor...');
-            setTimeout(() => {
-                cargarDatosDesdeServidor();
-            }, 2000);
-        };
-        
-        // Función para limpiar tabla y probar desde cero
-        window.limpiarYProbar = function() {
-            console.log('🧹 Limpiando tabla y probando...');
-            const tbody = document.querySelector('#tablaControlAlmacen tbody');
-            if (tbody) {
-                tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px;">Tabla limpiada - ejecutando test...</td></tr>';
-                setTimeout(() => {
-                    testTablaEspecifico();
-                }, 1000);
-            }
-        };
-
-        // Función de test para la nueva versión ultra simple
-        window.testNuevaFuncion = function() {
-            console.log('🚀 === PROBANDO NUEVA FUNCIÓN ===');
-            
-            const datosTest = [
-                {
-                    id: 1,
-                    codigo_material_recibido: 'TEST001/20250708001',
-                    codigo_material: 'TEST001',
-                    numero_parte: '0001',
-                    numero_lote_material: 'LOTE001',
-                    propiedad_material: 'Material de Prueba',
-                    cantidad_actual: '1000',
-                    cantidad_estandarizada: '1000',
-                    ubicacion_salida: 'A1-01',
-                    fecha_recibo: '2025-07-08',
-                    material_importacion_local: 'Local',
-                    estado_desecho: 0
-                },
-                {
-                    id: 2,
-                    codigo_material_recibido: 'TEST002/20250708002',
-                    codigo_material: 'TEST002',
-                    numero_parte: '0002',
-                    numero_lote_material: 'LOTE002',
-                    propiedad_material: 'Material de Prueba 2',
-                    cantidad_actual: '2000',
-                    cantidad_estandarizada: '2000',
-                    ubicacion_salida: 'B1-01',
-                    fecha_recibo: '2025-07-08',
-                    material_importacion_local: 'Importación',
-                    estado_desecho: 1
-                }
-            ];
-            
-            console.log('📋 Datos de test:', datosTest);
-            console.log('🔄 Llamando a cargarDatosEnTabla...');
-            cargarDatosEnTabla(datosTest);
-        };
-        
-        // Función para probar con datos reales del servidor
-        window.testConDatosReales = function() {
-            console.log('🌐 === PROBANDO CON DATOS REALES ===');
-            
-            fetch('/consultar_control_almacen')
-                .then(response => {
-                    console.log('📡 Respuesta:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('📊 Datos del servidor:', data);
-                    console.log('📊 Cantidad:', data.length);
-                    console.log('📊 Primer elemento:', data[0]);
-                    
-                    console.log('🔄 Llamando a la nueva función...');
-                    cargarDatosEnTabla(data);
-                })
-                .catch(error => {
-                    console.error('❌ Error:', error);
-                });
-        };
-
-        // FUNCIÓN DE PRUEBA ULTRA BÁSICA - SOLO PARA VERIFICAR QUE FUNCIONA
-        function mostrarDatosBasico(datos) {
-            console.log('🟢🟢🟢 FUNCIÓN BÁSICA INICIADA');
-            console.log('🟢 Datos recibidos:', datos);
-            
-            const tbody = document.querySelector('#tablaControlAlmacen tbody');
-            console.log('🟢 Tbody encontrado:', tbody);
-            
-            if (!tbody) {
-                console.error('❌ NO SE ENCONTRÓ TBODY');
-                return;
-            }
-            
-            // PASO 1: Mostrar mensaje de prueba visible
-            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 30px; background-color: lime; color: black; font-size: 16px; font-weight: bold;">✅ FUNCIÓN EJECUTADA - DATOS: ' + (datos ? datos.length : 0) + '</td></tr>';
-            console.log('🟢 MENSAJE VERDE INSERTADO');
-            
-            // PASO 2: Actualizar el contador
-            const totalInfo = document.querySelector('.total-info');
-            if (totalInfo) {
-                totalInfo.textContent = 'FUNCIÓN EJECUTADA ✅ - Total: ' + (datos ? datos.length : 0);
-                totalInfo.style.color = 'lime';
-                totalInfo.style.fontSize = '16px';
-                totalInfo.style.fontWeight = 'bold';
-            }
-            
-            console.log('🟢🟢🟢 FUNCIÓN BÁSICA TERMINADA');
-            console.log('✅ Función básica ejecutada - Datos: ' + (datos ? datos.length : 0));
-        }
-        
-        // FUNCIÓN DE PRUEBA INMEDIATA
-        window.probarFuncionBasica = function() {
-            console.log('🚀 INICIANDO PRUEBA BÁSICA');
-            
-            const datosTest = [
-                { id: 1, codigo_material: 'TEST1', cantidad_actual: '100' },
-                { id: 2, codigo_material: 'TEST2', cantidad_actual: '200' }
-            ];
-            
-            mostrarDatosBasico(datosTest);
-        };
-        
-        // FUNCIÓN PARA PROBAR CON DATOS REALES
-        window.probarConDatosReales = function() {
-            console.log('🌐 PROBANDO CON DATOS REALES');
-            
-            fetch('/consultar_control_almacen')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('📊 Datos del servidor:', data);
-                    mostrarDatosBasico(data);
-                })
-                .catch(error => {
-                    console.error('❌ Error:', error);
-                    console.warn('❌ Error: ' + error.message);
-                });
-        };
-
-        // Función de test para verificar que el botón consultar funcione
-        window.testBotonConsultar = function() {
-            console.log('🧪 === PROBANDO BOTÓN CONSULTAR ===');
-            
-            // Verificar que la función consultarRegistros esté disponible
-            if (typeof consultarRegistros === 'function') {
-                console.log('✅ consultarRegistros disponible');
-            } else {
-                console.error('❌ consultarRegistros NO disponible');
-                return;
-            }
-            
-            // Verificar que la función cargarDatosDesdeServidor esté disponible
-            if (typeof cargarDatosDesdeServidor === 'function') {
-                console.log('✅ cargarDatosDesdeServidor disponible');
-            } else {
-                console.error('❌ cargarDatosDesdeServidor NO disponible');
-                return;
-            }
-            
-            // Verificar que la función nuevaCargarDatos esté disponible
-            if (typeof nuevaCargarDatos === 'function') {
-                console.log('✅ nuevaCargarDatos disponible');
-            } else {
-                console.error('❌ nuevaCargarDatos NO disponible');
-                return;
-            }
-            
-            // Verificar que el botón exista
-            const btnConsultar = document.getElementById('btnConsultar');
-            if (btnConsultar) {
-                console.log('✅ Botón consultar encontrado');
-                console.log('✅ Onclick:', btnConsultar.onclick);
-                console.log('✅ Atributo onclick:', btnConsultar.getAttribute('onclick'));
-            } else {
-                console.error('❌ Botón consultar NO encontrado');
-                return;
-            }
-            
-            console.log('🚀 Ejecutando consultarRegistros() directamente...');
-            consultarRegistros();
-        };
-        
-        // Función para verificar el flujo completo
-        window.verificarFlujoCompleto = function() {
-            console.log('🔍 === VERIFICANDO FLUJO COMPLETO ===');
-            console.log('1. consultarRegistros -> cargarDatosDesdeServidor -> nuevaCargarDatos');
-            
-            console.log('🔗 Paso 1: consultarRegistros');
-            console.log('🔗 Paso 2: cargarDatosDesdeServidor');
-            console.log('🔗 Paso 3: nuevaCargarDatos');
-            
-            testBotonConsultar();
-        };
-
         // Función para aplicar reglas de escaneo desde rules.json
         async function aplicarReglasEscaneo(texto) {
             try {
@@ -2191,85 +1698,6 @@ if (document.readyState === 'loading') {
             configurarAutocompletadoAlmacen();
         }
 
-        // FUNCIÓN DE DIAGNÓSTICO PARA CONSECUTIVOS
-        window.diagnosticarConsecutivos = async function(codigoMaterial = '0RH5602C622') {
-            console.log('🩺 === DIAGNÓSTICO DE CONSECUTIVOS ===');
-            console.log(`📋 Código de material a usar: ${codigoMaterial}`);
-            
-            try {
-                // 1. Probar endpoint directamente
-                const url = `/obtener_siguiente_secuencial?codigo_material=${encodeURIComponent(codigoMaterial)}`;
-                console.log(`🌐 URL a llamar: ${url}`);
-                
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                console.log('📊 Respuesta del servidor:');
-                console.log('   ✅ success:', data.success);
-                console.log('   🔢 siguiente_secuencial:', data.siguiente_secuencial);
-                console.log('   📅 fecha_actual:', data.fecha_actual);
-                console.log('   📦 codigo_material:', data.codigo_material);
-                console.log('   📈 secuencial_mas_alto_encontrado:', data.secuencial_mas_alto_encontrado);
-                console.log('   🔍 patron_busqueda:', data.patron_busqueda);
-                console.log('   📝 proximo_codigo_completo:', data.proximo_codigo_completo);
-                
-                // 2. Verificar variables globales
-                console.log('🔧 Variables globales actuales:');
-                console.log('   contadorSecuencial:', contadorSecuencial);
-                console.log('   proximoCodigoCompleto:', proximoCodigoCompleto);
-                
-                // 3. Probar cargar función
-                console.log('🔄 Probando cargarSiguienteSecuencial...');
-                await cargarSiguienteSecuencial(codigoMaterial);
-                
-                console.log('🔧 Variables después de cargar:');
-                console.log('   contadorSecuencial:', contadorSecuencial);
-                console.log('   proximoCodigoCompleto:', proximoCodigoCompleto);
-                
-                // 4. Probar generar código fallback
-                const fechaHoy = new Date().toISOString().slice(0,10).replace(/-/g,'')
-                const codigoFallback = `${codigoMaterial},${fechaHoy}${String(contadorSecuencial).padStart(4, '0')}`;
-                console.log(`📝 Código fallback generado: ${codigoFallback}`);
-                
-                return data;
-                
-            } catch (error) {
-                console.error('❌ Error en diagnóstico:', error);
-                return null;
-            }
-            
-            console.log('🩺 === FIN DIAGNÓSTICO ===');
-        };
-
-        // FUNCIÓN PARA VERIFICAR REGISTROS EN LA BASE DE DATOS
-        window.verificarRegistrosConsecutivos = async function() {
-            console.log('📋 === VERIFICANDO REGISTROS EN BD ===');
-            
-            try {
-                // Consultar registros recientes
-                const response = await fetch('/consultar_control_almacen?fecha_desde=2025-07-11&fecha_hasta=2025-07-11');
-                const data = await response.json();
-                
-                console.log(`📊 Registros encontrados: ${data.length}`);
-                
-                data.forEach((registro, index) => {
-                    console.log(`📝 Registro ${index + 1}:`);
-                    console.log(`   🆔 ID: ${registro.id}`);
-                    console.log(`   📦 codigo_material_recibido: "${registro.codigo_material_recibido}"`);
-                    console.log(`   📅 fecha_registro: ${registro.fecha_registro}`);
-                    console.log(`   🏷️ codigo_material: ${registro.codigo_material}`);
-                });
-                
-                return data;
-                
-            } catch (error) {
-                console.error('❌ Error al verificar registros:', error);
-                return null;
-            }
-            
-            console.log('📋 === FIN VERIFICACIÓN ===');
-        };
-
         // ==================== QR SCANNER FUNCTIONALITY ====================
         let html5QrCode = null;
 
@@ -2505,14 +1933,14 @@ if (document.readyState === 'loading') {
                 console.log('📝 Comando ZPL generado:', comandoZPL);
                 
                 // 3. Mostrar notificación de inicio
-                mostrarNotificacionImpresion('🔄 Enviando a impresora Zebra ZT230...', 'info');
+                mostrarNotificacionImpresion('Enviando a impresora Zebra ZT230...', 'info');
                 
                 // 4. Enviar al servicio de impresión Win32
                 await enviarAServicioWin32(comandoZPL, codigo, configuracion);
                 
             } catch (error) {
                 console.error('❌ Error en impresión automática:', error);
-                mostrarNotificacionImpresion('❌ Error al imprimir: ' + error.message, 'error');
+                mostrarNotificacionImpresion('Error al imprimir: ' + error.message, 'error');
                 
                 // Fallback: Usar método anterior
                 console.log('🔄 Fallback: Usando método anterior...');
@@ -2560,14 +1988,14 @@ if (document.readyState === 'loading') {
                 console.log('📝 Comando ZPL generado con datos específicos:', comandoZPL);
                 
                 // 3. Mostrar notificación de inicio
-                mostrarNotificacionImpresion('🔄 Enviando a impresora Zebra ZT230...', 'info');
+                mostrarNotificacionImpresion('Enviando a impresora Zebra ZT230...', 'info');
                 
                 // 4. Enviar al servicio de impresión Win32
                 await enviarAServicioWin32(comandoZPL, datosEtiqueta.codigo, configuracion);
                 
             } catch (error) {
                 console.error('❌ Error en impresión automática con datos:', error);
-                mostrarNotificacionImpresion('❌ Error al imprimir: ' + error.message, 'error');
+                mostrarNotificacionImpresion('Error al imprimir: ' + error.message, 'error');
                 
                 // Fallback: Usar método anterior con código solamente
                 console.log('🔄 Fallback: Usando método sin datos específicos...');
@@ -2635,7 +2063,7 @@ if (document.readyState === 'loading') {
                 
                 if (printResponse.ok && printResult.status === 'printed') {
                     console.log('✅ Impresión exitosa via Win32:', printResult);
-                    mostrarNotificacionImpresion(`✅ Etiqueta impresa en ${printResult.printer}`, 'success');
+                    mostrarNotificacionImpresion(`Etiqueta impresa en ${printResult.printer}`, 'success');
                     
                     // Log adicional
                     console.log(`📊 Detalles: ${printResult.bytes} bytes enviados a ${printResult.printer}`);
@@ -2680,7 +2108,7 @@ if (document.readyState === 'loading') {
                 
                 if (result.success) {
                     console.log('✅ Fallback exitoso:', result.metodo);
-                    mostrarNotificacionImpresion('✅ Etiqueta procesada (método fallback)', 'success');
+                    mostrarNotificacionImpresion('Etiqueta procesada correctamente', 'success');
                 } else {
                     throw new Error(result.error || 'Error en método fallback');
                 }
@@ -2994,7 +2422,7 @@ if (document.readyState === 'loading') {
                 
                 if (result.success) {
                     console.log('✅ Impreso exitosamente por USB:', result.metodo);
-                    mostrarNotificacionImpresion('✅ Etiqueta impresa correctamente', 'success');
+                    mostrarNotificacionImpresion('Etiqueta impresa correctamente', 'success');
                     return;
                 } else {
                     throw new Error(result.error || 'Error de impresión USB');
@@ -3031,7 +2459,7 @@ if (document.readyState === 'loading') {
                 
                 if (result.success) {
                     console.log('✅ Impreso exitosamente por red');
-                    mostrarNotificacionImpresion('✅ Etiqueta enviada a impresora de red', 'success');
+                    mostrarNotificacionImpresion('Etiqueta enviada a impresora de red', 'success');
                 } else {
                     throw new Error(result.error || 'Error de comunicación con impresora');
                 }
@@ -3043,7 +2471,7 @@ if (document.readyState === 'loading') {
         }
         
         /**
-         * Función para mostrar notificaciones de impresión
+         * Función para mostrar notificaciones de impresión (toast discreto)
          */
         function mostrarNotificacionImpresion(mensaje, tipo) {
             // Remover notificación anterior
@@ -3053,64 +2481,409 @@ if (document.readyState === 'loading') {
             }
             
             const colores = {
-                info: '#17a2b8',
-                success: '#28a745', 
-                error: '#dc3545'
-            };
-            
-            const iconos = {
-                info: '🔄',
-                success: '✅',
-                error: '❌'
+                info: '#4A90E2',      // Tu azul característico
+                success: '#4CAF50',   // Tu verde característico  
+                error: '#dc3545'      // Tu rojo característico
             };
             
             const notificacion = document.createElement('div');
             notificacion.id = 'print-notification';
             notificacion.style.cssText = `
                 position: fixed;
-                top: 20px;
+                bottom: 20px;
                 right: 20px;
                 background: ${colores[tipo]};
                 color: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                z-index: 10010;
+                padding: 12px 16px;
+                border-radius: 6px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                z-index: 9999;
                 font-family: Arial, sans-serif;
-                font-size: 14px;
-                max-width: 350px;
-                animation: slideInFromRight 0.3s ease-out;
+                font-size: 13px;
+                font-weight: 500;
+                max-width: 280px;
+                opacity: 0;
+                transform: translateY(20px);
+                transition: all 0.3s ease-out;
+                cursor: pointer;
+                line-height: 1.3;
             `;
             
-            notificacion.innerHTML = `${iconos[tipo]} ${mensaje}`;
+            // Sin emojis, solo texto limpio y compacto
+            notificacion.textContent = mensaje;
             
-            // Añadir estilos de animación
-            if (!document.getElementById('print-notification-styles')) {
-                const styles = document.createElement('style');
-                styles.id = 'print-notification-styles';
-                styles.textContent = `
-                    @keyframes slideInFromRight {
-                        from { transform: translateX(100%); opacity: 0; }
-                        to { transform: translateX(0); opacity: 1; }
-                    }
-                `;
-                document.head.appendChild(styles);
-            }
-            
+            // Añadir al DOM y mostrar
             document.body.appendChild(notificacion);
             
-            // Auto-remover según el tipo
-            const duracion = tipo === 'error' ? 8000 : 4000;
+            // Trigger animación después de añadir al DOM
             setTimeout(() => {
-                if (notificacion.parentNode) {
-                    notificacion.style.animation = 'slideInFromRight 0.3s ease-in reverse';
-                    setTimeout(() => {
-                        if (notificacion.parentNode) {
-                            notificacion.remove();
-                        }
-                    }, 300);
-                }
+                notificacion.style.opacity = '1';
+                notificacion.style.transform = 'translateY(0)';
+            }, 10);
+            
+            // Click para cerrar manualmente
+            notificacion.addEventListener('click', () => {
+                cerrarNotificacion(notificacion);
+            });
+            
+            // Auto-cerrar según el tipo (más rápido para no molestar)
+            const duracion = tipo === 'error' ? 4000 : 2500; // Más corto
+            setTimeout(() => {
+                cerrarNotificacion(notificacion);
             }, duracion);
+        }
+        
+        // Función helper para cerrar notificación
+        function cerrarNotificacion(notificacion) {
+            if (notificacion && notificacion.parentNode) {
+                notificacion.style.opacity = '0';
+                notificacion.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    if (notificacion.parentNode) {
+                        notificacion.remove();
+                    }
+                }, 300);
+            }
+        }
+        
+        /**
+         * Función para verificar la impresora Zebra conectada
+         */
+        async function verificarImpresoraZebra() {
+            const btnConfig = document.getElementById('btnConfigImpresora');
+            if (btnConfig) {
+                btnConfig.disabled = true;
+                btnConfig.textContent = 'VERIFICANDO...';
+            }
+            
+            try {
+                console.log('🔍 === VERIFICACIÓN DE IMPRESORA ZEBRA ===');
+                
+                // 1. Verificar servicio de impresión Win32
+                const serviceUrl = 'http://localhost:5003';
+                console.log(`🌐 Conectando al servicio: ${serviceUrl}`);
+                
+                const statusResponse = await fetch(`${serviceUrl}/`, {
+                    method: 'GET',
+                    timeout: 10000
+                });
+                
+                if (!statusResponse.ok) {
+                    throw new Error(`Servicio no disponible (${statusResponse.status})`);
+                }
+                
+                const statusData = await statusResponse.json();
+                console.log('📊 Estado del servicio:', statusData);
+                
+                // 2. Obtener información detallada de impresoras
+                let infoImpresoras = '';
+                let estadoColor = '#009944'; // Verde por defecto
+                let estadoTexto = 'ACTIVO';
+                let estadoBorde = '#009944';
+                
+                if (statusData.zebra_printer) {
+                    // Nuevo formato del servicio que incluye zebra_printer
+                    estadoColor = '#009944';
+                    estadoTexto = 'ACTIVO';
+                    estadoBorde = '#009944';
+                    infoImpresoras = `
+**SERVICIO DE IMPRESIÓN ACTIVO:**
+• Estado: running
+• Servicio: Zebra Print Service Flask Integrado
+• Puerto: 5003
+• Nota: Impresora Zebra ZT230 asumida disponible`;
+                } else if (statusData.status === 'running') {
+                    // Formato antiguo - servicio funcionando pero sin info específica
+                    estadoColor = '#009944';
+                    estadoTexto = 'ACTIVO';
+                    estadoBorde = '#009944';
+                    infoImpresoras = `
+**SERVICIO DE IMPRESIÓN ACTIVO:**
+• Estado: ${statusData.status}
+• Servicio: ${statusData.service || 'Zebra Print Service Flask Integrado'}
+• Puerto: 5003
+• Nota: Impresora Zebra ZT230 asumida disponible`;
+                } else {
+                    estadoColor = '#833C0D';
+                    estadoTexto = 'INACTIVO';
+                    estadoBorde = '#833C0D';
+                    infoImpresoras = `
+**PROBLEMA DETECTADO:**
+• El servicio no está funcionando correctamente
+• Estado: ${statusData.status || 'Desconocido'}`;
+                }
+                
+                // 3. Verificar configuración local
+                const config = localStorage.getItem('zebra_config');
+                let configInfo = '';
+                
+                if (config) {
+                    const cfg = JSON.parse(config);
+                    const tipoTexto = cfg.tipo === 'simple' ? 'Simple' : 'Completa';
+                    const metodoTexto = cfg.metodo === 'usb' ? 'USB' : `Red (${cfg.ip})`;
+                    
+                    configInfo = `
+
+**CONFIGURACIÓN ACTUAL:**
+• Método: ${metodoTexto}
+• Tipo de etiqueta: ${tipoTexto}
+• Impresión automática: Activada
+• URL del servicio: ${cfg.service_url || 'http://localhost:5003'}`;
+                } else {
+                    configInfo = `
+
+**CONFIGURACIÓN:**
+• No hay configuración guardada
+• Se usarán valores por defecto`;
+                }
+                
+                // 4. Mostrar modal con información completa
+                const modalHTML = `
+                <div id="modalVerificacionImpresora" style="
+                    position: fixed; 
+                    top: 0; left: 0; 
+                    width: 100%; height: 100%; 
+                    background: rgba(50, 50, 62, 0.9); 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    z-index: 10000;
+                ">
+                    <div style="
+                        background: #32323E; 
+                        padding: 30px; 
+                        border-radius: 10px; 
+                        max-width: 600px; 
+                        width: 90%; 
+                        max-height: 80vh; 
+                        overflow-y: auto;
+                        font-family: Arial, sans-serif;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                        border: 2px solid ${estadoBorde};
+                    ">
+                        <h3 style="
+                            margin: 0 0 20px 0; 
+                            color: #ecf0f1; 
+                            background: ${estadoColor};
+                            padding: 15px;
+                            border-radius: 6px;
+                            text-align: center;
+                            font-size: 18px;
+                            font-weight: bold;
+                            position: relative;
+                        ">
+                            <span style="
+                                position: absolute;
+                                left: 15px;
+                                top: 50%;
+                                transform: translateY(-50%);
+                                width: 12px;
+                                height: 12px;
+                                border-radius: 50%;
+                                background: #ecf0f1;
+                                display: inline-block;
+                            "></span>
+                            CONFIGURACIÓN DE IMPRESORA ZEBRA - ${estadoTexto}
+                        </h3>
+                        
+                        <div style="
+                            background: #33334D; 
+                            padding: 20px; 
+                            border-radius: 8px; 
+                            margin-bottom: 20px;
+                            border: 1px solid ${estadoBorde};
+                        ">
+                            <pre style="
+                                margin: 0; 
+                                white-space: pre-wrap; 
+                                font-size: 14px; 
+                                line-height: 1.6;
+                                color: #ecf0f1;
+                                font-family: Arial, sans-serif;
+                            ">${infoImpresoras}${configInfo}</pre>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button onclick="cerrarModalVerificacion()" style="
+                                padding: 12px 30px; 
+                                background: #636779; 
+                                color: #ecf0f1; 
+                                border: none; 
+                                border-radius: 6px; 
+                                cursor: pointer; 
+                                font-size: 16px;
+                                margin-right: 10px;
+                                font-family: Arial, sans-serif;
+                                transition: background-color 0.3s;
+                            " onmouseover="this.style.background='#7B8181'" onmouseout="this.style.background='#636779'">
+                                Cerrar
+                            </button>
+                            <button onclick="probarImpresion()" style="
+                                padding: 12px 30px; 
+                                background: ${estadoColor}; 
+                                color: #ecf0f1; 
+                                border: none; 
+                                border-radius: 6px; 
+                                cursor: pointer; 
+                                font-size: 16px;
+                                font-family: Arial, sans-serif;
+                                transition: background-color 0.3s;
+                                ${estadoTexto === 'INACTIVO' ? 'opacity: 0.6; cursor: not-allowed;' : ''}
+                            " ${estadoTexto === 'ACTIVO' ? `onmouseover="this.style.background='#27ae60'" onmouseout="this.style.background='${estadoColor}'"` : 'onclick="event.preventDefault(); mostrarNotificacionImpresion(\'Servicio inactivo - no se puede probar impresión\', \'error\'); return false;"'}>
+                                ${estadoTexto === 'ACTIVO' ? 'Probar Impresión' : 'Servicio Inactivo'}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                // Mensaje de éxito
+                mostrarNotificacionImpresion('Verificación completada', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error al verificar impresora:', error);
+                
+                let mensajeError = 'Error desconocido';
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    mensajeError = 'Servicio de impresión no disponible. Verifique que print_service.py esté ejecutándose en puerto 5003.';
+                } else {
+                    mensajeError = error.message;
+                }
+                
+                // Mostrar modal de error
+                const modalErrorHTML = `
+                <div id="modalVerificacionImpresora" style="
+                    position: fixed; 
+                    top: 0; left: 0; 
+                    width: 100%; height: 100%; 
+                    background: rgba(50, 50, 62, 0.9); 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    z-index: 10000;
+                ">
+                    <div style="
+                        background: #32323E; 
+                        padding: 30px; 
+                        border-radius: 10px; 
+                        max-width: 500px; 
+                        width: 90%;
+                        font-family: Arial, sans-serif;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                        border: 2px solid #833C0D;
+                        animation: pulse-red 2s infinite;
+                    ">
+                        <style>
+                            @keyframes pulse-red {
+                                0% { border-color: #833C0D; }
+                                50% { border-color: #9C4910; }
+                                100% { border-color: #833C0D; }
+                            }
+                        </style>
+                        <h3 style="
+                            margin: 0 0 20px 0; 
+                            color: #ecf0f1; 
+                            background: #833C0D;
+                            padding: 15px;
+                            border-radius: 6px;
+                            text-align: center;
+                            font-size: 18px;
+                            font-weight: bold;
+                            position: relative;
+                        ">
+                            <span style="
+                                position: absolute;
+                                left: 15px;
+                                top: 50%;
+                                transform: translateY(-50%);
+                                width: 12px;
+                                height: 12px;
+                                border-radius: 50%;
+                                background: #ecf0f1;
+                                display: inline-block;
+                                animation: blink 1s infinite;
+                            "></span>
+                            <style>
+                                @keyframes blink {
+                                    0%, 50% { opacity: 1; }
+                                    51%, 100% { opacity: 0.3; }
+                                }
+                            </style>
+                            ERROR DE CONEXIÓN - SERVICIO INACTIVO
+                        </h3>
+                        
+                        <div style="
+                            background: #44324A; 
+                            color: #ecf0f1; 
+                            padding: 15px; 
+                            border-radius: 8px; 
+                            margin-bottom: 20px;
+                            border: 1px solid #833C0D;
+                        ">
+                            <p style="margin: 0; font-size: 14px; line-height: 1.5;">${mensajeError}</p>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <button onclick="cerrarModalVerificacion()" style="
+                                padding: 12px 30px; 
+                                background: #833C0D; 
+                                color: #ecf0f1; 
+                                border: none; 
+                                border-radius: 6px; 
+                                cursor: pointer; 
+                                font-size: 16px;
+                                font-family: Arial, sans-serif;
+                                transition: background-color 0.3s;
+                            " onmouseover="this.style.background='#9C4910'" onmouseout="this.style.background='#833C0D'">
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                
+                document.body.insertAdjacentHTML('beforeend', modalErrorHTML);
+                
+                mostrarNotificacionImpresion('Error al verificar impresora: ' + mensajeError, 'error');
+                
+            } finally {
+                // Restaurar botón
+                if (btnConfig) {
+                    btnConfig.disabled = false;
+                    btnConfig.textContent = 'CONF. DE IMPRESORA';
+                }
+            }
+        }
+        
+        /**
+         * Función para cerrar el modal de verificación
+         */
+        function cerrarModalVerificacion() {
+            const modal = document.getElementById('modalVerificacionImpresora');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        /**
+         * Función para probar impresión desde el modal
+         */
+        async function probarImpresion() {
+            try {
+                const codigoPrueba = 'TEST-' + Date.now();
+                console.log('🧪 Probando impresión con código:', codigoPrueba);
+                
+                mostrarNotificacionImpresion('Enviando prueba de impresión...', 'info');
+                
+                // Usar la función de impresión automática existente
+                await imprimirZebraAutomatico(codigoPrueba);
+                
+                mostrarNotificacionImpresion('Prueba de impresión enviada correctamente', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error en prueba de impresión:', error);
+                mostrarNotificacionImpresion('Error en prueba de impresión: ' + error.message, 'error');
+            }
         }
         
         // Función para configurar automáticamente la impresora si no está configurada
@@ -3221,211 +2994,8 @@ if (document.readyState === 'loading') {
         
         console.log('✅ Sistema de impresión automática directa configurado (Win32)');
         
-        // ============= FUNCIONES DE PRUEBA Y DIAGNÓSTICO =============
-        
-        /**
-         * Función para probar la generación de comando ZPL
-         */
-        window.testGenerarZPL = function(codigo = 'TEST-12345', tipo = 'material') {
-            console.log('🧪 === PROBANDO GENERACIÓN DE ZPL ===');
-            console.log(`📋 Código: ${codigo}`);
-            console.log(`🏷️ Tipo: ${tipo}`);
-            
-            const comandoZPL = generarComandoZPLDirecto(codigo, tipo);
-            
-            console.log('📝 Comando ZPL generado:');
-            console.log('------- INICIO ZPL -------');
-            console.log(comandoZPL);
-            console.log('------- FIN ZPL -------');
-            
-            console.log('📊 Detalles del comando:');
-            console.log(`   📏 Longitud: ${comandoZPL.length} caracteres`);
-            console.log(`   📄 Líneas: ${comandoZPL.split('\n').length}`);
-            console.log(`   🔤 Contiene código: ${comandoZPL.includes(codigo) ? '✅' : '❌'}`);
-            console.log(`   📅 Contiene fecha: ${comandoZPL.includes(new Date().toLocaleDateString('es-ES')) ? '✅' : '❌'}`);
-            
-            return comandoZPL;
-        };
-        
-        /**
-         * Función para probar impresión completa (sin imprimir realmente)
-         */
-        window.testImpresionCompleta = function(codigo = 'TEST-67890') {
-            console.log('🧪 === PROBANDO FLUJO COMPLETO DE IMPRESIÓN ===');
-            console.log(`📋 Código de prueba: ${codigo}`);
-            
-            // 1. Verificar configuración
-            const config = localStorage.getItem('zebra_config');
-            console.log('🔧 Configuración actual:', config ? JSON.parse(config) : 'No configurado');
-            
-            // 2. Generar comando ZPL
-            const comandoZPL = testGenerarZPL(codigo);
-            
-            // 3. Simular envío al servicio
-            console.log('📡 Simulando envío al servicio Win32...');
-            console.log('🌐 URL destino: http://localhost:5003/print');
-            console.log('📦 Datos a enviar:');
-            console.log({
-                zpl: comandoZPL,
-                codigo: codigo,
-                source: 'ILSAN_MES_Control_Almacen'
-            });
-            
-            console.log('✅ Test de flujo completo finalizado');
-            console.log('💡 Para probar impresión real use: testImpresionReal()');
-        };
-        
-        /**
-         * Función para probar impresión real (¡CUIDADO: SÍ IMPRIME!)
-         */
-        window.testImpresionReal = async function(codigo = 'TEST-REAL-' + Date.now()) {
-            console.log('🚨 === PRUEBA DE IMPRESIÓN REAL ===');
-            console.log('⚠️ ¡ESTA FUNCIÓN SÍ VA A IMPRIMIR EN LA ZEBRA!');
-            console.log(`📋 Código: ${codigo}`);
-            
-            try {
-                await imprimirZebraAutomatico(codigo);
-                console.log('✅ Prueba de impresión real completada');
-            } catch (error) {
-                console.error('❌ Error en prueba real:', error);
-            }
-        };
-        
-        /**
-         * Función para verificar el servicio Win32
-         */
-        window.testServicioWin32 = async function() {
-            console.log('🔧 === VERIFICANDO SERVICIO WIN32 ===');
-            
-            try {
-                const response = await fetch('http://localhost:5003/', {
-                    method: 'GET',
-                    timeout: 5000
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('✅ Servicio Win32 disponible');
-                    console.log('📊 Estado del servicio:', data);
-                    console.log(`🖨️ Impresora Zebra: ${data.zebra_printer ? '✅ Detectada' : '❌ No detectada'}`);
-                    console.log(`📦 Impresoras totales: ${data.total_printers}`);
-                    
-                    if (data.zebra_printer) {
-                        console.log('🎯 ¿Quiere hacer una prueba de impresión? Ejecute:');
-                        console.log('   testImpresionReal()');
-                    }
-                    
-                    return data;
-                } else {
-                    console.error(`❌ Error del servicio: ${response.status}`);
-                    return null;
-                }
-                
-            } catch (error) {
-                console.error('❌ Error conectando al servicio Win32:', error);
-                console.log('💡 Soluciones:');
-                console.log('   1. Ejecute: start_print_service.bat');
-                console.log('   2. Verifique que Python esté instalado');
-                console.log('   3. Verifique que el puerto 5002 esté libre');
-                return null;
-            }
-        };
-        
-        /**
-         * Función de diagnóstico completo
-         */
-        window.diagnosticoCompleto = async function() {
-            console.log('🩺 === DIAGNÓSTICO COMPLETO DEL SISTEMA ===');
-            
-            console.log('\n1️⃣ Verificando configuración...');
-            const config = localStorage.getItem('zebra_config');
-            if (config) {
-                console.log('✅ Configuración encontrada:', JSON.parse(config));
-            } else {
-                console.log('⚠️ No hay configuración guardada');
-            }
-            
-            console.log('\n2️⃣ Probando generación ZPL...');
-            testGenerarZPL('DIAG-TEST-001');
-            
-            console.log('\n3️⃣ Verificando servicio Win32...');
-            const servicioData = await testServicioWin32();
-            
-            console.log('\n4️⃣ Resumen del diagnóstico:');
-            console.log(`   📝 Configuración: ${config ? '✅' : '❌'}`);
-            console.log(`   🏷️ Generación ZPL: ✅`);
-            console.log(`   🔧 Servicio Win32: ${servicioData ? '✅' : '❌'}`);
-            console.log(`   🖨️ Zebra detectada: ${servicioData?.zebra_printer ? '✅' : '❌'}`);
-            
-            if (config && servicioData?.zebra_printer) {
-                console.log('\n🎉 ¡Sistema listo para impresión automática!');
-                console.log('💡 Pruebe guardando un material para ver la impresión automática');
-            } else {
-                console.log('\n⚠️ Sistema no está completamente configurado');
-                console.log('💡 Ejecute: mostrarInstruccionesServicio() para obtener ayuda');
-            }
-            
-            return {
-                configuracion: !!config,
-                servicioWin32: !!servicioData,
-                zebraDetectada: !!servicioData?.zebra_printer
-            };
-        };
-        
-        /**
-         * Función para probar QR completo con información real
-         */
-        window.testQRCompleto = function(codigo = 'TEST-QR-COMPLETO-' + Date.now()) {
-            console.log('🧪 === TEST QR COMPLETO CON INFORMACIÓN ===');
-            console.log(`📋 Código de prueba: ${codigo}`);
-            
-            // Simular datos del formulario
-            const datosSimulados = {
-                codigo: codigo,
-                lote: 'L2025001',
-                parte: 'P12345',
-                cantidad: '100',
-                propiedad: 'RESISTOR'
-            };
-            
-            // Llenar temporalmente los campos para la prueba
-            const campos = {
-                'numero_lote_material': datosSimulados.lote,
-                'numero_parte_lower': datosSimulados.parte,
-                'cantidad_actual': datosSimulados.cantidad,
-                'propiedad_material': datosSimulados.propiedad
-            };
-            
-            console.log('📝 Llenando campos temporalmente para la prueba:');
-            Object.keys(campos).forEach(id => {
-                const campo = document.getElementById(id);
-                if (campo) {
-                    campo.value = campos[id];
-                    console.log(`   ✅ ${id}: ${campos[id]}`);
-                } else {
-                    console.log(`   ⚠️ ${id}: Campo no encontrado`);
-                }
-            });
-            
-            // Generar comando ZPL con QR completo
-            const comandoZPL = generarComandoZPLDirecto(codigo, 'material');
-            
-            // Mostrar información del QR
-            console.log('📱 Información que se incluirá en el QR:');
-            console.log(`   • Código: ${codigo}`);
-            console.log(`   • Fecha: ${new Date().toLocaleDateString('es-ES')}`);
-            console.log(`   • Lote: ${datosSimulados.lote}`);
-            console.log(`   • Parte: ${datosSimulados.parte}`);
-            console.log(`   • Cantidad: ${datosSimulados.cantidad}`);
-            console.log(`   • Propiedad: ${datosSimulados.propiedad}`);
-            console.log(`   • Estado: ACTIVO`);
-            console.log(`   • Empresa: ILSAN_ELECTRONICS`);
-            
-            console.log('🎯 ¿Desea imprimir esta etiqueta de prueba?');
-            console.log('💡 Para imprimir ejecute: testImpresionReal("' + codigo + '")');
-            
-            return comandoZPL;
-        };
+        // ============= ZEBRA PRINTING FUNCTIONALITY =============
+
         
         /**
          * Función para probar etiqueta pequeña (33.2mm x 14mm)
