@@ -169,6 +169,90 @@ def listar_bom():
         print(f"Error al listar BOM: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/consultar_bom', methods=['GET'])
+@login_requerido
+def consultar_bom():
+    """
+    Consulta datos de BOM con filtros GET para la interfaz de Control de salida
+    """
+    try:
+        # Obtener filtros de los parámetros de consulta
+        modelo = request.args.get('modelo', '').strip()
+        numero_parte = request.args.get('numero_parte', '').strip()
+        
+        # Si no hay filtros específicos, obtener todos los datos
+        if not modelo and not numero_parte:
+            bom_data = listar_bom_por_modelo('todos')
+        else:
+            # Aplicar filtros
+            bom_data = listar_bom_por_modelo(modelo if modelo else 'todos')
+            
+            # Filtrar por número de parte si se proporciona
+            if numero_parte and bom_data:
+                bom_data = [
+                    item for item in bom_data 
+                    if numero_parte.lower() in str(item.get('numero_parte', '')).lower()
+                ]
+        
+        return jsonify(bom_data)
+        
+    except Exception as e:
+        print(f"Error al consultar BOM: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/buscar_material_por_numero_parte', methods=['GET'])
+@login_requerido
+def buscar_material_por_numero_parte():
+    """
+    Busca materiales en inventario por número de parte
+    """
+    try:
+        numero_parte = request.args.get('numero_parte', '').strip()
+        
+        if not numero_parte:
+            return jsonify({'success': False, 'error': 'Número de parte requerido'})
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Buscar materiales que coincidan con el número de parte
+        query = """
+            SELECT codigo_material_recibido, codigo_material_original, codigo_material,
+                   especificacion, numero_parte, cantidad_actual, numero_lote_material,
+                   fecha_recepcion, proveedor
+            FROM inventario_material_almacen 
+            WHERE numero_parte LIKE ? OR numero_parte = ?
+            ORDER BY fecha_recepcion DESC
+        """
+        
+        cursor.execute(query, (f'%{numero_parte}%', numero_parte))
+        resultados = cursor.fetchall()
+        
+        conn.close()
+        
+        if resultados:
+            materiales = []
+            for row in resultados:
+                materiales.append({
+                    'codigo_material_recibido': row[0],
+                    'codigo_material_original': row[1],
+                    'codigo_material': row[2],
+                    'especificacion': row[3],
+                    'numero_parte': row[4],
+                    'cantidad_actual': row[5],
+                    'numero_lote_material': row[6],
+                    'fecha_recepcion': row[7],
+                    'proveedor': row[8]
+                })
+            
+            return jsonify({'success': True, 'materiales': materiales})
+        else:
+            return jsonify({'success': False, 'error': f'No se encontraron materiales con número de parte: {numero_parte}'})
+            
+    except Exception as e:
+        print(f"Error al buscar material por número de parte: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/exportar_excel_bom', methods=['GET'])
 @login_requerido
 def exportar_excel_bom():

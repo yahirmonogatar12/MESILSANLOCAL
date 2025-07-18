@@ -429,3 +429,114 @@
             border: 2px solid #27ae60;
             box-shadow: 0 0 5px rgba(39, 174, 96, 0.3);
         }
+
+        /* Estilos para el dropdown de búsqueda de modelos */
+        .salida-search-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .salida-search-dropdown {
+            background-color: #2c3e50;
+            color: lightgray;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 11px;
+            width: 100%;
+            transition: border-color 0.3s;
+            cursor: pointer;
+        }
+
+        .salida-search-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .salida-search-dropdown::placeholder {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .salida-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .salida-dropdown-item {
+            padding: 8px 10px;
+            color: lightgray;
+            cursor: pointer;
+            border-bottom: 1px solid #34495e;
+            transition: background-color 0.2s;
+            font-size: 11px;
+        }
+
+        .salida-dropdown-item:hover {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .salida-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .salida-dropdown-item.hidden {
+            display: none;
+        }
+
+        /* Estilos adicionales para las tablas BOM */
+        .registro-tablas-container .material-table {
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .registro-tablas-container .material-table th {
+            background-color: #34495e !important;
+            color: #ecf0f1 !important;
+            border: 1px solid #2c3e50 !important;
+            padding: 10px 8px;
+            font-weight: 600;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .registro-tablas-container .material-table td {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            border: 1px solid #34495e;
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        .registro-tablas-container .material-table tbody tr:hover {
+            background-color: #34495e !important;
+        }
+
+        .registro-tablas-container .no-data {
+            background-color: #2c3e50 !important;
+            color: #7f8c8d !important;
+            font-style: italic;
+            text-align: center;
+            padding: 20px !important;
+        }
+
+        .tabla-container h4 {
+            color: #ecf0f1 !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            font-weight: 600;
+        }

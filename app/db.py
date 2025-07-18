@@ -497,6 +497,7 @@ def obtener_modelos_bom():
             ORDER BY modelo
         ''')
         modelos = cursor.fetchall()
+        # Devolver objetos con propiedad 'modelo' para compatibilidad con ambas interfaces
         return [{'modelo': row[0]} for row in modelos]
     except Exception as e:
         print(f"Error al obtener modelos BOM: {e}")
