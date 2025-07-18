@@ -1,0 +1,18 @@
+2025-07-17 16:34:35,403 - INFO - Iniciando servicio de impresión...
+2025-07-17 16:34:35,404 - INFO - Servicio de impresión iniciado correctamente
+2025-07-17 16:34:35,404 - INFO - Iniciando servicio Flask: C:\Users\yahir\AppData\Local\Programs\Python\Python313\pythonservice.exe C:\ZebraPrintService\print_service.py
+2025-07-17 16:34:35,408 - INFO - Servicio Flask iniciado con PID: 25340
+2025-07-17 16:35:05,408 - INFO - Iniciando servicio Flask: C:\Users\yahir\AppData\Local\Programs\Python\Python313\pythonservice.exe C:\ZebraPrintService\print_service.py
+2025-07-17 16:35:05,411 - INFO - Servicio Flask iniciado con PID: 29844
+2025-07-17 16:35:35,419 - INFO - Iniciando servicio Flask: C:\Users\yahir\AppData\Local\Programs\Python\Python313\pythonservice.exe C:\ZebraPrintService\print_service.py
+2025-07-17 16:35:35,424 - INFO - Servicio Flask iniciado con PID: 28272
+2025-07-17 16:36:05,426 - INFO - Iniciando servicio Flask: C:\Users\yahir\AppData\Local\Programs\Python\Python313\pythonservice.exe C:\ZebraPrintService\print_service.py
+2025-07-17 16:36:05,431 - INFO - Servicio Flask iniciado con PID: 20176
+2025-07-17 16:36:35,431 - INFO - Iniciando servicio Flask: C:\Users\yahir\AppData\Local\Programs\Python\Python313\pythonservice.exe C:\ZebraPrintService\print_service.py
+2025-07-17 16:36:35,435 - INFO - Servicio Flask iniciado con PID: 24412
+2025-07-17 16:37:05,445 - INFO - Iniciando servicio Flask: C:\Users\yahir\AppData\Local\Programs\Python\Python313\pythonservice.exe C:\ZebraPrintService\print_service.py
+2025-07-17 16:37:05,450 - INFO - Servicio Flask iniciado con PID: 23620
+2025-07-17 16:37:35,453 - INFO - Iniciando servicio Flask: C:\Users\yahir\AppData\Local\Programs\Python\Python313\pythonservice.exe C:\ZebraPrintService\print_service.py
+2025-07-17 16:37:35,457 - INFO - Servicio Flask iniciado con PID: 30252
+2025-07-17 16:37:54,384 - INFO - Deteniendo servicio de impresión...
+2025-07-17 16:37:54,384 - INFO - Servicio de impresión detenido

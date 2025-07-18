@@ -2605,18 +2605,27 @@ if (document.readyState === 'loading') {
                 const statusData = await statusResponse.json();
                 console.log('📊 Estado del servicio:', statusData);
                 
-                if (!statusData.zebra_printer) {
+                // COMPATIBILIDAD: Si el servicio no devuelve zebra_printer, verificar que esté ejecutándose
+                // Tu servicio devuelve { "service": "Zebra Print Service Flask Integrado", "status": "running" }
+                if (!statusData.zebra_printer && statusData.status !== 'running') {
+                    throw new Error('Servicio de impresión no está funcionando correctamente');
+                }
+                
+                // Si el servicio está ejecutándose, asumir que la impresora está disponible
+                if (statusData.status === 'running') {
+                    console.log('✅ Servicio de impresión funcionando - asumiendo impresora disponible');
+                } else if (!statusData.zebra_printer) {
                     throw new Error('No se detectó impresora Zebra ZT230 en el servicio');
                 }
                 
-                // Enviar comando ZPL para impresión
+                // Enviar comando ZPL para impresión con el formato correcto para tu servicio
                 const printResponse = await fetch(`${serviceUrl}/print`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        zpl: comandoZPL,
+                        zpl_content: comandoZPL,  // Tu servicio espera "zpl_content"
                         codigo: codigo,
                         source: 'ILSAN_MES_Control_Almacen'
                     })

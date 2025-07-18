@@ -1,0 +1,7 @@
+2025-07-17 18:08:32,164 - INFO - Impresoras disponibles: ['OneNote (Desktop)', 'ZDesigner ZT230-300dpi ZPL', 'Microsoft Print to PDF', 'Brother DCP-L5650DN series']
+2025-07-17 18:08:32,167 - INFO - Impresora encontrada: ZDesigner ZT230-300dpi ZPL (zebra_usb_300dpi)
+2025-07-17 18:08:32,236 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5003
+ * Running on http://192.168.0.211:5003
+2025-07-17 18:08:32,242 - INFO - [33mPress CTRL+C to quit[0m
