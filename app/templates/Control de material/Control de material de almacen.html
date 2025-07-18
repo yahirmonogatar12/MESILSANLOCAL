@@ -12,6 +12,9 @@
     <!-- Estilos globales -->
     <link rel="stylesheet" href="/static/css/control_material_almacen.css">
     
+    <!-- Estilos responsive para móvil -->
+    <link rel="stylesheet" href="/static/css/control_material_almacen_responsive.css">
+    
     <!-- Scripts necesarios -->
     <script src="/static/js/jquery.min.js"></script>
     <script src="/static/js/popper.min.js"></script>
@@ -83,7 +86,7 @@
                 <label>Código de material original</label>
                 <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                     <input type="text" id="codigoMaterialOriginal" style="flex: 1; min-width: 0;" placeholder="Escanear o ingresar código..." onkeydown="procesarScaneo(event)">
-                    <button type="button" onclick="abrirEscanerQR()" class="material-btn" title="Escanear QR con cámara" style="padding: 5px 12px; font-size: 16px; line-height: 1;">📸</button>
+                    <button type="button" onclick="abrirEscanerQR()" class="material-btn mobile-only-btn" title="Escanear QR con cámara" style="padding: 5px 12px; font-size: 16px; line-height: 1;">📸</button>
                 </div>
             </div>
     </div>

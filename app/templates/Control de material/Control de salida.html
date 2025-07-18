@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Salida de Material</title>
     <link rel="stylesheet" href="/static/css/control_salida_material.css">
+    <link rel="stylesheet" href="/static/css/control_salida_material_responsive.css">
 </head>
 <body>
     <div id="control-salida-container">
@@ -16,9 +17,9 @@
                     <input type="text" id="salida_codigo_material_recibido" placeholder="Escanear código aquí..." onkeydown="procesarEscaneoRapido(event)" autocomplete="off">
                 </div>
             </div>
-            <div class="material-form-group" style="margin-left: -200px;">
+            <div class="material-form-group verification-group">
                 <label>Verificación de salida (Requerido)</label>
-                <input type="text" id="salida_verificacion_codigo" placeholder="Escanear código de verificación..." onkeydown="procesarVerificacion(event)" autocomplete="off" style="margin-left: 10px; border: 2px solid #e74c3c;">
+                <input type="text" id="salida_verificacion_codigo" placeholder="Escanear código de verificación..." onkeydown="procesarVerificacion(event)" autocomplete="off" style="border: 2px solid #e74c3c;">
             </div>
 
             <!-- Contenedor derecho: Checkboxes -->
@@ -821,6 +822,10 @@
             // Ocultar sección de historial
             document.getElementById('historialSection').style.display = 'none';
             
+            // Manejar clases CSS para responsive móvil
+            document.body.classList.remove('historial-active');
+            document.getElementById('tablasRegistroSalida').classList.remove('hidden', 'hidden-by-historial');
+            
             // Cambiar estado visual de los botones
             document.getElementById('btnRegistroSalida').style.backgroundColor = '#3498db';
             document.getElementById('btnHistorialSalida').style.backgroundColor = '';
@@ -832,6 +837,10 @@
             
             // Mostrar sección de historial
             document.getElementById('historialSection').style.display = 'block';
+            
+            // Manejar clases CSS para responsive móvil
+            document.body.classList.add('historial-active');
+            document.getElementById('tablasRegistroSalida').classList.add('hidden-by-historial');
             
             // Establecer fecha actual en los filtros de fecha
             const hoy = new Date().toISOString().split('T')[0];

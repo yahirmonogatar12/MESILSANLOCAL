@@ -1,0 +1,460 @@
+/* ========================================
+   ESTILOS RESPONSIVE PARA CONTROL DE SALIDA MATERIAL
+   Archivo: control_salida_material_responsive.css
+   Propósito: Hacer responsive solo para móviles sin afectar desktop
+   ======================================== */
+
+/* ===== BOTONES SOLO PARA MÓVIL ===== */
+/* Ocultar en desktop */
+.mobile-only-btn {
+    display: none !important;
+}
+
+/* ESTILOS RESPONSIVE PARA MÓVILES - SOLO DISPOSITIVOS MÓVILES */
+@media (max-width: 768px) {
+    
+    /* ===== MOSTRAR BOTONES SOLO EN MÓVIL ===== */
+    .mobile-only-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 8px 12px !important;
+        font-size: 11px !important;
+        min-height: 36px !important;
+        width: auto !important;
+        max-width: 100% !important;
+        border-radius: 4px !important;
+        white-space: nowrap !important;
+        line-height: 1.2 !important;
+        margin: 2px !important;
+    }
+    
+    /* ===== CONTROL DEL DESBORDAMIENTO HORIZONTAL ===== */
+    html, body {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+    
+    * {
+        box-sizing: border-box !important;
+    }
+    
+    /* ===== FORMULARIO SUPERIOR RESPONSIVE ===== */
+    .material-container2 {
+        transform: none !important; /* Quitar escala en móvil */
+        width: 100% !important;
+        max-width: 100vw !important;
+        padding: 6px !important;
+        margin: 0 !important;
+        min-height: auto !important;
+        overflow-x: hidden !important;
+    }
+    
+    .material-form-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 10px !important;
+        padding: 8px 4px !important;
+        background-color: transparent !important;
+        border-radius: 6px !important;
+    }
+    
+    /* Filas del formulario - hacer responsive */
+    .material-form-row.four-column,
+    .material-form-row.two-column,
+    .material-form-row.three-column,
+    .material-form-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+        align-items: stretch !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .material-form-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 0 12px 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+    }
+    
+    /* Corregir el margin-left problemático */
+    .material-form-group[style*="margin-left: -200px"],
+    .verification-group {
+        margin-left: 0 !important;
+    }
+    
+    /* Estilos específicos para el grupo de verificación */
+    .verification-group {
+        margin-top: 10px;
+    }
+    
+    .verification-group input {
+        border-width: 2px !important;
+    }
+    
+    .material-form-group label {
+        font-size: 12px !important;
+        margin-bottom: 3px !important;
+        display: block !important;
+        color: lightgray !important; /* Color original preservado */
+        width: 100% !important;
+        text-align: left !important;
+        align-self: flex-start !important;
+        padding: 0 !important;
+        line-height: 1.3 !important;
+    }
+    
+    .material-form-group select,
+    .material-form-group input[type="text"],
+    .material-form-group input[type="date"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 13px !important;
+        padding: 8px 6px !important;
+        border-radius: 4px !important;
+        border: 1px solid #20688C !important;
+        background-color: #40424F !important; /* Color original preservado */
+        color: white !important;
+        margin: 0 !important;
+        align-self: stretch !important;
+        box-sizing: border-box !important;
+        height: 40px !important;
+    }
+    
+    /* ===== BOTONES ESPECÍFICOS - TAMAÑO LEGIBLE ===== */
+    
+    /* Contenedor de botones principales */
+    .material-form-group div[style*="display: flex"][style*="gap: 4px"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-top: 8px !important;
+    }
+    
+    /* ===== ACOMODAR CAMPOS ESPECÍFICOS EN MÓVIL ===== */
+    
+    /* Campos del formulario más compactos */
+    .material-form-group:has(label:contains("Modelo")),
+    .material-form-group:has(label:contains("Código de material original")),
+    .material-form-group:has(label:contains("Código de material")),
+    .material-form-group:has(label:contains("Especificación")),
+    .material-form-group:has(label:contains("Número de parte")),
+    .material-form-group:has(label:contains("Cantidad actual")),
+    .material-form-group:has(label:contains("Número de lote")),
+    .material-form-group:has(label:contains("Fecha de salida")) {
+        margin-bottom: 8px !important;
+    }
+    
+    /* Selects y inputs más compactos */
+    select[id*="modelo"],
+    input[id*="codigoMaterialOriginal"],
+    input[id*="codigoMaterial"],
+    input[id*="especificacion"],
+    input[id*="numeroParte"],
+    input[id*="cantidadActual"],
+    input[id*="numeroLote"],
+    input[id*="fechaSalida"] {
+        height: 38px !important;
+        font-size: 12px !important;
+        padding: 6px 8px !important;
+    }
+    
+    /* Botones individuales - tamaño legible */
+    .material-btn.botones-almacen {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 10px 6px !important;
+        font-size: 11px !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        line-height: 1.2 !important;
+        min-height: 40px !important; /* Touch-friendly */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 2px 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        border-radius: 4px !important;
+    }
+    
+    /* ===== SECCIÓN DE FILTROS RESPONSIVE ===== */
+    .material-toolbar {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 10px 6px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: left !important;
+    }
+    
+    /* Contenedor de botones Consultar y Exportar Excel */
+    .material-toolbar > div[style*="display: flex"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .material-toolbar .material-btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12px !important;
+        font-size: 14px !important;
+        min-height: 44px !important; /* Touch-friendly */
+    }
+    
+    /* ===== TABLAS RESPONSIVE CON COLORES ORIGINALES ===== */
+    .registro-tablas-container {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        margin: 12px 0 !important;
+    }
+    
+    /* Control específico para ocultar tablas cuando historial está activo */
+    .registro-tablas-container.hidden,
+    #tablasRegistroSalida.hidden,
+    #tablasRegistroSalida.hidden-by-historial {
+        display: none !important;
+    }
+    
+    /* CSS que será activado por JavaScript cuando historial esté visible */
+    body.historial-active .registro-tablas-container,
+    body.historial-active #tablasRegistroSalida {
+        display: none !important;
+    }
+    
+    .tabla-container {
+        flex: none !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        background-color: #40424F !important; /* Color original preservado */
+    }
+    
+    /* Divisor vertical oculto en móvil */
+    .registro-tablas-container > div[style*="width: 2px"] {
+        display: none;
+    }
+    
+    /* Tablas dentro del container con colores originales */
+    .tabla-container table {
+        min-width: 1000px !important; /* Ancho mínimo para scroll horizontal */
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 11px !important; /* Tamaño legible */
+        background-color: #40424F !important; /* Color original preservado */
+    }
+    
+    /* Headers de tabla - MANTENER COLORES ORIGINALES */
+    .tabla-container th {
+        background-color: #2c3e50 !important; /* Color original preservado */
+        color: #ecf0f1 !important; /* Color original preservado */
+        padding: 8px 4px !important;
+        text-align: center !important;
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        border: 1px solid #34495e !important; /* Color original preservado */
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10 !important;
+    }
+    
+    /* Celdas de datos - MANTENER COLORES ORIGINALES */
+    .tabla-container td {
+        padding: 6px 3px !important;
+        text-align: center !important;
+        font-size: 10px !important;
+        white-space: nowrap !important;
+        border: 1px solid #34495e !important; /* Color original preservado */
+        background-color: #40424F !important; /* Color original preservado */
+        color: lightgray !important; /* Color original preservado */
+        max-width: 120px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    /* Filas alternas - MANTENER COLORES ORIGINALES */
+    .tabla-container tbody tr:nth-child(even) td {
+        background-color: #44475A !important; /* Color original preservado */
+    }
+    
+    .tabla-container tbody tr:hover td {
+        background-color: #485563 !important; /* Color original preservado */
+    }
+    
+    .tabla-container tbody tr:nth-child(even):hover td {
+        background-color: #485563 !important; /* Color original preservado */
+    }
+    
+    /* =====================
+       CHECKBOXES RESPONSIVE
+       ===================== */
+    .checkbox-container {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .checkbox-container label {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        font-size: 11px !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+        color: lightgray !important; /* Color original preservado */
+    }
+    
+    /* =====================
+       HISTORIAL RESPONSIVE
+       ===================== */
+    #historialSection {
+        padding: 10px !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Control de visibilidad de secciones en móvil */
+    #registroSection.active ~ #historialSection,
+    #historialSection.active ~ #registroSection {
+        display: none !important;
+    }
+    
+    /* Cuando historial está activo, ocultar las tablas de registro */
+    #historialSection.active ~ .registro-tablas-container,
+    body:has(#historialSection.active) .registro-tablas-container {
+        display: none !important;
+    }
+    
+    /* Asegurar que las tablas de registro se oculten cuando historial está visible */
+    .historial-visible .registro-tablas-container {
+        display: none !important;
+    }
+    
+    .historial-controles {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .historial-controles > div {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* =====================
+       BOTONES DE NAVEGACIÓN
+       ===================== */
+    .material-table-controls {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        margin: 10px 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .material-table-controls button {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12px !important;
+        font-size: 13px !important;
+        text-align: center !important;
+        min-height: 44px !important; /* Touch-friendly */
+    }
+    
+    /* Botones de navegación específicos para secciones */
+    .material-table-controls button.active {
+        background-color: #3498db !important;
+        color: white !important;
+    }
+    
+    .material-table-controls button:not(.active) {
+        background-color: #6c757d !important;
+        color: lightgray !important;
+    }
+    
+    /* Clase adicional para contenedor de navegación responsive */
+    .nav-buttons {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        margin: 10px 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .nav-buttons button {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 10px !important;
+        font-size: 13px !important;
+        min-height: 44px !important; /* Touch-friendly */
+    }
+    
+    /* =====================
+       MENSAJES Y ALERTAS
+       ===================== */
+    #salida-info-message {
+        position: fixed !important;
+        top: 10px !important;
+        left: 10px !important;
+        right: 10px !important;
+        transform: none !important;
+        max-width: none !important;
+        font-size: 11px !important;
+        padding: 8px 12px !important;
+        z-index: 9999 !important;
+        background-color: #40424F !important; /* Color original preservado */
+        color: lightgray !important; /* Color original preservado */
+        border: 1px solid #20688C !important;
+    }
+    
+    /* =====================
+       OPTIMIZACIONES TOUCH
+       ===================== */
+    input[type="text"],
+    input[type="date"],
+    select {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        min-height: 44px !important; /* Tamaño táctil recomendado */
+    }
+    
+    button {
+        min-height: 44px !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    
+    /* Ocultar elementos solo para desktop */
+    .desktop-only {
+        display: none !important;
+    }
+}
