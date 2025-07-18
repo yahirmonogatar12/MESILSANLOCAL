@@ -1,343 +1,13 @@
-<!-- Estilos específicos para Control de Material que complementan style.css -->
-<style>
-    /* Contenedor principal */
-    .material-container {
-        font-family: 'LG regular', sans-serif;
-        background-color: #32323E;
-        color: lightgray;
-        min-height: 100vh;
-        padding: 5px;
-    }
-
-    /* Botonera */
-    .material-toolbar {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-bottom: 5px;
-        padding: 15px;
-        background-color: #34334E;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        border: #20688C 1px solid;
-    }
-
-    .material-btn {
-        padding: 6px 12px;  
-        border: none;
-        border-radius: 4px;
-        background-color: #3498db;
-        color: white;
-        cursor: pointer;
-        font-size: 12px;
-        transition: all 0.3s;
-        font-weight: 500;
-    }
-
-    .material-btn.scan {
-        background-color: #e67e22;
-    }
-
-    .material-btn.scan:hover {
-        background-color: #d35400;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
-    }
-
-    .material-btn:hover {
-        background-color: #2980b9;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-    }
-
-    .material-btn.secondary {
-        background-color: #009944;
-    }
-
-    .material-btn.secondary:hover {
-        background-color: #cccccc;
-    }
-
-    .material-btn.purple {
-        background-color: #9b59b6;
-    }
-
-    .material-btn.purple:hover {
-        background-color: #8e44ad;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
-    }
-
-    /* Modal */
-    .material-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.6);
-        backdrop-filter: blur(5px);
-    }
-
-    .material-modal-content {
-        background-color: #40424F;
-        margin: 5% auto;
-        padding: 20px;
-        border-radius: 12px;
-        width: 30%;
-        max-width: 400px;
-        max-height: 80vh;
-        overflow-y: auto;
-        color: lightgray;
-        box-shadow: 0 10px 10px rgba(0,0,0,0.3);
-        animation: modalFadeIn 0.3s ease;
-    }
-
-    @keyframes modalFadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    .material-modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 25px;
-        padding-bottom: 15px;
-        border-bottom: 2px solid #3498db;
-    }
-
-    .material-modal-title {
-        font-size: 24px;
-        font-weight: 600;
-        color: #3498db;
-        margin: 0;
-    }
-
-    .material-close {
-        color: #e74c3c;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: color 0.3s;
-        line-height: 1;
-        padding: 0;
-        border: none;
-        background: none;
-    }
-
-    .material-close:hover {
-        color: #c0392b;
-    }
-
-    /* Formulario - ESPECÍFICO PARA CONTROL DE MATERIAL */
-    #control-material-info-container .material-form-group,
-    .material-container .material-form-group {
-        margin-bottom: 20px !important;
-        display: block !important;  /* ← FORZAR LAYOUT VERTICAL */
-    }
-
-    #control-material-info-container .material-form-group label,
-    .material-container .material-form-group label {
-        display: block !important;  /* ← FORZAR LABEL VERTICAL */
-        margin-bottom: 8px !important;
-        font-weight: 500;
-        color: #bdc3c7;
-        font-size: 14px;
-    }
-
-    #control-material-info-container .material-form-group input,
-    #control-material-info-container .material-form-group select,
-    .material-container .material-form-group input,
-    .material-container .material-form-group select {
-        width: 100% !important;
-        padding: 12px 15px !important;
-        border: 2px solid #34495e !important;
-        border-radius: 6px !important;
-        background-color: #2c3e50 !important;
-        color: lightgray !important;
-        font-size: 14px !important;
-        transition: border-color 0.3s;
-        box-sizing: border-box !important;
-        display: block !important;  /* ← FORZAR INPUT VERTICAL */
-        flex: none !important;      /* ← CANCELAR FLEX */
-    }
-
-    #control-material-info-container .material-form-group input:focus,
-    #control-material-info-container .material-form-group select:focus,
-    .material-container .material-form-group input:focus,
-    .material-container .material-form-group select:focus {
-        outline: none !important;
-        border-color: #3498db !important;
-        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1) !important;
-    }
-
-    .material-checkbox-group {
-        display: flex;
-        align-items: center;
-        margin-bottom: 20px;
-    }
-
-    .material-checkbox-group input[type="checkbox"] {
-        width: auto;
-        margin-right: 12px;
-        transform: scale(1.2);
-        cursor: pointer;
-    }
-
-    .material-checkbox-group label {
-        margin-bottom: 0;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    .material-btn {
-        background-color: #3C3940;
-        border: #20688C 1px solid;
-    }
-
-    .material-btn.purple {
-        background-color: #502696;
-    }
-
-    .material-btn.secondary {
-        background-color: #456636;
-    }
-
-    .material-btn-submit {
-        background-color: #27ae60;
-        color: white;
-        padding: 12px 30px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: 500;
-        width: 100%;
-        margin-top: 20px;
-        transition: all 0.3s;
-    }
-
-    .material-btn-submit:hover {
-        background-color: #219a52;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
-    }
-
-    /* Tabla */
-    .material-table-container {
-        background-color: #40424F;
-        padding: 0px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        overflow-x: auto;
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .material-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0;
-        font-size: 11px;
-        background-color: #40424F;
-        table-layout: fixed; /* <-- Importante para que funcione el resize */
-        max-width: 100%;
-    }
-
-    .material-table th {
-        background-color: #172A46;
-        color: #ecf0f1;
-        padding: 8px 6px;
-        text-align: center;
-        border: 1px solid #20688C;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis; /* <-- Añadido */
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        font-size: 10px;
-        line-height: 1.2;
-        min-width: 60px;
-        max-width: 300px;
-        resize: horizontal; /* <-- Permite redimensionar con flechas nativas */
-    }
-
-    .material-table td {
-        padding: 6px 4px;
-        text-align: center;
-        border: 1px solid #5F6375;
-        background-color: #40424F;
-        color: lightgray;
-        transition: background-color 0.3s;
-        font-size: 10px;
-        line-height: 1.1;
-    }
-
-    .material-table tr:hover td {
-        background-color: #485563;
-    }
-
-    .material-table tr:nth-child(even) td {
-        background-color: #44475A;
-    }
-
-    .material-table tr:nth-child(even):hover td {
-        background-color: #485563;
-    }
-
-    .material-table input[type="checkbox"] {
-        transform: scale(1.1);
-        cursor: pointer;
-        accent-color: #3498db;
-    }
-
-    .material-table .no-data {
-        text-align: center;
-        padding: 30px;
-        color: #95a5a6;
-        font-style: italic;
-        background-color: #40424F;
-        font-size: 12px;
-    }
-
-    /* Mensajes de estado */
-    .material-loading {
-        text-align: center;
-        padding: 25px;
-        color: #3498db;
-        font-size: 12px;
-    }
-
-    .material-error {
-        text-align: center;
-        padding: 25px;
-        color: #e74c3c;
-        font-size: 12px;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .material-toolbar {
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .material-btn {
-            width: 100%;
-        }
-        
-        .material-modal-content {
-            width: 30%;
-            margin: 10px auto;
-        }
-        
-        .material-table-container {
-            padding: 15px;
-        }
-    }
-</style>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Material - ISEMM MES</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/control_material.css') }}">
+</head>
+<body>
 <div class="material-container">
     <!-- Botonera -->
     <div class="material-toolbar">
@@ -455,19 +125,19 @@
         <table class="material-table" id="tablaMateriales">
             <thead>
                 <tr>
-                    <th>Código de material</th>
-                    <th>Número de parte</th>
-                    <th>Propiedad de material</th>
-                    <th>Classification</th>
-                    <th>Especificación de material</th>
-                    <th>Unidad de empaque</th>
-                    <th>Ubicación de material</th>
-                    <th>Vendedor</th>
-                    <th>Prohibido sacar</th>
-                    <th>Reparable</th>
-                    <th>Nivel de MSL</th>
-                    <th>Espesor de MSL</th>
-                    <th>Fecha de registro</th>
+                    <th title="Código único de identificación del material">Código de material</th>
+                    <th title="Número de parte del componente">Número de parte</th>
+                    <th title="Tipo de propiedad del material">Propiedad de material</th>
+                    <th title="Clasificación del material">Classification</th>
+                    <th title="Especificación técnica detallada del material">Especificación de material</th>
+                    <th title="Cantidad de unidades por empaque">Unidad de empaque</th>
+                    <th title="Ubicación física del material en almacén">Ubicación de material</th>
+                    <th title="Proveedor o vendedor del material">Vendedor</th>
+                    <th title="Indica si el material está prohibido para sacar">Prohibido sacar</th>
+                    <th title="Indica si el material es reparable">Reparable</th>
+                    <th title="Nivel de sensibilidad a la humedad (MSL)">Nivel de MSL</th>
+                    <th title="Espesor del material para MSL">Espesor de MSL</th>
+                    <th title="Fecha y hora de registro del material">Fecha de registro</th>
                 </tr>
             </thead>
             <tbody>
@@ -504,24 +174,34 @@
                 return valor.toString();
             }
             
+            // Función para crear celda con tooltip si es necesario
+            function crearCelda(valor) {
+                const textoLimpio = (valor || '').toString().trim();
+                if (textoLimpio.length > 20) {
+                    return `<td data-full-text="${textoLimpio.replace(/"/g, '&quot;')}" title="${textoLimpio.replace(/"/g, '&quot;')}">${textoLimpio}</td>`;
+                } else {
+                    return `<td>${textoLimpio}</td>`;
+                }
+            }
+            
             // Crear checkboxes - solo marcados si el valor es verdadero/1
             const prohibidoSacarCheckbox = `<input type="checkbox" ${(item.prohibidoSacar === 1 || item.prohibidoSacar === '1' || item.prohibidoSacar === true) ? 'checked' : ''} onchange="actualizarCampoMaterial('${item.codigoMaterial}', 'prohibidoSacar', this.checked)">`;
             const reparableCheckbox = `<input type="checkbox" ${(item.reparable === 1 || item.reparable === '1' || item.reparable === true) ? 'checked' : ''} onchange="actualizarCampoMaterial('${item.codigoMaterial}', 'reparable', this.checked)">`;
             
             row.innerHTML = `
-                <td>${item.codigoMaterial || ''}</td>
-                <td>${item.numeroParte || ''}</td>
-                <td>${item.propiedadMaterial || ''}</td>
-                <td>${item.classification || ''}</td>
-                <td>${item.especificacionMaterial || ''}</td>
-                <td>${limpiarNumero(item.unidadEmpaque || '0')}</td>
-                <td>${item.ubicacionMaterial || ''}</td>
-                <td>${item.vendedor || ''}</td>
+                ${crearCelda(item.codigoMaterial)}
+                ${crearCelda(item.numeroParte)}
+                ${crearCelda(item.propiedadMaterial)}
+                ${crearCelda(item.classification)}
+                ${crearCelda(item.especificacionMaterial)}
+                ${crearCelda(limpiarNumero(item.unidadEmpaque || '0'))}
+                ${crearCelda(item.ubicacionMaterial)}
+                ${crearCelda(item.vendedor)}
                 <td>${prohibidoSacarCheckbox}</td>
                 <td>${reparableCheckbox}</td>
-                <td>${limpiarNumero(item.nivelMSL || '')}</td>
-                <td>${item.espesorMSL || ''}</td>
-                <td>${item.fechaRegistro || ''}</td>
+                ${crearCelda(limpiarNumero(item.nivelMSL || ''))}
+                ${crearCelda(item.espesorMSL)}
+                ${crearCelda(item.fechaRegistro)}
             `;
             tbody.appendChild(row);
         });
@@ -777,3 +457,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+</body>
+</html>
