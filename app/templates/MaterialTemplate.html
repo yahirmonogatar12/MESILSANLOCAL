@@ -1920,12 +1920,32 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 registroMaterialContainer.style.display = 'block';
+                
+                // Cargar el contenido dinámicamente
+                cargarContenidoDinamico('registro-material-container', '/material/registro_material', () => {
+                    console.log('✅ Registro de material real cargado exitosamente');
+                    
+                    // Inicializar funcionalidades específicas del registro de material si es necesario
+                    if (typeof initRegistroMaterial === 'function') {
+                        initRegistroMaterial();
+                    }
+                });
             };
             
             window.mostrarHistorialInventario = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 historialInventarioContainer.style.display = 'block';
+                
+                // Cargar el contenido dinámicamente
+                cargarContenidoDinamico('historial-inventario-container', '/material/historial_inventario', () => {
+                    console.log('✅ Historial de inventario real cargado exitosamente');
+                    
+                    // Inicializar funcionalidades específicas del historial de inventario si es necesario
+                    if (typeof initHistorialInventario === 'function') {
+                        initHistorialInventario();
+                    }
+                });
             };
             
             window.mostrarAjusteNumero = function() {

@@ -1415,6 +1415,26 @@ def material_control_calidad():
         print(f"Error al cargar Control de calidad: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/material/historial_inventario')
+@login_requerido
+def material_historial_inventario():
+    """Cargar dinámicamente el historial de inventario real"""
+    try:
+        return render_template('Control de material/Historial de inventario real.html')
+    except Exception as e:
+        print(f"Error al cargar Historial de inventario real: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/registro_material')
+@login_requerido
+def material_registro_material():
+    """Cargar dinámicamente el registro de material real"""
+    try:
+        return render_template('Control de material/Registro de material real.html')
+    except Exception as e:
+        print(f"Error al cargar Registro de material real: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/obtener_reglas_escaneo')
 def obtener_reglas_escaneo():
     """Endpoint para obtener las reglas de escaneo desde rules.json"""

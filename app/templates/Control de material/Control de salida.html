@@ -26,7 +26,7 @@
             <div class="checkbox-container">
                 <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
                     <input type="checkbox" id="salida_registroAutomatico" style="transform: scale(1.0); accent-color: #27ae60;" checked>
-                     Registro automático
+                    Registro automático
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
                     <input type="checkbox" id="salida_verificacionBOM" style="transform: scale(1.0); accent-color: #8e44ad;">
@@ -41,14 +41,14 @@
         <div class="material-form-section">
             <div class="material-form-row three-column">
                 <div class="material-form-group">
-                    <label>Modelo</label>
+                    <label>Modelo <span style="color: #95a5a6; font-size: 11px;">(Opcional)</span></label>
                     <div class="salida-search-container">
-                        <input type="text" class="salida-search-dropdown" id="salida_modelo_search" placeholder="Buscar modelo..." onkeyup="filtrarModelosSalida()" onclick="mostrarDropdownSalida()" />
+                        <input type="text" class="salida-search-dropdown" id="salida_modelo_search" placeholder="Buscar modelo (opcional)..." onkeyup="filtrarModelosSalida()" onclick="mostrarDropdownSalida()" />
                         <div class="salida-dropdown-list" id="salidaDropdownList" style="display: none;">
                             <!-- Los modelos se cargarán dinámicamente aquí -->
                         </div>
                         <!-- Campo oculto para el valor real del modelo -->
-                        <input type="hidden" id="salida_modelo" name="modelo" required />
+                        <input type="hidden" id="salida_modelo" name="modelo" />
                     </div>
                 </div>
                 <div class="material-form-group">
@@ -455,11 +455,12 @@
                     return;
                 }
                 
-                // 1. Validar modelo
-                const modelo = document.getElementById('salida_modelo')?.value || '';
-                if (!modelo) {
-                    mostrarMensajeSimple('Seleccione modelo primero', 'error');
-                    return;
+                // 1. Obtener modelo (opcional)
+                const modelo = document.getElementById('salida_modelo')?.value || 'SIN_MODELO';
+                
+                // Mostrar mensaje informativo si no hay modelo seleccionado
+                if (modelo === 'SIN_MODELO') {
+                    console.log('ℹ️ Procesando salida automática sin modelo específico');
                 }
 
                 const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
@@ -488,7 +489,8 @@
                 const salidaData = await salidaResponse.json();
 
                 if (salidaData.success) {
-                    mostrarMensajeSimple(`✅ Salida automática procesada: ${cantidadSalida}`, 'success');
+                    const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
+                    mostrarMensajeSimple(`✅ Salida automática procesada: ${cantidadSalida}${modeloTexto}`, 'success');
                     
                     // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
                     if (materialActual && materialActual.numero_parte) {
@@ -576,11 +578,12 @@
             
             // PROCESAR SALIDA MANUAL
             try {
-                // 1. Validar modelo
-                const modelo = document.getElementById('salida_modelo')?.value || '';
-                if (!modelo) {
-                    mostrarMensajeSimple('Seleccione modelo', 'error');
-                    return;
+                // 1. Obtener modelo (opcional)
+                const modelo = document.getElementById('salida_modelo')?.value || 'SIN_MODELO';
+                
+                // Mostrar mensaje informativo si no hay modelo seleccionado
+                if (modelo === 'SIN_MODELO') {
+                    console.log('ℹ️ Procesando salida manual sin modelo específico');
                 }
 
                 const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
@@ -609,11 +612,12 @@
                 const salidaData = await salidaResponse.json();
 
                 if (salidaData.success) {
+                    const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
                     // ✅ OPTIMIZACIÓN: Mostrar mensaje especial para respuesta optimizada
                     if (salidaData.optimized) {
-                        mostrarMensajeSimple(`Salida procesada: ${cantidadSalida} | Inventario actualizándose`, 'success');
+                        mostrarMensajeSimple(`Salida procesada: ${cantidadSalida}${modeloTexto} | Inventario actualizándose`, 'success');
                     } else {
-                        mostrarMensajeSimple(`Salida manual procesada: ${cantidadSalida}`, 'success');
+                        mostrarMensajeSimple(`Salida manual procesada: ${cantidadSalida}${modeloTexto}`, 'success');
                     }
                     
                     // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
@@ -650,12 +654,12 @@
         // FUNCIÓN ULTRA SIMPLIFICADA: Salida inmediata
         async function procesarSalidaInmediata(codigo) {
             try {
-                // 1. Validar modelo
-                const modelo = document.getElementById('salida_modelo')?.value || '';
-                if (!modelo) {
-                    mostrarMensajeSimple('Seleccione modelo', 'error');
-                    limpiarCodigo();
-                    return;
+                // 1. Obtener modelo (opcional)
+                const modelo = document.getElementById('salida_modelo')?.value || 'SIN_MODELO';
+                
+                // Mostrar mensaje informativo si no hay modelo seleccionado
+                if (modelo === 'SIN_MODELO') {
+                    console.log('ℹ️ Procesando salida inmediata sin modelo específico');
                 }
 
                 // 2. Buscar material y rellenar campos
@@ -714,11 +718,12 @@
                 const salidaData = await salidaResponse.json();
 
                 if (salidaData.success) {
+                    const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
                     // ✅ OPTIMIZACIÓN: Mostrar mensaje especial para respuesta optimizada
                     if (salidaData.optimized) {
-                        mostrarMensajeSimple(`🚀 ULTRA-RÁPIDO: ${cantidadSalida} | Background processing`, 'success');
+                        mostrarMensajeSimple(`🚀 ULTRA-RÁPIDO: ${cantidadSalida}${modeloTexto} | Background processing`, 'success');
                     } else {
-                        mostrarMensajeSimple(`Salida OK: ${cantidadSalida}`, 'success');
+                        mostrarMensajeSimple(`Salida OK: ${cantidadSalida}${modeloTexto}`, 'success');
                     }
                     
                     // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
@@ -857,7 +862,10 @@
             if (!tbody1) return;
             
             const modelo = document.getElementById('salida_modelo')?.value;
-            if (!modelo) return;
+            if (!modelo) {
+                console.log('⚠️ Sin modelo seleccionado - omitiendo actualización de faltantes BOM');
+                return;
+            }
             
             console.log('🚀 ULTRA-RÁPIDO: Actualizando faltantes BOM instantáneamente...');
             
@@ -985,7 +993,10 @@
             if (!tbody1) return;
             
             const modelo = document.getElementById('salida_modelo')?.value;
-            if (!modelo) return;
+            if (!modelo) {
+                console.log('⚠️ Sin modelo seleccionado - omitiendo actualización BOM');
+                return;
+            }
             
             console.log('🔄 Actualizando faltantes BOM para modelo:', modelo);
             
@@ -1253,9 +1264,10 @@
         async function cargarBOMPorModelo(modelo) {
             console.log('🔧 DEBUG: Modelo seleccionado:', modelo);
             
-            if (!modelo || modelo === '') {
+            if (!modelo || modelo === '' || modelo === 'SIN_MODELO') {
                 // Si no hay modelo seleccionado, limpiar las tablas
                 limpiarTablasBOM();
+                console.log('ℹ️ Sin modelo válido - tablas BOM limpiadas');
                 return;
             }
 

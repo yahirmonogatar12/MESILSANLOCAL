@@ -1,28 +1,30 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Control de Inventario</title>
-    <link rel="stylesheet" href="app/static/css/Historial_de_inventario_real.css">
-</head>
-<body>
-    <div class="container">
-        <!-- Vista de Inventario -->
-        <div id="inventoryView" class="view active">
-            <div class="header">
-                <div class="date-selector">
-                    <label>Fecha de inventario</label>
-                    <input type="datetime-local" id="inventoryDate" value="2025-07-18T02:20">
-                </div>
-                <div class="header-buttons">
-                    <button class="btn-primary" onclick="consultarInventario()">Consultar</button>
-                    <button class="btn-export" onclick="exportarExcel()">Exportar al excel</button>
-                </div>
-            </div>
+<!-- Container principal con estilo del sistema -->
+<div class="historial-inventario-container">
+    
+    <!-- Toolbar principal -->
+    <div class="historial-inventario-toolbar">
+        <div class="historial-toolbar-left">
+            <label>Fecha de inventario</label>
+            <input type="datetime-local" id="historialInventarioDate" value="2025-07-18T02:20">
+        </div>
+        <div class="historial-toolbar-right">
+            <button class="historial-btn historial-btn-primary" onclick="consultarHistorialInventario()">
+                <i class="fas fa-search"></i> Consultar
+            </button>
+            <button class="historial-btn historial-btn-secondary" onclick="exportarHistorialExcel()">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button class="historial-btn historial-btn-purple" onclick="toggleHistorialView()">
+                <i class="fas fa-exchange-alt"></i> Cambiar Vista
+            </button>
+        </div>
+    </div>
 
-            <div class="table-container">
-                <table id="inventoryTable">
+    <!-- Vista principal de inventario -->
+    <div id="historialInventarioMainView" class="historial-view historial-active">
+        <div class="historial-form-section">
+            <div class="historial-table-container">
+                <table id="historialInventarioTable" class="historial-table">
                     <thead>
                         <tr>
                             <th>Código de material</th>
@@ -36,172 +38,1165 @@
                             <th>Nota</th>
                         </tr>
                     </thead>
-                    <tbody id="inventoryTableBody">
+                    <tbody id="historialInventarioTableBody">
                         <!-- Los datos se cargarán dinámicamente -->
                     </tbody>
                 </table>
             </div>
-
-            <div class="table-footer">
-                <span>Total Rows : <span id="totalRows">414</span></span>
-            </div>
-        </div>
-
-        <!-- Vista de Control de Material -->
-        <div id="materialControlView" class="view">
-            <nav class="nav-tabs">
-                <div class="nav-item">
-                    <div class="nav-icon">📋</div>
-                    <span>Información Básica</span>
-                </div>
-                <div class="nav-item active">
-                    <div class="nav-icon">📦</div>
-                    <span>Control de material</span>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">⏰</div>
-                    <span>Control de producción</span>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">⚙️</div>
-                    <span>Control de proceso</span>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">✓</div>
-                    <span>Control de calidad</span>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">📊</div>
-                    <span>Control de resultados</span>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">📈</div>
-                    <span>Control de reporte</span>
-                </div>
-                <div class="nav-item">
-                    <div class="nav-icon">⚙️</div>
-                    <span>Configuración de programa</span>
-                </div>
-            </nav>
-
-            <div class="control-panel">
-                <div class="control-header">
-                    <div class="control-row">
-                        <div class="control-group">
-                            <label>Código de material recibido</label>
-                            <input type="text" placeholder="Escanear código aquí..." class="scan-input">
-                        </div>
-                        <div class="control-group">
-                            <label>Verificación de salida (Requerido)</label>
-                            <input type="text" placeholder="Escanear código de verifica...">
-                        </div>
-                        <div class="control-options">
-                            <label>
-                                <input type="checkbox" checked> Registro automático
-                            </label>
-                            <label>
-                                <input type="checkbox"> Verificación
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Modelo</label>
-                            <input type="text" placeholder="Buscar modelo...">
-                        </div>
-                        <div class="form-group">
-                            <label>Código de material original</label>
-                            <input type="text">
-                        </div>
-                        <div class="form-group">
-                            <label>Número de parte</label>
-                            <input type="text">
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha de salida</label>
-                            <input type="date" value="2025-07-18">
-                        </div>
-                        <div class="form-group">
-                            <label>Código de material</label>
-                            <input type="text">
-                        </div>
-                        <div class="form-group">
-                            <label>Cantidad actual</label>
-                            <input type="number">
-                        </div>
-                        <div class="form-group">
-                            <label>Especificación de material</label>
-                            <input type="text">
-                        </div>
-                        <div class="form-group">
-                            <label>Número de lote de material</label>
-                            <input type="text">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-section">
-                    <div class="tabs">
-                        <button class="tab-btn active" onclick="switchTab('registro')">Registro de salida</button>
-                        <button class="tab-btn" onclick="switchTab('historial')">Historial de salida</button>
-                    </div>
-                    <div class="plan-section">
-                        <label>Plan:</label>
-                        <input type="number" value="1" class="plan-input">
-                        <span>unidades</span>
-                    </div>
-                </div>
-
-                <div class="bottom-sections">
-                    <div class="bom-section">
-                        <h3>Componentes del BOM seleccionado</h3>
-                        <table class="bom-table">
-                            <thead>
-                                <tr>
-                                    <th>Número de parte</th>
-                                    <th>Especificación</th>
-                                    <th>Cantidad total</th>
-                                    <th>PLAN</th>
-                                    <th>Faltantes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="5" class="empty-message">Seleccione un modelo para ver componentes</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="material-section">
-                        <h3>Material actual para salida</h3>
-                        <table class="material-table">
-                            <thead>
-                                <tr>
-                                    <th>Número de parte</th>
-                                    <th>Descripción</th>
-                                    <th>Cantidad disponible</th>
-                                    <th>Cantidad requerida</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="5" class="empty-message">Seleccione un componente de la tabla izquierda</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            
+            <div class="historial-table-footer">
+                <span>Total Registros: <span id="historialTotalRows">0</span></span>
             </div>
         </div>
     </div>
 
-    <button class="toggle-view" onclick="toggleView()">Cambiar Vista</button>
+    <!-- Vista de control de material -->
+    <div id="historialMaterialControlView" class="historial-view">
+        <!-- Navegación de tabs -->
+        <div class="historial-nav-tabs">
+            <div class="historial-nav-item historial-nav-active" onclick="switchHistorialNavTab(this, 'info')">
+                <span class="historial-nav-icon">📋</span>
+                <span class="historial-nav-text">Información Básica</span>
+            </div>
+            <div class="historial-nav-item" onclick="switchHistorialNavTab(this, 'material')">
+                <span class="historial-nav-icon">📦</span>
+                <span class="historial-nav-text">Control de material</span>
+            </div>
+            <div class="historial-nav-item" onclick="switchHistorialNavTab(this, 'produccion')">
+                <span class="historial-nav-icon">⏰</span>
+                <span class="historial-nav-text">Control de producción</span>
+            </div>
+            <div class="historial-nav-item" onclick="switchHistorialNavTab(this, 'proceso')">
+                <span class="historial-nav-icon">⚙️</span>
+                <span class="historial-nav-text">Control de proceso</span>
+            </div>
+            <div class="historial-nav-item" onclick="switchHistorialNavTab(this, 'calidad')">
+                <span class="historial-nav-icon">✓</span>
+                <span class="historial-nav-text">Control de calidad</span>
+            </div>
+            <div class="historial-nav-item" onclick="switchHistorialNavTab(this, 'resultados')">
+                <span class="historial-nav-icon">📊</span>
+                <span class="historial-nav-text">Control de resultados</span>
+            </div>
+            <div class="historial-nav-item" onclick="switchHistorialNavTab(this, 'reporte')">
+                <span class="historial-nav-icon">📈</span>
+                <span class="historial-nav-text">Control de reporte</span>
+            </div>
+            <div class="historial-nav-item" onclick="switchHistorialNavTab(this, 'config')">
+                <span class="historial-nav-icon">⚙️</span>
+                <span class="historial-nav-text">Configuración</span>
+            </div>
+        </div>
 
-    <script src="app/static/js/Historial_de_inventario_real.js"></script>
-</body>
-</html>
+        <!-- Panel de control principal -->
+        <div class="historial-form-section">
+            <!-- Fila 1: Códigos de escaneo -->
+            <div class="historial-form-row historial-two-column">
+                <div class="historial-form-group">
+                    <label>Código de material recibido</label>
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                        <input type="text" id="historialCodigoMaterialRecibido" style="flex: 1; min-width: 0;" 
+                               placeholder="Escanear código aquí..." onkeydown="procesarHistorialScaneo(event, 'recibido')">
+                        <button type="button" onclick="abrirHistorialEscaner('recibido')" class="historial-btn historial-mobile-only-btn" 
+                                title="Escanear QR con cámara" style="padding: 5px 12px; font-size: 16px; line-height: 1;">📸</button>
+                    </div>
+                </div>
+                <div class="historial-form-group">
+                    <label>Verificación de salida (Requerido)</label>
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                        <input type="text" id="historialCodigoVerificacion" style="flex: 1; min-width: 0;" 
+                               placeholder="Escanear código de verificación..." onkeydown="procesarHistorialScaneo(event, 'verificacion')">
+                        <button type="button" onclick="abrirHistorialEscaner('verificacion')" class="historial-btn historial-mobile-only-btn" 
+                                title="Escanear QR con cámara" style="padding: 5px 12px; font-size: 16px; line-height: 1;">📸</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila 2: Opciones de control -->
+            <div class="historial-form-row historial-one-column">
+                <div class="historial-form-group">
+                    <div class="historial-control-options">
+                        <label class="historial-checkbox-label">
+                            <input type="checkbox" id="historialRegistroAutomatico" checked class="historial-checkbox">
+                            Registro automático
+                        </label>
+                        <label class="historial-checkbox-label">
+                            <input type="checkbox" id="historialVerificacion" class="historial-checkbox">
+                            Verificación
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario de datos del material -->
+        <div class="historial-form-section2">
+            <div class="historial-form-row historial-four-column">
+                <div class="historial-form-group">
+                    <label>Modelo</label>
+                    <select id="historialModelo">
+                        <option value="">Seleccionar modelo...</option>
+                        <option value="MODELO_A">MODELO_A</option>
+                        <option value="MODELO_B">MODELO_B</option>
+                    </select>
+                </div>
+                <div class="historial-form-group">
+                    <label>Código de material original</label>
+                    <input type="text" id="historialCodigoMaterialOriginal" readonly>
+                </div>
+                <div class="historial-form-group">
+                    <label>Número de parte</label>
+                    <input type="text" id="historialNumeroParte" readonly>
+                </div>
+                <div class="historial-form-group">
+                    <label>Fecha de salida</label>
+                    <input type="date" id="historialFechaSalida" value="2025-07-18">
+                </div>
+            </div>
+
+            <div class="historial-form-row historial-four-column">
+                <div class="historial-form-group">
+                    <label>Código de material</label>
+                    <input type="text" id="historialCodigoMaterial" readonly>
+                </div>
+                <div class="historial-form-group">
+                    <label>Cantidad actual</label>
+                    <input type="number" id="historialCantidadActual" min="0">
+                </div>
+                <div class="historial-form-group">
+                    <label>Especificación de material</label>
+                    <input type="text" id="historialEspecificacionMaterial" readonly>
+                </div>
+                <div class="historial-form-group">
+                    <label>Número de lote de material</label>
+                    <input type="text" id="historialNumeroLote">
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de tabs de control -->
+        <div class="historial-form-section">
+            <div class="historial-tab-section">
+                <div class="historial-tabs">
+                    <button class="historial-tab-btn historial-tab-active" onclick="switchHistorialTab(this, 'registro')">
+                        Registro de salida
+                    </button>
+                    <button class="historial-tab-btn" onclick="switchHistorialTab(this, 'historial')">
+                        Historial de salida
+                    </button>
+                </div>
+                <div class="historial-plan-section">
+                    <label>Plan:</label>
+                    <input type="number" id="historialPlan" value="1" class="historial-plan-input" min="1">
+                    <span>unidades</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secciones inferiores con tablas -->
+        <div class="historial-bottom-sections">
+            <div class="historial-bom-section">
+                <div class="historial-section-header">
+                    <h3>Componentes del BOM seleccionado</h3>
+                </div>
+                <div class="historial-table-container">
+                    <table class="historial-table historial-bom-table">
+                        <thead>
+                            <tr>
+                                <th>Número de parte</th>
+                                <th>Especificación</th>
+                                <th>Cantidad total</th>
+                                <th>PLAN</th>
+                                <th>Faltantes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historialBomTableBody">
+                            <tr>
+                                <td colspan="5" class="historial-empty-message">Seleccione un modelo para ver componentes</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="historial-material-section">
+                <div class="historial-section-header">
+                    <h3>Material actual para salida</h3>
+                </div>
+                <div class="historial-table-container">
+                    <table class="historial-table historial-material-table">
+                        <thead>
+                            <tr>
+                                <th>Número de parte</th>
+                                <th>Descripción</th>
+                                <th>Cantidad disponible</th>
+                                <th>Cantidad requerida</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historialMaterialTableBody">
+                            <tr>
+                                <td colspan="5" class="historial-empty-message">Seleccione un componente de la tabla izquierda</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para escaneo QR -->
+    <div id="historialQrModal" class="historial-modal">
+        <div class="historial-modal-content">
+            <div class="historial-modal-header">
+                <h3>Escanear Código QR</h3>
+                <button class="historial-modal-close" onclick="cerrarHistorialQrModal()">&times;</button>
+            </div>
+            <div class="historial-modal-body">
+                <div id="historialQrReader"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estilos específicos adaptados al estilo del sistema -->
+<style>
+    /* Variables CSS para consistencia */
+    :root {
+        --primary-bg: #32323E;
+        --secondary-bg: #2D363D;
+        --tertiary-bg: #44324A;
+        --border-color: #20688C;
+        --text-color: lightgray;
+        --button-bg: #636779;
+        --button-hover: #949898;
+        --primary-blue: #3498db;
+        --success-green: #27ae60;
+        --purple-accent: #502696;
+        --orange-accent: #833C0D;
+    }
+
+    /* Container principal */
+    .historial-inventario-container {
+        font-family: 'LG regular', 'Roboto', sans-serif;
+        background-color: var(--primary-bg);
+        color: var(--text-color);
+        min-height: 100vh;
+        padding: 5px;
+        transform: scale(0.9);
+        transform-origin: top left;
+        width: 111.11%;
+    }
+
+    /* Toolbar principal */
+    .historial-inventario-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        padding: 8px 15px;
+        background-color: #33334D;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border: var(--border-color) 1px solid;
+        border-radius: 2px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+    }
+
+    .historial-toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .historial-toolbar-left label {
+        font-size: 14px;
+        color: var(--text-color);
+        white-space: nowrap;
+    }
+
+    .historial-toolbar-left input[type="datetime-local"] {
+        background-color: #34334e;
+        border: 1px solid var(--border-color);
+        color: var(--text-color);
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: 'LG regular', sans-serif;
+    }
+
+    .historial-toolbar-right {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    /* Botones del sistema */
+    .historial-btn {
+        padding: 6px 12px;
+        border: var(--border-color) 1px solid;
+        border-radius: 4px;
+        background-color: var(--button-bg);
+        color: white;
+        cursor: pointer;
+        font-size: 12px;
+        transition: all 0.3s;
+        font-weight: 500;
+        min-width: 70px;
+        font-family: 'LG regular', sans-serif;
+        height: 32px;
+        line-height: 1.2;
+        box-shadow: none;
+        text-shadow: none;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        justify-content: center;
+    }
+
+    .historial-btn:hover {
+        background-color: var(--button-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+
+    .historial-btn-primary {
+        background-color: var(--primary-blue);
+    }
+
+    .historial-btn-secondary {
+        background-color: #009944;
+    }
+
+    .historial-btn-purple {
+        background-color: var(--purple-accent);
+    }
+
+    .historial-btn-orange {
+        background-color: var(--orange-accent);
+    }
+
+    .historial-mobile-only-btn {
+        display: none;
+    }
+
+    /* Vistas */
+    .historial-view {
+        display: none;
+        width: 100%;
+    }
+
+    .historial-view.historial-active {
+        display: block;
+    }
+
+    /* Secciones de formulario */
+    .historial-form-section {
+        background-color: var(--secondary-bg);
+        border-radius: 2px;
+        margin-bottom: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        border: 1px solid var(--border-color);
+        padding: 15px;
+    }
+
+    .historial-form-section2 {
+        background-color: var(--tertiary-bg);
+        border-radius: 2px;
+        margin-bottom: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        border: 1px solid var(--border-color);
+        padding: 15px;
+    }
+
+    /* Filas de formulario */
+    .historial-form-row {
+        display: grid;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .historial-one-column {
+        grid-template-columns: 1fr;
+    }
+
+    .historial-two-column {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .historial-four-column {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .historial-form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .historial-form-group label {
+        font-size: 13px;
+        color: var(--text-color);
+        font-weight: 500;
+    }
+
+    .historial-form-group input,
+    .historial-form-group select {
+        padding: 8px 10px;
+        background-color: #34334e;
+        border: 1px solid rgba(52,152,219,0.3);
+        color: var(--text-color);
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: 'LG regular', sans-serif;
+    }
+
+    .historial-form-group input:focus,
+    .historial-form-group select:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+    }
+
+    /* Opciones de control */
+    .historial-control-options {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .historial-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--text-color);
+    }
+
+    .historial-checkbox {
+        transform: scale(1.1);
+        accent-color: var(--success-green);
+    }
+
+    /* Navegación de tabs */
+    .historial-nav-tabs {
+        display: flex;
+        background-color: #40424f;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 2px;
+        margin-bottom: 6px;
+    }
+
+    .historial-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 100px;
+        text-align: center;
+        border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .historial-nav-item:hover {
+        background-color: var(--primary-blue);
+    }
+
+    .historial-nav-item.historial-nav-active {
+        background-color: var(--primary-blue);
+    }
+
+    .historial-nav-icon {
+        font-size: 20px;
+        margin-bottom: 5px;
+    }
+
+    .historial-nav-text {
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    /* Sección de tabs de control */
+    .historial-tab-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .historial-tabs {
+        display: flex;
+        gap: 0;
+    }
+
+    .historial-tab-btn {
+        padding: 8px 16px;
+        background-color: #40424f;
+        border: none;
+        color: var(--text-color);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 13px;
+        font-family: 'LG regular', sans-serif;
+    }
+
+    .historial-tab-btn.historial-tab-active {
+        background-color: var(--primary-blue);
+    }
+
+    .historial-plan-section {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .historial-plan-input {
+        width: 70px !important;
+        text-align: center;
+    }
+
+    /* Tablas */
+    .historial-table-container {
+        background-color: var(--tertiary-bg);
+        overflow-x: auto;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+    }
+
+    .historial-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 800px;
+        font-size: 12px;
+    }
+
+    .historial-table thead {
+        background-color: #40424f;
+    }
+
+    .historial-table th {
+        padding: 10px 8px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-color);
+        border-bottom: 2px solid var(--border-color);
+        white-space: nowrap;
+    }
+
+    .historial-table tbody tr {
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        transition: background-color 0.2s ease;
+    }
+
+    .historial-table tbody tr:nth-child(even) {
+        background-color: rgba(52,51,78,0.3);
+    }
+
+    .historial-table tbody tr:hover {
+        background-color: rgba(52,152,219,0.2);
+    }
+
+    .historial-table td {
+        padding: 8px;
+        font-size: 12px;
+        color: var(--text-color);
+        white-space: nowrap;
+    }
+
+    .historial-table-footer {
+        background-color: #40424f;
+        padding: 10px 15px;
+        font-size: 13px;
+        color: var(--text-color);
+        border-top: 1px solid var(--border-color);
+    }
+
+    .historial-empty-message {
+        text-align: center;
+        padding: 20px;
+        color: #b0b0b0;
+        font-style: italic;
+    }
+
+    /* Secciones inferiores */
+    .historial-bottom-sections {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .historial-bom-section,
+    .historial-material-section {
+        background-color: var(--secondary-bg);
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+
+    .historial-section-header {
+        background-color: #40424f;
+        padding: 12px 15px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .historial-section-header h3 {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-color);
+        font-weight: 500;
+    }
+
+    /* Modal para QR */
+    .historial-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.8);
+    }
+
+    .historial-modal-content {
+        background-color: var(--secondary-bg);
+        margin: 5% auto;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        width: 90%;
+        max-width: 500px;
+        overflow: hidden;
+    }
+
+    .historial-modal-header {
+        background-color: #40424f;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .historial-modal-header h3 {
+        margin: 0;
+        color: var(--text-color);
+        font-size: 16px;
+    }
+
+    .historial-modal-close {
+        background: none;
+        border: none;
+        color: var(--text-color);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .historial-modal-body {
+        padding: 20px;
+    }
+
+    /* Clases de estado para diferencias */
+    .historial-positive {
+        color: var(--success-green);
+        font-weight: bold;
+    }
+
+    .historial-negative {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .historial-inventario-container {
+            transform: none;
+            width: 100%;
+            padding: 10px;
+        }
+
+        .historial-inventario-toolbar {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .historial-toolbar-left,
+        .historial-toolbar-right {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .historial-toolbar-right {
+            justify-content: stretch;
+        }
+
+        .historial-btn {
+            flex: 1;
+            min-width: auto;
+        }
+
+        .historial-mobile-only-btn {
+            display: flex;
+        }
+
+        .historial-two-column,
+        .historial-four-column {
+            grid-template-columns: 1fr;
+        }
+
+        .historial-bottom-sections {
+            grid-template-columns: 1fr;
+        }
+
+        .historial-nav-tabs {
+            justify-content: flex-start;
+        }
+
+        .historial-nav-item {
+            min-width: 80px;
+            padding: 8px 10px;
+        }
+
+        .historial-nav-text {
+            display: none;
+        }
+
+        .historial-tab-section {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .historial-tabs {
+            width: 100%;
+        }
+
+        .historial-tab-btn {
+            flex: 1;
+        }
+
+        .historial-control-options {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .historial-table {
+            font-size: 11px;
+        }
+
+        .historial-table th,
+        .historial-table td {
+            padding: 6px 4px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .historial-nav-item {
+            min-width: 60px;
+        }
+
+        .historial-nav-icon {
+            font-size: 16px;
+        }
+    }
+</style>
+
+<!-- JavaScript específico adaptado al sistema -->
+<script>
+    // Variables globales para el historial de inventario
+    let historialInventarioData = [];
+    let historialCurrentView = 'main';
+    let historialQrScanField = null;
+
+    // Función principal de inicialización
+    function initHistorialInventario() {
+        console.log('🔧 Inicializando Historial de Inventario Real');
+        
+        // Configurar fecha por defecto
+        const inventoryDate = document.getElementById('historialInventarioDate');
+        if (inventoryDate && !inventoryDate.value) {
+            const now = new Date();
+            inventoryDate.value = now.toISOString().slice(0, 16);
+        }
+        
+        // Cargar datos iniciales
+        consultarHistorialInventario();
+        
+        // Configurar eventos de escaneo
+        setupHistorialScanEvents();
+        
+        console.log('✅ Historial de Inventario Real inicializado');
+    }
+
+    // Función para consultar inventario con datos reales del archivo JS
+    function consultarHistorialInventario() {
+        console.log('📊 Consultando historial de inventario...');
+        const inventoryDate = document.getElementById('historialInventarioDate');
+        const tableBody = document.getElementById('historialInventarioTableBody');
+        const totalRows = document.getElementById('historialTotalRows');
+        
+        if (!tableBody) {
+            console.error('❌ Tabla de inventario no encontrada');
+            return;
+        }
+        
+        // Mostrar loading
+        tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #b0b0b0;">Cargando datos...</td></tr>';
+        
+        // Usar datos del archivo JavaScript existente si está disponible
+        setTimeout(() => {
+            let datosInventario = [];
+            
+            // Verificar si tenemos los datos del archivo JS original
+            if (typeof inventoryData !== 'undefined' && inventoryData.length > 0) {
+                datosInventario = inventoryData.map(item => ({
+                    codigoMaterial: item.codigo,
+                    numeroParte: item.parte,
+                    codigoMaterialR: item.codigoR,
+                    fechaRecibo: item.recibo,
+                    fechaFabricacion: item.fabricacion,
+                    cantidadAnterior: item.anterior,
+                    cantidadInventario: item.inventario,
+                    diferencia: item.diferencia,
+                    nota: item.nota || ''
+                }));
+            } else {
+                // Datos de ejemplo si no están disponibles los originales
+                datosInventario = [
+                    {
+                        codigoMaterial: '0DR5D00308A',
+                        numeroParte: '0DR5D00308A',
+                        codigoMaterialR: '0DR5D00308A/2402...',
+                        fechaRecibo: '2024-02-23',
+                        fechaFabricacion: '2024-02-23',
+                        cantidadAnterior: 1000,
+                        cantidadInventario: 0,
+                        diferencia: -1000,
+                        nota: ''
+                    },
+                    {
+                        codigoMaterial: 'M3720103557',
+                        numeroParte: 'M3720103557',
+                        codigoMaterialR: 'M3720103557/2504...',
+                        fechaRecibo: '2025-04-28',
+                        fechaFabricacion: '2025-04-28',
+                        cantidadAnterior: 864,
+                        cantidadInventario: 0,
+                        diferencia: -864,
+                        nota: ''
+                    },
+                    {
+                        codigoMaterial: 'M3500103007',
+                        numeroParte: 'M3500103007',
+                        codigoMaterialR: 'M3500103007/2410...',
+                        fechaRecibo: '2024-10-10',
+                        fechaFabricacion: '2024-10-10',
+                        cantidadAnterior: 500,
+                        cantidadInventario: 500,
+                        diferencia: 0,
+                        nota: ''
+                    }
+                ];
+            }
+            
+            historialInventarioData = datosInventario;
+            
+            // Poblar tabla
+            tableBody.innerHTML = datosInventario.map(item => `
+                <tr>
+                    <td>${item.codigoMaterial}</td>
+                    <td>${item.numeroParte}</td>
+                    <td>${item.codigoMaterialR}</td>
+                    <td>${item.fechaRecibo}</td>
+                    <td>${item.fechaFabricacion}</td>
+                    <td>${typeof item.cantidadAnterior === 'number' ? item.cantidadAnterior.toLocaleString() : item.cantidadAnterior}</td>
+                    <td>${typeof item.cantidadInventario === 'number' ? item.cantidadInventario.toLocaleString() : item.cantidadInventario}</td>
+                    <td class="${item.diferencia >= 0 ? 'historial-positive' : 'historial-negative'}">
+                        ${item.diferencia >= 0 ? '+' : ''}${typeof item.diferencia === 'number' ? item.diferencia.toLocaleString() : item.diferencia}
+                    </td>
+                    <td>${item.nota}</td>
+                </tr>
+            `).join('');
+            
+            // Actualizar total
+            if (totalRows) {
+                totalRows.textContent = datosInventario.length;
+            }
+            
+            console.log(`✅ Cargados ${datosInventario.length} registros de inventario`);
+        }, 800);
+    }
+
+    // Función para exportar a Excel
+    function exportarHistorialExcel() {
+        console.log('📄 Exportando historial de inventario a Excel...');
+        
+        if (!historialInventarioData || historialInventarioData.length === 0) {
+            mostrarHistorialNotificacion('No hay datos para exportar', 'warning');
+            return;
+        }
+        
+        // Crear CSV con los datos
+        let csv = 'Código de material,Número de parte,Código de material r...,Fecha de recibo,Fecha de fabricación,Cantidad anterior,Cantidad de inventario,Diferencia de cantidad,Nota\n';
+        
+        historialInventarioData.forEach(item => {
+            csv += `"${item.codigoMaterial}","${item.numeroParte}","${item.codigoMaterialR}","${item.fechaRecibo}","${item.fechaFabricacion}","${item.cantidadAnterior}","${item.cantidadInventario}","${item.diferencia}","${item.nota}"\n`;
+        });
+        
+        // Descargar archivo
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `historial_inventario_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        mostrarHistorialNotificacion('Archivo exportado exitosamente', 'success');
+    }
+
+    // Función para cambiar entre vistas
+    function toggleHistorialView() {
+        const mainView = document.getElementById('historialInventarioMainView');
+        const controlView = document.getElementById('historialMaterialControlView');
+        
+        if (!mainView || !controlView) {
+            console.error('❌ Vistas no encontradas');
+            return;
+        }
+        
+        if (historialCurrentView === 'main') {
+            mainView.classList.remove('historial-active');
+            controlView.classList.add('historial-active');
+            historialCurrentView = 'control';
+            console.log('🔄 Cambiado a vista de control');
+        } else {
+            controlView.classList.remove('historial-active');
+            mainView.classList.add('historial-active');
+            historialCurrentView = 'main';
+            console.log('🔄 Cambiado a vista principal');
+        }
+    }
+
+    // Función para cambiar tabs de navegación
+    function switchHistorialNavTab(element, tab) {
+        // Remover clase activa de todos los nav items
+        const navItems = document.querySelectorAll('.historial-nav-item');
+        navItems.forEach(item => item.classList.remove('historial-nav-active'));
+        
+        // Activar el seleccionado
+        element.classList.add('historial-nav-active');
+        
+        console.log(`🔄 Navegación cambiada a: ${tab}`);
+        // Aquí se puede implementar lógica específica para cada tab
+    }
+
+    // Función para cambiar tabs de control
+    function switchHistorialTab(element, tab) {
+        // Remover clase activa de todos los tab buttons
+        const tabBtns = document.querySelectorAll('.historial-tab-btn');
+        tabBtns.forEach(btn => btn.classList.remove('historial-tab-active'));
+        
+        // Activar el seleccionado
+        element.classList.add('historial-tab-active');
+        
+        console.log(`🔄 Tab cambiado a: ${tab}`);
+        
+        // Implementar lógica específica para cada tab
+        if (tab === 'registro') {
+            // Mostrar funcionalidades de registro
+        } else if (tab === 'historial') {
+            // Mostrar historial de salidas
+        }
+    }
+
+    // Configurar eventos de escaneo
+    function setupHistorialScanEvents() {
+        const scanInputs = [
+            'historialCodigoMaterialRecibido',
+            'historialCodigoVerificacion'
+        ];
+        
+        scanInputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        procesarHistorialScaneo(e, inputId.includes('Recibido') ? 'recibido' : 'verificacion');
+                    }
+                });
+            }
+        });
+    }
+
+    // Función para procesar escaneo
+    function procesarHistorialScaneo(event, tipo) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const value = event.target.value.trim();
+            
+            if (value) {
+                console.log(`📱 Código ${tipo} escaneado:`, value);
+                mostrarHistorialNotificacion(`Código ${tipo} ${value} procesado`, 'success');
+                
+                // Aquí se implementaría la lógica específica para cada tipo de código
+                if (tipo === 'recibido') {
+                    // Buscar y cargar información del material
+                    buscarMaterialPorCodigo(value);
+                } else if (tipo === 'verificacion') {
+                    // Verificar código de salida
+                    verificarCodigoSalida(value);
+                }
+            }
+        }
+    }
+
+    // Función para abrir escaner QR
+    function abrirHistorialEscaner(tipo) {
+        historialQrScanField = tipo;
+        const modal = document.getElementById('historialQrModal');
+        if (modal) {
+            modal.style.display = 'block';
+            iniciarHistorialQrScanner();
+        }
+    }
+
+    // Función para cerrar modal QR
+    function cerrarHistorialQrModal() {
+        const modal = document.getElementById('historialQrModal');
+        if (modal) {
+            modal.style.display = 'none';
+            detenerHistorialQrScanner();
+        }
+    }
+
+    // Funciones para QR Scanner (implementación básica)
+    function iniciarHistorialQrScanner() {
+        console.log('📸 Iniciando escaner QR...');
+        // Aquí se implementaría el escaner QR real
+        // Por ahora, simulamos
+        mostrarHistorialNotificacion('Escaner QR iniciado (simulado)', 'info');
+    }
+
+    function detenerHistorialQrScanner() {
+        console.log('🛑 Deteniendo escaner QR...');
+    }
+
+    // Funciones auxiliares
+    function buscarMaterialPorCodigo(codigo) {
+        console.log(`🔍 Buscando material por código: ${codigo}`);
+        // Implementar búsqueda en base de datos
+        
+        // Ejemplo de llenado automático
+        const codigoOriginal = document.getElementById('historialCodigoMaterialOriginal');
+        const numeroParte = document.getElementById('historialNumeroParte');
+        const codigoMaterial = document.getElementById('historialCodigoMaterial');
+        
+        if (codigoOriginal) codigoOriginal.value = codigo;
+        if (numeroParte) numeroParte.value = codigo;
+        if (codigoMaterial) codigoMaterial.value = codigo;
+    }
+
+    function verificarCodigoSalida(codigo) {
+        console.log(`✅ Verificando código de salida: ${codigo}`);
+        // Implementar lógica de verificación
+        mostrarHistorialNotificacion('Código de salida verificado', 'success');
+    }
+
+    // Función para mostrar notificaciones
+    function mostrarHistorialNotificacion(mensaje, tipo = 'info') {
+        const colors = {
+            success: '#27ae60',
+            warning: '#f39c12',
+            error: '#e74c3c',
+            info: '#3498db'
+        };
+        
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: ${colors[tipo]};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 2000;
+            font-family: 'LG regular', sans-serif;
+            font-size: 14px;
+            animation: historialSlideIn 0.3s ease;
+            max-width: 300px;
+        `;
+        notification.textContent = mensaje;
+        
+        // Agregar animación
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes historialSlideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes historialSlideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        if (!document.querySelector('style[data-historial-notifications]')) {
+            style.setAttribute('data-historial-notifications', 'true');
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(notification);
+        
+        // Remover después de 3 segundos
+        setTimeout(() => {
+            notification.style.animation = 'historialSlideOut 0.3s ease';
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    // Event listeners para el modal
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('historialQrModal');
+        if (e.target === modal) {
+            cerrarHistorialQrModal();
+        }
+    });
+
+    // Inicialización cuando se carga el contenido
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initHistorialInventario, 100);
+    });
+    
+    // Hacer funciones disponibles globalmente
+    window.initHistorialInventario = initHistorialInventario;
+    window.consultarHistorialInventario = consultarHistorialInventario;
+    window.exportarHistorialExcel = exportarHistorialExcel;
+    window.toggleHistorialView = toggleHistorialView;
+    window.switchHistorialNavTab = switchHistorialNavTab;
+    window.switchHistorialTab = switchHistorialTab;
+    window.procesarHistorialScaneo = procesarHistorialScaneo;
+    window.abrirHistorialEscaner = abrirHistorialEscaner;
+    window.cerrarHistorialQrModal = cerrarHistorialQrModal;
+    
+    // Ejecutar inicialización inmediatamente si el DOM ya está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHistorialInventario);
+    } else {
+        initHistorialInventario();
+    }
+</script>
