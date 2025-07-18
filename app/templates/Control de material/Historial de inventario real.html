@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control de Inventario</title>
+    <link rel="stylesheet" href="app/static/css/Historial_de_inventario_real.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Vista de Inventario -->
+        <div id="inventoryView" class="view active">
+            <div class="header">
+                <div class="date-selector">
+                    <label>Fecha de inventario</label>
+                    <input type="datetime-local" id="inventoryDate" value="2025-07-18T02:20">
+                </div>
+                <div class="header-buttons">
+                    <button class="btn-primary" onclick="consultarInventario()">Consultar</button>
+                    <button class="btn-export" onclick="exportarExcel()">Exportar al excel</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>Código de material</th>
+                            <th>Número de parte</th>
+                            <th>Código de material r...</th>
+                            <th>Fecha de recibo</th>
+                            <th>Fecha de fabricación</th>
+                            <th>Cantidad anterior</th>
+                            <th>Cantidad de inventario</th>
+                            <th>Diferencia de cantidad</th>
+                            <th>Nota</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <!-- Los datos se cargarán dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <span>Total Rows : <span id="totalRows">414</span></span>
+            </div>
+        </div>
+
+        <!-- Vista de Control de Material -->
+        <div id="materialControlView" class="view">
+            <nav class="nav-tabs">
+                <div class="nav-item">
+                    <div class="nav-icon">📋</div>
+                    <span>Información Básica</span>
+                </div>
+                <div class="nav-item active">
+                    <div class="nav-icon">📦</div>
+                    <span>Control de material</span>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">⏰</div>
+                    <span>Control de producción</span>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">⚙️</div>
+                    <span>Control de proceso</span>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">✓</div>
+                    <span>Control de calidad</span>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">📊</div>
+                    <span>Control de resultados</span>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">📈</div>
+                    <span>Control de reporte</span>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">⚙️</div>
+                    <span>Configuración de programa</span>
+                </div>
+            </nav>
+
+            <div class="control-panel">
+                <div class="control-header">
+                    <div class="control-row">
+                        <div class="control-group">
+                            <label>Código de material recibido</label>
+                            <input type="text" placeholder="Escanear código aquí..." class="scan-input">
+                        </div>
+                        <div class="control-group">
+                            <label>Verificación de salida (Requerido)</label>
+                            <input type="text" placeholder="Escanear código de verifica...">
+                        </div>
+                        <div class="control-options">
+                            <label>
+                                <input type="checkbox" checked> Registro automático
+                            </label>
+                            <label>
+                                <input type="checkbox"> Verificación
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Modelo</label>
+                            <input type="text" placeholder="Buscar modelo...">
+                        </div>
+                        <div class="form-group">
+                            <label>Código de material original</label>
+                            <input type="text">
+                        </div>
+                        <div class="form-group">
+                            <label>Número de parte</label>
+                            <input type="text">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de salida</label>
+                            <input type="date" value="2025-07-18">
+                        </div>
+                        <div class="form-group">
+                            <label>Código de material</label>
+                            <input type="text">
+                        </div>
+                        <div class="form-group">
+                            <label>Cantidad actual</label>
+                            <input type="number">
+                        </div>
+                        <div class="form-group">
+                            <label>Especificación de material</label>
+                            <input type="text">
+                        </div>
+                        <div class="form-group">
+                            <label>Número de lote de material</label>
+                            <input type="text">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-section">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchTab('registro')">Registro de salida</button>
+                        <button class="tab-btn" onclick="switchTab('historial')">Historial de salida</button>
+                    </div>
+                    <div class="plan-section">
+                        <label>Plan:</label>
+                        <input type="number" value="1" class="plan-input">
+                        <span>unidades</span>
+                    </div>
+                </div>
+
+                <div class="bottom-sections">
+                    <div class="bom-section">
+                        <h3>Componentes del BOM seleccionado</h3>
+                        <table class="bom-table">
+                            <thead>
+                                <tr>
+                                    <th>Número de parte</th>
+                                    <th>Especificación</th>
+                                    <th>Cantidad total</th>
+                                    <th>PLAN</th>
+                                    <th>Faltantes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="empty-message">Seleccione un modelo para ver componentes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="material-section">
+                        <h3>Material actual para salida</h3>
+                        <table class="material-table">
+                            <thead>
+                                <tr>
+                                    <th>Número de parte</th>
+                                    <th>Descripción</th>
+                                    <th>Cantidad disponible</th>
+                                    <th>Cantidad requerida</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="empty-message">Seleccione un componente de la tabla izquierda</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="toggle-view" onclick="toggleView()">Cambiar Vista</button>
+
+    <script src="app/static/js/Historial_de_inventario_real.js"></script>
+</body>
+</html>

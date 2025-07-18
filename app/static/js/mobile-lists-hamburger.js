@@ -55,10 +55,15 @@ class MobileListsHamburger {
         const close = document.getElementById('mobileListsClose');
         const overlay = document.getElementById('mobileListsOverlay');
 
-        // Abrir menú
+        // Toggle menú (abrir/cerrar)
         toggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.openMenu();
+            console.log(`🔄 Toggle clickeado. Estado actual: ${this.menuOpen ? 'ABIERTO' : 'CERRADO'}`);
+            if (this.menuOpen) {
+                this.closeMenu();
+            } else {
+                this.openMenu();
+            }
         });
 
         // Cerrar menú
@@ -270,11 +275,11 @@ class MobileListsHamburger {
         const overlay = document.getElementById('mobileListsOverlay');
         const toggle = document.getElementById('mobileListsToggle');
 
-        if (menu && overlay && toggle) {
+        if (menu && overlay && toggle && !this.menuOpen) {
+            console.log('📂 Abriendo menú móvil...');
             menu.classList.add('active');
             overlay.classList.add('active');
             toggle.classList.add('active'); // Agregar clase active para rotar la flecha
-            // No ocultar el botón para ver la animación
             document.body.style.overflow = 'hidden';
             this.menuOpen = true;
         }
@@ -285,7 +290,8 @@ class MobileListsHamburger {
         const overlay = document.getElementById('mobileListsOverlay');
         const toggle = document.getElementById('mobileListsToggle');
 
-        if (menu && overlay && toggle) {
+        if (menu && overlay && toggle && this.menuOpen) {
+            console.log('📁 Cerrando menú móvil...');
             menu.classList.remove('active');
             overlay.classList.remove('active');
             toggle.classList.remove('active'); // Remover clase active para volver flecha normal
@@ -308,8 +314,10 @@ class MobileListsHamburger {
                 if (toggle) toggle.style.display = 'none';
                 if (menu) menu.classList.remove('active');
                 if (overlay) overlay.classList.remove('active');
+                if (toggle) toggle.classList.remove('active'); // Resetear estado del botón
                 document.body.style.overflow = '';
                 this.menuOpen = false;
+                console.log('🖥️ Cambiando a desktop - elementos móviles ocultados');
             }
             // Si cambió de desktop a móvil, mostrar elementos móviles
             else if (!wasMobile && this.isMobile) {
@@ -319,6 +327,7 @@ class MobileListsHamburger {
                     const toggle = document.getElementById('mobileListsToggle');
                     if (toggle) toggle.style.display = 'flex';
                 }
+                console.log('📱 Cambiando a móvil - elementos móviles mostrados');
             }
         });
     }

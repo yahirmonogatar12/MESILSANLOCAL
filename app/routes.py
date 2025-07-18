@@ -215,22 +215,45 @@ def buscar_material_por_numero_parte():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Buscar materiales que coincidan con el número de parte
-        query = """
-            SELECT codigo_material_recibido, codigo_material_original, codigo_material,
-                   especificacion, numero_parte, cantidad_actual, numero_lote_material,
-                   fecha_recepcion, proveedor
-            FROM inventario_material_almacen 
+        # 🔄 NUEVO: Buscar inventario agregado por número de parte
+        # Primero, obtener el total disponible por número de parte
+        query_inventario = """
+            SELECT numero_parte, codigo_material, especificacion, cantidad_total
+            FROM inventario_general 
             WHERE numero_parte LIKE ? OR numero_parte = ?
-            ORDER BY fecha_recepcion DESC
+            ORDER BY fecha_actualizacion DESC
         """
         
-        cursor.execute(query, (f'%{numero_parte}%', numero_parte))
-        resultados = cursor.fetchall()
+        cursor.execute(query_inventario, (f'%{numero_parte}%', numero_parte))
+        inventario_general = cursor.fetchone()
         
-        conn.close()
-        
-        if resultados:
+        if inventario_general:
+            # Si existe en inventario general, usar esa cantidad
+            materiales = [{
+                'codigo_material_recibido': f"AGG-{inventario_general[0]}", # Código agregado
+                'codigo_material_original': inventario_general[1] or '',
+                'codigo_material': inventario_general[1] or '',
+                'especificacion': inventario_general[2] or '',
+                'numero_parte': inventario_general[0],
+                'cantidad_actual': inventario_general[3] or 0, # cantidad_total del inventario_general
+                'numero_lote_material': 'AGREGADO',
+                'fecha_recepcion': 'Varios',
+                'proveedor': 'Agregado'
+            }]
+        else:
+            # Fallback: buscar en registros individuales (para compatibilidad)
+            query_individual = """
+                SELECT codigo_material_recibido, codigo_material_original, codigo_material,
+                       especificacion, numero_parte, cantidad_actual,
+                       numero_lote_material, fecha_recibo, ''
+                FROM control_material_almacen 
+                WHERE numero_parte LIKE ? OR numero_parte = ?
+                ORDER BY fecha_recibo DESC
+            """
+            
+            cursor.execute(query_individual, (f'%{numero_parte}%', numero_parte))
+            resultados = cursor.fetchall()
+            
             materiales = []
             for row in resultados:
                 materiales.append({
@@ -239,11 +262,15 @@ def buscar_material_por_numero_parte():
                     'codigo_material': row[2],
                     'especificacion': row[3],
                     'numero_parte': row[4],
-                    'cantidad_actual': row[5],
-                    'numero_lote_material': row[6],
-                    'fecha_recepcion': row[7],
-                    'proveedor': row[8]
+                    'cantidad_actual': row[5] or 0,
+                    'numero_lote_material': row[6] or '',
+                    'fecha_recepcion': row[7] or '',
+                    'proveedor': row[8] or 'N/A'
                 })
+        
+        conn.close()
+        
+        if materiales:
             
             return jsonify({'success': True, 'materiales': materiales})
         else:
@@ -1829,18 +1856,80 @@ def procesar_salida_material():
         # ✅ RESPUESTA INMEDIATA AL USUARIO
         return jsonify({
             'success': True,
-            'message': f'✅ Salida procesada INMEDIATAMENTE. Stock restante: {nueva_cantidad}',
-            'cantidad_restante': nueva_cantidad,
-            'eliminado': False,
-            'cantidad_original': cantidad_original,
-            'total_salidas': total_salidas_previas + cantidad_salida,
-            'nota': 'Inventario general actualizándose en segundo plano para máxima velocidad',
-            'optimized': True  # Indicador de que se usó la versión optimizada
+            'message': f'Salida registrada exitosamente. Cantidad: {cantidad_salida}',
+            'nueva_cantidad_disponible': nueva_cantidad,
+            'optimized': True,  # Indicador de que se está usando optimización
+            'numero_parte': numero_parte,  # Para debugging
+            'inventario_actualizado_en_background': True
         })
         
     except Exception as e:
-        if conn:
+        print(f"❌ ERROR GENERAL en procesar_salida_material: {e}")
+        if 'conn' in locals():
             conn.rollback()
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/forzar_actualizacion_inventario/<numero_parte>', methods=['POST'])
+@login_requerido  
+def forzar_actualizacion_inventario(numero_parte):
+    """
+    Endpoint para forzar la actualización del inventario general para un número de parte específico
+    """
+    try:
+        print(f"🔄 FORZANDO actualización de inventario para: {numero_parte}")
+        
+        # Recalcular inventario para este número de parte específico
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Obtener todas las entradas para este número de parte
+        cursor.execute('''
+            SELECT SUM(cantidad_recibida) as total_entradas
+            FROM control_material_almacen 
+            WHERE numero_parte = ?
+        ''', (numero_parte,))
+        entradas_result = cursor.fetchone()
+        total_entradas = entradas_result[0] if entradas_result and entradas_result[0] else 0
+        
+        # Obtener todas las salidas para este número de parte
+        cursor.execute('''
+            SELECT SUM(cantidad_salida) as total_salidas
+            FROM control_material_salida cms
+            JOIN control_material_almacen cma ON cms.codigo_material_recibido = cma.codigo_material_recibido
+            WHERE cma.numero_parte = ?
+        ''', (numero_parte,))
+        salidas_result = cursor.fetchone()
+        total_salidas = salidas_result[0] if salidas_result and salidas_result[0] else 0
+        
+        # Calcular cantidad total actual
+        cantidad_total_actual = total_entradas - total_salidas
+        
+        # Actualizar o insertar en inventario_general
+        cursor.execute('''
+            INSERT OR REPLACE INTO inventario_general 
+            (numero_parte, cantidad_entradas, cantidad_salidas, cantidad_total, fecha_actualizacion)
+            VALUES (?, ?, ?, ?, datetime('now'))
+        ''', (numero_parte, total_entradas, total_salidas, cantidad_total_actual))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ FORZADO: Inventario actualizado para {numero_parte}: {cantidad_total_actual}")
+        
+        return jsonify({
+            'success': True,
+            'numero_parte': numero_parte,
+            'cantidad_total_actualizada': cantidad_total_actual,
+            'total_entradas': total_entradas,
+            'total_salidas': total_salidas
+        })
+        
+    except Exception as e:
+        print(f"❌ ERROR al forzar actualización de inventario: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
         print(f"Error al procesar salida de material: {str(e)}")
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
         
@@ -2521,3 +2610,37 @@ def imprimir_directo_red(comando_zpl, codigo, ip):
 def test_modelos():
     """Página de prueba para verificar la carga de modelos"""
     return render_template('test_modelos.html')
+
+@app.route('/templates/LISTAS/<filename>')
+def serve_list_template(filename):
+    """Servir plantillas de listas para el menú móvil"""
+    try:
+        # Verificar que el archivo existe y es uno de los permitidos
+        allowed_files = [
+            'LISTA_INFORMACIONBASICA.html',
+            'LISTA_DE_MATERIALES.html', 
+            'LISTA_CONTROLDEPRODUCCION.html',
+            'LISTA_CONTROL_DE_PROCESO.html',
+            'LISTA_CONTROL_DE_CALIDAD.html',
+            'LISTA_DE_CONFIGPG.html',
+            'LISTA_DE_CONTROL_DE_REPORTE.html',
+            'LISTA_DE_CONTROL_DE_RESULTADOS.html'
+        ]
+        
+        if filename not in allowed_files:
+            return "Archivo no encontrado", 404
+            
+        # Leer el archivo directamente
+        template_path = os.path.join(app.template_folder, 'LISTAS', filename)
+        
+        if not os.path.exists(template_path):
+            return f"Archivo no encontrado: {template_path}", 404
+            
+        with open(template_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+        return content, 200, {'Content-Type': 'text/html; charset=utf-8'}
+        
+    except Exception as e:
+        print(f"Error sirviendo plantilla {filename}: {str(e)}")
+        return f"Error cargando la plantilla: {str(e)}", 500

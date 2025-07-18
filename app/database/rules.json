@@ -279,12 +279,19 @@
         "lotNumberStart": 19,
         "lotNumberLength": 19
     },
-  "FH3": {
+    "FH3": {
     "character_pattern": "\"ANNNNANNNANNNAA\"AXXXXXXXXXXXANNN\"AAANNNNNNNNNNNNN\"ANNNNN\"AXXXXXXXXXXX\"AAAA'NNNNNNNN'NNNN\"ANNNAA\"ANN%\"A\"ANANNA\"AA\"ANNNNN",
     "lotNumberLength": 11,
     "lotNumberStart": 18,
     "partNumberLength": 11,
     "partNumberStart": 59
-  }
+    },
+    "PANJIT0": {
+    "character_pattern": "XXXXXXXXXXX!NNN!AANAAA!XXXXXXXXX",
+    "lotNumberLength": 9,
+    "lotNumberStart": 23,
+    "partNumberLength": 11,
+    "partNumberStart": 0
+    }
 }
 

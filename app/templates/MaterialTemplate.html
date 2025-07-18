@@ -38,6 +38,64 @@
     <link rel="stylesheet" href="../static/styleHeader.css">
     <link rel="stylesheet" href="../static/css/responsive-mobile.css">
     
+    <style>
+        /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
+        .dropdown-menu {
+            /* Prevenir que se abra automáticamente */
+            display: none !important;
+        }
+        
+        .dropdown-menu.show {
+            display: block !important;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* PREVENIR ANIMACIONES CONFLICTIVAS */
+        .collapse.collapsing {
+            transition: none !important;
+        }
+        
+        /* ASEGURAR QUE LOS DROPDOWNS CERRADOS PERMANEZCAN CERRADOS */
+        .collapse:not(.show) {
+            display: none !important;
+        }
+        
+        .collapse.show {
+            display: block !important;
+        }
+        
+        /* BOTONES DE DROPDOWN MEJORADOS */
+        .btn[data-bs-toggle="collapse"]:after {
+            content: '▼';
+            margin-left: 8px;
+            transition: transform 0.3s ease;
+        }
+        
+        .btn[data-bs-toggle="collapse"][aria-expanded="true"]:after {
+            transform: rotate(180deg);
+        }
+        
+        /* PREVENIR MULTIPLE ANIMACIONES EN COLLAPSE */
+        [data-bs-toggle="collapse"] {
+            pointer-events: auto;
+        }
+        
+        [data-bs-toggle="collapse"].disabled {
+            pointer-events: none;
+        }
+    </style>
+    
 </head>
 <body>
     
@@ -319,20 +377,115 @@
     </div>
 </div>
 
+    <!-- Sistema nuevo desactivado - usando mobile-lists-hamburger.js -->
+    <!--
+    <button class="mobile-lists-toggle" id="mobile-lists-toggle" title="Ver listas">
+        <i class="bi bi-list-ul"></i>
+    </button>
+    
+    <div class="mobile-lists-overlay" id="mobile-lists-overlay"></div>
+    
+    <div class="mobile-lists-menu" id="mobile-lists-menu">
+        <div class="mobile-lists-header">
+            <span id="mobile-lists-title">Información Básica</span>
+            <button class="mobile-lists-close" id="mobile-lists-close">×</button>
+        </div>
+        <div class="mobile-lists-content" id="mobile-lists-content">
+        </div>
+    </div>
+    -->
+
     <!-- Agrega este overlay justo después del header -->
     <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
 
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Dropdown Fix for Desktop -->
-    <script src="../static/js/dropdown-fix.js"></script>
+    <!-- ANIMACIONES PARA DROPDOWNS EN DESKTOP -->
+    <link rel="stylesheet" href="../static/css/desktop-dropdown-animations.css">
     
-    <!-- Mobile Enhancements -->
-    <script src="../static/js/mobile-enhancements.js"></script>
+    <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
+    <script src="../static/js/unified-dropdowns.js"></script>
     
-    <!-- Mobile Lists Hamburger -->
+    <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>
+    
+    <!-- FALLBACK PARA DROPDOWNS - Solo se ejecuta si el sistema unificado falla -->
+    <script>
+        // Verificar si el sistema unificado se cargó correctamente
+        setTimeout(function() {
+            if (typeof window.unifiedDropdowns === 'undefined') {
+                console.warn('⚠️ Sistema unificado de dropdowns no se cargó, ejecutando fallback...');
+                
+                // FALLBACK ULTRA-SIMPLE
+                document.addEventListener('DOMContentLoaded', function() {
+                    
+                    function setupSimpleFallback() {
+                        console.log('🔧 Configurando fallback simple...');
+                        
+                        const toggleButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+                        
+                        toggleButtons.forEach(function(button) {
+                            // Remover listeners existentes
+                            const newButton = button.cloneNode(true);
+                            button.parentNode.replaceChild(newButton, button);
+                            
+                            newButton.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                const targetSelector = this.getAttribute('data-bs-target');
+                                if (!targetSelector) return;
+                                
+                                const targetElement = document.querySelector(targetSelector);
+                                if (!targetElement) return;
+                                
+                                const isOpen = targetElement.classList.contains('show');
+                                
+                                // Cerrar todos los otros primero
+                                document.querySelectorAll('.collapse.show').forEach(el => {
+                                    if (el !== targetElement) {
+                                        el.classList.remove('show');
+                                        el.style.display = 'none';
+                                    }
+                                });
+                                
+                                // Toggle este elemento
+                                if (isOpen) {
+                                    targetElement.classList.remove('show');
+                                    targetElement.style.display = 'none';
+                                    this.setAttribute('aria-expanded', 'false');
+                                } else {
+                                    targetElement.classList.add('show');
+                                    targetElement.style.display = 'block';
+                                    this.setAttribute('aria-expanded', 'true');
+                                }
+                                
+                                return false;
+                            });
+                        });
+                        
+                        console.log('✅ Fallback simple configurado');
+                    }
+                    
+                    setupSimpleFallback();
+                    
+                    // Re-configurar cuando se carga contenido dinámico
+                    const originalCargarContenido = window.cargarContenidoDinamico;
+                    if (originalCargarContenido) {
+                        window.cargarContenidoDinamico = function(containerId, templatePath, initCallback) {
+                            return originalCargarContenido(containerId, templatePath, function() {
+                                if (initCallback) initCallback();
+                                setTimeout(setupSimpleFallback, 100);
+                            });
+                        };
+                    }
+                });
+            } else {
+                console.log('✅ Sistema unificado de dropdowns cargado correctamente');
+            }
+        }, 1000);
+    </script>
     
     <!-- PWA Service Worker Registration -->
     <script>
@@ -567,19 +720,340 @@
             const menuToggle = document.getElementById('menu-toggle');
             const navContainer = document.getElementById('nav-container');
             const overlay = document.getElementById('mobile-nav-overlay');
+            const mobileListsToggle = document.getElementById('mobile-lists-toggle');
+            const mobileListsMenu = document.getElementById('mobile-lists-menu');
+            const mobileListsOverlay = document.getElementById('mobile-lists-overlay');
+            const mobileListsClose = document.getElementById('mobile-lists-close');
+            const mobileListsContent = document.getElementById('mobile-lists-content');
+            const mobileListsTitle = document.getElementById('mobile-lists-title');
             
             // Verificar si estamos en dispositivo móvil
             function isMobile() {
                 return window.innerWidth <= 768;
             }
             
-            // Función para cerrar menú
+            // Función para cerrar menú principal
             function closeMenu() {
                 if (navContainer) navContainer.classList.remove('active');
                 if (overlay) overlay.classList.remove('active');
                 if (menuToggle) menuToggle.classList.remove('active');
                 document.body.classList.remove('menu-open');
             }
+            
+            // Función para mostrar/ocultar el botón flotante
+            function toggleMobileListsButton() {
+                if (isMobile() && mobileListsToggle) {
+                    const materialContainer = document.getElementById('material-container');
+                    const hasContentLoaded = materialContainer && materialContainer.style.display !== 'none';
+                    
+                    if (hasContentLoaded) {
+                        mobileListsToggle.style.display = 'flex';
+                    } else {
+                        mobileListsToggle.style.display = 'none';
+                        closeMobileListsMenu(); // Cerrar menú si no hay contenido
+                    }
+                }
+            }
+            
+            // Función para abrir menú de listas móvil
+            function openMobileListsMenu() {
+                if (isMobile() && mobileListsMenu && mobileListsOverlay) {
+                    // Cargar contenido del sidebar actual
+                    loadCurrentSidebarContent();
+                    
+                    // Mostrar menú y overlay
+                    mobileListsMenu.classList.add('active');
+                    mobileListsOverlay.classList.add('active');
+                    mobileListsToggle.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+            
+            // Función para cerrar menú de listas móvil
+            function closeMobileListsMenu() {
+                if (mobileListsMenu && mobileListsOverlay) {
+                    mobileListsMenu.classList.remove('active');
+                    mobileListsOverlay.classList.remove('active');
+                    mobileListsToggle.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            }
+            
+            // Función para cargar contenido del sidebar en el menú móvil
+            function loadCurrentSidebarContent() {
+                // Detectar qué sección está activa para cargar la lista correspondiente
+                const activeSection = detectActiveSection();
+                loadListContent(activeSection);
+            }
+            
+            // Función para detectar qué sección está activa
+            function detectActiveSection() {
+                // Lista de contenedores y sus secciones correspondientes
+                const sectionContainers = [
+                    { id: 'informacion-basica-content-area', section: 'informacion-basica' },
+                    { id: 'material-container', section: 'control-material' },
+                    { id: 'control-produccion-content-area', section: 'control-produccion' },
+                    { id: 'control-proceso-content-area', section: 'control-proceso' },
+                    { id: 'control-calidad-content-area', section: 'control-calidad' }
+                ];
+                
+                // Buscar cuál contenedor está visible
+                for (const container of sectionContainers) {
+                    const element = document.getElementById(container.id);
+                    if (element && element.style.display !== 'none') {
+                        console.log('Sección activa detectada:', container.section);
+                        return container.section;
+                    }
+                }
+                
+                // También verificar por URL o contexto actual
+                const currentPath = window.location.pathname;
+                if (currentPath.includes('informacion') || currentPath.includes('usuario')) {
+                    return 'informacion-basica';
+                } else if (currentPath.includes('material')) {
+                    return 'control-material';
+                } else if (currentPath.includes('produccion')) {
+                    return 'control-produccion';
+                } else if (currentPath.includes('proceso')) {
+                    return 'control-proceso';
+                } else if (currentPath.includes('calidad')) {
+                    return 'control-calidad';
+                }
+                
+                // Por defecto, devolver información básica
+                console.log('Sección por defecto: informacion-basica');
+                return 'informacion-basica';
+            }
+            
+            // Función para cargar el contenido de las listas
+            function loadListContent(section) {
+                let listUrl = '';
+                let title = '';
+                
+                // Mapear secciones a archivos de listas
+                switch(section) {
+                    case 'informacion-basica':
+                        listUrl = '/templates/LISTAS/LISTA_INFORMACIONBASICA.html';
+                        title = 'Información Básica';
+                        break;
+                    case 'control-material':
+                        listUrl = '/templates/LISTAS/LISTA_DE_MATERIALES.html';
+                        title = 'Control de Material';
+                        break;
+                    case 'control-produccion':
+                        listUrl = '/templates/LISTAS/LISTA_CONTROLDEPRODUCCION.html';
+                        title = 'Control de Producción';
+                        break;
+                    case 'control-proceso':
+                        listUrl = '/templates/LISTAS/LISTA_CONTROL_DE_PROCESO.html';
+                        title = 'Control de Proceso';
+                        break;
+                    case 'control-calidad':
+                        listUrl = '/templates/LISTAS/LISTA_CONTROL_DE_CALIDAD.html';
+                        title = 'Control de Calidad';
+                        break;
+                    default:
+                        listUrl = '/templates/LISTAS/LISTA_INFORMACIONBASICA.html';
+                        title = 'Información Básica';
+                }
+                
+                // Cargar el archivo de lista
+                fetch(listUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        // Procesar el HTML y convertirlo para móvil
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = html;
+                        
+                        // Buscar el sidebar en el HTML cargado
+                        const sidebar = tempDiv.querySelector('.app-sidebar');
+                        if (sidebar) {
+                            convertSidebarToMobileFormat(sidebar);
+                            mobileListsTitle.textContent = title;
+                        } else {
+                            // Si no hay sidebar, mostrar mensaje
+                            mobileListsContent.innerHTML = `
+                                <div style="text-align: center; padding: 40px; color: white;">
+                                    <p>No se encontraron listas para esta sección</p>
+                                    <p style="font-size: 12px; color: #ccc;">Sección: ${title}</p>
+                                </div>
+                            `;
+                            mobileListsTitle.textContent = title;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error cargando lista:', error);
+                        mobileListsContent.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: white;">
+                                <p>Error cargando la lista</p>
+                                <p style="font-size: 12px; color: #ccc;">${error.message}</p>
+                            </div>
+                        `;
+                        mobileListsTitle.textContent = title;
+                    });
+            }
+            
+            // Función para convertir el sidebar a formato móvil
+            function convertSidebarToMobileFormat(sidebar) {
+                const sections = sidebar.querySelectorAll('.sidebar-section');
+                let mobileHTML = '';
+
+                sections.forEach((section) => {
+                    const dropdownBtn = section.querySelector('.sidebar-dropdown-btn');
+                    const dropdownList = section.querySelector('.sidebar-dropdown-list');
+                    
+                    if (dropdownBtn && dropdownList) {
+                        // Extraer el ID del botón para el collapse
+                        const targetId = dropdownBtn.getAttribute('data-bs-target');
+                        const sectionId = targetId ? targetId.replace('#', '') : 'section_' + Math.random().toString(36).substr(2, 9);
+                        
+                        const title = dropdownBtn.textContent.trim();
+                        const links = dropdownList.querySelectorAll('.sidebar-link');
+                        
+                        mobileHTML += `
+                            <div class="mobile-sidebar-section">
+                                <button class="mobile-sidebar-dropdown-btn" data-bs-target="#mobile_${sectionId}">
+                                    <span>${title}</span>
+                                    <span class="mobile-sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                                </button>
+                                <ul class="mobile-sidebar-dropdown-list" id="mobile_${sectionId}">
+                        `;
+                        
+                        links.forEach((link) => {
+                            const text = link.textContent.trim();
+                            const onclick = link.getAttribute('onclick');
+                            
+                            mobileHTML += `
+                                <li class="mobile-sidebar-link" onclick="${onclick}">
+                                    ${text}
+                                </li>
+                            `;
+                        });
+                        
+                        mobileHTML += `
+                                </ul>
+                            </div>
+                        `;
+                    }
+                });
+
+                mobileListsContent.innerHTML = mobileHTML;
+                setupMobileDropdowns();
+            }
+            
+            // Función para configurar dropdowns móviles
+            function setupMobileDropdowns() {
+                const mobileDropdownBtns = mobileListsContent.querySelectorAll('.mobile-sidebar-dropdown-btn');
+                
+                mobileDropdownBtns.forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const targetId = this.getAttribute('data-bs-target');
+                        if (targetId) {
+                            const targetList = mobileListsContent.querySelector(targetId);
+                            if (targetList) {
+                                // Toggle activo
+                                this.classList.toggle('active');
+                                targetList.classList.toggle('active');
+                            }
+                        }
+                    });
+                });
+                
+                // Event listeners para los links móviles
+                const mobileLinks = mobileListsContent.querySelectorAll('.mobile-sidebar-link');
+                mobileLinks.forEach(link => {
+                    link.addEventListener('click', function() {
+                        // Cerrar el menú al hacer clic en un enlace
+                        closeMobileListsMenu();
+                    });
+                });
+            }
+            
+            // Event listener para el botón flotante
+            if (mobileListsToggle) {
+                mobileListsToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (mobileListsMenu.classList.contains('active')) {
+                        closeMobileListsMenu();
+                    } else {
+                        openMobileListsMenu();
+                    }
+                });
+            }
+            
+            // Event listener para el botón de cerrar del menú móvil
+            if (mobileListsClose) {
+                mobileListsClose.addEventListener('click', function() {
+                    closeMobileListsMenu();
+                });
+            }
+            
+            // Event listener para cerrar menú tocando el overlay
+            if (mobileListsOverlay) {
+                mobileListsOverlay.addEventListener('click', function() {
+                    closeMobileListsMenu();
+                });
+            }
+            
+            
+            // Mostrar/ocultar botón flotante cuando se carga contenido
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        toggleMobileListsButton();
+                    }
+                });
+            });
+            
+            const materialContainer = document.getElementById('material-container');
+            if (materialContainer) {
+                observer.observe(materialContainer, { attributes: true });
+            }
+            
+            // Observar cambios en las áreas de contenido para detectar cuando se cargan nuevas secciones
+            const contentObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        // Verificar si algún contenido se hizo visible
+                        if (mutation.target.style.display !== 'none') {
+                            console.log('Nueva sección cargada:', mutation.target.id);
+                            // Pequeño delay para asegurar que el contenido esté completamente cargado
+                            setTimeout(() => {
+                                loadCurrentSidebarContent();
+                            }, 100);
+                        }
+                    }
+                });
+            });
+            
+            // Observar las áreas de contenido principales
+            const contentAreas = [
+                'informacion-basica-content-area',
+                'material-container',
+                'control-produccion-content-area',
+                'control-proceso-content-area',
+                'control-calidad-content-area'
+            ];
+            
+            contentAreas.forEach(areaId => {
+                const area = document.getElementById(areaId);
+                if (area) {
+                    contentObserver.observe(area, { attributes: true });
+                }
+            });
+            
+            // Verificar al cargar la página
+            toggleMobileListsButton();
             
             // Función para abrir menú
             function openMenu() {
@@ -688,12 +1162,26 @@
                 // Cerrar menú al cambiar orientación
                 window.addEventListener('orientationchange', function() {
                     setTimeout(closeMenu, 100);
+                    if (isMobile()) {
+                        closeMobileSidebar(); // Cerrar sidebar al cambiar orientación
+                    }
                 });
                 
                 // Cerrar menú al redimensionar ventana
                 window.addEventListener('resize', function() {
                     if (!isMobile()) {
                         closeMenu();
+                        closeMobileSidebar(); // Cerrar sidebar en desktop
+                        toggleMobileListsButton(); // Ocultar botón flotante en desktop
+                    } else {
+                        toggleMobileListsButton(); // Mostrar/ocultar botón según contenido
+                    }
+                });
+                
+                // Cerrar sidebar móvil con tecla Escape
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && isMobile()) {
+                        closeMobileSidebar();
                     }
                 });
             }
@@ -828,6 +1316,62 @@
             // Hacer la función disponible globalmente para debugging
             window.cerrarTodosLosDropdowns = cerrarTodosLosDropdowns;
             
+            // Función para limpiar event listeners duplicados de Bootstrap
+            function limpiarEventListenersBootstrap() {
+                console.log('🧹 Limpiando event listeners usando sistema unificado...');
+                
+                try {
+                    // Usar el sistema unificado si está disponible
+                    if (window.unifiedDropdowns) {
+                        window.unifiedDropdowns.cleanup();
+                        window.unifiedDropdowns.init();
+                        console.log('✅ Limpieza usando sistema unificado');
+                        return;
+                    }
+                    
+                    console.warn('⚠️ Sistema unificado no disponible, usando limpieza manual');
+                    // Fallback manual (código anterior)
+                    const dropdownButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
+                    dropdownButtons.forEach(button => {
+                        const newButton = button.cloneNode(true);
+                        button.parentNode.replaceChild(newButton, button);
+                    });
+                    
+                    console.log('✅ Limpieza manual completada');
+                } catch (error) {
+                    console.error('❌ Error en limpieza de event listeners:', error);
+                }
+            }
+            
+            // Función mejorada para cerrar dropdowns
+            function cerrarTodosLosDropdownsMejorada(container = null) {
+                console.log('🔒 Cerrando todos los dropdowns usando sistema unificado...');
+                
+                try {
+                    // Usar el sistema unificado si está disponible
+                    if (window.unifiedDropdowns) {
+                        window.unifiedDropdowns.closeAll();
+                        console.log('✅ Dropdowns cerrados usando sistema unificado');
+                        return;
+                    }
+                    
+                    console.warn('⚠️ Sistema unificado no disponible, usando método manual');
+                    // Fallback manual
+                    document.querySelectorAll('.collapse.show').forEach(elemento => {
+                        elemento.classList.remove('show');
+                        elemento.style.display = 'none';
+                    });
+                    
+                    document.querySelectorAll('[aria-expanded="true"]').forEach(boton => {
+                        boton.setAttribute('aria-expanded', 'false');
+                    });
+                    
+                    console.log('✅ Dropdowns cerrados manualmente');
+                } catch (error) {
+                    console.error('❌ Error cerrando dropdowns:', error);
+                }
+            }
+            
             // Función genérica para cargar contenido dinámicamente
             window.cargarContenidoDinamico = function(containerId, templatePath, initCallback = null) {
                 const container = document.getElementById(containerId);
@@ -836,10 +1380,20 @@
                     return Promise.reject(`Container ${containerId} no encontrado`);
                 }
                 
-                // SIEMPRE limpiar el contenedor antes de cargar nuevo contenido
+                console.log(`📂 Cargando contenido dinámico: ${templatePath} -> ${containerId}`);
+                
+                // 1. CERRAR TODOS LOS DROPDOWNS ANTES DE LIMPIAR
+                cerrarTodosLosDropdownsMejorada();
+                
+                // 1.1. LIMPIAR TODAS LAS SELECCIONES ACTIVAS
+                if (window.unifiedDropdowns && window.unifiedDropdowns.clearAllSelections) {
+                    window.unifiedDropdowns.clearAllSelections();
+                }
+                
+                // 2. LIMPIAR EL CONTENEDOR
                 container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
                 
-                // Cargar el contenido dinámicamente
+                // 3. CARGAR EL CONTENIDO DINÁMICAMENTE
                 return fetch(templatePath)
                     .then(response => {
                         if (!response.ok) {
@@ -850,10 +1404,28 @@
                     .then(html => {
                         container.innerHTML = html;
                         
-                        // Forzar cierre de dropdowns después de cargar
+                        // 4. ESPERAR UN POCO ANTES DE INICIALIZAR COMPONENTES
                         setTimeout(() => {
-                            cerrarTodosLosDropdowns(container);
-                        }, 100);
+                            // Re-inicializar tooltips si existen en el nuevo contenido
+                            const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
+                            tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+                                new bootstrap.Tooltip(tooltipTriggerEl);
+                            });
+                            
+                            // 5. REINICIALIZAR EL SISTEMA UNIFICADO DE DROPDOWNS
+                            if (window.unifiedDropdowns) {
+                                console.log('🔄 Reinicializando sistema unificado...');
+                                window.unifiedDropdowns.init();
+                            }
+                            
+                            console.log('✅ Componentes re-inicializados en nuevo contenido');
+                            
+                            // Ejecutar callback de inicialización si se proporciona
+                            if (initCallback && typeof initCallback === 'function') {
+                                console.log('🔧 Ejecutando callback de inicialización...');
+                                initCallback();
+                            }
+                        }, 150);
                         
                         // Ejecutar cualquier script que pueda estar en el HTML cargado
                         const scripts = container.querySelectorAll('script');
@@ -867,17 +1439,11 @@
                             document.head.appendChild(newScript);
                         });
                         
-                        // Ejecutar callback de inicialización si se proporciona
-                        if (initCallback && typeof initCallback === 'function') {
-                            setTimeout(() => {
-                                initCallback();
-                            }, 100);
-                        }
-                        
+                        console.log(`✅ Contenido cargado exitosamente: ${templatePath}`);
                         return html;
                     })
                     .catch(error => {
-                        console.error('Error al cargar el contenido:', error);
+                        console.error('❌ Error al cargar el contenido:', error);
                         container.innerHTML = '<div class="error-message">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
                         throw error;
                     });

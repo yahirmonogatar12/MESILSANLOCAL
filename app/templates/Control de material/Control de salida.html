@@ -104,6 +104,16 @@
             <div class="material-table-controls">
                 <button class="material-btn" id="btnRegistroSalida" onclick="mostrarRegistroSalida()">Registro de salida</button>
                 <button class="material-btn" id="btnHistorialSalida" onclick="mostrarHistorialSalida()">Historial de salida</button>
+                
+                <!-- Control de Plan -->
+                <div class="plan-control" style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+                    <label style="color: #ecf0f1; font-weight: 600; font-size: 14px;">Plan:</label>
+                    <input type="text" id="plan_cantidad" placeholder="500" value="1" 
+                           style="width: 60px; padding: 4px 6px; border: 2px solid #3498db; border-radius: 4px; 
+                                  background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; font-size: 12px;"
+                           onchange="actualizarCantidadesPlan()" onkeyup="actualizarCantidadesPlan()">
+                    <span style="color: #95a5a6; font-size: 12px;">unidades</span>
+                </div>
             </div>
 
             <!-- Tablas para modo Registro de salida - siempre visibles -->
@@ -117,8 +127,8 @@
                                 <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Número de parte</th>
                                 <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Especificación</th>
                                 <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Cantidad total</th>
-                                <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Unidad</th>
-                                <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Acciones</th>
+                                <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">PLAN</th>
+                                <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Faltantes</th>
                             </tr>
                         </thead>
                         <tbody id="tabla1BOM">
@@ -480,6 +490,16 @@
                 if (salidaData.success) {
                     mostrarMensajeSimple(`✅ Salida automática procesada: ${cantidadSalida}`, 'success');
                     
+                    // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
+                    if (materialActual && materialActual.numero_parte) {
+                        window.ultimoMaterialProcesado = materialActual.numero_parte;
+                        console.log(`🎯 Material marcado para actualización forzada: ${materialActual.numero_parte}`);
+                    }
+                    
+                    // ACTUALIZAR FALTANTES EN TABLA BOM INMEDIATAMENTE DESPUÉS DE LA SALIDA
+                    // 🚀 OPTIMIZACIÓN: Actualización instantánea con refresh del inventario
+                    await actualizarFaltantesBOMInstantaneo();
+                    
                     // Limpiar TODOS los campos para siguiente escaneo
                     setTimeout(() => {
                         limpiarCamposMaterial();
@@ -596,6 +616,16 @@
                         mostrarMensajeSimple(`Salida manual procesada: ${cantidadSalida}`, 'success');
                     }
                     
+                    // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
+                    if (materialActual && materialActual.numero_parte) {
+                        window.ultimoMaterialProcesado = materialActual.numero_parte;
+                        console.log(`🎯 Material marcado para actualización forzada: ${materialActual.numero_parte}`);
+                    }
+                    
+                    // ACTUALIZAR FALTANTES EN TABLA BOM INMEDIATAMENTE DESPUÉS DE LA SALIDA
+                    // 🚀 OPTIMIZACIÓN: Actualización instantánea con refresh del inventario
+                    await actualizarFaltantesBOMInstantaneo();
+                    
                     // Actualizar tabla en background más rápido (solo si está visible)
                     const historialSection = document.getElementById('historialSection');
                     if (historialSection && historialSection.style.display !== 'none') {
@@ -684,12 +714,22 @@
                 const salidaData = await salidaResponse.json();
 
                 if (salidaData.success) {
-                    // ✅ OPTIMIZACIÓN: Feedback más rápido y claro
+                    // ✅ OPTIMIZACIÓN: Mostrar mensaje especial para respuesta optimizada
                     if (salidaData.optimized) {
                         mostrarMensajeSimple(`🚀 ULTRA-RÁPIDO: ${cantidadSalida} | Background processing`, 'success');
                     } else {
                         mostrarMensajeSimple(`Salida OK: ${cantidadSalida}`, 'success');
                     }
+                    
+                    // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
+                    if (materialActual && materialActual.numero_parte) {
+                        window.ultimoMaterialProcesado = materialActual.numero_parte;
+                        console.log(`🎯 Material marcado para actualización forzada: ${materialActual.numero_parte}`);
+                    }
+                    
+                    // ACTUALIZAR FALTANTES EN TABLA BOM INMEDIATAMENTE DESPUÉS DE LA SALIDA
+                    // 🚀 OPTIMIZACIÓN: Actualización instantánea con refresh del inventario
+                    await actualizarFaltantesBOMInstantaneo();
                     
                     // Actualizar tabla más rápido para mostrar el cambio inmediatamente (solo si está visible)
                     const historialSection = document.getElementById('historialSection');
@@ -807,6 +847,232 @@
             setTimeout(() => {
                 info.style.display = 'none';
             }, 2500);
+        }
+
+        // ===============================================
+        // FUNCIÓN ULTRA-OPTIMIZADA PARA ACTUALIZACIÓN INSTANTÁNEA DE FALTANTES
+        // ===============================================
+        async function actualizarFaltantesBOMInstantaneo() {
+            const tbody1 = document.getElementById('tabla1BOM');
+            if (!tbody1) return;
+            
+            const modelo = document.getElementById('salida_modelo')?.value;
+            if (!modelo) return;
+            
+            console.log('🚀 ULTRA-RÁPIDO: Actualizando faltantes BOM instantáneamente...');
+            
+            const filas = tbody1.querySelectorAll('tr');
+            const planCantidad = parseFloat(document.getElementById('plan_cantidad')?.value || 1);
+            
+            // Extraer números de parte de las filas existentes
+            const numerosParteEnTabla = [];
+            filas.forEach(fila => {
+                const celdaNumeroParte = fila.querySelector('td:first-child strong');
+                if (celdaNumeroParte) {
+                    numerosParteEnTabla.push(celdaNumeroParte.textContent.trim());
+                }
+            });
+            
+            if (numerosParteEnTabla.length === 0) return;
+            
+            // 🔥 SÚPER OPTIMIZADO: Consultar inventarios directamente desde inventario_general
+            const inventarioMap = new Map();
+            
+            // Si acabamos de procesar una salida, forzar actualización del inventario primero
+            const materialRecienProcesado = window.ultimoMaterialProcesado;
+            if (materialRecienProcesado && numerosParteEnTabla.includes(materialRecienProcesado)) {
+                try {
+                    console.log(`🔄 Forzando actualización para material recién procesado: ${materialRecienProcesado}`);
+                    await fetch(`/forzar_actualizacion_inventario/${encodeURIComponent(materialRecienProcesado)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    // Limpiar la variable después de usar
+                    window.ultimoMaterialProcesado = null;
+                } catch (error) {
+                    console.error('Error forzando actualización:', error);
+                }
+            }
+            
+            const inventarioPromises = numerosParteEnTabla.map(async (numeroParte) => {
+                try {
+                    // Forzar cache-bust para obtener datos frescos
+                    const timestamp = Date.now();
+                    const response = await fetch(`/buscar_material_por_numero_parte?numero_parte=${encodeURIComponent(numeroParte)}&_t=${timestamp}`, {
+                        cache: 'no-cache',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success && data.materiales && data.materiales.length > 0) {
+                        // ✅ ULTRA-RÁPIDO: Usar cantidad agregada directamente
+                        const material = data.materiales[0];
+                        const cantidadDisponible = parseFloat(material.cantidad_actual) || 0;
+                        inventarioMap.set(numeroParte, cantidadDisponible);
+                        console.log(`⚡ INSTANTÁNEO - ${numeroParte}: ${cantidadDisponible}`);
+                    } else {
+                        inventarioMap.set(numeroParte, 0);
+                        console.log(`❌ INSTANTÁNEO - Sin inventario para ${numeroParte}`);
+                    }
+                } catch (error) {
+                    console.error(`Error INSTANTÁNEO consultando ${numeroParte}:`, error);
+                    inventarioMap.set(numeroParte, 0);
+                }
+            });
+            
+            await Promise.all(inventarioPromises);
+            
+            // Actualizar INMEDIATAMENTE solo la columna de faltantes
+            let filasActualizadas = 0;
+            filas.forEach(fila => {
+                const celdaNumeroParte = fila.querySelector('td:first-child strong');
+                const celdaCantidadTotal = fila.querySelector('td:nth-child(3)');
+                const celdaFaltantes = fila.querySelector('td:nth-child(5)');
+                
+                if (celdaNumeroParte && celdaCantidadTotal && celdaFaltantes) {
+                    const numeroParte = celdaNumeroParte.textContent.trim();
+                    const cantidadTotal = parseFloat(celdaCantidadTotal.textContent) || 0;
+                    const cantidadPlanificada = cantidadTotal * planCantidad;
+                    const inventarioActual = inventarioMap.get(numeroParte) || 0;
+                    const faltantes = Math.max(0, cantidadPlanificada - inventarioActual);
+                    
+                    // Determinar color de faltantes
+                    let colorFaltantes = '#e67e22';
+                    if (faltantes <= 0) {
+                        colorFaltantes = '#27ae60'; // Verde si no faltan
+                    } else if (faltantes >= cantidadPlanificada) {
+                        colorFaltantes = '#e74c3c'; // Rojo si faltan todos
+                    } else if (faltantes > cantidadPlanificada * 0.5) {
+                        colorFaltantes = '#f39c12'; // Naranja si faltan más del 50%
+                    }
+                    
+                    // 🔥 ACTUALIZACIÓN VISUAL INSTANTÁNEA
+                    const valorAnterior = parseFloat(celdaFaltantes.textContent) || 0;
+                    
+                    // Si cambió el valor, destacarlo visualmente
+                    if (valorAnterior !== faltantes) {
+                        celdaFaltantes.style.transition = 'all 0.3s ease';
+                        celdaFaltantes.style.background = '#f1c40f';
+                        celdaFaltantes.style.transform = 'scale(1.05)';
+                        
+                        setTimeout(() => {
+                            celdaFaltantes.style.background = '';
+                            celdaFaltantes.style.transform = '';
+                        }, 500);
+                        
+                        console.log(`🔄 CAMBIO DETECTADO - ${numeroParte}: ${valorAnterior} → ${faltantes}`);
+                    }
+                    
+                    celdaFaltantes.textContent = faltantes;
+                    celdaFaltantes.style.color = colorFaltantes;
+                    celdaFaltantes.style.fontWeight = 'bold';
+                    
+                    filasActualizadas++;
+                }
+            });
+            
+            console.log(`✅ ULTRA-RÁPIDO: ${filasActualizadas} faltantes actualizados instantáneamente`);
+        }
+
+        // ===============================================
+        // FUNCIÓN PARA ACTUALIZAR FALTANTES EN BOM
+        // ===============================================
+        async function actualizarFaltantesBOM() {
+            const tbody1 = document.getElementById('tabla1BOM');
+            if (!tbody1) return;
+            
+            const modelo = document.getElementById('salida_modelo')?.value;
+            if (!modelo) return;
+            
+            console.log('🔄 Actualizando faltantes BOM para modelo:', modelo);
+            
+            // OPTIMIZACIÓN: Solo actualizar faltantes, no recargar todo el BOM
+            await actualizarSoloFaltantes();
+        }
+
+        // ===============================================
+        // FUNCIÓN OPTIMIZADA PARA ACTUALIZAR SOLO FALTANTES
+        // ===============================================
+        async function actualizarSoloFaltantes() {
+            const tbody1 = document.getElementById('tabla1BOM');
+            if (!tbody1) return;
+            
+            const filas = tbody1.querySelectorAll('tr');
+            const planCantidad = parseFloat(document.getElementById('plan_cantidad')?.value || 1);
+            
+            console.log('⚡ Actualizando solo faltantes de', filas.length, 'filas');
+            
+            // Extraer números de parte de las filas existentes
+            const numerosParteEnTabla = [];
+            filas.forEach(fila => {
+                const celdaNumeroParte = fila.querySelector('td:first-child strong');
+                if (celdaNumeroParte) {
+                    numerosParteEnTabla.push(celdaNumeroParte.textContent.trim());
+                }
+            });
+            
+            if (numerosParteEnTabla.length === 0) return;
+            
+            // 🚀 OPTIMIZADO: Consultar inventarios agregados en paralelo
+            const inventarioMap = new Map();
+            const inventarioPromises = numerosParteEnTabla.map(async (numeroParte) => {
+                try {
+                    const response = await fetch(`/buscar_material_por_numero_parte?numero_parte=${encodeURIComponent(numeroParte)}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.materiales && data.materiales.length > 0) {
+                        // ✅ NUEVO: Usar la cantidad agregada directamente (ya es el total disponible)
+                        const material = data.materiales[0]; // Primer resultado (agregado)
+                        const cantidadDisponible = parseFloat(material.cantidad_actual) || 0;
+                        inventarioMap.set(numeroParte, cantidadDisponible);
+                        console.log(`📦 Inventario para ${numeroParte}: ${cantidadDisponible}`);
+                    } else {
+                        inventarioMap.set(numeroParte, 0);
+                        console.log(`❌ Sin inventario para ${numeroParte}`);
+                    }
+                } catch (error) {
+                    console.error(`Error consultando inventario para ${numeroParte}:`, error);
+                    inventarioMap.set(numeroParte, 0);
+                }
+            });
+            
+            await Promise.all(inventarioPromises);
+            
+            // Actualizar solo la columna de faltantes en cada fila
+            filas.forEach(fila => {
+                const celdaNumeroParte = fila.querySelector('td:first-child strong');
+                const celdaCantidadTotal = fila.querySelector('td:nth-child(3)');
+                const celdaFaltantes = fila.querySelector('td:nth-child(5)');
+                
+                if (celdaNumeroParte && celdaCantidadTotal && celdaFaltantes) {
+                    const numeroParte = celdaNumeroParte.textContent.trim();
+                    const cantidadTotal = parseFloat(celdaCantidadTotal.textContent) || 0;
+                    const cantidadPlanificada = cantidadTotal * planCantidad;
+                    const inventarioActual = inventarioMap.get(numeroParte) || 0;
+                    const faltantes = Math.max(0, cantidadPlanificada - inventarioActual);
+                    
+                    // Determinar color de faltantes
+                    let colorFaltantes = '#e67e22'; // Naranja por defecto
+                    if (faltantes <= 0) {
+                        colorFaltantes = '#27ae60'; // Verde si no faltan
+                    } else if (faltantes >= cantidadPlanificada) {
+                        colorFaltantes = '#e74c3c'; // Rojo si faltan todos
+                    } else if (faltantes > cantidadPlanificada * 0.5) {
+                        colorFaltantes = '#f39c12'; // Naranja si faltan más del 50%
+                    }
+                    
+                    // Actualizar solo la celda de faltantes
+                    celdaFaltantes.textContent = faltantes;
+                    celdaFaltantes.style.color = colorFaltantes;
+                    
+                    console.log(`📊 ${numeroParte}: Plan=${cantidadPlanificada}, Inventario=${inventarioActual}, Faltantes=${faltantes}`);
+                }
+            });
+            
+            console.log('✅ Faltantes actualizados optimizadamente');
         }
 
         // Ejecutar inicialización simplificada
@@ -1026,7 +1292,7 @@
         }
 
         // Función para actualizar la primera tabla con los datos del BOM
-        function actualizarTablaBOMRegistro(bomData) {
+        async function actualizarTablaBOMRegistro(bomData) {
             const tbody1 = document.getElementById('tabla1BOM');
             const tbody2 = document.getElementById('tabla2BOM');
             
@@ -1040,33 +1306,95 @@
                 return;
             }
 
+            // Obtener cantidad del plan
+            const planCantidad = parseFloat(document.getElementById('plan_cantidad')?.value || 1);
+
+            // OPTIMIZACIÓN: Consultar todos los inventarios de una sola vez
+            const numerosParteUnicos = [...new Set(bomData.map(item => 
+                item.numeroParte || item.numero_parte || item.part_number || ''
+            ).filter(p => p))];
+            
+            console.log('🔄 Consultando inventarios para:', numerosParteUnicos);
+            
+            // Crear un mapa de inventarios por número de parte
+            const inventarioMap = new Map();
+            
+            try {
+                // 🚀 OPTIMIZADO: Consultar inventarios agregados en paralelo
+                const inventarioPromises = numerosParteUnicos.map(async (numeroParte) => {
+                    if (!numeroParte) return;
+                    
+                    try {
+                        const response = await fetch(`/buscar_material_por_numero_parte?numero_parte=${encodeURIComponent(numeroParte)}`);
+                        const data = await response.json();
+                        
+                        if (data.success && data.materiales && data.materiales.length > 0) {
+                            // ✅ NUEVO: Usar cantidad agregada directamente (ya optimizado en backend)
+                            const material = data.materiales[0]; // Primer resultado (agregado)
+                            const cantidadDisponible = parseFloat(material.cantidad_actual) || 0;
+                            inventarioMap.set(numeroParte, cantidadDisponible);
+                            console.log(`📦 Inventario para ${numeroParte}: ${cantidadDisponible}`);
+                        } else {
+                            inventarioMap.set(numeroParte, 0);
+                            console.log(`❌ Sin inventario para ${numeroParte}`);
+                        }
+                    } catch (error) {
+                        console.error(`Error consultando inventario para ${numeroParte}:`, error);
+                        inventarioMap.set(numeroParte, 0);
+                    }
+                });
+                
+                // Esperar a que todas las consultas terminen
+                await Promise.all(inventarioPromises);
+                
+            } catch (error) {
+                console.error('❌ Error en consulta paralela de inventarios:', error);
+            }
+
             let html = '';
+            
+            // Procesar cada item del BOM usando el mapa de inventarios
             bomData.forEach((item, index) => {
                 // Obtener campos con los nombres correctos que vienen del backend
                 const numeroParte = item.numeroParte || item.numero_parte || item.part_number || '';
                 const especificacion = item.especificacionMaterial || item.descripcion || item.especificacion || item.description || '';
-                const cantidadTotal = item.cantidadTotal || item.cantidad_total || item.cantidad_requerida || item.cantidad || '';
-                const unidad = item.unidad || item.unit || item.uom || 'PCS';
+                const cantidadTotal = parseFloat(item.cantidadTotal || item.cantidad_total || item.cantidad_requerida || item.cantidad || 0);
                 
-                console.log('🔧 DEBUG Item BOM:', {
-                    original: item,
+                // Calcular cantidad planificada (cantidad total * plan)
+                const cantidadPlanificada = cantidadTotal * planCantidad;
+                
+                // OBTENER INVENTARIO ACTUAL DEL MAPA (YA CONSULTADO)
+                const inventarioActual = inventarioMap.get(numeroParte) || 0;
+                
+                // Calcular faltantes reales: cantidad planificada - inventario actual
+                const faltantes = Math.max(0, cantidadPlanificada - inventarioActual);
+                
+                console.log('🔧 DEBUG Item BOM OPTIMIZADO:', {
                     numeroParte,
-                    especificacion,
                     cantidadTotal,
-                    unidad
+                    planCantidad,
+                    cantidadPlanificada,
+                    inventarioActual,
+                    faltantes
                 });
                 
+                // Color de faltantes basado en la cantidad
+                let colorFaltantes = '#e67e22'; // Naranja por defecto
+                if (faltantes <= 0) {
+                    colorFaltantes = '#27ae60'; // Verde si no faltan
+                } else if (faltantes >= cantidadPlanificada) {
+                    colorFaltantes = '#e74c3c'; // Rojo si faltan todos
+                } else if (faltantes > cantidadPlanificada * 0.5) {
+                    colorFaltantes = '#f39c12'; // Naranja si faltan más del 50%
+                }
+                
                 html += `
-                    <tr style="cursor: pointer; background-color: #2c3e50; color: #ecf0f1;" onclick="seleccionarComponenteBOM('${index}', '${numeroParte}', '${especificacion}', '${cantidadTotal}')" onmouseover="this.style.backgroundColor='#34495e'" onmouseout="this.style.backgroundColor='#2c3e50'">
+                    <tr style="cursor: pointer; background-color: #2c3e50; color: #ecf0f1;" onclick="seleccionarComponenteBOM('${index}', '${numeroParte}', '${especificacion}', '${cantidadTotal}', '${cantidadPlanificada}')" onmouseover="this.style.backgroundColor='#34495e'" onmouseout="this.style.backgroundColor='#2c3e50'">
                         <td style="padding: 8px; border: 1px solid #34495e;"><strong style="color: #3498db;">${numeroParte}</strong></td>
                         <td style="padding: 8px; border: 1px solid #34495e;">${especificacion}</td>
-                        <td style="padding: 8px; border: 1px solid #34495e; text-align: center; font-weight: bold; color: #e67e22;">${cantidadTotal}</td>
-                        <td style="padding: 8px; border: 1px solid #34495e; text-align: center;">${unidad}</td>
-                        <td style="padding: 8px; border: 1px solid #34495e; text-align: center;">
-                            <button class="material-btn small" onclick="event.stopPropagation(); transferirComponenteAFormulario('${numeroParte}', '${especificacion}')" style="padding: 4px 8px; font-size: 10px; background-color: #27ae60; color: white; border: none; border-radius: 3px; cursor: pointer;">
-                                Usar
-                            </button>
-                        </td>
+                        <td style="padding: 8px; border: 1px solid #34495e; text-align: center; font-weight: bold; color: #95a5a6;">${cantidadTotal}</td>
+                        <td style="padding: 8px; border: 1px solid #34495e; text-align: center; font-weight: bold; color: #3498db;">${cantidadPlanificada}</td>
+                        <td style="padding: 8px; border: 1px solid #34495e; text-align: center; font-weight: bold; color: ${colorFaltantes};">${faltantes}</td>
                     </tr>
                 `;
             });
@@ -1080,7 +1408,7 @@
         }
 
         // Función para seleccionar un componente y mostrar detalles en la segunda tabla
-        async function seleccionarComponenteBOM(index, numeroParte, descripcion, cantidadRequerida) {
+        async function seleccionarComponenteBOM(index, numeroParte, descripcion, cantidadRequerida, cantidadPlanificada) {
             const tbody2 = document.getElementById('tabla2BOM');
             if (!tbody2) return;
 
@@ -1191,6 +1519,35 @@
             if (tbody2) {
                 tbody2.innerHTML = '<tr><td colspan="6" class="no-data" style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;">Seleccione un componente de la tabla izquierda</td></tr>';
             }
+        }
+
+        // Función para actualizar las cantidades del plan
+        function actualizarCantidadesPlan() {
+            console.log('🔧 DEBUG: Actualizando cantidades del plan...');
+            
+            const tbody1 = document.getElementById('tabla1BOM');
+            if (!tbody1) return;
+            
+            const filas = tbody1.querySelectorAll('tr');
+            const planCantidad = parseFloat(document.getElementById('plan_cantidad')?.value || 1);
+            
+            // OPTIMIZACIÓN: Actualizar solo las columnas de plan y faltantes sin recargar todo
+            filas.forEach(fila => {
+                const celdaCantidadTotal = fila.querySelector('td:nth-child(3)');
+                const celdaCantidadPlan = fila.querySelector('td:nth-child(4)');
+                const celdaFaltantes = fila.querySelector('td:nth-child(5)');
+                
+                if (celdaCantidadTotal && celdaCantidadPlan && celdaFaltantes) {
+                    const cantidadTotal = parseFloat(celdaCantidadTotal.textContent) || 0;
+                    const cantidadPlanificada = cantidadTotal * planCantidad;
+                    
+                    // Actualizar columna de cantidad planificada
+                    celdaCantidadPlan.textContent = cantidadPlanificada;
+                }
+            });
+            
+            // 🚀 ULTRA-RÁPIDO: Usar función instantánea para faltantes
+            actualizarFaltantesBOMInstantaneo();
         }
 
         async function buscarMaterialPorCodigo(codigo) {

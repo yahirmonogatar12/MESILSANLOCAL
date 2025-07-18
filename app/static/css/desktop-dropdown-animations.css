@@ -1,0 +1,97 @@
+/* ============================================= */
+/* ANIMACIÓN SIMPLE PARA FLECHAS EN DESKTOP     */
+/* ============================================= */
+
+/* Solo para dispositivos desktop */
+@media (min-width: 769px) {
+  
+  /* DROPDOWNS DESPLEGADOS POR DEFECTO EN PC - SIN FORZAR */
+  .sidebar-dropdown-list.collapse:not(.collapsed-by-user) {
+    display: block;
+    height: auto;
+    max-height: none;
+    opacity: 1;
+  }
+  
+  /* Permitir que se cierren cuando el usuario lo desee */
+  .sidebar-dropdown-list.collapse.collapsed-by-user {
+    display: none;
+  }
+  
+  /* Buscar flechas en diferentes elementos comunes */
+  .sidebar-dropdown-btn .caret,
+  .sidebar-dropdown-btn [class*="chevron"],
+  .sidebar-dropdown-btn [class*="arrow"],
+  .sidebar-dropdown-btn i,
+  .sidebar-dropdown-btn::after {
+    transition: transform 0.3s ease;
+    transform-origin: center;
+    display: inline-block;
+    /* Por defecto rotadas (desplegadas) */
+    transform: rotate(180deg);
+  }
+  
+  /* Cuando se cierra manualmente, volver flecha a posición normal */
+  .sidebar-dropdown-btn[aria-expanded="false"] .caret,
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="chevron"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="arrow"],
+  .sidebar-dropdown-btn[aria-expanded="false"] i,
+  .sidebar-dropdown-btn[aria-expanded="false"]::after {
+    transform: rotate(0deg);
+  }
+  
+  /* Cuando se abre de nuevo */
+  .sidebar-dropdown-btn[aria-expanded="true"] .caret,
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="chevron"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="arrow"],
+  .sidebar-dropdown-btn[aria-expanded="true"] i,
+  .sidebar-dropdown-btn[aria-expanded="true"]::after {
+    transform: rotate(180deg);
+  }
+  
+  /* Selectores universales para cualquier flecha */
+  .sidebar-dropdown-btn .bi,
+  .sidebar-dropdown-btn .fa,
+  .sidebar-dropdown-btn [class*="down"],
+  .sidebar-dropdown-btn [class*="Down"],
+  .sidebar-dropdown-btn [class*="chevron"],
+  .sidebar-dropdown-btn [class*="Chevron"],
+  .sidebar-dropdown-btn [class*="caret"],
+  .sidebar-dropdown-btn [class*="Caret"],
+  .sidebar-dropdown-btn [class*="arrow"],
+  .sidebar-dropdown-btn [class*="Arrow"] {
+    transition: transform 0.3s ease;
+    transform-origin: center;
+    /* Por defecto desplegadas */
+    transform: rotate(180deg);
+  }
+  
+  /* Cuando se cierra */
+  .sidebar-dropdown-btn[aria-expanded="false"] .bi,
+  .sidebar-dropdown-btn[aria-expanded="false"] .fa,
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="down"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="Down"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="chevron"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="Chevron"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="caret"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="Caret"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="arrow"],
+  .sidebar-dropdown-btn[aria-expanded="false"] [class*="Arrow"] {
+    transform: rotate(0deg);
+  }
+  
+  /* Cuando se abre de nuevo */
+  .sidebar-dropdown-btn[aria-expanded="true"] .bi,
+  .sidebar-dropdown-btn[aria-expanded="true"] .fa,
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="down"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="Down"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="chevron"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="Chevron"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="caret"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="Caret"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="arrow"],
+  .sidebar-dropdown-btn[aria-expanded="true"] [class*="Arrow"] {
+    transform: rotate(180deg);
+  }
+  
+}
