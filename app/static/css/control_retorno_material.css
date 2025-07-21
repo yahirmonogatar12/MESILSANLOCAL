@@ -1,0 +1,546 @@
+/* Estilos específicos para Control de Material de Retorno que complementan style.css */
+/* IDs únicos: #control-retorno-container para evitar conflictos */
+
+        /* Sección de escaneo dentro del toolbar del medio */
+        #control-retorno-container .material-toolbar .scan-field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-right: 20px;
+            max-width: 300px;
+        }
+
+        #control-retorno-container .material-toolbar .scan-field-group label {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+
+        #control-retorno-container .material-toolbar .scan-field-group input {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            background-color: rgba(255,255,255,0.9);
+            color: #2c3e50;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            min-width: 250px;
+        }
+
+        #control-retorno-container .material-toolbar .scan-field-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            background-color: #fff;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+        }
+
+        #control-retorno-container .material-toolbar .scan-field-group input::placeholder {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        /* Contenedor principal */
+        #control-retorno-container .material-container {
+            font-family: 'LG regular', sans-serif;
+            background-color: #32323E;
+            color: lightgray;
+            min-height: 100vh;
+            padding: 5px;
+        }
+
+        /* Botonera */
+        #control-retorno-container .material-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+            padding: 15px;
+            background-color: #34334E;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: #20688C 1px solid;
+            border-radius: 6px;
+        }
+
+        /* Contenedor izquierdo para el campo de escaneo */
+        #control-retorno-container .material-toolbar .scan-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Contenedor derecho para los checkboxes */
+        #control-retorno-container .material-toolbar .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Color especial para el contenedor de en medio */
+        #control-retorno-container .material-toolbar:nth-of-type(2) {
+            background-color: #44324b;
+        }
+
+        /* Contenedor de rango de fechas */
+        #control-retorno-container .date-range-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #control-retorno-container .date-range-container label {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        #control-retorno-container .date-range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #control-retorno-container .date-input {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #5a6c7d;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #333;
+            min-width: 140px;
+        }
+
+        #control-retorno-container .date-separator {
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        /* Contenedor de botones de acción */
+        #control-retorno-container .material-action-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #control-retorno-container .material-btn {
+            padding: 8px 16px;  
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #3C3940;
+            border: #20688C 1px solid;
+        }
+
+        #control-retorno-container .material-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        #control-retorno-container .material-btn-primary {
+            background-color: #3498db;
+        }
+
+        #control-retorno-container .material-btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+        #control-retorno-container .material-btn-secondary {
+            background-color: #456636;
+        }
+
+        #control-retorno-container .material-btn-secondary:hover {
+            background-color: #5a8644;
+        }
+
+        #control-retorno-container .material-btn-info {
+            background-color: #17a2b8;
+        }
+
+        #control-retorno-container .material-btn-info:hover {
+            background-color: #138496;
+        }
+
+        #control-retorno-container .material-btn-success {
+            background-color: #28a745;
+        }
+
+        #control-retorno-container .material-btn-success:hover {
+            background-color: #218838;
+        }
+
+        #control-retorno-container .material-btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        #control-retorno-container .material-btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        #control-retorno-container .material-btn-danger {
+            background-color: #dc3545;
+        }
+
+        #control-retorno-container .material-btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        #control-retorno-container .material-btn-small {
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+
+        /* Formulario con diseño consistente */
+        #control-retorno-container .material-form-section {
+            background-color: #44324b;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border: 1px solid #5a6c7d;
+        }
+        
+        #control-retorno-container .material-form-row {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 12px;
+            align-items: end;
+        }
+
+        #control-retorno-container .material-form-row.single {
+            grid-template-columns: 1fr;
+        }
+
+        #control-retorno-container .material-form-row.with-button {
+            grid-template-columns: 1fr 2fr auto;
+        }
+
+        #control-retorno-container .material-form-row.three-column {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        
+        #control-retorno-container .material-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        #control-retorno-container .material-form-group.flex-2 {
+            flex: 2;
+        }
+
+        #control-retorno-container .material-button-cell {
+            display: flex;
+            align-items: end;
+            justify-content: center;
+        }
+        
+        #control-retorno-container .material-form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #ffffff;
+            font-size: 12px;
+            font-family: 'LG regular', sans-serif;
+        }
+        
+        #control-retorno-container .material-form-group input, 
+        #control-retorno-container .material-form-group select,
+        #control-retorno-container .material-form-control {
+            padding: 8px 10px;
+            border: 1px solid #5a6c7d;
+            border-radius: 4px;
+            background-color: #ffffff;
+            color: #333333;
+            font-size: 12px;
+            font-family: 'LG regular', sans-serif;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            box-sizing: border-box;
+            height: 36px;
+        }
+        
+        #control-retorno-container .material-form-group input:focus, 
+        #control-retorno-container .material-form-group select:focus,
+        #control-retorno-container .material-form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        #control-retorno-container .material-form-group input::placeholder,
+        #control-retorno-container .material-form-control::placeholder {
+            color: #999999;
+            font-style: normal;
+        }
+
+        #control-retorno-container .material-form-group input[readonly],
+        #control-retorno-container .material-form-control[readonly] {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        #control-retorno-container .material-form-group select,
+        #control-retorno-container .material-form-control[type="date"] {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 16px;
+            padding-right: 32px;
+        }
+
+        /* Tabla */
+        #control-retorno-container .material-table-container {
+            background-color: #40424F;
+            border-radius: 6px;
+            padding: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        #control-retorno-container .material-table-wrapper {
+            overflow-x: auto;
+        }
+
+        #control-retorno-container .material-data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 11px;
+            background-color: #40424F;
+        }
+
+        #control-retorno-container .material-data-table th {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px 8px;
+            text-align: center;
+            border: 1px solid #34495e;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 11px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        #control-retorno-container .material-data-table td {
+            padding: 8px 6px;
+            text-align: center;
+            border: 1px solid #34495e;
+            background-color: #40424F;
+            color: lightgray;
+            transition: background-color 0.3s;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        #control-retorno-container .material-data-table tr:hover td {
+            background-color: #485563;
+        }
+
+        #control-retorno-container .material-data-table tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        #control-retorno-container .material-data-table tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+
+        #control-retorno-container .material-data-table .checkbox-col {
+            width: 40px;
+            text-align: center;
+        }
+
+        #control-retorno-container .material-data-table input[type="checkbox"] {
+            transform: scale(1.1);
+            cursor: pointer;
+            accent-color: #3498db;
+        }
+
+        #control-retorno-container .material-data-table .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #95a5a6;
+            font-style: italic;
+            background-color: #40424F;
+            font-size: 12px;
+        }
+
+        /* Footer de tabla */
+        #control-retorno-container .material-table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: #34334E;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        #control-retorno-container .table-info {
+            color: lightgray;
+            font-size: 12px;
+        }
+
+        #control-retorno-container .table-pagination {
+            display: flex;
+            gap: 5px;
+        }
+
+        /* Mensajes de estado */
+        #control-retorno-container .material-loading {
+            text-align: center;
+            padding: 25px;
+            color: #3498db;
+            font-size: 14px;
+        }
+
+        #control-retorno-container .material-error {
+            text-align: center;
+            padding: 25px;
+            color: #e74c3c;
+            font-size: 14px;
+        }
+
+        #control-retorno-container .loading-message {
+            text-align: center !important;
+            padding: 25px !important;
+            color: #3498db !important;
+            font-size: 16px !important;
+            animation: pulseRetorno 1.5s ease-in-out infinite alternate;
+        }
+
+        #control-retorno-container .error-message {
+            text-align: center !important;
+            padding: 25px !important;
+            color: #e74c3c !important;
+            font-size: 16px !important;
+        }
+
+        #control-retorno-container .total-info {
+            color: lightgray;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        /* Animación para carga */
+        @keyframes pulseRetorno {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+
+        /* Estilos para el dropdown de búsqueda de materiales */
+        #control-retorno-container .retorno-search-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        #control-retorno-container .retorno-search-dropdown {
+            background-color: #2c3e50;
+            color: lightgray;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 12px;
+            width: 100%;
+            transition: border-color 0.3s;
+            cursor: pointer;
+        }
+
+        #control-retorno-container .retorno-search-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        #control-retorno-container .retorno-search-dropdown::placeholder {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        #control-retorno-container .retorno-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        #control-retorno-container .retorno-dropdown-item {
+            padding: 8px 10px;
+            color: lightgray;
+            cursor: pointer;
+            border-bottom: 1px solid #34495e;
+            transition: background-color 0.2s;
+            font-size: 12px;
+        }
+
+        #control-retorno-container .retorno-dropdown-item:hover {
+            background-color: #3498db;
+            color: white;
+        }
+
+        #control-retorno-container .retorno-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        #control-retorno-container .retorno-dropdown-item.hidden {
+            display: none;
+        }
+
+        /* Estilos para campos de entrada con validación */
+        #control-retorno-container #retorno_codigo_material_recibido:focus {
+            border: 2px solid #27ae60;
+            box-shadow: 0 0 5px rgba(39, 174, 96, 0.3);
+        }
+
+        /* Estilos específicos para campos numéricos */
+        #control-retorno-container input[type="number"] {
+            text-align: right;
+        }
+
+        /* Estilos para indicadores de estado */
+        #control-retorno-container .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        #control-retorno-container .status-success {
+            background-color: #28a745;
+        }
+
+        #control-retorno-container .status-warning {
+            background-color: #ffc107;
+        }
+
+        #control-retorno-container .status-error {
+            background-color: #dc3545;
+        }

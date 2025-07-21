@@ -1,942 +1,119 @@
-<!-- Container principal con estilo del sistema -->
-<div class="registro-material-container">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario General - Control de Material</title>
     
-    <!-- Toolbar principal -->
-    <div class="registro-material-toolbar">
-        <div class="registro-toolbar-left">
-            <h3 class="registro-title">Registro de Material Real</h3>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- CSS externo -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Registro_de_material_real.css') }}">
+</head>
+<body>
+    <div class="material-container">
+        <!-- Header - Toolbar del Material -->
+        <div class="material-toolbar">
+            <button type="button" class="material-btn" onclick="consultarInventarioGeneral()">
+                <i class="fas fa-search"></i>
+                Consultar
+            </button>
+            
+            <button type="button" class="material-btn material-btn-success" onclick="exportarInventarioExcel()">
+                <i class="fas fa-file-excel"></i>
+                Exportar Excel
+            </button>
+            
+            <button type="button" class="material-btn material-btn-warning" onclick="abrirFiltrosInventarioModal()">
+                <i class="fas fa-filter"></i>
+                Filtros Avanzados
+            </button>
+            
+            <button type="button" class="material-btn" onclick="actualizarInventarioGeneral()">
+                <i class="fas fa-sync-alt"></i>
+                Actualizar
+            </button>
+            
+            <button type="button" class="material-btn material-btn-secondary" onclick="reiniciarInventarioSeleccion()">
+                <i class="fas fa-times-circle"></i>
+                Reiniciar Selección
+            </button>
+            
+            <!-- Contador de elementos -->
+            <div class="selection-counter">
+                <i class="fas fa-list"></i>
+                Total: <span id="registroTotalRows" class="count">0</span> | 
+                Seleccionados: <span id="registroSelectedCount" class="count">0</span>
+            </div>
         </div>
-        <div class="registro-toolbar-right">
-            <button class="registro-btn registro-btn-primary" id="registroConsultarBtn" onclick="consultarRegistroMaterial()">
-                <i class="fas fa-search"></i> Consultar
-            </button>
-            <button class="registro-btn registro-btn-secondary" id="registroExportarBtn" onclick="exportarRegistroExcel()">
-                <i class="fas fa-file-excel"></i> Exportar Excel
-            </button>
-            <button class="registro-btn registro-btn-info" id="registroImportarBtn" onclick="abrirRegistroImportModal()">
-                <i class="fas fa-file-import"></i> Importar Excel
-            </button>
-            <button class="registro-btn registro-btn-orange" id="registroReiniciarBtn" onclick="reiniciarRegistroSeleccion()">
-                <i class="fas fa-undo"></i> Reiniciar Selección
-            </button>
-            <button class="registro-btn registro-btn-purple" id="registroAplicacionBtn" onclick="abrirRegistroInventarioModal()">
-                <i class="fas fa-clipboard-check"></i> Aplicación de Inventario
-            </button>
-        </div>
-    </div>
 
-    <!-- Contenido principal -->
-    <div class="registro-form-section">
-        <div class="registro-table-container">
-            <table id="registroMaterialTable" class="registro-table">
+        <!-- Contenedor de la tabla -->
+        <div class="table-container">
+            <table class="inventario-table" id="registroMaterialTable">
                 <thead>
                     <tr>
-                        <th class="registro-checkbox-column">
-                            <input type="checkbox" id="registroSelectAll" class="registro-checkbox" onchange="toggleRegistroSelectAll()">
+                        <th class="inventario-checkbox-column">
+                            <input type="checkbox" id="registroSelectAll" onchange="toggleInventarioSelectAll()">
                         </th>
-                        <th>Código de material</th>
-                        <th>Número de parte</th>
-                        <th>Especificación de material</th>
-                        <th>Código de material recibido</th>
-                        <th>Fecha de recibo</th>
-                        <th>Fecha de fabricación</th>
-                        <th>Cantidad de inventario actual</th>
-                        <th>Fecha de inventario</th>
-                        <th>Cantidad de inventario real</th>
+                        <th>Número de Parte</th>
+                        <th>Código Material</th>
+                        <th>Especificación</th>
+                        <th>Remanente</th>
+                        <th>Entradas</th>
+                        <th>Salidas</th>
+                        <th>Última Actualización</th>
+                        <th>Fecha Creación</th>
                     </tr>
                 </thead>
                 <tbody id="registroMaterialTableBody">
-                    <!-- Los datos se cargarán dinámicamente -->
+                    <!-- Los datos se cargarán aquí dinámicamente -->
+                    <tr>
+                        <td colspan="9" class="loading-row">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Inicializando inventario general...
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
-        
-        <div class="registro-table-footer">
-            <div class="registro-footer-left">
-                <span>Total Registros: <span id="registroTotalRows">0</span></span>
-            </div>
-            <div class="registro-footer-right">
-                <span>Seleccionados: <span id="registroSelectedCount">0</span></span>
+
+        <!-- Modal para Filtros Avanzados -->
+        <div id="registroImportModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="cerrarFiltrosInventarioModal()">&times;</span>
+                <h2><i class="fas fa-filter"></i> Filtros Avanzados de Inventario</h2>
+                
+                <div class="form-group">
+                    <label for="filtroNumeroParte">Número de Parte:</label>
+                    <input type="text" id="filtroNumeroParte" placeholder="Buscar por número de parte...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="filtroPropiedad">Propiedad del Material:</label>
+                    <input type="text" id="filtroPropiedad" placeholder="Buscar por propiedad...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="filtroCantidadMinima">Cantidad Mínima:</label>
+                    <input type="number" id="filtroCantidadMinima" min="0" value="0">
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="material-btn material-btn-success" onclick="aplicarFiltrosInventario()">
+                        <i class="fas fa-check"></i>
+                        Aplicar Filtros
+                    </button>
+                    <button type="button" class="material-btn material-btn-secondary" onclick="limpiarFiltrosInventario()">
+                        <i class="fas fa-broom"></i>
+                        Limpiar Filtros
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Modal para importar Excel -->
-    <div id="registroImportModal" class="registro-modal">
-        <div class="registro-modal-content">
-            <div class="registro-modal-header">
-                <h3>Importar archivo Excel</h3>
-                <button class="registro-modal-close" onclick="cerrarRegistroImportModal()">&times;</button>
-            </div>
-            <div class="registro-modal-body">
-                <div class="registro-form-group">
-                    <label for="registroFileInput">Seleccionar archivo:</label>
-                    <input type="file" id="registroFileInput" accept=".xlsx,.xls,.csv" class="registro-file-input">
-                </div>
-                <div class="registro-modal-actions">
-                    <button class="registro-btn registro-btn-primary" onclick="procesarRegistroArchivoImportado()">
-                        <i class="fas fa-upload"></i> Cargar archivo
-                    </button>
-                    <button class="registro-btn registro-btn-secondary" onclick="cerrarRegistroImportModal()">
-                        <i class="fas fa-times"></i> Cancelar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Modal para aplicación de inventario -->
-    <div id="registroInventarioModal" class="registro-modal">
-        <div class="registro-modal-content">
-            <div class="registro-modal-header">
-                <h3>Aplicación de Inventario</h3>
-                <button class="registro-modal-close" onclick="cerrarRegistroInventarioModal()">&times;</button>
-            </div>
-            <div class="registro-modal-body">
-                <form id="registroInventarioForm" onsubmit="aplicarRegistroInventario(event)">
-                    <div class="registro-form-group">
-                        <label for="registroFechaInventario">Fecha de Inventario:</label>
-                        <input type="date" id="registroFechaInventario" required class="registro-input">
-                    </div>
-                    <div class="registro-form-group">
-                        <label for="registroCantidadInventario">Cantidad de Inventario:</label>
-                        <input type="number" id="registroCantidadInventario" min="0" required class="registro-input">
-                    </div>
-                    <div class="registro-modal-actions">
-                        <button type="submit" class="registro-btn registro-btn-primary">
-                            <i class="fas fa-check"></i> Aplicar
-                        </button>
-                        <button type="button" class="registro-btn registro-btn-secondary" onclick="cerrarRegistroInventarioModal()">
-                            <i class="fas fa-times"></i> Cancelar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-<!-- JavaScript específico adaptado al sistema -->
-<script>
-    // Variables globales para el registro de material
-    let registroMaterialData = [];
-    let registroSelectedItems = new Set();
-
-    // Datos de ejemplo para el registro de material
-    const registroEjemploData = [
-        {
-            id: 1,
-            codigoMaterial: "0DR5D00308A",
-            numeroParte: "0DR5D00308A",
-            especificacion: "DIODO RECTIFICADOR",
-            codigoRecibido: "0DR5D00308A/2402...",
-            fechaRecibo: "2024-02-23",
-            fechaFabricacion: "2024-02-23",
-            cantidadActual: 1000,
-            fechaInventario: "2025-07-18",
-            cantidadReal: 950
-        },
-        {
-            id: 2,
-            codigoMaterial: "M3720103557",
-            numeroParte: "M3720103557",
-            especificacion: "CAPACITOR ELECTROLITICO",
-            codigoRecibido: "M3720103557/2504...",
-            fechaRecibo: "2025-04-28",
-            fechaFabricacion: "2025-04-28",
-            cantidadActual: 864,
-            fechaInventario: "2025-07-18",
-            cantidadReal: 800
-        },
-        {
-            id: 3,
-            codigoMaterial: "M3500103007",
-            numeroParte: "M3500103007",
-            especificacion: "RESISTENCIA CARBON",
-            codigoRecibido: "M3500103007/2410...",
-            fechaRecibo: "2024-10-10",
-            fechaFabricacion: "2024-10-10",
-            cantidadActual: 500,
-            fechaInventario: "2025-07-18",
-            cantidadReal: 500
-        },
-        {
-            id: 4,
-            codigoMaterial: "M3104200082",
-            numeroParte: "M3104200082",
-            especificacion: "TRANSISTOR NPN",
-            codigoRecibido: "M3104200082/2504...",
-            fechaRecibo: "2025-04-28",
-            fechaFabricacion: "2025-04-28",
-            cantidadActual: 500,
-            fechaInventario: "2025-07-18",
-            cantidadReal: 480
-        },
-        {
-            id: 5,
-            codigoMaterial: "M20133100051",
-            numeroParte: "M20133100051",
-            especificacion: "CIRCUITO INTEGRADO",
-            codigoRecibido: "M20133100051/250...",
-            fechaRecibo: "2025-04-28",
-            fechaFabricacion: "2025-04-28",
-            cantidadActual: 500,
-            fechaInventario: "2025-07-18",
-            cantidadReal: 520
-        }
-    ];
-
-    // Función principal de inicialización
-    function initRegistroMaterial() {
-        console.log('🔧 Inicializando Registro de Material Real');
-        
-        // Configurar fecha por defecto en el modal
-        const fechaInventario = document.getElementById('registroFechaInventario');
-        if (fechaInventario) {
-            const today = new Date().toISOString().split('T')[0];
-            fechaInventario.value = today;
-        }
-        
-        // Cargar datos iniciales
-        consultarRegistroMaterial();
-        
-        // Configurar eventos de los modales
-        setupRegistroModalEvents();
-        
-        console.log('✅ Registro de Material Real inicializado');
-    }
-
-    // Función para consultar registro de material
-    function consultarRegistroMaterial() {
-        console.log('📊 Consultando registro de material...');
-        const tableBody = document.getElementById('registroMaterialTableBody');
-        const totalRows = document.getElementById('registroTotalRows');
-        
-        if (!tableBody) {
-            console.error('❌ Tabla de registro no encontrada');
-            return;
-        }
-        
-        // Mostrar loading
-        tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: #b0b0b0;">Cargando datos...</td></tr>';
-        
-        // Simular carga de datos
-        setTimeout(() => {
-            registroMaterialData = [...registroEjemploData];
-            renderizarRegistroTabla();
-            
-            // Actualizar total
-            if (totalRows) {
-                totalRows.textContent = registroMaterialData.length;
-            }
-            
-            console.log(`✅ Cargados ${registroMaterialData.length} registros de material`);
-        }, 800);
-    }
-
-    // Función para renderizar la tabla
-    function renderizarRegistroTabla() {
-        const tableBody = document.getElementById('registroMaterialTableBody');
-        if (!tableBody) return;
-        
-        tableBody.innerHTML = registroMaterialData.map(item => {
-            const isSelected = registroSelectedItems.has(item.id);
-            const diferencia = item.cantidadReal - item.cantidadActual;
-            const diferenciaClass = diferencia > 0 ? 'registro-positive' : diferencia < 0 ? 'registro-negative' : '';
-            
-            return `
-                <tr class="${isSelected ? 'registro-selected' : ''}">
-                    <td class="registro-checkbox-column">
-                        <input type="checkbox" class="registro-checkbox registro-row-checkbox" 
-                               data-id="${item.id}" ${isSelected ? 'checked' : ''} 
-                               onchange="toggleRegistroRowSelection(${item.id})">
-                    </td>
-                    <td>${item.codigoMaterial}</td>
-                    <td>${item.numeroParte}</td>
-                    <td>${item.especificacion}</td>
-                    <td>${item.codigoRecibido}</td>
-                    <td>${item.fechaRecibo}</td>
-                    <td>${item.fechaFabricacion}</td>
-                    <td>${item.cantidadActual.toLocaleString()}</td>
-                    <td>${item.fechaInventario}</td>
-                    <td class="${diferenciaClass}">${item.cantidadReal.toLocaleString()}</td>
-                </tr>
-            `;
-        }).join('');
-        
-        actualizarRegistroContadorSeleccionados();
-    }
-
-    // Función para toggle selección de todas las filas
-    function toggleRegistroSelectAll() {
-        const selectAllCheckbox = document.getElementById('registroSelectAll');
-        const isChecked = selectAllCheckbox.checked;
-        
-        if (isChecked) {
-            // Seleccionar todos
-            registroMaterialData.forEach(item => {
-                registroSelectedItems.add(item.id);
-            });
-        } else {
-            // Deseleccionar todos
-            registroSelectedItems.clear();
-        }
-        
-        renderizarRegistroTabla();
-        mostrarRegistroNotificacion(
-            isChecked ? 'Todos los elementos seleccionados' : 'Selección eliminada',
-            'info'
-        );
-    }
-
-    // Función para toggle selección de fila individual
-    function toggleRegistroRowSelection(id) {
-        if (registroSelectedItems.has(id)) {
-            registroSelectedItems.delete(id);
-        } else {
-            registroSelectedItems.add(id);
-        }
-        
-        renderizarRegistroTabla();
-        
-        // Actualizar checkbox "seleccionar todo"
-        const selectAllCheckbox = document.getElementById('registroSelectAll');
-        if (selectAllCheckbox) {
-            selectAllCheckbox.checked = registroSelectedItems.size === registroMaterialData.length;
-            selectAllCheckbox.indeterminate = registroSelectedItems.size > 0 && registroSelectedItems.size < registroMaterialData.length;
-        }
-    }
-
-    // Función para actualizar contador de seleccionados
-    function actualizarRegistroContadorSeleccionados() {
-        const selectedCount = document.getElementById('registroSelectedCount');
-        if (selectedCount) {
-            selectedCount.textContent = registroSelectedItems.size;
-        }
-    }
-
-    // Función para exportar a Excel
-    function exportarRegistroExcel() {
-        console.log('📄 Exportando registro de material a Excel...');
-        
-        if (!registroMaterialData || registroMaterialData.length === 0) {
-            mostrarRegistroNotificacion('No hay datos para exportar', 'warning');
-            return;
-        }
-        
-        // Crear CSV con los datos seleccionados o todos si no hay selección
-        const datosParaExportar = registroSelectedItems.size > 0 
-            ? registroMaterialData.filter(item => registroSelectedItems.has(item.id))
-            : registroMaterialData;
-        
-        let csv = 'Código de material,Número de parte,Especificación de material,Código de material recibido,Fecha de recibo,Fecha de fabricación,Cantidad de inventario actual,Fecha de inventario,Cantidad de inventario real\n';
-        
-        datosParaExportar.forEach(item => {
-            csv += `"${item.codigoMaterial}","${item.numeroParte}","${item.especificacion}","${item.codigoRecibido}","${item.fechaRecibo}","${item.fechaFabricacion}","${item.cantidadActual}","${item.fechaInventario}","${item.cantidadReal}"\n`;
-        });
-        
-        // Descargar archivo
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `registro_material_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        mostrarRegistroNotificacion(`Exportados ${datosParaExportar.length} registros`, 'success');
-    }
-
-    // Función para reiniciar selección
-    function reiniciarRegistroSeleccion() {
-        registroSelectedItems.clear();
-        renderizarRegistroTabla();
-        
-        // Actualizar checkbox "seleccionar todo"
-        const selectAllCheckbox = document.getElementById('registroSelectAll');
-        if (selectAllCheckbox) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
-        
-        mostrarRegistroNotificacion('Selección reiniciada', 'info');
-    }
-
-    // Funciones para modales
-    function abrirRegistroImportModal() {
-        const modal = document.getElementById('registroImportModal');
-        if (modal) {
-            modal.style.display = 'block';
-        }
-    }
-
-    function cerrarRegistroImportModal() {
-        const modal = document.getElementById('registroImportModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-        
-        // Limpiar input de archivo
-        const fileInput = document.getElementById('registroFileInput');
-        if (fileInput) {
-            fileInput.value = '';
-        }
-    }
-
-    function abrirRegistroInventarioModal() {
-        if (registroSelectedItems.size === 0) {
-            mostrarRegistroNotificacion('Debe seleccionar al menos un elemento', 'warning');
-            return;
-        }
-        
-        const modal = document.getElementById('registroInventarioModal');
-        if (modal) {
-            modal.style.display = 'block';
-        }
-    }
-
-    function cerrarRegistroInventarioModal() {
-        const modal = document.getElementById('registroInventarioModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-        
-        // Limpiar formulario
-        const form = document.getElementById('registroInventarioForm');
-        if (form) {
-            form.reset();
-        }
-    }
-
-    // Función para procesar archivo importado
-    function procesarRegistroArchivoImportado() {
-        const fileInput = document.getElementById('registroFileInput');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            mostrarRegistroNotificacion('Debe seleccionar un archivo', 'warning');
-            return;
-        }
-        
-        console.log('📁 Procesando archivo:', file.name);
-        
-        // Aquí se implementaría la lógica real de procesamiento de archivos
-        // Por ahora simulamos
-        mostrarRegistroNotificacion('Procesando archivo... (simulado)', 'info');
-        
-        setTimeout(() => {
-            mostrarRegistroNotificacion('Archivo procesado exitosamente', 'success');
-            cerrarRegistroImportModal();
-            consultarRegistroMaterial(); // Recargar datos
-        }, 2000);
-    }
-
-    // Función para aplicar inventario
-    function aplicarRegistroInventario(event) {
-        event.preventDefault();
-        
-        const fechaInventario = document.getElementById('registroFechaInventario').value;
-        const cantidadInventario = document.getElementById('registroCantidadInventario').value;
-        
-        if (!fechaInventario || !cantidadInventario) {
-            mostrarRegistroNotificacion('Todos los campos son requeridos', 'warning');
-            return;
-        }
-        
-        console.log('✅ Aplicando inventario:', {
-            fecha: fechaInventario,
-            cantidad: cantidadInventario,
-            seleccionados: Array.from(registroSelectedItems)
-        });
-        
-        // Aquí se implementaría la lógica real de aplicación
-        // Por ahora simulamos
-        mostrarRegistroNotificacion('Inventario aplicado exitosamente', 'success');
-        
-        cerrarRegistroInventarioModal();
-        consultarRegistroMaterial(); // Recargar datos
-    }
-
-    // Configurar eventos de modales
-    function setupRegistroModalEvents() {
-        // Cerrar modales al hacer clic fuera
-        document.addEventListener('click', function(e) {
-            const importModal = document.getElementById('registroImportModal');
-            const inventarioModal = document.getElementById('registroInventarioModal');
-            
-            if (e.target === importModal) {
-                cerrarRegistroImportModal();
-            }
-            if (e.target === inventarioModal) {
-                cerrarRegistroInventarioModal();
-            }
-        });
-        
-        // Cerrar modales con Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                cerrarRegistroImportModal();
-                cerrarRegistroInventarioModal();
-            }
-        });
-    }
-
-    // Función para mostrar notificaciones
-    function mostrarRegistroNotificacion(mensaje, tipo = 'info') {
-        const colors = {
-            success: '#27ae60',
-            warning: '#f39c12',
-            error: '#e74c3c',
-            info: '#3498db'
-        };
-        
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: ${colors[tipo]};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 2000;
-            font-family: 'LG regular', sans-serif;
-            font-size: 14px;
-            animation: registroSlideIn 0.3s ease;
-            max-width: 350px;
-        `;
-        notification.textContent = mensaje;
-        
-        // Agregar animación si no existe
-        if (!document.querySelector('style[data-registro-notifications]')) {
-            const style = document.createElement('style');
-            style.setAttribute('data-registro-notifications', 'true');
-            style.textContent = `
-                @keyframes registroSlideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes registroSlideOut {
-                    from { transform: translateX(0); opacity: 1; }
-                    to { transform: translateX(100%); opacity: 0; }
-                }
-                .registro-positive { color: #27ae60; font-weight: bold; }
-                .registro-negative { color: #e74c3c; font-weight: bold; }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        document.body.appendChild(notification);
-        
-        // Remover después de 3 segundos
-        setTimeout(() => {
-            notification.style.animation = 'registroSlideOut 0.3s ease';
-            setTimeout(() => {
-                if (document.body.contains(notification)) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 3000);
-    }
-
-    // Inicialización cuando se carga el contenido
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(initRegistroMaterial, 100);
-    });
-    
-    // Hacer funciones disponibles globalmente
-    window.initRegistroMaterial = initRegistroMaterial;
-    window.consultarRegistroMaterial = consultarRegistroMaterial;
-    window.exportarRegistroExcel = exportarRegistroExcel;
-    window.reiniciarRegistroSeleccion = reiniciarRegistroSeleccion;
-    window.abrirRegistroImportModal = abrirRegistroImportModal;
-    window.cerrarRegistroImportModal = cerrarRegistroImportModal;
-    window.abrirRegistroInventarioModal = abrirRegistroInventarioModal;
-    window.cerrarRegistroInventarioModal = cerrarRegistroInventarioModal;
-    window.procesarRegistroArchivoImportado = procesarRegistroArchivoImportado;
-    window.aplicarRegistroInventario = aplicarRegistroInventario;
-    window.toggleRegistroSelectAll = toggleRegistroSelectAll;
-    window.toggleRegistroRowSelection = toggleRegistroRowSelection;
-    
-    // Ejecutar inicialización inmediatamente si el DOM ya está listo
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initRegistroMaterial);
-    } else {
-        initRegistroMaterial();
-    }
-</script>
-
-<!-- Estilos específicos adaptados al estilo del sistema -->
-<style>
-    /* Variables CSS para consistencia */
-    :root {
-        --registro-primary-bg: #32323E;
-        --registro-secondary-bg: #2D363D;
-        --registro-tertiary-bg: #44324A;
-        --registro-border-color: #20688C;
-        --registro-text-color: lightgray;
-        --registro-button-bg: #636779;
-        --registro-button-hover: #949898;
-        --registro-primary-blue: #3498db;
-        --registro-success-green: #27ae60;
-        --registro-info-blue: #3498db;
-        --registro-purple-accent: #502696;
-        --registro-orange-accent: #833C0D;
-    }
-
-    /* Container principal */
-    .registro-material-container {
-        font-family: 'LG regular', 'Roboto', sans-serif;
-        background-color: var(--registro-primary-bg);
-        color: var(--registro-text-color);
-        min-height: 100vh;
-        padding: 5px;
-        transform: scale(0.9);
-        transform-origin: top left;
-        width: 111.11%;
-    }
-
-    /* Toolbar principal */
-    .registro-material-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 15px;
-        padding: 8px 15px;
-        background-color: #33334D;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        border: var(--registro-border-color) 1px solid;
-        border-radius: 2px;
-        margin-bottom: 6px;
-        flex-wrap: wrap;
-    }
-
-    .registro-toolbar-left {
-        display: flex;
-        align-items: center;
-    }
-
-    .registro-title {
-        font-size: 16px;
-        color: var(--registro-text-color);
-        margin: 0;
-        font-weight: 500;
-    }
-
-    .registro-toolbar-right {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    /* Botones del sistema */
-    .registro-btn {
-        padding: 6px 12px;
-        border: var(--registro-border-color) 1px solid;
-        border-radius: 4px;
-        background-color: var(--registro-button-bg);
-        color: white;
-        cursor: pointer;
-        font-size: 12px;
-        transition: all 0.3s;
-        font-weight: 500;
-        min-width: 70px;
-        font-family: 'LG regular', sans-serif;
-        height: 32px;
-        line-height: 1.2;
-        box-shadow: none;
-        text-shadow: none;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        justify-content: center;
-    }
-
-    .registro-btn:hover {
-        background-color: var(--registro-button-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
-    }
-
-    .registro-btn-primary {
-        background-color: var(--registro-primary-blue);
-    }
-
-    .registro-btn-secondary {
-        background-color: var(--registro-success-green);
-    }
-
-    .registro-btn-info {
-        background-color: var(--registro-info-blue);
-    }
-
-    .registro-btn-orange {
-        background-color: var(--registro-orange-accent);
-    }
-
-    .registro-btn-purple {
-        background-color: var(--registro-purple-accent);
-    }
-
-    /* Sección de formulario */
-    .registro-form-section {
-        background-color: var(--registro-secondary-bg);
-        border-radius: 2px;
-        margin-bottom: 6px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        border: 1px solid var(--registro-border-color);
-        padding: 15px;
-    }
-
-    /* Contenedor de tabla */
-    .registro-table-container {
-        background-color: var(--registro-tertiary-bg);
-        overflow-x: auto;
-        border-radius: 4px;
-        border: 1px solid var(--registro-border-color);
-        margin-bottom: 15px;
-    }
-
-    .registro-table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 1200px;
-        font-size: 12px;
-    }
-
-    .registro-table thead {
-        background-color: #40424f;
-    }
-
-    .registro-table th {
-        padding: 10px 8px;
-        text-align: left;
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--registro-text-color);
-        border-bottom: 2px solid var(--registro-border-color);
-        white-space: nowrap;
-    }
-
-    .registro-checkbox-column {
-        width: 40px;
-        text-align: center;
-    }
-
-    .registro-table tbody tr {
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        transition: background-color 0.2s ease;
-    }
-
-    .registro-table tbody tr:nth-child(even) {
-        background-color: rgba(52,51,78,0.3);
-    }
-
-    .registro-table tbody tr:hover {
-        background-color: rgba(52,152,219,0.2);
-    }
-
-    .registro-table tbody tr.registro-selected {
-        background-color: rgba(39,174,96,0.3);
-    }
-
-    .registro-table td {
-        padding: 8px;
-        font-size: 12px;
-        color: var(--registro-text-color);
-        white-space: nowrap;
-    }
-
-    /* Checkbox styling */
-    .registro-checkbox {
-        transform: scale(1.1);
-        accent-color: var(--registro-success-green);
-        cursor: pointer;
-    }
-
-    /* Footer de tabla */
-    .registro-table-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: #40424f;
-        padding: 10px 15px;
-        font-size: 13px;
-        color: var(--registro-text-color);
-        border-top: 1px solid var(--registro-border-color);
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .registro-footer-left,
-    .registro-footer-right {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-
-    /* Modales */
-    .registro-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.8);
-    }
-
-    .registro-modal-content {
-        background-color: var(--registro-secondary-bg);
-        margin: 5% auto;
-        border: 1px solid var(--registro-border-color);
-        border-radius: 8px;
-        width: 90%;
-        max-width: 500px;
-        overflow: hidden;
-    }
-
-    .registro-modal-header {
-        background-color: #40424f;
-        padding: 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--registro-border-color);
-    }
-
-    .registro-modal-header h3 {
-        margin: 0;
-        color: var(--registro-text-color);
-        font-size: 16px;
-    }
-
-    .registro-modal-close {
-        background: none;
-        border: none;
-        color: var(--registro-text-color);
-        font-size: 24px;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-    }
-
-    .registro-modal-body {
-        padding: 20px;
-    }
-
-    .registro-form-group {
-        margin-bottom: 15px;
-    }
-
-    .registro-form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-size: 13px;
-        color: var(--registro-text-color);
-        font-weight: 500;
-    }
-
-    .registro-input,
-    .registro-file-input {
-        width: 100%;
-        padding: 8px 12px;
-        background-color: #34334e;
-        border: 1px solid rgba(52,152,219,0.3);
-        color: var(--registro-text-color);
-        border-radius: 4px;
-        font-size: 13px;
-        font-family: 'LG regular', sans-serif;
-    }
-
-    .registro-input:focus,
-    .registro-file-input:focus {
-        outline: none;
-        border-color: var(--registro-primary-blue);
-        box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
-    }
-
-    .registro-modal-actions {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin-top: 20px;
-        flex-wrap: wrap;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .registro-material-container {
-            transform: none;
-            width: 100%;
-            padding: 10px;
-        }
-
-        .registro-material-toolbar {
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .registro-toolbar-left,
-        .registro-toolbar-right {
-            width: 100%;
-            justify-content: center;
-        }
-
-        .registro-toolbar-right {
-            justify-content: stretch;
-        }
-
-        .registro-btn {
-            flex: 1;
-            min-width: auto;
-            font-size: 11px;
-            padding: 5px 8px;
-        }
-
-        .registro-table {
-            font-size: 11px;
-        }
-
-        .registro-table th,
-        .registro-table td {
-            padding: 6px 4px;
-        }
-
-        .registro-table-footer {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .registro-modal-content {
-            width: 95%;
-            margin: 10% auto;
-        }
-
-        .registro-modal-actions {
-            justify-content: stretch;
-        }
-
-        .registro-modal-actions .registro-btn {
-            flex: 1;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .registro-title {
-            font-size: 14px;
-        }
-
-        .registro-btn {
-            font-size: 10px;
-            height: 28px;
-        }
-
-        .registro-toolbar-right {
-            grid-template-columns: repeat(2, 1fr);
-            display: grid;
-            gap: 5px;
-        }
-    }
-</style>
+    <!-- JavaScript externo -->
+    <script src="{{ url_for('static', filename='js/Registro_de_material_real.js') }}"></script>
+</body>
+</html>

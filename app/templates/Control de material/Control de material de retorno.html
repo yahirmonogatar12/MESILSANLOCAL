@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Inventario General</title>
+    <link rel="stylesheet" href="/static/css/control_retorno_material.css">
+    <link rel="stylesheet" href="/static/css/control_retorno_material_responsive.css">
+</head>
+<body>
+    <div id="control-retorno-container">
+        <!-- Formulario de filtros -->
+        <div class="material-form-section">
+            <div class="material-form-row single">
+                <div class="material-form-group">
+                    <label for="inventario_buscar_material">Buscar material (Código o Número de Parte)</label>
+                    <input type="text" class="material-form-control" id="inventario_buscar_material" placeholder="Escanear código o buscar..." onkeydown="procesarBusquedaInventario(event)" autocomplete="off">
+                </div>
+            </div>
+            
+            <div class="material-form-row three-column">
+                <div class="material-form-group">
+                    <label for="inventario_propiedad">Filtrar por Propiedad</label>
+                    <select class="material-form-control" id="inventario_propiedad">
+                        <option value="">Todas las propiedades</option>
+                        <option value="CUSTOMER PROPERTY">CUSTOMER PROPERTY</option>
+                        <option value="ISEMM PROPERTY">ISEMM PROPERTY</option>
+                        <option value="COMMON USE">COMMON USE</option>
+                    </select>
+                </div>
+                <div class="material-form-group">
+                    <label for="inventario_cantidad_min">Cantidad mínima</label>
+                    <input type="number" class="material-form-control" id="inventario_cantidad_min" placeholder="0" min="0" step="0.01">
+                </div>
+                <div class="material-form-group">
+                    <label for="inventario_cantidad_max">Cantidad máxima</label>
+                    <input type="number" class="material-form-control" id="inventario_cantidad_max" placeholder="Sin límite" min="0" step="0.01">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección de controles y botones -->
+        <div class="material-toolbar">
+            <div class="date-range-container">
+                <label>Consulta de Inventario General</label>
+                <div class="inventory-stats">
+                    <span id="inventario_total_items">Total de productos: 0</span>
+                    <span id="inventario_total_valor">Valor total: $ 0.00</span>
+                </div>
+            </div>
+            
+            <div class="material-action-buttons">
+                <button class="material-btn material-btn-info" id="inventario_btn_consultar">
+                    <i class="fas fa-search"></i> Consultar Inventario
+                </button>
+                <button class="material-btn material-btn-success" id="inventario_btn_exportar">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+                <button class="material-btn material-btn-warning" id="inventario_btn_actualizar">
+                    <i class="fas fa-sync-alt"></i> Actualizar
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tabla de inventario -->
+        <div class="material-table-container">
+            <div class="material-table-wrapper">
+                <table class="material-data-table" id="inventario_data_table">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-col">
+                                <input type="checkbox" id="inventario_select_all_checkbox" onchange="toggleAllInventario(this)">
+                            </th>
+                            <th>Número de Parte</th>
+                            <th>Código de Material</th>
+                            <th>Propiedad</th>
+                            <th>Especificación</th>
+                            <th class="cantidad-col">Entradas</th>
+                            <th class="cantidad-col">Salidas</th>
+                            <th class="cantidad-col">Remanente</th>
+                            <th>Fecha Actualización</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventario_table_body">
+                        <tr>
+                            <td colspan="10" class="no-data">
+                                <i class="fas fa-box-open"></i>
+                                Haga clic en "Consultar Inventario" para cargar los datos
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Footer con contador -->
+        <div class="material-table-footer">
+            <div class="table-info">
+                <span id="inventario_row_counter">Total de registros: 0</span>
+            </div>
+            <div class="table-pagination">
+                <div class="pagination-info">
+                    <span id="inventario_pagination_info">Mostrando 0 de 0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función de inicialización del módulo
+        function initControlRetorno() {
+            console.log('🔄 Inicializando Consulta de Inventario General...');
+            
+            // Configurar eventos de los botones
+            setupInventarioEventListeners();
+            
+            // Cargar datos iniciales
+            cargarDatosInventario();
+            
+            console.log('✅ Consulta de Inventario General inicializada');
+        }
+
+        function setupInventarioEventListeners() {
+            // Botón Consultar
+            const btnConsultar = document.getElementById('inventario_btn_consultar');
+            if (btnConsultar) {
+                btnConsultar.addEventListener('click', consultarInventario);
+            }
+
+            // Botón Exportar
+            const btnExportar = document.getElementById('inventario_btn_exportar');
+            if (btnExportar) {
+                btnExportar.addEventListener('click', exportarInventario);
+            }
+
+            // Botón Actualizar
+            const btnActualizar = document.getElementById('inventario_btn_actualizar');
+            if (btnActualizar) {
+                btnActualizar.addEventListener('click', actualizarInventario);
+            }
+
+            // Configurar filtros automáticos
+            setupFiltrosInventario();
+        }
+
+        function procesarBusquedaInventario(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                consultarInventario();
+            }
+        }
+
+        function consultarInventario() {
+            console.log('� Consultando inventario general...');
+            
+            const filtros = {
+                buscar: document.getElementById('inventario_buscar_material').value.trim(),
+                propiedad: document.getElementById('inventario_propiedad').value,
+                cantidadMin: document.getElementById('inventario_cantidad_min').value,
+                cantidadMax: document.getElementById('inventario_cantidad_max').value
+            };
+
+            // Mostrar loader
+            mostrarLoaderInventario();
+            
+            // Llamada real a la API
+            fetch('/api/inventario/consultar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(filtros)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderizarTablaInventario(data.inventario);
+                    actualizarEstadisticas(data.estadisticas);
+                } else {
+                    mostrarError('Error al consultar inventario: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Datos de ejemplo mientras se implementa la API
+                cargarDatosEjemplo();
+            });
+        }
+
+        function cargarDatosEjemplo() {
+            console.log('📦 Cargando datos de ejemplo...');
+            
+            const datosEjemplo = [
+                {
+                    id: 1,
+                    numero_parte: 'P001-RES-10K',
+                    codigo_material: 'MAT001',
+                    propiedad_material: 'ISEMM PROPERTY',
+                    especificacion: 'Resistencia 10K Ohm 1% 1/4W',
+                    cantidad_entradas: 1500.00,
+                    cantidad_salidas: 1200.00,
+                    cantidad_total: 300.00,
+                    fecha_actualizacion: '2025-07-21 14:30:00'
+                },
+                {
+                    id: 2,
+                    numero_parte: 'P002-CAP-100UF',
+                    codigo_material: 'MAT002',
+                    propiedad_material: 'CUSTOMER PROPERTY',
+                    especificacion: 'Capacitor Electrolítico 100uF 25V',
+                    cantidad_entradas: 800.00,
+                    cantidad_salidas: 750.00,
+                    cantidad_total: 50.00,
+                    fecha_actualizacion: '2025-07-21 13:15:00'
+                },
+                {
+                    id: 3,
+                    numero_parte: 'P003-IC-MCU',
+                    codigo_material: 'MAT003',
+                    propiedad_material: 'COMMON USE',
+                    especificacion: 'Microcontrolador ARM Cortex-M4',
+                    cantidad_entradas: 200.00,
+                    cantidad_salidas: 180.00,
+                    cantidad_total: 20.00,
+                    fecha_actualizacion: '2025-07-21 12:00:00'
+                }
+            ];
+            
+            renderizarTablaInventario(datosEjemplo);
+            
+            const estadisticas = {
+                totalItems: datosEjemplo.length,
+                valorTotal: 15750.50
+            };
+            actualizarEstadisticas(estadisticas);
+        }
+
+        function renderizarTablaInventario(datos) {
+            const tbody = document.getElementById('inventario_table_body');
+            const contador = document.getElementById('inventario_row_counter');
+            
+            if (!tbody) return;
+
+            if (datos.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="no-data">
+                            <i class="fas fa-search"></i>
+                            No se encontraron registros con los filtros aplicados
+                        </td>
+                    </tr>
+                `;
+                if (contador) contador.textContent = 'Total de registros: 0';
+                return;
+            }
+
+            tbody.innerHTML = datos.map(item => {
+                const remanente = item.cantidad_total || (item.cantidad_entradas - item.cantidad_salidas);
+                const claseRemanente = remanente <= 0 ? 'cantidad-baja' : remanente < 50 ? 'cantidad-media' : 'cantidad-ok';
+                
+                return `
+                    <tr>
+                        <td class="checkbox-col">
+                            <input type="checkbox" value="${item.id}">
+                        </td>
+                        <td class="numero-parte">${item.numero_parte}</td>
+                        <td>${item.codigo_material}</td>
+                        <td><span class="propiedad-badge ${item.propiedad_material.toLowerCase().replace(' ', '-')}">${item.propiedad_material}</span></td>
+                        <td class="especificacion" title="${item.especificacion}">${item.especificacion}</td>
+                        <td class="cantidad-col cantidad-entradas">${formatearNumero(item.cantidad_entradas)}</td>
+                        <td class="cantidad-col cantidad-salidas">${formatearNumero(item.cantidad_salidas)}</td>
+                        <td class="cantidad-col ${claseRemanente}">${formatearNumero(remanente)}</td>
+                        <td class="fecha">${formatearFecha(item.fecha_actualizacion)}</td>
+                        <td class="acciones">
+                            <button class="material-btn material-btn-small material-btn-info" onclick="verDetalleInventario(${item.id})" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="material-btn material-btn-small material-btn-warning" onclick="verMovimientos(${item.id})" title="Ver Movimientos">
+                                <i class="fas fa-history"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (contador) {
+                contador.textContent = `Total de registros: ${datos.length}`;
+            }
+
+            // Actualizar información de paginación
+            const paginationInfo = document.getElementById('inventario_pagination_info');
+            if (paginationInfo) {
+                paginationInfo.textContent = `Mostrando ${datos.length} de ${datos.length}`;
+            }
+        }
+
+        function actualizarEstadisticas(estadisticas) {
+            const totalItems = document.getElementById('inventario_total_items');
+            const totalValor = document.getElementById('inventario_total_valor');
+            
+            if (totalItems) {
+                totalItems.textContent = `Total de productos: ${estadisticas.totalItems || 0}`;
+            }
+            
+            if (totalValor) {
+                totalValor.textContent = `Valor total: $${formatearNumero(estadisticas.valorTotal || 0)}`;
+            }
+        }
+
+        function mostrarLoaderInventario() {
+            const tbody = document.getElementById('inventario_table_body');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="loading-message">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Consultando inventario...
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function mostrarError(mensaje) {
+            const tbody = document.getElementById('inventario_table_body');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            ${mensaje}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function exportarInventario() {
+            const checkboxes = document.querySelectorAll('#inventario_table_body input[type="checkbox"]:checked');
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            
+            console.log('� Exportando inventario:', ids.length > 0 ? ids : 'todos');
+            
+            // Crear parámetros de exportación
+            const params = new URLSearchParams({
+                tipo: 'inventario_general',
+                formato: 'excel',
+                ids: ids.length > 0 ? ids.join(',') : 'todos'
+            });
+            
+            // Abrir descarga
+            window.open(`/api/inventario/exportar?${params}`, '_blank');
+            
+            // Simulación temporal
+            alert('� Exportación iniciada. El archivo se descargará pronto.');
+        }
+
+        function actualizarInventario() {
+            console.log('🔄 Actualizando inventario...');
+            
+            fetch('/api/inventario/actualizar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Inventario actualizado exitosamente');
+                    consultarInventario(); // Recargar datos
+                } else {
+                    alert('❌ Error al actualizar inventario: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('✅ Inventario actualizado (simulado)');
+                consultarInventario();
+            });
+        }
+
+        function setupFiltrosInventario() {
+            // Filtros automáticos al cambiar valores
+            const filtros = ['inventario_propiedad', 'inventario_cantidad_min', 'inventario_cantidad_max'];
+            
+            filtros.forEach(id => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.addEventListener('change', () => {
+                        // Auto-consultar después de un pequeño delay
+                        setTimeout(consultarInventario, 300);
+                    });
+                }
+            });
+        }
+
+        function toggleAllInventario(checkbox) {
+            const checkboxes = document.querySelectorAll('#inventario_table_body input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        }
+
+        function verDetalleInventario(id) {
+            console.log('👁️ Viendo detalle del inventario ID:', id);
+            // Aquí se podría abrir un modal o navegar a una página de detalle
+            alert(`👁️ Ver detalle del producto ${id} - Funcionalidad por implementar`);
+        }
+
+        function verMovimientos(id) {
+            console.log('📜 Viendo movimientos del inventario ID:', id);
+            // Aquí se podría abrir un historial de movimientos
+            alert(`📜 Ver movimientos del producto ${id} - Funcionalidad por implementar`);
+        }
+
+        function formatearNumero(numero) {
+            return parseFloat(numero || 0).toLocaleString('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function formatearFecha(fecha) {
+            if (!fecha) return '-';
+            const date = new Date(fecha);
+            return date.toLocaleDateString('es-ES') + ' ' + date.toLocaleTimeString('es-ES', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
+
+        function cargarDatosInventario() {
+            // Cargar datos iniciales
+            setTimeout(() => {
+                consultarInventario();
+            }, 500);
+        }
+
+        // Hacer la función de inicialización disponible globalmente
+        window.initControlRetorno = initControlRetorno;
+    </script>
+</body>
+</html>

@@ -1,0 +1,451 @@
+/* ========================================
+   ESTILOS RESPONSIVE PARA CONTROL DE MATERIAL DE RETORNO
+   Archivo: control_retorno_material_responsive.css
+   Propósito: Hacer responsive solo para móviles sin afectar desktop
+   IDs únicos: #control-retorno-container para evitar conflictos
+   ======================================== */
+
+/* ===== BOTONES SOLO PARA MÓVIL ===== */
+/* Ocultar en desktop */
+#control-retorno-container .mobile-only-btn {
+    display: none !important;
+}
+
+/* ESTILOS RESPONSIVE PARA MÓVILES - SOLO DISPOSITIVOS MÓVILES */
+@media (max-width: 768px) {
+    
+    /* ===== MOSTRAR BOTONES SOLO EN MÓVIL ===== */
+    #control-retorno-container .mobile-only-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 8px 12px !important;
+        font-size: 11px !important;
+        min-height: 36px !important;
+        width: auto !important;
+        max-width: 100% !important;
+        border-radius: 4px !important;
+        white-space: nowrap !important;
+        line-height: 1.2 !important;
+        margin: 2px !important;
+    }
+    
+    /* ===== CONTROL DEL DESBORDAMIENTO HORIZONTAL ===== */
+    #control-retorno-container {
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+        padding: 6px !important;
+        margin: 0 !important;
+    }
+    
+    /* ===== FORMULARIO SUPERIOR RESPONSIVE ===== */
+    #control-retorno-container .material-form-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 10px !important;
+        padding: 12px 8px !important;
+        background-color: #44324b !important;
+        border-radius: 6px !important;
+    }
+    
+    /* Filas del formulario - hacer responsive */
+    #control-retorno-container .material-form-row.single,
+    #control-retorno-container .material-form-row.with-button,
+    #control-retorno-container .material-form-row.three-column,
+    #control-retorno-container .material-form-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        width: 100% !important;
+        align-items: stretch !important;
+        margin: 0 0 15px 0 !important;
+        padding: 0 !important;
+        grid-template-columns: none !important;
+    }
+    
+    #control-retorno-container .material-form-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+    }
+
+    #control-retorno-container .material-button-cell {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: stretch !important;
+        align-items: stretch !important;
+    }
+
+    #control-retorno-container .material-button-cell .material-btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        justify-content: center !important;
+        min-height: 44px !important;
+        font-size: 13px !important;
+    }
+
+    #control-retorno-container .empty-cell {
+        display: none !important;
+    }
+    
+    #control-retorno-container .material-form-group label {
+        font-size: 13px !important;
+        margin-bottom: 4px !important;
+        display: block !important;
+        color: #ffffff !important;
+        width: 100% !important;
+        text-align: left !important;
+        align-self: flex-start !important;
+        padding: 0 !important;
+        line-height: 1.3 !important;
+        font-weight: 600 !important;
+    }
+    
+    #control-retorno-container .material-form-group select,
+    #control-retorno-container .material-form-group input[type="text"],
+    #control-retorno-container .material-form-group input[type="number"],
+    #control-retorno-container .material-form-group input[type="date"],
+    #control-retorno-container .material-form-control {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 14px !important;
+        padding: 12px 10px !important;
+        border-radius: 4px !important;
+        border: 1px solid #5a6c7d !important;
+        background-color: #ffffff !important;
+        color: #333333 !important;
+        margin: 0 !important;
+        align-self: stretch !important;
+        box-sizing: border-box !important;
+        height: 44px !important; /* Touch-friendly */
+        min-height: 44px !important;
+    }
+    
+    /* ===== SECCIÓN DE TOOLBAR/FECHAS RESPONSIVE ===== */
+    #control-retorno-container .material-toolbar {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px !important;
+        padding: 15px 10px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: left !important;
+        margin-bottom: 15px !important;
+        background-color: #34334E !important;
+        border-radius: 6px !important;
+    }
+
+    /* Contenedor de rango de fechas responsive */
+    #control-retorno-container .date-range-container {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    #control-retorno-container .date-range-container label {
+        color: white !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        margin-bottom: 5px !important;
+    }
+
+    #control-retorno-container .date-range-inputs {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    #control-retorno-container .date-input {
+        width: 100% !important;
+        padding: 12px 10px !important;
+        font-size: 14px !important;
+        border: 1px solid #5a6c7d !important;
+        border-radius: 4px !important;
+        background-color: #fff !important;
+        color: #333 !important;
+        min-height: 44px !important;
+        box-sizing: border-box !important;
+    }
+
+    #control-retorno-container .date-separator {
+        display: none !important;
+    }
+    
+    /* Contenedor de botones de acción responsive */
+    #control-retorno-container .material-action-buttons {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    #control-retorno-container .material-action-buttons .material-btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12px !important;
+        font-size: 14px !important;
+        min-height: 44px !important; /* Touch-friendly */
+        justify-content: center !important;
+        text-align: center !important;
+    }
+    
+    /* ===== TABLAS RESPONSIVE CON COLORES ORIGINALES ===== */
+    #control-retorno-container .material-table-container {
+        width: 100% !important;
+        max-width: 100vw !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+        background-color: #40424F !important;
+        margin-bottom: 15px !important;
+        padding: 4px !important;
+    }
+    
+    #control-retorno-container .material-table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    /* Tabla con scroll horizontal */
+    #control-retorno-container .material-data-table {
+        min-width: 1200px !important; /* Ancho mínimo para scroll horizontal */
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 10px !important; /* Tamaño legible */
+        background-color: #40424F !important;
+    }
+    
+    /* Headers de tabla - MANTENER COLORES ORIGINALES */
+    #control-retorno-container .material-data-table th {
+        background-color: #2c3e50 !important;
+        color: #ecf0f1 !important;
+        padding: 8px 6px !important;
+        text-align: center !important;
+        font-size: 9px !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+        border: 1px solid #34495e !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 10 !important;
+        line-height: 1.1 !important;
+        max-width: 100px !important;
+    }
+    
+    /* Celdas de datos - MANTENER COLORES ORIGINALES */
+    #control-retorno-container .material-data-table td {
+        padding: 6px 4px !important;
+        text-align: center !important;
+        font-size: 9px !important;
+        white-space: nowrap !important;
+        border: 1px solid #34495e !important;
+        background-color: #40424F !important;
+        color: lightgray !important;
+        max-width: 100px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.1 !important;
+    }
+    
+    /* Filas alternas - MANTENER COLORES ORIGINALES */
+    #control-retorno-container .material-data-table tbody tr:nth-child(even) td {
+        background-color: #44475A !important;
+    }
+    
+    #control-retorno-container .material-data-table tbody tr:hover td {
+        background-color: #485563 !important;
+    }
+    
+    #control-retorno-container .material-data-table tbody tr:nth-child(even):hover td {
+        background-color: #485563 !important;
+    }
+
+    /* Checkboxes más grandes para touch */
+    #control-retorno-container .material-data-table input[type="checkbox"] {
+        transform: scale(1.3) !important;
+        cursor: pointer !important;
+        accent-color: #3498db !important;
+    }
+
+    #control-retorno-container .checkbox-col {
+        width: 50px !important;
+        min-width: 50px !important;
+    }
+    
+    /* ===== FOOTER DE TABLA RESPONSIVE ===== */
+    #control-retorno-container .material-table-footer {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        align-items: stretch !important;
+        padding: 15px !important;
+        background-color: #34334E !important;
+        border-radius: 6px !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    #control-retorno-container .table-info {
+        color: lightgray !important;
+        font-size: 13px !important;
+        text-align: center !important;
+        order: 1 !important;
+    }
+
+    #control-retorno-container .table-pagination {
+        display: flex !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        order: 2 !important;
+    }
+    
+    /* ===== BOTONES ESPECÍFICOS - TAMAÑO LEGIBLE ===== */
+    #control-retorno-container .material-btn {
+        min-height: 44px !important; /* Touch-friendly */
+        padding: 12px 10px !important;
+        font-size: 12px !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        line-height: 1.2 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        border-radius: 4px !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+
+    #control-retorno-container .material-btn-small {
+        min-height: 36px !important;
+        padding: 8px 6px !important;
+        font-size: 10px !important;
+    }
+    
+    /* ===== MENSAJES Y ALERTAS ===== */
+    #control-retorno-container .loading-message,
+    #control-retorno-container .error-message,
+    #control-retorno-container .material-loading,
+    #control-retorno-container .material-error {
+        font-size: 12px !important;
+        padding: 15px 10px !important;
+        text-align: center !important;
+        border-radius: 4px !important;
+        margin: 10px 0 !important;
+    }
+    
+    /* ===== OPTIMIZACIONES TOUCH ===== */
+    #control-retorno-container input[type="text"],
+    #control-retorno-container input[type="date"],
+    #control-retorno-container input[type="number"],
+    #control-retorno-container select,
+    #control-retorno-container .material-form-control {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        min-height: 44px !important; /* Tamaño táctil recomendado */
+        font-size: 16px !important; /* Prevenir zoom en iOS */
+    }
+    
+    #control-retorno-container button {
+        min-height: 44px !important;
+        cursor: pointer !important;
+        -webkit-tap-highlight-color: transparent !important;
+        font-size: 14px !important;
+    }
+
+    /* Campos numéricos alineados a la derecha */
+    #control-retorno-container input[type="number"] {
+        text-align: right !important;
+    }
+    
+    /* ===== ESTILOS ESPECÍFICOS PARA DROPDOWNS EN MÓVIL ===== */
+    #control-retorno-container .retorno-search-container {
+        position: relative !important;
+        width: 100% !important;
+    }
+
+    #control-retorno-container .retorno-search-dropdown {
+        width: 100% !important;
+        min-height: 44px !important;
+        font-size: 14px !important;
+        padding: 12px 10px !important;
+    }
+
+    #control-retorno-container .retorno-dropdown-list {
+        position: fixed !important;
+        top: auto !important;
+        left: 10px !important;
+        right: 10px !important;
+        bottom: 10px !important;
+        max-height: 50vh !important;
+        z-index: 9999 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+    }
+
+    #control-retorno-container .retorno-dropdown-item {
+        padding: 12px 15px !important;
+        font-size: 14px !important;
+        min-height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    
+    /* Ocultar elementos solo para desktop */
+    #control-retorno-container .desktop-only {
+        display: none !important;
+    }
+
+    /* ===== CONTENEDOR DE ESCANEO RESPONSIVE ===== */
+    #control-retorno-container .material-toolbar .scan-field-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-right: 0 !important;
+        margin-bottom: 15px !important;
+    }
+
+    #control-retorno-container .material-toolbar .scan-field-group label {
+        font-size: 14px !important;
+        margin-bottom: 6px !important;
+    }
+
+    #control-retorno-container .material-toolbar .scan-field-group input {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        font-size: 16px !important; /* Prevenir zoom en iOS */
+        padding: 12px 10px !important;
+        min-height: 44px !important;
+        border-radius: 4px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* ===== ESPACIADO Y MÁRGENES GENERALES ===== */
+    #control-retorno-container * {
+        box-sizing: border-box !important;
+    }
+
+    #control-retorno-container .material-form-row:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    /* ===== SCROLL SMOOTH EN TODA LA APLICACIÓN ===== */
+    #control-retorno-container {
+        scroll-behavior: smooth !important;
+    }
+
+    #control-retorno-container .material-table-wrapper {
+        scroll-behavior: smooth !important;
+    }
+}

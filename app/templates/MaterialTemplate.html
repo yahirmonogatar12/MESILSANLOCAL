@@ -32,6 +32,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Font LG Regular - COMENTADO: Problema MIME -->
     <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/yahirmonogatari/lg-fonts/lg-regular.css"> -->
     <link rel="stylesheet" href="../static/style.css">
@@ -94,6 +96,52 @@
         [data-bs-toggle="collapse"].disabled {
             pointer-events: none;
         }
+        
+        /* BOTÓN DE LOGOUT FIJO EN LA ESQUINA SUPERIOR DERECHA */
+        .logout-button-fixed {
+            position: fixed;
+            top: 30px;
+            right: 15px;
+            z-index: 9999;
+            background: linear-gradient(135deg, #833c0d 0%, #6d3010 100%);
+            border: 2px solid #833c0d;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(131, 60, 13, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .logout-button-fixed:hover {
+            background: linear-gradient(135deg, #6d3010 0%, #5a2708 100%);
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(131, 60, 13, 0.4);
+            color: white;
+        }
+        
+        .logout-button-fixed i {
+            font-size: 16px;
+        }
+        
+        /* Responsive para móviles */
+        @media (max-width: 768px) {
+            .logout-button-fixed {
+                top: 35px;
+                right: 10px;
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .logout-button-fixed i {
+                font-size: 14px;
+            }
+        }
     </style>
     
 </head>
@@ -149,7 +197,17 @@
                 <button class="nav-button" id="Configuración de programa">
                     <img src="..\static\icons\configuracion.png" class="icono-boton" alt="Configuración de programa">Configuración de programa
                 </button>
+                {% if tiene_permisos_usuarios %}
+                <button class="nav-button admin-only" onclick="window.location.href='/admin/panel'">
+                    <img src="..\static\icons\engrane.png" class="icono-boton" alt="Panel de Administración">Panel de Administración
+                </button>
+                {% endif %}
             </div>
+            
+            <!-- Botón de logout posicionado absolutamente a la derecha -->
+            <button class="logout-button-fixed" onclick="confirmarLogout()">
+                <i class="fas fa-sign-out-alt"></i> Log out
+            </button>
         </div>
     </header>
 
@@ -200,8 +258,7 @@
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-retorno-container" style="display: none;">
-            <h2>Control de material retorno</h2>
-            <p>Contenido para Control de material retorno - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="recibo-pago-container" style="display: none;">
             <h2>Recibo y pago del material</h2>
@@ -1878,6 +1935,21 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlRetornoContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente con callback de inicialización
+                cargarContenidoDinamico('control-retorno-container', '/material/control_retorno', () => {
+                    
+                    // Intentar inicializar funciones de control de retorno
+                    if (typeof window.initControlRetorno === 'function') {
+                        window.initControlRetorno();
+                    } else if (typeof initControlRetorno === 'function') {
+                        initControlRetorno();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cargando control de retorno:', error);
+                });
+                
             };
             
             window.mostrarReciboPago = function() {
@@ -1896,6 +1968,16 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 estatusMaterialContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente usando la ruta del servidor
+                cargarContenidoDinamico('estatus-material-container', '/material/estatus_material', () => {
+                    console.log('✅ Estatus de Material cargado exitosamente');
+                    
+                    // Inicializar funcionalidades específicas del estatus de material si es necesario
+                    if (typeof window.initEstatusMaterial === 'function') {
+                        window.initEstatusMaterial();
+                    }
+                });
             };
             
             window.mostrarMaterialSustituto = function() {
@@ -2094,19 +2176,45 @@
             if (!activeButton) {
                 const infoBasicaButton = document.getElementById('Información Basica');
                 if (infoBasicaButton) {
-                    infoBasicaButton.click();
+                    infoBasicaButton.classList.add('active');
                 }
             }
         });
-
-
         
-    </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Lógica de inicialización se maneja dentro de las funciones de carga dinámica
-        // No es necesario ejecutar nada aquí ya que se carga dinámicamente
-    });
+        // Función para confirmar logout
+        function confirmarLogout() {
+            if (confirm('¿Está seguro que desea cerrar la sesión?')) {
+                // Mostrar mensaje de cierre
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                    color: white;
+                    font-size: 1.2rem;
+                    text-align: center;
+                `;
+                overlay.innerHTML = `
+                    <div>
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <div>Cerrando sesión...</div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                
+                // Redirigir después de un breve delay
+                setTimeout(() => {
+                    window.location.href = '/logout';
+                }, 1000);
+            }
+        }
 </script>
 </div>
 </body>

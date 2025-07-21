@@ -1,277 +1,380 @@
-// Datos de inventario
-const inventoryData = [
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ1500E672", parte: "0RJ1500E672", especificacion: "150J 1/8W (SMD 2...", codigoMaterial: "0RJ1500E672/2402...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "0RJ5601D677", parte: "0RJ5601D677", especificacion: "5.6KJ 1/10W (SMD...", codigoMaterial: "0RJ5601D677/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 5000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "49111007000", parte: "49111007000", especificacion: "LFM-48W TM-HP S...", codigoMaterial: "49111007000/2409...", fechaRecibo: "2024-09-26", fechaFabricacion: "2024-09-26", cantidadInventario: 0, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "49111009", parte: "49111009", especificacion: "SOLDER WIRE 1KG", codigoMaterial: "49111009/2405200...", fechaRecibo: "2024-05-20", fechaFabricacion: "2024-05-20", cantidadInventario: 0, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "49111009", parte: "49111009", especificacion: "SOLDER WIRE 1KG", codigoMaterial: "49111009/2405200...", fechaRecibo: "2024-05-20", fechaFabricacion: "2024-05-20", cantidadInventario: 0, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "49111009", parte: "49111009", especificacion: "SOLDER WIRE 1KG", codigoMaterial: "49111009/2405200...", fechaRecibo: "2024-05-20", fechaFabricacion: "2024-05-20", cantidadInventario: 0, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EAH64252901", parte: "EAH64252901", especificacion: "51NBC80", codigoMaterial: "EAH64252901/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 1000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EAH64252901", parte: "EAH64252901", especificacion: "51NBC80", codigoMaterial: "EAH64252901/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 1000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EAH64252901", parte: "EAH64252901", especificacion: "51NBC80", codigoMaterial: "EAH64252901/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 1000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EAH64252901", parte: "EAH64252901", especificacion: "51NBC80", codigoMaterial: "EAH64252901/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 1000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EAH64252901", parte: "EAH64252901", especificacion: "51NBC80", codigoMaterial: "EAH64252901/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 1000, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EBC4701G483", parte: "EBC4701G483", especificacion: "4.7KF 1/10W (SMD...", codigoMaterial: "EBC4701G483/240...", fechaRecibo: "2024-04-02", fechaFabricacion: "2024-04-02", cantidadInventario: 500, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EBC62298201", parte: "EBC62298201", especificacion: "91KJ 1W (SMD 6432)", codigoMaterial: "EBC62298201/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 0, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EBC62298201", parte: "EBC62298201", especificacion: "91KJ 1W (SMD 6432)", codigoMaterial: "EBC62298201/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 0, fechaInventario: "", cantidadInventarioActual: "" },
-    { codigo: "EBC62298201", parte: "EBC62298201", especificacion: "91KJ 1W (SMD 6432)", codigoMaterial: "EBC62298201/240...", fechaRecibo: "2024-02-23", fechaFabricacion: "2024-02-23", cantidadInventario: 4000, fechaInventario: "", cantidadInventarioActual: "" }
-];
+// Variables globales para el inventario general
+let inventarioGeneralData = [];
+let inventarioSelectedItems = new Set();
+let filtrosActivos = {};
 
-// Variables globales
-let selectedRows = new Set();
-let filteredData = [...inventoryData];
-
-// Inicializar la aplicación
-document.addEventListener('DOMContentLoaded', function() {
-    loadTable();
-    setupEventListeners();
-});
-
-// Cargar datos en la tabla
-function loadTable(data = inventoryData) {
-    const tableBody = document.getElementById('tableBody');
-    tableBody.innerHTML = '';
-
-    data.forEach((item, index) => {
-        const row = document.createElement('tr');
-        row.dataset.index = index;
-        
-        row.innerHTML = `
-            <td class="checkbox-column">
-                <input type="checkbox" class="row-checkbox" data-index="${index}">
-            </td>
-            <td>${item.codigo}</td>
-            <td>${item.parte}</td>
-            <td>${item.especificacion}</td>
-            <td>${item.codigoMaterial}</td>
-            <td>${item.fechaRecibo}</td>
-            <td>${item.fechaFabricacion}</td>
-            <td>${item.cantidadInventario.toLocaleString()}</td>
-            <td>${item.fechaInventario || '-'}</td>
-            <td>${item.cantidadInventarioActual || '-'}</td>
-        `;
-
-        if (selectedRows.has(index)) {
-            row.classList.add('selected');
-            row.querySelector('.row-checkbox').checked = true;
-        }
-
-        tableBody.appendChild(row);
-    });
-
-    updateTotalRows(data.length);
-}
-
-// Configurar event listeners
-function setupEventListeners() {
-    // Botones principales
-    document.getElementById('btnConsultar').addEventListener('click', consultarInventario);
-    document.getElementById('btnExportar').addEventListener('click', exportarExcel);
-    document.getElementById('btnImportar').addEventListener('click', () => openModal('importModal'));
-    document.getElementById('btnReiniciar').addEventListener('click', reiniciarSeleccion);
-    document.getElementById('btnAplicacion').addEventListener('click', () => openModal('inventoryModal'));
-
-    // Checkbox de seleccionar todo
-    document.getElementById('selectAll').addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-        checkboxes.forEach((checkbox, index) => {
-            checkbox.checked = this.checked;
-            const row = checkbox.closest('tr');
-            if (this.checked) {
-                selectedRows.add(index);
-                row.classList.add('selected');
-            } else {
-                selectedRows.delete(index);
-                row.classList.remove('selected');
-            }
-        });
-    });
-
-    // Delegación de eventos para checkboxes individuales
-    document.getElementById('tableBody').addEventListener('change', function(e) {
-        if (e.target.classList.contains('row-checkbox')) {
-            const index = parseInt(e.target.dataset.index);
-            const row = e.target.closest('tr');
-            
-            if (e.target.checked) {
-                selectedRows.add(index);
-                row.classList.add('selected');
-            } else {
-                selectedRows.delete(index);
-                row.classList.remove('selected');
-            }
-
-            // Actualizar el checkbox de seleccionar todo
-            const allCheckboxes = document.querySelectorAll('.row-checkbox');
-            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
-            document.getElementById('selectAll').checked = allCheckboxes.length === checkedBoxes.length;
-        }
-    });
-
-    // Modal close buttons
-    document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
-        });
-    });
-
-    // Click fuera del modal para cerrar
-    window.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-            e.target.style.display = 'none';
-        }
-    });
-
-    // Formulario de aplicación de inventario
-    document.getElementById('inventoryForm').addEventListener('submit', aplicarInventario);
-
-    // Botón de carga de archivo
-    document.getElementById('btnUpload').addEventListener('click', importarArchivo);
-}
-
-// Funciones principales
-function consultarInventario() {
-    showNotification('Consultando inventario...', 'info');
+// Función principal de inicialización
+function initRegistroMaterial() {
+    console.log('🔧 Inicializando Inventario General');
     
-    // Simulación de consulta
-    setTimeout(() => {
-        loadTable(inventoryData);
-        showNotification('Inventario actualizado correctamente', 'success');
-    }, 1000);
+    // Configurar filtros por defecto
+    filtrosActivos = {
+        numeroParte: '',
+        propiedad: '',
+        cantidadMinima: 0
+    };
+    
+    // Cargar datos iniciales
+    consultarInventarioGeneral();
+    
+    // Configurar eventos de los modales
+    setupInventarioModalEvents();
+    
+    console.log('✅ Inventario General inicializado');
 }
 
-function exportarExcel() {
-    if (selectedRows.size === 0) {
-        showNotification('Por favor seleccione al menos una fila para exportar', 'error');
+// Función para consultar inventario general
+function consultarInventarioGeneral() {
+    console.log('📊 Consultando inventario general...');
+    const tableBody = document.getElementById('registroMaterialTableBody');
+    
+    if (!tableBody) {
+        console.error('❌ Tabla de inventario no encontrada');
         return;
     }
-
-    showNotification('Exportando a Excel...', 'info');
-
-    // Crear CSV con los datos seleccionados
-    let csv = 'Código de material,Número de parte,Especificación,Código de material completo,Fecha de recibo,Fecha de fabricación,Cantidad de inventario,Fecha de inventario,Cantidad de inventario actual\n';
     
-    selectedRows.forEach(index => {
-        const item = inventoryData[index];
-        csv += `"${item.codigo}","${item.parte}","${item.especificacion}","${item.codigoMaterial}","${item.fechaRecibo}","${item.fechaFabricacion}","${item.cantidadInventario}","${item.fechaInventario}","${item.cantidadInventarioActual}"\n`;
-    });
+    // Mostrar loading
+    tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #b0b0b0;"><i class="fas fa-spinner fa-spin"></i> Consultando inventario...</td></tr>';
+    
+    // Llamada a la API
+    setTimeout(() => {
+        fetch('/api/inventario/consultar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(filtrosActivos)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                inventarioGeneralData = data.inventario;
+                renderizarInventarioTabla();
+                actualizarInventarioContadorSeleccionados();
+            } else {
+                console.error('Error al consultar inventario:', data.message);
+                inventarioGeneralData = [];
+                renderizarInventarioTabla();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            inventarioGeneralData = [];
+            renderizarInventarioTabla();
+        });
+    }, 800);
+}
 
-    // Descargar archivo CSV
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+// Función para renderizar la tabla de inventario
+function renderizarInventarioTabla() {
+    console.log('🎨 Renderizando tabla de inventario general...');
+    const tableBody = document.getElementById('registroMaterialTableBody');
+    
+    if (!tableBody) {
+        console.error('❌ No se encontró el tbody de la tabla');
+        return;
+    }
+    
+    if (!inventarioGeneralData || inventarioGeneralData.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="9" class="inventario-no-data"><i class="fas fa-info-circle"></i> No hay datos de inventario disponibles</td></tr>';
+        return;
+    }
+    
+    // Renderizar filas
+    tableBody.innerHTML = inventarioGeneralData.map(item => {
+        const remanente = item.cantidad_total || (item.cantidad_entradas - item.cantidad_salidas);
+        const statusClass = remanente < 50 ? 'text-danger' : remanente < 100 ? 'text-warning' : 'text-success';
+        const isSelected = inventarioSelectedItems.has(item.id);
+        
+        // Crear celda con tooltip si el texto es largo
+        function crearCelda(valor, maxLength = 20) {
+            const valorStr = String(valor || '');
+            if (valorStr.length > maxLength) {
+                return `<td data-full-text="${valorStr}" title="${valorStr}">${valorStr.substring(0, maxLength)}...</td>`;
+            }
+            return `<td>${valorStr}</td>`;
+        }
+        
+        return `
+            <tr class="${isSelected ? 'registro-selected' : ''}" onclick="seleccionarInventarioItem(${item.id})" style="cursor: pointer; transition: all 0.3s ease;">
+                <td class="inventario-checkbox-column">
+                    <input type="checkbox" class="inventario-checkbox registro-row-checkbox" 
+                        data-id="${item.id}" ${isSelected ? 'checked' : ''}
+                        onchange="toggleInventarioSelection(${item.id})"
+                        onclick="event.stopPropagation()">
+                </td>
+                ${crearCelda(item.numero_parte, 15)}
+                ${crearCelda(item.codigo_material, 15)}
+                ${crearCelda(item.especificacion || 'N/A', 25)}
+                <td class="cantidad-col cantidad-remanente ${statusClass}" style="text-align: right; font-weight: bold;">
+                    ${formatearNumero(remanente)}
+                </td>
+                <td class="cantidad-col cantidad-entradas" style="text-align: right;">
+                    ${formatearNumero(item.cantidad_entradas)}
+                </td>
+                <td class="cantidad-col cantidad-salidas" style="text-align: right;">
+                    ${formatearNumero(item.cantidad_salidas)}
+                </td>
+                <td style="font-size: 12px; color: #b0b0b0;">
+                    ${formatearFecha(item.fecha_actualizacion, true)}
+                </td>
+                <td style="font-size: 12px; color: #b0b0b0;">
+                    ${formatearFecha(item.fecha_creacion, true)}
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    actualizarInventarioContadorSeleccionados();
+    console.log(`✅ Tabla renderizada con ${inventarioGeneralData.length} items`);
+}
+
+// Función para formatear números
+function formatearNumero(numero) {
+    if (numero === null || numero === undefined) return '0.00';
+    return Number(numero).toLocaleString('es-MX', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Función para formatear fechas
+function formatearFecha(fecha, compacto = false) {
+    if (!fecha) return 'N/A';
+    try {
+        const date = new Date(fecha);
+        if (compacto) {
+            return date.toLocaleDateString('es-MX', {
+                year: '2-digit',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        } else {
+            return date.toLocaleDateString('es-MX', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }) + ' ' + date.toLocaleTimeString('es-MX', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    } catch (e) {
+        return fecha;
+    }
+}
+
+// Función para seleccionar item de inventario
+function seleccionarInventarioItem(id) {
+    console.log(`🔍 Seleccionando item de inventario ID: ${id}`);
+    const checkbox = document.querySelector(`.registro-row-checkbox[data-id="${id}"]`);
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        toggleInventarioSelection(id);
+    }
+}
+
+// Función para toggle selección de inventario
+function toggleInventarioSelection(id) {
+    if (inventarioSelectedItems.has(id)) {
+        inventarioSelectedItems.delete(id);
+        console.log(`➖ Item ${id} deseleccionado`);
+    } else {
+        inventarioSelectedItems.add(id);
+        console.log(`➕ Item ${id} seleccionado`);
+    }
+    
+    renderizarInventarioTabla();
+    
+    // Actualizar checkbox "seleccionar todo"
+    const selectAllCheckbox = document.getElementById('registroSelectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = inventarioSelectedItems.size === inventarioGeneralData.length;
+        selectAllCheckbox.indeterminate = inventarioSelectedItems.size > 0 && inventarioSelectedItems.size < inventarioGeneralData.length;
+    }
+}
+
+// Función para toggle selección de todos los elementos
+function toggleInventarioSelectAll() {
+    const selectAllCheckbox = document.getElementById('registroSelectAll');
+    const isChecked = selectAllCheckbox.checked;
+    
+    if (isChecked) {
+        inventarioGeneralData.forEach(item => {
+            inventarioSelectedItems.add(item.id);
+        });
+    } else {
+        inventarioSelectedItems.clear();
+    }
+    
+    renderizarInventarioTabla();
+}
+
+// Función para actualizar contador de seleccionados
+function actualizarInventarioContadorSeleccionados() {
+    const totalRows = document.getElementById('registroTotalRows');
+    const totalSeleccionados = inventarioSelectedItems.size;
+    
+    if (totalRows) {
+        totalRows.textContent = inventarioGeneralData.length;
+    }
+    
+    const selectedCount = document.getElementById('registroSelectedCount');
+    if (selectedCount) {
+        selectedCount.textContent = totalSeleccionados;
+    }
+    
+    console.log(`📊 Contadores actualizados: ${inventarioGeneralData.length} items, ${totalSeleccionados} seleccionados`);
+}
+
+// Función para actualizar inventario general (botón Actualizar)
+function actualizarInventarioGeneral() {
+    console.log('🔄 Actualizando inventario general...');
+    consultarInventarioGeneral();
+}
+
+// Función para reiniciar selección de inventario (botón Reiniciar Selección)
+function reiniciarInventarioSeleccion() {
+    inventarioSelectedItems.clear();
+    renderizarInventarioTabla();
+    
+    const selectAllCheckbox = document.getElementById('registroSelectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+}
+
+// Función para abrir modal de filtros avanzados
+function abrirFiltrosInventarioModal() {
+    document.getElementById('filtroNumeroParte').value = filtrosActivos.numeroParte || '';
+    document.getElementById('filtroPropiedad').value = filtrosActivos.propiedad || '';
+    document.getElementById('filtroCantidadMinima').value = filtrosActivos.cantidadMinima || 0;
+    
+    const modal = document.getElementById('registroImportModal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+// Función para cerrar modal de filtros
+function cerrarFiltrosInventarioModal() {
+    const modal = document.getElementById('registroImportModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Función para aplicar filtros de inventario
+function aplicarFiltrosInventario() {
+    filtrosActivos = {
+        numeroParte: document.getElementById('filtroNumeroParte').value.trim(),
+        propiedad: document.getElementById('filtroPropiedad').value.trim(),
+        cantidadMinima: parseFloat(document.getElementById('filtroCantidadMinima').value) || 0
+    };
+    
+    console.log('🔍 Aplicando filtros:', filtrosActivos);
+    
+    cerrarFiltrosInventarioModal();
+    consultarInventarioGeneral();
+}
+
+// Función para limpiar filtros
+function limpiarFiltrosInventario() {
+    filtrosActivos = {
+        numeroParte: '',
+        propiedad: '',
+        cantidadMinima: 0
+    };
+    
+    document.getElementById('filtroNumeroParte').value = '';
+    document.getElementById('filtroPropiedad').value = '';
+    document.getElementById('filtroCantidadMinima').value = 0;
+    
+    console.log('🧹 Filtros limpiados');
+    
+    consultarInventarioGeneral();
+}
+
+// Función para exportar inventario a Excel
+function exportarInventarioExcel() {
+    console.log('📄 Exportando inventario general a Excel...');
+    
+    if (!inventarioGeneralData || inventarioGeneralData.length === 0) {
+        console.warn('No hay datos para exportar');
+        return;
+    }
+    
+    const datosParaExportar = inventarioSelectedItems.size > 0 
+        ? inventarioGeneralData.filter(item => inventarioSelectedItems.has(item.id))
+        : inventarioGeneralData;
+    
+    const headers = ['Número de Parte', 'Código Material', 'Especificación', 'Propiedad', 'Entradas', 'Salidas', 'Remanente', 'Fecha Actualización'];
+    
+    const rows = datosParaExportar.map(item => [
+        item.numero_parte,
+        item.codigo_material,
+        item.especificacion || '',
+        item.propiedad_material,
+        item.cantidad_entradas,
+        item.cantidad_salidas,
+        item.cantidad_total || (item.cantidad_entradas - item.cantidad_salidas),
+        item.fecha_actualizacion
+    ]);
+    
+    const csvContent = [headers, ...rows]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
+    
     link.setAttribute('href', url);
-    link.setAttribute('download', `inventario_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `inventario_general_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    setTimeout(() => {
-        showNotification('Archivo exportado exitosamente', 'success');
-    }, 500);
-}
-
-function reiniciarSeleccion() {
-    selectedRows.clear();
-    document.getElementById('selectAll').checked = false;
-    document.querySelectorAll('.row-checkbox').forEach(checkbox => {
-        checkbox.checked = false;
-        checkbox.closest('tr').classList.remove('selected');
-    });
-    showNotification('Selección reiniciada', 'info');
-}
-
-function aplicarInventario(e) {
-    e.preventDefault();
     
-    if (selectedRows.size === 0) {
-        showNotification('Por favor seleccione al menos una fila', 'error');
-        return;
-    }
-
-    const fecha = document.getElementById('fechaInventario').value;
-    const cantidad = document.getElementById('cantidadInventario').value;
-
-    selectedRows.forEach(index => {
-        inventoryData[index].fechaInventario = fecha;
-        inventoryData[index].cantidadInventarioActual = cantidad;
-    });
-
-    loadTable(inventoryData);
-    closeModal('inventoryModal');
-    showNotification(`Inventario aplicado a ${selectedRows.size} registros`, 'success');
-    
-    // Limpiar el formulario
-    document.getElementById('inventoryForm').reset();
+    console.log('✅ Archivo CSV creado y descargado');
 }
 
-function importarArchivo() {
-    const fileInput = document.getElementById('fileInput');
-    const file = fileInput.files[0];
-
-    if (!file) {
-        showNotification('Por favor seleccione un archivo', 'error');
-        return;
-    }
-
-    showNotification('Importando archivo...', 'info');
-
-    // Simulación de lectura de archivo CSV
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const csv = e.target.result;
-            const lines = csv.split('\n');
-            const headers = lines[0].split(',');
-            
-            // Simular importación exitosa
-            setTimeout(() => {
-                closeModal('importModal');
-                showNotification(`Archivo importado: ${lines.length - 1} registros procesados`, 'success');
-                fileInput.value = '';
-            }, 1500);
-        } catch (error) {
-            showNotification('Error al procesar el archivo', 'error');
+// Configurar eventos de modales para inventario
+function setupInventarioModalEvents() {
+    // Cerrar modales al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('registro-modal')) {
+            e.target.style.display = 'none';
         }
-    };
+    });
     
-    reader.readAsText(file);
-}
-
-// Funciones auxiliares
-function openModal(modalId) {
-    document.getElementById(modalId).style.display = 'block';
-}
-
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-}
-
-function updateTotalRows(count) {
-    document.getElementById('totalRows').textContent = count;
-}
-
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
+    // Cerrar modales con Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarFiltrosInventarioModal();
+        }
+    });
     
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
+    console.log('⚙️ Eventos de modales configurados para inventario');
 }
+
+// Inicialización cuando se carga el contenido
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initRegistroMaterial, 100);
+});
+
+// Hacer funciones disponibles globalmente
+window.initRegistroMaterial = initRegistroMaterial;
+window.consultarInventarioGeneral = consultarInventarioGeneral;
+window.renderizarInventarioTabla = renderizarInventarioTabla;
+window.exportarInventarioExcel = exportarInventarioExcel;
+window.actualizarInventarioGeneral = actualizarInventarioGeneral;
+window.reiniciarInventarioSeleccion = reiniciarInventarioSeleccion;
+window.abrirFiltrosInventarioModal = abrirFiltrosInventarioModal;
+window.cerrarFiltrosInventarioModal = cerrarFiltrosInventarioModal;
+window.aplicarFiltrosInventario = aplicarFiltrosInventario;
+window.limpiarFiltrosInventario = limpiarFiltrosInventario;
+window.toggleInventarioSelectAll = toggleInventarioSelectAll;
+window.toggleInventarioSelection = toggleInventarioSelection;

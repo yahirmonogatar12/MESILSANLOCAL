@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría del Sistema - ILSAN MES</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #23242a;
+            color: #e0e0e0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .auditoria-container {
+            background: #28292d;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auditoria-header {
+            border-bottom: 2px solid #444;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .auditoria-header h2 {
+            color: #4A90E2;
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .header-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        
+        .auditoria-header h2 {
+            color: #4A90E2;
+            margin: 0;
+        }
+        
+        .btn-outline-light {
+            color: #e0e0e0;
+            border-color: #6c757d;
+        }
+        
+        .btn-outline-light:hover {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: #fff;
+        }
+        
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #000;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e0a800;
+            border-color: #d39e00;
+            color: #000;
+        }
+        
+        /* Responsive para botones del header */
+        @media (max-width: 768px) {
+            .auditoria-header {
+                text-align: center;
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .auditoria-header h2 {
+                font-size: 1.3rem;
+                margin-bottom: 15px;
+            }
+            
+            .header-buttons {
+                justify-content: center;
+                width: 100%;
+            }
+            
+            .header-buttons .btn {
+                font-size: 0.85rem;
+                padding: 8px 12px;
+                min-width: 120px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .auditoria-container {
+                margin: 5px;
+                padding: 10px;
+                border-radius: 8px;
+            }
+            
+            .auditoria-header h2 {
+                font-size: 1.2rem;
+            }
+            
+            .header-buttons .btn {
+                font-size: 0.8rem;
+                padding: 6px 10px;
+                min-width: 100px;
+            }
+        }
+        
+        .filtros {
+            background: #333438;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .filtros .row {
+            align-items: end;
+        }
+        
+        .filtros h5 {
+            margin-bottom: 15px;
+            color: #4A90E2;
+        }
+        
+        /* Responsive para filtros */
+        @media (max-width: 768px) {
+            .filtros {
+                padding: 12px;
+            }
+            
+            .filtros .col-md-2 {
+                margin-bottom: 15px;
+            }
+            
+            .filtros .form-label {
+                font-size: 0.9rem;
+                font-weight: 600;
+            }
+            
+            .filtros .form-control,
+            .filtros .form-select {
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .filtros {
+                padding: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .filtros h5 {
+                font-size: 1.1rem;
+                margin-bottom: 12px;
+            }
+        }
+        
+        .stats-cards {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            flex: 1;
+            min-width: 140px;
+            background: #333438;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid;
+        }
+        
+        .stat-card.exitoso { border-color: #28a745; }
+        .stat-card.error { border-color: #dc3545; }
+        .stat-card.denegado { border-color: #ffc107; }
+        .stat-card.total { border-color: #4A90E2; }
+        
+        .stat-card h4 {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .stat-card .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        /* Responsive para stats cards */
+        @media (max-width: 768px) {
+            .stats-cards {
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+            
+            .stat-card {
+                min-width: calc(50% - 5px);
+                padding: 12px;
+            }
+            
+            .stat-card h4 {
+                font-size: 0.85rem;
+            }
+            
+            .stat-card .stat-number {
+                font-size: 1.3rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-cards {
+                gap: 8px;
+            }
+            
+            .stat-card {
+                min-width: calc(50% - 4px);
+                padding: 10px;
+            }
+            
+            .stat-card h4 {
+                font-size: 0.8rem;
+                margin-bottom: 6px;
+            }
+            
+            .stat-card .stat-number {
+                font-size: 1.2rem;
+            }
+        }
+        
+        .table-dark {
+            --bs-table-bg: #333438;
+            --bs-table-border-color: #444;
+        }
+        
+        .table-danger {
+            --bs-table-bg: rgba(220, 53, 69, 0.2);
+        }
+        
+        .form-control, .form-select {
+            background-color: #333438;
+            border: 1px solid #444;
+            color: #e0e0e0;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background-color: #333438;
+            border-color: #4A90E2;
+            color: #e0e0e0;
+            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: #4A90E2;
+            border-color: #4A90E2;
+        }
+        
+        .badge-success { background-color: #28a745; }
+        .badge-danger { background-color: #dc3545; }
+        .badge-warning { background-color: #ffc107; color: #000; }
+        .badge-info { background-color: #17a2b8; }
+        
+        .auditoria-table-container {
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: auto;
+            background: #333438;
+            border-radius: 8px;
+            padding: 0;
+        }
+        
+        .table-responsive-custom {
+            min-width: 800px;
+        }
+        
+        /* Responsive para tabla */
+        @media (max-width: 768px) {
+            .auditoria-table-container {
+                max-height: 500px;
+                border-radius: 6px;
+            }
+            
+            .table-responsive-custom {
+                min-width: 700px;
+            }
+            
+            .table th,
+            .table td {
+                padding: 8px 6px;
+                font-size: 0.85rem;
+            }
+            
+            .table th {
+                font-size: 0.8rem;
+                font-weight: 600;
+            }
+            
+            .badge {
+                font-size: 0.7rem;
+                padding: 3px 6px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .auditoria-table-container {
+                max-height: 400px;
+                margin: 0 -5px;
+                border-radius: 4px;
+            }
+            
+            .table-responsive-custom {
+                min-width: 650px;
+            }
+            
+            .table th,
+            .table td {
+                padding: 6px 4px;
+                font-size: 0.8rem;
+            }
+            
+            .table th {
+                font-size: 0.75rem;
+            }
+            
+            .badge {
+                font-size: 0.65rem;
+                padding: 2px 4px;
+            }
+            
+            .btn-sm {
+                padding: 4px 8px;
+                font-size: 0.7rem;
+            }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .actividad-reciente {
+            background: #333438;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .actividad-reciente h5 {
+            color: #4A90E2;
+            margin-bottom: 15px;
+        }
+        
+        .usuario-activo {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #444;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .usuario-activo:last-child {
+            border-bottom: none;
+        }
+        
+        /* Responsive para actividad reciente */
+        @media (max-width: 768px) {
+            .actividad-reciente {
+                padding: 12px;
+                margin-top: 15px;
+            }
+            
+            .actividad-reciente h5 {
+                font-size: 1rem;
+                margin-bottom: 12px;
+            }
+            
+            .usuario-activo {
+                padding: 6px 0;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 3px;
+            }
+            
+            .usuario-nombre {
+                font-size: 0.9rem;
+            }
+            
+            .usuario-accion {
+                font-size: 0.8rem;
+            }
+            
+            .usuario-tiempo {
+                font-size: 0.75rem;
+                align-self: flex-end;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .actividad-reciente {
+                padding: 10px;
+            }
+            
+            .actividad-reciente h5 {
+                font-size: 0.95rem;
+            }
+            
+            .row.mt-4 {
+                margin-top: 1rem !important;
+            }
+            
+            .row.mt-4 .col-md-6 {
+                margin-bottom: 15px;
+            }
+        }
+        
+        .modal-content {
+            background-color: #28292d;
+            border: 1px solid #444;
+        }
+        
+        .modal-xl {
+            max-width: 90vw;
+        }
+        
+        /* Responsive para modal */
+        @media (max-width: 768px) {
+            .modal-xl {
+                max-width: 95vw;
+                margin: 10px;
+            }
+            
+            .modal-body {
+                padding: 15px;
+            }
+            
+            .modal-body .table-sm th,
+            .modal-body .table-sm td {
+                padding: 6px 8px;
+                font-size: 0.85rem;
+            }
+            
+            .modal-body h6 {
+                font-size: 1rem;
+                margin-bottom: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .modal-xl {
+                max-width: 100vw;
+                margin: 0;
+                height: 100vh;
+            }
+            
+            .modal-dialog {
+                margin: 0;
+                height: 100vh;
+                max-height: none;
+            }
+            
+            .modal-content {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .modal-body {
+                padding: 12px;
+                overflow-y: auto;
+            }
+            
+            .modal-body .row {
+                margin: 0 -6px;
+            }
+            
+            .modal-body .col-md-6 {
+                padding: 0 6px;
+                margin-bottom: 15px;
+            }
+            
+            .modal-body .table-sm {
+                font-size: 0.8rem;
+            }
+            
+            .modal-body .table-sm th,
+            .modal-body .table-sm td {
+                padding: 4px 6px;
+            }
+        }
+        
+        pre {
+            background: #1e1e1e;
+            color: #e0e0e0;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        
+        @media (max-width: 480px) {
+            pre {
+                padding: 10px;
+                font-size: 0.8rem;
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auditoria-container">
+        <div class="auditoria-header">
+            <h2><i class="fas fa-history"></i> Auditoría del Sistema</h2>
+            <div class="header-buttons">
+                <a href="/ILSAN-ELECTRONICS" class="btn btn-outline-light">
+                    <i class="fas fa-home"></i> Página Principal
+                </a>
+                {% if tiene_permisos_usuarios %}
+                <a href="/admin/panel" class="btn btn-warning">
+                    <i class="fas fa-users-cog"></i> Panel Usuarios
+                </a>
+                {% endif %}
+                <button class="btn btn-success" onclick="exportarAuditoria()">
+                    <i class="fas fa-download"></i> Exportar Excel
+                </button>
+                <a href="/admin/panel" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+                <button class="btn btn-danger" onclick="confirmarLogout()">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filtros -->
+        <div class="filtros">
+            <h5><i class="fas fa-filter"></i> Filtros de Búsqueda</h5>
+            <div class="row g-2">
+                <div class="col-md-2 col-sm-6 col-12">
+                    <label class="form-label">Fecha Inicio</label>
+                    <input type="date" class="form-control" id="fechaInicio">
+                </div>
+                <div class="col-md-2 col-sm-6 col-12">
+                    <label class="form-label">Fecha Fin</label>
+                    <input type="date" class="form-control" id="fechaFin">
+                </div>
+                <div class="col-md-2 col-sm-6 col-12">
+                    <label class="form-label">Usuario</label>
+                    <select class="form-select" id="filtroUsuario">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 col-12">
+                    <label class="form-label">Módulo</label>
+                    <select class="form-select" id="filtroModulo">
+                        <option value="">Todos</option>
+                        <option value="sistema">Sistema</option>
+                        <option value="material">Material</option>
+                        <option value="almacen">Almacén</option>
+                        <option value="bom">BOM</option>
+                        <option value="produccion">Producción</option>
+                        <option value="calidad">Calidad</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 col-12">
+                    <label class="form-label">Resultado</label>
+                    <select class="form-select" id="filtroResultado">
+                        <option value="">Todos</option>
+                        <option value="EXITOSO">Exitoso</option>
+                        <option value="ERROR">Error</option>
+                        <option value="DENEGADO">Denegado</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6 col-12">
+                    <label class="form-label d-none d-md-block">&nbsp;</label>
+                    <button class="btn btn-primary d-block w-100" onclick="buscarAuditoria()">
+                        <i class="fas fa-search"></i> <span class="d-none d-sm-inline">Buscar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Estadísticas -->
+        <div class="stats-cards">
+            <div class="stat-card total">
+                <h4>Total Registros</h4>
+                <div class="stat-number" id="totalRegistros">0</div>
+            </div>
+            <div class="stat-card exitoso">
+                <h4>Exitosos</h4>
+                <div class="stat-number" id="totalExitosos">0</div>
+            </div>
+            <div class="stat-card error">
+                <h4>Errores</h4>
+                <div class="stat-number" id="totalErrores">0</div>
+            </div>
+            <div class="stat-card denegado">
+                <h4>Denegados</h4>
+                <div class="stat-number" id="totalDenegados">0</div>
+            </div>
+        </div>
+        
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Cargando registros de auditoría...</p>
+        </div>
+        
+        <!-- Tabla de auditoría -->
+        <div class="auditoria-table-container">
+            <div class="table-responsive-custom">
+                <table class="table table-dark table-hover" id="tablaAuditoria">
+                    <thead class="sticky-top">
+                        <tr>
+                            <th style="width: 120px;">Fecha/Hora</th>
+                            <th style="width: 90px;">Usuario</th>
+                            <th style="width: 80px;">Módulo</th>
+                            <th style="width: 100px;">Acción</th>
+                            <th>Descripción</th>
+                            <th style="width: 90px;" class="d-none d-md-table-cell">IP</th>
+                            <th style="width: 80px;">Resultado</th>
+                            <th style="width: 50px;">Ver</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditoriaTableBody">
+                        <!-- Se carga dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Actividad Reciente -->
+        <div class="row mt-4">
+            <div class="col-md-6 col-12 mb-3 mb-md-0">
+                <div class="actividad-reciente">
+                    <h5><i class="fas fa-users"></i> Usuarios Activos (15 min)</h5>
+                    <div id="usuariosActivosContainer">
+                        <!-- Se carga dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-12">
+                <div class="actividad-reciente">
+                    <h5><i class="fas fa-clock"></i> Últimas Acciones</h5>
+                    <div id="ultimasAccionesContainer">
+                        <!-- Se carga dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para detalles -->
+    <div class="modal fade" id="modalDetalles" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalles de Auditoría</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="detallesContent">
+                        <!-- Se carga dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let usuarios = [];
+        let registrosAuditoria = [];
+        
+        // Cargar datos iniciales
+        document.addEventListener('DOMContentLoaded', function() {
+            // Establecer fecha por defecto (últimos 7 días)
+            const hoy = new Date();
+            const hace7dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            document.getElementById('fechaInicio').value = hace7dias.toISOString().split('T')[0];
+            document.getElementById('fechaFin').value = hoy.toISOString().split('T')[0];
+            
+            cargarUsuarios();
+            buscarAuditoria();
+            iniciarActividadReciente();
+        });
+        
+        async function cargarUsuarios() {
+            try {
+                const response = await fetch('/admin/listar_usuarios');
+                usuarios = await response.json();
+                
+                const select = document.getElementById('filtroUsuario');
+                usuarios.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.username;
+                    option.textContent = user.username;
+                    select.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Error cargando usuarios:', error);
+            }
+        }
+        
+        async function buscarAuditoria() {
+            const loading = document.getElementById('loading');
+            const tbody = document.getElementById('auditoriaTableBody');
+            
+            try {
+                loading.style.display = 'block';
+                
+                const filtros = new URLSearchParams({
+                    fecha_inicio: document.getElementById('fechaInicio').value,
+                    fecha_fin: document.getElementById('fechaFin').value,
+                    usuario: document.getElementById('filtroUsuario').value,
+                    modulo: document.getElementById('filtroModulo').value,
+                    resultado: document.getElementById('filtroResultado').value,
+                    limite: 500
+                });
+                
+                const response = await fetch(`/admin/buscar_auditoria?${filtros}`);
+                const data = await response.json();
+                
+                registrosAuditoria = data.registros;
+                
+                // Actualizar estadísticas
+                actualizarEstadisticas(data.estadisticas);
+                
+                // Renderizar tabla
+                tbody.innerHTML = registrosAuditoria.map(log => `
+                    <tr class="${log.resultado === 'ERROR' ? 'table-danger' : ''}">
+                        <td>
+                            <small>${formatearFecha(log.fecha_hora)}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">${log.usuario}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">${log.modulo}</span>
+                        </td>
+                        <td>
+                            <small>${log.accion}</small>
+                        </td>
+                        <td>
+                            <small class="text-truncate d-inline-block" style="max-width: 200px;" title="${log.descripcion || '-'}">${log.descripcion || '-'}</small>
+                        </td>
+                        <td class="d-none d-md-table-cell">
+                            <small>${log.ip_address || '-'}</small>
+                        </td>
+                        <td>
+                            ${getResultadoBadge(log.resultado)}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="verDetallesAuditoria(${log.id})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                if (registrosAuditoria.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="fas fa-search fa-2x mb-2"></i>
+                                <div>No se encontraron registros con los filtros aplicados</div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error buscando auditoría:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger py-4">
+                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                            <div>Error cargando registros de auditoría</div>
+                            <small>Intente nuevamente en unos momentos</small>
+                        </td>
+                    </tr>
+                `;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        function formatearFecha(fechaStr) {
+            const fecha = new Date(fechaStr);
+            const isMobile = window.innerWidth < 768;
+            
+            if (isMobile) {
+                return fecha.toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } else {
+                return fecha.toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+        }
+        
+        function getResultadoBadge(resultado) {
+            const badges = {
+                'EXITOSO': '<span class="badge bg-success">Exitoso</span>',
+                'ERROR': '<span class="badge bg-danger">Error</span>',
+                'DENEGADO': '<span class="badge bg-warning">Denegado</span>'
+            };
+            return badges[resultado] || '<span class="badge bg-secondary">Desconocido</span>';
+        }
+        
+        function actualizarEstadisticas(stats) {
+            document.getElementById('totalRegistros').textContent = registrosAuditoria.length;
+            document.getElementById('totalExitosos').textContent = stats.exitosos || 0;
+            document.getElementById('totalErrores').textContent = stats.errores || 0;
+            document.getElementById('totalDenegados').textContent = stats.denegados || 0;
+        }
+        
+        async function verDetallesAuditoria(id) {
+            try {
+                const response = await fetch(`/admin/detalle_auditoria/${id}`);
+                const detalle = await response.json();
+                
+                let contenidoHtml = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Información General</h6>
+                            <table class="table table-sm table-dark">
+                                <tr><td><strong>ID:</strong></td><td>${detalle.id}</td></tr>
+                                <tr><td><strong>Usuario:</strong></td><td>${detalle.usuario}</td></tr>
+                                <tr><td><strong>Módulo:</strong></td><td>${detalle.modulo}</td></tr>
+                                <tr><td><strong>Acción:</strong></td><td>${detalle.accion}</td></tr>
+                                <tr><td><strong>Resultado:</strong></td><td>${getResultadoBadge(detalle.resultado)}</td></tr>
+                                <tr><td><strong>Fecha/Hora:</strong></td><td>${formatearFecha(detalle.fecha_hora)}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Información Técnica</h6>
+                            <table class="table table-sm table-dark">
+                                <tr><td><strong>IP:</strong></td><td>${detalle.ip_address || '-'}</td></tr>
+                                <tr><td><strong>Endpoint:</strong></td><td>${detalle.endpoint || '-'}</td></tr>
+                                <tr><td><strong>Método HTTP:</strong></td><td>${detalle.metodo_http || '-'}</td></tr>
+                                <tr><td><strong>Duración:</strong></td><td>${detalle.duracion_ms ? detalle.duracion_ms + 'ms' : '-'}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6>Descripción</h6>
+                        <div class="alert alert-info">${detalle.descripcion || 'Sin descripción'}</div>
+                    </div>
+                `;
+                
+                if (detalle.user_agent) {
+                    contenidoHtml += `
+                        <div class="mt-3">
+                            <h6>User Agent</h6>
+                            <pre>${detalle.user_agent}</pre>
+                        </div>
+                    `;
+                }
+                
+                if (detalle.datos_antes_json) {
+                    contenidoHtml += `
+                        <div class="mt-3">
+                            <h6>Datos Anteriores</h6>
+                            <pre>${JSON.stringify(detalle.datos_antes_json, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+                
+                if (detalle.datos_despues_json) {
+                    contenidoHtml += `
+                        <div class="mt-3">
+                            <h6>Datos Posteriores</h6>
+                            <pre>${JSON.stringify(detalle.datos_despues_json, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('detallesContent').innerHTML = contenidoHtml;
+                new bootstrap.Modal(document.getElementById('modalDetalles')).show();
+                
+            } catch (error) {
+                console.error('Error cargando detalles:', error);
+                alert('Error cargando detalles del registro');
+            }
+        }
+        
+        async function exportarAuditoria() {
+            try {
+                const filtros = new URLSearchParams({
+                    fecha_inicio: document.getElementById('fechaInicio').value,
+                    fecha_fin: document.getElementById('fechaFin').value,
+                    usuario: document.getElementById('filtroUsuario').value,
+                    modulo: document.getElementById('filtroModulo').value
+                });
+                
+                window.open(`/admin/exportar_auditoria?${filtros}`, '_blank');
+                
+            } catch (error) {
+                console.error('Error exportando:', error);
+                alert('Error exportando auditoría');
+            }
+        }
+        
+        function iniciarActividadReciente() {
+            cargarActividadReciente();
+            
+            // Actualizar cada 10 segundos
+            setInterval(cargarActividadReciente, 10000);
+        }
+        
+        async function cargarActividadReciente() {
+            try {
+                const response = await fetch('/admin/actividad_reciente');
+                const data = await response.json();
+                
+                // Usuarios activos
+                const usuariosContainer = document.getElementById('usuariosActivosContainer');
+                if (data.usuarios_activos.length > 0) {
+                    usuariosContainer.innerHTML = data.usuarios_activos.map(u => `
+                        <div class="usuario-activo">
+                            <span class="usuario-nombre"><strong>${u.usuario}</strong></span>
+                            <span class="usuario-accion"><small>${u.ultima_accion}</small></span>
+                            <span class="usuario-tiempo"><small class="text-muted">${u.hace}</small></span>
+                        </div>
+                    `).join('');
+                } else {
+                    usuariosContainer.innerHTML = '<div class="text-muted text-center py-3">No hay usuarios activos</div>';
+                }
+                
+                // Últimas acciones
+                const accionesContainer = document.getElementById('ultimasAccionesContainer');
+                if (data.ultimas_acciones.length > 0) {
+                    accionesContainer.innerHTML = data.ultimas_acciones.slice(0, 8).map(a => `
+                        <div class="usuario-activo">
+                            <span class="usuario-nombre"><small><strong>${a.usuario}</strong></small></span>
+                            <span class="usuario-accion"><small>${a.modulo}.${a.accion}</small></span>
+                            <span class="usuario-tiempo"><small class="text-muted">${formatearFecha(a.fecha_hora)}</small></span>
+                        </div>
+                    `).join('');
+                } else {
+                    accionesContainer.innerHTML = '<div class="text-muted text-center py-3">No hay acciones recientes</div>';
+                }
+                
+            } catch (error) {
+                console.error('Error cargando actividad reciente:', error);
+            }
+        }
+        
+        // Búsqueda automática al cambiar filtros
+        document.getElementById('fechaInicio').addEventListener('change', buscarAuditoria);
+        document.getElementById('fechaFin').addEventListener('change', buscarAuditoria);
+        document.getElementById('filtroUsuario').addEventListener('change', buscarAuditoria);
+        document.getElementById('filtroModulo').addEventListener('change', buscarAuditoria);
+        document.getElementById('filtroResultado').addEventListener('change', buscarAuditoria);
+        
+        // Detección de cambios en orientación/resize para responsive
+        window.addEventListener('resize', function() {
+            // Re-formatear fechas si es necesario
+            const fechaElements = document.querySelectorAll('td:first-child small');
+            fechaElements.forEach(el => {
+                const fechaOriginal = el.textContent;
+                if (fechaOriginal && fechaOriginal !== '-') {
+                    const fecha = new Date(fechaOriginal);
+                    if (!isNaN(fecha.getTime())) {
+                        el.textContent = formatearFecha(fecha.toISOString());
+                    }
+                }
+            });
+        });
+        
+        // Mejorar scroll horizontal en móvil
+        const tableContainer = document.querySelector('.auditoria-table-container');
+        if (tableContainer) {
+            let isScrolling = false;
+            
+            tableContainer.addEventListener('touchstart', function() {
+                isScrolling = true;
+            });
+            
+            tableContainer.addEventListener('touchend', function() {
+                isScrolling = false;
+            });
+        }
+        
+        // Función para confirmar logout
+        function confirmarLogout() {
+            if (confirm('¿Está seguro que desea cerrar la sesión?')) {
+                // Mostrar mensaje de cierre
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                    color: white;
+                    font-size: 1.2rem;
+                    text-align: center;
+                `;
+                overlay.innerHTML = `
+                    <div>
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <div>Cerrando sesión...</div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                
+                // Redirigir después de un breve delay
+                setTimeout(() => {
+                    window.location.href = '/logout';
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>

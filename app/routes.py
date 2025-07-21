@@ -7,29 +7,58 @@ import subprocess
 from functools import wraps
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
 from .db import (get_db_connection, init_db, guardar_configuracion_usuario, cargar_configuracion_usuario,
-                 actualizar_inventario_general_entrada, actualizar_inventario_general_salida, 
-                 obtener_inventario_general, recalcular_inventario_general, insertar_bom_desde_dataframe,
-                 obtener_modelos_bom, listar_bom_por_modelo, exportar_bom_a_excel)
+                actualizar_inventario_general_entrada, actualizar_inventario_general_salida, 
+                obtener_inventario_general, recalcular_inventario_general, insertar_bom_desde_dataframe,
+                obtener_modelos_bom, listar_bom_por_modelo, exportar_bom_a_excel)
 import sqlite3
 import pandas as pd
 from werkzeug.utils import secure_filename
 
+# Importar sistema de autenticación mejorado
+from .auth_system import AuthSystem
+from .user_admin import user_admin_bp
+
 app = Flask(__name__)
 app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
+
+# Inicializar base de datos original
 init_db()  # Esto crea la tabla si no existe
 
+# Inicializar sistema de autenticación
+auth_system = AuthSystem()
+auth_system.init_database()
+
+# Registrar Blueprint de administración
+app.register_blueprint(user_admin_bp, url_prefix='/admin')
+
+# DEPRECADO: Función antigua para compatibilidad temporal
 def cargar_usuarios():
+    """Función deprecada - se mantiene para compatibilidad"""
     ruta = os.path.join(os.path.dirname(__file__), 'database', 'usuarios.json')
     ruta = os.path.abspath(ruta)
-    with open(ruta, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    try:
+        with open(ruta, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print("⚠️ usuarios.json no encontrado, usando solo sistema de BD")
+        return {}
 
+# ACTUALIZADO: Usar el sistema de autenticación avanzado
 def login_requerido(f):
     @wraps(f)
     def decorada(*args, **kwargs):
-        print("Verificando sesión:", session.get('usuario'))
+        print("🔐 Verificando sesión avanzada:", session.get('usuario'))
+        
+        # Verificar si hay usuario en sesión
         if 'usuario' not in session:
+            print("❌ No hay usuario en sesión")
             return redirect(url_for('login'))
+        
+        usuario = session.get('usuario')
+        
+        # Actualizar actividad de sesión
+        auth_system._actualizar_actividad_sesion(usuario)
+        
         return f(*args, **kwargs)
     return decorada
 
@@ -42,25 +71,115 @@ def login():
     if request.method == 'POST':
         user = request.form.get('username', '').strip()
         pw = request.form.get('password', '')
-        usuarios = cargar_usuarios()
-        if user in usuarios and usuarios[user] == pw:
+        
+        print(f"🔐 Intento de login: {user}")
+        
+        # PRIORIDAD 1: Intentar con el nuevo sistema de BD
+        resultado_auth = auth_system.verificar_usuario(user, pw)
+        
+        # verificar_usuario devuelve (success, message) en lugar de diccionario
+        if isinstance(resultado_auth, tuple):
+            auth_success, auth_message = resultado_auth
+        else:
+            auth_success = resultado_auth.get('success', False) if isinstance(resultado_auth, dict) else False
+            auth_message = resultado_auth.get('message', 'Error desconocido') if isinstance(resultado_auth, dict) else str(resultado_auth)
+        
+        if auth_success:
+            print(f"✅ Login exitoso con sistema BD: {user}")
             session['usuario'] = user
-            # Redirige según el usuario
-            if user.startswith("Materiales") or user == "1111":
+            
+            # Registrar auditoría
+            auth_system.registrar_auditoria(
+                usuario=user,
+                modulo='sistema',
+                accion='login',
+                descripcion='Inicio de sesión exitoso',
+                resultado='EXITOSO'
+            )
+            
+            # Obtener permisos del usuario
+            permisos_resultado = auth_system.obtener_permisos_usuario(user)
+            
+            # Verificar si devuelve tupla (permisos, rol_id) o solo permisos
+            if isinstance(permisos_resultado, tuple):
+                permisos, rol_id = permisos_resultado
+            else:
+                permisos = permisos_resultado
+                rol_id = None
+                
+            session['permisos'] = permisos
+            print(f"🔍 Permisos establecidos en sesión para {user}: {permisos}")
+            
+            # NUEVO: Redirigir usuarios administradores al panel de admin
+            if user == "admin" or (isinstance(permisos, dict) and 'sistema' in permisos and 'usuarios' in permisos['sistema']):
+                print(f"🔑 Usuario administrador detectado: {user}, redirigiendo al panel admin")
+                return redirect('/admin/panel')
+            
+            # Redirigir según el usuario (lógica original para usuarios operacionales)
+            elif user.startswith("Materiales") or user == "1111":
                 return redirect(url_for('material'))
             elif user.startswith("Produccion") or user == "2222":
                 return redirect(url_for('produccion'))
             elif user.startswith("DDESARROLLO") or user == "3333":
                 return redirect(url_for('desarrollo'))
-            # Puedes agregar más roles aquí si lo necesitas
+            else:
+                # Usuario nuevo - redirigir al material por defecto
+                return redirect(url_for('material'))
+        
+        # FALLBACK: Intentar con el sistema antiguo (usuarios.json)
+        try:
+            usuarios_json = cargar_usuarios()
+            if user in usuarios_json and usuarios_json[user] == pw:
+                print(f"✅ Login exitoso con sistema JSON (fallback): {user}")
+                session['usuario'] = user
+                
+                # Registrar auditoría del fallback
+                auth_system.registrar_auditoria(
+                    usuario=user,
+                    modulo='sistema', 
+                    accion='login_json',
+                    descripcion='Inicio de sesión con sistema JSON (fallback)',
+                    resultado='EXITOSO'
+                )
+                
+                # Redirigir según el usuario (lógica original)
+                if user.startswith("Materiales") or user == "1111":
+                    return redirect(url_for('material'))
+                elif user.startswith("Produccion") or user == "2222":
+                    return redirect(url_for('produccion'))
+                elif user.startswith("DDESARROLLO") or user == "3333":
+                    return redirect(url_for('desarrollo'))
+        except Exception as e:
+            print(f"⚠️ Error en fallback JSON: {e}")
+        
+        # Si llega aquí, login falló
+        print(f"❌ Login fallido: {user}")
+        auth_system.registrar_auditoria(
+            usuario=user,
+            modulo='sistema',
+            accion='login_failed',
+            descripcion='Intento de login fallido - credenciales incorrectas',
+            resultado='ERROR'
+        )
+        
         return render_template('login.html', error="Usuario o contraseña incorrectos. Por favor, intente de nuevo")
+    
     return render_template('login.html')
 
 @app.route('/ILSAN-ELECTRONICS')
 @login_requerido
 def material():
     usuario = session.get('usuario', 'Invitado')
-    return render_template('MaterialTemplate.html', usuario=usuario)
+    permisos = session.get('permisos', {})
+    
+    # Verificar si tiene permisos de administración de usuarios
+    tiene_permisos_usuarios = False
+    if isinstance(permisos, dict) and 'sistema' in permisos:
+        tiene_permisos_usuarios = 'usuarios' in permisos['sistema']
+    
+    return render_template('MaterialTemplate.html', 
+                         usuario=usuario, 
+                         tiene_permisos_usuarios=tiene_permisos_usuarios)
 
 @app.route('/Prueba')
 @login_requerido
@@ -77,7 +196,22 @@ def desarrollo():
 
 @app.route('/logout')
 def logout():
-    session.pop('usuario', None)
+    usuario = session.get('usuario', 'unknown')
+    
+    # Registrar auditoría del logout
+    if usuario != 'unknown':
+        auth_system.registrar_auditoria(
+            usuario=usuario,
+            modulo='sistema',
+            accion='logout', 
+            descripcion='Cierre de sesión',
+            resultado='EXITOSO'
+        )
+        print(f"🚪 Logout exitoso: {usuario}")
+    
+    # Limpiar sesión completa
+    session.clear()
+    
     return redirect(url_for('login'))
 
 @app.route('/cargar_template', methods=['POST'])
@@ -244,8 +378,8 @@ def buscar_material_por_numero_parte():
             # Fallback: buscar en registros individuales (para compatibilidad)
             query_individual = """
                 SELECT codigo_material_recibido, codigo_material_original, codigo_material,
-                       especificacion, numero_parte, cantidad_actual,
-                       numero_lote_material, fecha_recibo, ''
+                    especificacion, numero_parte, cantidad_actual,
+                    numero_lote_material, fecha_recibo, ''
                 FROM control_material_almacen 
                 WHERE numero_parte LIKE ? OR numero_parte = ?
                 ORDER BY fecha_recibo DESC
@@ -1435,6 +1569,117 @@ def material_registro_material():
         print(f"Error al cargar Registro de material real: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/material/control_retorno')
+@login_requerido
+def material_control_retorno():
+    """Cargar dinámicamente el control de material de retorno"""
+    try:
+        return render_template('Control de material/Control de material de retorno.html')
+    except Exception as e:
+        print(f"Error al cargar Control de material de retorno: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/estatus_material')
+@login_requerido
+def material_estatus_material():
+    """Cargar dinámicamente el estatus de material"""
+    try:
+        return render_template('Control de material/Estatus de material.html')
+    except Exception as e:
+        print(f"Error al cargar Estatus de material: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/api/estatus_material/consultar', methods=['POST'])
+@login_requerido
+def consultar_estatus_material():
+    """API para obtener los datos del estatus de material basándose en inventario general y materiales"""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json()
+        filtros = data if data else {}
+        
+        print(f"🔍 Consultando estatus de material con filtros: {filtros}")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Query principal que combina inventario_general con tabla materiales
+        query = '''
+            SELECT DISTINCT
+                COALESCE(ig.codigo_material, ig.numero_parte) as codigo_material,
+                ig.numero_parte as numero_parte_fabricante,
+                ig.propiedad_material,
+                COALESCE(m.especificacion_material, ig.especificacion, '') as especificacion,
+                COALESCE(m.vendedor, '') as vendedor,
+                COALESCE(m.ubicacion_material, '') as ubicacion_almacen,
+                ig.cantidad_total as remanente,
+                ig.fecha_actualizacion as ultima_actualizacion,
+                ig.fecha_creacion
+            FROM inventario_general ig
+            LEFT JOIN materiales m ON (
+                ig.numero_parte = m.numero_parte OR 
+                ig.codigo_material = m.codigo_material OR
+                ig.numero_parte = m.codigo_material
+            )
+            WHERE ig.cantidad_total > 0
+        '''
+        
+        params = []
+        
+        # Aplicar filtros
+        if filtros.get('codigo_material') and str(filtros.get('codigo_material')).strip().lower() != 'todos':
+            query += ' AND (ig.codigo_material LIKE ? OR ig.numero_parte LIKE ?)'
+            filtro_codigo = f"%{filtros['codigo_material']}%"
+            params.extend([filtro_codigo, filtro_codigo])
+        
+        query += ' ORDER BY ig.fecha_actualizacion DESC'
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        inventario = []
+        for row in rows:
+            inventario.append({
+                'codigo_material': row[0] or '',
+                'numero_parte_fabricante': row[1] or '',
+                'propiedad_de': row[2] or 'COMMON USE',
+                'especificacion': row[3] or '',
+                'vendedor': row[4] or '',
+                'ubicacion_almacen': row[5] or '',
+                'cantidad': float(row[6]) if row[6] else 0.0,
+                'ultima_actualizacion': row[7] or '',
+                'fecha_creacion': row[8] or ''
+            })
+        
+        print(f"✅ Estatus de material consultado: {len(inventario)} items encontrados")
+        
+        return jsonify({
+            'success': True,
+            'inventario': inventario,
+            'total': len(inventario),
+            'filtros_aplicados': filtros
+        })
+        
+    except Exception as e:
+        print(f"❌ Error al consultar estatus de material: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al consultar estatus de material: {str(e)}'
+        }), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
 @app.route('/obtener_reglas_escaneo')
 def obtener_reglas_escaneo():
     """Endpoint para obtener las reglas de escaneo desde rules.json"""
@@ -2104,8 +2349,9 @@ def imprimir_zebra():
             }), 400
         
         if metodo_conexion == 'usb':
-            # Impresión por USB para ZT230
-            return imprimir_zebra_usb(comando_zpl, codigo)
+            # Impresión por USB para ZT230 - usar IP local por defecto
+            ip_local = ip_impresora or '127.0.0.1'  # IP local por defecto
+            return imprimir_zebra_red(ip_local, comando_zpl, codigo)
         else:
             # Impresión por red para ZT230
             return imprimir_zebra_red(ip_impresora, comando_zpl, codigo)
@@ -2118,187 +2364,6 @@ def imprimir_zebra():
         return jsonify({
             'success': False,
             'error': error_msg
-        }), 500
-
-def imprimir_zebra_usb(comando_zpl, codigo):
-    """
-    Imprime en Zebra ZT230 usando diálogo nativo de Windows para seleccionar impresora
-    """
-    from datetime import datetime
-    import subprocess
-    import tempfile
-    import os
-    import threading
-    import time
-    
-    try:
-        print("🖨️ ZT230: Iniciando impresión local con diálogo de selección...")
-        print(f"🔍 ZT230: Código: {codigo}")
-        print(f"🔍 ZT230: Comando ZPL: {len(comando_zpl)} caracteres")
-        
-        # Crear directorio temporal si no existe
-        temp_dir = 'C:\\temp'
-        try:
-            if not os.path.exists(temp_dir):
-                os.makedirs(temp_dir)
-        except:
-            temp_dir = tempfile.gettempdir()
-        
-        # Crear archivo ZPL con nombre descriptivo
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"etiqueta_{codigo.replace('/', '_').replace('\\', '_')}_{timestamp}.zpl"
-        filepath = os.path.join(temp_dir, filename)
-        
-        # Escribir comando ZPL al archivo
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(comando_zpl)
-        
-        print(f"� ZT230: Archivo creado: {filepath}")
-        
-        # MÉTODO PRINCIPAL: Abrir diálogo de impresión de Windows directamente
-        try:
-            print("🖨️ ZT230: Abriendo diálogo de Windows con el archivo ZPL...")
-            
-            # Usar rundll32 para abrir el diálogo de impresión directamente
-            cmd = f'rundll32.exe shell32.dll,ShellExec_RunDLL "{filepath}"'
-            
-            # Ejecutar comando en segundo plano
-            subprocess.Popen(cmd, shell=True)
-            
-            # Esperar un momento y luego mostrar instrucciones
-            time.sleep(1)
-            
-            # Crear y mostrar ventana de instrucciones
-            instrucciones_script = f'''
-@echo off
-title Instrucciones de Impresion ZT230
-color 0A
-echo.
-echo ================================================================
-echo                    IMPRESION ZT230 - ETIQUETA
-echo ================================================================
-echo.
-echo Codigo: {codigo}
-echo Archivo: {filename}
-echo.
-echo INSTRUCCIONES:
-echo.
-echo 1. Se abrio automaticamente el archivo de etiqueta
-echo 2. Presione Ctrl+P en la ventana que se abrio
-echo 3. En el dialogo de impresion:
-echo    - Seleccione "ZDesigner ZT230-300dpi ZPL"
-echo    - O seleccione su impresora Zebra ZT230
-echo 4. Haga clic en "Imprimir"
-echo.
-echo Si no se abrio automaticamente:
-echo - Navegue a: {temp_dir}
-echo - Haga doble clic en: {filename}
-echo - Siga los pasos anteriores
-echo.
-echo ================================================================
-echo.
-pause
-'''
-            
-            # Crear archivo .bat temporal para instrucciones
-            bat_path = os.path.join(temp_dir, f"instrucciones_{timestamp}.bat")
-            with open(bat_path, 'w', encoding='utf-8') as f:
-                f.write(instrucciones_script)
-            
-            # Ejecutar ventana de instrucciones
-            subprocess.Popen(['cmd', '/c', bat_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
-            
-            # Programar limpieza automática
-            def cleanup_files():
-                time.sleep(60)  # Esperar 1 minuto
-                try:
-                    os.unlink(filepath)
-                    os.unlink(bat_path)
-                    print("🗑️ ZT230: Archivos temporales limpiados")
-                except:
-                    pass
-            
-            cleanup_thread = threading.Thread(target=cleanup_files)
-            cleanup_thread.daemon = True
-            cleanup_thread.start()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Diálogo de impresión abierto - Seleccione su impresora ZT230',
-                'metodo': 'dialogo_nativo_windows',
-                'archivo': filepath,
-                'codigo': codigo,
-                'instrucciones': [
-                    'Se abrió automáticamente el archivo de etiqueta',
-                    'Presione Ctrl+P para abrir el diálogo de impresión',
-                    'Seleccione "ZDesigner ZT230-300dpi ZPL" en la lista de impresoras',
-                    'Haga clic en "Imprimir" para enviar la etiqueta a la ZT230',
-                    'Siga las instrucciones en la ventana que apareció'
-                ],
-                'timestamp': datetime.now().isoformat()
-            })
-            
-        except Exception as e:
-            print(f"❌ ZT230: Error abriendo diálogo principal: {str(e)}")
-            
-            # MÉTODO ALTERNATIVO: Usar notepad directamente
-            try:
-                print("�️ ZT230: Intentando con notepad...")
-                subprocess.Popen(['notepad', filepath])
-                
-                return jsonify({
-                    'success': True,
-                    'message': 'Archivo abierto en Notepad - Use Ctrl+P para imprimir',
-                    'metodo': 'notepad_manual',
-                    'archivo': filepath,
-                    'codigo': codigo,
-                    'instrucciones': [
-                        'Se abrió el archivo en Notepad',
-                        'Presione Ctrl+P para abrir el diálogo de impresión',
-                        'Seleccione su impresora ZT230',
-                        'Confirme la impresión'
-                    ],
-                    'timestamp': datetime.now().isoformat()
-                })
-                
-            except Exception as e2:
-                print(f"❌ ZT230: Error con notepad: {str(e2)}")
-                
-                # MÉTODO FINAL: Solo crear archivo e instrucciones
-                print("📁 ZT230: Creando archivo para impresión manual...")
-                
-                # Abrir carpeta donde está el archivo
-                try:
-                    os.startfile(temp_dir)
-                except:
-                    pass
-                
-                return jsonify({
-                    'success': True,
-                    'message': f'Archivo creado para impresión manual',
-                    'metodo': 'archivo_manual',
-                    'archivo': filepath,
-                    'codigo': codigo,
-                    'instrucciones': [
-                        f'Se abrió la carpeta: {temp_dir}',
-                        f'Busque el archivo: {filename}',
-                        'Haga doble clic en el archivo',
-                        'Presione Ctrl+P y seleccione su impresora ZT230',
-                        'O haga clic derecho → Imprimir'
-                    ],
-                    'timestamp': datetime.now().isoformat()
-                })
-        
-    except Exception as e:
-        error_msg = f'Error en impresión local ZT230: {str(e)}'
-        print(f"❌ ZT230 ERROR: {error_msg}")
-        import traceback
-        print(f"❌ ZT230 TRACEBACK: {traceback.format_exc()}")
-        
-        return jsonify({
-            'success': False,
-            'error': error_msg,
-            'suggestion': 'Verifique que la impresora ZT230 esté conectada y configurada'
         }), 500
 
 def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
@@ -2631,6 +2696,102 @@ def test_modelos():
     """Página de prueba para verificar la carga de modelos"""
     return render_template('test_modelos.html')
 
+# Ruta para el inventario general (nuevo)
+@app.route('/api/inventario/consultar', methods=['POST'])
+@login_requerido
+def consultar_inventario_general():
+    """Endpoint para consultar el inventario general basado en la tabla inventario_general"""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json()
+        filtros = data if data else {}
+        
+        print(f"🔍 Consultando inventario general con filtros: {filtros}")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Query base para obtener el inventario
+        query = '''
+            SELECT 
+                ig.numero_parte,
+                ig.codigo_material,
+                ig.propiedad_material,
+                ig.especificacion,
+                ig.cantidad_entradas,
+                ig.cantidad_salidas,
+                ig.cantidad_total,
+                ig.fecha_creacion,
+                ig.fecha_actualizacion,
+                ROW_NUMBER() OVER (ORDER BY ig.fecha_actualizacion DESC) as id
+            FROM inventario_general ig
+            WHERE 1=1
+        '''
+        
+        params = []
+        
+        # Aplicar filtros
+        if filtros.get('numeroParte'):
+            query += ' AND ig.numero_parte LIKE ?'
+            params.append(f"%{filtros['numeroParte']}%")
+            
+        if filtros.get('propiedad'):
+            query += ' AND ig.propiedad_material = ?'
+            params.append(filtros['propiedad'])
+            
+        if filtros.get('cantidadMinima') and float(filtros['cantidadMinima']) > 0:
+            query += ' AND ig.cantidad_total >= ?'
+            params.append(float(filtros['cantidadMinima']))
+        
+        query += ' ORDER BY ig.fecha_actualizacion DESC'
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        inventario = []
+        for row in rows:
+            inventario.append({
+                'id': row[9],  # ROW_NUMBER
+                'numero_parte': row[0],
+                'codigo_material': row[1] or row[0],  # Usar numero_parte si no hay codigo_material
+                'propiedad_material': row[2] or 'COMMON USE',
+                'especificacion': row[3] or '',
+                'cantidad_entradas': float(row[4]) if row[4] else 0.0,
+                'cantidad_salidas': float(row[5]) if row[5] else 0.0,
+                'cantidad_total': float(row[6]) if row[6] else 0.0,
+                'fecha_creacion': row[7],
+                'fecha_actualizacion': row[8]
+            })
+        
+        print(f"✅ Inventario consultado: {len(inventario)} items encontrados")
+        
+        return jsonify({
+            'success': True,
+            'inventario': inventario,
+            'total': len(inventario),
+            'filtros_aplicados': filtros
+        })
+        
+    except Exception as e:
+        print(f"❌ Error al consultar inventario general: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al consultar inventario: {str(e)}'
+        }), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
 @app.route('/templates/LISTAS/<filename>')
 def serve_list_template(filename):
     """Servir plantillas de listas para el menú móvil"""
@@ -2651,7 +2812,8 @@ def serve_list_template(filename):
             return "Archivo no encontrado", 404
             
         # Leer el archivo directamente
-        template_path = os.path.join(app.template_folder, 'LISTAS', filename)
+        template_folder = app.template_folder or 'templates'
+        template_path = os.path.join(template_folder, 'LISTAS', filename)
         
         if not os.path.exists(template_path):
             return f"Archivo no encontrado: {template_path}", 404

@@ -348,6 +348,16 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 estatusMaterialContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente usando la ruta del servidor
+                cargarContenidoDinamico('estatus-material-container', '/material/estatus_material', () => {
+                    console.log('✅ Estatus de Material cargado exitosamente');
+                    
+                    // Inicializar funcionalidades específicas del estatus de material si es necesario
+                    if (typeof window.initEstatusMaterial === 'function') {
+                        window.initEstatusMaterial();
+                    }
+                });
             };
             
             window.mostrarMaterialSustituto = function() {

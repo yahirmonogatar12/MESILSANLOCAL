@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estatus de Material</title>
+    <link rel="stylesheet" href="/static/css/Estatus de material (2).css">
+    <link rel="stylesheet" href="/static/css/Estatus de material (1).css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div id="estatus-material-container" class="estatus-material-main">
+        <!-- Contenedor Principal de Tablas -->
+        <div class="estatus-material-container2">
+            <!-- Panel Izquierdo - Inventario de Materiales -->
+            <div class="estatus-material-panel" id="estatus-inventario-panel">
+                <!-- Toolbar Superior -->
+                <div class="estatus-material-toolbar">
+                    <div class="estatus-scan-container">
+                        <div class="estatus-scan-field-group">
+                            <label for="estatus-codigo-material-filtro">Código de material:</label>
+                            <input type="text" id="estatus-codigo-material-filtro" placeholder="Todos" style="width: 90px; font-size: 11px; padding: 4px 6px;" />
+                        </div>
+                    </div>
+                    <div>
+                        <button id="estatus-btn-consultar-inventario" class="estatus-material-btn">Consultar</button>
+                        <button id="estatus-btn-exportar-inventario" class="estatus-material-btn secondary">Exportar el excel</button>
+                    </div>
+                </div>
+
+                <!-- Tabla de Inventario -->
+                <div class="estatus-material-table-container">
+                    <table class="estatus-material-table" id="estatus-tabla-inventario">
+                        <thead>
+                            <tr>
+                                <th>Código de material</th>
+                                <th>Número de parte del fabricante</th>
+                                <th>Especificación</th>
+                                <th>Vendedor</th>
+                                <th>Ubicación de almacén</th>
+                                <th>Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="estatus-inventario-body">
+                            <!-- Los datos se cargarán dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Footer del Panel Izquierdo -->
+                <div class="estatus-total-info" id="estatus-total-inventario">
+                    Total Rows: 0
+                </div>
+            </div>
+
+            <!-- Panel Derecho - Material Recibido -->
+            <div class="estatus-material-panel" id="estatus-recibido-panel">
+                <!-- Toolbar Superior -->
+                <div class="estatus-material-toolbar">
+                    <div></div>
+                    <div>
+                        <button id="estatus-btn-exportar-recibido" class="estatus-material-btn secondary">Exportar el excel</button>
+                    </div>
+                </div>
+
+                <!-- Tabla de Material Recibido -->
+                <div class="estatus-material-table-container">
+                    <table class="estatus-material-table" id="estatus-tabla-recibido">
+                        <thead>
+                            <tr>
+                                <th>Código de material recibido</th>
+                                <th>Lote de material</th>
+                                <th>Material importación</th>
+                                <th>Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="estatus-recibido-body">
+                            <tr>
+                                <td colspan="4" class="no-data">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Footer del Panel Derecho -->
+                <div class="estatus-total-info" id="estatus-total-recibido">
+                    Total Rows: 0 | Total Qty: 0
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de navegación móvil -->
+        <div class="estatus-nav-buttons mobile-only">
+            <button id="estatus-btn-ver-inventario" class="estatus-material-btn mobile-only-btn active">Ver inventario</button>
+            <button id="estatus-btn-ver-recibidos" class="estatus-material-btn mobile-only-btn">Ver recibidos</button>
+        </div>
+    </div>
+
+    <script src="/static/js/Estatus de material.js"></script>
+</body>
+</html>
