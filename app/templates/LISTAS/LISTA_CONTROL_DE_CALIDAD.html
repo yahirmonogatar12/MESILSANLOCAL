@@ -8,8 +8,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarReparacion">
-                    <li class="sidebar-link" tabindex="0">Control de resultado de reparacion</li>
-                    <li class="sidebar-link" tabindex="0">Control de item reparado</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Control de item de reparacion" 
+                            data-permiso-boton="Control de resultado de reparacion">Control de resultado de reparacion</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Control de item de reparacion" 
+                            data-permiso-boton="Control de item reparado">Control de item reparado</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -19,8 +25,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarMSL">
-                    <li class="sidebar-link" tabindex="0">Historial de cambio de material de SMT</li>
-                    <li class="sidebar-link" tabindex="0">Historial de cambio de material por maquina</li> 
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Historial de material" 
+                            data-permiso-boton="Historial de cambio de material de SMT">Historial de cambio de material de SMT</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Historial de material" 
+                            data-permiso-boton="Historial de cambio de material por maquina">Historial de cambio de material por maquina</li> 
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -30,9 +42,18 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarReporte">
-                    <li class="sidebar-link" tabindex="0">Historial de uso de pegamento de soldadura</li>
-                    <li class="sidebar-link" tabindex="0">Historial de uso de mask de metal</li>
-                    <li class="sidebar-link" tabindex="0">Historial de uso de squeeguee</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Historial de Sub Material" 
+                            data-permiso-boton="Historial de uso de pegamento de soldadura">Historial de uso de pegamento de soldadura</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Historial de Sub Material" 
+                            data-permiso-boton="Historial de uso de mask de metal">Historial de uso de mask de metal</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Historial de Sub Material" 
+                            data-permiso-boton="Historial de uso de squeeguee">Historial de uso de squeeguee</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -42,7 +63,10 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarEmpaque">
-                    <li class="sidebar-link" tabindex="0">Process interlock History</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Interlock History" 
+                            data-permiso-boton="Process interlock History">Process interlock History</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -52,8 +76,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarWarehousing">
-                    <li class="sidebar-link" tabindex="0">Control de Master Sample de SMT</li>
-                    <li class="sidebar-link" tabindex="0">Historial de inspeccion de Master Sample de SMT</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Control de Master Sample de SMT" 
+                            data-permiso-boton="Control de Master Sample de SMT">Control de Master Sample de SMT</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Control de Master Sample de SMT" 
+                            data-permiso-boton="Historial de inspeccion de Master Sample de SMT">Historial de inspeccion de Master Sample de SMT</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -63,7 +93,10 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarOtrasIdentificaciones">
-                    <li class="sidebar-link" tabindex="0">Control de inspeccion de OQC</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
+                            data-permiso-seccion="Inspeccion de calidad" 
+                            data-permiso-boton="Control de inspeccion de OQC">Control de inspeccion de OQC</li>
                 </ul>
             </li>
         </ul>
@@ -74,3 +107,13 @@
         <main class="app-content"> 
         </main>
     </div>
+<script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>
+<script>
+    // Inicializar el sistema de permisos cuando se carga el documento
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof PermisosDropdowns !== 'undefined') {
+            PermisosDropdowns.inicializar();
+        }
+    });
+</script>
+</div>

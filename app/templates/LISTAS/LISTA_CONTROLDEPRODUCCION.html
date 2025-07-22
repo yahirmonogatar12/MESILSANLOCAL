@@ -8,8 +8,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarPlanProduccion">
-                    <li class="sidebar-link" tabindex="0">Control de embarque</li>
-                    <li class="sidebar-link" tabindex="0">Crear Plan de produccion</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de plan de produccion" 
+                            data-permiso-boton="Control de embarque">Control de embarque</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de plan de produccion" 
+                            data-permiso-boton="Crear Plan de produccion">Crear Plan de produccion</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -19,9 +25,18 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarSMT">
-                    <li class="sidebar-link" tabindex="0">Control de mask de metal</li>
-                    <li class="sidebar-link" tabindex="0">Control de squeegee</li>
-                    <li class="sidebar-link" tabindex="0">Control de caja de mask de metal</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de SMT" 
+                            data-permiso-boton="Control de mask de metal">Control de mask de metal</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de SMT" 
+                            data-permiso-boton="Control de squeegee">Control de squeegee</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de SMT" 
+                            data-permiso-boton="Control de caja de mask de metal">Control de caja de mask de metal</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -31,10 +46,22 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarSubMaterial">
-                    <li class="sidebar-link" tabindex="0">Estandares sobre control de soldadura</li>
-                    <li class="sidebar-link" tabindex="0">Registro de recibo de soldadura</li>
-                    <li class="sidebar-link" tabindex="0">Control de salida de soldadura</li>
-                    <li class="sidebar-link" tabindex="0">Historial de tension de mask de metal</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de sub Material" 
+                            data-permiso-boton="Estandares sobre control de soldadura">Estandares sobre control de soldadura</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de sub Material" 
+                            data-permiso-boton="Registro de recibo de soldadura">Registro de recibo de soldadura</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de sub Material" 
+                            data-permiso-boton="Control de salida de soldadura">Control de salida de soldadura</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de sub Material" 
+                            data-permiso-boton="Historial de tension de mask de metal">Historial de tension de mask de metal</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -44,7 +71,10 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarLineMaterial">
-                    <li class="sidebar-link" tabindex="0">Line Material Status_es</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Line Material Management" 
+                            data-permiso-boton="Line Material Status_es">Line Material Status_es</li>
                 </ul>
             </li>
         </ul>
@@ -55,3 +85,13 @@
         <main class="app-content"> 
         </main>
     </div>
+<script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>
+<script>
+    // Inicializar el sistema de permisos cuando se carga el documento
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof PermisosDropdowns !== 'undefined') {
+            PermisosDropdowns.inicializar();
+        }
+    });
+</script>
+</div>

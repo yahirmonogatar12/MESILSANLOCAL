@@ -73,19 +73,12 @@ def listar_usuarios():
             usuario = dict(row)
             usuario['roles'] = row['roles'].split(',') if row['roles'] else []
             usuario['bloqueado'] = bool(row['bloqueado_hasta'] and 
-                                      datetime.fromisoformat(row['bloqueado_hasta']) > datetime.now())
+                                      datetime.fromisoformat(row['bloqueado_hasta']) > auth_system.get_mexico_time().replace(tzinfo=None))
             usuarios.append(usuario)
         
         conn.close()
         
-        # Registrar consulta
-        auth_system.registrar_auditoria(
-            usuario=session.get('usuario'),
-            modulo='sistema',
-            accion='consultar_usuarios',
-            descripcion=f'Consultó lista de {len(usuarios)} usuarios'
-        )
-        
+        # No registrar en auditoría - consulta muy frecuente
         return jsonify(usuarios)
         
     except Exception as e:
@@ -183,7 +176,7 @@ def guardar_usuario():
                 data.get('cargo', ''),
                 data.get('activo', 1),
                 usuario_actual,
-                datetime.now().isoformat(),
+                auth_system.get_mexico_time_iso(),
                 data['username']
             ]
             
@@ -444,6 +437,346 @@ def obtener_permisos_rol(rol_id):
         
     except Exception as e:
         print(f"Error obteniendo permisos del rol: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# === GESTIÓN DE PERMISOS DE BOTONES/DROPDOWNS ===
+
+@user_admin_bp.route('/listar_permisos_dropdowns')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+def listar_permisos_dropdowns():
+    """Obtener lista de todos los permisos de dropdowns disponibles agrupados por lista"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion, pb.activo
+            FROM permisos_botones pb
+            WHERE pb.activo = 1
+            ORDER BY pb.pagina, pb.seccion, pb.boton
+        ''')
+        
+        permisos = cursor.fetchall()
+        conn.close()
+        
+        # Agrupar por página (lista)
+        permisos_agrupados = {}
+        for permiso in permisos:
+            pagina = permiso['pagina']
+            if pagina not in permisos_agrupados:
+                permisos_agrupados[pagina] = {}
+            
+            seccion = permiso['seccion']
+            if seccion not in permisos_agrupados[pagina]:
+                permisos_agrupados[pagina][seccion] = []
+            
+            permisos_agrupados[pagina][seccion].append({
+                'id': permiso['id'],
+                'boton': permiso['boton'],
+                'descripcion': permiso['descripcion']
+            })
+        
+        return jsonify(permisos_agrupados)
+        
+    except Exception as e:
+        print(f"Error listando permisos de dropdowns: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_admin_bp.route('/obtener_permisos_dropdowns_rol/<int:rol_id>')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+def obtener_permisos_dropdowns_rol(rol_id):
+    """Obtener permisos de dropdowns de un rol específico"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion
+            FROM permisos_botones pb
+            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
+            WHERE rpb.rol_id = ? AND pb.activo = 1
+            ORDER BY pb.pagina, pb.seccion, pb.boton
+        ''', (rol_id,))
+        
+        permisos = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify(permisos)
+        
+    except Exception as e:
+        print(f"Error obteniendo permisos de dropdowns del rol: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_admin_bp.route('/actualizar_permisos_dropdowns_rol', methods=['POST'])
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+def actualizar_permisos_dropdowns_rol():
+    """Actualizar permisos de dropdowns de un rol"""
+    try:
+        data = request.get_json()
+        rol_id = data.get('rol_id')
+        permisos_ids = data.get('permisos_ids', [])
+        
+        if not rol_id:
+            return jsonify({'success': False, 'error': 'ID de rol requerido'}), 400
+            
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Eliminar permisos actuales del rol
+        cursor.execute('DELETE FROM rol_permisos_botones WHERE rol_id = ?', (rol_id,))
+        
+        # Agregar nuevos permisos
+        for permiso_id in permisos_ids:
+            cursor.execute('''
+                INSERT INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                VALUES (?, ?)
+            ''', (rol_id, permiso_id))
+        
+        conn.commit()
+        conn.close()
+        
+        # Registrar auditoría
+        auth_system.registrar_auditoria(
+            usuario=session.get('usuario'),
+            modulo='sistema',
+            accion='actualizar_permisos_dropdowns',
+            descripcion=f'Actualizó permisos de dropdowns para rol ID {rol_id}'
+        )
+        
+        return jsonify({
+            'success': True, 
+            'mensaje': f'Permisos de dropdowns actualizados exitosamente'
+        })
+        
+    except Exception as e:
+        print(f"Error actualizando permisos de dropdowns: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@user_admin_bp.route('/listar_permisos_botones')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+def listar_permisos_botones():
+    """Obtener lista de todos los permisos de botones disponibles"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM permisos_botones 
+            WHERE activo = 1
+            ORDER BY pagina, seccion, boton
+        ''')
+        
+        permisos = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify(permisos)
+        
+    except Exception as e:
+        print(f"Error listando permisos de botones: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_admin_bp.route('/permisos_botones_rol/<int:rol_id>')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+def obtener_permisos_botones_rol(rol_id):
+    """Obtener permisos de botones de un rol específico"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion
+            FROM permisos_botones pb
+            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
+            WHERE rpb.rol_id = ? AND pb.activo = 1
+            ORDER BY pb.pagina, pb.seccion, pb.boton
+        ''', (rol_id,))
+        
+        permisos = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify(permisos)
+        
+    except Exception as e:
+        print(f"Error obteniendo permisos de botones del rol: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_admin_bp.route('/actualizar_permisos_botones_rol', methods=['POST'])
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+def actualizar_permisos_botones_rol():
+    """Actualizar permisos de botones para un rol"""
+    try:
+        data = request.get_json()
+        rol_id = data.get('rol_id')
+        permisos_botones_ids = data.get('permisos_botones_ids', [])
+        usuario_actual = session.get('usuario')
+        
+        if not rol_id:
+            return jsonify({'error': 'ID de rol requerido'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Obtener nombre del rol para auditoría
+        cursor.execute('SELECT nombre FROM roles WHERE id = ?', (rol_id,))
+        rol = cursor.fetchone()
+        if not rol:
+            return jsonify({'error': 'Rol no encontrado'}), 404
+        
+        # Obtener permisos anteriores para auditoría
+        cursor.execute('''
+            SELECT pb.boton, pb.pagina, pb.seccion
+            FROM permisos_botones pb
+            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
+            WHERE rpb.rol_id = ?
+        ''', (rol_id,))
+        permisos_anteriores = [dict(row) for row in cursor.fetchall()]
+        
+        # Eliminar permisos existentes
+        cursor.execute('DELETE FROM rol_permisos_botones WHERE rol_id = ?', (rol_id,))
+        
+        # Insertar nuevos permisos
+        for permiso_boton_id in permisos_botones_ids:
+            cursor.execute('''
+                INSERT INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                VALUES (?, ?)
+            ''', (rol_id, permiso_boton_id))
+        
+        # Obtener permisos nuevos para auditoría
+        cursor.execute('''
+            SELECT pb.boton, pb.pagina, pb.seccion
+            FROM permisos_botones pb
+            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
+            WHERE rpb.rol_id = ?
+        ''', (rol_id,))
+        permisos_nuevos = [dict(row) for row in cursor.fetchall()]
+        
+        conn.commit()
+        
+        # Registrar en auditoría
+        auth_system.registrar_auditoria(
+            usuario=usuario_actual,
+            modulo='sistema',
+            accion='actualizar_permisos_botones_rol',
+            descripcion=f'Actualizó permisos de botones del rol {rol["nombre"]}',
+            datos_antes={'permisos': permisos_anteriores},
+            datos_despues={'permisos': permisos_nuevos}
+        )
+        
+        conn.close()
+        return jsonify({'success': True, 'mensaje': f'Permisos de botones del rol {rol["nombre"]} actualizados'})
+        
+    except Exception as e:
+        print(f"Error actualizando permisos de botones del rol: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_admin_bp.route('/permisos_botones_usuario/<username>')
+@auth_system.login_requerido_avanzado  
+@auth_system.requiere_permiso('sistema', 'usuarios')
+def obtener_permisos_botones_usuario(username):
+    """Obtener permisos de botones de un usuario específico"""
+    try:
+        permisos_botones = auth_system.obtener_permisos_botones_usuario(username)
+        return jsonify(permisos_botones)
+        
+    except Exception as e:
+        print(f"Error obteniendo permisos de botones del usuario: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_admin_bp.route('/verificar_permiso_dropdown', methods=['POST'])
+@auth_system.login_requerido_avanzado
+def verificar_permiso_dropdown():
+    """Verificar si el usuario actual tiene permiso para un dropdown específico"""
+    try:
+        data = request.get_json()
+        pagina = data.get('pagina')
+        seccion = data.get('seccion')
+        boton = data.get('boton')
+        
+        if not all([pagina, seccion, boton]):
+            return jsonify({'error': 'Faltan parámetros requeridos'}), 400
+        
+        username = session.get('usuario')
+        if not username:
+            return jsonify({'tiene_permiso': False, 'error': 'Usuario no autenticado'}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verificar si el usuario tiene el permiso específico
+        cursor.execute('''
+            SELECT COUNT(*) as tiene_permiso
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+            WHERE u.username = ? AND pb.pagina = ? AND pb.seccion = ? AND pb.boton = ?
+            AND u.activo = 1 AND pb.activo = 1
+        ''', (username, pagina, seccion, boton))
+        
+        resultado = cursor.fetchone()
+        tiene_permiso = resultado['tiene_permiso'] > 0
+        
+        conn.close()
+        
+        return jsonify({'tiene_permiso': tiene_permiso})
+        
+    except Exception as e:
+        print(f"Error verificando permiso de dropdown: {e}")
+        return jsonify({'tiene_permiso': False, 'error': str(e)}), 500
+
+@user_admin_bp.route('/obtener_permisos_usuario_actual')
+@auth_system.login_requerido_avanzado
+def obtener_permisos_usuario_actual():
+    """Obtener todos los permisos de dropdowns del usuario actual"""
+    try:
+        username = session.get('usuario')
+        if not username:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Obtener todos los permisos de botones del usuario
+        cursor.execute('''
+            SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+            WHERE u.username = ? AND u.activo = 1 AND pb.activo = 1
+            ORDER BY pb.pagina, pb.seccion, pb.boton
+        ''', (username,))
+        
+        permisos = cursor.fetchall()
+        conn.close()
+        
+        # Organizar permisos para fácil consulta en frontend
+        permisos_dict = {}
+        for permiso in permisos:
+            pagina = permiso['pagina']
+            if pagina not in permisos_dict:
+                permisos_dict[pagina] = {}
+            
+            seccion = permiso['seccion']
+            if seccion not in permisos_dict[pagina]:
+                permisos_dict[pagina][seccion] = []
+            
+            permisos_dict[pagina][seccion].append(permiso['boton'])
+        
+        return jsonify({
+            'permisos': permisos_dict,
+            'usuario': username,
+            'total_permisos': len(permisos)
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo permisos del usuario actual: {e}")
         return jsonify({'error': str(e)}), 500
 
 # === AUDITORÍA Y LOGS ===
@@ -746,7 +1079,7 @@ def actividad_reciente():
         usuarios_activos = []
         for row in cursor.fetchall():
             tiempo = datetime.fromisoformat(row['ultima_actividad'])
-            hace = (datetime.now() - tiempo).total_seconds()
+            hace = (auth_system.get_mexico_time().replace(tzinfo=None) - tiempo).total_seconds()
             if hace < 60:
                 hace_texto = f"{int(hace)}s"
             else:

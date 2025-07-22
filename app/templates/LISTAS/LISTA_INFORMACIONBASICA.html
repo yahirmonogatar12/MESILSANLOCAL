@@ -8,12 +8,30 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial">
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminUsuarioInfo()">Administración de usuario</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminMenuInfo()">Administración de menu</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminAutoridadInfo()">Administración de autoridad</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlCodigoInfo()">Control de lista de codigo</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminItinerarioInfo()">Administracion de itinerario</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarConsultarLicenciasInfo()">Consultar licencias</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminUsuarioInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Administración de usuario" 
+                        data-permiso-boton="Administración de usuario">Administración de usuario</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminMenuInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Administración de usuario" 
+                        data-permiso-boton="Administración de menu">Administración de menu</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminAutoridadInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Administración de usuario" 
+                        data-permiso-boton="Administración de autoridad">Administración de autoridad</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlCodigoInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Administración de usuario" 
+                        data-permiso-boton="Control de lista de codigo">Control de lista de codigo</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminItinerarioInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Administración de usuario" 
+                        data-permiso-boton="Administracion de itinerario">Administracion de itinerario</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarConsultarLicenciasInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Administración de usuario" 
+                        data-permiso-boton="Consultar licencias">Consultar licencias</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -23,13 +41,34 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlDepartamentoInfo()">Control de departamento</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlProcesoInfo()">Control de proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlOrdenProcesoInfo()">Control de orden de proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlOrdenProceso2Info()">Control de orden de proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlDefectoInfo()">Control de defecto por proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlInterfacesInfo()">Control de interfaces de maquina</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlInterlockInfo()">Control de interlock de maquina en linea</li>   
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlDepartamentoInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de Proceso" 
+                        data-permiso-boton="Control de departamento">Control de departamento</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlProcesoInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de Proceso" 
+                        data-permiso-boton="Control de proceso">Control de proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlOrdenProcesoInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de Proceso" 
+                        data-permiso-boton="Control de orden de proceso">Control de orden de proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlOrdenProceso2Info()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de Proceso" 
+                        data-permiso-boton="Control de orden de proceso 2">Control de orden de proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlDefectoInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de Proceso" 
+                        data-permiso-boton="Control de defecto por proceso">Control de defecto por proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlInterfacesInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de Proceso" 
+                        data-permiso-boton="Control de interfaces de maquina">Control de interfaces de maquina</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlInterlockInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de Proceso" 
+                        data-permiso-boton="Control de interlock de maquina en linea">Control de interlock de maquina en linea</li>   
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -39,12 +78,30 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarProduccion">
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlModelosInfo()">Control de modelos</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMInfo()">Control de BOM</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMSMTInfo()">Control de BOM de SMT</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.Controlmaquinainf()">Control de maquina</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaquinaInfo()">Control de defecto por proceso</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaquinaLineaInfo()">Control de maquina en linea</li>   
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlModelosInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de produccion" 
+                        data-permiso-boton="Control de modelos">Control de modelos</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de produccion" 
+                        data-permiso-boton="Control de BOM">Control de BOM</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMSMTInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de produccion" 
+                        data-permiso-boton="Control de BOM de SMT">Control de BOM de SMT</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.Controlmaquinainf()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de produccion" 
+                        data-permiso-boton="Control de maquina">Control de maquina</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaquinaInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de produccion" 
+                        data-permiso-boton="Control de defecto por proceso 2">Control de defecto por proceso</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaquinaLineaInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de produccion" 
+                        data-permiso-boton="Control de maquina en linea">Control de maquina en linea</li>   
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -54,8 +111,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial2">
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaterialInfo()">Control de material</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarConfiguracionMSLInfo()">Configuracion de MSL</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaterialInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de material" 
+                        data-permiso-boton="Control de material">Control de material</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarConfiguracionMSLInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de material" 
+                        data-permiso-boton="Configuracion de MSL">Configuracion de MSL</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -65,8 +128,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarCliente">
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlClienteInfo()">Control de cliente</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlProveedorInfo()">Control de proveedor</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlClienteInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de cliente" 
+                        data-permiso-boton="Control de cliente">Control de cliente</li>
+                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlProveedorInfo()" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de cliente" 
+                        data-permiso-boton="Control de proveedor">Control de proveedor</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -76,7 +145,10 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarOtros">
-                    <li class="sidebar-link" tabindex="0" onclick="console.log('Reiniciar sección - por implementar')">Re-iniciar la seccion</li>
+                    <li class="sidebar-link" tabindex="0" onclick="console.log('Reiniciar sección - por implementar')" 
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Otros" 
+                        data-permiso-boton="Re-iniciar la seccion">Re-iniciar la seccion</li>
         </ul>
     </aside>
 
@@ -84,3 +156,13 @@
 
         <!-- El contenido ahora se muestra en informacion-basica-content-area de MaterialTemplate.html -->
     </div>
+
+<script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>
+<script>
+    // Inicializar el sistema de permisos cuando se carga el documento
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof PermisosDropdowns !== 'undefined') {
+            PermisosDropdowns.inicializar();
+        }
+    });
+</script>

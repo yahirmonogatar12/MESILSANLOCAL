@@ -224,9 +224,9 @@ def api_print():
     Endpoint para impresión directa
     Espera un JSON:
     {
-      "zpl": "<^XA^FO50,50^BCN,100,Y,N,N^FD12345678^FS^XZ>",
-      "codigo": "M2606809020,202507160001",
-      "printer": "opcional - nombre específico de impresora"
+    "zpl": "<^XA^FO50,50^BCN,100,Y,N,N^FD12345678^FS^XZ>",
+    "codigo": "M2606809020,202507160001",
+    "printer": "opcional - nombre específico de impresora"
     }
     """
     try:

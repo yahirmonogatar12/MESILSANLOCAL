@@ -31,6 +31,57 @@ auth_system.init_database()
 # Registrar Blueprint de administración
 app.register_blueprint(user_admin_bp, url_prefix='/admin')
 
+# Filtros de Jinja2 para permisos de botones
+@app.template_filter('tiene_permiso_boton')
+def tiene_permiso_boton(nombre_boton):
+    """Filtro para verificar si el usuario actual tiene permiso para un botón específico"""
+    try:
+        # Obtener el usuario de la sesión actual
+        if 'username' not in session:
+            return False
+        
+        username = session['username']
+        
+        # Verificar si el usuario es superadmin (acceso total)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT rol FROM usuarios WHERE username = ?', (username,))
+        usuario = cursor.fetchone()
+        if not usuario:
+            conn.close()
+            return False
+            
+        if usuario[0] == 'superadmin':
+            conn.close()
+            return True
+        
+        # Verificar permiso específico del botón
+        cursor.execute('''
+            SELECT 1 FROM usuarios u
+            JOIN roles r ON u.rol = r.nombre
+            JOIN rol_permisos_botones rpb ON r.id = rpb.rol_id
+            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+            WHERE u.username = ? AND pb.boton = ? AND pb.activo = 1
+            LIMIT 1
+        ''', (username, nombre_boton))
+        
+        resultado = cursor.fetchone()
+        conn.close()
+        
+        return resultado is not None
+        
+    except Exception as e:
+        print(f"Error verificando permiso de botón '{nombre_boton}': {e}")
+        return False
+
+@app.template_filter('permisos_botones_pagina')
+def permisos_botones_pagina(usuario, pagina):
+    """Filtro para obtener todos los permisos de botones de una página"""
+    if not usuario:
+        return {}
+    return auth_system.obtener_permisos_botones_usuario(usuario, pagina)
+
 # DEPRECADO: Función antigua para compatibilidad temporal
 def cargar_usuarios():
     """Función deprecada - se mantiene para compatibilidad"""
@@ -2826,3 +2877,115 @@ def serve_list_template(filename):
     except Exception as e:
         print(f"Error sirviendo plantilla {filename}: {str(e)}")
         return f"Error cargando la plantilla: {str(e)}", 500
+
+# ===== RUTAS PARA EL SISTEMA DE PERMISOS DROPDOWNS =====
+
+@app.route('/verificar_permiso_dropdown', methods=['POST'])
+def verificar_permiso_dropdown():
+    """
+    Verificar si el usuario actual tiene permiso para un dropdown específico
+    """
+    try:
+        if 'username' not in session:
+            return jsonify({'tiene_permiso': False, 'error': 'Usuario no autenticado'}), 401
+        
+        pagina = request.form.get('pagina', '').strip()
+        seccion = request.form.get('seccion', '').strip() 
+        boton = request.form.get('boton', '').strip()
+        
+        if not all([pagina, seccion, boton]):
+            return jsonify({'tiene_permiso': False, 'error': 'Parámetros incompletos'}), 400
+        
+        username = session['username']
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Verificar si es superadmin
+        cursor.execute('SELECT rol FROM usuarios WHERE username = ?', (username,))
+        usuario = cursor.fetchone()
+        
+        if not usuario:
+            return jsonify({'tiene_permiso': False, 'error': 'Usuario no encontrado'}), 404
+        
+        # Superadmin tiene todos los permisos
+        if usuario[0] == 'superadmin':
+            return jsonify({'tiene_permiso': True, 'motivo': 'superadmin'})
+        
+        # Verificar permiso específico
+        cursor.execute('''
+            SELECT COUNT(*) FROM rol_permisos_botones rpb
+            JOIN permisos_botones pb ON rpb.id_permiso = pb.id
+            WHERE rpb.rol = ? AND pb.pagina = ? AND pb.seccion = ? AND pb.boton = ?
+        ''', (usuario[0], pagina, seccion, boton))
+        
+        tiene_permiso = cursor.fetchone()[0] > 0
+        conn.close()
+        
+        return jsonify({
+            'tiene_permiso': tiene_permiso,
+            'usuario': username,
+            'rol': usuario[0],
+            'permiso': f"{pagina} > {seccion} > {boton}"
+        })
+        
+    except Exception as e:
+        print(f"Error verificando permiso: {e}")
+        return jsonify({'tiene_permiso': False, 'error': str(e)}), 500
+
+@app.route('/obtener_permisos_usuario_actual', methods=['GET'])
+def obtener_permisos_usuario_actual():
+    """
+    Obtener todos los permisos del usuario actual para caché en frontend
+    """
+    try:
+        if 'username' not in session:
+            return jsonify({'permisos': [], 'error': 'Usuario no autenticado'}), 401
+        
+        username = session['username']
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Obtener rol del usuario
+        cursor.execute('SELECT rol FROM usuarios WHERE username = ?', (username,))
+        usuario = cursor.fetchone()
+        
+        if not usuario:
+            return jsonify({'permisos': [], 'error': 'Usuario no encontrado'}), 404
+        
+        # Superadmin tiene todos los permisos
+        if usuario[0] == 'superadmin':
+            cursor.execute('SELECT pagina, seccion, boton FROM permisos_botones ORDER BY pagina, seccion, boton')
+            permisos = cursor.fetchall()
+        else:
+            # Obtener permisos específicos del rol
+            cursor.execute('''
+                SELECT pb.pagina, pb.seccion, pb.boton 
+                FROM rol_permisos_botones rpb
+                JOIN permisos_botones pb ON rpb.id_permiso = pb.id
+                WHERE rpb.rol = ?
+                ORDER BY pb.pagina, pb.seccion, pb.boton
+            ''', (usuario[0],))
+            permisos = cursor.fetchall()
+        
+        conn.close()
+        
+        # Formatear permisos para JavaScript
+        permisos_formateados = []
+        for pagina, seccion, boton in permisos:
+            permisos_formateados.append({
+                'pagina': pagina,
+                'seccion': seccion, 
+                'boton': boton,
+                'clave': f"{pagina}|{seccion}|{boton}"
+            })
+        
+        return jsonify({
+            'permisos': permisos_formateados,
+            'usuario': username,
+            'rol': usuario[0],
+            'total': len(permisos_formateados)
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo permisos: {e}")
+        return jsonify({'permisos': [], 'error': str(e)}), 500

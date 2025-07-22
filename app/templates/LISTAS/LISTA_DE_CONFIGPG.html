@@ -8,8 +8,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarTracking">
-                    <li class="sidebar-link" tabindex="0">Production Tracking By Process</li>
-                    <li class="sidebar-link" tabindex="0">Using material By Product S/N</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_CONFIGPG" 
+                            data-permiso-seccion="Product Tracking" 
+                            data-permiso-boton="Production Tracking By Process">Production Tracking By Process</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_CONFIGPG" 
+                            data-permiso-seccion="Product Tracking" 
+                            data-permiso-boton="Using material By Product S/N">Using material By Product S/N</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -19,7 +25,10 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarDefectINF">
-                    <li class="sidebar-link" tabindex="0">Monthly Defect Aggregation</li>   
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_CONFIGPG" 
+                            data-permiso-seccion="Defect information" 
+                            data-permiso-boton="Monthly Defect Aggregation">Monthly Defect Aggregation</li>   
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -29,8 +38,14 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMonitoring">
-                    <li class="sidebar-link" tabindex="0">Total Monitoreo</li>
-                    <li class="sidebar-link" tabindex="0">Monitoreo de temperatura y humedad</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_CONFIGPG" 
+                            data-permiso-seccion="Monitoreo" 
+                            data-permiso-boton="Total Monitoreo">Total Monitoreo</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_CONFIGPG" 
+                            data-permiso-seccion="Monitoreo" 
+                            data-permiso-boton="Monitoreo de temperatura y humedad">Monitoreo de temperatura y humedad</li>
                 </ul>
             </li>
         </ul>
@@ -41,3 +56,13 @@
         <main class="app-content"> 
         </main>
     </div>
+<script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>
+<script>
+    // Inicializar el sistema de permisos cuando se carga el documento
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof PermisosDropdowns !== 'undefined') {
+            PermisosDropdowns.inicializar();
+        }
+    });
+</script>
+</div>

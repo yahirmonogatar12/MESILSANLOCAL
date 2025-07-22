@@ -8,18 +8,54 @@
                         <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                     </button>
                     <ul class="collapse sidebar-dropdown-list" id="sidebarControlMaterial">
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlAlmacen()">Control de material de almacén</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlSalida()">Control de salida</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlRetorno()">Control de material retorno</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarReciboPago()">Recibo y pago del material</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialMaterial()">Historial de material</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarEstatusMaterial()">Estatus de material</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarMaterialSustituto()">Material sustituto</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarConsultarPeps()">Consultar PEPS</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarLongtermInventory()">Control de Long-Term Inventory</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarRegistroMaterial()">Registro de material real</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialInventario()">Historial de inventario real</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarAjusteNumero()">Ajuste de número de parte</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlAlmacen()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Control de material de almacén">Control de material de almacén</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlSalida()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Control de salida">Control de salida</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlRetorno()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Control de material retorno">Control de material retorno</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarReciboPago()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Recibo y pago del material">Recibo y pago del material</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialMaterial()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Historial de material">Historial de material</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarEstatusMaterial()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Estatus de material">Estatus de material</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarMaterialSustituto()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Material sustituto">Material sustituto</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarConsultarPeps()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Consultar PEPS">Consultar PEPS</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarLongtermInventory()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Control de Long-Term Inventory">Control de Long-Term Inventory</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarRegistroMaterial()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Registro de material real">Registro de material real</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialInventario()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Historial de inventario real">Historial de inventario real</li>
+                        <li class="sidebar-link" tabindex="0" onclick="mostrarAjusteNumero()" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material" 
+                            data-permiso-boton="Ajuste de número de parte">Ajuste de número de parte</li>
                     </ul>
                 </li>
                 <li class="sidebar-section">
@@ -29,9 +65,18 @@
                         <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                     </button>
                     <ul class="collapse show sidebar-dropdown-list" id="sidebarMSL">
-                        <li class="sidebar-link" tabindex="0">Control total de material</li>
-                        <li class="sidebar-link" tabindex="0">Control de entrada y salida de material</li>
-                        <li class="sidebar-link" tabindex="0">Estatus de material MSL</li>
+                        <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material MSL" 
+                            data-permiso-boton="Control total de material">Control total de material</li>
+                        <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material MSL" 
+                            data-permiso-boton="Control de entrada y salida de material">Control de entrada y salida de material</li>
+                        <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de material MSL" 
+                            data-permiso-boton="Estatus de material MSL">Estatus de material MSL</li>
                     </ul>
                 </li>
                 <li class="sidebar-section">
@@ -41,10 +86,22 @@
                         <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                     </button>
                     <ul class="collapse show sidebar-dropdown-list" id="sidebarRefacciones">
-                        <li class="sidebar-link" tabindex="0">Estándares sobre refacciones</li>
-                        <li class="sidebar-link" tabindex="0">Control de recibo de refacciones</li>
-                        <li class="sidebar-link" tabindex="0">Control de salida de refacciones</li>
-                        <li class="sidebar-link" tabindex="0">Estatus de inventario de refacciones</li>
+                        <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de refacciones" 
+                            data-permiso-boton="Estándares sobre refacciones">Estándares sobre refacciones</li>
+                        <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de refacciones" 
+                            data-permiso-boton="Control de recibo de refacciones">Control de recibo de refacciones</li>
+                        <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de refacciones" 
+                            data-permiso-boton="Control de salida de refacciones">Control de salida de refacciones</li>
+                        <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_DE_MATERIALES" 
+                            data-permiso-seccion="Control de refacciones" 
+                            data-permiso-boton="Estatus de inventario de refacciones">Estatus de inventario de refacciones</li>
                     </ul>
                 </li>
         </ul>
@@ -52,4 +109,14 @@
 
         <div class="overlay"></div>
     </div>
+
+<script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>
+<script>
+    // Inicializar el sistema de permisos cuando se carga el documento
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof PermisosDropdowns !== 'undefined') {
+            PermisosDropdowns.inicializar();
+        }
+    });
+</script>
 

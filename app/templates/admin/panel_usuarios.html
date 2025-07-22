@@ -314,16 +314,62 @@
     
     <!-- Modal para ver permisos -->
     <div class="modal fade" id="modalPermisos" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Permisos del Usuario</h5>
+                    <h5 class="modal-title">Permisos de Dropdowns del Usuario</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div id="permisosContent">
                         <!-- Se carga dinámicamente -->
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-warning" onclick="mostrarModalEditarPermisos()">
+                        <i class="fas fa-edit"></i> Editar Permisos de Dropdowns
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para editar permisos de dropdowns -->
+    <div class="modal fade" id="modalEditarPermisos" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEditarPermisosTitulo">Editar Permisos de Dropdowns</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="rolSelect" class="form-label">Seleccionar Rol:</label>
+                            <select class="form-select" id="rolSelect" onchange="cargarPermisosDropdownsRol()">
+                                <option value="">Seleccionar rol...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-info me-2" onclick="seleccionarTodos(true)">
+                                <i class="fas fa-check-square"></i> Seleccionar Todos
+                            </button>
+                            <button class="btn btn-warning" onclick="seleccionarTodos(false)">
+                                <i class="fas fa-square"></i> Deseleccionar Todos
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="permisosDropdownsContainer">
+                        <!-- Se cargan dinámicamente -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarPermisosDropdowns()">
+                        <i class="fas fa-save"></i> Guardar Permisos
+                    </button>
                 </div>
             </div>
         </div>
@@ -399,7 +445,7 @@
                                         <i class="fas fa-shield-alt"></i>
                                     </button>
                                 `}
-                                <button class="btn btn-sm btn-warning" onclick="verPermisos('${user.username}')" title="Ver permisos">
+                                <button class="btn btn-sm btn-warning" onclick="verPermisos('${user.username}')" title="Ver permisos de dropdowns">
                                     <i class="fas fa-key"></i>
                                 </button>
                                 ${user.bloqueado ? `
@@ -638,7 +684,7 @@
                 const response = await fetch(`/admin/obtener_usuario/${username}`);
                 const usuario = await response.json();
                 
-                let permisosHtml = `<h5>Permisos de ${usuario.username}</h5>`;
+                let permisosHtml = `<h5>Permisos de Dropdowns/Listas de ${usuario.username}</h5>`;
                 
                 if (usuario.roles.length === 0) {
                     permisosHtml += '<div class="alert alert-warning">Este usuario no tiene roles asignados</div>';
@@ -648,9 +694,9 @@
                     for (let i = 0; i < usuario.roles.length; i++) {
                         const rol = usuario.roles[i];
                         
-                        // Obtener permisos del rol
-                        const permisosResponse = await fetch(`/admin/obtener_permisos_rol/${rol.id}`);
-                        const permisos = await permisosResponse.json();
+                        // Obtener permisos de dropdowns del rol
+                        const permisosResponse = await fetch(`/admin/obtener_permisos_dropdowns_rol/${rol.id}`);
+                        const permisosDropdowns = await permisosResponse.json();
                         
                         permisosHtml += `
                             <div class="accordion-item">
@@ -658,7 +704,7 @@
                                     <button class="accordion-button ${i > 0 ? 'collapsed' : ''}" type="button" 
                                             data-bs-toggle="collapse" data-bs-target="#collapse${i}">
                                         <strong>${rol.nombre}</strong>
-                                        <span class="badge bg-info ms-2">${permisos.length} permisos</span>
+                                        <span class="badge bg-info ms-2">${permisosDropdowns.length} permisos de dropdowns</span>
                                     </button>
                                 </h2>
                                 <div id="collapse${i}" class="accordion-collapse collapse ${i === 0 ? 'show' : ''}" 
@@ -667,27 +713,55 @@
                                         <p><em>${rol.descripcion}</em></p>
                         `;
                         
-                        // Agrupar permisos por módulo
-                        const permisosPorModulo = {};
-                        permisos.forEach(p => {
-                            if (!permisosPorModulo[p.modulo]) {
-                                permisosPorModulo[p.modulo] = [];
+                        // Agrupar permisos por página (lista)
+                        const permisosPorLista = {};
+                        permisosDropdowns.forEach(p => {
+                            if (!permisosPorLista[p.pagina]) {
+                                permisosPorLista[p.pagina] = {};
                             }
-                            permisosPorModulo[p.modulo].push(p);
+                            if (!permisosPorLista[p.pagina][p.seccion]) {
+                                permisosPorLista[p.pagina][p.seccion] = [];
+                            }
+                            permisosPorLista[p.pagina][p.seccion].push(p);
                         });
                         
-                        Object.keys(permisosPorModulo).forEach(modulo => {
+                        Object.keys(permisosPorLista).forEach(lista => {
+                            const nombreLista = lista.replace('LISTA_', '').replace('_', ' ').replace(/([A-Z])/g, ' $1').trim();
                             permisosHtml += `
-                                <h6 class="text-primary">${modulo.toUpperCase()}</h6>
-                                <ul class="list-unstyled ms-3">
+                                <h6 class="text-primary mt-3">
+                                    <i class="fas fa-list"></i> ${nombreLista}
+                                </h6>
                             `;
-                            permisosPorModulo[modulo].forEach(p => {
+                            
+                            Object.keys(permisosPorLista[lista]).forEach(seccion => {
                                 permisosHtml += `
-                                    <li><i class="fas fa-check text-success"></i> ${p.accion} - ${p.descripcion}</li>
+                                    <h6 class="text-secondary ms-2">
+                                        <i class="fas fa-folder"></i> ${seccion}
+                                    </h6>
+                                    <ul class="list-unstyled ms-4">
                                 `;
+                                permisosPorLista[lista][seccion].forEach(p => {
+                                    permisosHtml += `
+                                        <li class="mb-1">
+                                            <i class="fas fa-check-circle text-success"></i> 
+                                            <strong>${p.boton}</strong>
+                                            <br>
+                                            <small class="text-muted ms-3">${p.descripcion}</small>
+                                        </li>
+                                    `;
+                                });
+                                permisosHtml += '</ul>';
                             });
-                            permisosHtml += '</ul>';
                         });
+                        
+                        if (Object.keys(permisosPorLista).length === 0) {
+                            permisosHtml += `
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Este rol no tiene permisos específicos de dropdowns asignados.
+                                </div>
+                            `;
+                        }
                         
                         permisosHtml += `
                                     </div>
@@ -770,6 +844,189 @@
                 setTimeout(() => {
                     window.location.href = '/logout';
                 }, 1000);
+            }
+        }
+
+        // === FUNCIONES PARA GESTIÓN DE PERMISOS DE DROPDOWNS ===
+        
+        let permisosDropdownsDisponibles = {};
+        let usuarioActualPermisos = null;
+
+        async function mostrarModalEditarPermisos() {
+            try {
+                // Cargar todos los permisos de dropdowns disponibles
+                const responsePermisos = await fetch('/admin/listar_permisos_dropdowns');
+                permisosDropdownsDisponibles = await responsePermisos.json();
+                
+                // Cargar roles para el selector
+                const responseRoles = await fetch('/admin/listar_roles');
+                const rolesData = await responseRoles.json();
+                
+                const rolSelect = document.getElementById('rolSelect');
+                rolSelect.innerHTML = '<option value="">Seleccionar rol...</option>';
+                
+                rolesData.forEach(rol => {
+                    const option = document.createElement('option');
+                    option.value = rol.id;
+                    option.textContent = `${rol.nombre} - ${rol.descripcion}`;
+                    rolSelect.appendChild(option);
+                });
+                
+                // Ocultar modal de permisos y mostrar modal de edición
+                bootstrap.Modal.getInstance(document.getElementById('modalPermisos')).hide();
+                new bootstrap.Modal(document.getElementById('modalEditarPermisos')).show();
+                
+            } catch (error) {
+                console.error('Error cargando datos para edición:', error);
+                alert('Error cargando datos para edición de permisos');
+            }
+        }
+
+        async function cargarPermisosDropdownsRol() {
+            const rolSelect = document.getElementById('rolSelect');
+            const rolId = rolSelect.value;
+            const container = document.getElementById('permisosDropdownsContainer');
+            
+            if (!rolId) {
+                container.innerHTML = '<div class="alert alert-info">Seleccione un rol para ver sus permisos</div>';
+                return;
+            }
+            
+            try {
+                // Obtener permisos actuales del rol
+                const response = await fetch(`/admin/obtener_permisos_dropdowns_rol/${rolId}`);
+                const permisosActuales = await response.json();
+                
+                // Crear array de IDs de permisos actuales para fácil búsqueda
+                const permisosActualesIds = new Set(permisosActuales.map(p => p.id));
+                
+                let html = '';
+                
+                // Generar checkboxes organizados por lista y sección
+                Object.keys(permisosDropdownsDisponibles).forEach(lista => {
+                    const nombreLista = lista.replace('LISTA_', '').replace('_', ' ').replace(/([A-Z])/g, ' $1').trim();
+                    
+                    html += `
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-list"></i> ${nombreLista}
+                                    <button class="btn btn-sm btn-light float-end" 
+                                            onclick="toggleSeccion('${lista}')" type="button">
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                </h6>
+                            </div>
+                            <div class="card-body collapse show" id="seccion_${lista}">
+                    `;
+                    
+                    Object.keys(permisosDropdownsDisponibles[lista]).forEach(seccion => {
+                        html += `
+                            <h6 class="text-secondary mt-3 mb-2">
+                                <i class="fas fa-folder"></i> ${seccion}
+                            </h6>
+                            <div class="row">
+                        `;
+                        
+                        permisosDropdownsDisponibles[lista][seccion].forEach(permiso => {
+                            const isChecked = permisosActualesIds.has(permiso.id);
+                            html += `
+                                <div class="col-md-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               value="${permiso.id}" id="perm_${permiso.id}"
+                                               ${isChecked ? 'checked' : ''}>
+                                        <label class="form-check-label" for="perm_${permiso.id}">
+                                            <strong>${permiso.boton}</strong>
+                                            <br><small class="text-muted">${permiso.descripcion}</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div>';
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error cargando permisos del rol:', error);
+                container.innerHTML = '<div class="alert alert-danger">Error cargando permisos del rol</div>';
+            }
+        }
+
+        function toggleSeccion(seccionId) {
+            const elemento = document.getElementById(`seccion_${seccionId}`);
+            const boton = event.target.closest('button');
+            const icono = boton.querySelector('i');
+            
+            if (elemento.classList.contains('show')) {
+                elemento.classList.remove('show');
+                icono.classList.remove('fa-chevron-down');
+                icono.classList.add('fa-chevron-up');
+            } else {
+                elemento.classList.add('show');
+                icono.classList.remove('fa-chevron-up');
+                icono.classList.add('fa-chevron-down');
+            }
+        }
+
+        function seleccionarTodos(seleccionar) {
+            const checkboxes = document.querySelectorAll('#permisosDropdownsContainer input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = seleccionar;
+            });
+        }
+
+        async function guardarPermisosDropdowns() {
+            const rolSelect = document.getElementById('rolSelect');
+            const rolId = rolSelect.value;
+            
+            if (!rolId) {
+                alert('Debe seleccionar un rol');
+                return;
+            }
+            
+            // Obtener IDs de permisos seleccionados
+            const checkboxes = document.querySelectorAll('#permisosDropdownsContainer input[type="checkbox"]:checked');
+            const permisosIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            
+            try {
+                const response = await fetch('/admin/actualizar_permisos_dropdowns_rol', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rol_id: parseInt(rolId),
+                        permisos_ids: permisosIds
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalEditarPermisos')).hide();
+                    mostrarNotificacion(result.mensaje || 'Permisos actualizados exitosamente', 'success');
+                    
+                    // Recargar permisos del rol actual si está cargado
+                    if (rolId) {
+                        setTimeout(() => {
+                            cargarPermisosDropdownsRol();
+                        }, 500);
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+                
+            } catch (error) {
+                console.error('Error guardando permisos:', error);
+                alert('Error guardando permisos de dropdowns');
             }
         }
     </script>

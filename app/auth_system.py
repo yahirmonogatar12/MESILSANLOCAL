@@ -12,7 +12,7 @@ import threading
 import time
 from functools import wraps
 from flask import session, jsonify, request, redirect, url_for, g, current_app
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import traceback
 from .db import get_db_connection
 
@@ -21,6 +21,24 @@ class AuthSystem:
         self.app = app
         if app:
             self.init_app(app)
+    
+    @staticmethod
+    def get_mexico_time():
+        """Obtener la hora actual de México (GMT-6)"""
+        import os
+        # Establecer zona horaria para Windows
+        os.environ['TZ'] = 'CST6CDT'
+        
+        # Crear timezone para México (GMT-6)
+        mexico_tz = timezone(timedelta(hours=-6))
+        return datetime.now(mexico_tz)
+    
+    @staticmethod  
+    def get_mexico_time_iso():
+        """Obtener la hora actual de México en formato ISO sin zona horaria"""
+        # Retornar sin información de timezone para compatibilidad con SQLite
+        mexico_time = AuthSystem.get_mexico_time()
+        return mexico_time.replace(tzinfo=None).isoformat()
     
     def init_app(self, app):
         """Inicializar el sistema de autenticación con la app Flask"""
@@ -138,14 +156,45 @@ class AuthSystem:
                 )
             ''')
             
+            # Tabla de permisos específicos por página/botón
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS permisos_botones (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pagina TEXT NOT NULL,
+                    seccion TEXT NOT NULL,
+                    boton TEXT NOT NULL,
+                    descripcion TEXT,
+                    activo INTEGER DEFAULT 1,
+                    UNIQUE(pagina, seccion, boton)
+                )
+            ''')
+            
+            # Tabla de permisos de botones por rol
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS rol_permisos_botones (
+                    rol_id INTEGER NOT NULL,
+                    permiso_boton_id INTEGER NOT NULL,
+                    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (rol_id, permiso_boton_id),
+                    FOREIGN KEY (rol_id) REFERENCES roles(id),
+                    FOREIGN KEY (permiso_boton_id) REFERENCES permisos_botones(id)
+                )
+            ''')
+            
             # Insertar roles predeterminados
             self._crear_roles_default(cursor)
             
             # Insertar permisos predeterminados  
             self._crear_permisos_default(cursor)
             
+            # Insertar permisos de botones predeterminados
+            self._crear_permisos_botones_default(cursor)
+            
             # Asignar permisos a roles
             self._asignar_permisos_roles(cursor)
+            
+            # Asignar permisos de botones a roles
+            self._asignar_permisos_botones_roles(cursor)
             
             conn.commit()
             print("✅ Sistema de usuarios inicializado correctamente")
@@ -303,6 +352,190 @@ class AuthSystem:
                         VALUES (?, ?)
                     ''', (rol_id[0], permiso_id[0]))
     
+    def _crear_permisos_botones_default(self, cursor):
+        """Crear permisos específicos de botones para las páginas LISTAS"""
+        permisos_botones = [
+            # LISTA DE MATERIALES - Control de material
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de material de almacén', 'Acceso al control de material de almacén'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de salida', 'Acceso al control de salida de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de material retorno', 'Acceso al control de retorno de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Recibo y pago del material', 'Acceso a recibo y pago del material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de material', 'Acceso al historial de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Estatus de material', 'Acceso al estatus de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Material sustituto', 'Acceso a material sustituto'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Consultar PEPS', 'Acceso a consulta PEPS'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de Long-Term Inventory', 'Acceso a control de inventario de largo plazo'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Registro de material real', 'Acceso a registro de material real'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de inventario real', 'Acceso al historial de inventario real'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Ajuste de número de parte', 'Acceso a ajuste de número de parte'),
+            
+            # LISTA DE MATERIALES - Control de material MSL
+            ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Control total de material', 'Acceso al control total de material MSL'),
+            ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Control de entrada y salida de material', 'Control de entrada y salida de material MSL'),
+            ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Estatus de material MSL', 'Acceso al estatus de material MSL'),
+            
+            # LISTA DE MATERIALES - Control de refacciones
+            ('LISTA_DE_MATERIALES', 'Control de refacciones', 'Estándares sobre refacciones', 'Acceso a estándares sobre refacciones'),
+            ('LISTA_DE_MATERIALES', 'Control de refacciones', 'Control de recibo de refacciones', 'Acceso al control de recibo de refacciones'),
+            ('LISTA_DE_MATERIALES', 'Control de refacciones', 'Control de salida de refacciones', 'Acceso al control de salida de refacciones'),
+            ('LISTA_DE_MATERIALES', 'Control de refacciones', 'Estatus de inventario de refacciones', 'Acceso al estatus de inventario de refacciones'),
+            
+            # LISTA INFORMACIÓN BÁSICA - Información básica
+            ('LISTA_INFORMACIONBASICA', 'Información básica', 'Gestión de departamentos', 'Acceso a gestión de departamentos'),
+            ('LISTA_INFORMACIONBASICA', 'Información básica', 'Gestión de empleados', 'Acceso a gestión de empleados'),
+            ('LISTA_INFORMACIONBASICA', 'Información básica', 'Gestión de proveedores', 'Acceso a gestión de proveedores'),
+            ('LISTA_INFORMACIONBASICA', 'Información básica', 'Gestión de clientes', 'Acceso a gestión de clientes'),
+            ('LISTA_INFORMACIONBASICA', 'Información básica', 'Administracion de itinerario', 'Acceso a administración de itinerario'),
+            ('LISTA_INFORMACIONBASICA', 'Información básica', 'Consultar licencias', 'Acceso a consultar licencias'),
+            
+            # LISTA INFORMACIÓN BÁSICA - Control de Proceso
+            ('LISTA_INFORMACIONBASICA', 'Control de Proceso', 'Control de departamento', 'Acceso al control de departamento'),
+            ('LISTA_INFORMACIONBASICA', 'Control de Proceso', 'Control de proceso', 'Acceso al control de proceso'),
+            
+            # LISTA CONTROL DE PRODUCCIÓN - Información básica
+            ('LISTA_CONTROLDEPRODUCCION', 'Información básica', 'Información básica', 'Acceso a información básica de producción'),
+            
+            # LISTA CONTROL DE PRODUCCIÓN - Control de proceso  
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de proceso', 'Control de proceso', 'Acceso al control de proceso de producción'),
+            
+            # LISTA CONTROL DE PRODUCCIÓN - Control de calidad
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de calidad', 'Control de calidad', 'Acceso al control de calidad de producción'),
+            
+            # LISTA CONTROL DE PRODUCCIÓN - Gestión
+            ('LISTA_CONTROLDEPRODUCCION', 'Gestión', 'Gestión', 'Acceso a gestión de producción'),
+            
+            # LISTA CONTROL DE PRODUCCIÓN - Configuración
+            ('LISTA_CONTROLDEPRODUCCION', 'Configuración', 'Configuración', 'Acceso a configuración de producción'),
+            
+            # LISTA CONTROL DE PROCESO - Control de produccion
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Historial de operacion por proceso', 'Acceso al historial de operación por proceso'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'BOM Management By Process', 'Acceso a BOM Management por proceso'),
+            
+            # LISTA CONTROL DE PROCESO - Reporte diario de inspeccion
+            ('LISTA_CONTROL_DE_PROCESO', 'Reporte diario de inspeccion', 'Reporte diario de inspeccion', 'Acceso a reporte diario de inspección'),
+            
+            # LISTA CONTROL DE PROCESO - Control de otras identificaciones
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de otras identificaciones', 'Registro de movimiento de identificacion', 'Acceso a registro de movimiento de identificación'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de otras identificaciones', 'Control de otras identificaciones', 'Acceso al control de otras identificaciones'),
+            
+            # LISTA CONTROL DE PROCESO - Control de N/S
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de N/S', 'Control de movimiento de N/S de producto', 'Acceso al control de movimiento de N/S de producto'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de N/S', 'Model S/N Management', 'Acceso a Model S/N Management'),
+            
+            # LISTA CONTROL DE PROCESO - Control de material Scrap
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de material Scrap', 'Control de Scrap', 'Acceso al control de Scrap'),
+            
+            # LISTA CONTROL DE CALIDAD - Control de calidad  
+            ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección de entrada', 'Acceso a inspección de entrada'),
+            ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección en proceso', 'Acceso a inspección en proceso'),
+            ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección final', 'Acceso a inspección final'),
+            ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Control de calibracion', 'Acceso al control de calibración'),
+            ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Reportes de calidad', 'Acceso a reportes de calidad'),
+            
+            # LISTA DE CONTROL DE RESULTADOS
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Análisis de resultados', 'Acceso al análisis de resultados'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Reportes estadísticos', 'Acceso a reportes estadísticos'),
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de resultados', 'Gráficos de tendencia', 'Acceso a gráficos de tendencia'),
+            
+            # LISTA DE CONTROL DE REPORTE
+            ('LISTA_DE_CONTROL_DE_REPORTE', 'Control de reporte', 'Generación de reportes', 'Acceso a generación de reportes'),
+            ('LISTA_DE_CONTROL_DE_REPORTE', 'Control de reporte', 'Configuración de reportes', 'Acceso a configuración de reportes'),
+            ('LISTA_DE_CONTROL_DE_REPORTE', 'Control de reporte', 'Programación de reportes', 'Acceso a programación de reportes'),
+            
+            # LISTA DE CONFIGPG
+            ('LISTA_DE_CONFIGPG', 'Configuración', 'Configuración general', 'Acceso a configuración general del sistema'),
+            ('LISTA_DE_CONFIGPG', 'Configuración', 'Configuración de usuarios', 'Acceso a configuración de usuarios'),
+            ('LISTA_DE_CONFIGPG', 'Configuración', 'Configuración de impresión', 'Acceso a configuración de impresión'),
+            ('LISTA_DE_CONFIGPG', 'Configuración', 'Configuración de red', 'Acceso a configuración de red')
+        ]
+        
+        for pagina, seccion, boton, descripcion in permisos_botones:
+            cursor.execute('''
+                INSERT OR IGNORE INTO permisos_botones (pagina, seccion, boton, descripcion)
+                VALUES (?, ?, ?, ?)
+            ''', (pagina, seccion, boton, descripcion))
+    
+    def _asignar_permisos_botones_roles(self, cursor):
+        """Asignar permisos de botones a roles"""
+        
+        # Super Admin - todos los permisos de botones
+        cursor.execute('SELECT id FROM roles WHERE nombre = "superadmin"')
+        superadmin_id = cursor.fetchone()
+        if superadmin_id:
+            cursor.execute('SELECT id FROM permisos_botones WHERE activo = 1')
+            todos_permisos_botones = cursor.fetchall()
+            for permiso in todos_permisos_botones:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                    VALUES (?, ?)
+                ''', (superadmin_id[0], permiso[0]))
+        
+        # Admin - todos excepto configuración crítica
+        cursor.execute('SELECT id FROM roles WHERE nombre = "admin"')
+        admin_id = cursor.fetchone()
+        if admin_id:
+            cursor.execute('''
+                SELECT id FROM permisos_botones 
+                WHERE activo = 1 AND NOT (seccion = 'Configuración' AND boton LIKE '%crítico%')
+            ''')
+            permisos_admin_botones = cursor.fetchall()
+            for permiso in permisos_admin_botones:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                    VALUES (?, ?)
+                ''', (admin_id[0], permiso[0]))
+        
+        # Supervisor Almacén - solo materiales y control de almacén
+        self._asignar_permisos_botones_especificos(cursor, 'supervisor_almacen', [
+            'LISTA_DE_MATERIALES', 'LISTA_INFORMACIONBASICA'
+        ], [
+            'Control de material', 'Control de material MSL', 'Información básica'
+        ])
+        
+        # Operador Almacén - solo funciones básicas de almacén
+        self._asignar_permisos_botones_especificos(cursor, 'operador_almacen', [
+            'LISTA_DE_MATERIALES'
+        ], [
+            'Control de material'
+        ])
+        
+        # Control de Calidad - solo funciones de calidad
+        self._asignar_permisos_botones_especificos(cursor, 'calidad', [
+            'LISTA_CONTROL_DE_CALIDAD', 'LISTA_INFORMACIONBASICA'
+        ], [
+            'Control de calidad', 'Información básica'
+        ])
+        
+        # Consulta - solo ver, sin modificar
+        self._asignar_permisos_botones_especificos(cursor, 'consulta', [
+            'LISTA_DE_MATERIALES', 'LISTA_CONTROL_DE_CALIDAD', 'LISTA_CONTROL_DE_PROCESO', 'LISTA_INFORMACIONBASICA'
+        ], [
+            'Información básica'
+        ])
+    
+    def _asignar_permisos_botones_especificos(self, cursor, rol_nombre, paginas_permitidas, secciones_permitidas):
+        """Asignar permisos específicos de botones a un rol"""
+        cursor.execute('SELECT id FROM roles WHERE nombre = ?', (rol_nombre,))
+        rol_id = cursor.fetchone()
+        if rol_id:
+            # Crear placeholders para la consulta IN
+            paginas_placeholders = ','.join('?' * len(paginas_permitidas))
+            secciones_placeholders = ','.join('?' * len(secciones_permitidas))
+            
+            cursor.execute(f'''
+                SELECT id FROM permisos_botones 
+                WHERE pagina IN ({paginas_placeholders}) 
+                AND seccion IN ({secciones_placeholders})
+                AND activo = 1
+            ''', paginas_permitidas + secciones_permitidas)
+            
+            permisos_botones = cursor.fetchall()
+            for permiso in permisos_botones:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                    VALUES (?, ?)
+                ''', (rol_id[0], permiso[0]))
+    
     def create_default_admin(self):
         """Crear usuario administrador por defecto"""
         try:
@@ -371,7 +604,9 @@ class AuthSystem:
             # Verificar si está bloqueado
             if usuario['bloqueado_hasta']:
                 bloqueado_hasta = datetime.fromisoformat(usuario['bloqueado_hasta'])
-                if datetime.now() < bloqueado_hasta:
+                ahora_mexico = AuthSystem.get_mexico_time().replace(tzinfo=None)
+                    
+                if ahora_mexico < bloqueado_hasta:
                     return False, f"Usuario bloqueado hasta {bloqueado_hasta.strftime('%H:%M:%S')}"
                 else:
                     # Desbloquear usuario
@@ -387,12 +622,13 @@ class AuthSystem:
             # Verificar contraseña
             if usuario['password_hash'] == self.hash_password(password):
                 # Login exitoso - resetear intentos fallidos
+                # Usar hora local de México
                 cursor.execute('''
                     UPDATE usuarios_sistema 
-                    SET ultimo_acceso = CURRENT_TIMESTAMP, intentos_fallidos = 0,
+                    SET ultimo_acceso = ?, intentos_fallidos = 0,
                         bloqueado_hasta = NULL
                     WHERE id = ?
-                ''', (usuario['id'],))
+                ''', (self.get_mexico_time_iso(), usuario['id']))
                 
                 # Registrar sesión activa
                 token_sesion = secrets.token_hex(32)
@@ -413,12 +649,12 @@ class AuthSystem:
                 bloqueado_hasta = None
                 
                 if intentos >= 5:  # Bloquear después de 5 intentos
-                    bloqueado_hasta = datetime.now() + timedelta(minutes=30)
+                    bloqueado_hasta = (AuthSystem.get_mexico_time() + timedelta(minutes=30)).replace(tzinfo=None).isoformat()
                     cursor.execute('''
                         UPDATE usuarios_sistema 
                         SET intentos_fallidos = ?, bloqueado_hasta = ?
                         WHERE id = ?
-                    ''', (intentos, bloqueado_hasta.isoformat(), usuario['id']))
+                    ''', (intentos, bloqueado_hasta, usuario['id']))
                     mensaje = "Usuario bloqueado por 30 minutos debido a múltiples intentos fallidos"
                 else:
                     cursor.execute('''
@@ -479,6 +715,89 @@ class AuthSystem:
         finally:
             conn.close()
     
+    def obtener_permisos_botones_usuario(self, username, pagina=None):
+        """Obtener permisos específicos de botones para un usuario"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            if pagina:
+                # Obtener permisos de una página específica
+                cursor.execute('''
+                    SELECT DISTINCT pb.pagina, pb.seccion, pb.boton, pb.descripcion
+                    FROM usuarios_sistema u
+                    JOIN usuario_roles ur ON u.id = ur.usuario_id
+                    JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                    JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+                    WHERE u.username = ? AND pb.pagina = ? AND pb.activo = 1
+                    ORDER BY pb.seccion, pb.boton
+                ''', (username, pagina))
+            else:
+                # Obtener todos los permisos de botones
+                cursor.execute('''
+                    SELECT DISTINCT pb.pagina, pb.seccion, pb.boton, pb.descripcion
+                    FROM usuarios_sistema u
+                    JOIN usuario_roles ur ON u.id = ur.usuario_id
+                    JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                    JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+                    WHERE u.username = ? AND pb.activo = 1
+                    ORDER BY pb.pagina, pb.seccion, pb.boton
+                ''', (username,))
+            
+            permisos_botones = {}
+            for row in cursor.fetchall():
+                pagina_nombre = row[0]
+                seccion = row[1] 
+                boton = row[2]
+                descripcion = row[3]
+                
+                if pagina_nombre not in permisos_botones:
+                    permisos_botones[pagina_nombre] = {}
+                
+                if seccion not in permisos_botones[pagina_nombre]:
+                    permisos_botones[pagina_nombre][seccion] = []
+                    
+                permisos_botones[pagina_nombre][seccion].append({
+                    'boton': boton,
+                    'descripcion': descripcion
+                })
+            
+            return permisos_botones
+            
+        except Exception as e:
+            print(f"Error obteniendo permisos de botones: {e}")
+            return {}
+        finally:
+            conn.close()
+    
+    def verificar_permiso_boton(self, username, pagina, seccion, boton):
+        """Verificar si un usuario tiene permiso para un botón específico"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT COUNT(*) as count
+                FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+                WHERE u.username = ? 
+                AND pb.pagina = ? 
+                AND pb.seccion = ? 
+                AND pb.boton = ? 
+                AND pb.activo = 1
+            ''', (username, pagina, seccion, boton))
+            
+            result = cursor.fetchone()
+            return result[0] > 0
+            
+        except Exception as e:
+            print(f"Error verificando permiso de botón: {e}")
+            return False
+        finally:
+            conn.close()
+    
     def registrar_auditoria(self, usuario, modulo, accion, descripcion='', 
                            datos_antes=None, datos_despues=None, resultado='EXITOSO',
                            duracion_ms=None):
@@ -503,12 +822,13 @@ class AuthSystem:
                 INSERT INTO auditoria (
                     usuario, modulo, accion, descripcion, datos_antes, 
                     datos_despues, ip_address, user_agent, resultado,
-                    duracion_ms, endpoint, metodo_http
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    duracion_ms, endpoint, metodo_http, fecha_hora
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 usuario, modulo, accion, descripcion[:1000], 
                 datos_antes, datos_despues, ip_address, 
-                user_agent, resultado, duracion_ms, endpoint, metodo_http
+                user_agent, resultado, duracion_ms, endpoint, metodo_http,
+                self.get_mexico_time_iso()
             ))
             
             conn.commit()
@@ -640,6 +960,56 @@ class AuthSystem:
             conn.close()
         except Exception as e:
             print(f"Error actualizando actividad: {e}")
+            
+    def agregar_permiso_boton(self, nombre_boton, descripcion, pagina, seccion="Botones"):
+        """Agregar un permiso de botón individual"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT OR IGNORE INTO permisos_botones 
+                (pagina, seccion, boton, descripcion) 
+                VALUES (?, ?, ?, ?)
+            ''', (pagina, seccion, nombre_boton, descripcion))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Error agregando permiso de botón: {e}")
+            return False
+    
+    def asignar_permiso_boton_a_rol(self, rol_nombre, nombre_boton):
+        """Asignar un permiso de botón a un rol específico"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Verificar si el permiso y el rol existen
+            cursor.execute('SELECT id FROM permisos_botones WHERE boton = ?', (nombre_boton,))
+            permiso = cursor.fetchone()
+            if not permiso:
+                raise Exception(f"Permiso de botón '{nombre_boton}' no encontrado")
+            
+            cursor.execute('SELECT id FROM roles WHERE nombre = ?', (rol_nombre,))
+            rol = cursor.fetchone()
+            if not rol:
+                raise Exception(f"Rol '{rol_nombre}' no encontrado")
+            
+            # Asignar el permiso
+            cursor.execute('''
+                INSERT OR IGNORE INTO rol_permisos_botones 
+                (rol_id, permiso_boton_id) 
+                VALUES (?, ?)
+            ''', (rol[0], permiso[0]))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Error asignando permiso de botón a rol: {e}")
+            return False
 
 # Instancia global del sistema de autenticación
 auth_system = AuthSystem()

@@ -144,6 +144,9 @@
         }
     </style>
     
+    <!-- Sistema de Permisos Dropdowns -->
+    <script src="../static/js/permisos-dropdowns.js"></script>
+    
 </head>
 <body>
     
@@ -1001,6 +1004,11 @@
 
                 mobileListsContent.innerHTML = mobileHTML;
                 setupMobileDropdowns();
+                
+                // Inicializar el sistema de permisos para el contenido cargado dinámicamente
+                if (typeof PermisosDropdowns !== 'undefined') {
+                    PermisosDropdowns.procesarNuevoContenido(mobileListsContent);
+                }
             }
             
             // Función para configurar dropdowns móviles
@@ -2215,6 +2223,13 @@
                 }, 1000);
             }
         }
+        
+        // Inicializar el sistema de permisos cuando la página esté completamente cargada
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof PermisosDropdowns !== 'undefined') {
+                PermisosDropdowns.inicializar();
+            }
+        });
 </script>
 </div>
 </body>
