@@ -1462,7 +1462,37 @@
                 return fetch(templatePath)
                     .then(response => {
                         if (!response.ok) {
-                            throw new Error('Error al cargar el contenido: ' + response.status);
+                            // Manejar específicamente errores de permisos
+                            if (response.status === 403) {
+                                return response.text().then(errorHtml => {
+                                    container.innerHTML = errorHtml;
+                                    throw new Error('Permisos insuficientes');
+                                });
+                            } else if (response.status === 401) {
+                                // Usuario no autenticado
+                                container.innerHTML = `
+                                    <div style="
+                                        display: flex; 
+                                        flex-direction: column; 
+                                        align-items: center; 
+                                        justify-content: center; 
+                                        height: 400px; 
+                                        background: #2c2c2c; 
+                                        color: #e0e0e0; 
+                                        border-radius: 10px; 
+                                        margin: 20px;
+                                        text-align: center;
+                                    ">
+                                        <i class="fas fa-user-lock" style="font-size: 3rem; color: #ffc107; margin-bottom: 20px;"></i>
+                                        <h3>Sesión Expirada</h3>
+                                        <p>Tu sesión ha expirado. Por favor, inicia sesión nuevamente.</p>
+                                        <button onclick="window.location.href='/login'" class="btn btn-primary mt-3">Iniciar Sesión</button>
+                                    </div>
+                                `;
+                                throw new Error('Usuario no autenticado');
+                            } else {
+                                throw new Error('Error al cargar el contenido: ' + response.status);
+                            }
                         }
                         return response.text();
                     })
@@ -1509,7 +1539,10 @@
                     })
                     .catch(error => {
                         console.error('❌ Error al cargar el contenido:', error);
-                        container.innerHTML = '<div class="error-message">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
+                        // Solo mostrar mensaje genérico si no es un error de permisos
+                        if (!error.message.includes('Permisos insuficientes') && !error.message.includes('Usuario no autenticado')) {
+                            container.innerHTML = '<div class="error-message">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
+                        }
                         throw error;
                     });
             };
@@ -1826,6 +1859,13 @@
             };
             
             window.mostrarControlBOMInfo = function() {
+                // Verificar permisos antes de continuar
+                if (typeof PermisosDropdowns !== 'undefined' && 
+                    !PermisosDropdowns.tienePermiso('LISTA_INFORMACIONBASICA', 'Información básica', 'Control de BOM')) {
+                    alert('⚠️ No tienes permisos para acceder a: Control de BOM');
+                    return false;
+                }
+                
                 console.log('🎯 Cargando Control de BOM de Información Básica');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-bom-info-container');
@@ -1839,7 +1879,7 @@
                         })
                         .catch(error => {
                             console.error('❌ Error cargando Control de BOM de Información Básica:', error);
-                            container.innerHTML = '<div class="error-message"><h3>Error al cargar el contenido</h3><p>No se pudo cargar Control de BOM. Por favor, intente nuevamente.</p></div>';
+                            // El error ya se muestra en cargarContenidoDinamico, no hacer nada más aquí
                         });
                 }
             };

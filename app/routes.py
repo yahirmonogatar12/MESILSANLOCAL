@@ -17,6 +17,7 @@ from werkzeug.utils import secure_filename
 # Importar sistema de autenticación mejorado
 from .auth_system import AuthSystem
 from .user_admin import user_admin_bp
+from .admin_api import admin_bp
 
 app = Flask(__name__)
 app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
@@ -28,8 +29,97 @@ init_db()  # Esto crea la tabla si no existe
 auth_system = AuthSystem()
 auth_system.init_database()
 
-# Registrar Blueprint de administración
+# Registrar Blueprints de administración
 app.register_blueprint(user_admin_bp, url_prefix='/admin')
+app.register_blueprint(admin_bp)
+
+def requiere_permiso_dropdown(pagina, seccion, boton):
+    """Decorador para verificar permisos específicos de dropdowns"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'usuario' not in session:
+                return jsonify({'error': 'Usuario no autenticado', 'redirect': '/login'}), 401
+            
+            try:
+                username = session['usuario']
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                
+                # Obtener roles del usuario
+                cursor.execute('''
+                    SELECT r.nombre
+                    FROM usuarios_sistema u
+                    JOIN usuario_roles ur ON u.id = ur.usuario_id
+                    JOIN roles r ON ur.rol_id = r.id
+                    WHERE u.username = ? AND u.activo = 1 AND r.activo = 1
+                    ORDER BY r.nivel DESC
+                    LIMIT 1
+                ''', (username,))
+                
+                usuario_rol = cursor.fetchone()
+                
+                if not usuario_rol:
+                    conn.close()
+                    return jsonify({'error': 'Usuario sin roles asignados'}), 403
+                
+                rol_nombre = usuario_rol[0]
+                
+                # Superadmin tiene todos los permisos
+                if rol_nombre == 'superadmin':
+                    conn.close()
+                    return f(*args, **kwargs)
+                
+                # Verificar permiso específico
+                cursor.execute('''
+                    SELECT COUNT(*) FROM usuarios_sistema u
+                    JOIN usuario_roles ur ON u.id = ur.usuario_id
+                    JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                    JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+                    WHERE u.username = ? AND pb.pagina = ? AND pb.seccion = ? AND pb.boton = ?
+                    AND u.activo = 1 AND pb.activo = 1
+                ''', (username, pagina, seccion, boton))
+                
+                tiene_permiso = cursor.fetchone()[0] > 0
+                conn.close()
+                
+                if not tiene_permiso:
+                    # Respuesta diferente para AJAX vs navegación directa
+                    if request.headers.get('Content-Type') == 'application/json' or request.is_json:
+                        return jsonify({
+                            'error': f'No tienes permisos para acceder a: {boton}',
+                            'permiso_requerido': f'{pagina} > {seccion} > {boton}'
+                        }), 403
+                    else:
+                        # Para carga AJAX de HTML, devolver mensaje de error
+                        return f"""
+                        <div style="
+                            display: flex; 
+                            flex-direction: column; 
+                            align-items: center; 
+                            justify-content: center; 
+                            height: 400px; 
+                            background: #2c2c2c; 
+                            color: #e0e0e0; 
+                            border-radius: 10px; 
+                            margin: 20px;
+                            text-align: center;
+                        ">
+                            <i class="fas fa-lock" style="font-size: 3rem; color: #dc3545; margin-bottom: 20px;"></i>
+                            <h3>Acceso Denegado</h3>
+                            <p>No tienes permisos para acceder a: <strong>{boton}</strong></p>
+                            <p style="font-size: 0.9rem; opacity: 0.7;">Permiso requerido: {pagina} > {seccion} > {boton}</p>
+                        </div>
+                        """, 403
+                
+                return f(*args, **kwargs)
+                
+            except Exception as e:
+                print(f"Error verificando permisos: {e}")
+                return jsonify({'error': 'Error interno del servidor'}), 500
+        
+        return decorated_function
+    return decorator
 
 # Filtros de Jinja2 para permisos de botones
 @app.template_filter('tiene_permiso_boton')
@@ -1459,6 +1549,7 @@ def obtener_siguiente_secuencial():
 
 @app.route('/informacion_basica/control_de_material')
 @login_requerido
+@requiere_permiso_dropdown('informacion_basica', 'Lista Elements', 'info_informacion_material')
 def control_de_material_ajax():
     """Ruta para cargar dinámicamente el contenido de Control de Material"""
     try:
@@ -1469,6 +1560,7 @@ def control_de_material_ajax():
 
 @app.route('/informacion_basica/control_de_bom')
 @login_requerido
+@requiere_permiso_dropdown('informacion_basica', 'Lista Elements', 'info_control_bom')
 def control_de_bom_ajax():
     """Ruta para cargar dinámicamente el contenido de Control de BOM"""
     try:
@@ -2889,9 +2981,14 @@ def verificar_permiso_dropdown():
         if 'username' not in session:
             return jsonify({'tiene_permiso': False, 'error': 'Usuario no autenticado'}), 401
         
-        pagina = request.form.get('pagina', '').strip()
-        seccion = request.form.get('seccion', '').strip() 
-        boton = request.form.get('boton', '').strip()
+        # Obtener datos desde JSON
+        data = request.get_json()
+        if not data:
+            return jsonify({'tiene_permiso': False, 'error': 'Datos JSON requeridos'}), 400
+            
+        pagina = data.get('pagina', '').strip()
+        seccion = data.get('seccion', '').strip() 
+        boton = data.get('boton', '').strip()
         
         if not all([pagina, seccion, boton]):
             return jsonify({'tiene_permiso': False, 'error': 'Parámetros incompletos'}), 400
@@ -2900,23 +2997,37 @@ def verificar_permiso_dropdown():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Verificar si es superadmin
-        cursor.execute('SELECT rol FROM usuarios WHERE username = ?', (username,))
-        usuario = cursor.fetchone()
+        # Obtener roles del usuario desde la nueva estructura
+        cursor.execute('''
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN roles r ON ur.rol_id = r.id
+            WHERE u.username = ? AND u.activo = 1 AND r.activo = 1
+            ORDER BY r.nivel DESC
+            LIMIT 1
+        ''', (username,))
         
-        if not usuario:
-            return jsonify({'tiene_permiso': False, 'error': 'Usuario no encontrado'}), 404
+        usuario_rol = cursor.fetchone()
+        
+        if not usuario_rol:
+            return jsonify({'tiene_permiso': False, 'error': 'Usuario no encontrado o sin roles'}), 404
+        
+        rol_nombre = usuario_rol[0]
         
         # Superadmin tiene todos los permisos
-        if usuario[0] == 'superadmin':
+        if rol_nombre == 'superadmin':
             return jsonify({'tiene_permiso': True, 'motivo': 'superadmin'})
         
         # Verificar permiso específico
         cursor.execute('''
-            SELECT COUNT(*) FROM rol_permisos_botones rpb
-            JOIN permisos_botones pb ON rpb.id_permiso = pb.id
-            WHERE rpb.rol = ? AND pb.pagina = ? AND pb.seccion = ? AND pb.boton = ?
-        ''', (usuario[0], pagina, seccion, boton))
+            SELECT COUNT(*) FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+            WHERE u.username = ? AND pb.pagina = ? AND pb.seccion = ? AND pb.boton = ?
+            AND u.activo = 1 AND pb.activo = 1
+        ''', (username, pagina, seccion, boton))
         
         tiene_permiso = cursor.fetchone()[0] > 0
         conn.close()
@@ -2924,7 +3035,7 @@ def verificar_permiso_dropdown():
         return jsonify({
             'tiene_permiso': tiene_permiso,
             'usuario': username,
-            'rol': usuario[0],
+            'rol': rol_nombre,
             'permiso': f"{pagina} > {seccion} > {boton}"
         })
         
@@ -2933,59 +3044,90 @@ def verificar_permiso_dropdown():
         return jsonify({'tiene_permiso': False, 'error': str(e)}), 500
 
 @app.route('/obtener_permisos_usuario_actual', methods=['GET'])
+@login_requerido
 def obtener_permisos_usuario_actual():
     """
     Obtener todos los permisos del usuario actual para caché en frontend
     """
     try:
-        if 'username' not in session:
+        if 'usuario' not in session:
             return jsonify({'permisos': [], 'error': 'Usuario no autenticado'}), 401
         
-        username = session['username']
+        username = session['usuario']
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Obtener rol del usuario
-        cursor.execute('SELECT rol FROM usuarios WHERE username = ?', (username,))
-        usuario = cursor.fetchone()
+        # Obtener roles del usuario desde la nueva estructura
+        cursor.execute('''
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN roles r ON ur.rol_id = r.id
+            WHERE u.username = ? AND u.activo = 1 AND r.activo = 1
+            ORDER BY r.nivel DESC
+            LIMIT 1
+        ''', (username,))
         
-        if not usuario:
-            return jsonify({'permisos': [], 'error': 'Usuario no encontrado'}), 404
+        usuario_rol = cursor.fetchone()
+        
+        if not usuario_rol:
+            return jsonify({'permisos': {}, 'error': 'Usuario no encontrado o sin roles'}), 404
+        
+        rol_nombre = usuario_rol[0]
         
         # Superadmin tiene todos los permisos
-        if usuario[0] == 'superadmin':
-            cursor.execute('SELECT pagina, seccion, boton FROM permisos_botones ORDER BY pagina, seccion, boton')
+        if rol_nombre == 'superadmin':
+            cursor.execute('SELECT pagina, seccion, boton FROM permisos_botones WHERE activo = 1 ORDER BY pagina, seccion, boton')
             permisos = cursor.fetchall()
         else:
             # Obtener permisos específicos del rol
             cursor.execute('''
                 SELECT pb.pagina, pb.seccion, pb.boton 
-                FROM rol_permisos_botones rpb
-                JOIN permisos_botones pb ON rpb.id_permiso = pb.id
-                WHERE rpb.rol = ?
+                FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+                WHERE u.username = ? AND u.activo = 1 AND pb.activo = 1
                 ORDER BY pb.pagina, pb.seccion, pb.boton
-            ''', (usuario[0],))
+            ''', (username,))
             permisos = cursor.fetchall()
         
         conn.close()
         
-        # Formatear permisos para JavaScript
-        permisos_formateados = []
+        # Formatear permisos para JavaScript en estructura jerárquica
+        permisos_jerarquicos = {}
+        total_permisos = 0
+        
         for pagina, seccion, boton in permisos:
-            permisos_formateados.append({
-                'pagina': pagina,
-                'seccion': seccion, 
-                'boton': boton,
-                'clave': f"{pagina}|{seccion}|{boton}"
-            })
+            if pagina not in permisos_jerarquicos:
+                permisos_jerarquicos[pagina] = {}
+            
+            if seccion not in permisos_jerarquicos[pagina]:
+                permisos_jerarquicos[pagina][seccion] = []
+            
+            permisos_jerarquicos[pagina][seccion].append(boton)
+            total_permisos += 1
         
         return jsonify({
-            'permisos': permisos_formateados,
+            'permisos': permisos_jerarquicos,
             'usuario': username,
-            'rol': usuario[0],
-            'total': len(permisos_formateados)
+            'rol': rol_nombre,
+            'total_permisos': total_permisos
         })
         
     except Exception as e:
         print(f"Error obteniendo permisos: {e}")
         return jsonify({'permisos': [], 'error': str(e)}), 500
+
+@app.route('/test-permisos')
+@login_requerido
+def test_permisos():
+    """Página de testing del sistema de permisos"""
+    usuario = session.get('username')
+    return render_template('test_permisos.html', usuario=usuario)
+
+@app.route('/test-frontend-permisos')
+@login_requerido
+def test_frontend_permisos():
+    """Página de testing frontend del sistema de permisos"""
+    return send_file('../test_frontend_permisos.html')

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Frontend Permisos</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { margin: 5px; padding: 10px 15px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Frontend - Sistema de Permisos</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Estado de la Sesión</h3>
+        <p><strong>Usuario:</strong> <span id="usuario-actual">Cargando...</span></p>
+        <p><strong>Rol:</strong> <span id="rol-actual">Cargando...</span></p>
+        <p><strong>Total Permisos:</strong> <span id="total-permisos">Cargando...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Controles de Prueba</h3>
+        <button onclick="testCargarPermisos()">🔄 Cargar Permisos</button>
+        <button onclick="testPermiso()">🔑 Test Permiso Específico</button>
+        <button onclick="testFetchDirecto()">📡 Test Fetch Directo</button>
+        <button onclick="limpiarCache()">🗑️ Limpiar Cache</button>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Resultados de Pruebas</h3>
+        <div id="resultados"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔍 Debug Information</h3>
+        <pre id="debug-info"></pre>
+    </div>
+
+    <script>
+        // Incluir el sistema de permisos
+        const CONFIG = {
+            DEBUG: true,
+            CACHE_DURATION: 5 * 60 * 1000 // 5 minutos
+        };
+
+        let permisosUsuario = {};
+        let usuarioActual = '';
+        let rolUsuario = '';
+
+        // Función simplificada para cargar permisos
+        async function cargarPermisos() {
+            try {
+                log('🔄 Iniciando carga de permisos...');
+                
+                const response = await fetch('/obtener_permisos_usuario_actual', {
+                    method: 'GET',
+                    credentials: 'include',  // Incluir cookies de sesión
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                log(`📡 Response status: ${response.status}`);
+                log(`📋 Response headers:`, response.headers);
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                log('📦 Data recibida:', data);
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                permisosUsuario = data.permisos || {};
+                usuarioActual = data.usuario;
+                rolUsuario = data.rol;
+                
+                // Actualizar UI
+                document.getElementById('usuario-actual').textContent = usuarioActual;
+                document.getElementById('rol-actual').textContent = rolUsuario;
+                document.getElementById('total-permisos').textContent = data.total_permisos;
+                
+                log('✅ Permisos cargados exitosamente');
+                return true;
+                
+            } catch (error) {
+                log(`❌ Error cargando permisos: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Función para verificar permisos
+        function tienePermiso(pagina, seccion, boton) {
+            try {
+                log(`🔍 Verificando permiso: ${pagina} > ${seccion} > ${boton}`);
+                
+                // Verificar superadmin
+                if (rolUsuario === 'superadmin') {
+                    log('👑 Usuario superadmin - acceso total');
+                    return true;
+                }
+                
+                // Verificar permisos específicos
+                const paginaPermisos = permisosUsuario[pagina];
+                if (!paginaPermisos) {
+                    log(`❌ No hay permisos para página: ${pagina}`);
+                    return false;
+                }
+                
+                const seccionPermisos = paginaPermisos[seccion];
+                if (!seccionPermisos) {
+                    log(`❌ No hay permisos para sección: ${seccion}`);
+                    return false;
+                }
+                
+                const resultado = seccionPermisos.includes(boton);
+                log(`${resultado ? '✅' : '❌'} Permiso ${resultado ? 'concedido' : 'denegado'}`);
+                
+                return resultado;
+                
+            } catch (error) {
+                log(`❌ Error verificando permiso: ${error.message}`);
+                return false;
+            }
+        }
+
+        // Funciones de prueba
+        async function testCargarPermisos() {
+            log('\n🧪 TEST: Cargar Permisos');
+            const exito = await cargarPermisos();
+            mostrarResultado('Cargar Permisos', exito);
+        }
+
+        function testPermiso() {
+            log('\n🧪 TEST: Verificar Permiso Específico');
+            // Test con un permiso conocido
+            const resultado = tienePermiso('LISTA_CONTROL_DE_MATERIAL', 'ALTA_COMPONENTES', 'crear_solicitud');
+            mostrarResultado('Permiso Específico', resultado);
+        }
+
+        async function testFetchDirecto() {
+            log('\n🧪 TEST: Fetch Directo');
+            try {
+                const response = await fetch('/obtener_permisos_usuario_actual', {
+                    credentials: 'include'
+                });
+                
+                const isJson = response.headers.get('content-type')?.includes('application/json');
+                const resultado = response.ok && isJson;
+                
+                log(`Status: ${response.status}, Content-Type: ${response.headers.get('content-type')}`);
+                
+                if (isJson) {
+                    const data = await response.json();
+                    log('Data:', data);
+                } else {
+                    const text = await response.text();
+                    log('Response text (first 200 chars):', text.substring(0, 200));
+                }
+                
+                mostrarResultado('Fetch Directo', resultado);
+                
+            } catch (error) {
+                log(`Error: ${error.message}`);
+                mostrarResultado('Fetch Directo', false);
+            }
+        }
+
+        function limpiarCache() {
+            localStorage.removeItem('permisos_dropdowns');
+            permisosUsuario = {};
+            usuarioActual = '';
+            rolUsuario = '';
+            
+            document.getElementById('usuario-actual').textContent = 'No cargado';
+            document.getElementById('rol-actual').textContent = 'No cargado';
+            document.getElementById('total-permisos').textContent = '0';
+            
+            log('🗑️ Cache limpiado');
+            mostrarResultado('Limpiar Cache', true);
+        }
+
+        // Utilidades
+        function log(mensaje, objeto = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            let logText = `[${timestamp}] ${mensaje}`;
+            
+            if (objeto) {
+                logText += '\n' + JSON.stringify(objeto, null, 2);
+            }
+            
+            console.log(logText);
+            
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.textContent += logText + '\n';
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
+
+        function mostrarResultado(test, exito) {
+            const resultados = document.getElementById('resultados');
+            const div = document.createElement('div');
+            div.className = `test-section ${exito ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <strong>${test}:</strong> 
+                ${exito ? '✅ EXITOSO' : '❌ FALLIDO'}
+                <small> - ${new Date().toLocaleTimeString()}</small>
+            `;
+            resultados.appendChild(div);
+        }
+
+        // Ejecutar carga inicial
+        window.addEventListener('load', async () => {
+            log('🚀 Página cargada - iniciando tests...');
+            await testCargarPermisos();
+        });
+    </script>
+</body>
+</html>
