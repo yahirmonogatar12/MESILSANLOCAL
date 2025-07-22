@@ -8,20 +8,16 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #4A90E2;
-            --primary-hover: #357ABD;
-            --secondary-color: #333438;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-            --warning-color: #ffc107;
-            --text-primary: #e0e0e0;
-            --text-secondary: #b0b0b0;
-            --border-color: #444;
-            --background-dark: #23242a;
-            --background-panel: #28292d;
-            --background-card: #333438;
-            --shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
+            --primary-color: #6366f1;
+            --secondary-color: #f1f5f9;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
         * {
@@ -29,8 +25,8 @@
         }
 
         body {
-            background-color: var(--background-dark);
-            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             color: var(--text-primary);
             line-height: 1.6;
         }
@@ -41,10 +37,10 @@
             padding: 1rem;
         }
 
-        /* Header oscuro */
+        /* Header minimalista */
         .page-header {
-            background: var(--background-panel);
-            border-radius: 10px;
+            background: white;
+            border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             box-shadow: var(--shadow);
@@ -54,7 +50,7 @@
         .page-title {
             font-size: 1.5rem;
             font-weight: 600;
-            color: var(--primary-color);
+            color: var(--text-primary);
             margin: 0;
         }
 
@@ -64,18 +60,18 @@
             margin: 0;
         }
 
-        /* Panel principal oscuro */
+        /* Panel principal */
         .main-panel {
-            background: var(--background-panel);
-            border-radius: 10px;
+            background: white;
+            border-radius: 12px;
             box-shadow: var(--shadow);
             border: 1px solid var(--border-color);
             overflow: hidden;
         }
 
-        /* Barra de filtros oscura */
+        /* Barra de filtros minimalista */
         .filter-bar {
-            background: var(--background-card);
+            background: #fafbfc;
             border-bottom: 1px solid var(--border-color);
             padding: 1rem 1.5rem;
         }
@@ -101,26 +97,22 @@
         }
 
         .form-select, .form-control {
-            background-color: var(--background-card);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
             min-width: 140px;
-            color: var(--text-primary);
         }
 
         .form-select:focus, .form-control:focus {
-            background-color: var(--background-card);
             border-color: var(--primary-color);
-            color: var(--text-primary);
-            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
-        /* Botones oscuros */
+        /* Botones minimalistas */
         .btn-minimal {
             border: 1px solid var(--border-color);
-            background: var(--background-card);
+            background: white;
             color: var(--text-secondary);
             border-radius: 8px;
             padding: 0.5rem 1rem;
@@ -150,25 +142,15 @@
             border-color: var(--success-color);
         }
 
-        .btn-success-minimal:hover {
-            background: #218838;
-            border-color: #218838;
-        }
-
         .btn-danger-minimal {
             background: var(--danger-color);
             color: white;
             border-color: var(--danger-color);
         }
 
-        .btn-danger-minimal:hover {
-            background: #c82333;
-            border-color: #c82333;
-        }
-
-        /* Stats bar oscura */
+        /* Stats bar */
         .stats-bar {
-            background: var(--background-card);
+            background: #fafbfc;
             border-bottom: 1px solid var(--border-color);
             padding: 0.75rem 1.5rem;
             display: flex;
@@ -192,10 +174,9 @@
             color: var(--text-secondary);
         }
 
-        /* Lista de permisos oscura */
+        /* Lista de permisos minimalista */
         .permissions-container {
             padding: 1.5rem;
-            background: var(--background-panel);
         }
 
         .permission-grid {
@@ -205,7 +186,7 @@
         }
 
         .permission-item {
-            background: var(--background-card);
+            background: white;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 1rem;
@@ -220,12 +201,12 @@
 
         .permission-item.enabled {
             border-left: 3px solid var(--success-color);
-            background: linear-gradient(to right, rgba(40, 167, 69, 0.1), var(--background-card));
+            background: linear-gradient(to right, rgba(16, 185, 129, 0.02), transparent);
         }
 
         .permission-item.disabled {
             border-left: 3px solid var(--danger-color);
-            background: linear-gradient(to right, rgba(220, 53, 69, 0.1), var(--background-card));
+            background: linear-gradient(to right, rgba(239, 68, 68, 0.02), transparent);
         }
 
         .permission-header {
@@ -254,12 +235,10 @@
 
         .permission-status.enabled {
             background: var(--success-color);
-            box-shadow: 0 0 4px rgba(40, 167, 69, 0.5);
         }
 
         .permission-status.disabled {
             background: var(--danger-color);
-            box-shadow: 0 0 4px rgba(220, 53, 69, 0.5);
         }
 
         .permission-meta {
@@ -283,13 +262,12 @@
             border-radius: 4px;
             font-size: 0.625rem;
             font-weight: 500;
-            border: 1px solid var(--border-color);
         }
 
-        /* Sección de roles oscura */
+        /* Sección de roles */
         .roles-sidebar {
-            background: var(--background-panel);
-            border-radius: 10px;
+            background: white;
+            border-radius: 12px;
             box-shadow: var(--shadow);
             border: 1px solid var(--border-color);
             padding: 1.5rem;
@@ -302,7 +280,6 @@
             cursor: pointer;
             border: 1px solid transparent;
             margin-bottom: 0.5rem;
-            background: var(--background-card);
         }
 
         .role-item:hover {
@@ -311,7 +288,7 @@
         }
 
         .role-item.active {
-            background: rgba(74, 144, 226, 0.2);
+            background: rgba(99, 102, 241, 0.1);
             border-color: var(--primary-color);
         }
 
@@ -334,7 +311,7 @@
             margin-top: 0.25rem;
         }
 
-        /* Loading states oscuros */
+        /* Loading states */
         .loading-container {
             display: flex;
             flex-direction: column;
@@ -358,7 +335,7 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Empty state oscuro */
+        /* Empty state */
         .empty-state {
             text-align: center;
             padding: 3rem;
@@ -371,7 +348,7 @@
             margin-bottom: 1rem;
         }
 
-        /* Toast styles oscuros */
+        /* Toast styles */
         .toast {
             border: none;
             border-radius: 8px;
@@ -385,12 +362,6 @@
 
         .toast-error {
             background: var(--danger-color);
-            color: white;
-        }
-
-        /* Badge oscuro */
-        .badge {
-            background-color: var(--primary-color) !important;
             color: white;
         }
 
@@ -578,69 +549,32 @@
         // Cargar roles disponibles
         async function loadRoles() {
             try {
-                const response = await fetch('/admin/listar_roles');
-                const roles = await response.json();
+                const roles = [
+                    { nombre: 'superadmin', descripcion: 'Super Administrador', icon: 'fa-crown' },
+                    { nombre: 'admin', descripcion: 'Administrador', icon: 'fa-user-shield' },
+                    { nombre: 'supervisor_almacen', descripcion: 'Supervisor de Almacén', icon: 'fa-warehouse' },
+                    { nombre: 'supervisor_produccion', descripcion: 'Supervisor de Producción', icon: 'fa-industry' },
+                    { nombre: 'operador_almacen', descripcion: 'Operador de Almacén', icon: 'fa-boxes' },
+                    { nombre: 'operador_produccion', descripcion: 'Operador de Producción', icon: 'fa-cogs' },
+                    { nombre: 'calidad', descripcion: 'Control de Calidad', icon: 'fa-medal' },
+                    { nombre: 'consulta', descripcion: 'Solo Consulta', icon: 'fa-eye' },
+                    { nombre: 'invitado', descripcion: 'Usuario Invitado', icon: 'fa-user-clock' }
+                ];
                 
-                // Mapear iconos para cada rol
-                const rolesWithIcons = roles.map(role => ({
-                    ...role,
-                    icon: getRoleIcon(role.nombre)
-                }));
-                
-                allRoles = rolesWithIcons;
+                allRoles = roles;
                 document.getElementById('totalRoles').textContent = roles.length;
-                renderRoles(rolesWithIcons);
+                renderRoles(roles);
             } catch (error) {
                 showError('Error cargando roles: ' + error.message);
             }
         }
 
-        // Obtener icono para un rol
-        function getRoleIcon(roleName) {
-            const iconMap = {
-                'superadmin': 'fa-crown',
-                'admin': 'fa-user-shield',
-                'supervisor_almacen': 'fa-warehouse',
-                'supervisor_produccion': 'fa-industry',
-                'operador_almacen': 'fa-boxes',
-                'operador_produccion': 'fa-cogs',
-                'calidad': 'fa-medal',
-                'consulta': 'fa-eye',
-                'invitado': 'fa-user-clock'
-            };
-            return iconMap[roleName] || 'fa-user';
-        }
-
         // Cargar dropdowns disponibles
         async function loadDropdowns() {
             try {
-                const response = await fetch('/admin/listar_permisos_dropdowns');
-                const permisosAgrupados = await response.json();
-                
-                // Convertir estructura agrupada a lista plana
-                allDropdowns = [];
-                Object.keys(permisosAgrupados).forEach(pagina => {
-                    Object.keys(permisosAgrupados[pagina]).forEach(seccion => {
-                        permisosAgrupados[pagina][seccion].forEach(permiso => {
-                            allDropdowns.push({
-                                id: permiso.id,
-                                pagina: pagina,
-                                seccion: seccion,
-                                boton: permiso.boton,
-                                descripcion: permiso.descripcion
-                            });
-                        });
-                    });
-                });
-                
-                populateFilterOptions();
-                console.log(`📋 ${allDropdowns.length} permisos cargados desde la base de datos`);
-            } catch (error) {
-                showError('Error cargando dropdowns: ' + error.message);
-            }
-        }
-
-        // Renderizar lista de roles
+                allDropdowns = [
+                    {"pagina": "LISTA_CONTROLDEPRODUCCION", "seccion": "Control de plan de produccion", "boton": "Control de embarque"},
+                    {"pagina": "LISTA_CONTROLDEPRODUCCION", "seccion": "Control de plan de produccion", "boton": "Crear Plan de produccion"},
                     {"pagina": "LISTA_CONTROLDEPRODUCCION", "seccion": "Control de SMT", "boton": "Control de mask de metal"},
                     {"pagina": "LISTA_CONTROLDEPRODUCCION", "seccion": "Control de SMT", "boton": "Control de squeegee"},
                     {"pagina": "LISTA_CONTROLDEPRODUCCION", "seccion": "Control de SMT", "boton": "Control de caja de mask de metal"},

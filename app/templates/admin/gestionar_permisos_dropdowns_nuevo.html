@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Permisos de Dropdowns</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            padding-top: 2rem;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.5rem;
+        }
+        
+        .btn-custom {
+            border-radius: 25px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border: none;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border: none;
+        }
+        
+        .role-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .role-card:hover {
+            transform: translateY(-5px);
+            border-color: #4facfe;
+        }
+        
+        .role-card.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .dropdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            margin: 0.3rem 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .status-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-enabled {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-disabled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .page-group {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            background: #f8f9fa;
+            margin-bottom: 1rem;
+        }
+        
+        .section-group {
+            border-left: 3px solid #4facfe;
+            padding-left: 1rem;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            Gestión de Permisos de Dropdowns
+                        </h3>
+                        <p class="mb-0 mt-2 opacity-75">Administra los permisos de información básica para cada rol</p>
+                    </div>
+                    <div class="card-body">
+                        <!-- Sección de Roles -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h5><i class="fas fa-users me-2"></i>Roles Disponibles</h5>
+                                <div id="rolesContainer" class="loading">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <p class="mt-2">Cargando roles...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Sección de Permisos -->
+                            <div class="col-md-8">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5><i class="fas fa-list-check me-2"></i>Permisos de Dropdowns</h5>
+                                    <div>
+                                        <button class="btn btn-custom btn-success btn-sm" onclick="enableAllPermissions()">
+                                            <i class="fas fa-check-double me-1"></i>Habilitar Todos
+                                        </button>
+                                        <button class="btn btn-custom btn-danger btn-sm" onclick="disableAllPermissions()">
+                                            <i class="fas fa-times me-1"></i>Deshabilitar Todos
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Barra de búsqueda -->
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                            <input type="text" class="form-control" id="searchPermissions" 
+                                                   placeholder="Buscar permisos..." onkeyup="filterPermissions()">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Contador de permisos -->
+                                <div class="mb-3">
+                                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                        <span id="permissionCounter">
+                                            <i class="fas fa-info-circle me-2"></i>Selecciona un rol para ver sus permisos
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div id="permissionsContainer">
+                                    <div class="text-center text-muted py-5">
+                                        <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                                        <p>Selecciona un rol para ver y editar sus permisos</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="successToast" class="toast" role="alert">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">Éxito</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="successMessage"></div>
+        </div>
+        
+        <div id="errorToast" class="toast" role="alert">
+            <div class="toast-header bg-danger text-white">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong class="me-auto">Error</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="errorMessage"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentRole = null;
+        let allRoles = [];
+        let allDropdowns = [];
+        let rolePermissions = {};
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRoles();
+            loadDropdowns();
+        });
+
+        // Cargar roles disponibles
+        async function loadRoles() {
+            try {
+                // Simular datos de roles por ahora
+                const roles = [
+                    { nombre: 'superadmin', descripcion: 'Super Administrador con acceso total' },
+                    { nombre: 'admin', descripcion: 'Administrador del sistema' },
+                    { nombre: 'supervisor_almacen', descripcion: 'Supervisor de almacén' },
+                    { nombre: 'supervisor_produccion', descripcion: 'Supervisor de producción' },
+                    { nombre: 'operador_almacen', descripcion: 'Operador de almacén' },
+                    { nombre: 'operador_produccion', descripcion: 'Operador de producción' },
+                    { nombre: 'calidad', descripcion: 'Personal de calidad' },
+                    { nombre: 'consulta', descripcion: 'Usuario de consulta' },
+                    { nombre: 'invitado', descripcion: 'Usuario invitado' }
+                ];
+                allRoles = roles;
+                renderRoles(roles);
+            } catch (error) {
+                showError('Error cargando roles: ' + error.message);
+            }
+        }
+
+        // Cargar dropdowns disponibles (solo los que están en las listas LISTA_)
+        async function loadDropdowns() {
+            try {
+                // Estos son los permisos que están realmente en los archivos LISTA_
+                const dropdowns = [
+                    // LISTA_INFORMACIONBASICA
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Administración de usuario', boton: 'Administración de usuario' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Administración de usuario', boton: 'Administración de menu' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Administración de usuario', boton: 'Administración de autoridad' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Administración de usuario', boton: 'Control de lista de codigo' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Administración de usuario', boton: 'Administracion de itinerario' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Administración de usuario', boton: 'Consultar licencias' },
+                    
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Control de Proceso', boton: 'Control de departamento' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Control de Proceso', boton: 'Control de proceso' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Control de Proceso', boton: 'Control de resultado de proceso' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Control de Proceso', boton: 'Control de orden de proceso' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Control de Proceso', boton: 'Control de defecto por proceso' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Control de Proceso', boton: 'Control de interfaces de maquina' },
+                    { pagina: 'LISTA_INFORMACIONBASICA', seccion: 'Control de Proceso', boton: 'Control de interlock de maquina en linea' }
+                ];
+                
+                allDropdowns = dropdowns;
+            } catch (error) {
+                showError('Error cargando dropdowns: ' + error.message);
+            }
+        }
+
+        // Renderizar lista de roles
+        function renderRoles(roles) {
+            const container = document.getElementById('rolesContainer');
+            container.innerHTML = '';
+            
+            roles.forEach(role => {
+                const roleCard = document.createElement('div');
+                roleCard.className = 'role-card card mb-2';
+                roleCard.onclick = () => selectRole(role.nombre);
+                
+                roleCard.innerHTML = `
+                    <div class="card-body p-3">
+                        <h6 class="card-title mb-1">
+                            <i class="fas fa-user-tag me-2"></i>${role.nombre}
+                        </h6>
+                        <p class="card-text small text-muted mb-2">${role.descripcion}</p>
+                        <span class="badge bg-primary" id="count-${role.nombre}">Cargando...</span>
+                    </div>
+                `;
+                
+                container.appendChild(roleCard);
+                
+                // Cargar contador de permisos
+                loadRolePermissionCount(role.nombre);
+            });
+        }
+
+        // Cargar contador de permisos para un rol
+        async function loadRolePermissionCount(roleName) {
+            try {
+                // Simular permisos por rol
+                let permissionCount = 0;
+                if (roleName === 'superadmin' || roleName === 'admin') {
+                    permissionCount = allDropdowns.length;
+                } else if (roleName === 'supervisor_almacen') {
+                    permissionCount = Math.floor(allDropdowns.length * 0.7);
+                } else if (roleName === 'operador_almacen') {
+                    permissionCount = Math.floor(allDropdowns.length * 0.5);
+                } else {
+                    permissionCount = Math.floor(allDropdowns.length * 0.3);
+                }
+                
+                const countBadge = document.getElementById(`count-${roleName}`);
+                if (countBadge) {
+                    countBadge.innerHTML = `${permissionCount} permisos`;
+                }
+            } catch (error) {
+                const countBadge = document.getElementById(`count-${roleName}`);
+                if (countBadge) {
+                    countBadge.innerHTML = `<i class="fas fa-exclamation-triangle"></i>`;
+                }
+            }
+        }
+
+        // Seleccionar un rol
+        async function selectRole(roleName) {
+            // Actualizar UI
+            document.querySelectorAll('.role-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            currentRole = roleName;
+            await loadRolePermissions(roleName);
+        }
+
+        // Cargar permisos de un rol específico
+        async function loadRolePermissions(roleName) {
+            const container = document.getElementById('permissionsContainer');
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando permisos para ${roleName}...</p>
+                </div>
+            `;
+            
+            try {
+                // Simular permisos basados en el rol
+                let permissions = [];
+                
+                allDropdowns.forEach(dropdown => {
+                    let hasPermission = false;
+                    
+                    // Lógica de permisos por rol
+                    if (roleName === 'superadmin' || roleName === 'admin') {
+                        hasPermission = true;
+                    } else if (roleName === 'supervisor_almacen') {
+                        hasPermission = Math.random() > 0.3; // 70% de probabilidad
+                    } else if (roleName === 'operador_almacen') {
+                        hasPermission = Math.random() > 0.5; // 50% de probabilidad
+                    } else {
+                        hasPermission = Math.random() > 0.7; // 30% de probabilidad
+                    }
+                    
+                    permissions.push({
+                        pagina: dropdown.pagina,
+                        seccion: dropdown.seccion,
+                        boton: dropdown.boton,
+                        activo: hasPermission ? 1 : 0
+                    });
+                });
+                
+                rolePermissions[roleName] = permissions;
+                renderPermissions(permissions);
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error cargando permisos: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Renderizar permisos organizados por página y sección
+        function renderPermissions(permissions) {
+            const container = document.getElementById('permissionsContainer');
+            
+            if (!permissions || permissions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-info-circle mb-3" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <h5>Sin permisos asignados</h5>
+                        <p>Este rol no tiene permisos de dropdown asignados</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Organizar permisos por página y sección
+            const organized = {};
+            permissions.forEach(permission => {
+                const { pagina, seccion, boton, activo } = permission;
+                
+                if (!organized[pagina]) {
+                    organized[pagina] = {};
+                }
+                if (!organized[pagina][seccion]) {
+                    organized[pagina][seccion] = [];
+                }
+                organized[pagina][seccion].push({ boton, activo });
+            });
+            
+            let html = '';
+            
+            // Generar HTML organizado por página y sección
+            Object.keys(organized).forEach(pagina => {
+                html += `
+                    <div class="page-group">
+                        <h5 class="text-primary mb-3">
+                            <i class="fas fa-file-alt me-2"></i>${pagina}
+                        </h5>
+                `;
+                
+                Object.keys(organized[pagina]).forEach(seccion => {
+                    const botones = organized[pagina][seccion];
+                    html += `
+                        <div class="section-group mb-3">
+                            <h6 class="text-secondary mb-2">
+                                <i class="fas fa-folder me-2"></i>${seccion}
+                            </h6>
+                            <div class="row">
+                    `;
+                    
+                    botones.forEach(({ boton, activo }) => {
+                        const isEnabled = activo === 1;
+                        const statusClass = isEnabled ? 'status-enabled' : 'status-disabled';
+                        const statusIcon = isEnabled ? 'fa-check-circle' : 'fa-times-circle';
+                        const statusText = isEnabled ? 'Habilitado' : 'Deshabilitado';
+                        const buttonClass = isEnabled ? 'btn-danger' : 'btn-success';
+                        const buttonText = isEnabled ? 'Deshabilitar' : 'Habilitar';
+                        const buttonIcon = isEnabled ? 'fa-times' : 'fa-check';
+                        
+                        html += `
+                            <div class="col-md-6 mb-2">
+                                <div class="dropdown-item">
+                                    <div>
+                                        <strong>${boton}</strong>
+                                        <br>
+                                        <small class="text-muted">${pagina} > ${seccion}</small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="status-badge ${statusClass} me-2">
+                                            <i class="fas ${statusIcon} me-1"></i>${statusText}
+                                        </span>
+                                        <button class="btn ${buttonClass} btn-sm btn-custom" 
+                                                onclick="togglePermission('${pagina}', '${seccion}', '${boton}', ${!isEnabled})">
+                                            <i class="fas ${buttonIcon} me-1"></i>${buttonText}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+            
+            container.innerHTML = html;
+            
+            // Actualizar contador de permisos
+            updatePermissionCounter(permissions);
+        }
+        
+        // Actualizar contador de permisos
+        function updatePermissionCounter(permissions) {
+            const total = permissions.length;
+            const enabled = permissions.filter(p => p.activo === 1).length;
+            const disabled = total - enabled;
+            
+            const counterElement = document.getElementById('permissionCounter');
+            if (counterElement) {
+                counterElement.innerHTML = `
+                    <i class="fas fa-chart-pie me-2"></i>
+                    <strong>Total:</strong> ${total} permisos | 
+                    <strong class="text-success">Habilitados:</strong> ${enabled} | 
+                    <strong class="text-danger">Deshabilitados:</strong> ${disabled}
+                `;
+            }
+        }
+        
+        // Alternar permiso individual
+        async function togglePermission(pagina, seccion, boton, habilitar) {
+            if (!currentRole) {
+                showError('Selecciona un rol primero');
+                return;
+            }
+            
+            // Simular cambio de permiso
+            const permissions = rolePermissions[currentRole];
+            const permissionIndex = permissions.findIndex(p => 
+                p.pagina === pagina && p.seccion === seccion && p.boton === boton
+            );
+            
+            if (permissionIndex !== -1) {
+                permissions[permissionIndex].activo = habilitar ? 1 : 0;
+                showSuccess(`Permiso ${habilitar ? 'habilitado' : 'deshabilitado'} correctamente`);
+                renderPermissions(permissions);
+            } else {
+                showError('Error al cambiar el permiso');
+            }
+        }
+        
+        // Habilitar todos los permisos
+        async function enableAllPermissions() {
+            if (!currentRole) {
+                showError('Selecciona un rol primero');
+                return;
+            }
+            
+            if (!confirm(`¿Estás seguro de que quieres habilitar TODOS los permisos para el rol "${currentRole}"?`)) {
+                return;
+            }
+            
+            const permissions = rolePermissions[currentRole];
+            permissions.forEach(p => p.activo = 1);
+            
+            showSuccess('Todos los permisos han sido habilitados');
+            renderPermissions(permissions);
+        }
+        
+        // Deshabilitar todos los permisos
+        async function disableAllPermissions() {
+            if (!currentRole) {
+                showError('Selecciona un rol primero');
+                return;
+            }
+            
+            if (!confirm(`¿Estás seguro de que quieres deshabilitar TODOS los permisos para el rol "${currentRole}"?`)) {
+                return;
+            }
+            
+            const permissions = rolePermissions[currentRole];
+            permissions.forEach(p => p.activo = 0);
+            
+            showSuccess('Todos los permisos han sido deshabilitados');
+            renderPermissions(permissions);
+        }
+        
+        // Filtrar permisos por búsqueda
+        function filterPermissions() {
+            const searchTerm = document.getElementById('searchPermissions').value.toLowerCase();
+            const dropdownItems = document.querySelectorAll('.dropdown-item');
+            
+            dropdownItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const parentCol = item.closest('.col-md-6');
+                
+                if (text.includes(searchTerm)) {
+                    parentCol.style.display = 'block';
+                } else {
+                    parentCol.style.display = 'none';
+                }
+            });
+        }
+        
+        // Mostrar mensaje de éxito
+        function showSuccess(message) {
+            document.getElementById('successMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('successToast'));
+            toast.show();
+        }
+        
+        // Mostrar mensaje de error
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById('errorToast'));
+            toast.show();
+        }
+    </script>
+</body>
+</html>
