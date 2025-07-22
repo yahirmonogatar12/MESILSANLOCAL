@@ -185,13 +185,13 @@ class AuthSystem:
             self._crear_roles_default(cursor)
             
             # Insertar permisos predeterminados  
-            self._crear_permisos_default(cursor)
+            # self._crear_permisos_default(cursor)  # COMENTADO: Solo usar permisos de botones
             
             # Insertar permisos de botones predeterminados
             self._crear_permisos_botones_default(cursor)
             
             # Asignar permisos a roles
-            self._asignar_permisos_roles(cursor)
+            # self._asignar_permisos_roles(cursor)  # COMENTADO: Solo usar permisos de botones
             
             # Asignar permisos de botones a roles
             self._asignar_permisos_botones_roles(cursor)
@@ -717,6 +717,7 @@ class AuthSystem:
     
     def obtener_permisos_botones_usuario(self, username, pagina=None):
         """Obtener permisos específicos de botones para un usuario"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -768,7 +769,8 @@ class AuthSystem:
             print(f"Error obteniendo permisos de botones: {e}")
             return {}
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
     
     def verificar_permiso_boton(self, username, pagina, seccion, boton):
         """Verificar si un usuario tiene permiso para un botón específico"""
@@ -799,8 +801,8 @@ class AuthSystem:
             conn.close()
     
     def registrar_auditoria(self, usuario, modulo, accion, descripcion='', 
-                           datos_antes=None, datos_despues=None, resultado='EXITOSO',
-                           duracion_ms=None):
+                        datos_antes=None, datos_despues=None, resultado='EXITOSO',
+                        duracion_ms=None):
         """Registrar acción en el historial de auditoría"""
         try:
             conn = get_db_connection()

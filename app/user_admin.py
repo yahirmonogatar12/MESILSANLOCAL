@@ -1112,6 +1112,99 @@ def actividad_reciente():
         print(f"Error obteniendo actividad reciente: {e}")
         return jsonify({'error': str(e)}), 500
 
+@user_admin_bp.route('/verificar_permisos_usuario')
+@auth_system.login_requerido_avanzado
+def verificar_permisos_usuario():
+    """Obtener todos los permisos de botones del usuario actual"""
+    try:
+        usuario_id = session.get('usuario_id')
+        if not usuario_id:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
+            FROM permisos_botones pb
+            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
+            JOIN usuario_roles ur ON rpb.rol_id = ur.rol_id
+            WHERE ur.usuario_id = ? AND pb.activo = 1
+            ORDER BY pb.pagina, pb.seccion, pb.boton
+        ''', (usuario_id,))
+        
+        permisos_raw = cursor.fetchall()
+        conn.close()
+        
+        # Organizar permisos por página > sección > botón
+        permisos_estructurados = {}
+        for permiso in permisos_raw:
+            pagina, seccion, boton = permiso
+            
+            if pagina not in permisos_estructurados:
+                permisos_estructurados[pagina] = {}
+            
+            if seccion not in permisos_estructurados[pagina]:
+                permisos_estructurados[pagina][seccion] = []
+            
+            permisos_estructurados[pagina][seccion].append(boton)
+        
+        return jsonify(permisos_estructurados)
+        
+    except Exception as e:
+        print(f"Error verificando permisos del usuario: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@user_admin_bp.route('/test_permisos_debug')
+def test_permisos_debug():
+    """Endpoint temporal para debuggear permisos (sin autenticación)"""
+    try:
+        # Test con usuario admin hardcodeado
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Obtener ID del usuario admin
+        cursor.execute('SELECT id FROM usuarios_sistema WHERE username = ?', ('admin',))
+        admin_result = cursor.fetchone()
+        
+        if not admin_result:
+            return jsonify({'error': 'Usuario admin no encontrado'}), 404
+        
+        usuario_id = admin_result[0]
+        
+        cursor.execute('''
+            SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
+            FROM permisos_botones pb
+            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
+            JOIN usuario_roles ur ON rpb.rol_id = ur.rol_id
+            WHERE ur.usuario_id = ? AND pb.activo = 1
+            ORDER BY pb.pagina, pb.seccion, pb.boton
+            LIMIT 10
+        ''', (usuario_id,))
+        
+        permisos_raw = cursor.fetchall()
+        conn.close()
+        
+        # Organizar permisos
+        permisos_test = []
+        for permiso in permisos_raw:
+            pagina, seccion, boton = permiso
+            permisos_test.append({
+                'pagina': pagina,
+                'seccion': seccion, 
+                'boton': boton
+            })
+        
+        return jsonify({
+            'usuario_id': usuario_id,
+            'total_permisos_muestra': len(permisos_test),
+            'permisos': permisos_test,
+            'status': 'debug_ok'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 'debug_error'}), 500
+
 def init_admin_routes(app):
     """Inicializar las rutas de administración en la app"""
     app.register_blueprint(user_admin_bp)

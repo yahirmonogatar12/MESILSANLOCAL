@@ -65,11 +65,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 
                 rol_nombre = usuario_rol[0]
                 
-                # Superadmin tiene todos los permisos
-                if rol_nombre == 'superadmin':
-                    conn.close()
-                    return f(*args, **kwargs)
-                
+                # AHORA TODOS LOS ROLES (incluido superadmin) verifican permisos en base de datos
                 # Verificar permiso específico
                 cursor.execute('''
                     SELECT COUNT(*) FROM usuarios_sistema u
@@ -319,8 +315,8 @@ def material():
         tiene_permisos_usuarios = 'usuarios' in permisos['sistema']
     
     return render_template('MaterialTemplate.html', 
-                         usuario=usuario, 
-                         tiene_permisos_usuarios=tiene_permisos_usuarios)
+                        usuario=usuario, 
+                        tiene_permisos_usuarios=tiene_permisos_usuarios)
 
 @app.route('/Prueba')
 @login_requerido
@@ -358,6 +354,7 @@ def logout():
 @app.route('/cargar_template', methods=['POST'])
 @login_requerido
 def cargar_template():
+    template_path = None  # Initialize template_path
     try:
         data = request.get_json()
         template_path = data.get('template_path')
@@ -374,7 +371,8 @@ def cargar_template():
         return html_content
         
     except Exception as e:
-        print(f"Error al cargar template {template_path}: {str(e)}")
+        template_name = template_path if template_path else 'unknown'
+        print(f"Error al cargar template {template_name}: {str(e)}")
         return jsonify({'error': f'Error al cargar el template: {str(e)}'}), 500
 
 @app.route('/importar_excel_bom', methods=['POST'])
@@ -1549,7 +1547,6 @@ def obtener_siguiente_secuencial():
 
 @app.route('/informacion_basica/control_de_material')
 @login_requerido
-@requiere_permiso_dropdown('informacion_basica', 'Lista Elements', 'info_informacion_material')
 def control_de_material_ajax():
     """Ruta para cargar dinámicamente el contenido de Control de Material"""
     try:
@@ -1560,7 +1557,6 @@ def control_de_material_ajax():
 
 @app.route('/informacion_basica/control_de_bom')
 @login_requerido
-@requiere_permiso_dropdown('informacion_basica', 'Lista Elements', 'info_control_bom')
 def control_de_bom_ajax():
     """Ruta para cargar dinámicamente el contenido de Control de BOM"""
     try:
