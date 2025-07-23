@@ -30,16 +30,13 @@ const urlsToCache = [
 
 // Instalación del Service Worker
 self.addEventListener('install', function(event) {
-    console.log('📦 Service Worker: Instalando...');
     
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(function(cache) {
-                console.log('📦 Service Worker: Cache abierto');
                 return cache.addAll(urlsToCache);
             })
             .then(function() {
-                console.log('✅ Service Worker: Recursos cacheados');
                 // Forzar activación inmediata
                 return self.skipWaiting();
             })
@@ -51,7 +48,6 @@ self.addEventListener('install', function(event) {
 
 // Activación del Service Worker
 self.addEventListener('activate', function(event) {
-    console.log('🚀 Service Worker: Activando...');
     
     event.waitUntil(
         caches.keys().then(function(cacheNames) {
@@ -59,13 +55,11 @@ self.addEventListener('activate', function(event) {
                 cacheNames.map(function(cacheName) {
                     // Eliminar caches antiguos
                     if (cacheName !== CACHE_NAME) {
-                        console.log('🗑️ Service Worker: Eliminando cache antiguo:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
         }).then(function() {
-            console.log('✅ Service Worker: Activado');
             // Tomar control inmediato de todas las páginas
             return self.clients.claim();
         })
@@ -91,7 +85,6 @@ self.addEventListener('fetch', function(event) {
             .then(function(response) {
                 // Si está en cache, devolverlo
                 if (response) {
-                    console.log('📋 Service Worker: Sirviendo desde cache:', event.request.url);
                     return response;
                 }
                 
@@ -111,7 +104,6 @@ self.addEventListener('fetch', function(event) {
                             // Solo cachear recursos específicos en tiempo de ejecución
                             if (shouldCache(event.request.url)) {
                                 cache.put(event.request, responseToCache);
-                                console.log('💾 Service Worker: Cacheando:', event.request.url);
                             }
                         });
                     
@@ -154,7 +146,6 @@ function shouldCache(url) {
 
 // Manejar mensajes del cliente
 self.addEventListener('message', function(event) {
-    console.log('📨 Service Worker: Mensaje recibido:', event.data);
     
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
@@ -173,7 +164,6 @@ self.addEventListener('message', function(event) {
 
 // Manejar instalación de la aplicación (PWA)
 self.addEventListener('beforeinstallprompt', function(event) {
-    console.log('📱 Service Worker: Prompt de instalación detectado');
     event.preventDefault();
     
     // Guardar el evento para mostrarlo más tarde
@@ -191,7 +181,6 @@ self.addEventListener('beforeinstallprompt', function(event) {
 
 // Manejar instalación exitosa
 self.addEventListener('appinstalled', function(event) {
-    console.log('🎉 Service Worker: App instalada exitosamente');
     
     // Informar al cliente que la app fue instalada
     self.clients.matchAll().then(function(clients) {
@@ -205,7 +194,6 @@ self.addEventListener('appinstalled', function(event) {
 
 // Manejar notificaciones push (para futuras implementaciones)
 self.addEventListener('push', function(event) {
-    console.log('🔔 Service Worker: Push recibido');
     
     if (event.data) {
         const data = event.data.json();
@@ -238,7 +226,6 @@ self.addEventListener('push', function(event) {
 
 // Manejar clicks en notificaciones
 self.addEventListener('notificationclick', function(event) {
-    console.log('🔔 Service Worker: Click en notificación:', event.action);
     
     event.notification.close();
     
@@ -251,7 +238,6 @@ self.addEventListener('notificationclick', function(event) {
 
 // Sincronización en segundo plano (para cuando se recupera la conexión)
 self.addEventListener('sync', function(event) {
-    console.log('🔄 Service Worker: Sincronización en segundo plano:', event.tag);
     
     if (event.tag === 'background-sync') {
         event.waitUntil(doBackgroundSync());
@@ -264,11 +250,9 @@ function doBackgroundSync() {
     // cuando se recupera la conexión a internet
     return Promise.resolve()
         .then(function() {
-            console.log('✅ Service Worker: Sincronización completada');
         })
         .catch(function(error) {
             console.error('❌ Service Worker: Error en sincronización:', error);
         });
 }
 
-console.log('🚀 Service Worker: Cargado y listo');

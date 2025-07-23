@@ -22,7 +22,6 @@
     };
     
     function log(...args) {
-        if (CONFIG.DEBUG) console.log('[UNIFIED-DROPDOWN]', ...args);
     }
     
     // ===============================================

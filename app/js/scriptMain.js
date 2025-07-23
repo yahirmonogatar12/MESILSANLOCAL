@@ -46,13 +46,11 @@
             
             // Función para resetear completamente la pestaña de Información Básica
             function resetInformacionBasica() {
-                console.log('Reseteando Información Básica (sin AJAX)');
                 
                 // Llamar a la función global de reseteo si existe
                 if (typeof window.resetInfoBasicaToDefault === 'function') {
                     window.resetInfoBasicaToDefault();
                 } else {
-                    console.log('Función resetInfoBasicaToDefault no disponible aún');
                 }
                 
                 // Asegurar que todos los sidebar-links funcionen
@@ -62,7 +60,6 @@
                     link.style.cursor = 'pointer';
                 });
                 
-                console.log('Sidebar links habilitados:', sidebarLinks.length);
             }
             
             // Función para ocultar todos los contenedores de material
@@ -119,7 +116,6 @@
             
             // Funciones globales para mostrar cada contenedor de Información Básica
             window.mostrarAdminUsuarioInfo = function() {
-                console.log('Mostrando Administración de usuario');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-usuario-info-container');
                 if (container) {
@@ -128,7 +124,6 @@
             };
             
             window.mostrarAdminMenuInfo = function() {
-                console.log('Mostrando Administración de menú');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-menu-info-container');
                 if (container) {
@@ -137,7 +132,6 @@
             };
             
             window.mostrarAdminAutoridadInfo = function() {
-                console.log('Mostrando Administración de autoridad');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-autoridad-info-container');
                 if (container) {
@@ -146,7 +140,6 @@
             };
             
             window.mostrarControlCodigoInfo = function() {
-                console.log('Mostrando Control de lista de código');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-codigo-info-container');
                 if (container) {
@@ -155,7 +148,6 @@
             };
             
             window.mostrarAdminItinerarioInfo = function() {
-                console.log('Mostrando Administración de itinerario');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('admin-itinerario-info-container');
                 if (container) {
@@ -164,7 +156,6 @@
             };
             
             window.mostrarConsultarLicenciasInfo = function() {
-                console.log('Mostrando Consultar licencias');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('consultar-licencias-info-container');
                 if (container) {
@@ -173,7 +164,6 @@
             };
             
             window.mostrarControlDepartamentoInfo = function() {
-                console.log('Mostrando Control de departamento');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-departamento-info-container');
                 if (container) {
@@ -182,7 +172,6 @@
             };
             
             window.mostrarControlProcesoInfo = function() {
-                console.log('Mostrando Control de proceso');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-proceso-info-container');
                 if (container) {
@@ -191,7 +180,6 @@
             };
             
             window.mostrarControlOrdenProcesoInfo = function() {
-                console.log('Mostrando Control de orden de proceso');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-orden-proceso-info-container');
                 if (container) {
@@ -200,7 +188,6 @@
             };
             
             window.mostrarControlOrdenProceso2Info = function() {
-                console.log('Mostrando Control de orden de proceso 2');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-orden-proceso2-info-container');
                 if (container) {
@@ -209,7 +196,6 @@
             };
             
             window.mostrarControlDefectoInfo = function() {
-                console.log('Mostrando Control de defecto por proceso');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-defecto-info-container');
                 if (container) {
@@ -218,7 +204,6 @@
             };
             
             window.mostrarControlInterfacesInfo = function() {
-                console.log('Mostrando Control de interfaces de máquina');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-interfaces-info-container');
                 if (container) {
@@ -227,7 +212,6 @@
             };
             
             window.mostrarControlInterlockInfo = function() {
-                console.log('Mostrando Control de interlock de máquina en línea');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-interlock-info-container');
                 if (container) {
@@ -236,7 +220,6 @@
             };
             
             window.mostrarConfiguracionMSLInfo = function() {
-                console.log('Mostrando Configuración de MSL');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('configuracion-msl-info-container');
                 if (container) {
@@ -245,7 +228,6 @@
             };
             
             window.mostrarControlClienteInfo = function() {
-                console.log('Mostrando Control de cliente');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-cliente-info-container');
                 if (container) {
@@ -254,7 +236,6 @@
             };
             
             window.mostrarControlProveedorInfo = function() {
-                console.log('Mostrando Control de proveedor');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-proveedor-info-container');
                 if (container) {
@@ -271,52 +252,43 @@
             
             // Función global para mostrar el contenido de almacén
             window.mostrarControlAlmacen = function() {
-                console.log('🏪 === INICIANDO mostrarControlAlmacen ===');
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlAlmacenContainer.style.display = 'block';
                 
                 // Inicializar el contenido de control de almacén después de mostrarlo
                 setTimeout(() => {
-                    console.log('🔄 Inicializando funciones de control de almacén...');
                     
                     // Usar la nueva función global del módulo
                     if (typeof window.inicializarControlAlmacenModule === 'function') {
-                        console.log('✅ Ejecutando inicializarControlAlmacenModule...');
                         window.inicializarControlAlmacenModule();
                     } else {
                         console.warn('⚠️ inicializarControlAlmacenModule no disponible, intentando métodos individuales');
                         
                         // Fallback a la función anterior
                         if (typeof window.inicializarControlAlmacen === 'function') {
-                            console.log('✅ Ejecutando inicializarControlAlmacen...');
                             window.inicializarControlAlmacen();
                         } else {
                             console.warn('⚠️ inicializarControlAlmacen no disponible, usando métodos individuales');
                             // Fallback a métodos individuales
                             if (typeof cargarCodigosMaterial === 'function') {
-                                console.log('✅ Ejecutando cargarCodigosMaterial...');
                                 cargarCodigosMaterial();
                             } else {
                                 console.warn('⚠️ cargarCodigosMaterial no disponible');
                             }
                             if (typeof cargarClienteSeleccionado === 'function') {
-                                console.log('✅ Ejecutando cargarClienteSeleccionado...');
                                 cargarClienteSeleccionado();
                             } else {
                                 console.warn('⚠️ cargarClienteSeleccionado no disponible');
                             }
                             if (typeof cargarSiguienteSecuencial === 'function') {
-                                console.log('✅ Ejecutando cargarSiguienteSecuencial...');
                                 cargarSiguienteSecuencial();
                             } else {
                                 console.warn('⚠️ cargarSiguienteSecuencial no disponible');
                             }
                         }
                     }
-                    console.log('🏁 Inicialización de control de almacén completada');
                 }, 200);
-                console.log('🏪 === FIN mostrarControlAlmacen ===');
             };
             
             // Funciones para mostrar otros contenidos
@@ -351,7 +323,6 @@
                 
                 // Cargar contenido dinámicamente usando la ruta del servidor
                 cargarContenidoDinamico('estatus-material-container', '/material/estatus_material', () => {
-                    console.log('✅ Estatus de Material cargado exitosamente');
                     
                     // Inicializar funcionalidades específicas del estatus de material si es necesario
                     if (typeof window.initEstatusMaterial === 'function') {
@@ -413,14 +384,11 @@
                     hideAllContent();
                     
                     if (this.id === 'Información Basica') {
-                        console.log('Cargando pestaña Información Básica');
                         
                         // Usar la función global de MaterialTemplate.html si está disponible
                         if (typeof window.mostrarInformacionBasica === 'function') {
-                            console.log('Usando función global mostrarInformacionBasica');
                             window.mostrarInformacionBasica();
                         } else {
-                            console.log('Función global no disponible, usando fallback básico');
                             // Fallback básico
                             materialContainer.style.display = 'block';
                             informacionBasicaContent.style.display = 'block';
@@ -433,20 +401,16 @@
                         }
                         
                     } else if (this.id === 'Control de material') {
-                        console.log('Cargando pestaña Control de Material');
                         
                         // Usar la función global de MaterialTemplate.html si está disponible
                         if (typeof window.mostrarControlMaterial === 'function') {
-                            console.log('Usando función global mostrarControlMaterial');
                             window.mostrarControlMaterial();
                         } else {
-                            console.log('Función global no disponible, usando fallback básico');
                             // Fallback básico
                             materialContainer.style.display = 'block';
                             controlMaterialContent.style.display = 'block';
                             mostrarInfoMaterial();
                         }
-                        console.log('Control de Material cargado con información por defecto');
                         
                     } else if (this.id === 'Control de producción') {
                         materialContainer.style.display = 'block';
@@ -504,12 +468,10 @@
             if (!activeButton) {
                 const infoBasicaButton = document.getElementById('Información Basica');
                 if (infoBasicaButton) {
-                    console.log('Activando pestaña por defecto: Información Básica');
                     infoBasicaButton.click();
                 }
             }
             
-            console.log('Sistema de navegación inicializado correctamente');
             
             // NOTA: mostrarControlMaterialInfo está definida en MaterialTemplate.html con AJAX
             // No redefinir aquí para evitar conflictos

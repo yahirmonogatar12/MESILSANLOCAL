@@ -261,9 +261,7 @@ class PermisosManager {
     log(mensaje, objeto = null) {
         if (this.debug) {
             if (objeto) {
-                console.log(`[PermisosManager] ${mensaje}`, objeto);
             } else {
-                console.log(`[PermisosManager] ${mensaje}`);
             }
         }
     }

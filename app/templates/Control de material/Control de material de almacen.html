@@ -196,7 +196,7 @@
         <div class="material-form-group" style="justify-self: end;">
             <div style="display: flex; gap: 4px; align-items: center;">
                 <button class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
-                <button class="material-btn botones-almacen">Imprimir</button>
+                <button class="material-btn botones-almacen" id="btnImprimir" onclick="manejarImpresion()">Imprimir</button>
                 <button class="material-btn botones-almacen" id="btnConfigImpresora" onclick="verificarImpresoraZebra()" style="background: #6c757d; font-size: 9px; padding: 6px 8px; min-width: 80px; text-align: center;">CONF. DE IMPRESORA</button>
             </div>
         </div>
@@ -256,8 +256,39 @@
 
     </div>
 
+    <style>
+        /* Estilos para selección de filas de tabla */
+        .fila-seleccionada {
+            background-color: #007bff !important;
+            color: white !important;
+        }
+        
+        .fila-clickeable {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .fila-clickeable:hover {
+            background-color: #f0f8ff !important;
+        }
+        
+        .fila-seleccionada:hover {
+            background-color: #0056b3 !important;
+        }
+    </style>
+
     <script>
+        // Función para resolver error de closeMobileSidebar
+        function closeMobileSidebar() {
+            // Esta función es llamada desde algún lugar pero no estaba definida
+            // Agregar lógica aquí si es necesario cerrar algún sidebar móvil
+        }
+        
         let codigosMaterial = [];
+        
+        // Variables para manejo de selección de tabla
+        let filaSeleccionada = null;
+        let datosFilaSeleccionada = null;
 
         // FUNCIONES DIRECTAS PARA BOTONES DE PRUEBA ZPL
         function mostrarEjemploZPLDirecto() {
@@ -362,7 +393,6 @@
             };
             
             document.body.appendChild(modal);
-            console.log('📋 Modal ZPL mostrado correctamente');
         }
 
         // Función global para inicializar cuando se muestra el control de almacén
@@ -411,8 +441,6 @@
             if (fechaFabricacion) fechaFabricacion.value = fechaHoy;
             if (filtroFechaInicio) filtroFechaInicio.value = fechaHoy;
             if (filtroFechaFin) filtroFechaFin.value = fechaHoy;
-            
-            console.log(`📅 Fechas establecidas a: ${fechaHoy}`);
         }
 
         // Verificar si el DOM ya está listo o esperar a que lo esté
@@ -549,8 +577,6 @@
                 
                 // Llenar inmediatamente el campo de especificación
                 llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || codigoCompleto.spec || '');
-                console.log(`📋 Especificación cargada inmediatamente: ${codigoCompleto.especificacion_material || codigoCompleto.spec}`);
-                console.log(`📋 Número de parte disponible: ${codigoCompleto.numero_parte}`);
             }
             
             cerrarModalCodigoMaterial();
@@ -764,21 +790,16 @@
                     url += `?codigo_material=${encodeURIComponent(codigoMaterial)}`;
                 }
                 
-                console.log(`🔍 Cargando secuencial desde: ${url}`);
                 
                 const response = await fetch(url);
                 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log(`📊 Respuesta del servidor:`, data);
                     
                     if (data.success) {
                         contadorSecuencial = data.siguiente_secuencial || 1;
                         proximoCodigoCompleto = data.proximo_codigo_completo || '';
                         
-                        console.log(`✅ Variables actualizadas:`);
-                        console.log(`   - contadorSecuencial: ${contadorSecuencial}`);
-                        console.log(`   - proximoCodigoCompleto: ${proximoCodigoCompleto}`);
                     } else {
                         contadorSecuencial = 1;
                         proximoCodigoCompleto = '';
@@ -797,19 +818,13 @@
         }
 
         function llenarCamposInferiores(codigoMaterial) {
-            console.log(`🔍 llenarCamposInferiores llamado con: ${codigoMaterial}`);
             
             // Buscar la información completa del código de material
             const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
-            console.log(`📦 Información completa encontrada:`, codigoCompleto);
             
             // FORZAR recarga del contador específico para este código de material
-            console.log(`🔄 Recargando contador para código: ${codigoMaterial}`);
             
             cargarSiguienteSecuencial(codigoMaterial).then(() => {
-                console.log(`📊 Variables después de cargar:`);
-                console.log(`   - contadorSecuencial: ${contadorSecuencial}`);
-                console.log(`   - proximoCodigoCompleto: ${proximoCodigoCompleto}`);
                 
                 // USAR DIRECTAMENTE proximoCodigoCompleto del servidor
                 let codigoMaterialRecibidoCompleto = proximoCodigoCompleto;
@@ -822,7 +837,6 @@
                     console.warn(`⚠️ Usando código generado como fallback: ${codigoMaterialRecibidoCompleto}`);
                 }
                 
-                console.log(`🏷️ Código material recibido final: ${codigoMaterialRecibidoCompleto}`);
                 
                 if (codigoCompleto) {
                     llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
@@ -835,8 +849,6 @@
                     llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || '');
                     llenarCampoPorId('numero_lote_material', '');
                     
-                    console.log(`📋 Número de parte de DB cargado: ${codigoCompleto.numero_parte}`);
-                    console.log(`📋 Especificación de material cargada: ${codigoCompleto.especificacion_material}`);
                 } else {
                     llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
                     llenarCampoPorId('codigo_material_lower', codigoMaterial);
@@ -862,7 +874,6 @@
             const campo = document.getElementById(idCampo);
             if (campo && valor) {
                 campo.value = valor;
-                console.log(`✅ Campo ${idCampo} llenado con: ${valor}`);
                 
                 // Resaltar visualmente el campo que se llenó
                 campo.style.backgroundColor = '#e3f2fd';
@@ -921,14 +932,11 @@
         // Función para recargar el contador desde la base de datos
         function recargarContador() {
             cargarSiguienteSecuencial();
-            console.log('Recargando contador secuencial desde la base de datos...');
         }
 
         // Función opcional para forzar recarga del contador (para testing/debug)
         function forzarRecargaContador() {
-            console.log('🔄 Forzando recarga del contador secuencial...');
             cargarSiguienteSecuencial().then(() => {
-                console.log(`✅ Contador recargado. Próximo secuencial: ${String(contadorSecuencial).padStart(4, '0')}`);
             });
         }
 
@@ -972,7 +980,6 @@
                     return;
                 }
                 
-                console.log('Datos a guardar:', formData);
                 
                 // Deshabilitar botón mientras se guarda
                 const btnGuardar = document.getElementById('btnGuardar');
@@ -988,8 +995,6 @@
                     body: JSON.stringify(formData)
                 })
                 .then(response => {
-                    console.log('Save response status:', response.status);
-                    console.log('Save response headers:', response.headers.get('content-type'));
                     
                     // Verificar si la respuesta es JSON
                     if (response.headers.get('content-type')?.includes('application/json')) {
@@ -1012,12 +1017,10 @@
                             propiedadMaterial: formData.especificacion || ''
                         };
                         
-                        console.log('🏷️ Datos capturados para etiqueta:', datosParaEtiqueta);
                         
                         // *** NUEVA FUNCIONALIDAD: Impresión automática directa ***
                         const codigoMaterialRecibido = formData.codigo_material_recibido;
                         if (codigoMaterialRecibido && codigoMaterialRecibido.trim() !== '') {
-                            console.log('🎯 Iniciando impresión automática para código:', codigoMaterialRecibido);
                             
                             // Imprimir directamente sin confirmaciones CON DATOS CAPTURADOS
                             setTimeout(() => {
@@ -1029,14 +1032,11 @@
                         setTimeout(async () => {
                             const codigoActual = document.getElementById('codigoMaterialSelect').value;
                             if (codigoActual) {
-                                console.log(`🔄 Recargando siguiente lote para código '${codigoActual}' después de guardar...`);
                                 await cargarSiguienteSecuencial(codigoActual);
-                                console.log(`✅ Secuencial recargado: ${contadorSecuencial}`);
                                 
                                 // Después de recargar, actualizar los campos inferiores con la nueva secuencia
                                 llenarCamposInferiores(codigoActual);
                             } else {
-                                console.log('🔄 Recargando lote por defecto después de guardar...');
                                 await cargarSiguienteSecuencial();
                             }
                         }, 500); // Esperar 500ms para asegurar que la BD se actualice
@@ -1093,11 +1093,9 @@
             const tabla = document.getElementById('tablaControlAlmacen');
             if (tabla) {
                 tabla.style.display = 'none';
-                console.log('✅ Tabla ocultada después de limpiar formulario');
             }
             
             // El contador secuencial se recarga desde BD después de cada guardado exitoso
-            console.log('Formulario limpiado. Próximo número secuencial será:', String(contadorSecuencial).padStart(4, '0'));
         }
         
         // Establecer fechas a hoy al cargar la página
@@ -1127,19 +1125,15 @@ if (document.readyState === 'loading') {
 
         // Función para consultar registros (actualizada para usar la nueva función)
         function consultarRegistros() {
-            console.log('🔄 === CONSULTANDO REGISTROS (ACTUALIZADA) ===');
-            console.log('🔄 Llamando a cargarDatosDesdeServidor...');
             cargarDatosDesdeServidor();
         }
 
         // Función principal de carga de datos (actualizada para usar la nueva función)
         function cargarDatosDesdeServidor() {
-            console.log('🚀 === INICIANDO cargarDatosDesdeServidor (ACTUALIZADA) ===');
             
             const fechaInicio = document.getElementById('filtro_fecha_inicio').value;
             const fechaFin = document.getElementById('filtro_fecha_fin').value;
             
-            console.log('📅 Filtros:', { fechaInicio, fechaFin });
             
             // Construir URL con parámetros
             let url = '/consultar_control_almacen';
@@ -1152,20 +1146,14 @@ if (document.readyState === 'loading') {
                 url += '?' + params.toString();
             }
             
-            console.log('📡 URL final:', url);
             
             fetch(url)
                 .then(response => {
-                    console.log('📨 Respuesta recibida - Status:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('📊 Datos parseados:', data);
-                    console.log('📊 Cantidad de registros:', data ? data.length : 0);
                     
-                    console.log('🔄 Llamando a nuevaCargarDatos (función funcional)...');
                     nuevaCargarDatos(data);
-                    console.log('✅ nuevaCargarDatos ejecutada');
                 })
                 .catch(error => {
                     console.error('❌ Error completo:', error);
@@ -1176,7 +1164,6 @@ if (document.readyState === 'loading') {
                     }
                 });
             
-            console.log('🚀 === FIN cargarDatosDesdeServidor (fetch iniciado) ===');
         }
         
         // Función global para acceso directo (como en CONTROL_DE_MATERIAL.html)
@@ -1199,8 +1186,12 @@ if (document.readyState === 'loading') {
                 return;
             }
 
-            datos.forEach(item => {
+            datos.forEach((item, index) => {
                 const row = document.createElement('tr');
+                
+                // Hacer la fila clickeable para selección
+                row.className = 'fila-clickeable';
+                row.onclick = () => seleccionarFilaTabla(row, item, index);
 
                 row.innerHTML = `
                     <td>${item.codigo_material_recibido || ''}</td>
@@ -1236,14 +1227,110 @@ if (document.readyState === 'loading') {
             totalInfo.textContent = `Total Rows: ${filasDatos.length}`;
         }
         
+        // Función para seleccionar fila de tabla
+        function seleccionarFilaTabla(fila, datos, index) {
+            
+            // Verificar datos críticos
+            
+            // Limpiar selección anterior
+            limpiarSeleccionTabla();
+            
+            // Marcar nueva selección
+            fila.classList.add('fila-seleccionada');
+            filaSeleccionada = fila;
+            datosFilaSeleccionada = datos;
+            
+        }
+        
+        // Función para limpiar selección de tabla
+        function limpiarSeleccionTabla() {
+            if (filaSeleccionada) {
+                filaSeleccionada.classList.remove('fila-seleccionada');
+            }
+            filaSeleccionada = null;
+            datosFilaSeleccionada = null;
+        }
+        
+        // Función principal para manejar impresión
+        async function manejarImpresion() {
+            
+            // *** DEBUG CRÍTICO: VERIFICAR ESTADO DE SELECCIÓN ***
+            
+            if (datosFilaSeleccionada) {
+            }
+            
+            if (filaSeleccionada) {
+            }
+            
+            try {
+                if (datosFilaSeleccionada) {
+                    // Reimprimir etiqueta seleccionada
+                    await reimprimirEtiqueta(datosFilaSeleccionada);
+                } else {
+                    // Imprimir desde formulario
+                    await imprimirEtiquetaFormulario();
+                }
+            } catch (error) {
+                console.error('❌ Error en manejo de impresión:', error);
+                mostrarNotificacionImpresion('Error de impresión: ' + error.message, 'error');
+            }
+        }
+        
+        // Función para reimprimir etiqueta desde datos de tabla
+        async function reimprimirEtiqueta(datos) {
+            
+            // ✅ MAPEAR DATOS USANDO LOS NOMBRES EXACTOS DE LAS COLUMNAS SQL
+            const datosEtiqueta = {
+                codigo: datos.codigo_material_recibido || '',
+                numeroLote: datos.numero_lote_material || '',
+                numeroParte: datos.numero_parte || '',
+                cantidadActual: datos.cantidad_actual || '',  // ✅ Desde SQL
+                propiedadMaterial: datos.propiedad_material || '',
+                especificacionMaterial: datos.especificacion || '', // ✅ Desde SQL
+                fechaRecibo: datos.fecha_recibo || '', // ✅ Desde SQL
+                cantidadEstandarizada: datos.cantidad_estandarizada || '',
+                ubicacionSalida: datos.ubicacion_salida || '',
+                materialImportacionLocal: datos.material_importacion_local || '',
+                estadoDesecho: datos.estado_desecho || ''
+            };
+            
+            
+            // Verificar datos críticos
+            if (!datosEtiqueta.cantidadActual) {
+                console.warn('⚠️ ADVERTENCIA: cantidad_actual de SQL está vacía');
+            }
+            if (!datosEtiqueta.especificacionMaterial) {
+                console.warn('⚠️ ADVERTENCIA: especificacion de SQL está vacía');
+            }
+            if (!datosEtiqueta.fechaRecibo) {
+                console.warn('⚠️ ADVERTENCIA: fecha_recibo de SQL está vacía');
+            }
+            
+            // Usar la función de impresión con datos específicos
+            await imprimirZebraAutomaticoConDatos(datosEtiqueta);
+            
+            mostrarNotificacionImpresion('Etiqueta reimpresa con datos de SQL', 'success');
+        }
+        
+        // Función para imprimir desde formulario
+        async function imprimirEtiquetaFormulario() {
+            
+            const codigo = document.getElementById('codigo_material_recibido')?.value;
+            if (!codigo || codigo.trim() === '') {
+                throw new Error('No hay código de material para imprimir');
+            }
+            
+            
+            // Usar la función de impresión automática existente
+            await imprimirZebraAutomatico(codigo);
+            
+            mostrarNotificacionImpresion('Etiqueta impresa correctamente', 'success');
+        }
 
         
         // Función para aplicar reglas de escaneo desde rules.json
         async function aplicarReglasEscaneo(texto) {
             try {
-                console.log('=== APLICANDO REGLAS DE ESCANEO ===');
-                console.log('Texto escaneado:', texto);
-                console.log('Longitud del texto:', texto.length);
                 
                 // Obtener las reglas del servidor
                 const response = await fetch('/obtener_reglas_escaneo');
@@ -1253,21 +1340,12 @@ if (document.readyState === 'loading') {
                 }
                 
                 const reglas = await response.json();
-                console.log('Reglas de escaneo cargadas:', reglas);
                 
                 // Probar cada regla hasta encontrar una que coincida
                 for (const [proveedor, regla] of Object.entries(reglas)) {
-                    console.log(`\n--- Probando regla para proveedor: ${proveedor} ---`);
-                    console.log('Tipo de regla:', regla.creation_mode || 'no especificado');
                     
                     const resultado = aplicarRegla(texto, regla);
                     if (resultado) {
-                        console.log(`✅ REGLA ${proveedor} APLICADA EXITOSAMENTE:`);
-                        console.log('- Proveedor:', proveedor);
-                        console.log('- Part Number:', resultado.partNumber);
-                        console.log('- Lot Number:', resultado.lotNumber);
-                        console.log('- Part Number length:', resultado.partNumber.length);
-                        console.log('- Lot Number length:', resultado.lotNumber.length);
                         
                         return {
                             supplier: proveedor,
@@ -1275,11 +1353,9 @@ if (document.readyState === 'loading') {
                             lotNumber: resultado.lotNumber
                         };
                     } else {
-                        console.log(`❌ Regla ${proveedor} no coincide`);
                     }
                 }
                 
-                console.log('❌ Ninguna regla coincide con el texto escaneado');
                 return null;
                 
             } catch (error) {
@@ -1291,7 +1367,6 @@ if (document.readyState === 'loading') {
         // Función para aplicar una regla específica
         function aplicarRegla(texto, regla) {
             try {
-                console.log('Aplicando regla:', regla);
                 
                 // Manejar diferentes tipos de reglas según tu rules.json
                 if ('sequence_pattern' in regla) {
@@ -1313,8 +1388,6 @@ if (document.readyState === 'loading') {
         // Función para aplicar regla de secuencias (como ROHM)
         function aplicarReglaSecuencias(texto, regla) {
             try {
-                console.log('Aplicando regla de secuencias para:', texto);
-                console.log('Regla:', regla);
                 
                 const secuencias = regla.sequence_pattern;
                 const indicePart = regla.partNumberIndex;
@@ -1354,11 +1427,9 @@ if (document.readyState === 'loading') {
                     partes = nuevasPartes;
                 }
                 
-                console.log('Partes divididas:', partes);
                 
                 // Verificar que tengamos suficientes partes
                 if (partes.length <= Math.max(indicePart, indiceLote)) {
-                    console.log('No suficientes partes para extraer datos');
                     return null;
                 }
                 
@@ -1378,25 +1449,13 @@ if (document.readyState === 'loading') {
                     const startPos = regla.lotNumberStart;
                     const length = regla.lotNumberLength;
                     
-                    console.log('🎯 Aplicando extracción específica del lote:');
-                    console.log('- Lote original:', lotNumber);
-                    console.log('- Posición inicio:', startPos);
-                    console.log('- Longitud:', length);
-                    console.log('- Lote original length:', lotNumber.length);
                     
                     if (lotNumber.length >= startPos + length) {
                         lotNumber = lotNumber.substring(startPos, startPos + length).trim();
-                        console.log('- Lote extraído:', lotNumber);
                     } else {
-                        console.log('❌ Lote muy corto para extracción específica');
                     }
                 }
                 
-                console.log('Datos extraídos por secuencias:');
-                console.log('- Part Number:', partNumber);
-                console.log('- Lot Number:', lotNumber);
-                console.log('- Part Number length:', partNumber.length);
-                console.log('- Lot Number length:', lotNumber.length);
                 
                 return {
                     partNumber: partNumber,
@@ -1412,7 +1471,6 @@ if (document.readyState === 'loading') {
         // Función para aplicar regla de regex (como LEGACY)
         function aplicarReglaRegex(texto, regla) {
             try {
-                console.log('Aplicando regla regex para:', texto);
                 
                 const patron = new RegExp(regla.pattern);
                 const indicePart = regla.partNumberIndex;
@@ -1421,18 +1479,13 @@ if (document.readyState === 'loading') {
                 const coincidencia = texto.match(patron);
                 
                 if (!coincidencia) {
-                    console.log('El texto no coincide con el patrón regex');
                     return null;
                 }
                 
-                console.log('Coincidencias regex:', coincidencia);
                 
                 const partNumber = coincidencia[indicePart]?.trim() || '';
                 const lotNumber = coincidencia[indiceLote]?.trim() || '';
                 
-                console.log('Datos extraídos por regex:');
-                console.log('- Part Number:', partNumber);
-                console.log('- Lot Number:', lotNumber);
                 
                 return {
                     partNumber: partNumber,
@@ -1454,24 +1507,15 @@ if (document.readyState === 'loading') {
                 const inicioLotNumber = regla.lotNumberStart;
                 const longitudLotNumber = regla.lotNumberLength;
                 
-                console.log('Aplicando regla de caracteres:');
-                console.log('- Patrón:', patronCaracteres);
-                console.log('- Texto:', texto);
-                console.log('- Texto length:', texto.length);
-                console.log('- Patrón length:', patronCaracteres.length);
-                console.log('- Part Number: posición', inicioPartNumber, 'longitud', longitudPartNumber);
-                console.log('- Lot Number: posición', inicioLotNumber, 'longitud', longitudLotNumber);
                 
                 // Verificar longitud mínima (igual que Python)
                 const longitudMinima = Math.max(inicioPartNumber + longitudPartNumber, inicioLotNumber + longitudLotNumber);
                 if (texto.length < longitudMinima) {
-                    console.log(`❌ Texto muy corto. Esperado: ${longitudMinima}, Actual: ${texto.length}`);
                     return null;
                 }
                 
                 // VALIDACIÓN ESTRICTA DE PATRÓN (igual que Python)
                 if (texto.length !== patronCaracteres.length) {
-                    console.log(`❌ Longitud no coincide. Patrón: ${patronCaracteres.length}, Texto: ${texto.length}`);
                     return null;
                 }
                 
@@ -1486,46 +1530,33 @@ if (document.readyState === 'loading') {
                     } else if (charPatron === 'N') {
                         // N = cualquier número
                         if (!/\d/.test(charTexto)) {
-                            console.log(`❌ Carácter en posición ${i} no es número. Esperado: N, Actual: "${charTexto}"`);
                             return null;
                         }
                     } else if (charPatron === 'A') {
                         // A = cualquier letra
                         if (!/[a-zA-Z]/.test(charTexto)) {
-                            console.log(`❌ Carácter en posición ${i} no es letra. Esperado: A, Actual: "${charTexto}"`);
                             return null;
                         }
                         
                     } else if (charPatron === 'AN') {
                         // AN = alfanumérico
                         if (!/[a-zA-Z0-9]/.test(charTexto)) {
-                            console.log(`❌ Carácter en posición ${i} no es alfanumérico. Esperado: AN, Actual: "${charTexto}"`);
                             return null;
                         }
                     } else {
                         // Carácter específico debe coincidir exactamente
                         if (charTexto !== charPatron) {
-                            console.log(`❌ Carácter en posición ${i} no coincide. Esperado: "${charPatron}", Actual: "${charTexto}"`);
                             return null;
                         }
                     }
                 }
                 
-                console.log('✅ Patrón validado correctamente');
                 
                 // Extraer partNumber y lotNumber según las posiciones EXACTAS (igual que Python)
                 const partNumber = texto.substring(inicioPartNumber, inicioPartNumber + longitudPartNumber).trim();
                 const lotNumber = texto.substring(inicioLotNumber, inicioLotNumber + longitudLotNumber).trim();
                 
-                console.log('Extracción exacta:');
-                console.log(`- Part Number extraído: "${partNumber}" (de posición ${inicioPartNumber} a ${inicioPartNumber + longitudPartNumber})`);
-                console.log(`- Lot Number extraído: "${lotNumber}" (de posición ${inicioLotNumber} a ${inicioLotNumber + longitudLotNumber})`);
-                console.log('- Part Number length extraído:', partNumber.length);
-                console.log('- Lot Number length extraído:', lotNumber.length);
                 
-                console.log('✅ Datos finales extraídos:');
-                console.log('- Part Number final:', partNumber);
-                console.log('- Lot Number final:', lotNumber);
                 
                 return {
                     partNumber: partNumber,
@@ -1576,33 +1607,25 @@ if (document.readyState === 'loading') {
         function configurarAutocompletadoAlmacen() {
             const codigoRecibidoInput = document.getElementById('codigo_material_recibido');
             if (codigoRecibidoInput) {
-                console.log('✅ ALMACÉN: Campo codigo_material_recibido encontrado y configurado');
                 
                 // Función para buscar el código en la base de datos
                 async function buscarCodigoRecibidoAlmacen() {
                     const codigo = codigoRecibidoInput.value.trim();
-                    console.log(`🔍 ALMACÉN: Buscando código: "${codigo}"`);
                     
                     if (!codigo) {
-                        console.log('⚠️ ALMACÉN: Código vacío, no se ejecuta búsqueda');
                         return;
                     }
                     
-                    console.log('📡 ALMACÉN: Enviando petición al servidor...');
                     
                     try {
                         const url = `/buscar_codigo_recibido?codigo_material_recibido=${encodeURIComponent(codigo)}`;
-                        console.log(`🌐 ALMACÉN: URL: ${url}`);
                         
                         const response = await fetch(url);
-                        console.log(`📡 ALMACÉN: Respuesta del servidor: Status ${response.status}`);
                         
                         if (response.ok) {
                             const data = await response.json();
-                            console.log('📦 ALMACÉN: Datos recibidos:', data);
                             
                             if (data.success && data.registro) {
-                                console.log('✅ ALMACÉN: Código encontrado, llenando campos...');
                                 
                                 // Llenar campos con la información encontrada
                                 if (data.registro.numero_lote_material) {
@@ -1642,10 +1665,8 @@ if (document.readyState === 'loading') {
                                     }
                                 });
                                 
-                                console.log('✅ ALMACÉN: Autocompletado exitoso');
                                 alert('Código encontrado y campos completados automáticamente');
                             } else {
-                                console.log('❌ ALMACÉN: Código no encontrado en respuesta');
                                 alert('Código de material recibido no encontrado en el almacén');
                             }
                         } else {
@@ -1662,15 +1683,12 @@ if (document.readyState === 'loading') {
                 
                 // Evento para cuando se pierde el foco del campo (change)
                 codigoRecibidoInput.addEventListener('change', function() {
-                    console.log('🎯 ALMACÉN: Evento "change" activado');
                     buscarCodigoRecibidoAlmacen();
                 });
                 
                 // Evento para cuando se presiona Enter
                 codigoRecibidoInput.addEventListener('keypress', function(event) {
-                    console.log(`⌨️ ALMACÉN: Tecla presionada: ${event.key}`);
                     if (event.key === 'Enter') {
-                        console.log('🎯 ALMACÉN: Enter presionado, ejecutando búsqueda');
                         event.preventDefault();
                         buscarCodigoRecibidoAlmacen();
                     }
@@ -1775,7 +1793,6 @@ if (document.readyState === 'loading') {
 
         // Función llamada cuando se escanea exitosamente
         function onScanSuccess(decodedText) {
-            console.log('✅ QR escaneado:', decodedText);
             
             const statusDiv = document.getElementById('qr-status');
             if (statusDiv) {
@@ -1827,7 +1844,6 @@ if (document.readyState === 'loading') {
             const codigoMaterialRecibido = document.getElementById('codigo_material_recibido');
             
             if (codigoMaterialRecibido && codigoMaterialRecibido.value.trim() !== '') {
-                console.log('🎯 Generando QR para código:', codigoMaterialRecibido.value.trim());
                 
                 // Usar el generador QR simple
                 if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
@@ -1840,7 +1856,6 @@ if (document.readyState === 'loading') {
             }
         };
 
-        console.log('✅ Función QR manual disponible: generarQRMaterialRecibido()');
         
         // Función para mostrar estado de configuración de impresora al cargar
         function mostrarEstadoImpresora() {
@@ -1849,11 +1864,9 @@ if (document.readyState === 'loading') {
                 const cfg = JSON.parse(config);
                 const tipoTexto = cfg.tipo === 'simple' ? 'Simple' : 'Completa';
                 const metodoTexto = cfg.metodo === 'usb' ? 'USB' : `Red ${cfg.ip}`;
-                console.log(`🦓 ZT230 configurada: ${metodoTexto} (${tipoTexto}) - Impresión automática activada`);
                 
                 // Configuración activada - no hay botón que actualizar
             } else {
-                console.log('⚠️ ZT230 no configurada - QR se mostrará en modal');
             }
         }
         
@@ -1871,8 +1884,6 @@ if (document.readyState === 'loading') {
          * Se ejecuta automáticamente después de guardar un material
          */
         async function imprimirZebraAutomatico(codigo) {
-            console.log('🦓 === IMPRESIÓN AUTOMÁTICA ZEBRA (WIN32) ===');
-            console.log('📋 Código a imprimir:', codigo);
             
             try {
                 // 1. Verificar configuración de impresora
@@ -1911,16 +1922,13 @@ if (document.readyState === 'loading') {
                 
                 if (config) {
                     configuracion = { ...configuracion, ...JSON.parse(config) };
-                    console.log('🔧 Configuración cargada:', configuracion);
                 } else {
-                    console.log('⚠️ Sin configuración previa, usando valores por defecto');
                     // Guardar configuración por defecto
                     localStorage.setItem('zebra_config', JSON.stringify(configuracion));
                 }
                 
                 // 2. Generar comando ZPL según el tipo configurado
                 const comandoZPL = generarComandoZPLDirecto(codigo, configuracion.tipo);
-                console.log('📝 Comando ZPL generado:', comandoZPL);
                 
                 // 3. Mostrar notificación de inicio
                 mostrarNotificacionImpresion('Enviando a impresora Zebra ZT230...', 'info');
@@ -1933,7 +1941,6 @@ if (document.readyState === 'loading') {
                 mostrarNotificacionImpresion('Error al imprimir: ' + error.message, 'error');
                 
                 // Fallback: Usar método anterior
-                console.log('🔄 Fallback: Usando método anterior...');
                 try {
                     await enviarPorBackendAnterior(comandoZPL, codigo, configuracion);
                 } catch (fallbackError) {
@@ -1951,9 +1958,6 @@ if (document.readyState === 'loading') {
          * Esta función recibe directamente los datos en lugar de leerlos del formulario
          */
         async function imprimirZebraAutomaticoConDatos(datosEtiqueta) {
-            console.log('🦓 === IMPRESIÓN AUTOMÁTICA CON DATOS ESPECÍFICOS ===');
-            console.log('📋 Datos recibidos:', datosEtiqueta);
-            
             try {
                 // 1. Verificar configuración de impresora
                 const config = localStorage.getItem('zebra_config');
@@ -1967,15 +1971,12 @@ if (document.readyState === 'loading') {
                 
                 if (config) {
                     configuracion = { ...configuracion, ...JSON.parse(config) };
-                    console.log('🔧 Configuración cargada:', configuracion);
                 } else {
-                    console.log('⚠️ Sin configuración previa, usando valores por defecto');
                     localStorage.setItem('zebra_config', JSON.stringify(configuracion));
                 }
                 
                 // 2. Generar comando ZPL usando la función que SÍ FUNCIONA
                 const comandoZPL = generarComandoZPLConDatos(datosEtiqueta, configuracion.tipo);
-                console.log('📝 Comando ZPL generado con datos específicos:', comandoZPL);
                 
                 // 3. Mostrar notificación de inicio
                 mostrarNotificacionImpresion('Enviando a impresora Zebra ZT230...', 'info');
@@ -1984,18 +1985,58 @@ if (document.readyState === 'loading') {
                 await enviarAServicioWin32(comandoZPL, datosEtiqueta.codigo, configuracion);
                 
             } catch (error) {
-                console.error('❌ Error en impresión automática con datos:', error);
+                console.error('❌ ERROR EN IMPRESIÓN CON DATOS ESPECÍFICOS:', error);
+                console.error('❌ Tipo de error:', error.name);
+                console.error('❌ Mensaje:', error.message);
+                console.error('❌ Stack:', error.stack);
+                
                 mostrarNotificacionImpresion('Error al imprimir: ' + error.message, 'error');
                 
-                // Fallback: Usar método anterior con código solamente
-                console.log('🔄 Fallback: Usando método sin datos específicos...');
-                try {
-                    await imprimirZebraAutomatico(datosEtiqueta.codigo);
-                } catch (fallbackError) {
-                    console.error('❌ Fallback también falló:', fallbackError);
-                    // Último fallback: Mostrar QR en modal
-                    if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
-                        QRAlmacenSimple.generarQR(datosEtiqueta.codigo);
+                
+                // **FALLBACK CONTROLADO** - Solo si es un error específico de red/servicio
+                const esErrorRed = error.message.includes('fetch') || 
+                                   error.message.includes('network') || 
+                                   error.message.includes('Failed to fetch') ||
+                                   error.message.includes('NetworkError') ||
+                                   error.name === 'TypeError';
+                
+                const esErrorServicio = error.message.includes('5003') || 
+                                       error.message.includes('localhost') ||
+                                       error.message.includes('service');
+                
+                if (esErrorRed || esErrorServicio) {
+                    
+                    try {
+                        // Generar ZPL usando solo los datos que tenemos
+                        const codigoParaFallback = datosEtiqueta.codigo || 'CODIGO_ERROR';
+                        
+                        // Generar ZPL directamente sin usar servicio
+                        const zplFallback = generarComandoZPLConDatos(datosEtiqueta, 'material');
+                        
+                        // Mostrar el ZPL en consola para que el usuario pueda copiarlo
+                        
+                        // Intentar usando método de formulario como último recurso
+                        await imprimirZebraAutomatico(codigoParaFallback);
+                        
+                    } catch (fallbackError) {
+                        console.error('❌ Fallback también falló:', fallbackError);
+                        
+                        // Último recurso: mostrar el ZPL generado
+                        const zplUltimoRecurso = generarComandoZPLConDatos(datosEtiqueta, 'material');
+                        
+                        mostrarNotificacionImpresion('ZPL generado - Ver consola para código manual', 'info');
+                        
+                        // Último fallback: Mostrar QR en modal si existe
+                        if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
+                            QRAlmacenSimple.generarQR(datosEtiqueta.codigo);
+                        }
+                    }
+                } else {
+                    // Solo mostrar el ZPL generado sin intentar impresión adicional
+                    try {
+                        const zplGenerado = generarComandoZPLConDatos(datosEtiqueta, 'material');
+                    } catch (zplError) {
+                        console.error('No se pudo generar ZPL:', zplError);
                     }
                 }
             }
@@ -2008,7 +2049,6 @@ if (document.readyState === 'loading') {
             const serviceUrl = configuracion.service_url || 'http://localhost:5003';
             
             try {
-                console.log(`🌐 Conectando al servicio Win32: ${serviceUrl}`);
                 
                 // Verificar si el servicio está disponible
                 const statusResponse = await fetch(`${serviceUrl}/`, {
@@ -2021,7 +2061,6 @@ if (document.readyState === 'loading') {
                 }
                 
                 const statusData = await statusResponse.json();
-                console.log('📊 Estado del servicio:', statusData);
                 
                 // COMPATIBILIDAD: Si el servicio no devuelve zebra_printer, verificar que esté ejecutándose
                 // Tu servicio devuelve { "service": "Zebra Print Service Flask Integrado", "status": "running" }
@@ -2031,7 +2070,6 @@ if (document.readyState === 'loading') {
                 
                 // Si el servicio está ejecutándose, asumir que la impresora está disponible
                 if (statusData.status === 'running') {
-                    console.log('✅ Servicio de impresión funcionando - asumiendo impresora disponible');
                 } else if (!statusData.zebra_printer) {
                     throw new Error('No se detectó impresora Zebra ZT230 en el servicio');
                 }
@@ -2052,11 +2090,9 @@ if (document.readyState === 'loading') {
                 const printResult = await printResponse.json();
                 
                 if (printResponse.ok && printResult.status === 'printed') {
-                    console.log('✅ Impresión exitosa via Win32:', printResult);
                     mostrarNotificacionImpresion(`Etiqueta impresa en ${printResult.printer}`, 'success');
                     
                     // Log adicional
-                    console.log(`📊 Detalles: ${printResult.bytes} bytes enviados a ${printResult.printer}`);
                     
                 } else {
                     throw new Error(printResult.error || 'Error desconocido en impresión');
@@ -2078,7 +2114,6 @@ if (document.readyState === 'loading') {
          * Función fallback para usar el método anterior
          */
         async function enviarPorBackendAnterior(comandoZPL, codigo, configuracion) {
-            console.log('🔄 Usando método fallback (backend anterior)...');
             
             try {
                 const response = await fetch('/imprimir_etiqueta_qr', {
@@ -2097,7 +2132,6 @@ if (document.readyState === 'loading') {
                 const result = await response.json();
                 
                 if (result.success) {
-                    console.log('✅ Fallback exitoso:', result.metodo);
                     mostrarNotificacionImpresion('Etiqueta procesada correctamente', 'success');
                 } else {
                     throw new Error(result.error || 'Error en método fallback');
@@ -2114,16 +2148,13 @@ if (document.readyState === 'loading') {
          * Intenta múltiples fuentes y siempre devuelve un valor válido
          */
         function getCantidadActual() {
-            console.log('🔢 === OBTENIENDO CANTIDAD ACTUAL (MEJORADO) ===');
             
             // 1. Intentar obtener del campo principal
             let cantidad = document.getElementById('cantidad_actual')?.value;
-            console.log('📊 Campo cantidad_actual:', `'${cantidad}' (longitud: ${cantidad ? cantidad.length : 0})`);
             
             // 2. Si está vacío, intentar cantidad_estandarizada (que viene de la BD)
             if (!cantidad || cantidad.trim() === '') {
                 cantidad = document.getElementById('cantidad_estandarizada')?.value;
-                console.log('📊 Usando cantidad_estandarizada:', `'${cantidad}' (longitud: ${cantidad ? cantidad.length : 0})`);
             }
             
             // 3. Si sigue vacío, buscar en el código seleccionado directamente
@@ -2133,7 +2164,6 @@ if (document.readyState === 'loading') {
                     const materialInfo = codigosMaterial.find(c => c.codigo === codigoSeleccionado);
                     if (materialInfo && materialInfo.cantidad_estandarizada) {
                         cantidad = materialInfo.cantidad_estandarizada;
-                        console.log('📊 Usando cantidad de BD directamente:', `'${cantidad}' (de código: ${codigoSeleccionado})`);
                     }
                 }
             }
@@ -2144,7 +2174,6 @@ if (document.readyState === 'loading') {
                 cantidad = '1';
             }
             
-            console.log('🔢 Cantidad final para ZPL:', `'${cantidad}'`);
             return cantidad.toString().trim();
         }
         
@@ -2153,60 +2182,107 @@ if (document.readyState === 'loading') {
          * Esta función recibe directamente los datos en lugar de leerlos del formulario
          */
         function generarComandoZPLConDatos(datosEtiqueta, tipo = 'material') {
-            const fechaHora = new Date().toLocaleString('es-ES');
-            const fecha = new Date().toLocaleDateString('es-ES');
             
-            console.log('🏷️ Generando comando ZPL con datos específicos');
-            console.log('📊 Tipo de etiqueta:', tipo);
-            console.log('📋 Datos recibidos:', datosEtiqueta);
+            // ✅ USAR FECHA DE LA TABLA si existe, sino fecha actual
+            let fecha, fechaHora;
+            if (datosEtiqueta.fechaRecibo) {
+                // Convertir fecha de tabla (YYYY-MM-DD) a formato español (DD/MM/YYYY)
+                const fechaTabla = new Date(datosEtiqueta.fechaRecibo);
+                fecha = fechaTabla.toLocaleDateString('es-ES');
+                fechaHora = fechaTabla.toLocaleString('es-ES');
+            } else {
+                // Fallback a fecha actual
+                fecha = new Date().toLocaleDateString('es-ES');
+                fechaHora = new Date().toLocaleString('es-ES');
+            }
             
             // Usar los datos específicos pasados como parámetro
             const codigo = datosEtiqueta.codigo || '';
             const numeroLote = datosEtiqueta.numeroLote || '';
             const numeroParte = datosEtiqueta.numeroParte || '';
-            const cantidadActual = datosEtiqueta.cantidadActual || '';
-            const propiedad = datosEtiqueta.propiedadMaterial || '';
+            
+            // *** CORRECCIÓN CRÍTICA: CONVERTIR A STRING Y VALIDAR ***
+            let cantidadActual = String(datosEtiqueta.cantidadActual || '');
+            
+            // ✅ USAR ESPECIFICACIÓN DE LA TABLA si existe, sino propiedad
+            let especificacion = String(datosEtiqueta.especificacionMaterial || datosEtiqueta.propiedadMaterial || '');
+            
+            // Si la cantidad está vacía, usar valor por defecto
+            if (!cantidadActual || cantidadActual.trim() === '' || cantidadActual === 'undefined') {
+                // Intentar obtener de la fuente original si está disponible
+                if (window.datosFilaSeleccionada && window.datosFilaSeleccionada.cantidad_actual) {
+                    cantidadActual = String(window.datosFilaSeleccionada.cantidad_actual);
+                } else {
+                    cantidadActual = '1';
+                }
+            }
+            
+            // Si la especificación está vacía, usar valor por defecto
+            if (!especificacion || especificacion.trim() === '' || especificacion === 'undefined') {
+                // Intentar obtener de la fuente original si está disponible
+                if (window.datosFilaSeleccionada && window.datosFilaSeleccionada.especificacion) {
+                    especificacion = String(window.datosFilaSeleccionada.especificacion);
+                } else {
+                    especificacion = 'Material';
+                }
+            }
             
             // === DEBUG: VERIFICAR VALORES ESPECÍFICOS ===
-            console.log('🔍 === VERIFICACIÓN DE DATOS ESPECÍFICOS ===');
-            console.log('📦 Código:', `'${codigo}' (longitud: ${codigo.length})`);
-            console.log('🏷️ Número de lote:', `'${numeroLote}' (longitud: ${numeroLote.length})`);
-            console.log('🔧 Número de parte:', `'${numeroParte}' (longitud: ${numeroParte.length})`);
-            console.log('📊 Cantidad actual:', `'${cantidadActual}' (longitud: ${cantidadActual.length})`);
-            console.log('⚙️ Especificación material:', `'${propiedad}' (longitud: ${propiedad.length})`);
             
             // Verificar si los campos críticos están vacíos
             if (!cantidadActual || cantidadActual.trim() === '') {
-                console.warn('⚠️ ADVERTENCIA: cantidadActual está VACÍO en datos específicos');
+                console.error('❌ ERROR CRÍTICO: cantidadActual está VACÍO en datos específicos');
             } else {
-                console.log('✅ cantidadActual tiene datos:', cantidadActual);
             }
             
-            if (!propiedad || propiedad.trim() === '') {
-                console.warn('⚠️ ADVERTENCIA: especificación material está VACÍO en datos específicos');
+            if (!especificacion || especificacion.trim() === '') {
+                console.error('❌ ERROR CRÍTICO: especificación está VACÍA en datos específicos');
             } else {
-                console.log('✅ especificación material tiene datos:', propiedad);
             }
-            console.log('🔍 === FIN VERIFICACIÓN ===');
+            
+            if (!datosEtiqueta.fechaRecibo) {
+                console.error('❌ ERROR CRÍTICO: fechaRecibo de SQL está VACÍA');
+            } else {
+            }
             
             // Crear datos para el QR con información COMPACTA para evitar "STRING TOO LONG"
+            
+            // *** DEBUG CRÍTICO: VERIFICAR VALORES ANTES DE CONSTRUIR ZPL ***
+            
+            // Verificar si alguna variable está undefined o null y forzar valores (CON CONVERSIÓN A STRING)
+            if (!cantidadActual || String(cantidadActual).trim() === '' || cantidadActual === 'undefined') {
+                console.error('❌ ERROR CRÍTICO: cantidadActual vacío, FORZANDO valor SQL');
+                cantidadActual = String(datosEtiqueta.cantidadActual || '1');
+            }
+            // Validación final de datos antes de crear ZPL
+            if (!cantidadActual || String(cantidadActual).trim() === '' || cantidadActual === 'undefined') {
+                cantidadActual = String(datosEtiqueta.cantidadActual || '1');
+            }
+            if (!fecha || String(fecha).trim() === '') {
+                if (datosEtiqueta.fechaRecibo) {
+                    const fechaTabla = new Date(datosEtiqueta.fechaRecibo);
+                    fecha = fechaTabla.toLocaleDateString('es-ES');
+                } else {
+                    fecha = new Date().toLocaleDateString('es-ES');
+                }
+            }
+            if (!especificacion || String(especificacion).trim() === '') {
+                especificacion = String(datosEtiqueta.especificacionMaterial || datosEtiqueta.propiedadMaterial || 'Material');
+            }
+            
             const datosQR = {
                 c: codigo.substring(0, 15),  // Código acortado
-                f: fecha.substring(0, 10),   // Solo fecha, sin hora
+                f: fecha.substring(0, 10),   // Fecha de tabla o actual
                 l: numeroLote.substring(0, 8), // Lote acortado
                 p: numeroParte.substring(0, 8), // Parte acortado
                 q: cantidadActual.substring(0, 6), // Cantidad acortada
-                m: propiedad.substring(0, 6), // Material acortado
+                m: especificacion.substring(0, 6), // Especificación acortada
                 s: 'OK',  // Estado simplificado
                 e: 'ILSAN' // Empresa acortada
             };
             
             // Convertir a JSON ultra compacto para el QR
             const textoQR = JSON.stringify(datosQR).replace(/"/g, '').replace(/:/g, '=').replace(/,/g, '|');
-            
-            console.log('📋 Datos para QR (COMPACTOS):', datosQR);
-            console.log('📱 Texto QR generado (COMPACTO):', textoQR);
-            console.log('📏 Longitud del QR:', textoQR.length, 'caracteres');
             
             let comandoZPL;
             
@@ -2222,10 +2298,10 @@ if (document.readyState === 'loading') {
 ^XZ`;
             } else {
                 // Etiqueta usando diseño proporcionado por el usuario
-                // Split propiedad at the opening parenthesis
-                const propiedadParts = propiedad.split('(');
-                const propiedadLine1 = propiedadParts[0] ? propiedadParts[0].trim() : '';
-                const propiedadLine2 = propiedadParts[1] ? '(' + propiedadParts[1] : '';
+                // Split especificación at the opening parenthesis
+                const especificacionParts = especificacion.split('(');
+                const especificacionLine1 = especificacionParts[0] ? especificacionParts[0].trim() : '';
+                const especificacionLine2 = especificacionParts[1] ? '(' + especificacionParts[1] : '';
                 
                 comandoZPL = `CT~~CD,~CC^~CT~
 ^XA
@@ -2252,35 +2328,49 @@ if (document.readyState === 'loading') {
 ^LS0
 ^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
 ^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
-^FT5,25^BQN,2,8
+^FT5,135^BQN,2,8
 ^FH\\^FDLA,${codigo}^FS
 ^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
 ^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
 ^FT188,75^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
-^FT188,125^A0N,21,20^FH\\^CI28^FD${propiedadLine1}^FS^CI27
-^FT188,147^A0N,21,20^FH\\^CI28^FD${propiedadLine2}^FS^CI27
+^FT188,125^A0N,21,20^FH\\^CI28^FD${especificacionLine1}^FS^CI27
+^FT188,147^A0N,21,20^FH\\^CI28^FD${especificacionLine2}^FS^CI27
 ^FT223,104^A0N,22,20^FH\\^CI28^FD${cantidadActual}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
             
-            console.log('📝 Comando ZPL generado con datos específicos:');
-            console.log(comandoZPL);
+            
+            // *** DEBUG FINAL: MOSTRAR FRAGMENTOS ESPECÍFICOS DEL ZPL ***
+            const fragmentos = comandoZPL.split('\n');
+            fragmentos.forEach((linea, index) => {
+                if (linea.includes('FD') && linea.includes('FS')) {
+                    if (linea.includes(cantidadActual)) {
+                    }
+                    if (linea.includes(fecha)) {
+                    }
+                    if (especificacion && linea.includes(especificacion.split('(')[0].trim())) {
+                    }
+                }
+            });
             
             // Verificar que los datos aparezcan en el ZPL
-            console.log('🔍 === VERIFICACIÓN DE DATOS EN ZPL ===');
+            
             if (cantidadActual && comandoZPL.includes(cantidadActual)) {
-                console.log(`✅ CANTIDAD ACTUAL '${cantidadActual}' ENCONTRADA en ZPL`);
             } else {
-                console.log(`❌ CANTIDAD ACTUAL '${cantidadActual}' NO ENCONTRADA en ZPL`);
+                const fragmentoCantidad = comandoZPL.match(/\^FD.*\^FS/g)?.find(f => f.includes(cantidadActual));
+                if (fragmentoCantidad) {
+                } else {
+                }
             }
             
-            if (propiedad && comandoZPL.includes(propiedad)) {
-                console.log(`✅ ESPECIFICACIÓN MATERIAL '${propiedad}' ENCONTRADA en ZPL`);
+            if (especificacion && comandoZPL.includes(especificacion.split('(')[0].trim())) {
             } else {
-                console.log(`❌ ESPECIFICACIÓN MATERIAL '${propiedad}' NO ENCONTRADA en ZPL`);
             }
-            console.log('🔍 === FIN VERIFICACIÓN ZPL ===');
+            
+            if (fecha && comandoZPL.includes(fecha)) {
+            } else {
+            }
             
             return comandoZPL;
         }
@@ -2292,8 +2382,6 @@ if (document.readyState === 'loading') {
             const fechaHora = new Date().toLocaleString('es-ES');
             const fecha = new Date().toLocaleDateString('es-ES');
             
-            console.log('🏷️ Generando comando ZPL para:', codigo);
-            console.log('📊 Tipo de etiqueta:', tipo);
             
             // Obtener información adicional del material desde los campos del formulario
             const numeroLote = document.getElementById('numero_lote_material')?.value || '';
@@ -2305,23 +2393,14 @@ if (document.readyState === 'loading') {
             const propiedad = document.getElementById('almacen_especificacion_material')?.value || '';
             
             // === DEBUG: VERIFICAR VALORES DE LOS CAMPOS ===
-            console.log('🔍 === VERIFICACIÓN DE CAMPOS PARA ETIQUETA ===');
-            console.log('📦 Código:', codigo);
-            console.log('🏷️ Número de lote:', `'${numeroLote}' (longitud: ${numeroLote.length})`);
-            console.log('🔧 Número de parte:', `'${numeroParte}' (longitud: ${numeroParte.length})`);
-            console.log('📊 Cantidad actual (obtenida con getCantidadActual):', `'${cantidadActual}' (longitud: ${cantidadActual.length})`);
-            console.log('⚙️ Especificación material:', `'${propiedad}' (longitud: ${propiedad.length})`);
             
             // Ya no necesitamos verificar si está vacía porque getCantidadActual() garantiza un valor
             
             if (!propiedad || propiedad.trim() === '') {
                 console.warn('⚠️ ADVERTENCIA: Campo almacen_especificacion_material está VACÍO');
-                console.log('💡 Elemento almacen_especificacion_material existe:', document.getElementById('almacen_especificacion_material') ? 'SÍ' : 'NO');
                 if (document.getElementById('almacen_especificacion_material')) {
-                    console.log('💡 Valor directo del elemento:', document.getElementById('almacen_especificacion_material').value);
                 }
             }
-            console.log('🔍 === FIN VERIFICACIÓN ===');
             
             // Preparar variables para el ZPL
             const hora = new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
@@ -2370,7 +2449,7 @@ if (document.readyState === 'loading') {
 ^LS0
 ^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
 ^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
-^FT5,25^BQN,2,8
+^FT5,95^BQN,2,8
 ^FH\\^FDLA,${codigo}^FS
 ^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
 ^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
@@ -2382,8 +2461,6 @@ if (document.readyState === 'loading') {
 ^XZ`;
             }
             
-            console.log('📝 Comando ZPL generado:');
-            console.log(zplCommand);
             
             return zplCommand;
         }
@@ -2392,7 +2469,6 @@ if (document.readyState === 'loading') {
          * Envío por USB (método principal para impresoras conectadas localmente)
          */
         async function enviarPorUSB(comandoZPL, codigo) {
-            console.log('🔌 Enviando por USB...');
             
             // Método principal: Usar el nuevo endpoint optimizado
             try {
@@ -2411,7 +2487,6 @@ if (document.readyState === 'loading') {
                 const result = await response.json();
                 
                 if (result.success) {
-                    console.log('✅ Impreso exitosamente por USB:', result.metodo);
                     mostrarNotificacionImpresion('Etiqueta impresa correctamente', 'success');
                     return;
                 } else {
@@ -2428,7 +2503,6 @@ if (document.readyState === 'loading') {
          * Envío por red (para impresoras con IP fija)
          */
         async function enviarPorRed(comandoZPL, ip, codigo) {
-            console.log('🌐 Enviando por red a IP:', ip);
             
             try {
                 // Usar el nuevo endpoint optimizado para red
@@ -2448,7 +2522,6 @@ if (document.readyState === 'loading') {
                 const result = await response.json();
                 
                 if (result.success) {
-                    console.log('✅ Impreso exitosamente por red');
                     mostrarNotificacionImpresion('Etiqueta enviada a impresora de red', 'success');
                 } else {
                     throw new Error(result.error || 'Error de comunicación con impresora');
@@ -2547,11 +2620,9 @@ if (document.readyState === 'loading') {
             }
             
             try {
-                console.log('🔍 === VERIFICACIÓN DE IMPRESORA ZEBRA ===');
                 
                 // 1. Verificar servicio de impresión Win32
                 const serviceUrl = 'http://localhost:5003';
-                console.log(`🌐 Conectando al servicio: ${serviceUrl}`);
                 
                 const statusResponse = await fetch(`${serviceUrl}/`, {
                     method: 'GET',
@@ -2563,7 +2634,6 @@ if (document.readyState === 'loading') {
                 }
                 
                 const statusData = await statusResponse.json();
-                console.log('📊 Estado del servicio:', statusData);
                 
                 // 2. Obtener información detallada de impresoras
                 let infoImpresoras = '';
@@ -2861,7 +2931,6 @@ if (document.readyState === 'loading') {
         async function probarImpresion() {
             try {
                 const codigoPrueba = 'TEST-' + Date.now();
-                console.log('🧪 Probando impresión con código:', codigoPrueba);
                 
                 mostrarNotificacionImpresion('Enviando prueba de impresión...', 'info');
                 
@@ -2881,7 +2950,6 @@ if (document.readyState === 'loading') {
             const config = localStorage.getItem('zebra_config');
             
             if (!config) {
-                console.log('🔧 Configurando impresora automáticamente...');
                 
                 // Configuración por defecto para ZT230 con servicio Win32
                 const configDefault = {
@@ -2894,7 +2962,6 @@ if (document.readyState === 'loading') {
                 
                 localStorage.setItem('zebra_config', JSON.stringify(configDefault));
                 
-                console.log('✅ Impresora configurada automáticamente:', configDefault);
                 
                 // Configuración automática completada - no hay botón que actualizar
                 
@@ -2908,7 +2975,6 @@ if (document.readyState === 'loading') {
                 configActual.service_url = 'http://localhost:5003';
                 configActual.use_win32_service = true;
                 localStorage.setItem('zebra_config', JSON.stringify(configActual));
-                console.log('🔄 Configuración actualizada con servicio Win32 local');
             }
             
             return configActual;
@@ -2954,7 +3020,6 @@ if (document.readyState === 'loading') {
    ✅ Fallback a métodos anteriores
             `;
             
-            console.log(instrucciones);
             alert(instrucciones);
         };
         
@@ -2972,17 +3037,14 @@ if (document.readyState === 'loading') {
                     
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('🖨️ Servicio Win32 detectado:', data.zebra_printer);
                         
                         // Servicio detectado - ya no hay botón que actualizar
                     }
                 } catch (error) {
-                    console.log('⚠️ Servicio Win32 no disponible (normal si no está iniciado)');
                 }
             }, 2000);
         });
         
-        console.log('✅ Sistema de impresión automática directa configurado (Win32)');
         
         // ============= ZEBRA PRINTING FUNCTIONALITY =============
 
@@ -2991,10 +3053,6 @@ if (document.readyState === 'loading') {
          * Función para probar etiqueta pequeña (33.2mm x 14mm)
          */
         window.testEtiquetaPequena = function(codigo = 'TEST-PEQUENA-' + Date.now()) {
-            console.log('🏷️ === TEST ETIQUETA PEQUEÑA (33.2mm x 14mm) ===');
-            console.log(`📋 Código de prueba: ${codigo}`);
-            console.log('📏 Medidas: 33.2mm ancho x 14mm alto');
-            console.log('🖨️ Optimizado para: Zebra ZT230 - 300dpi');
             
             // Simular datos del formulario
             const datosSimulados = {
@@ -3017,22 +3075,13 @@ if (document.readyState === 'loading') {
                 const campo = document.getElementById(id);
                 if (campo) {
                     campo.value = campos[id];
-                    console.log(`   ✅ ${id}: ${campos[id]}`);
                 }
             });
             
             // Generar comando ZPL optimizado para etiqueta pequeña
             const comandoZPL = generarComandoZPLDirecto(codigo, 'material');
             
-            console.log('📊 Detalles del comando ZPL:');
-            console.log(`   📏 Ancho de página: ^PW264 (33.2mm a 300dpi)`);
-            console.log(`   📏 Alto de etiqueta: ^LL112 (14mm a 300dpi)`);
-            console.log(`   📱 QR: 2x3 (tamaño pequeño pero legible)`);
-            console.log(`   🔤 Fuentes: Reducidas para ajustar al espacio`);
-            console.log(`   📐 Posiciones: Optimizadas para etiqueta pequeña`);
             
-            console.log('💡 Para imprimir esta etiqueta pequeña ejecute:');
-            console.log(`   testImpresionReal("${codigo}")`);
             
             return comandoZPL;
         };
@@ -3041,28 +3090,6 @@ if (document.readyState === 'loading') {
          * Función para mostrar layout de etiqueta pequeña
          */
         window.mostrarLayoutPequeno = function() {
-            console.log('📐 === LAYOUT ETIQUETA PEQUEÑA MEJORADO (33.2mm x 14mm) ===');
-            console.log('');
-            console.log('┌──────────────────────────────────┐');
-            console.log('│ ██ 0RH5602C622,20250716001       │'); 
-            console.log('│ ██ 16/07/2025                    │');
-            console.log('│ ██ ILSAN                         │');
-            console.log('│ QR L:L202501    RESIST           │');
-            console.log('│    P:P12345     ACTIVO           │');
-            console.log('│    Q:100        OK               │');
-            console.log('└──────────────────────────────────┘');
-            console.log('');
-            console.log('📏 Especificaciones técnicas MEJORADAS:');
-            console.log('   • Ancho: 33.2mm = 264 dots a 300dpi');
-            console.log('   • Alto: 14mm = 112 dots a 300dpi');
-            console.log('   • QR: Tamaño 2x4 (más grande y legible)');
-            console.log('   • Fuentes: ADN,5,3 a ADN,9,6 (más grandes)');
-            console.log('   • Distribución: 3 columnas para mejor aprovechamiento');
-            console.log('');
-            console.log('🎯 Contenido del QR (JSON compacto):');
-            console.log('   • Toda la información del material');
-            console.log('   • 8 campos de datos completos');
-            console.log('   • Trazabilidad total en espacio mínimo');
         };
 
         /**
@@ -3121,33 +3148,367 @@ if (document.readyState === 'loading') {
    ✅ Optimizado para etiquetas de tamaño real
             `;
             
-            console.log(resumen);
             alert(resumen);
         };
         
-        console.log('🧪 Funciones de prueba disponibles:');
-        console.log('   - testGenerarZPL()');
-        console.log('   - testImpresionCompleta()');  
-        console.log('   - testImpresionReal()');
-        console.log('   - testServicioWin32()');
-        console.log('   - diagnosticoCompleto()');
-        console.log('   - testQRCompleto()');
-        console.log('   - testEtiquetaPequena() ← Para 33.2mm x 14mm');
-        console.log('   - testEtiquetaOptimizada() ← Sin STRING TOO LONG');
-        console.log('   - testMedidasEspecificas() ← NUEVO: Con ^XFR:si.ZPL^FS');
-        console.log('   - mostrarLayoutPequeno() ← Ver diseño optimizado');
-        console.log('   - verificarQRCompleto()');
-        console.log('   - mostrarResumenQR()');
+        
+        // Función para generar solo el ZPL sin enviar a impresora
+        window.testSoloZPL = function() {
+            if (!datosFilaSeleccionada) {
+                simularSeleccionFila();
+            }
+            
+            // Mapear datos para etiqueta
+            const datosEtiqueta = {
+                codigo: datosFilaSeleccionada.codigo_material_recibido || '',
+                numeroLote: datosFilaSeleccionada.numero_lote_material || '',
+                numeroParte: datosFilaSeleccionada.numero_parte || '',
+                cantidadActual: datosFilaSeleccionada.cantidad_actual || '',
+                propiedadMaterial: datosFilaSeleccionada.propiedad_material || '',
+                especificacionMaterial: datosFilaSeleccionada.especificacion || '',
+                fechaRecibo: datosFilaSeleccionada.fecha_recibo || '',
+            };
+            
+            // Generar ZPL
+            const comandoZPL = generarComandoZPLConDatos(datosEtiqueta, 'material');
+            
+            // Verificar contenido crítico
+            const verificaciones = [
+                { nombre: 'Cantidad 10000', encontrado: comandoZPL.includes('10000') },
+                { nombre: 'Especificación 10NF', encontrado: comandoZPL.includes('10NF') },
+                { nombre: 'Fecha 22/07/2025', encontrado: comandoZPL.includes('22/07/2025') },
+                { nombre: 'Código 0CC103BK5BA', encontrado: comandoZPL.includes('0CC103BK5BA') }
+            ];
+            
+            // Mostrar resultado
+            verificaciones.forEach(({ nombre, encontrado }) => {
+            });
+            
+            const todoCorrecto = verificaciones.every(v => v.encontrado);
+            
+            return { comandoZPL, datosEtiqueta, verificaciones, todoCorrecto };
+        };
+        
+        // Función para probar el flujo completo de impresión
+        window.testFlujoCompleto = function() {
+            // Simular datos
+            const datosSimulados = simularSeleccionFila();
+            
+            // Analizar ZPL que se generaría
+            const zplAnalizado = analizarZPLGenerado();
+            
+            
+            return { datosSimulados, zplAnalizado, listo: true };
+        };
+        
+        // Función para analizar exactamente qué ZPL se genera
+        window.analizarZPLGenerado = function() {
+            
+            if (!datosFilaSeleccionada) {
+                return;
+            }
+            
+            
+            // Mapear datos exactamente como lo hace reimprimirEtiqueta()
+            const datosEtiqueta = {
+                codigo: datosFilaSeleccionada.codigo_material_recibido || '',
+                numeroLote: datosFilaSeleccionada.numero_lote_material || '',
+                numeroParte: datosFilaSeleccionada.numero_parte || '',
+                cantidadActual: datosFilaSeleccionada.cantidad_actual || '',
+                propiedadMaterial: datosFilaSeleccionada.propiedad_material || '',
+                especificacionMaterial: datosFilaSeleccionada.especificacion || '',
+                fechaRecibo: datosFilaSeleccionada.fecha_recibo || '',
+            };
+            
+            
+            // Generar ZPL con la función que usa reimprimirEtiqueta()
+            const zplOriginal = generarComandoZPLConDatos(datosEtiqueta, 'material');
+            
+            // Analizar el ZPL línea por línea
+            const lineasZPL = zplOriginal.split('\n');
+            
+            lineasZPL.forEach((linea, index) => {
+                // Buscar líneas que contienen datos críticos
+                if (linea.includes('^FD') && linea.includes('^FS')) {
+                    const contenido = linea.match(/\^FD([^F]*)\^FS/);
+                    if (contenido) {
+                        const valor = contenido[1];
+                        
+                        // Identificar qué tipo de dato es
+                        if (valor === datosEtiqueta.cantidadActual) {
+                        } else if (valor.includes(datosEtiqueta.especificacionMaterial?.split('(')[0]?.trim() || '')) {
+                        } else if (valor.includes('/07/') || valor.includes('/2025')) {
+                        } else if (valor === datosEtiqueta.codigo || valor.includes(',')) {
+                        } else if (valor === 'QTY:') {
+                        } else if (valor === 'Fecha de entrada:') {
+                        } else if (valor.length > 0) {
+                        }
+                    }
+                }
+            });
+            
+            // Verificar datos específicos esperados
+            
+            const verificaciones = [
+                { nombre: 'Cantidad 10000', valor: '10000', presente: zplOriginal.includes('10000') },
+                { nombre: 'Fecha 22/07/2025', valor: '22/07/2025', presente: zplOriginal.includes('22/07/2025') },
+                { nombre: 'Especificación 10NF', valor: '10NF', presente: zplOriginal.includes('10NF') },
+                { nombre: 'Código 0CC103BK5BA', valor: '0CC103BK5BA', presente: zplOriginal.includes('0CC103BK5BA') }
+            ];
+            
+            verificaciones.forEach(({ nombre, valor, presente }) => {
+                const estado = presente ? '✅' : '❌';
+                if (!presente) {
+                }
+            });
+            
+            // Mostrar fragmento problemático si la cantidad es 1
+            if (zplOriginal.includes('^FD1^FS')) {
+                const lineasProblema = lineasZPL.filter(linea => linea.includes('^FD1^FS'));
+                lineasProblema.forEach(linea => {
+                });
+            }
+            
+            
+            return zplOriginal;
+        };
+        
+        // Función para diagnosticar por qué se generan 2 códigos ZPL
+        window.diagnosticarZPLDuplicado = function() {
+            
+            // Revisar si hay fila seleccionada
+            if (!datosFilaSeleccionada) {
+                return;
+            }
+            
+            
+            // Probar SOLO la generación ZPL, sin enviar a impresora
+            
+            try {
+                // Mapear datos como lo hace reimprimirEtiqueta()
+                const datosEtiqueta = {
+                    codigo: datosFilaSeleccionada.codigo_material_recibido || '',
+                    numeroLote: datosFilaSeleccionada.numero_lote_material || '',
+                    numeroParte: datosFilaSeleccionada.numero_parte || '',
+                    cantidadActual: datosFilaSeleccionada.cantidad_actual || '',
+                    propiedadMaterial: datosFilaSeleccionada.propiedad_material || '',
+                    especificacionMaterial: datosFilaSeleccionada.especificacion || '',
+                    fechaRecibo: datosFilaSeleccionada.fecha_recibo || '',
+                };
+                
+                
+                // Verificar campos críticos
+                const camposCriticos = {
+                    'Código': datosEtiqueta.codigo,
+                    'Cantidad Actual': datosEtiqueta.cantidadActual,
+                    'Fecha Recibo': datosEtiqueta.fechaRecibo,
+                    'Especificación': datosEtiqueta.especificacionMaterial
+                };
+                
+                Object.entries(camposCriticos).forEach(([nombre, valor]) => {
+                    const estado = valor && valor.trim() !== '' ? '✅' : '❌';
+                });
+                
+                // Generar ZPL solo para ver el resultado
+                const zplGenerado = generarComandoZPLConDatos(datosEtiqueta, 'material');
+                
+                
+                // Buscar campos específicos en el ZPL
+                
+                // Buscar cantidad en el ZPL
+                const cantidadMatch = zplGenerado.match(/\^FD(\d+)\^FS.*QTY/i);
+                if (cantidadMatch) {
+                    if (cantidadMatch[1] !== datosEtiqueta.cantidadActual) {
+                        console.error('❌ ERROR: Cantidad en ZPL no coincide con datos SQL!');
+                    } else {
+                    }
+                } else {
+                    console.error('❌ No se encontró cantidad en ZPL');
+                }
+                
+                // Buscar especificación en el ZPL
+                const especMatch = zplGenerado.match(/\^FD([^F]+)\^FS.*especif/i);
+                if (especMatch) {
+                } else {
+                }
+                
+                
+            } catch (error) {
+                console.error('❌ Error en diagnóstico:', error);
+            }
+        };
+        
+        // Función para limpiar toda selección y probar con fila real
+        window.limpiarYProbarSeleccion = function() {
+            
+            // Limpiar cualquier selección anterior (incluso simulada)
+            limpiarSeleccionTabla();
+            
+            
+        };
+        
+        // Función para verificar estado actual de selección
+        window.verificarEstadoActual = function() {
+            
+            if (filaSeleccionada) {
+            }
+            
+            if (datosFilaSeleccionada) {
+            }
+            
+        };
+        
+        // Función para simular selección de fila con datos específicos
+        window.simularSeleccionFila = function() {
+            // Datos exactos de la imagen
+            const datosSimulados = {
+                codigo_material_recibido: '0CC103BK5BA',
+                numero_lote_material: '0CC103BK5BA',
+                numero_parte: '0CC103BK5BA',
+                cantidad_actual: '10000',
+                fecha_recibo: '2025-07-22',
+                especificacion: '10NF 10% 50V X7R (SMD 1005)',
+                propiedad_material: 'SMD',
+                cantidad_estandarizada: '10000',
+                ubicacion_salida: '',
+                material_importacion_local: 'L',
+                estado_desecho: 'Cu'
+            };
+            
+            // Simular selección
+            datosFilaSeleccionada = datosSimulados;
+            
+            // Crear elemento fila simulado
+            const filaSimulada = document.createElement('tr');
+            filaSimulada.className = 'fila-clickeable fila-seleccionada';
+            filaSimulada.innerHTML = '<td>Fila simulada para prueba</td>';
+            filaSeleccionada = filaSimulada;
+            
+            
+            return datosSimulados;
+        };
+        
+        // Función para comparar selección real vs simulada
+        window.compararSelecciones = function() {
+            
+            if (datosFilaSeleccionada) {
+                
+                // Verificar si los valores críticos están presentes
+                const datosCriticos = {
+                    codigo: datosFilaSeleccionada.codigo_material_recibido,
+                    cantidad: datosFilaSeleccionada.cantidad_actual,
+                    fecha: datosFilaSeleccionada.fecha_recibo,
+                    especificacion: datosFilaSeleccionada.especificacion
+                };
+                
+                Object.entries(datosCriticos).forEach(([campo, valor]) => {
+                    const estado = valor ? '✅' : '❌';
+                    const tipo = typeof valor;
+                    const longitud = valor ? valor.length : 0;
+                });
+                
+                // Comparar con datos esperados de la imagen
+                const datosEsperados = {
+                    codigo_material_recibido: '0CC103BK5BA',
+                    cantidad_actual: '10000',
+                    fecha_recibo: '2025-07-22',
+                    especificacion: '10NF 10% 50V X7R (SMD 1005)'
+                };
+                
+                Object.entries(datosEsperados).forEach(([campo, esperado]) => {
+                    const actual = datosFilaSeleccionada[campo];
+                    const coincide = actual === esperado;
+                    const estado = coincide ? '✅' : '❌';
+                });
+                
+            } else {
+            }
+            
+        };
+        
+        // Nueva función para probar con datos específicos que vemos en la imagen
+        window.testConDatosEspecificos = function() {
+            
+            // Datos exactos de la imagen del usuario
+            const datosImagen = {
+                codigo_material_recibido: '0CC103BK5BA',
+                numero_lote_material: '0CC103BK5BA',
+                numero_parte: '0CC103BK5BA',
+                cantidad_actual: '10000',  // ✅ Cantidad de la imagen
+                fecha_recibo: '2025-07-22', // ✅ Fecha de la imagen
+                especificacion: '10NF 10% 50V X7R (SMD 1005)', // ✅ Especificación de la imagen
+                propiedad_material: 'SMD',
+                cantidad_estandarizada: '10000',
+                ubicacion_salida: '',
+                material_importacion_local: 'L',
+                estado_desecho: 'Cu'
+            };
+            
+            
+            
+            // Probar directamente la función de reimpresión
+            reimprimirEtiqueta(datosImagen)
+                .then(() => {
+                })
+                .catch(error => {
+                    console.error('❌ Error en test con datos específicos:', error);
+                });
+        };
+        
+        // === FUNCIONES DE TESTING SIMPLIFICADAS ===
+        window.testSeleccionTabla = function() {
+            
+            if (datosFilaSeleccionada) {
+            }
+            
+        };
+        
+        window.mostrarEstadoSeleccion = function() {
+            
+            if (!filaSeleccionada) {
+                return;
+            }
+            
+            
+            if (datosFilaSeleccionada) {
+                
+            }
+        };
+        
+        // Nueva función para probar reimpresión directamente
+        window.testReimpresion = function() {
+            if (!datosFilaSeleccionada) {
+                return;
+            }
+            
+            
+            // Verificar datos críticos antes de reimpresión
+            
+            // Verificar si los datos están completos
+            const datos = {
+                cantidad: datosFilaSeleccionada.cantidad_actual || 'VACÍO',
+                fecha: datosFilaSeleccionada.fecha_recibo || 'VACÍO',
+                especificacion: datosFilaSeleccionada.especificacion || 'VACÍO',
+                codigo: datosFilaSeleccionada.codigo_material_recibido || 'VACÍO'
+            };
+            
+            Object.entries(datos).forEach(([key, value]) => {
+                const status = value === 'VACÍO' ? '❌' : '✅';
+            });
+            
+            // Probar la función de reimpresión
+            reimprimirEtiqueta(datosFilaSeleccionada)
+                .then(() => {
+                })
+                .catch(error => {
+                    console.error('❌ Error en test de reimpresión:', error);
+                });
+        };
         
         /**
          * Función para probar etiqueta con fuentes GRANDES (solucionando texto pequeño)
          */
         window.testFuentesGrandes = function(codigo = 'TEST-GRANDE-' + Date.now()) {
-            console.log('🔤 === TEST FUENTES MÁS GRANDES (SOLUCIÓN TEXTO PEQUEÑO) ===');
-            console.log(`📋 Código de prueba: ${codigo}`);
-            console.log('📏 Medidas: 33.2mm x 14mm con fuentes GRANDES');
-            console.log('🖨️ Incluye: ^XFR:si.ZPL^FS y ^PQ1,0,1');
-            console.log('🎯 SOLUCIÓN: Texto MUCHO más grande y legible');
             
             // Simular datos del formulario
             const datosSimulados = {
@@ -3170,50 +3531,28 @@ if (document.readyState === 'loading') {
                 const campo = document.getElementById(id);
                 if (campo) {
                     campo.value = campos[id];
-                    console.log(`   ✅ ${id}: ${campos[id]}`);
                 } else {
-                    console.log(`   ⚠️ ${id}: Campo no encontrado`);
                 }
             });
             
             // Generar comando ZPL con fuentes GRANDES
             const comandoZPL = generarComandoZPLDirecto(codigo, 'material');
             
-            console.log('📊 NUEVOS TAMAÑOS DE FUENTE (MÁS GRANDES):');
-            console.log(`   📏 Código: ADN,12,8 (MUCHO MÁS GRANDE)`);
-            console.log(`   📏 Fecha: ADN,10,6 (MÁS GRANDE)`);
-            console.log(`   📏 Empresa: ADN,8,5 (GRANDE)`);
-            console.log(`   📏 Detalles: ADN,6,4 (LEGIBLE)`);
-            console.log(`   � QR: BQN,2,4 (MÁS GRANDE)`);
-            console.log(`   � Longitud total ZPL: ${comandoZPL.length} caracteres`);
             
-            console.log('📊 INCREMENTO DE TAMAÑO:');
-            console.log(`   • Código: +71% más grande`);
-            console.log(`   • Fecha: +100% más grande`);
-            console.log(`   • Empresa: +100% más grande`);
-            console.log(`   • Detalles: +100% más grande`);
-            console.log(`   • QR: +33% más grande`);
             
             // Extraer y mostrar información del QR
             const qrMatch = comandoZPL.match(/\^FDQA,(.+?)\^FS/);
             if (qrMatch) {
                 const textoQR = qrMatch[1];
-                console.log(`   📱 Longitud QR: ${textoQR.length} caracteres`);
-                console.log(`   ✅ QR compacto sin STRING TOO LONG`);
             }
             
             // Verificar comandos específicos
             if (comandoZPL.includes('^XFR:si.ZPL^FS')) {
-                console.log('   ✅ Comando ^XFR:si.ZPL^FS incluido');
             }
             
             if (comandoZPL.includes('^PQ1,0,1')) {
-                console.log('   ✅ Comando ^PQ1,0,1 incluido');
             }
             
-            console.log('💡 Para imprimir con fuentes GRANDES ejecute:');
-            console.log(`   testImpresionReal("${codigo}")`);
-            console.log('🎯 ¡Ahora el texto debería verse MUCHO más grande!');
             
             return comandoZPL;
         };
@@ -3222,43 +3561,12 @@ if (document.readyState === 'loading') {
          * Función para mostrar comparación antes/después de la optimización
          */
         window.mostrarComparacionOptimizacion = function() {
-            console.log('📊 === COMPARACIÓN: ANTES vs DESPUÉS ===');
-            console.log('');
-            console.log('❌ ANTES (con STRING TOO LONG):');
-            console.log('   📱 QR JSON: {"codigo":"0RH5602C622,20250716001","fecha":"16/07/2025"...}');
-            console.log('   📏 Longitud QR: 180+ caracteres');
-            console.log('   🔤 Fuentes: ADN,9,6 (muy grandes)');
-            console.log('   📱 QR size: BQN,2,4');
-            console.log('   ❌ Resultado: STRING TOO LONG!');
-            console.log('');
-            console.log('✅ DESPUÉS (optimizado):');
-            console.log('   📱 QR compacto: {c=0RH5602C622|202|f=16/07/25|l=L202501...}');
-            console.log('   📏 Longitud QR: 77 caracteres');
-            console.log('   🔤 Fuentes: ADN,4,2 a ADN,8,5 (balanceadas)');
-            console.log('   📱 QR size: BQN,2,3');
-            console.log('   ✅ Resultado: Impresión exitosa');
-            console.log('');
-            console.log('🎯 BENEFICIOS DE LA OPTIMIZACIÓN:');
-            console.log('   ✅ Sin errores STRING TOO LONG');
-            console.log('   ✅ QR más pequeño pero legible');
-            console.log('   ✅ Información completa preservada');
-            console.log('   ✅ Mejor distribución en etiqueta pequeña');
-            console.log('   ✅ Compatibilidad total con ZT230');
         };
         
         /**
          * Función para probar PLANTILLA PROFESIONAL del usuario
          */
         window.testPlantillaProfesional = function(codigo = 'TEST-PROF-' + Date.now()) {
-            console.log('🏆 === TEST PLANTILLA PROFESIONAL (NUEVA) ===');
-            console.log(`📋 Código de prueba: ${codigo}`);
-            console.log('🎯 Usando plantilla ZPL profesional del usuario');
-            console.log('📏 Características de la plantilla:');
-            console.log('   • Tamaño: 392x224 dots (MÁS GRANDE)');
-            console.log('   • QR: BQN,2,8 (MUCHO MÁS GRANDE)');
-            console.log('   • Fuentes: A0N,18,18 y A0N,20,20 (GRANDES)');
-            console.log('   • Codificación: CI28 (Unicode)');
-            console.log('   • Layout: Profesional con etiquetas descriptivas');
             
             // Simular datos del formulario
             const datosSimulados = {
@@ -3281,37 +3589,21 @@ if (document.readyState === 'loading') {
                 const campo = document.getElementById(id);
                 if (campo) {
                     campo.value = campos[id];
-                    console.log(`   ✅ ${id}: ${campos[id]}`);
                 } else {
-                    console.log(`   ⚠️ ${id}: Campo no encontrado`);
                 }
             });
             
             // Generar comando ZPL con plantilla profesional
             const comandoZPL = generarComandoZPLDirecto(codigo, 'material');
             
-            console.log('🎯 VENTAJAS DE LA PLANTILLA PROFESIONAL:');
-            console.log('   ✅ Etiqueta MÁS GRANDE (392x224 vs 264x112)');
-            console.log('   ✅ QR MUCHO MÁS GRANDE (BQN,2,8)');
-            console.log('   ✅ Texto con etiquetas descriptivas');
-            console.log('   ✅ Fuentes grandes y legibles');
-            console.log('   ✅ Codificación Unicode (CI28)');
-            console.log('   ✅ Layout profesional y claro');
-            console.log('   ✅ Configuración avanzada de impresora');
             
-            console.log(`📏 Longitud total ZPL: ${comandoZPL.length} caracteres`);
             
             // Extraer y mostrar información del QR
             const qrMatch = comandoZPL.match(/\\^FDLA,(.+?)\\^FS/);
             if (qrMatch) {
                 const textoQR = qrMatch[1];
-                console.log(`📱 QR: ${textoQR.length} caracteres`);
-                console.log(`📱 Contenido: ${textoQR}`);
             }
             
-            console.log('💡 Para imprimir con PLANTILLA PROFESIONAL:');
-            console.log(`   testImpresionReal("${codigo}")`);
-            console.log('🏆 ¡Esta plantilla debería dar el MEJOR resultado!');
             
             return comandoZPL;
         };
@@ -3320,11 +3612,8 @@ if (document.readyState === 'loading') {
          * Función para probar la nueva función getCantidadActual()
          */
         window.testGetCantidadActual = function(cantidadPrueba = '2500') {
-            console.log('🧪 === PROBANDO getCantidadActual() ===');
-            console.log(`📊 Cantidad de prueba: ${cantidadPrueba}`);
             
             // 1. Limpiar todos los campos posibles
-            console.log('🧹 Limpiando campos...');
             const camposPosibles = [
                 'cantidad_actual',
                 'cantidad_estandarizada', 
@@ -3338,54 +3627,36 @@ if (document.readyState === 'loading') {
                 const elemento = document.getElementById(id);
                 if (elemento) {
                     elemento.value = '';
-                    console.log(`   🧹 Campo '${id}' limpiado`);
                 }
             });
             
             // 2. Probar sin ningún valor
-            console.log('\n🔍 Prueba 1: Sin ningún valor');
             let cantidad = getCantidadActual();
-            console.log(`   Resultado: '${cantidad}' (esperado: '1')`);
-            console.log(`   ✅ Prueba 1: ${cantidad === '1' ? 'PASÓ' : 'FALLÓ'}`);
             
             // 3. Llenar cantidad_actual y probar
-            console.log('\n🔍 Prueba 2: Con cantidad_actual');
             const campoCantidad = document.getElementById('cantidad_actual');
             if (campoCantidad) {
                 campoCantidad.value = cantidadPrueba;
                 cantidad = getCantidadActual();
-                console.log(`   Resultado: '${cantidad}' (esperado: '${cantidadPrueba}')`);
-                console.log(`   ✅ Prueba 2: ${cantidad === cantidadPrueba ? 'PASÓ' : 'FALLÓ'}`);
             } else {
-                console.log('   ⚠️ Campo cantidad_actual no encontrado');
             }
             
             // 4. Probar fallback a cantidad_estandarizada
-            console.log('\n🔍 Prueba 3: Fallback a cantidad_estandarizada');
             if (campoCantidad) campoCantidad.value = '';
             const campoEstandarizada = document.getElementById('cantidad_estandarizada');
             if (campoEstandarizada) {
                 campoEstandarizada.value = '999';
                 cantidad = getCantidadActual();
-                console.log(`   Resultado: '${cantidad}' (esperado: '999')`);
-                console.log(`   ✅ Prueba 3: ${cantidad === '999' ? 'PASÓ' : 'FALLÓ'}`);
             } else {
-                console.log('   ⚠️ Campo cantidad_estandarizada no encontrado');
             }
             
             // 5. Generar ZPL de prueba con la nueva función
-            console.log('\n🔍 Prueba 4: Generación de ZPL');
             if (campoCantidad) campoCantidad.value = cantidadPrueba;
             const codigoPrueba = 'TEST-GET-CANTIDAD-' + Date.now().toString().slice(-4);
             const zpl = generarComandoZPLDirecto(codigoPrueba, 'material');
             
             const contieneQuantidad = zpl.includes(`^FD${cantidadPrueba}^FS`);
-            console.log(`   ZPL contiene cantidad '${cantidadPrueba}': ${contieneQuantidad ? '✅' : '❌'}`);
             
-            console.log('\n🎯 === RESUMEN DEL TEST ===');
-            console.log('✅ La función getCantidadActual() está funcionando correctamente');
-            console.log('✅ Se integra correctamente con generarComandoZPLDirecto()');
-            console.log('✅ Siempre devuelve un valor válido (nunca vacío)');
             
             return {
                 funcionTrabaja: true,
@@ -3398,7 +3669,6 @@ if (document.readyState === 'loading') {
          * Función para verificar el estado actual de los campos de cantidad
          */
         window.verificarCamposCantidad = function() {
-            console.log('🔍 === VERIFICANDO CAMPOS DE CANTIDAD ===');
             
             const campos = [
                 'cantidad_actual',
@@ -3419,19 +3689,14 @@ if (document.readyState === 'loading') {
                     const valor = elemento.value || '';
                     if (valor.trim() !== '') {
                         camposConValor.push({ id, valor });
-                        console.log(`✅ ${id}: '${valor}' (${valor.length} chars)`);
                     } else {
-                        console.log(`⚪ ${id}: vacío`);
                     }
                 } else {
-                    console.log(`❌ ${id}: no existe`);
                 }
             });
             
-            console.log(`\n📊 Resumen: ${camposEncontrados.length} campos encontrados, ${camposConValor.length} con valor`);
             
             // Probar la función actual
-            console.log('\n🔧 Probando getCantidadActual() con estado actual:');
             const cantidadActual = getCantidadActual();
             
             return {
@@ -3445,48 +3710,30 @@ if (document.readyState === 'loading') {
          * Función para verificar cantidad en BD directamente
          */
         window.verificarCantidadBD = function(codigoMaterial = '0RH5602C622') {
-            console.log('🔍 === VERIFICANDO CANTIDAD EN BASE DE DATOS ===');
-            console.log(`📋 Código a verificar: ${codigoMaterial}`);
             
             if (codigosMaterial.length === 0) {
-                console.log('❌ Array codigosMaterial está vacío');
                 return;
             }
             
             const materialInfo = codigosMaterial.find(c => c.codigo === codigoMaterial);
             
             if (materialInfo) {
-                console.log('✅ Material encontrado en BD:');
-                console.log('   📊 Código:', materialInfo.codigo);
-                console.log('   📊 Nombre:', materialInfo.nombre);
-                console.log('   📊 Especificación:', materialInfo.spec);
-                console.log('   📊 Cantidad estandarizada:', materialInfo.cantidad_estandarizada);
-                console.log('   📊 Propiedad material:', materialInfo.propiedad_material);
                 
                 // Probar getCantidadActual con este código seleccionado
                 const select = document.getElementById('codigoMaterialSelect');
                 if (select) {
                     select.value = codigoMaterial;
-                    console.log('\n🔧 Probando getCantidadActual() con código seleccionado:');
                     const cantidad = getCantidadActual();
-                    console.log(`🔢 Cantidad obtenida: '${cantidad}'`);
                 }
                 
                 return materialInfo;
             } else {
-                console.log('❌ Material NO encontrado en BD');
-                console.log('📋 Materiales disponibles:');
                 codigosMaterial.forEach((material, index) => {
-                    console.log(`   ${index + 1}. ${material.codigo} - ${material.cantidad_estandarizada}`);
                 });
                 return null;
             }
         };
         
-        console.log('🧪 Funciones de prueba disponibles para cantidad:');
-        console.log('   • testGetCantidadActual() - Probar función getCantidadActual()');
-        console.log('   • verificarCamposCantidad() - Verificar estado actual de campos');
-        console.log('   • verificarCantidadBD() - Verificar cantidad en base de datos');
         
         // ========== FUNCIONES GLOBALES PARA DEBUGGING CANTIDAD ==========
         
@@ -3494,7 +3741,6 @@ if (document.readyState === 'loading') {
          * Test global para getCantidadActual()
          */
         window.testCantidadActual = function() {
-            console.log('🧪 === TEST CANTIDAD ACTUAL (GLOBAL) ===');
             
             // Mostrar estado de todos los campos relevantes
             const campos = [
@@ -3506,28 +3752,21 @@ if (document.readyState === 'loading') {
             campos.forEach(id => {
                 const campo = document.getElementById(id);
                 if (campo) {
-                    console.log(`📋 ${id}: "${campo.value}" (tipo: ${typeof campo.value})`);
                 } else {
-                    console.log(`❌ ${id}: Campo no encontrado`);
                 }
             });
             
             // Mostrar estado del array codigosMaterial
             if (typeof codigosMaterial !== 'undefined') {
-                console.log(`📦 codigosMaterial: Array de ${codigosMaterial.length} elementos`);
                 const codigoSeleccionado = document.getElementById('codigoMaterialSelect')?.value;
                 if (codigoSeleccionado) {
                     const material = codigosMaterial.find(m => m.codigo === codigoSeleccionado);
-                    console.log(`🎯 Material seleccionado:`, material);
                 }
             } else {
-                console.log('❌ codigosMaterial: No definido');
             }
             
             // Ejecutar función y mostrar resultado
             const resultado = getCantidadActual();
-            console.log(`🎯 RESULTADO FINAL: "${resultado}"`);
-            console.log('🧪 === FIN TEST ===');
             
             return resultado;
         };
@@ -3536,7 +3775,6 @@ if (document.readyState === 'loading') {
          * Diagnóstico completo de cantidad
          */
         window.diagnosticarCantidadCompleto = function() {
-            console.log('🔬 === DIAGNÓSTICO COMPLETO DE CANTIDAD ===');
             
             // 1. Verificar campos
             verificarCamposCantidad();
@@ -3548,20 +3786,12 @@ if (document.readyState === 'loading') {
             const resultado = window.testCantidadActual();
             
             // 4. Resumen
-            console.log('📊 === RESUMEN DEL DIAGNÓSTICO ===');
-            console.log(`🎯 Cantidad obtenida: "${resultado}"`);
             
             if (resultado === '1') {
                 console.warn('⚠️ ATENCIÓN: Se está usando el valor por defecto');
-                console.log('💡 Posibles soluciones:');
-                console.log('   1. Llenar el campo cantidad_actual manualmente');
-                console.log('   2. Seleccionar un código de material de la lista');
-                console.log('   3. Verificar que codigosMaterial tenga datos');
             } else {
-                console.log('✅ Todo funcionando correctamente');
             }
             
-            console.log('🔬 === FIN DIAGNÓSTICO ===');
             return resultado;
         };
         
@@ -3569,13 +3799,11 @@ if (document.readyState === 'loading') {
          * Función para probar con datos específicos
          */
         window.probarConCantidadEspecifica = function(cantidad = '5000') {
-            console.log(`🧪 === PROBANDO CON CANTIDAD ESPECÍFICA: ${cantidad} ===`);
             
             // Llenar campo cantidad_actual
             const campoActual = document.getElementById('cantidad_actual');
             if (campoActual) {
                 campoActual.value = cantidad;
-                console.log(`✅ Campo cantidad_actual llenado con: "${cantidad}"`);
                 
                 // Resaltar visualmente
                 campoActual.style.backgroundColor = '#d4edda';
@@ -3586,10 +3814,8 @@ if (document.readyState === 'loading') {
             
             // Probar la función
             const resultado = getCantidadActual();
-            console.log(`🎯 Resultado: "${resultado}"`);
             
             if (resultado === cantidad) {
-                console.log('✅ ¡Función trabajando correctamente!');
             } else {
                 console.warn(`⚠️ Esperado: "${cantidad}", Obtenido: "${resultado}"`);
             }
@@ -3601,7 +3827,6 @@ if (document.readyState === 'loading') {
          * Función para testear ZPL con cantidad específica
          */
         window.testZPLConCantidad = function(cantidad = '2500', codigo = 'TEST-CANTIDAD-' + Date.now()) {
-            console.log(`🏷️ === TEST ZPL CON CANTIDAD: ${cantidad} ===`);
             
             // 1. Llenar cantidad
             probarConCantidadEspecifica(cantidad);
@@ -3611,14 +3836,10 @@ if (document.readyState === 'loading') {
             
             // 3. Verificar que la cantidad esté en el ZPL
             const contieneCantidad = comandoZPL.includes(cantidad);
-            console.log(`🔍 ZPL contiene cantidad "${cantidad}": ${contieneCantidad ? '✅' : '❌'}`);
             
             if (contieneCantidad) {
-                console.log('✅ La cantidad se está insertando correctamente en el ZPL');
             } else {
                 console.warn('⚠️ La cantidad NO se está insertando en el ZPL');
-                console.log('📝 Comando ZPL generado:');
-                console.log(comandoZPL);
             }
             
             return { comandoZPL, contieneCantidad };
@@ -3628,8 +3849,6 @@ if (document.readyState === 'loading') {
          * Función para probar la función ORIGINAL que SÍ FUNCIONABA
          */
         window.testFuncionOriginalQueFunc = function(codigo = 'TEST-ORIGINAL-' + Date.now()) {
-            console.log('🎯 === PROBANDO FUNCIÓN ORIGINAL QUE SÍ FUNCIONABA ===');
-            console.log(`📋 Código de prueba: ${codigo}`);
             
             // Crear datos específicos de prueba (como los que se capturan en guardarFormulario)
             const datosEspecificos = {
@@ -3640,19 +3859,11 @@ if (document.readyState === 'loading') {
                 propiedadMaterial: '56KJ 1/10W (SMD 1608)'
             };
             
-            console.log('📋 Datos específicos enviados:', datosEspecificos);
             
             // Usar la función original que funcionaba
             const comandoZPL = generarComandoZPLConDatos(datosEspecificos, 'material');
             
-            console.log('✅ RESULTADO:');
-            console.log(`📏 Longitud ZPL: ${comandoZPL.length} caracteres`);
-            console.log(`🔍 Contiene cantidad '5000': ${comandoZPL.includes('5000') ? '✅' : '❌'}`);
-            console.log(`🔍 Contiene propiedad: ${comandoZPL.includes('56KJ') ? '✅' : '❌'}`);
-            console.log(`🔍 Contiene código: ${comandoZPL.includes(codigo) ? '✅' : '❌'}`);
             
-            console.log('💡 Para imprimir con esta función ejecute:');
-            console.log(`   testImprimirConDatosEspecificos()`);
             
             return comandoZPL;
         };
@@ -3661,7 +3872,6 @@ if (document.readyState === 'loading') {
          * Función para probar impresión con datos específicos
          */
         window.testImprimirConDatosEspecificos = function() {
-            console.log('🖨️ === PROBANDO IMPRESIÓN CON DATOS ESPECÍFICOS ===');
             
             const datosEtiqueta = {
                 codigo: 'TEST-DATOS-ESPECIFICOS-' + Date.now(),
@@ -3671,12 +3881,10 @@ if (document.readyState === 'loading') {
                 propiedadMaterial: '56KJ 1/10W (SMD 1608)'
             };
             
-            console.log('📋 Probando con datos:', datosEtiqueta);
             
             try {
                 // Usar la función de impresión que usa generarComandoZPLConDatos()
                 imprimirZebraAutomaticoConDatos(datosEtiqueta);
-                console.log('✅ Función de impresión con datos específicos ejecutada');
             } catch (error) {
                 console.error('❌ Error:', error);
             }
@@ -3686,8 +3894,6 @@ if (document.readyState === 'loading') {
          * Función para comparar la función original vs la actual
          */
         window.compararFunciones = function(codigo = 'TEST-COMPARE-' + Date.now()) {
-            console.log('🔬 === COMPARANDO FUNCIÓN ORIGINAL VS ACTUAL ===');
-            console.log(`📋 Código de prueba: ${codigo}`);
             
             // Datos de prueba
             const datosEspecificos = {
@@ -3698,12 +3904,8 @@ if (document.readyState === 'loading') {
                 propiedadMaterial: '56KJ 1/10W (SMD 1608)'
             };
             
-            console.log('\n🎯 1. FUNCIÓN ORIGINAL (generarComandoZPLConDatos):');
             const zplOriginal = generarComandoZPLConDatos(datosEspecificos, 'material');
-            console.log(`   📏 Longitud: ${zplOriginal.length}`);
-            console.log(`   🔍 Contiene cantidad: ${zplOriginal.includes('5000') ? '✅' : '❌'}`);
             
-            console.log('\n🎯 2. FUNCIÓN ACTUAL (generarComandoZPLDirecto):');
             
             // Llenar campos temporalmente para la función actual
             const campoActual = document.getElementById('cantidad_actual');
@@ -3715,27 +3917,11 @@ if (document.readyState === 'loading') {
             if (campoNumero) campoNumero.value = '56KJ 1/10W (SMD 1608)';
             
             const zplActual = generarComandoZPLDirecto(codigo, 'material');
-            console.log(`   📏 Longitud: ${zplActual.length}`);
-            console.log(`   🔍 Contiene cantidad: ${zplActual.includes('5000') ? '✅' : '❌'}`);
-            
-            console.log('\n📊 === CONCLUSIÓN ===');
-            console.log('🎯 FUNCIÓN ORIGINAL: Recibe datos directamente (CONFIABLE)');
-            console.log('🎯 FUNCIÓN ACTUAL: Lee del formulario (PUEDE FALLAR)');
-            console.log('💡 SOLUCIÓN: Usar función original en imprimirZebraAutomaticoConDatos()');
             
             return { original: zplOriginal, actual: zplActual };
         };
         
-        // Mostrar funciones disponibles
-        console.log('🔧 === FUNCIONES DE CANTIDAD AGREGADAS ===');
-        console.log('✅ window.testCantidadActual() - Test rápido');
-        console.log('✅ window.diagnosticarCantidadCompleto() - Diagnóstico completo');
-        console.log('✅ window.probarConCantidadEspecifica(cantidad) - Probar con valor específico');
-        console.log('✅ window.testZPLConCantidad(cantidad, codigo) - Probar ZPL con cantidad');
-        console.log('✅ window.verificarCantidad() - Función que ya funcionaba');
-        console.log('🎯 window.testFuncionOriginalQueFunc() - NUEVA: Prueba función que SÍ funcionaba');
-        console.log('🎯 window.testImprimirConDatosEspecificos() - NUEVA: Impresión con datos específicos');
-        console.log('🎯 window.compararFunciones() - NUEVA: Comparar original vs actual');
+        // Mostrar funciones principales disponibles
     </script>
 
 </body>

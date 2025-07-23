@@ -443,11 +443,9 @@
     
     function initializeMobileEnhancements() {
         if (!deviceCapabilities.isMobile && window.innerWidth > 768) {
-            console.log('📱 Not a mobile device, skipping mobile enhancements');
             return;
         }
         
-        console.log('📱 Initializing mobile enhancements...');
         
         // Inicializar componentes
         const gestureDetector = new GestureDetector();
@@ -473,7 +471,6 @@
             setTimeout(setDynamicViewport, 500);
         });
         
-        console.log('✅ Mobile enhancements initialized successfully');
     }
 
     // Inicializar cuando el DOM esté listo

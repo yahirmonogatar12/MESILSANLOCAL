@@ -34,7 +34,6 @@
             if (isInitialized) return;
             
             try {
-                console.log('🔐 Inicializando sistema de permisos de dropdowns...');
                 
                 // Cargar permisos del usuario actual
                 await this.cargarPermisosUsuario();
@@ -46,7 +45,6 @@
                 this.configurarObservadorMutaciones();
                 
                 isInitialized = true;
-                console.log('✅ Sistema de permisos inicializado correctamente');
                 
             } catch (error) {
                 console.error('❌ Error inicializando sistema de permisos:', error);
@@ -81,10 +79,6 @@
                 rolUsuario = data.rol;
                 
                 if (CONFIG.DEBUG) {
-                    console.log('🔑 Permisos cargados:', permisosUsuario);
-                    console.log(`👤 Usuario: ${usuarioActual}`);
-                    console.log(`🏷️ Rol: ${rolUsuario}`);
-                    console.log(`📊 Total de permisos: ${data.total_permisos}`);
                 }
                 
                 // Guardar en localStorage para cache
@@ -106,7 +100,6 @@
                         permisosUsuario = data.permisos;
                         usuarioActual = data.usuario;
                         rolUsuario = data.rol;
-                        console.log('📦 Permisos cargados desde cache');
                     }
                 }
             }
@@ -124,7 +117,6 @@
             // SUPERADMIN y ADMIN tienen todos los permisos automáticamente
             if (rolUsuario === 'superadmin' || rolUsuario === 'admin') {
                 if (CONFIG.DEBUG) {
-                    console.log(`🔑 ${rolUsuario.toUpperCase()} - Permiso automático para: ${pagina} > ${seccion} > ${boton}`);
                 }
                 return true;
             }
@@ -134,15 +126,11 @@
                 permisosUsuario[pagina][seccion] && 
                 permisosUsuario[pagina][seccion].includes(boton)) {
                 if (CONFIG.DEBUG) {
-                    console.log(`✅ Permiso válido para: ${pagina} > ${seccion} > ${boton}`);
                 }
                 return true;
             }
             
             if (CONFIG.DEBUG) {
-                console.log(`❌ Sin permiso para: ${pagina} > ${seccion} > ${boton}`);
-                console.log(`   Rol actual: ${rolUsuario}`);
-                console.log(`   Permisos disponibles:`, permisosUsuario);
             }
             
             return false;
@@ -152,12 +140,10 @@
          * Aplicar permisos a elementos existentes en la página
          */
         aplicarPermisosExistentes() {
-            console.log('🎯 Aplicando permisos a elementos existentes...');
             
             // Buscar todos los elementos con atributos de permisos
             const elementosConPermisos = document.querySelectorAll('[data-permiso-pagina]');
             
-            console.log(`📊 Encontrados ${elementosConPermisos.length} elementos con atributos de permisos`);
             
             elementosConPermisos.forEach(elemento => {
                 this.validarElemento(elemento);
@@ -257,7 +243,6 @@
             elemento.style.cursor = 'not-allowed';
             
             if (CONFIG.DEBUG) {
-                console.log(`🚫 Ocultado: ${pagina} > ${seccion} > ${boton}`, elemento);
             }
         },
         
@@ -306,7 +291,6 @@
          * Recargar permisos del servidor
          */
         async recargarPermisos() {
-            console.log('🔄 Recargando permisos...');
             await this.cargarPermisosUsuario();
             this.aplicarPermisosExistentes();
         },
@@ -344,7 +328,6 @@
          */
         enableDebug() {
             CONFIG.DEBUG = true;
-            console.log('🐛 Modo debug habilitado para permisos de dropdowns');
         },
         
         /**
@@ -366,13 +349,9 @@
          * Función de testing para verificar permisos específicos
          */
         testPermiso(pagina, seccion, boton) {
-            console.log(`🧪 Testing permiso: ${pagina} > ${seccion} > ${boton}`);
-            console.log('Permisos actuales:', permisosUsuario);
-            console.log('Tiene permiso:', this.tienePermiso(pagina, seccion, boton));
             
             // Buscar elementos relacionados
             const elementos = document.querySelectorAll(`[data-permiso-pagina="${pagina}"][data-permiso-seccion="${seccion}"][data-permiso-boton="${boton}"]`);
-            console.log(`Elementos encontrados: ${elementos.length}`, elementos);
             
             return this.tienePermiso(pagina, seccion, boton);
         },
@@ -411,7 +390,6 @@
                     }
                 };
                 
-                console.log(`🔒 Función ${nombreFuncion} protegida con permisos: ${pagina} > ${seccion} > ${boton}`);
             }
         }
     };
@@ -436,4 +414,3 @@
     
 })();
 
-console.log('🔐 Sistema de validación de permisos de dropdowns cargado');

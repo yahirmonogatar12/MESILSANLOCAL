@@ -249,7 +249,6 @@
             configurarRegistroAutomatico();
 
             // Cargar modelos disponibles en el BOM
-            console.log('🔧 DEBUG: Iniciando carga de modelos BOM...');
             cargarModelosBOM();
 
             // Enfocar campo de código
@@ -460,7 +459,6 @@
                 
                 // Mostrar mensaje informativo si no hay modelo seleccionado
                 if (modelo === 'SIN_MODELO') {
-                    console.log('ℹ️ Procesando salida automática sin modelo específico');
                 }
 
                 const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
@@ -495,7 +493,6 @@
                     // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
                     if (materialActual && materialActual.numero_parte) {
                         window.ultimoMaterialProcesado = materialActual.numero_parte;
-                        console.log(`🎯 Material marcado para actualización forzada: ${materialActual.numero_parte}`);
                     }
                     
                     // ACTUALIZAR FALTANTES EN TABLA BOM INMEDIATAMENTE DESPUÉS DE LA SALIDA
@@ -583,7 +580,6 @@
                 
                 // Mostrar mensaje informativo si no hay modelo seleccionado
                 if (modelo === 'SIN_MODELO') {
-                    console.log('ℹ️ Procesando salida manual sin modelo específico');
                 }
 
                 const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
@@ -623,7 +619,6 @@
                     // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
                     if (materialActual && materialActual.numero_parte) {
                         window.ultimoMaterialProcesado = materialActual.numero_parte;
-                        console.log(`🎯 Material marcado para actualización forzada: ${materialActual.numero_parte}`);
                     }
                     
                     // ACTUALIZAR FALTANTES EN TABLA BOM INMEDIATAMENTE DESPUÉS DE LA SALIDA
@@ -659,7 +654,6 @@
                 
                 // Mostrar mensaje informativo si no hay modelo seleccionado
                 if (modelo === 'SIN_MODELO') {
-                    console.log('ℹ️ Procesando salida inmediata sin modelo específico');
                 }
 
                 // 2. Buscar material y rellenar campos
@@ -729,7 +723,6 @@
                     // 🔥 MARCAR MATERIAL PROCESADO para actualización forzada
                     if (materialActual && materialActual.numero_parte) {
                         window.ultimoMaterialProcesado = materialActual.numero_parte;
-                        console.log(`🎯 Material marcado para actualización forzada: ${materialActual.numero_parte}`);
                     }
                     
                     // ACTUALIZAR FALTANTES EN TABLA BOM INMEDIATAMENTE DESPUÉS DE LA SALIDA
@@ -863,11 +856,9 @@
             
             const modelo = document.getElementById('salida_modelo')?.value;
             if (!modelo) {
-                console.log('⚠️ Sin modelo seleccionado - omitiendo actualización de faltantes BOM');
                 return;
             }
             
-            console.log('🚀 ULTRA-RÁPIDO: Actualizando faltantes BOM instantáneamente...');
             
             const filas = tbody1.querySelectorAll('tr');
             const planCantidad = parseFloat(document.getElementById('plan_cantidad')?.value || 1);
@@ -890,7 +881,6 @@
             const materialRecienProcesado = window.ultimoMaterialProcesado;
             if (materialRecienProcesado && numerosParteEnTabla.includes(materialRecienProcesado)) {
                 try {
-                    console.log(`🔄 Forzando actualización para material recién procesado: ${materialRecienProcesado}`);
                     await fetch(`/forzar_actualizacion_inventario/${encodeURIComponent(materialRecienProcesado)}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
@@ -920,10 +910,8 @@
                         const material = data.materiales[0];
                         const cantidadDisponible = parseFloat(material.cantidad_actual) || 0;
                         inventarioMap.set(numeroParte, cantidadDisponible);
-                        console.log(`⚡ INSTANTÁNEO - ${numeroParte}: ${cantidadDisponible}`);
                     } else {
                         inventarioMap.set(numeroParte, 0);
-                        console.log(`❌ INSTANTÁNEO - Sin inventario para ${numeroParte}`);
                     }
                 } catch (error) {
                     console.error(`Error INSTANTÁNEO consultando ${numeroParte}:`, error);
@@ -971,7 +959,6 @@
                             celdaFaltantes.style.transform = '';
                         }, 500);
                         
-                        console.log(`🔄 CAMBIO DETECTADO - ${numeroParte}: ${valorAnterior} → ${faltantes}`);
                     }
                     
                     celdaFaltantes.textContent = faltantes;
@@ -982,7 +969,6 @@
                 }
             });
             
-            console.log(`✅ ULTRA-RÁPIDO: ${filasActualizadas} faltantes actualizados instantáneamente`);
         }
 
         // ===============================================
@@ -994,11 +980,9 @@
             
             const modelo = document.getElementById('salida_modelo')?.value;
             if (!modelo) {
-                console.log('⚠️ Sin modelo seleccionado - omitiendo actualización BOM');
                 return;
             }
             
-            console.log('🔄 Actualizando faltantes BOM para modelo:', modelo);
             
             // OPTIMIZACIÓN: Solo actualizar faltantes, no recargar todo el BOM
             await actualizarSoloFaltantes();
@@ -1014,7 +998,6 @@
             const filas = tbody1.querySelectorAll('tr');
             const planCantidad = parseFloat(document.getElementById('plan_cantidad')?.value || 1);
             
-            console.log('⚡ Actualizando solo faltantes de', filas.length, 'filas');
             
             // Extraer números de parte de las filas existentes
             const numerosParteEnTabla = [];
@@ -1039,10 +1022,8 @@
                         const material = data.materiales[0]; // Primer resultado (agregado)
                         const cantidadDisponible = parseFloat(material.cantidad_actual) || 0;
                         inventarioMap.set(numeroParte, cantidadDisponible);
-                        console.log(`📦 Inventario para ${numeroParte}: ${cantidadDisponible}`);
                     } else {
                         inventarioMap.set(numeroParte, 0);
-                        console.log(`❌ Sin inventario para ${numeroParte}`);
                     }
                 } catch (error) {
                     console.error(`Error consultando inventario para ${numeroParte}:`, error);
@@ -1079,11 +1060,9 @@
                     celdaFaltantes.textContent = faltantes;
                     celdaFaltantes.style.color = colorFaltantes;
                     
-                    console.log(`📊 ${numeroParte}: Plan=${cantidadPlanificada}, Inventario=${inventarioActual}, Faltantes=${faltantes}`);
                 }
             });
             
-            console.log('✅ Faltantes actualizados optimizadamente');
         }
 
         // Ejecutar inicialización simplificada
@@ -1148,7 +1127,6 @@
                 }
                 
                 const modelos = await response.json();
-                console.log('🔧 DEBUG: Modelos BOM disponibles:', modelos);
                 
                 const dropdownList = document.getElementById('salidaDropdownList');
                 if (dropdownList && Array.isArray(modelos) && modelos.length > 0) {
@@ -1168,7 +1146,6 @@
                             modeloTexto = String(modelo);
                         }
                         
-                        console.log(`🔧 DEBUG Modelo ${index}:`, modelo, '-> Texto:', modeloTexto);
                         
                         if (modeloTexto && modeloTexto.trim()) {
                             item.dataset.value = modeloTexto;
@@ -1178,10 +1155,7 @@
                         }
                     });
                     
-                    console.log('✅ DEBUG: Modelos cargados en dropdown:', dropdownList.children.length);
-                    console.log('🔧 DEBUG: Primer modelo ejemplo:', modelos[0]);
                 } else {
-                    console.log('⚠️ DEBUG: No hay modelos disponibles o elemento no encontrado');
                 }
                 
             } catch (error) {
@@ -1244,7 +1218,6 @@
             hiddenInput.value = modelo;
             dropdownList.style.display = 'none';
             
-            console.log(`✅ Modelo seleccionado desde dropdown: ${modelo}`);
             
             // Cargar BOM para el modelo seleccionado
             cargarBOMPorModelo(modelo);
@@ -1262,12 +1235,10 @@
 
         // Nueva función para cargar BOM automáticamente cuando se selecciona un modelo
         async function cargarBOMPorModelo(modelo) {
-            console.log('🔧 DEBUG: Modelo seleccionado:', modelo);
             
             if (!modelo || modelo === '' || modelo === 'SIN_MODELO') {
                 // Si no hay modelo seleccionado, limpiar las tablas
                 limpiarTablasBOM();
-                console.log('ℹ️ Sin modelo válido - tablas BOM limpiadas');
                 return;
             }
 
@@ -1275,7 +1246,6 @@
                 mostrarMensajeSimple(`Cargando BOM para modelo: ${modelo}...`, 'info');
 
                 const url = `/consultar_bom?modelo=${encodeURIComponent(modelo)}`;
-                console.log('🔧 DEBUG: URL de consulta:', url);
                 
                 const response = await fetch(url);
                 
@@ -1285,7 +1255,6 @@
                 
                 const bomData = await response.json();
 
-                console.log('📊 DEBUG: Datos BOM recibidos para modelo:', modelo, bomData);
 
                 if (Array.isArray(bomData) && bomData.length > 0) {
                     actualizarTablaBOMRegistro(bomData);
@@ -1293,7 +1262,6 @@
                 } else {
                     limpiarTablasBOM();
                     mostrarMensajeSimple(`No se encontraron componentes BOM para el modelo: ${modelo}`, 'info');
-                    console.log('⚠️ DEBUG: No hay datos BOM o array vacío:', bomData);
                 }
 
             } catch (error) {
@@ -1326,7 +1294,6 @@
                 item.numeroParte || item.numero_parte || item.part_number || ''
             ).filter(p => p))];
             
-            console.log('🔄 Consultando inventarios para:', numerosParteUnicos);
             
             // Crear un mapa de inventarios por número de parte
             const inventarioMap = new Map();
@@ -1345,10 +1312,8 @@
                             const material = data.materiales[0]; // Primer resultado (agregado)
                             const cantidadDisponible = parseFloat(material.cantidad_actual) || 0;
                             inventarioMap.set(numeroParte, cantidadDisponible);
-                            console.log(`📦 Inventario para ${numeroParte}: ${cantidadDisponible}`);
                         } else {
                             inventarioMap.set(numeroParte, 0);
-                            console.log(`❌ Sin inventario para ${numeroParte}`);
                         }
                     } catch (error) {
                         console.error(`Error consultando inventario para ${numeroParte}:`, error);
@@ -1381,7 +1346,6 @@
                 // Calcular faltantes reales: cantidad planificada - inventario actual
                 const faltantes = Math.max(0, cantidadPlanificada - inventarioActual);
                 
-                console.log('🔧 DEBUG Item BOM OPTIMIZADO:', {
                     numeroParte,
                     cantidadTotal,
                     planCantidad,
@@ -1535,7 +1499,6 @@
 
         // Función para actualizar las cantidades del plan
         function actualizarCantidadesPlan() {
-            console.log('🔧 DEBUG: Actualizando cantidades del plan...');
             
             const tbody1 = document.getElementById('tabla1BOM');
             if (!tbody1) return;
@@ -1882,8 +1845,6 @@
                 }
 
                 // Debug: mostrar la URL que se está enviando
-                console.log('🔍 Consultando URL:', url);
-                console.log('📅 Filtros aplicados:', {
                     codigo: codigoFiltro,
                     fechaDesde: fechaDesde,
                     fechaHasta: fechaHasta
@@ -1897,7 +1858,6 @@
                 
                 const salidas = await response.json();
 
-                console.log('📊 Respuesta del servidor:', salidas);
 
                 if (Array.isArray(salidas)) {
                     actualizarTablaSalidas(salidas);
@@ -2143,7 +2103,6 @@
         window.testConectividadSalida = function() {
             fetch('/consultar_historial_salidas')
                 .then(response => response.ok ? response.json() : Promise.reject('Error HTTP: ' + response.status))
-                .then(data => console.log('✅ Conectividad OK'))
                 .catch(error => console.error('❌ Error de conectividad:', error));
         };
 

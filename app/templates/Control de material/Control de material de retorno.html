@@ -110,7 +110,6 @@
     <script>
         // Función de inicialización del módulo
         function initControlRetorno() {
-            console.log('🔄 Inicializando Consulta de Inventario General...');
             
             // Configurar eventos de los botones
             setupInventarioEventListeners();
@@ -118,7 +117,6 @@
             // Cargar datos iniciales
             cargarDatosInventario();
             
-            console.log('✅ Consulta de Inventario General inicializada');
         }
 
         function setupInventarioEventListeners() {
@@ -152,7 +150,6 @@
         }
 
         function consultarInventario() {
-            console.log('� Consultando inventario general...');
             
             const filtros = {
                 buscar: document.getElementById('inventario_buscar_material').value.trim(),
@@ -189,7 +186,6 @@
         }
 
         function cargarDatosEjemplo() {
-            console.log('📦 Cargando datos de ejemplo...');
             
             const datosEjemplo = [
                 {
@@ -340,7 +336,6 @@
             const checkboxes = document.querySelectorAll('#inventario_table_body input[type="checkbox"]:checked');
             const ids = Array.from(checkboxes).map(cb => cb.value);
             
-            console.log('� Exportando inventario:', ids.length > 0 ? ids : 'todos');
             
             // Crear parámetros de exportación
             const params = new URLSearchParams({
@@ -357,7 +352,6 @@
         }
 
         function actualizarInventario() {
-            console.log('🔄 Actualizando inventario...');
             
             fetch('/api/inventario/actualizar', {
                 method: 'POST',
@@ -402,13 +396,11 @@
         }
 
         function verDetalleInventario(id) {
-            console.log('👁️ Viendo detalle del inventario ID:', id);
             // Aquí se podría abrir un modal o navegar a una página de detalle
             alert(`👁️ Ver detalle del producto ${id} - Funcionalidad por implementar`);
         }
 
         function verMovimientos(id) {
-            console.log('📜 Viendo movimientos del inventario ID:', id);
             // Aquí se podría abrir un historial de movimientos
             alert(`📜 Ver movimientos del producto ${id} - Funcionalidad por implementar`);
         }

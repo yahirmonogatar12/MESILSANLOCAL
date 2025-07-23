@@ -12,15 +12,12 @@ class MobileListas {
         
         // VERIFICACIÓN ESTRICTA - Solo inicializar en móvil
         if (this.isMobile) {
-            console.log('📱 MobileListas: Iniciando en entorno móvil');
             this.init();
         } else {
-            console.log('🖥️ MobileListas: No inicializando en desktop');
         }
     }
 
     init() {
-        console.log('📱 Inicializando menú móvil de listas...');
         this.createMobileMenu();
         this.createModal();
         this.handleResize();
@@ -83,7 +80,6 @@ class MobileListas {
                 e.stopPropagation();
                 const lista = item.getAttribute('data-lista');
                 const titulo = item.textContent;
-                console.log('📋 Seleccionada lista:', lista, titulo);
                 this.openListaModal(lista, titulo);
                 dropdown.style.display = 'none';
                 toggle.setAttribute('aria-expanded', 'false');
@@ -133,7 +129,6 @@ class MobileListas {
     }
 
     async openListaModal(lista, titulo) {
-        console.log('🔄 Abriendo modal para:', lista);
         
         // Mapear lista a URL
         const urlMap = {
@@ -163,7 +158,6 @@ class MobileListas {
             this.modalBody.innerHTML = '<div style="text-align: center; padding: 40px; color: white;">Cargando...</div>';
             
             const response = await fetch(url);
-            console.log('📡 Respuesta:', response.status);
             
             if (response.ok) {
                 const html = await response.text();
@@ -269,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // SOLO en móvil y si no existe ya
     if (window.innerWidth <= 768 && !window.mobileListas) {
         window.mobileListas = new MobileListas();
-        console.log('✅ Menú móvil de listas inicializado');
     }
 });
 
@@ -283,20 +276,17 @@ window.addEventListener('resize', () => {
     
     // Establecemos un nuevo timeout para debounce
     resizeTimeout = setTimeout(() => {
-        console.log('📏 Cambio de tamaño detectado:', window.innerWidth <= 768 ? 'móvil' : 'desktop');
         
         if (window.innerWidth <= 768 && !window.mobileListas) {
             // Cambio a móvil: inicializar
             window.mobileListas = new MobileListas();
         } else if (window.innerWidth > 768 && window.mobileListas) {
             // Cambio a desktop: limpiar
-            console.log('🧹 Limpiando instancia de menú móvil...');
             window.mobileListas.cleanup();
             window.mobileListas = null;
             
             // Forzar reinicio del fix de dropdowns
             if (typeof initBalancedDropdowns === 'function') {
-                console.log('🔄 Reinicializando dropdowns de desktop...');
                 setTimeout(() => initBalancedDropdowns(), 100);
             }
         }

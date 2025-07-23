@@ -69,7 +69,6 @@ function handleSave() {
         cantidadRetorno: document.getElementById('cantidadRetorno').value
     };
     
-    console.log('Guardando datos:', formData);
     // Aquí iría la lógica para guardar en el servidor
     
     // Mostrar mensaje de éxito (ejemplo)
@@ -81,7 +80,6 @@ function handleConsult() {
     const fechaInicio = document.getElementById('fechaRetornoInicio').value;
     const fechaFin = document.getElementById('fechaRetornoFin').value;
     
-    console.log('Consultando datos entre:', fechaInicio, 'y', fechaFin);
     // Aquí iría la lógica para consultar datos del servidor
     
     // Ejemplo de carga de datos
@@ -90,20 +88,17 @@ function handleConsult() {
 
 // Manejar exportación a Excel
 function handleExport() {
-    console.log('Exportando a Excel...');
     // Aquí iría la lógica para exportar a Excel
     alert('Exportación a Excel iniciada');
 }
 
 // Manejar reimpresión
 function handleReprint() {
-    console.log('Reimprimiendo...');
     window.print();
 }
 
 // Manejar configuración de impresora
 function handlePrinterConfig() {
-    console.log('Abriendo configuración de impresora...');
     // Aquí iría la lógica para abrir configuración de impresora
     alert('Configuración de impresora');
 }

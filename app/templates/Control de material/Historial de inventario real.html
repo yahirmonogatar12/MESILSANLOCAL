@@ -817,7 +817,6 @@
 
     // Función principal de inicialización
     function initHistorialInventario() {
-        console.log('🔧 Inicializando Historial de Inventario Real');
         
         // Configurar fecha por defecto
         const inventoryDate = document.getElementById('historialInventarioDate');
@@ -832,12 +831,10 @@
         // Configurar eventos de escaneo
         setupHistorialScanEvents();
         
-        console.log('✅ Historial de Inventario Real inicializado');
     }
 
     // Función para consultar inventario con datos reales del archivo JS
     function consultarHistorialInventario() {
-        console.log('📊 Consultando historial de inventario...');
         const inventoryDate = document.getElementById('historialInventarioDate');
         const tableBody = document.getElementById('historialInventarioTableBody');
         const totalRows = document.getElementById('historialTotalRows');
@@ -930,13 +927,11 @@
                 totalRows.textContent = datosInventario.length;
             }
             
-            console.log(`✅ Cargados ${datosInventario.length} registros de inventario`);
         }, 800);
     }
 
     // Función para exportar a Excel
     function exportarHistorialExcel() {
-        console.log('📄 Exportando historial de inventario a Excel...');
         
         if (!historialInventarioData || historialInventarioData.length === 0) {
             mostrarHistorialNotificacion('No hay datos para exportar', 'warning');
@@ -978,12 +973,10 @@
             mainView.classList.remove('historial-active');
             controlView.classList.add('historial-active');
             historialCurrentView = 'control';
-            console.log('🔄 Cambiado a vista de control');
         } else {
             controlView.classList.remove('historial-active');
             mainView.classList.add('historial-active');
             historialCurrentView = 'main';
-            console.log('🔄 Cambiado a vista principal');
         }
     }
 
@@ -996,7 +989,6 @@
         // Activar el seleccionado
         element.classList.add('historial-nav-active');
         
-        console.log(`🔄 Navegación cambiada a: ${tab}`);
         // Aquí se puede implementar lógica específica para cada tab
     }
 
@@ -1009,7 +1001,6 @@
         // Activar el seleccionado
         element.classList.add('historial-tab-active');
         
-        console.log(`🔄 Tab cambiado a: ${tab}`);
         
         // Implementar lógica específica para cada tab
         if (tab === 'registro') {
@@ -1045,7 +1036,6 @@
             const value = event.target.value.trim();
             
             if (value) {
-                console.log(`📱 Código ${tipo} escaneado:`, value);
                 mostrarHistorialNotificacion(`Código ${tipo} ${value} procesado`, 'success');
                 
                 // Aquí se implementaría la lógica específica para cada tipo de código
@@ -1081,19 +1071,16 @@
 
     // Funciones para QR Scanner (implementación básica)
     function iniciarHistorialQrScanner() {
-        console.log('📸 Iniciando escaner QR...');
         // Aquí se implementaría el escaner QR real
         // Por ahora, simulamos
         mostrarHistorialNotificacion('Escaner QR iniciado (simulado)', 'info');
     }
 
     function detenerHistorialQrScanner() {
-        console.log('🛑 Deteniendo escaner QR...');
     }
 
     // Funciones auxiliares
     function buscarMaterialPorCodigo(codigo) {
-        console.log(`🔍 Buscando material por código: ${codigo}`);
         // Implementar búsqueda en base de datos
         
         // Ejemplo de llenado automático
@@ -1107,7 +1094,6 @@
     }
 
     function verificarCodigoSalida(codigo) {
-        console.log(`✅ Verificando código de salida: ${codigo}`);
         // Implementar lógica de verificación
         mostrarHistorialNotificacion('Código de salida verificado', 'success');
     }

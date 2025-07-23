@@ -95,14 +95,11 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔧 LISTA_DE_MATERIALES cargado, inicializando...');
     
     // Obtener todos los enlaces de la sidebar
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
     const appContent = document.querySelector('.app-content');
     
-    console.log('📋 Enlaces encontrados:', sidebarLinks.length);
-    console.log('📺 Área de contenido encontrada:', appContent ? 'SÍ' : 'NO');
     
     // Función para limpiar todas las selecciones activas
     function limpiarSeleccionesActivas() {
@@ -145,7 +142,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     sidebarLinks.forEach((link, index) => {
-        console.log(`🔗 Enlace ${index + 1}: "${link.textContent.trim()}"`);
         
         // Agregar eventos de clic y teclado
         link.addEventListener('click', handleLinkInteraction);
@@ -155,7 +151,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 handleLinkInteraction.call(this, e);
             }
             if (e.key === 'Escape') {
-                console.log('🔄 Escape presionado - Deseleccionando...');
                 limpiarSeleccionesActivas();
                 mostrarContenidoInicial();
             }
@@ -166,11 +161,9 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             
             const linkText = this.textContent.trim();
-            console.log(`👆 Interacción en: "${linkText}"`);
             
             // Si este enlace ya está activo, lo deseleccionamos y volvemos al contenido inicial
             if (this.classList.contains('active')) {
-                console.log('🔄 Deseleccionando elemento activo...');
                 limpiarSeleccionesActivas();
                 mostrarContenidoInicial();
                 return;
@@ -181,7 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Manejar el clic en "Control de material de almacén"
             if (linkText === 'Control de material de almacén') {
-                console.log('✅ Coincidencia encontrada - Mostrando Control de material de almacén...');
                 if (typeof window.mostrarControlAlmacen === 'function') {
                     window.mostrarControlAlmacen();
                 } else {
@@ -191,7 +183,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Aquí puedes agregar más condiciones para otros enlaces de la sidebar
             else if (linkText === 'Control de salida') {
-                console.log('✅ Mostrando Control de salida...');
                 if (typeof window.mostrarControlSalida === 'function') {
                     window.mostrarControlSalida();
                 } else {
@@ -200,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             else if (linkText === 'Control de material retorno') {
-                console.log('✅ Mostrando Control de material retorno...');
                 if (typeof window.mostrarControlRetorno === 'function') {
                     window.mostrarControlRetorno();
                 } else {
@@ -209,7 +199,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             else {
-                console.log(`⚠️ No hay acción definida para: "${linkText}"`);
                 appContent.innerHTML = `
                     <div style="padding: 20px; text-align: center; color: #f39c12;">
                         <h4>Función en desarrollo</h4>
@@ -230,11 +219,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Solo deseleccionar si el clic NO fue en el sidebar NI en el contenido principal
         if (!clickedInsideSidebar && !clickedInsideContent) {
-            console.log('🔄 Clic fuera del sidebar y contenido - Deseleccionando...');
             limpiarSeleccionesActivas();
             mostrarContenidoInicial();
         } else if (clickedInsideContent) {
-            console.log('📱 Clic dentro del contenido - Manteniendo selección activa');
         }
     });
     
@@ -243,7 +230,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para cargar templates dinámicamente
     function cargarTemplate(templatePath) {
-        console.log(`🚀 Iniciando carga de template: ${templatePath}`);
         
         if (!appContent) {
             console.error('❌ Error: No se encontró el área de contenido (.app-content)');
@@ -262,7 +248,6 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         
-        console.log('📡 Enviando petición al servidor...');
         
         // Hacer la petición al servidor para cargar el template
         fetch(`/cargar_template`, {
@@ -275,15 +260,12 @@ document.addEventListener('DOMContentLoaded', function() {
             })
         })
         .then(response => {
-            console.log(`📥 Respuesta recibida. Status: ${response.status}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.text();
         })
         .then(html => {
-            console.log('✅ HTML recibido, cargando en página...');
-            console.log(`📏 Tamaño del HTML: ${html.length} caracteres`);
             
             // Cargar el HTML en el área de contenido
             appContent.innerHTML = html;
@@ -293,10 +275,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Si el template contiene scripts, ejecutarlos
             const scripts = appContent.querySelectorAll('script');
-            console.log(`🔧 Scripts encontrados en el template: ${scripts.length}`);
             
             scripts.forEach((script, index) => {
-                console.log(`▶️ Ejecutando script ${index + 1}...`);
                 const newScript = document.createElement('script');
                 if (script.src) {
                     newScript.src = script.src;
@@ -306,7 +286,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.head.appendChild(newScript);
             });
             
-            console.log(`🎉 Template ${templatePath} cargado exitosamente`);
         })
         .catch(error => {
             console.error('💥 Error al cargar template:', error);

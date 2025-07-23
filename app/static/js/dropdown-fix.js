@@ -19,7 +19,6 @@
     };
     
     function log(...args) {
-        if (CONFIG.DEBUG) console.log('[DROPDOWN-FIX]', ...args);
     }
     
     // ===============================================

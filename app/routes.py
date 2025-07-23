@@ -783,12 +783,12 @@ def listar_materiales():
         
     finally:
         try:
-            if cursor:
+            if cursor is not None:
                 cursor.close()
         except:
             pass
         try:
-            if conn:
+            if conn is not None:
                 conn.close()
         except:
             pass
@@ -807,7 +807,7 @@ def importar_excel():
         if file.filename == '':
             return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
         
-        if not file or not file.filename.lower().endswith(('.xlsx', '.xls')):
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
             return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
         
         # Guardar el archivo temporalmente
@@ -925,6 +925,9 @@ def importar_excel():
         
         for index, row in df.iterrows():
             try:
+                # Convert index to int safely
+                row_number = int(index) + 1 if isinstance(index, (int, float)) else len(errores) + registros_insertados + 1
+                
                 # Obtener valores usando el mapeo flexible
                 codigo_material = obtener_valor_columna(row, 'codigo_material')
                 numero_parte = obtener_valor_columna(row, 'numero_parte')
@@ -945,7 +948,7 @@ def importar_excel():
                 
                 # Validar que al menos el código de material no esté vacío
                 if not codigo_material:
-                    errores.append(f"Fila {index + 1}: Código de material vacío")
+                    errores.append(f"Fila {row_number}: Código de material vacío")
                     continue
                 
                 cursor.execute('''
@@ -959,10 +962,12 @@ def importar_excel():
                     especificacion_material, unidad_empaque, ubicacion_material, vendedor,
                     prohibido_sacar, reparable, nivel_msl, espesor_msl, fecha_registro
                 ))
+                
                 registros_insertados += 1
                 
             except Exception as e:
-                error_msg = f"Error en fila {index + 1}: {str(e)}"
+                row_number = int(index) + 1 if isinstance(index, (int, float)) else len(errores) + registros_insertados + 1
+                error_msg = f"Error en fila {row_number}: {str(e)}"
                 errores.append(error_msg)
                 print(error_msg)
                 continue
@@ -988,12 +993,12 @@ def importar_excel():
     finally:
         # Asegurar cierre de recursos
         try:
-            if cursor:
+            if cursor is not None:
                 cursor.close()
         except:
             pass
         try:
-            if conn:
+            if conn is not None:
                 conn.close()
         except:
             pass
@@ -1173,12 +1178,12 @@ def obtener_codigos_material():
         
     finally:
         try:
-            if cursor:
+            if cursor is not None:
                 cursor.close()
         except:
             pass
         try:
-            if conn:
+            if conn is not None:
                 conn.close()
         except:
             pass
@@ -1399,6 +1404,8 @@ def cargar_cliente_seleccionado():
 @login_requerido
 def actualizar_estado_desecho_almacen():
     """Actualizar el estado de desecho de un registro de control de almacén"""
+    conn = None
+    cursor = None
     try:
         data = request.get_json()
         if not data:
@@ -2269,11 +2276,11 @@ def procesar_salida_material():
         
     except Exception as e:
         print(f"❌ ERROR GENERAL en procesar_salida_material: {e}")
-        if 'conn' in locals():
+        if 'conn' in locals() and conn is not None:
             conn.rollback()
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
     finally:
-        if 'conn' in locals():
+        if 'conn' in locals() and conn is not None:
             conn.close()
 
 @app.route('/forzar_actualizacion_inventario/<numero_parte>', methods=['POST'])

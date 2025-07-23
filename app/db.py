@@ -4,8 +4,15 @@ import pandas as pd
 
 def get_db_connection():
     db_path = os.path.join(os.path.dirname(__file__), 'database', 'ISEMM_MES.db')
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=30.0)  # Timeout de 30 segundos
     conn.row_factory = sqlite3.Row
+    
+    # Configuraciones para mejorar el manejo de concurrencia
+    conn.execute('PRAGMA journal_mode=WAL')  # Write-Ahead Logging para mejor concurrencia
+    conn.execute('PRAGMA synchronous=NORMAL')  # Balance entre velocidad y seguridad
+    conn.execute('PRAGMA busy_timeout=30000')  # 30 segundos de timeout para operaciones bloqueadas
+    conn.execute('PRAGMA foreign_keys=ON')  # Habilitar foreign keys
+    
     return conn
 
 def init_db():

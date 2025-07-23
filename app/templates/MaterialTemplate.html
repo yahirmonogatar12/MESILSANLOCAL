@@ -483,7 +483,6 @@
                 document.addEventListener('DOMContentLoaded', function() {
                     
                     function setupSimpleFallback() {
-                        console.log('🔧 Configurando fallback simple...');
                         
                         const toggleButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
                         
@@ -527,7 +526,6 @@
                             });
                         });
                         
-                        console.log('✅ Fallback simple configurado');
                     }
                     
                     setupSimpleFallback();
@@ -544,7 +542,6 @@
                     }
                 });
             } else {
-                console.log('✅ Sistema unificado de dropdowns cargado correctamente');
             }
         }, 1000);
     </script>
@@ -558,12 +555,10 @@
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('../static/sw.js')
                     .then(function(registration) {
-                        console.log('✅ Service Worker registrado exitosamente:', registration.scope);
                         
                         // Verificar actualizaciones
                         registration.addEventListener('updatefound', function() {
                             const newWorker = registration.installing;
-                            console.log('🔄 Nueva versión del Service Worker encontrada');
                             
                             newWorker.addEventListener('statechange', function() {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
@@ -578,7 +573,6 @@
                         
                     })
                     .catch(function(error) {
-                        console.log('❌ Error al registrar Service Worker:', error);
                     });
                 
                 // Manejar mensajes del Service Worker
@@ -590,7 +584,6 @@
                             showInstallPrompt();
                             break;
                         case 'APP_INSTALLED':
-                            console.log('🎉 App instalada exitosamente');
                             break;
                     }
                 });
@@ -604,7 +597,6 @@
         let installButton;
         
         window.addEventListener('beforeinstallprompt', function(e) {
-            console.log('📱 PWA install prompt disponible');
             e.preventDefault();
             deferredPrompt = e;
             showInstallButton();
@@ -651,9 +643,7 @@
                         deferredPrompt.prompt();
                         deferredPrompt.userChoice.then(function(result) {
                             if (result.outcome === 'accepted') {
-                                console.log('🎉 Usuario aceptó instalar la PWA');
                             } else {
-                                console.log('❌ Usuario rechazó instalar la PWA');
                             }
                             deferredPrompt = null;
                             hideInstallButton();
@@ -683,7 +673,6 @@
         
         // Ocultar botón de instalación cuando la app ya está instalada
         window.addEventListener('appinstalled', function() {
-            console.log('🎉 PWA instalada exitosamente');
             hideInstallButton();
             
             // Mostrar mensaje de bienvenida
@@ -706,7 +695,6 @@
         // Aplicar estilos específicos para PWA
         if (isPWA()) {
             document.body.classList.add('pwa-mode');
-            console.log('📱 Ejecutándose como PWA');
             
             // Añadir estilos específicos para PWA
             const pwaStyle = document.createElement('style');
@@ -727,11 +715,9 @@
             document.body.classList.toggle('offline', !navigator.onLine);
             
             if (!navigator.onLine) {
-                console.log('📶 Modo offline activado');
                 // Mostrar indicador de offline
                 showOfflineIndicator();
             } else {
-                console.log('📶 Conexión restaurada');
                 hideOfflineIndicator();
             }
         }
@@ -863,7 +849,6 @@
                 for (const container of sectionContainers) {
                     const element = document.getElementById(container.id);
                     if (element && element.style.display !== 'none') {
-                        console.log('Sección activa detectada:', container.section);
                         return container.section;
                     }
                 }
@@ -883,7 +868,6 @@
                 }
                 
                 // Por defecto, devolver información básica
-                console.log('Sección por defecto: informacion-basica');
                 return 'informacion-basica';
             }
             
@@ -1093,7 +1077,6 @@
                     if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
                         // Verificar si algún contenido se hizo visible
                         if (mutation.target.style.display !== 'none') {
-                            console.log('Nueva sección cargada:', mutation.target.id);
                             // Pequeño delay para asegurar que el contenido esté completamente cargado
                             setTimeout(() => {
                                 loadCurrentSidebarContent();
@@ -1361,7 +1344,6 @@
             // Función de logging condicional
             function debugLog(...args) {
                 if (DEBUG_MODE) {
-                    console.log(...args);
                 }
             }
             
@@ -1385,14 +1367,12 @@
             
             // Función para limpiar event listeners duplicados de Bootstrap
             function limpiarEventListenersBootstrap() {
-                console.log('🧹 Limpiando event listeners usando sistema unificado...');
                 
                 try {
                     // Usar el sistema unificado si está disponible
                     if (window.unifiedDropdowns) {
                         window.unifiedDropdowns.cleanup();
                         window.unifiedDropdowns.init();
-                        console.log('✅ Limpieza usando sistema unificado');
                         return;
                     }
                     
@@ -1404,7 +1384,6 @@
                         button.parentNode.replaceChild(newButton, button);
                     });
                     
-                    console.log('✅ Limpieza manual completada');
                 } catch (error) {
                     console.error('❌ Error en limpieza de event listeners:', error);
                 }
@@ -1412,13 +1391,11 @@
             
             // Función mejorada para cerrar dropdowns
             function cerrarTodosLosDropdownsMejorada(container = null) {
-                console.log('🔒 Cerrando todos los dropdowns usando sistema unificado...');
                 
                 try {
                     // Usar el sistema unificado si está disponible
                     if (window.unifiedDropdowns) {
                         window.unifiedDropdowns.closeAll();
-                        console.log('✅ Dropdowns cerrados usando sistema unificado');
                         return;
                     }
                     
@@ -1433,7 +1410,6 @@
                         boton.setAttribute('aria-expanded', 'false');
                     });
                     
-                    console.log('✅ Dropdowns cerrados manualmente');
                 } catch (error) {
                     console.error('❌ Error cerrando dropdowns:', error);
                 }
@@ -1447,7 +1423,6 @@
                     return Promise.reject(`Container ${containerId} no encontrado`);
                 }
                 
-                console.log(`📂 Cargando contenido dinámico: ${templatePath} -> ${containerId}`);
                 
                 // 1. CERRAR TODOS LOS DROPDOWNS ANTES DE LIMPIAR
                 cerrarTodosLosDropdownsMejorada();
@@ -1511,15 +1486,12 @@
                             
                             // 5. REINICIALIZAR EL SISTEMA UNIFICADO DE DROPDOWNS
                             if (window.unifiedDropdowns) {
-                                console.log('🔄 Reinicializando sistema unificado...');
                                 window.unifiedDropdowns.init();
                             }
                             
-                            console.log('✅ Componentes re-inicializados en nuevo contenido');
                             
                             // Ejecutar callback de inicialización si se proporciona
                             if (initCallback && typeof initCallback === 'function') {
-                                console.log('🔧 Ejecutando callback de inicialización...');
                                 initCallback();
                             }
                         }, 150);
@@ -1536,7 +1508,6 @@
                             document.head.appendChild(newScript);
                         });
                         
-                        console.log(`✅ Contenido cargado exitosamente: ${templatePath}`);
                         return html;
                     })
                     .catch(error => {
@@ -1833,7 +1804,6 @@
             
             // NUEVA FUNCIÓN: Control de material para Información Básica
             window.mostrarControlMaterialInfo = function() {
-                console.log('🎯 Cargando Control de Material de Información Básica');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-material-info-container');
                 if (container) {
@@ -1842,7 +1812,6 @@
                     // Cargar el contenido dinámicamente del endpoint específico
                     cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material')
                         .then(() => {
-                            console.log('✅ Control de Material de Información Básica cargado exitosamente');
                         })
                         .catch(error => {
                             console.error('❌ Error cargando Control de Material de Información Básica:', error);
@@ -1868,7 +1837,6 @@
                     return false;
                 }
                 
-                console.log('🎯 Cargando Control de BOM de Información Básica');
                 hideAllInformacionBasicaContainers();
                 const container = document.getElementById('control-bom-info-container');
                 if (container) {
@@ -1877,7 +1845,6 @@
                     // Cargar el contenido dinámicamente del endpoint específico
                     cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom')
                         .then(() => {
-                            console.log('✅ Control de BOM de Información Básica cargado exitosamente');
                         })
                         .catch(error => {
                             console.error('❌ Error cargando Control de BOM de Información Básica:', error);
@@ -2021,7 +1988,6 @@
                 
                 // Cargar contenido dinámicamente usando la ruta del servidor
                 cargarContenidoDinamico('estatus-material-container', '/material/estatus_material', () => {
-                    console.log('✅ Estatus de Material cargado exitosamente');
                     
                     // Inicializar funcionalidades específicas del estatus de material si es necesario
                     if (typeof window.initEstatusMaterial === 'function') {
@@ -2055,7 +2021,6 @@
                 
                 // Cargar el contenido dinámicamente
                 cargarContenidoDinamico('registro-material-container', '/material/registro_material', () => {
-                    console.log('✅ Registro de material real cargado exitosamente');
                     
                     // Inicializar funcionalidades específicas del registro de material si es necesario
                     if (typeof initRegistroMaterial === 'function') {
@@ -2071,7 +2036,6 @@
                 
                 // Cargar el contenido dinámicamente
                 cargarContenidoDinamico('historial-inventario-container', '/material/historial_inventario', () => {
-                    console.log('✅ Historial de inventario real cargado exitosamente');
                     
                     // Inicializar funcionalidades específicas del historial de inventario si es necesario
                     if (typeof initHistorialInventario === 'function') {

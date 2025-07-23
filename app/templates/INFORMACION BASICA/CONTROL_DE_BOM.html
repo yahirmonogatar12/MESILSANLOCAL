@@ -94,7 +94,6 @@
                 return;
             }
             
-            console.log(`🔍 Cargando datos para modelo: ${modelo}`);
             
             fetch('/listar_bom', {
                 method: 'POST',
@@ -105,11 +104,9 @@
             })
             .then(response => response.json())
             .then(data => {
-                console.log('📡 Respuesta del servidor:', data);
                 
                 // El servidor devuelve directamente un array
                 if (Array.isArray(data)) {
-                    console.log(`✅ Datos cargados: ${data.length} registros`);
                     mostrarDatosEnTabla(data);
                 } else if (data.error) {
                     console.error('❌ Error del servidor:', data.error);
@@ -312,7 +309,6 @@
     }
 
     function seleccionarFilaBOM(index, seleccionado) {
-        console.log(`Fila ${index} ${seleccionado ? 'seleccionada' : 'deseleccionada'}`);
         // Aquí puedes agregar lógica adicional para manejar la selección
     }
 
@@ -323,12 +319,10 @@
     }
 
     function cargarModelosBOM() {
-        console.log("📋 Cargando modelos para consulta...");
         const select = document.getElementById('bomModeloSelect');
         
         // Verificar si ya hay modelos cargados desde el servidor
         if (select.options.length > 1) {
-            console.log("✅ Modelos ya cargados desde servidor:", select.options.length - 1);
             return;
         }
         
@@ -348,7 +342,6 @@
                 option.textContent = modelo.modelo;
                 select.appendChild(option);
             });
-            console.log("✅ Modelos cargados vía JavaScript:", modelos.length);
         })
         .catch(error => {
             console.error('Error al cargar modelos:', error);
@@ -415,7 +408,6 @@
         searchInput.value = modelo;
         dropdownList.style.display = 'none';
         
-        console.log(`✅ Modelo seleccionado desde dropdown: ${modelo}`);
         
         // Limpiar tabla previa
         const tbody = document.querySelector('#bomTableBody');
@@ -433,12 +425,10 @@
     });
 
     function cargarModelosFiltro() {
-        console.log("🔍 Cargando modelos para filtro...");
         const selectFiltro = document.getElementById('bomFiltroModeloSelect');
         
         // Verificar si ya hay modelos cargados desde el servidor
         if (selectFiltro.options.length > 1) {
-            console.log("✅ Modelos filtro ya cargados desde servidor:", selectFiltro.options.length - 1);
             return;
         }
         
@@ -449,11 +439,9 @@
             }
         })
         .then(response => {
-            console.log("📡 Respuesta recibida:", response.status);
             return response.json();
         })
         .then(modelos => {
-            console.log("📋 Modelos recibidos:", modelos.length, modelos);
             if (!selectFiltro) {
                 console.error("❌ No se encontró el elemento bomFiltroModeloSelect");
                 return;
@@ -466,10 +454,8 @@
                 option.value = modelo.modelo;
                 option.textContent = modelo.modelo;
                 selectFiltro.appendChild(option);
-                console.log(`✅ Agregado modelo ${index + 1}: ${modelo.modelo}`);
             });
             
-            console.log("🎯 Filtro de modelos cargado exitosamente");
         })
         .catch(error => {
             console.error('❌ Error al cargar modelos para filtro:', error);
@@ -564,7 +550,6 @@
         const tbody = document.querySelector('#bomTableBody');
         tbody.innerHTML = '<tr><td colspan="15" class="bom-loading"><div>Cargando datos de BOM para modelo: ' + modeloSeleccionado + '...</div></td></tr>';
         
-        console.log(`🔍 Consultando BOM para modelo: ${modeloSeleccionado}`);
         
         // Cargar datos desde el servidor
         cargarDatosBOMEnTabla(modeloSeleccionado);
@@ -572,24 +557,18 @@
 
     // Función de prueba inmediata
     window.testCargarModelos = function() {
-        console.log("🧪 TEST: Forzando carga de modelos...");
         cargarModelosFiltro();
     };
 
     // Permitir redimensionar columnas tipo Excel
     document.addEventListener('DOMContentLoaded', function () {
-        console.log("🚀 Página cargada, inicializando componentes...");
         
         // Verificar que los elementos existan
         const bomModeloSearch = document.getElementById('bomModeloSearch');
         const bomDropdownList = document.getElementById('bomDropdownList');
         
-        console.log("🔍 Elementos encontrados:");
-        console.log("  bomModeloSearch:", bomModeloSearch ? "✅" : "❌");
-        console.log("  bomDropdownList:", bomDropdownList ? "✅" : "❌");
         
         // Los modelos se cargan desde el servidor directamente en el HTML
-        console.log("📋 Modelos cargados desde template");
         
         // Agregar botón de prueba temporal
         setTimeout(() => {
@@ -600,7 +579,6 @@
                 testBtn.onclick = testCargarModelos;
                 testBtn.style.cssText = 'background: red; color: white; padding: 5px; margin: 5px;';
                 toolbar.appendChild(testBtn);
-                console.log("🧪 Botón de prueba agregado");
             }
         }, 500);
         

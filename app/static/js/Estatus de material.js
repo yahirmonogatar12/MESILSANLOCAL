@@ -2,7 +2,6 @@
 // ESTATUS DE MATERIAL - JavaScript Actualizado
 // ==========================================
 
-console.log("🔧 Cargando Estatus de Material JavaScript");
 
 // Variables globales
 let estatusInventarioData = [];
@@ -13,7 +12,6 @@ let estatusRecibidoData = [];
 // ==========================================
 
 function estatus_consultarInventario() {
-    console.log("🔍 Consultando inventario para estatus de material");
     
     const codigoMaterial = document.getElementById('estatus-codigo-material-filtro').value || '';
     
@@ -21,7 +19,6 @@ function estatus_consultarInventario() {
         codigo_material: codigoMaterial
     };
     
-    console.log("Filtros enviados:", filtros);
     
     fetch('/api/estatus_material/consultar', {
         method: 'POST',
@@ -32,7 +29,6 @@ function estatus_consultarInventario() {
     })
     .then(response => response.json())
     .then(data => {
-        console.log("Respuesta del servidor:", data);
         
         if (data.success) {
             estatusInventarioData = data.inventario || [];
@@ -50,7 +46,6 @@ function estatus_consultarInventario() {
 }
 
 function estatus_cargarTablaInventario(inventario) {
-    console.log("📋 Cargando tabla de inventario:", inventario.length, "items");
     
     const tbody = document.getElementById('estatus-inventario-body');
     tbody.innerHTML = '';
@@ -87,7 +82,6 @@ function estatus_actualizarTotalesInventario(inventario) {
 // ==========================================
 
 function estatus_exportarInventario() {
-    console.log("📊 Exportando inventario de estatus de material");
     
     if (estatusInventarioData.length === 0) {
         alert("No hay datos para exportar");
@@ -120,7 +114,6 @@ function estatus_exportarInventario() {
 }
 
 function estatus_exportarRecibido() {
-    console.log("📊 Exportando material recibido");
     
     if (estatusRecibidoData.length === 0) {
         alert("No hay datos para exportar");
@@ -206,7 +199,6 @@ window.setupMobileNavigation = function() {
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("🚀 Inicializando Estatus de Material");
     
     // Event listeners para botones
     const btnConsultar = document.getElementById('estatus-btn-consultar-inventario');
@@ -240,7 +232,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Cargar datos iniciales
     setTimeout(() => {
-        console.log("🔄 Cargando datos iniciales de estatus de material");
         estatus_consultarInventario();
     }, 500);
 });
@@ -250,7 +241,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==========================================
 
 window.initEstatusMaterial = function() {
-    console.log('🎯 Inicializando Estatus de Material dinámicamente...');
     
     // Verificar elementos DOM
     const inventarioBody = document.getElementById('estatus-inventario-body');
@@ -295,11 +285,9 @@ window.initEstatusMaterial = function() {
     
     // Cargar datos iniciales
     setTimeout(() => {
-        console.log("🔄 Cargando datos iniciales de estatus de material (dinámico)");
         estatus_consultarInventario();
     }, 300);
     
-    console.log('✅ Estatus de Material inicializado correctamente (dinámico)');
 };
 
 // Funciones globales para compatibilidad
@@ -307,7 +295,6 @@ window.estatus_consultarInventario = estatus_consultarInventario;
 window.estatus_exportarInventario = estatus_exportarInventario;
 window.estatus_exportarRecibido = estatus_exportarRecibido;
 
-console.log("✅ Estatus de Material JavaScript cargado completamente");
 
 // Datos de ejemplo para material recibido (globales)
 const materialRecibidoData = [];
@@ -488,7 +475,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Función de inicialización para cuando se carga dinámicamente
 window.initEstatusMaterial = function() {
-    console.log('🎯 Inicializando Estatus de Material...');
     
     // Obtener referencias a elementos DOM
     const inventarioBody = document.getElementById('inventario-body');
@@ -546,5 +532,4 @@ window.initEstatusMaterial = function() {
     window.cargarMaterialRecibido();
     window.setupMobileNavigation();
     
-    console.log('✅ Estatus de Material inicializado correctamente');
 };

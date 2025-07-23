@@ -183,7 +183,6 @@ class PermisosManagerSimple {
      */
     log(...args) {
         if (this.debug) {
-            console.log('[PermisosSimple]', ...args);
         }
     }
 

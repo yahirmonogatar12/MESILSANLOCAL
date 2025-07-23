@@ -315,6 +315,19 @@
             border-color: var(--primary-color);
         }
 
+        .role-item .btn {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .role-item:hover .btn {
+            opacity: 1;
+        }
+
+        .role-item.active .btn {
+            opacity: 1;
+        }
+
         .role-name {
             font-weight: 500;
             font-size: 0.875rem;
@@ -394,6 +407,125 @@
             color: white;
         }
 
+        /* Contador de roles mejorado */
+        .roles-counter-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            min-width: 60px;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .roles-counter-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+        }
+
+        .roles-counter-badge i {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            margin-right: 4px;
+        }
+
+        .roles-counter-badge span {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+
+        /* Animación del contador cuando cambia */
+        @keyframes countPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .roles-counter-badge.updating {
+            animation: countPulse 0.6s ease-in-out;
+        }
+
+        /* Efecto de carga con brillo */
+        .roles-counter-badge.loading {
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* Responsivo para móviles */
+        @media (max-width: 768px) {
+            .roles-counter-badge {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+                min-width: 50px;
+            }
+            
+            .roles-counter-badge i {
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Toggle Switch para permisos */
+        .permission-toggle {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .permission-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--danger-color);
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container-fluid {
@@ -430,6 +562,10 @@
                     <p class="page-subtitle mt-1">Administra los permisos de acceso para cada rol del sistema</p>
                 </div>
                 <div class="d-flex gap-2">
+                    <button class="btn-minimal" onclick="sincronizarPermisos()">
+                        <i class="fas fa-sync-alt"></i>
+                        Sincronizar
+                    </button>
                     <button class="btn-minimal" onclick="exportPermissions()">
                         <i class="fas fa-download"></i>
                         Exportar
@@ -448,7 +584,15 @@
                 <div class="roles-sidebar">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="mb-0 fw-semibold">Roles</h6>
-                        <span class="badge bg-primary" id="totalRoles">0</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <button class="btn btn-success btn-sm" onclick="mostrarModalCrearRol()" title="Crear nuevo rol">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <div class="roles-counter-badge" id="totalRolesContainer">
+                                <i class="fas fa-users-cog me-1"></i>
+                                <span id="totalRoles">0</span>
+                            </div>
+                        </div>
                     </div>
                     <div id="rolesContainer">
                         <div class="loading-container">
@@ -560,6 +704,138 @@
         </div>
     </div>
 
+    <!-- Modal Crear Rol -->
+    <div class="modal fade" id="modalCrearRol" tabindex="-1" aria-labelledby="modalCrearRolLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color: var(--background-panel); border: 1px solid var(--border-color);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                    <h5 class="modal-title" id="modalCrearRolLabel" style="color: var(--text-primary);">
+                        <i class="fas fa-plus-circle me-2"></i>Crear Nuevo Rol
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formCrearRol">
+                        <div class="mb-3">
+                            <label for="nombreRol" class="form-label" style="color: var(--text-primary);">Nombre del Rol</label>
+                            <input type="text" class="form-control" id="nombreRol" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="descripcionRol" class="form-label" style="color: var(--text-primary);">Descripción</label>
+                            <textarea class="form-control" id="descripcionRol" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nivelRol" class="form-label" style="color: var(--text-primary);">Nivel de Acceso</label>
+                            <select class="form-select" id="nivelRol" required>
+                                <option value="">Selecciona un nivel</option>
+                                <option value="1">1 - Básico</option>
+                                <option value="2">2 - Operador</option>
+                                <option value="3">3 - Especialista</option>
+                                <option value="4">4 - Supervisor</option>
+                                <option value="5">5 - Coordinador</option>
+                                <option value="6">6 - Jefe</option>
+                                <option value="7">7 - Gerente</option>
+                            </select>
+                            <div class="form-text" style="color: var(--text-secondary);">
+                                Los niveles 8-10 están reservados para roles del sistema
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="crearRol()">
+                        <i class="fas fa-save me-1"></i>Crear Rol
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Rol -->
+    <div class="modal fade" id="modalEditarRol" tabindex="-1" aria-labelledby="modalEditarRolLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color: var(--background-panel); border: 1px solid var(--border-color);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                    <h5 class="modal-title" id="modalEditarRolLabel" style="color: var(--text-primary);">
+                        <i class="fas fa-edit me-2"></i>Editar Rol
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarRol">
+                        <input type="hidden" id="editRolId">
+                        <div class="mb-3">
+                            <label for="editNombreRol" class="form-label" style="color: var(--text-primary);">Nombre del Rol</label>
+                            <input type="text" class="form-control" id="editNombreRol" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDescripcionRol" class="form-label" style="color: var(--text-primary);">Descripción</label>
+                            <textarea class="form-control" id="editDescripcionRol" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editNivelRol" class="form-label" style="color: var(--text-primary);">Nivel de Acceso</label>
+                            <select class="form-select" id="editNivelRol" required>
+                                <option value="">Selecciona un nivel</option>
+                                <option value="1">1 - Básico</option>
+                                <option value="2">2 - Operador</option>
+                                <option value="3">3 - Especialista</option>
+                                <option value="4">4 - Supervisor</option>
+                                <option value="5">5 - Coordinador</option>
+                                <option value="6">6 - Jefe</option>
+                                <option value="7">7 - Gerente</option>
+                            </select>
+                            <div class="form-text" style="color: var(--text-secondary);">
+                                Los roles del sistema (nivel 8+) solo permiten cambiar la descripción
+                            </div>
+                        </div>
+                        <div id="warningEditSistema" class="alert alert-warning" style="display: none; background-color: var(--warning-color); color: #000;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Este es un rol del sistema. Solo se puede modificar la descripción.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="actualizarRol()">
+                        <i class="fas fa-save me-1"></i>Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Eliminación -->
+    <div class="modal fade" id="modalEliminarRol" tabindex="-1" aria-labelledby="modalEliminarRolLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background-color: var(--background-panel); border: 1px solid var(--border-color);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                    <h5 class="modal-title" id="modalEliminarRolLabel" style="color: var(--text-primary);">
+                        <i class="fas fa-trash me-2 text-danger"></i>Eliminar Rol
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center">
+                        <i class="fas fa-exclamation-triangle text-warning" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <h6 style="color: var(--text-primary);">¿Estás seguro de que quieres eliminar este rol?</h6>
+                        <p style="color: var(--text-secondary);" id="deleteRolInfo">Esta acción no se puede deshacer.</p>
+                        <div class="alert alert-danger" style="background-color: rgba(220, 53, 69, 0.2); border: 1px solid var(--danger-color); color: var(--text-primary);">
+                            <strong>Advertencia:</strong> Se eliminarán todos los permisos asociados a este rol.
+                        </div>
+                    </div>
+                    <input type="hidden" id="deleteRolId">
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmarEliminarRol()">
+                        <i class="fas fa-trash me-1"></i>Eliminar Rol
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Estado global de la aplicación
@@ -575,9 +851,42 @@
             loadDropdowns();
         });
 
+        // Función para actualizar el contador de roles con animación
+        function updateRoleCounter(count, isLoading = false) {
+            const counterElement = document.getElementById('totalRoles');
+            const containerElement = document.getElementById('totalRolesContainer');
+            
+            if (counterElement && containerElement) {
+                if (isLoading) {
+                    // Mostrar efecto de carga
+                    containerElement.classList.add('loading');
+                    counterElement.textContent = '...';
+                } else {
+                    // Remover efecto de carga
+                    containerElement.classList.remove('loading');
+                    
+                    // Agregar animación al contenedor
+                    containerElement.classList.add('updating');
+                    
+                    // Actualizar el número con un pequeño delay para que se vea la animación
+                    setTimeout(() => {
+                        counterElement.textContent = count;
+                    }, 100);
+                    
+                    // Remover la clase de animación después de que termine
+                    setTimeout(() => {
+                        containerElement.classList.remove('updating');
+                    }, 600);
+                }
+            }
+        }
+
         // Cargar roles disponibles
         async function loadRoles() {
             try {
+                // Mostrar efecto de carga en el contador
+                updateRoleCounter(0, true);
+                
                 const response = await fetch('/admin/listar_roles');
                 const roles = await response.json();
                 
@@ -588,7 +897,7 @@
                 }));
                 
                 allRoles = rolesWithIcons;
-                document.getElementById('totalRoles').textContent = roles.length;
+                updateRoleCounter(roles.length);
                 renderRoles(rolesWithIcons);
             } catch (error) {
                 showError('Error cargando roles: ' + error.message);
@@ -634,7 +943,6 @@
                 });
                 
                 populateFilterOptions();
-                console.log(`📋 ${allDropdowns.length} permisos cargados desde la base de datos`);
             } catch (error) {
                 showError('Error cargando dropdowns: ' + error.message);
             }
@@ -650,15 +958,33 @@
                 roleElement.className = 'role-item';
                 roleElement.onclick = () => selectRole(role.nombre);
                 
+                const esSistema = role.nivel >= 8;
+                const puedeEliminar = !esSistema && role.total_usuarios === 0;
+                
                 roleElement.innerHTML = `
                     <div class="d-flex align-items-center justify-content-between">
-                        <div class="flex-grow-1">
+                        <div class="flex-grow-1" style="cursor: pointer;">
                             <div class="role-name">
                                 <i class="fas ${role.icon} me-2"></i>
                                 ${role.nombre}
+                                ${esSistema ? '<span class="badge bg-warning ms-2">Sistema</span>' : ''}
                             </div>
                             <div class="role-description">${role.descripcion}</div>
-                            <div class="role-count" id="count-${role.nombre}">Cargando...</div>
+                            <div class="role-count" id="count-${role.nombre}">Nivel ${role.nivel} • Cargando...</div>
+                        </div>
+                        <div class="d-flex flex-column gap-1">
+                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); mostrarModalEditarRol(${role.id})" title="Editar rol">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${puedeEliminar ? `
+                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); mostrarModalEliminarRol(${role.id}, '${role.nombre}')" title="Eliminar rol">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-sm btn-outline-secondary" disabled title="${esSistema ? 'No se puede eliminar un rol del sistema' : 'El rol tiene usuarios asignados'}">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            `}
                         </div>
                     </div>
                 `;
@@ -679,13 +1005,227 @@
                 
                 const countElement = document.getElementById(`count-${roleName}`);
                 if (countElement) {
-                    countElement.textContent = `${permisos.length} permisos`;
+                    countElement.textContent = `Nivel ${role.nivel} • ${permisos.length} permisos`;
                 }
             } catch (error) {
                 const countElement = document.getElementById(`count-${roleName}`);
                 if (countElement) {
                     countElement.textContent = 'Error';
                 }
+            }
+        }
+
+        // === FUNCIONES DE GESTIÓN DE ROLES ===
+
+        // Mostrar modal para crear rol
+        function mostrarModalCrearRol() {
+            document.getElementById('formCrearRol').reset();
+            const modal = new bootstrap.Modal(document.getElementById('modalCrearRol'));
+            modal.show();
+        }
+
+        // Crear nuevo rol
+        async function crearRol() {
+            const form = document.getElementById('formCrearRol');
+            const formData = new FormData(form);
+            
+            const data = {
+                nombre: document.getElementById('nombreRol').value.trim(),
+                descripcion: document.getElementById('descripcionRol').value.trim(),
+                nivel: parseInt(document.getElementById('nivelRol').value)
+            };
+            
+            // Validar datos
+            if (!data.nombre) {
+                showError('El nombre del rol es requerido');
+                return;
+            }
+            
+            if (!data.descripcion) {
+                showError('La descripción del rol es requerida');
+                return;
+            }
+            
+            if (!data.nivel) {
+                showError('Debe seleccionar un nivel de acceso');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/crear_rol', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess(result.mensaje);
+                    bootstrap.Modal.getInstance(document.getElementById('modalCrearRol')).hide();
+                    
+                    // Recargar roles
+                    await loadRoles();
+                } else {
+                    showError(result.error || 'Error creando el rol');
+                }
+                
+            } catch (error) {
+                showError('Error creando el rol: ' + error.message);
+            }
+        }
+
+        // Mostrar modal para editar rol
+        async function mostrarModalEditarRol(rolId) {
+            try {
+                // Buscar el rol en la lista actual
+                const role = allRoles.find(r => r.id === rolId);
+                if (!role) {
+                    showError('Rol no encontrado');
+                    return;
+                }
+                
+                // Llenar el formulario
+                document.getElementById('editRolId').value = role.id;
+                document.getElementById('editNombreRol').value = role.nombre;
+                document.getElementById('editDescripcionRol').value = role.descripcion;
+                document.getElementById('editNivelRol').value = role.nivel;
+                
+                // Mostrar/ocultar warning para roles del sistema
+                const esSistema = role.nivel >= 8;
+                const warningElement = document.getElementById('warningEditSistema');
+                const nombreInput = document.getElementById('editNombreRol');
+                const nivelSelect = document.getElementById('editNivelRol');
+                
+                if (esSistema) {
+                    warningElement.style.display = 'block';
+                    nombreInput.disabled = true;
+                    nivelSelect.disabled = true;
+                } else {
+                    warningElement.style.display = 'none';
+                    nombreInput.disabled = false;
+                    nivelSelect.disabled = false;
+                }
+                
+                const modal = new bootstrap.Modal(document.getElementById('modalEditarRol'));
+                modal.show();
+                
+            } catch (error) {
+                showError('Error cargando datos del rol: ' + error.message);
+            }
+        }
+
+        // Actualizar rol
+        async function actualizarRol() {
+            const data = {
+                nombre: document.getElementById('editNombreRol').value.trim(),
+                descripcion: document.getElementById('editDescripcionRol').value.trim(),
+                nivel: parseInt(document.getElementById('editNivelRol').value)
+            };
+            
+            const rolId = document.getElementById('editRolId').value;
+            
+            // Validar datos
+            if (!data.nombre) {
+                showError('El nombre del rol es requerido');
+                return;
+            }
+            
+            if (!data.descripcion) {
+                showError('La descripción del rol es requerida');
+                return;
+            }
+            
+            if (!data.nivel) {
+                showError('Debe seleccionar un nivel de acceso');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/actualizar_rol/${rolId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess(result.mensaje);
+                    bootstrap.Modal.getInstance(document.getElementById('modalEditarRol')).hide();
+                    
+                    // Recargar roles
+                    await loadRoles();
+                    
+                    // Si es el rol actual, recargar permisos
+                    if (currentRole && result.rol && result.rol.nombre === currentRole) {
+                        await loadRolePermissions(currentRole);
+                    }
+                } else {
+                    showError(result.error || 'Error actualizando el rol');
+                }
+                
+            } catch (error) {
+                showError('Error actualizando el rol: ' + error.message);
+            }
+        }
+
+        // Mostrar modal para eliminar rol
+        function mostrarModalEliminarRol(rolId, rolNombre) {
+            document.getElementById('deleteRolId').value = rolId;
+            document.getElementById('deleteRolInfo').textContent = `Se eliminará el rol "${rolNombre}" y todos sus permisos asociados.`;
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalEliminarRol'));
+            modal.show();
+        }
+
+        // Confirmar eliminación de rol
+        async function confirmarEliminarRol() {
+            const rolId = document.getElementById('deleteRolId').value;
+            
+            try {
+                const response = await fetch(`/admin/eliminar_rol/${rolId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess(result.mensaje);
+                    bootstrap.Modal.getInstance(document.getElementById('modalEliminarRol')).hide();
+                    
+                    // Recargar roles
+                    await loadRoles();
+                    
+                    // Si era el rol actual, limpiar selección
+                    if (currentRole) {
+                        const rolEliminado = allRoles.find(r => r.id == rolId);
+                        if (rolEliminado && rolEliminado.nombre === currentRole) {
+                            currentRole = null;
+                            document.getElementById('permissionsContainer').innerHTML = `
+                                <div class="empty-state">
+                                    <div class="empty-icon">
+                                        <i class="fas fa-hand-pointer"></i>
+                                    </div>
+                                    <h5>Selecciona un rol</h5>
+                                    <p class="mb-0">Elige un rol de la barra lateral para ver y gestionar sus permisos</p>
+                                </div>
+                            `;
+                        }
+                    }
+                } else {
+                    showError(result.error || 'Error eliminando el rol');
+                }
+                
+            } catch (error) {
+                showError('Error eliminando el rol: ' + error.message);
             }
         }
 
@@ -1041,6 +1581,41 @@
             URL.revokeObjectURL(url);
             
             showSuccess('Permisos exportados correctamente');
+        }
+
+        // Sincronizar permisos desde archivos
+        async function sincronizarPermisos() {
+            if (!confirm('¿Sincronizar permisos desde los archivos LISTAS? Esto puede tomar unos segundos.')) {
+                return;
+            }
+            
+            try {
+                showSuccess('Iniciando sincronización...');
+                
+                const response = await fetch('/admin/sincronizar_permisos_dropdowns', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess(`Sincronización completada: ${result.nuevos_agregados} nuevos, ${result.desactivados} desactivados`);
+                    
+                    // Recargar datos
+                    await loadDropdowns();
+                    if (currentRole) {
+                        await loadRolePermissions(currentRole);
+                    }
+                } else {
+                    showError('Error en la sincronización: ' + (result.error || 'Error desconocido'));
+                }
+                
+            } catch (error) {
+                showError('Error sincronizando permisos: ' + error.message);
+            }
         }
 
         // Reset todos los permisos

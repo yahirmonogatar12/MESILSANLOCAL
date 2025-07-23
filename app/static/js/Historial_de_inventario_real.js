@@ -52,7 +52,6 @@ function loadInventoryData() {
 function consultarInventario() {
     // Simulación de consulta
     const date = document.getElementById('inventoryDate').value;
-    console.log('Consultando inventario para:', date);
     
     // Aquí se haría la llamada a la API
     // Por ahora solo recargamos los datos
@@ -65,7 +64,6 @@ function consultarInventario() {
 // Función para exportar a Excel
 function exportarExcel() {
     // Simulación de exportación
-    console.log('Exportando a Excel...');
     
     // Crear datos CSV
     let csv = 'Código de material,Número de parte,Código de material r...,Fecha de recibo,Fecha de fabricación,Cantidad anterior,Cantidad de inventario,Diferencia de cantidad,Nota\n';
@@ -113,7 +111,6 @@ function switchTab(tab) {
         buttons[1].classList.add('active');
     }
     
-    console.log('Cambiando a pestaña:', tab);
 }
 
 // Función para mostrar notificaciones
@@ -184,7 +181,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.key === 'Enter') {
                 const value = e.target.value;
                 if (value) {
-                    console.log('Código escaneado:', value);
                     showNotification(`Código ${value} escaneado correctamente`);
                     // Aquí se procesaría el código escaneado
                 }
@@ -224,5 +220,4 @@ document.addEventListener('DOMContentLoaded', function() {
 // Detectar cambios en el tamaño de la ventana
 window.addEventListener('resize', function() {
     // Ajustar elementos según sea necesario
-    console.log('Ventana redimensionada');
 });

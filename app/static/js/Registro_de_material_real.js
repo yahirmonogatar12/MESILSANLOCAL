@@ -5,7 +5,6 @@ let filtrosActivos = {};
 
 // Función principal de inicialización
 function initRegistroMaterial() {
-    console.log('🔧 Inicializando Inventario General');
     
     // Configurar filtros por defecto
     filtrosActivos = {
@@ -20,12 +19,10 @@ function initRegistroMaterial() {
     // Configurar eventos de los modales
     setupInventarioModalEvents();
     
-    console.log('✅ Inventario General inicializado');
 }
 
 // Función para consultar inventario general
 function consultarInventarioGeneral() {
-    console.log('📊 Consultando inventario general...');
     const tableBody = document.getElementById('registroMaterialTableBody');
     
     if (!tableBody) {
@@ -67,7 +64,6 @@ function consultarInventarioGeneral() {
 
 // Función para renderizar la tabla de inventario
 function renderizarInventarioTabla() {
-    console.log('🎨 Renderizando tabla de inventario general...');
     const tableBody = document.getElementById('registroMaterialTableBody');
     
     if (!tableBody) {
@@ -126,7 +122,6 @@ function renderizarInventarioTabla() {
     }).join('');
     
     actualizarInventarioContadorSeleccionados();
-    console.log(`✅ Tabla renderizada con ${inventarioGeneralData.length} items`);
 }
 
 // Función para formatear números
@@ -166,7 +161,6 @@ function formatearFecha(fecha, compacto = false) {
 
 // Función para seleccionar item de inventario
 function seleccionarInventarioItem(id) {
-    console.log(`🔍 Seleccionando item de inventario ID: ${id}`);
     const checkbox = document.querySelector(`.registro-row-checkbox[data-id="${id}"]`);
     if (checkbox) {
         checkbox.checked = !checkbox.checked;
@@ -178,10 +172,8 @@ function seleccionarInventarioItem(id) {
 function toggleInventarioSelection(id) {
     if (inventarioSelectedItems.has(id)) {
         inventarioSelectedItems.delete(id);
-        console.log(`➖ Item ${id} deseleccionado`);
     } else {
         inventarioSelectedItems.add(id);
-        console.log(`➕ Item ${id} seleccionado`);
     }
     
     renderizarInventarioTabla();
@@ -224,12 +216,10 @@ function actualizarInventarioContadorSeleccionados() {
         selectedCount.textContent = totalSeleccionados;
     }
     
-    console.log(`📊 Contadores actualizados: ${inventarioGeneralData.length} items, ${totalSeleccionados} seleccionados`);
 }
 
 // Función para actualizar inventario general (botón Actualizar)
 function actualizarInventarioGeneral() {
-    console.log('🔄 Actualizando inventario general...');
     consultarInventarioGeneral();
 }
 
@@ -273,7 +263,6 @@ function aplicarFiltrosInventario() {
         cantidadMinima: parseFloat(document.getElementById('filtroCantidadMinima').value) || 0
     };
     
-    console.log('🔍 Aplicando filtros:', filtrosActivos);
     
     cerrarFiltrosInventarioModal();
     consultarInventarioGeneral();
@@ -291,14 +280,12 @@ function limpiarFiltrosInventario() {
     document.getElementById('filtroPropiedad').value = '';
     document.getElementById('filtroCantidadMinima').value = 0;
     
-    console.log('🧹 Filtros limpiados');
     
     consultarInventarioGeneral();
 }
 
 // Función para exportar inventario a Excel
 function exportarInventarioExcel() {
-    console.log('📄 Exportando inventario general a Excel...');
     
     if (!inventarioGeneralData || inventarioGeneralData.length === 0) {
         console.warn('No hay datos para exportar');
@@ -338,7 +325,6 @@ function exportarInventarioExcel() {
     link.click();
     document.body.removeChild(link);
     
-    console.log('✅ Archivo CSV creado y descargado');
 }
 
 // Configurar eventos de modales para inventario
@@ -357,7 +343,6 @@ function setupInventarioModalEvents() {
         }
     });
     
-    console.log('⚙️ Eventos de modales configurados para inventario');
 }
 
 // Inicialización cuando se carga el contenido

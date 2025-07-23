@@ -18,7 +18,6 @@ class MobileListsHamburger {
     }
 
     init() {
-        console.log('📱 Inicializando menú hamburguesa de listas...');
         this.createMobileListsMenu();
         // interceptListsContent se llama desde el constructor
     }
@@ -58,7 +57,6 @@ class MobileListsHamburger {
         // Toggle menú (abrir/cerrar)
         toggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            console.log(`🔄 Toggle clickeado. Estado actual: ${this.menuOpen ? 'ABIERTO' : 'CERRADO'}`);
             if (this.menuOpen) {
                 this.closeMenu();
             } else {
@@ -94,24 +92,20 @@ class MobileListsHamburger {
                     if (node.nodeType === 1) { // Element node
                         const sidebar = node.querySelector('.app-sidebar');
                         if (sidebar) {
-                            console.log('🔄 Sidebar detectado, convirtiendo a móvil...');
                             this.convertSidebarToMobile(sidebar);
                         }
                         
                         // También buscar si el nodo mismo es un sidebar
                         if (node.classList && node.classList.contains('app-sidebar')) {
-                            console.log('🔄 Sidebar directo detectado, convirtiendo a móvil...');
                             this.convertSidebarToMobile(node);
                         }
                         // Buscar contenido de sidebar específico
                         if (node.classList && node.classList.contains('sidebar-content')) {
-                            console.log('🔄 Sidebar-content detectado, ocultando en móvil...');
                             node.style.display = 'none';
                         }
                         
                         // Buscar cualquier elemento con ID que contenga 'sidebar'
                         if (node.id && node.id.includes('sidebar')) {
-                            console.log('🔄 Elemento sidebar detectado por ID, ocultando en móvil...');
                             node.style.display = 'none';
                         }
                     }
@@ -128,7 +122,6 @@ class MobileListsHamburger {
         setTimeout(() => {
             const existingSidebar = document.querySelector('.app-sidebar');
             if (existingSidebar) {
-                console.log('🔄 Sidebar existente encontrado, convirtiendo a móvil...');
                 this.convertSidebarToMobile(existingSidebar);
             }
         }, 500);
@@ -137,7 +130,6 @@ class MobileListsHamburger {
     convertSidebarToMobile(sidebar) {
         if (!this.isMobile) return;
 
-        console.log('🔄 Convirtiendo sidebar a formato móvil...');
         // Ocultar el sidebar original en móvil
         if (sidebar) {
             sidebar.style.display = 'none';
@@ -276,7 +268,6 @@ class MobileListsHamburger {
         const toggle = document.getElementById('mobileListsToggle');
 
         if (menu && overlay && toggle && !this.menuOpen) {
-            console.log('📂 Abriendo menú móvil...');
             menu.classList.add('active');
             overlay.classList.add('active');
             toggle.classList.add('active'); // Agregar clase active para rotar la flecha
@@ -291,7 +282,6 @@ class MobileListsHamburger {
         const toggle = document.getElementById('mobileListsToggle');
 
         if (menu && overlay && toggle && this.menuOpen) {
-            console.log('📁 Cerrando menú móvil...');
             menu.classList.remove('active');
             overlay.classList.remove('active');
             toggle.classList.remove('active'); // Remover clase active para volver flecha normal
@@ -317,7 +307,6 @@ class MobileListsHamburger {
                 if (toggle) toggle.classList.remove('active'); // Resetear estado del botón
                 document.body.style.overflow = '';
                 this.menuOpen = false;
-                console.log('🖥️ Cambiando a desktop - elementos móviles ocultados');
             }
             // Si cambió de desktop a móvil, mostrar elementos móviles
             else if (!wasMobile && this.isMobile) {
@@ -327,7 +316,6 @@ class MobileListsHamburger {
                     const toggle = document.getElementById('mobileListsToggle');
                     if (toggle) toggle.style.display = 'flex';
                 }
-                console.log('📱 Cambiando a móvil - elementos móviles mostrados');
             }
         });
     }
@@ -336,7 +324,6 @@ class MobileListsHamburger {
         const toggle = document.getElementById('mobileListsToggle');
         if (toggle && this.isMobile) {
             toggle.style.display = 'flex';
-            console.log('📋 Botón hamburguesa de listas mostrado');
         }
     }
 
@@ -344,7 +331,6 @@ class MobileListsHamburger {
         const toggle = document.getElementById('mobileListsToggle');
         if (toggle) {
             toggle.style.display = 'none';
-            console.log('📋 Botón hamburguesa de listas ocultado');
         }
     }
 
@@ -370,9 +356,7 @@ class MobileListsHamburger {
 document.addEventListener('DOMContentLoaded', () => {
     if (window.innerWidth <= 768) {
         window.mobileListsHamburger = new MobileListsHamburger();
-        console.log('✅ Menú hamburguesa de listas móvil inicializado');
     } else {
-        console.log('🖥️ Desktop detectado - menú hamburguesa NO inicializado');
     }
 });
 
@@ -380,10 +364,8 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('resize', () => {
     if (window.innerWidth <= 768 && !window.mobileListsHamburger) {
         window.mobileListsHamburger = new MobileListsHamburger();
-        console.log('✅ Menú hamburguesa inicializado al cambiar a móvil');
     } else if (window.innerWidth > 768 && window.mobileListsHamburger) {
         // Destruir la instancia si cambiamos a desktop
-        console.log('🖥️ Cambiando a desktop - limpiando menú hamburguesa');
         delete window.mobileListsHamburger;
     }
 });
@@ -393,10 +375,8 @@ window.MobileListsHamburger = MobileListsHamburger;
 
 // Función de prueba para verificar que todo funciona
 window.testMobileListsHamburger = function() {
-    console.log('🧪 Probando menú hamburguesa de listas...');
     
     if (window.mobileListsHamburger) {
-        console.log('✅ MobileListsHamburger inicializado');
         
         // Mostrar el botón hamburguesa manualmente
         window.mobileListsHamburger.showHamburgerButton();
@@ -414,8 +394,6 @@ window.testMobileListsHamburger = function() {
                             <span>Test - Administración de usuario</span>
                         </button>
                         <ul class="sidebar-dropdown-list">
-                            <li class="sidebar-link" onclick="console.log('Test Admin Usuario')">Administración de usuario</li>
-                            <li class="sidebar-link" onclick="console.log('Test Admin Menu')">Administración de menu</li>
                         </ul>
                     </li>
                     <li class="sidebar-section">
@@ -423,8 +401,6 @@ window.testMobileListsHamburger = function() {
                             <span>Test - Control de Proceso</span>
                         </button>
                         <ul class="sidebar-dropdown-list">
-                            <li class="sidebar-link" onclick="console.log('Test Control Proceso')">Control de proceso</li>
-                            <li class="sidebar-link" onclick="console.log('Test Control Depto')">Control de departamento</li>
                         </ul>
                     </li>
                 </ul>
@@ -438,7 +414,6 @@ window.testMobileListsHamburger = function() {
         
         if (testSidebar) {
             window.mobileListsHamburger.convertSidebarToMobile(testSidebar);
-            console.log('✅ Contenido de prueba convertido a formato móvil');
         }
         
         return 'Prueba completada. Revisa si aparece el botón hamburguesa en la esquina inferior derecha.';
