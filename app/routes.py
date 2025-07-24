@@ -4,6 +4,9 @@ import re
 import traceback
 import tempfile
 import subprocess
+import threading
+import socket
+import time
 from functools import wraps
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
 from .db import (get_db_connection, init_db, guardar_configuracion_usuario, cargar_configuracion_usuario,
@@ -3134,3 +3137,401 @@ def test_permisos():
 def test_frontend_permisos():
     """Página de testing frontend del sistema de permisos"""
     return send_file('../test_frontend_permisos.html')
+
+# ============== CSV VIEWER ROUTES ==============
+@app.route('/csv-viewer')
+@login_requerido
+def csv_viewer():
+    """Página principal del visor de CSV"""
+    try:
+        return render_template('csv-viewer.html')
+    except Exception as e:
+        print(f"Error al cargar CSV viewer: {e}")
+        return f"Error al cargar la página: {str(e)}", 500
+
+@app.route('/api/csv_data')
+@login_requerido
+def get_csv_data():
+    """API para obtener datos CSV filtrados por carpeta"""
+    try:
+        folder = request.args.get('folder', '')
+        print(f"🔍 Solicitud recibida para carpeta: '{folder}'")
+        
+        if not folder:
+            print("❌ No se proporcionó parámetro de carpeta")
+            return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
+        
+        # Ruta base de los archivos CSV en la red
+        base_path = r"\\192.168.1.230\qa\ILSAN_MES\Mounter_LogFile"
+        
+        # Construir la ruta completa del folder
+        folder_path = os.path.join(base_path, folder)
+        
+        print(f"🔍 Buscando archivos CSV en: {folder_path}")
+        
+        # Verificar que la ruta existe
+        if not os.path.exists(folder_path):
+            print(f"❌ Ruta no encontrada: {folder_path}")
+            return jsonify({
+                'success': False, 
+                'error': f'Carpeta no encontrada: {folder}',
+                'path': folder_path
+            }), 404
+        
+        # Buscar archivos CSV en la carpeta
+        csv_files = []
+        for file in os.listdir(folder_path):
+            if file.lower().endswith('.csv'):
+                csv_files.append(os.path.join(folder_path, file))
+        
+        if not csv_files:
+            print(f"ℹ️ No se encontraron archivos CSV en: {folder_path}")
+            return jsonify({
+                'success': True,
+                'data': [],
+                'message': f'No hay archivos CSV disponibles en la carpeta: {folder}',
+                'files_processed': 0,
+                'path': folder_path
+            })
+        
+        print(f"📁 Encontrados {len(csv_files)} archivos CSV")
+        
+        # Leer y combinar todos los archivos CSV
+        all_data = []
+        
+        for csv_file in csv_files:
+            try:
+                print(f"📄 Leyendo archivo: {os.path.basename(csv_file)} (tamaño: {os.path.getsize(csv_file)} bytes)")
+                
+                # Intentar lectura simple primero
+                try:
+                    df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip')
+                    print(f"✅ Lectura exitosa con pandas básico: {len(df)} filas")
+                except Exception as simple_error:
+                    print(f"⚠️ Error con lectura simple: {str(simple_error)}")
+                    
+                    # Leer el archivo como texto primero para limpiar formato
+                    with open(csv_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    
+                    print(f"📝 Contenido leído: {len(content)} caracteres")
+                    
+                    # Limpiar saltos de línea incorrectos en el contenido
+                    lines = content.strip().split('\n')
+                    cleaned_lines = []
+                    
+                    for line in lines:
+                        # Si la línea no termina con una coma y la siguiente no empieza con una fecha,
+                        # probablemente es una línea cortada
+                        if line and not line.endswith(','):
+                            cleaned_lines.append(line)
+                        elif line.endswith(','):
+                            # Línea que termina en coma, probablemente incompleta
+                            if cleaned_lines:
+                                cleaned_lines[-1] += line
+                            else:
+                                cleaned_lines.append(line)
+                    
+                    print(f"🧹 Líneas limpiadas: {len(cleaned_lines)} de {len(lines)} originales")
+                    
+                    # Crear DataFrame desde el contenido limpio
+                    from io import StringIO
+                    cleaned_content = '\n'.join(cleaned_lines)
+                    
+                    # Leer el archivo CSV con pandas usando el contenido limpio
+                    df = pd.read_csv(StringIO(cleaned_content), encoding='utf-8', on_bad_lines='skip')
+                
+                print(f"📊 DataFrame creado: {len(df)} filas, {len(df.columns)} columnas")
+                print(f"📋 Columnas: {list(df.columns)}")
+                
+                # Verificar que el DataFrame tenga las columnas esperadas
+                expected_columns = ['ScanDate', 'ScanTime', 'SlotNo', 'Result', 'PartName']
+                missing_columns = [col for col in expected_columns if col not in df.columns]
+                
+                if missing_columns:
+                    print(f"⚠️ Columnas faltantes en {csv_file}: {missing_columns}")
+                    # Intentar leer de forma más básica
+                    df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip', sep=',')
+                
+                # Convertir a diccionarios y agregar nombre del archivo fuente
+                file_data = df.to_dict('records')
+                
+                # Limpiar valores NaN y convertir a tipos JSON válidos
+                cleaned_data = []
+                for record in file_data:
+                    cleaned_record = {}
+                    for key, value in record.items():
+                        # Convertir NaN y valores problemáticos a None (null en JSON)
+                        if pd.isna(value) or str(value).lower() == 'nan':
+                            cleaned_record[key] = None
+                        elif isinstance(value, (int, float)) and (value != value):  # Check for NaN
+                            cleaned_record[key] = None
+                        else:
+                            # Convertir a string para asegurar compatibilidad JSON
+                            cleaned_record[key] = str(value) if value is not None else None
+                    
+                    cleaned_record['SourceFile'] = os.path.basename(csv_file)
+                    cleaned_data.append(cleaned_record)
+                
+                print(f"💾 Datos procesados y limpiados: {len(cleaned_data)} registros del archivo {os.path.basename(csv_file)}")
+                all_data.extend(cleaned_data)
+                
+            except Exception as file_error:
+                print(f"❌ Error definitivo leyendo {csv_file}: {str(file_error)}")
+                print(f"❌ Tipo de error: {type(file_error).__name__}")
+                import traceback
+                print(f"❌ Traceback: {traceback.format_exc()}")
+                continue
+        
+        if not all_data:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudieron leer datos de los archivos CSV',
+                'files_found': len(csv_files)
+            }), 500
+        
+        print(f"✅ Datos cargados: {len(all_data)} registros de {len(csv_files)} archivos")
+        
+        return jsonify({
+            'success': True,
+            'data': all_data,
+            'message': f'Datos cargados para {folder}: {len(all_data)} registros',
+            'files_processed': len(csv_files),
+            'path': folder_path
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo datos CSV: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False, 
+            'error': f'Error al acceder a los archivos CSV: {str(e)}'
+        }), 500
+
+@app.route('/api/csv_stats')
+@login_requerido
+def get_csv_stats():
+    """API para obtener estadísticas de datos CSV"""
+    try:
+        folder = request.args.get('folder', '')
+        if not folder:
+            return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
+        
+        # Ruta base de los archivos CSV en la red
+        base_path = r"\\192.168.1.230\qa\ILSAN_MES\Mounter_LogFile"
+        folder_path = os.path.join(base_path, folder)
+        
+        print(f"📊 Calculando estadísticas para: {folder_path}")
+        
+        # Verificar que la ruta existe
+        if not os.path.exists(folder_path):
+            return jsonify({
+                'success': False,
+                'error': f'Carpeta no encontrada: {folder}'
+            }), 404
+        
+        # Contadores
+        total_records = 0
+        ok_count = 0
+        ng_count = 0
+        
+        # Buscar y procesar archivos CSV
+        csv_files_found = []
+        for file in os.listdir(folder_path):
+            if file.lower().endswith('.csv'):
+                csv_files_found.append(file)
+        
+        if not csv_files_found:
+            print(f"ℹ️ No se encontraron archivos CSV para estadísticas en: {folder_path}")
+            stats = {
+                'total_records': 0,
+                'ok_count': 0,
+                'ng_count': 0
+            }
+            return jsonify({
+                'success': True,
+                'stats': stats,
+                'message': f'No hay archivos CSV disponibles en la carpeta: {folder}'
+            })
+        
+        for file in csv_files_found:
+                try:
+                    csv_file = os.path.join(folder_path, file)
+                    df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip')
+                    
+                    file_total = len(df)
+                    total_records += file_total
+                    
+                    # Contar OK y NG (la columna puede llamarse 'Result' o similar)
+                    if 'Result' in df.columns:
+                        # Limpiar valores NaN antes de contar
+                        df['Result'] = df['Result'].fillna('')
+                        file_ok = len(df[df['Result'].astype(str).str.upper() == 'OK'])
+                        file_ng = len(df[df['Result'].astype(str).str.upper() == 'NG'])
+                        ok_count += file_ok
+                        ng_count += file_ng
+                    else:
+                        file_ok = 0
+                        file_ng = 0
+                    
+                    print(f"📄 {file}: {file_total} registros, OK: {file_ok}, NG: {file_ng}")
+                    
+                except Exception as file_error:
+                    print(f"⚠️ Error procesando estadísticas de {file}: {str(file_error)}")
+                    continue
+        
+        stats = {
+            'total_records': total_records,
+            'ok_count': ok_count,
+            'ng_count': ng_count
+        }
+        
+        print(f"✅ Estadísticas calculadas: {stats}")
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo estadísticas CSV: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/filter_data', methods=['POST'])
+@login_requerido
+def filter_csv_data():
+    """API para filtrar datos CSV"""
+    try:
+        filters = request.get_json()
+        folder = filters.get('folder', '')
+        part_name = filters.get('partName', '')
+        result = filters.get('result', '')
+        date_from = filters.get('dateFrom', '')
+        date_to = filters.get('dateTo', '')
+        
+        if not folder:
+            return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
+        
+        # Ruta base de los archivos CSV en la red
+        base_path = r"\\192.168.1.230\qa\ILSAN_MES\Mounter_LogFile"
+        folder_path = os.path.join(base_path, folder)
+        
+        print(f"🔍 Filtrando datos en: {folder_path}")
+        print(f"🔍 Filtros: partName={part_name}, result={result}, dateFrom={date_from}, dateTo={date_to}")
+        
+        # Verificar que la ruta existe
+        if not os.path.exists(folder_path):
+            return jsonify({
+                'success': False,
+                'error': f'Carpeta no encontrada: {folder}'
+            }), 404
+        
+        # Leer y filtrar datos
+        filtered_data = []
+        
+        # Verificar si hay archivos CSV en la carpeta
+        csv_files_found = [f for f in os.listdir(folder_path) if f.lower().endswith('.csv')]
+        
+        if not csv_files_found:
+            print(f"ℹ️ No se encontraron archivos CSV para filtrar en: {folder_path}")
+            stats = {
+                'total_records': 0,
+                'ok_count': 0,
+                'ng_count': 0
+            }
+            return jsonify({
+                'success': True,
+                'data': [],
+                'stats': stats,
+                'message': f'No hay archivos CSV disponibles en la carpeta: {folder}'
+            })
+        
+        for file in csv_files_found:
+                try:
+                    csv_file = os.path.join(folder_path, file)
+                    
+                    # Intentar lectura simple primero
+                    try:
+                        df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip')
+                        print(f"✅ Lectura exitosa: {os.path.basename(csv_file)} - {len(df)} filas")
+                    except Exception as simple_error:
+                        print(f"⚠️ Error con lectura simple: {str(simple_error)}")
+                        continue
+                    
+                    # Limpiar DataFrame de valores NaN antes de filtrar
+                    df = df.fillna('')
+                    
+                    # Agregar nombre del archivo fuente
+                    df['SourceFile'] = os.path.basename(csv_file)
+                    
+                    # Aplicar filtros
+                    if part_name and 'PartName' in df.columns:
+                        df = df[df['PartName'].str.contains(part_name, case=False, na=False)]
+                    
+                    if result and 'Result' in df.columns:
+                        df = df[df['Result'].str.upper() == result.upper()]
+                    
+                    # Filtros de fecha
+                    if (date_from or date_to) and 'ScanDate' in df.columns:
+                        # Convertir ScanDate a formato de fecha para comparación
+                        try:
+                            # Asumir formato YYYYMMDD
+                            df['ScanDateFormatted'] = pd.to_datetime(df['ScanDate'], format='%Y%m%d', errors='coerce')
+                            
+                            if date_from:
+                                date_from_dt = pd.to_datetime(date_from)
+                                df = df[df['ScanDateFormatted'] >= date_from_dt]
+                            
+                            if date_to:
+                                date_to_dt = pd.to_datetime(date_to)
+                                df = df[df['ScanDateFormatted'] <= date_to_dt]
+                            
+                            # Eliminar la columna temporal
+                            df = df.drop('ScanDateFormatted', axis=1)
+                            
+                        except Exception as date_error:
+                            print(f"⚠️ Error procesando filtros de fecha: {date_error}")
+                    
+                    # Convertir a lista de diccionarios y limpiar NaN
+                    file_data = df.to_dict('records')
+                    
+                    # Limpiar valores NaN y convertir a tipos JSON válidos
+                    cleaned_data = []
+                    for record in file_data:
+                        cleaned_record = {}
+                        for key, value in record.items():
+                            # Convertir NaN y valores problemáticos a None (null en JSON)
+                            if pd.isna(value) or str(value).lower() == 'nan':
+                                cleaned_record[key] = None
+                            elif isinstance(value, (int, float)) and (value != value):  # Check for NaN
+                                cleaned_record[key] = None
+                            else:
+                                # Convertir a string para asegurar compatibilidad JSON
+                                cleaned_record[key] = str(value) if value is not None else None
+                        cleaned_data.append(cleaned_record)
+                    
+                    filtered_data.extend(cleaned_data)
+                    
+                except Exception as file_error:
+                    print(f"⚠️ Error filtrando archivo {file}: {str(file_error)}")
+                    continue
+        
+        # Calcular estadísticas de los datos filtrados
+        stats = {
+            'total_records': len(filtered_data),
+            'ok_count': len([d for d in filtered_data if str(d.get('Result', '')).upper() == 'OK']),
+            'ng_count': len([d for d in filtered_data if str(d.get('Result', '')).upper() == 'NG'])
+        }
+        
+        print(f"✅ Datos filtrados: {len(filtered_data)} registros")
+        
+        return jsonify({
+            'success': True,
+            'data': filtered_data,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        print(f"❌ Error filtrando datos CSV: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)}), 500

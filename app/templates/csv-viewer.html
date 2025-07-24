@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de mounter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/static_css_csv_viewer.css') }}">
+</head>
+<body>
+<div class="csv-container">
+    <!-- Panel de estadísticas minimalista -->
+    <div class="csv-stats-panel" id="csvStatsPanel">
+        <div class="stat-card">
+            <div class="stat-label">Total Registros</div>
+            <div class="stat-value" id="statTotalRecords">0</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-label">OK</div>
+            <div class="stat-value" id="statOkCount">0</div>
+        </div>
+        <div class="stat-card error">
+            <div class="stat-label">NG</div>
+            <div class="stat-value" id="statNgCount">0</div>
+        </div>
+    </div>
+
+    <!-- Botonera de control -->
+    <!-- Barra de herramientas responsive -->
+    <div class="csv-toolbar">
+        <button class="csv-btn refresh" id="btnRefreshData" onclick="cargarDatosCSV()">
+            Cargar Datos
+        </button>
+        
+        <div class="csv-filter-group">
+            <select class="csv-filter-select" id="filterFolder" onchange="cargarDatosPorCarpeta()">
+                <option value="">Seleccionar Línea/Mounter</option>
+                <optgroup label="Línea 1">
+                    <option value="1line/L1 m1">L1 M1 - Línea 1 Mounter 1</option>
+                    <option value="1line/L1 m2">L1 M2 - Línea 1 Mounter 2</option>
+                    <option value="1line/L1 m3">L1 M3 - Línea 1 Mounter 3</option>
+                </optgroup>
+                <optgroup label="Línea 2">
+                    <option value="2line/L2 m1">L2 M1 - Línea 2 Mounter 1</option>
+                    <option value="2line/L2 m2">L2 M2 - Línea 2 Mounter 2</option>
+                    <option value="2line/L2 m3">L2 M3 - Línea 2 Mounter 3</option>
+                </optgroup>
+                <optgroup label="Línea 3">
+                    <option value="3line/L3 m1">L3 M1 - Línea 3 Mounter 1</option>
+                    <option value="3line/L3 m2">L3 M2 - Línea 3 Mounter 2</option>
+                    <option value="3line/L3 m3">L3 M3 - Línea 3 Mounter 3</option>
+                </optgroup>
+                <optgroup label="Línea 4">
+                    <option value="4line/L4 m1">L4 M1 - Línea 4 Mounter 1</option>
+                    <option value="4line/L4 m2">L4 M2 - Línea 4 Mounter 2</option>
+                    <option value="4line/L4 m3">L4 M3 - Línea 4 Mounter 3</option>
+                </optgroup>
+            </select>
+            
+            <input type="text" 
+                   class="csv-filter-input" 
+                   id="filterPartName" 
+                   placeholder="Filtrar por Parte">
+            
+            <select class="csv-filter-select" id="filterResult">
+                <option value="">Todos los resultados</option>
+                <option value="OK">Solo OK</option>
+                <option value="NG">Solo NG</option>
+            </select>
+            
+            <input type="date" 
+                   class="csv-filter-input" 
+                   id="filterDateFrom" 
+                   title="Fecha desde">
+            
+            <input type="date" 
+                   class="csv-filter-input" 
+                   id="filterDateTo" 
+                   title="Fecha hasta">
+        </div>
+        
+        <div class="csv-btn-group">
+            <button class="csv-btn filter" onclick="aplicarFiltros()">
+                Filtrar
+            </button>
+            
+            <button class="csv-btn clear" onclick="limpiarFiltros()">
+                Limpiar
+            </button>
+            
+            <button class="csv-btn refresh" onclick="establecerFechaHoy()" style="width: auto;">
+                Hoy
+            </button>
+        </div>
+        
+        <button class="csv-btn export" onclick="exportarDatos()">
+            Exportar
+        </button>
+    </div>    <!-- Tabla de datos -->
+    <div class="csv-table-container">
+        <table class="csv-table" id="csvDataTable">
+            <thead>
+                <tr>
+                    <th class="col-index" title="Número de registro">#</th>
+                    <th class="col-scandate" title="Fecha de escaneo">Fecha Escaneo</th>
+                    <th class="col-scantime" title="Hora de escaneo">Hora</th>
+                    <th class="col-slotno" title="Número de slot">Slot</th>
+                    <th class="col-result" title="Resultado de inspección">Resultado</th>
+                    <th class="col-partname" title="Número de parte">Número Parte</th>
+                    <th class="col-quantity" title="Cantidad">Cantidad</th>
+                    <th class="col-vendor" title="Proveedor">Vendor</th>
+                    <th class="col-lotno" title="Número de lote">Lote</th>
+                    <th class="col-barcode" title="Código de barras">Código Barras</th>
+                    <th class="col-feederbase" title="Base del alimentador">Feeder</th>
+                    <th class="col-previousbarcode" title="Código anterior">Código Anterior</th>
+                    <th class="col-sourcefile" title="Archivo de origen">Archivo Origen</th>
+                </tr>
+            </thead>
+            <tbody id="csvTableBody">
+                <tr>
+                    <td colspan="13" class="no-data">
+                        Seleccione una línea y mounter para cargar los datos CSV
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Contador de resultados -->
+    <div class="csv-result-counter" id="csvResultCounter">
+        <span id="csvResultText">Sin datos cargados</span>
+    </div>
+</div>
+
+<!-- Modal de carga -->
+<div id="csvLoadingModal" class="csv-modal">
+    <div class="csv-modal-content">
+        <div class="csv-spinner"></div>
+        <p>Procesando archivos historial...</p>
+    </div>
+</div>
+
+<!-- Modal de alerta personalizada -->
+<div id="csvAlertModal" class="csv-alert-modal">
+    <div class="csv-alert-dialog">
+        <div id="csvAlertMessage"></div>
+        <button onclick="hideCsvAlert()" class="csv-alert-btn">OK</button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/csv_viewer_fixed.js') }}?v=1.1"></script>
+</body>
+</html>
