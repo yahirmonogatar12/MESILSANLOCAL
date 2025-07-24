@@ -3149,6 +3149,17 @@ def csv_viewer():
         print(f"Error al cargar CSV viewer: {e}")
         return f"Error al cargar la página: {str(e)}", 500
 
+# Nueva ruta para historial de cambio de material de SMT
+@app.route('/historial-cambio-material-smt')
+@login_requerido
+def historial_cambio_material_smt():
+    """Página del historial de cambio de material de SMT"""
+    try:
+        return render_template('Control de calidad/historial_cambio_material_smt.html')
+    except Exception as e:
+        print(f"Error al cargar historial de cambio de material SMT: {e}")
+        return f"Error al cargar la página: {str(e)}", 500
+
 @app.route('/api/csv_data')
 @login_requerido
 def get_csv_data():
