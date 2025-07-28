@@ -473,6 +473,184 @@
             }
             
             
+            // ============== FUNCIONES PARA CONTROL DE CALIDAD ==============
+            
+            // Función global para mostrar historial de cambio de material de SMT
+            window.mostrarHistorialSMT = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                setTimeout(() => {
+                    if (typeof window.cargarHistorialSMT === 'function') {
+                        window.cargarHistorialSMT();
+                    } else {
+                        console.warn('⚠️ cargarHistorialSMT no disponible');
+                    }
+                }, 100);
+            };
+            
+            // Función para historial de cambio de material por máquina
+            window.mostrarHistorialMaterialMaquina = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                // Aquí puedes agregar la lógica específica para esta funcionalidad
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Historial de cambio de material por máquina</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para control de resultado de reparación
+            window.mostrarControlReparacion = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Control de resultado de reparación</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para control de item reparado
+            window.mostrarControlItemReparado = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Control de item reparado</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para historial de uso de pegamento de soldadura
+            window.mostrarHistorialPegamento = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Historial de uso de pegamento de soldadura</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para historial de uso de mask de metal
+            window.mostrarHistorialMask = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Historial de uso de mask de metal</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para historial de uso de squeeguee
+            window.mostrarHistorialSqueeguee = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Historial de uso de squeeguee</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para process interlock history
+            window.mostrarProcessInterlockHistory = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Process Interlock History</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para control de master sample de SMT
+            window.mostrarControlMasterSample = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Control de Master Sample de SMT</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para historial de inspección de master sample de SMT
+            window.mostrarHistorialInspeccionMaster = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Historial de inspección de Master Sample de SMT</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
+            // Función para control de inspección de OQC
+            window.mostrarControlInspeccionOQC = function() {
+                hideAllContent();
+                controlCalidadContent.style.display = 'block';
+                
+                const appContent = document.querySelector('main.app-content');
+                if (appContent) {
+                    appContent.innerHTML = `
+                        <div class="container-fluid mt-4">
+                            <h2>Control de inspección de OQC</h2>
+                            <p>Funcionalidad en desarrollo...</p>
+                        </div>
+                    `;
+                }
+            };
+            
             // NOTA: mostrarControlMaterialInfo está definida en MaterialTemplate.html con AJAX
             // No redefinir aquí para evitar conflictos
         });

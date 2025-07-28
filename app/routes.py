@@ -2942,6 +2942,7 @@ def consultar_inventario_general():
             pass
 
 @app.route('/templates/LISTAS/<filename>')
+@login_requerido
 def serve_list_template(filename):
     """Servir plantillas de listas para el menú móvil"""
     try:
@@ -3159,6 +3160,21 @@ def historial_cambio_material_smt():
     except Exception as e:
         print(f"Error al cargar historial de cambio de material SMT: {e}")
         return f"Error al cargar la página: {str(e)}", 500
+
+# Nueva ruta AJAX para carga dinámica del historial de SMT
+@app.route('/api/historial-cambio-material-smt-content')
+@login_requerido
+def historial_cambio_material_smt_content():
+    """API para cargar dinámicamente el contenido del historial de cambio de material de SMT"""
+    try:
+        # Renderizar solo el contenido interno sin layout
+        return render_template('Control de calidad/historial_cambio_material_smt_content.html')
+    except Exception as e:
+        print(f"Error al cargar contenido del historial de cambio de material SMT: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al cargar el contenido: {str(e)}'
+        }), 500
 
 @app.route('/api/csv_data')
 @login_requerido
