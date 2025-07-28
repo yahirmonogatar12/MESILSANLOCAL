@@ -1,0 +1,583 @@
+[
+    {
+        "proveedor": "PANJIT0",
+        "numero_parte": "EAH62735201",
+        "lote": "53192G20A",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-18T19:53:14.468064Z"
+    },
+    {
+        "proveedor": "ROHM2",
+        "numero_parte": "MCR01MZPF1002",
+        "lote": "010000251304150VB49",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-16T19:54:35.958552Z"
+    },
+    {
+        "proveedor": "SANGSHING",
+        "numero_parte": "SSCF1810010VP",
+        "lote": "",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T18:02:38.542422Z"
+    },
+    {
+        "proveedor": "SANKEN ELECTRIC CO",
+        "numero_parte": "STR'3A475",
+        "lote": "49434987",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T18:01:16.295736Z"
+    },
+    {
+        "proveedor": "KMS",
+        "numero_parte": "1MDC0302618",
+        "lote": "250409",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:59:49.178122Z"
+    },
+    {
+        "proveedor": "ORISEL",
+        "numero_parte": "66TL210000",
+        "lote": "22110044217007",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:59:13.774252Z"
+    },
+    {
+        "proveedor": "ASTEL",
+        "numero_parte": "EAH62735001",
+        "lote": "250409",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:56:42.546618Z"
+    },
+    {
+        "proveedor": "SHINDENGEN ELECTRIC MFG",
+        "numero_parte": "S3L40U",
+        "lote": "01448",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:54:57.425398Z"
+    },
+    {
+        "proveedor": "TDK",
+        "numero_parte": "EBJ63530102",
+        "lote": "1S50161269728007Q96",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:46:14.103366Z"
+    },
+    {
+        "proveedor": "PANASONIC",
+        "numero_parte": "EAE65942801",
+        "lote": "85306FM96988",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:44:58.082271Z"
+    },
+    {
+        "proveedor": "SAMYOUNG",
+        "numero_parte": "202501090328",
+        "lote": "6!531A!01000Y",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:41:49.297698Z"
+    },
+    {
+        "proveedor": "YEONHO ELECTRONICS",
+        "numero_parte": "3711'008032",
+        "lote": "2025040205225",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:40:31.405225Z"
+    },
+    {
+        "proveedor": "SCK-CHANWON",
+        "numero_parte": "EBB60921901",
+        "lote": "2503120010",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:36:15.475585Z"
+    },
+    {
+        "proveedor": "OMRON",
+        "numero_parte": "G5NB6194G",
+        "lote": "06Z4C22",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:20:57.387518Z"
+    },
+    {
+        "proveedor": "HONGFA RELAYS",
+        "numero_parte": "EBB63150401",
+        "lote": "1000000622",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:13:24.499096Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "HW2E337M25025HC100",
+        "lote": "",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:12:08.665540Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "2201'000963",
+        "lote": "B814D219D0779PPPS",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:10:39.663026Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "RH2H566M1831MCB200",
+        "lote": "240351000364",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:09:07.036981Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "EAE63724001",
+        "lote": "240351000364",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:08:31.711681Z"
+    },
+    {
+        "proveedor": "TE CONNECTIVITY",
+        "numero_parte": "1P1746062'1",
+        "lote": "3S0852C1289216",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:01:55.057214Z"
+    },
+    {
+        "proveedor": "YEONHO ELECTRONICS",
+        "numero_parte": "531G",
+        "lote": "20250318B671",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T17:00:54.324226Z"
+    },
+    {
+        "proveedor": "LG ELECTRONICS INC",
+        "numero_parte": "20250326B499",
+        "lote": "!531G!01600",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T16:59:56.907835Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "WL1E228M16025CB100",
+        "lote": "",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T16:57:56.383559Z"
+    },
+    {
+        "proveedor": "HANYOUNG",
+        "numero_parte": "EBJ60659402",
+        "lote": "Q12Z4",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T16:54:59.145626Z"
+    },
+    {
+        "proveedor": "TNC",
+        "numero_parte": "2CH570120SHA",
+        "lote": "ST2510L",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T16:50:50.432897Z"
+    },
+    {
+        "proveedor": "ROHM1",
+        "numero_parte": "MCR50JZHJ181",
+        "lote": "10223H",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-15T16:11:28.172763Z"
+    },
+    {
+        "proveedor": "NAMAE ELECTRONICS",
+        "numero_parte": "3404'000165",
+        "lote": "1250410",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T22:07:43.179593Z"
+    },
+    {
+        "proveedor": "SAMYOUNG",
+        "numero_parte": "EAE36410701",
+        "lote": "5042050301011",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T22:06:38.338568Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "KEL11610",
+        "lote": "250341505002 0050041007",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T22:05:06.823420Z"
+    },
+    {
+        "proveedor": "KEC",
+        "numero_parte": "KTC3198'Y'AT-P",
+        "lote": "451522CB0001",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T22:03:46.251201Z"
+    },
+    {
+        "proveedor": "SMART",
+        "numero_parte": "EBC31763101",
+        "lote": "4090012915",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T22:02:48.324563Z"
+    },
+    {
+        "proveedor": "KUFEELUX",
+        "numero_parte": "EAM65773101",
+        "lote": "20250423",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T22:00:58.803800Z"
+    },
+    {
+        "proveedor": "SAMYOUNG",
+        "numero_parte": "2401'004138DD302206225113002000",
+        "lote": "2062251103011",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:58:25.533134Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "0CK22101548",
+        "lote": "D24XD0131PPP",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:56:32.008736Z"
+    },
+    {
+        "proveedor": "BUSSMANN",
+        "numero_parte": "SR'5'3'15A'AP",
+        "lote": "1K88332653",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:55:30.983633Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "RD2E336M10020PA180",
+        "lote": "250421804203",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:53:10.360385Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "2201'000332",
+        "lote": "D24YD0518PPP",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:50:26.149755Z"
+    },
+    {
+        "proveedor": "MURATA",
+        "numero_parte": "CSTLS10M0G53",
+        "lote": "WM5411902",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:49:10.831446Z"
+    },
+    {
+        "proveedor": "ALPHA & OMEGA SEMICONDUCTOR",
+        "numero_parte": "AOD409G",
+        "lote": "YEB0757.01",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:44:58.618441Z"
+    },
+    {
+        "proveedor": "JST",
+        "numero_parte": "67822100",
+        "lote": "11190700",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:43:36.465215Z"
+    },
+    {
+        "proveedor": "SEJIN",
+        "numero_parte": "SPI'1040VHM",
+        "lote": "100M LG",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:41:38.629456Z"
+    },
+    {
+        "proveedor": "PANASONIC",
+        "numero_parte": "1PMN101EFC3ZXF",
+        "lote": "116S4C0394",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:40:40.678678Z"
+    },
+    {
+        "proveedor": "JST",
+        "numero_parte": "55831303",
+        "lote": "587833",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:38:42.459349Z"
+    },
+    {
+        "proveedor": "POWER INTEGRATIONS INC",
+        "numero_parte": "INN3696C",
+        "lote": "TL2000MGK600A",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:36:42.833781Z"
+    },
+    {
+        "proveedor": "ROHM",
+        "numero_parte": "BD9E101FJ",
+        "lote": "0025002452A2471H005",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:33:57.629768Z"
+    },
+    {
+        "proveedor": "TEXAS INTRUMENTS",
+        "numero_parte": "TPS55340",
+        "lote": "4525084TW4",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:32:37.767265Z"
+    },
+    {
+        "proveedor": "KEC",
+        "numero_parte": "KIA358F",
+        "lote": "5171839AMSBE",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:30:36.721596Z"
+    },
+    {
+        "proveedor": "TDK",
+        "numero_parte": "EAP64486001",
+        "lote": "1T5016915519",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:29:00.203359Z"
+    },
+    {
+        "proveedor": "LITEON",
+        "numero_parte": "TV'816S2",
+        "lote": "243341086",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:27:20.591791Z"
+    },
+    {
+        "proveedor": "INSUNG",
+        "numero_parte": "IT'7050R",
+        "lote": "T20250404A6",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:25:38.508670Z"
+    },
+    {
+        "proveedor": "SILICON WORKS",
+        "numero_parte": "SW31100",
+        "lote": "PBHT900J",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:08:53.705133Z"
+    },
+    {
+        "proveedor": "TOSHIBA",
+        "numero_parte": "TMPM380FWFG",
+        "lote": "Y36182332",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:06:25.073092Z"
+    },
+    {
+        "proveedor": "TOSHIBA",
+        "numero_parte": "TMPM4K1FYAUG",
+        "lote": "Y36186267",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:05:39.494171Z"
+    },
+    {
+        "proveedor": "TOSHIBA",
+        "numero_parte": "TMP89FM42UG",
+        "lote": "Y36184870",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:05:11.655004Z"
+    },
+    {
+        "proveedor": "NUVOTON",
+        "numero_parte": "MN101EF57G",
+        "lote": "AB1T436S1C003A",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:04:28.914425Z"
+    },
+    {
+        "proveedor": "TOSHIBA",
+        "numero_parte": "TMP86FS49BFG",
+        "lote": "YH1000800",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:02:51.748083Z"
+    },
+    {
+        "proveedor": "SANKEN ELECTRIC CO",
+        "numero_parte": "0804026193",
+        "lote": "0103520072'0000100001080",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T21:01:09.258122Z"
+    },
+    {
+        "proveedor": "SANKEN",
+        "numero_parte": "EAN63550001",
+        "lote": "0103438662'000010",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:58:01.006920Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "SC1E476M6L005VR289",
+        "lote": "241049904059",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:54:38.908729Z"
+    },
+    {
+        "proveedor": "KEC",
+        "numero_parte": "KTC3875S'Y'RTK",
+        "lote": "518184VA6031",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:53:16.682339Z"
+    },
+    {
+        "proveedor": "YEONHO ELECTRONICS",
+        "numero_parte": "EAG41647509",
+        "lote": "2025020703932",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:50:13.902079Z"
+    },
+    {
+        "proveedor": "YEONHO ELECTRONICS",
+        "numero_parte": "3711'005293",
+        "lote": "2025022401095",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:49:22.378493Z"
+    },
+    {
+        "proveedor": "STMICROELECTRONICS",
+        "numero_parte": "M24C02'WMN6TP",
+        "lote": "T4O45XDZ0005",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:44:50.288339Z"
+    },
+    {
+        "proveedor": "POWER INTREGRATIONS INC.",
+        "numero_parte": "INN3678C0209",
+        "lote": "MFK384D",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:42:31.326084Z"
+    },
+    {
+        "proveedor": "SHINDENGEN ELECTRIC MFG",
+        "numero_parte": "S1NBC80",
+        "lote": "FA52",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:40:42.150479Z"
+    },
+    {
+        "proveedor": "TDK",
+        "numero_parte": "EAP63106001",
+        "lote": "1T30W0094437",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:38:01.402225Z"
+    },
+    {
+        "proveedor": "INFINEON",
+        "numero_parte": "1PSP001568948",
+        "lote": "1T1L449048L89",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:36:39.894934Z"
+    },
+    {
+        "proveedor": "VISHAY",
+        "numero_parte": "EAE65521801",
+        "lote": "02216217",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:35:22.806832Z"
+    },
+    {
+        "proveedor": "ALPHA & OMEGA SEMICONDUCTOR",
+        "numero_parte": "EBK60752502",
+        "lote": "YD20700.02",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:34:36.878360Z"
+    },
+    {
+        "proveedor": "LUXPIA",
+        "numero_parte": "EAH62735201",
+        "lote": "4N122J15A",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:33:13.966509Z"
+    },
+    {
+        "proveedor": "VISHAY",
+        "numero_parte": "0DR100009MA",
+        "lote": "FA734326",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:26:49.366334Z"
+    },
+    {
+        "proveedor": "LG ELECTRONICS INC",
+        "numero_parte": "EAN64413502",
+        "lote": "L5040423JCE",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:25:21.023279Z"
+    },
+    {
+        "proveedor": "SANKEN ELECTRIC CO",
+        "numero_parte": "EAH61114601",
+        "lote": "240927'4918",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:24:15.057687Z"
+    },
+    {
+        "proveedor": "EVERLIGTH",
+        "numero_parte": "EAV65002402",
+        "lote": "Y250216BYB5601XZ5617B",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:22:27.954646Z"
+    },
+    {
+        "proveedor": "LUXPIA",
+        "numero_parte": "EAV61473001",
+        "lote": "L07OR217C",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:21:16.757636Z"
+    },
+    {
+        "proveedor": "FH",
+        "numero_parte": "EAE66267901",
+        "lote": "LNGYL10165HKB000",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:20:22.750831Z"
+    },
+    {
+        "proveedor": "MURATA",
+        "numero_parte": "GRM31CR71E106KA12L",
+        "lote": "IA5321E01",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:18:19.497082Z"
+    },
+    {
+        "proveedor": "ROHM",
+        "numero_parte": "MCR01MZPF1002",
+        "lote": "010000251400611VC39",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:09:59.219062Z"
+    },
+    {
+        "proveedor": "MOONSTAR",
+        "numero_parte": "EAX69456901'1.0",
+        "lote": "2520400",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-14T20:01:54.664716Z"
+    },
+    {
+        "proveedor": "MOONSTAR",
+        "numero_parte": "EAX65150407'1.0",
+        "lote": "2518",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-11T16:32:12.961676Z"
+    },
+    {
+        "proveedor": "SAMWHA",
+        "numero_parte": "EAE65521801",
+        "lote": "M152502216217",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-11T00:20:11.016814Z"
+    },
+    {
+        "proveedor": "ROHM",
+        "numero_parte": "MCR50JZHJ181",
+        "lote": "10223H",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-10T22:04:06.226738Z"
+    },
+    {
+        "proveedor": "SMART",
+        "numero_parte": "0RH5602C622",
+        "lote": "409'00617",
+        "usuario": "yahirmonogatar12",
+        "timestamp": "2025-07-10T22:03:11.810273Z"
+    }
+]

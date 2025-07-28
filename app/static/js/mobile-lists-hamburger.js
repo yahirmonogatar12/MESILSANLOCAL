@@ -136,16 +136,9 @@ class MobileListsHamburger {
         }
         
         // También ocultar cualquier contenedor padre que tenga clases relacionadas
-        const sidebarContent = document.querySelector('.sidebar-content');
-        if (sidebarContent) {
-            sidebarContent.style.display = 'none';
-        }
         
-        // Ocultar cualquier elemento con ID sidebar
-        const sidebarElements = document.querySelectorAll('[id*="sidebar"]');
-        sidebarElements.forEach(element => {
-            element.style.display = 'none';
-        });
+        
+        
         // Crear el contenedor del menú móvil
         const menuContent = document.getElementById('mobileListsContent');
         if (!menuContent) return;

@@ -183,32 +183,27 @@
         validarElementosListas() {
             // Validar sidebar links de LISTA_DE_MATERIALES
             this.validarSidebarLinks('LISTA_DE_MATERIALES', [
-                { texto: 'Control de material de almacén', seccion: 'Control de material', boton: 'Control de material de almacén' },
-                { texto: 'Control de salida', seccion: 'Control de material', boton: 'Control de salida' },
-                { texto: 'Control de material retorno', seccion: 'Control de material', boton: 'Control de material retorno' },
-                { texto: 'Historial de material', seccion: 'Control de material', boton: 'Historial de material' },
-                { texto: 'Estatus de material', seccion: 'Control de material', boton: 'Estatus de material' }
+                { selector: 'li.sidebar-link:contains("Control de material de almacén")', seccion: 'Control de material', boton: 'Control de material de almacén' },
+                { selector: 'li.sidebar-link:contains("Control de salida")', seccion: 'Control de material', boton: 'Control de salida' },
+                { selector: 'li.sidebar-link:contains("Control de material retorno")', seccion: 'Control de material', boton: 'Control de material retorno' },
+                { selector: 'li.sidebar-link:contains("Historial de material")', seccion: 'Control de material', boton: 'Historial de material' },
+                { selector: 'li.sidebar-link:contains("Estatus de material")', seccion: 'Control de material', boton: 'Estatus de material' }
             ]);
             
             // Validar sidebar links de LISTA_INFORMACIONBASICA
             this.validarSidebarLinks('LISTA_INFORMACIONBASICA', [
-                { texto: 'Gestión de departamentos', seccion: 'Información básica', boton: 'Gestión de departamentos' },
-                { texto: 'Gestión de empleados', seccion: 'Información básica', boton: 'Gestión de empleados' },
-                { texto: 'Gestión de proveedores', seccion: 'Información básica', boton: 'Gestión de proveedores' }
+                { selector: 'li.sidebar-link:contains("Gestión de departamentos")', seccion: 'Información básica', boton: 'Gestión de departamentos' },
+                { selector: 'li.sidebar-link:contains("Gestión de empleados")', seccion: 'Información básica', boton: 'Gestión de empleados' },
+                { selector: 'li.sidebar-link:contains("Gestión de proveedores")', seccion: 'Información básica', boton: 'Gestión de proveedores' }
             ]);
         },
         
         /**
-         * Validar sidebar links para una lista específica usando búsqueda por texto
+         * Validar sidebar links para una lista específica
          */
         validarSidebarLinks(pagina, elementos) {
-            elementos.forEach(({ texto, seccion, boton }) => {
-                // Buscar elemento por contenido de texto de manera robusta
-                const sidebarLinks = document.querySelectorAll('li.sidebar-link');
-                const elemento = Array.from(sidebarLinks).find(link => 
-                    link.textContent.trim() === texto
-                );
-                
+            elementos.forEach(({ selector, seccion, boton }) => {
+                const elemento = document.querySelector(selector);
                 if (elemento) {
                     if (!this.tienePermiso(pagina, seccion, boton)) {
                         this.ocultarElemento(elemento, pagina, seccion, boton);

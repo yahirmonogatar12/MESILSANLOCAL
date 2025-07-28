@@ -2942,7 +2942,6 @@ def consultar_inventario_general():
             pass
 
 @app.route('/templates/LISTAS/<filename>')
-@login_requerido
 def serve_list_template(filename):
     """Servir plantillas de listas para el menú móvil"""
     try:
@@ -3160,21 +3159,6 @@ def historial_cambio_material_smt():
     except Exception as e:
         print(f"Error al cargar historial de cambio de material SMT: {e}")
         return f"Error al cargar la página: {str(e)}", 500
-
-# Nueva ruta AJAX para carga dinámica del historial de SMT
-@app.route('/api/historial-cambio-material-smt-content')
-@login_requerido
-def historial_cambio_material_smt_content():
-    """API para cargar dinámicamente el contenido del historial de cambio de material de SMT"""
-    try:
-        # Renderizar solo el contenido interno sin layout
-        return render_template('Control de calidad/historial_cambio_material_smt_content.html')
-    except Exception as e:
-        print(f"Error al cargar contenido del historial de cambio de material SMT: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Error al cargar el contenido: {str(e)}'
-        }), 500
 
 @app.route('/api/csv_data')
 @login_requerido
@@ -3562,3 +3546,134 @@ def filter_csv_data():
         print(f"❌ Error filtrando datos CSV: {e}")
         print(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def crear_patron_caracteres(texto_original, part_start, part_length, lot_start, lot_length):
+    """
+    Crea un patrón de caracteres donde:
+    - Caracteres específicos se mantienen como están
+    - Números se marcan como 'N'
+    - Letras se marcan como 'A'
+    - Las zonas de número de parte y lote se marcan como 'X' (cualquier carácter)
+    """
+    patron = list(texto_original)
+    
+    # Marcar la zona del número de parte como 'X' (cualquier carácter)
+    for i in range(part_start, part_start + part_length):
+        if i < len(patron):
+            patron[i] = 'X'
+    
+    # Marcar la zona del lote como 'X' solo si existe lote
+    if lot_start != -1 and lot_length > 0:
+        for i in range(lot_start, lot_start + lot_length):
+            if i < len(patron):
+                patron[i] = 'X'
+    
+    # Para el resto de caracteres, determinar el tipo
+    for i, char in enumerate(patron):
+        if char != 'X':  # Si no es una zona variable
+            if char.isdigit():
+                patron[i] = 'N'  # Número específico
+            elif char.isalpha():
+                patron[i] = 'A'  # Letra específica
+            # Los caracteres especiales y espacios se mantienen como están
+    
+    return ''.join(patron)
+
+@app.route('/guardar_regla_trazabilidad', methods=['POST'])
+def guardar_regla_trazabilidad():
+    """Guardar nueva regla de trazabilidad en rules.json"""
+    try:
+        if 'usuario' not in session:
+            return jsonify({'error': 'Usuario no autenticado'}), 401
+        
+        # Obtener los datos de la nueva regla
+        nueva_regla = request.get_json()
+        
+        if not nueva_regla:
+            return jsonify({'error': 'No se recibieron datos'}), 400
+        
+        # Validar campos requeridos
+        campos_requeridos = ['proveedor', 'numero_parte', 'texto_original']
+        for campo in campos_requeridos:
+            if not nueva_regla.get(campo):
+                return jsonify({'error': f'Campo requerido faltante: {campo}'}), 400
+        
+        # Ruta del archivo rules.json
+        rules_file = os.path.join(os.path.dirname(__file__), 'database', 'rules.json')
+        
+        # Cargar reglas existentes
+        reglas_existentes = {}
+        if os.path.exists(rules_file):
+            try:
+                with open(rules_file, 'r', encoding='utf-8') as f:
+                    reglas_existentes = json.load(f)
+            except json.JSONDecodeError:
+                reglas_existentes = {}
+        
+        # Generar clave única para la nueva regla
+        proveedor = nueva_regla['proveedor'].upper()
+        contador = 1
+        clave_base = proveedor
+        clave_final = clave_base
+        
+        # Si ya existe la clave, agregar número secuencial
+        while clave_final in reglas_existentes:
+            contador += 1
+            clave_final = f"{clave_base}{contador}"
+        
+        # Convertir la nueva regla al formato esperado
+        texto_original = nueva_regla['texto_original']
+        numero_parte = nueva_regla['numero_parte']
+        numero_lote = nueva_regla.get('numero_lote', '')
+        
+        # Calcular posiciones reales
+        part_number_start = texto_original.find(numero_parte)
+        part_number_length = len(numero_parte)
+        
+        if numero_lote and numero_lote.strip():
+            lot_number_start = texto_original.find(numero_lote)
+            lot_number_length = len(numero_lote)
+        else:
+            lot_number_start = -1
+            lot_number_length = 0
+        
+        # Validar que se encontraron las posiciones
+        if part_number_start == -1:
+            return jsonify({'error': 'No se pudo encontrar el número de parte en el texto original'}), 400
+        
+        if numero_lote and numero_lote.strip() and lot_number_start == -1:
+            return jsonify({'error': 'No se pudo encontrar el número de lote en el texto original'}), 400
+        
+        # Crear patrón de caracteres
+        character_pattern = crear_patron_caracteres(texto_original, part_number_start, part_number_length, 
+                                                   lot_number_start, lot_number_length)
+        
+        regla_formateada = {
+            "character_pattern": character_pattern,
+            "partNumberStart": part_number_start,
+            "partNumberLength": part_number_length,
+            "lotNumberStart": lot_number_start,
+            "lotNumberLength": lot_number_length
+        }
+        
+        # Agregar la nueva regla con la clave generada
+        reglas_existentes[clave_final] = regla_formateada
+        
+        # Guardar de vuelta al archivo
+        with open(rules_file, 'w', encoding='utf-8') as f:
+            json.dump(reglas_existentes, f, indent=2, ensure_ascii=False)
+        
+        print(f"✅ Nueva regla de trazabilidad guardada: {clave_final} - {nueva_regla['proveedor']} - {nueva_regla['numero_parte']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Regla guardada exitosamente',
+            'regla_clave': clave_final,
+            'proveedor': nueva_regla['proveedor']
+        })
+        
+    except Exception as e:
+        print(f"❌ Error guardando regla de trazabilidad: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500

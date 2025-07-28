@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="autocomplete" content="off">
     <title>Control de Material - Almacén</title>
     
     <!-- Fuentes -->
@@ -31,9 +32,297 @@
     <script src="/static/js/autoNumeric.min.js"></script>
     <script src="/static/js/control_material_almacen.js"></script>
     
+    <!-- CSS para modal de registro de reglas de trazabilidad -->
+    <style>
+        /* Modal de trazabilidad */
+        .trazabilidad-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .trazabilidad-modal-content {
+            background-color: #40424F;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            color: #ecf0f1;
+            font-family: 'Segoe UI', sans-serif;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .trazabilidad-modal h2 {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        
+        .trazabilidad-raw-text {
+            background-color: #2c3e50;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 16px;
+            margin: 15px 0;
+            border: 2px dashed #3498db;
+            user-select: text;
+            cursor: text;
+            color: #ecf0f1;
+            word-break: break-all;
+        }
+        
+        .trazabilidad-field {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .trazabilidad-field label {
+            font-weight: 500;
+            color: #ecf0f1;
+        }
+        
+        .trazabilidad-field input {
+            padding: 8px;
+            font-size: 14px;
+            background-color: #e3f2fd;
+            color: #2c3e50;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #95a5a6;
+        }
+        
+        .trazabilidad-buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+        
+        .trazabilidad-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            transition: background-color 0.3s;
+            margin-left: 10px;
+        }
+        
+        .trazabilidad-btn.primary {
+            background-color: #3498db;
+        }
+        
+        .trazabilidad-btn.primary:hover {
+            background-color: #2980b9;
+        }
+        
+        .trazabilidad-btn.danger {
+            background-color: #e74c3c;
+        }
+        
+        .trazabilidad-btn.danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .trazabilidad-help {
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+
+        /* Estilos adicionales para botones activos */
+        .btn-seleccion.activo {
+            background-color: #28a745 !important;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .instruccion-seleccion {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        /* Estilos para campo de escaneo mejorado */
+        .campo-escaneo-listo {
+            background: linear-gradient(135deg, #e8f5e8, #f0f8ff) !important;
+            border: 2px solid #28a745 !important;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.3) !important;
+        }
+
+        .campo-escaneo-activo {
+            background: linear-gradient(135deg, #ffe6e6, #fff0f0) !important;
+            border: 2px solid #dc3545 !important;
+            box-shadow: 0 0 12px rgba(220, 53, 69, 0.5) !important;
+            animation: pulso-escaneo 1.5s infinite ease-in-out;
+        }
+
+        .campo-escaneo-procesando {
+            background: linear-gradient(135deg, #fff3cd, #fef7e0) !important;
+            border: 2px solid #ffc107 !important;
+            box-shadow: 0 0 8px rgba(255, 193, 7, 0.3) !important;
+        }
+
+        .campo-escaneo-exito {
+            background: linear-gradient(135deg, #d1edff, #e3f2fd) !important;
+            border: 2px solid #007bff !important;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.3) !important;
+        }
+
+        /* Indicador de escaneo */
+        .indicador-escaneo {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 8px;
+            font-weight: bold;
+            color: #666;
+            pointer-events: none;
+            z-index: 10;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1px 3px;
+            border-radius: 2px;
+        }
+
+        /* Animación de pulso para modo activo */
+        @keyframes pulso-escaneo {
+            0%, 100% { 
+                box-shadow: 0 0 12px rgba(220, 53, 69, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 20px rgba(220, 53, 69, 0.8);
+            }
+        }
+
+        #codigoMaterialOriginal::placeholder {
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .indicador-escaneo {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            z-index: 1;
+        }
+
+        /* Estilos para registro automático */
+        .registro-automatico-activo {
+            animation: pulso-registro 2s infinite ease-in-out;
+        }
+
+        @keyframes pulso-registro {
+            0%, 100% { 
+                color: #28a745;
+                text-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+            }
+            50% { 
+                color: #20c997;
+                text-shadow: 0 0 10px rgba(40, 167, 69, 0.8);
+            }
+        }
+
+        .countdown-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ff7f00, #ff4500);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 8px 25px rgba(255, 127, 0, 0.4);
+            z-index: 10001;
+            cursor: pointer;
+            text-align: center;
+            animation: pulso-countdown 1s infinite;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .countdown-indicator:hover {
+            background: linear-gradient(135deg, #ff4500, #dc143c);
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 10px 30px rgba(255, 127, 0, 0.6);
+        }
+
+        @keyframes pulso-countdown {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.02); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
     
 </head>
 <body>
+
+<!-- Modal de Registro de Reglas de Trazabilidad -->
+<div id="trazabilidad-modal" class="trazabilidad-modal">
+    <div class="trazabilidad-modal-content">
+        <h2>Registrar Nueva Regla de Trazabilidad</h2>
+        <p>No se encontró una regla para este código. Por favor, define una nueva regla:</p>
+        
+        <form autocomplete="off">
+        <div class="trazabilidad-field">
+            <label for="trazabilidad-supplier">Proveedor:</label>
+            <input type="text" id="trazabilidad-supplier" placeholder="Ej: ROHM, SMART, etc." autocomplete="off">
+        </div>
+        
+        <label>Texto Escaneado:</label>
+        <div id="trazabilidad-raw-text" class="trazabilidad-raw-text"></div>
+        
+        <div class="trazabilidad-field">
+            <label for="trazabilidad-part-number">Número de Parte:</label>
+            <input type="text" id="trazabilidad-part-number" placeholder="Selecciona del texto arriba" autocomplete="off">
+        </div>
+        
+        <div class="trazabilidad-field">
+            <label for="trazabilidad-lot-number">Número de Lote:</label>
+            <input type="text" id="trazabilidad-lot-number" placeholder="Opcional - Selecciona del texto arriba" autocomplete="off">
+        </div>
+        </form>
+        
+        <div class="trazabilidad-buttons">
+            <button class="trazabilidad-btn danger" onclick="cerrarModalTrazabilidad()">Cancelar</button>
+            <button class="trazabilidad-btn primary" onclick="guardarReglaTrazabilidad()">Crear Regla</button>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario principal con autocomplete deshabilitado -->
+<form autocomplete="off" data-form-type="other"
 <!-- Fila 1: SOLO Forma de material, ancho completo -->
 <div class="material-container2">
 
@@ -42,7 +331,7 @@
             <label>
                     Forma de material
             </label>
-            <select id="forma_material">
+            <select id="forma_material" autocomplete="off">
                 <option>
                     OriginCode
                 </option>
@@ -56,7 +345,7 @@
                 <label>
                     Cliente
                 </label>
-                <select id="cliente">
+                <select id="cliente" autocomplete="off">
                     <option value="">
                         Seleccionar
                     </option>
@@ -70,9 +359,13 @@
             </div>
             <div class="material-form-group">
                 <label>Código de material original</label>
-                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                    <input type="text" id="codigoMaterialOriginal" style="flex: 1; min-width: 0;" placeholder="Escanear o ingresar código..." onkeydown="procesarScaneo(event)">
-                    <button type="button" onclick="abrirEscanerQR()" class="material-btn mobile-only-btn" title="Escanear QR con cámara" style="padding: 5px 12px; font-size: 16px; line-height: 1;">📸</button>
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; position: relative;">
+                    <div style="position: relative; flex: 1; min-width: 0;">
+                        <input type="text" id="codigoMaterialOriginal" name="codigo_unico_escaneo" class="campo-escaneo-listo" style="flex: 1; min-width: 0; width: 100%; padding-right: 80px;" placeholder="Listo para escanear..." onkeydown="procesarScaneo(event)" onfocus="activarModoEscaneo()" onblur="desactivarModoEscaneo()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-form-type="other">
+                        <span id="indicadorEscaneo" class="indicador-escaneo">LISTO</span>
+                        <button type="button" onclick="limpiarCampoManual()" style="position: absolute; right: 28px; top: 50%; transform: translateY(-50%); padding: 2px 6px; font-size: 10px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Limpiar campo">X</button>
+                    </div>
+                    <button type="button" onclick="abrirEscanerQR()" class="material-btn mobile-only-btn" title="Escanear QR con cámara" style="padding: 5px 12px; font-size: 12px; line-height: 1;">CAM</button>
                 </div>
             </div>
     </div>
@@ -108,7 +401,7 @@
             <label>Material importación/local</label>
             <select id="material_importacion_local">
                 <option value="Customer Supply">Customer Supply</option>
-                <option value="Local">Local</option>
+                <option value="Local" selected>Local</option>
                 <option value="Importación">Importación</option>
             </select>
         </div>
@@ -182,9 +475,9 @@
             <label>Especificación de material</label>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <input type="text" id="almacen_especificacion_material" readonly placeholder="Se carga automáticamente al seleccionar código" style="flex: 1;">
-                <label class="checkbox-label-almacen" style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer; white-space: nowrap;">
-                    <input type="checkbox" id="checkbox_registro_almacen" class="checkbox-almacen" style="transform: scale(1.0); accent-color: #27ae60;">
-                    Registro automático
+                <label class="checkbox-label-almacen" style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer; white-space: nowrap; transition: all 0.3s ease;" id="label_registro_automatico">
+                    <input type="checkbox" id="checkbox_registro_almacen" class="checkbox-almacen" style="transform: scale(1.2); accent-color: #27ae60;">
+                    <span id="texto_registro_automatico">Registro automático</span>
                 </label>
             </div>
         </div>
@@ -205,6 +498,8 @@
         </div>
     </div>
 </div>
+</form>
+<!-- Fin del formulario principal -->
 
         <!-- Botonera usando el diseño de CONTROL_DE_MATERIAL -->
         
@@ -352,7 +647,7 @@
                     </h3>
                     
                     <div style="margin: 20px 0;">
-                        <h4 style="color: #6f42c1; margin-bottom: 10px;">📊 Variables que se insertan automáticamente:</h4>
+                        <h4 style="color: #6f42c1; margin-bottom: 10px;">Variables que se insertan automáticamente:</h4>
                         <ul style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 0;">
                             <li><strong>Código completo:</strong> ${datosEjemplo.codigoCompleto}</li>
                             <li><strong>Código material:</strong> ${datosEjemplo.codigoMaterial}</li>
@@ -369,13 +664,13 @@
                     </div>
                     
                     <div style="margin: 20px 0;">
-                        <h4 style="color: #dc3545; margin-bottom: 10px;">⚡ Características del formato:</h4>
+                        <h4 style="color: #dc3545; margin-bottom: 10px;">Características del formato:</h4>
                         <ul style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 0; border: 1px solid #ffeaa7;">
-                            <li>✅ Compatible con Zebra ZD421</li>
-                            <li>✅ Código QR automático con datos completos</li>
-                            <li>✅ Variables dinámicas del formulario</li>
-                            <li>✅ Formato de fecha DD/MM/YYYY</li>
-                            <li>✅ Campos de cantidad y descripción configurables</li>
+                            <li>Compatible con Zebra ZD421</li>
+                            <li>Código QR automático con datos completos</li>
+                            <li>Variables dinámicas del formulario</li>
+                            <li>Formato de fecha DD/MM/YYYY</li>
+                            <li>Campos de cantidad y descripción configurables</li>
                         </ul>
                     </div>
                     
@@ -483,11 +778,11 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (!data.success) {
-                        console.error('❌ Error al guardar cliente:', data.error);
+                        console.error('Error al guardar cliente:', data.error);
                     }
                 }
             } catch (error) {
-                console.error('❌ Error de conexión al guardar cliente:', error);
+                console.error('Error de conexión al guardar cliente:', error);
             }
         }
 
@@ -658,6 +953,36 @@
                     }
                 });
             }
+            
+            // *** NUEVO: Agregar listener para checkbox de registro automático ***
+            const checkboxRegistroAuto = document.getElementById('checkbox_registro_almacen');
+            if (checkboxRegistroAuto) {
+                checkboxRegistroAuto.addEventListener('change', function() {
+                    const labelRegistro = document.getElementById('label_registro_automatico');
+                    const textoRegistro = document.getElementById('texto_registro_automatico');
+                    
+                    if (this.checked) {
+                        // Activado - cambiar estilo
+                        labelRegistro.style.color = '#28a745';
+                        labelRegistro.style.fontWeight = 'bold';
+                        textoRegistro.textContent = 'Registro automático ACTIVO';
+                        
+                        mostrarNotificacionExito('Registro automático activado', 'Guardado INSTANTÁNEO tras detectar escaneo - sin esperas');
+                        
+                        // NO verificar inmediatamente - solo tras escaneo
+                        // setTimeout(() => {
+                        //     verificarRegistroAutomaticoTrasEscaneo();
+                        // }, 500);
+                    } else {
+                        // Desactivado - restaurar estilo
+                        labelRegistro.style.color = '#ecf0f1';
+                        labelRegistro.style.fontWeight = 'normal';
+                        textoRegistro.textContent = 'Registro automático';
+                        
+                        mostrarNotificacionExito('Registro automático desactivado', 'Debes presionar Guardar manualmente');
+                    }
+                });
+            }
         }
 
         // Verificar si el DOM ya está listo para configurar listeners adicionales
@@ -668,16 +993,120 @@
             configurarListenersAdicionales();
         }
 
+        // Variables globales para detección automática de escaneo
+        let ultimoTiempoEscaneo = 0;
+        let bufferEscaneo = '';
+        let timeoutEscaneo = null;
+        let yaGuardadoEnEsteEscaneo = false; // *** NUEVA VARIABLE DE CONTROL ***
+
+        // Funciones para controlar el indicador de escaneo
+        function activarModoEscaneo() {
+            const campo = document.getElementById('codigoMaterialOriginal');
+            const indicador = document.getElementById('indicadorEscaneo');
+            
+            campo.className = 'campo-escaneo-activo';
+            indicador.textContent = 'ACTIVO';
+            indicador.title = 'Modo escaneo activo - Listo para recibir datos';
+        }
+
+        function desactivarModoEscaneo() {
+            const campo = document.getElementById('codigoMaterialOriginal');
+            const indicador = document.getElementById('indicadorEscaneo');
+            
+            if (campo.value.trim() === '') {
+                campo.className = 'campo-escaneo-listo';
+                indicador.textContent = 'LISTO';
+                indicador.title = 'Campo listo para escanear';
+            }
+        }
+
         function procesarScaneo(event) {
-            // Detectar Enter (cuando termina el escaneo)
+            const tiempoActual = Date.now();
+            const input = event.target;
+            
+            // *** DETECTAR NUEVO ESCANEO Y RESETEAR CONTROL ***
+            if (event.key && event.key.length === 1 && input.value.length === 0) {
+                // Se está empezando a escribir en campo vacío - nuevo escaneo
+                yaGuardadoEnEsteEscaneo = false;
+                console.log('🔄 Nuevo escaneo iniciado - resetear control de guardado');
+            }
+            
+            // Detectar Enter (método tradicional)
             if (event.key === 'Enter') {
                 event.preventDefault();
-                const codigoCompleto = event.target.value.trim();
+                const codigoCompleto = input.value.trim();
                 
                 if (codigoCompleto) {
+                    console.log('Enter detectado - procesando código:', codigoCompleto);
                     parsearYDistribuirCodigo(codigoCompleto);
+                    // NO limpiar automáticamente con Enter - permitir que el usuario guarde
                 }
+                return;
             }
+            
+            // Detección automática por velocidad de tipeo (escáneres son muy rápidos)
+            const velocidadEscaneo = tiempoActual - ultimoTiempoEscaneo;
+            ultimoTiempoEscaneo = tiempoActual;
+            
+            // Si la velocidad es muy rápida (< 50ms entre caracteres), probablemente es un escáner
+            if (velocidadEscaneo < 50 && event.key.length === 1) {
+                bufferEscaneo += event.key;
+                
+                // Limpiar timeout anterior
+                if (timeoutEscaneo) {
+                    clearTimeout(timeoutEscaneo);
+                }
+                
+                // Establecer timeout para procesar automáticamente después de pausa
+                timeoutEscaneo = setTimeout(() => {
+                    const codigoCompleto = input.value.trim();
+                    if (codigoCompleto && codigoCompleto.length > 10) { // Mínimo 10 caracteres para ser válido
+                        console.log('Escaneo automático detectado - procesando código:', codigoCompleto);
+                        parsearYDistribuirCodigo(codigoCompleto);
+                        // NO limpiar automáticamente - dejar el código visible
+                    }
+                    bufferEscaneo = '';
+                }, 100); // Esperar 100ms después de la última tecla
+            }
+            
+            // Detectar códigos largos (típicos de escáneres) y procesarlos automáticamente
+            setTimeout(() => {
+                const codigoActual = input.value.trim();
+                if (codigoActual.length >= 15) { // Códigos típicos de materiales son largos
+                    console.log('Código largo detectado - procesando automáticamente:', codigoActual);
+                    parsearYDistribuirCodigo(codigoActual);
+                    // NO limpiar automáticamente - dejar que el usuario vea el código
+                }
+            }, 200);
+        }
+
+        function limpiarCampoEscaneo(input) {
+            // Limpiar el campo después de procesar
+            setTimeout(() => {
+                const indicador = document.getElementById('indicadorEscaneo');
+                
+                input.value = '';
+                input.className = 'campo-escaneo-listo';
+                input.placeholder = 'Listo para escanear...';
+                indicador.textContent = 'LISTO';
+                indicador.title = 'Campo listo para escanear';
+                input.focus(); // Mantener foco para siguiente escaneo
+            }, 100);
+        }
+
+        function limpiarCampoManual() {
+            const input = document.getElementById('codigoMaterialOriginal');
+            const indicador = document.getElementById('indicadorEscaneo');
+            
+            input.value = '';
+            input.className = 'campo-escaneo-listo';
+            input.placeholder = 'Listo para escanear...';
+            indicador.textContent = 'LISTO';
+            indicador.title = 'Campo listo para escanear';
+            input.focus();
+            
+            // *** RESETEAR CONTROL DE GUARDADO AL LIMPIAR MANUALMENTE ***
+            yaGuardadoEnEsteEscaneo = false;
         }
 
         function procesarCodigoManual() {
@@ -693,27 +1122,49 @@
 
         async function parsearYDistribuirCodigo(codigoCompleto) {
             try {
+                console.log('Procesando código escaneado:', codigoCompleto);
+                
                 // Primero intentar con las reglas de trazabilidad
                 const resultado = await aplicarReglasEscaneo(codigoCompleto);
                 
+                console.log('📋 Resultado de reglas de trazabilidad:', resultado);
+                
                 if (resultado) {
                     // Si se encontró una regla que coincide, usar esos datos
+                    console.log('Regla encontrada, aplicando...');
+                    console.log('Datos extraídos:', { partNumber: resultado.partNumber, lotNumber: resultado.lotNumber });
+                    
                     if (resultado.partNumber) {
                         // Usar el partNumber como código de material
                         buscarYSeleccionarCodigoMaterial(resultado.partNumber);
                     }
                     
                     if (resultado.lotNumber) {
+                        console.log('Asignando número de lote:', resultado.lotNumber);
                         const inputLote = document.getElementById('numero_lote_material');
                         if (inputLote) {
                             inputLote.value = resultado.lotNumber;
+                            console.log('Lote asignado al campo numero_lote_material:', inputLote.value);
+                        } else {
+                            console.error('No se encontró el campo numero_lote_material');
                         }
                     }
                     
                     mostrarNotificacionEscaneo(resultado.partNumber, null, resultado.lotNumber);
+                    // NO limpiar el campo automáticamente - permitir que el usuario vea el código
                     return;
                 }
                 
+                // Si no se encontró regla de trazabilidad, abrir modal para registrar nueva regla
+                console.log('No se encontró regla, abriendo modal de trazabilidad...');
+                // Guardar el código escaneado para uso en el modal
+                window.ultimoCodigoEscaneado = codigoCompleto;
+                abrirModalTrazabilidad();
+                return;
+                
+                // COMENTADO: El método anterior como fallback ya no se usa
+                // Se prefiere usar el sistema de trazabilidad
+                /*
                 // Si no funciona con reglas, usar el método anterior como fallback
                 const partes = codigoCompleto.split('-');
                 
@@ -739,11 +1190,72 @@
                 }
                 
                 mostrarNotificacionEscaneo(codigoMaterial, null, numeroLote);
+                */
                 
             } catch (error) {
                 console.error('Error al procesar código escaneado:', error);
                 alert('Error al procesar el código escaneado');
             }
+        }
+
+        // Función temporal de prueba para el modal
+        function probarModalTrazabilidad() {
+            window.ultimoCodigoEscaneado = 'H5602C622,202507250003';
+            abrirModalTrazabilidad();
+        }
+
+        // Función de prueba para verificar funcionamiento completo
+        function probarSistemaCompleto() {
+            console.log('🧪 INICIANDO PRUEBA COMPLETA DEL SISTEMA');
+            
+            // Simular un código escaneado
+            const codigoPrueba = 'H5602C622,202507250003';
+            console.log('📝 Código de prueba:', codigoPrueba);
+            
+            // Procesar el código
+            parsearYDistribuirCodigo(codigoPrueba);
+        }
+
+        // Función específica para probar la regla PRUEBA corregida
+        function probarReglaPrueba() {
+            console.log('🧪 PROBANDO REGLA PRUEBA CORREGIDA');
+            
+            const codigoPrueba = '0RH5602C622,202507250003';
+            console.log('📝 Código para regla PRUEBA:', codigoPrueba);
+            console.log('📝 Longitud del código:', codigoPrueba.length);
+            
+            // Manualmente probar la extracción según la regla corregida
+            const partNumber = codigoPrueba.substring(0, 11); // Posición 0-10
+            const lotNumber = codigoPrueba.substring(12, 24); // Posición 12-23
+            
+            console.log('✂️ Extracción manual:');
+            console.log('  📦 Número de parte:', `"${partNumber}"`);
+            console.log('  🏷️ Número de lote:', `"${lotNumber}"`);
+            
+            // Ahora probar con la función completa
+            parsearYDistribuirCodigo(codigoPrueba);
+        }
+
+        // Función para probar la creación de regla desde el modal
+        function probarCreacionReglaModal() {
+            console.log('🧪 PROBANDO CREACIÓN DE REGLA DESDE MODAL');
+            
+            // Simular código escaneado
+            const codigoPrueba = '0RH5602C622,202507250003';
+            window.ultimoCodigoEscaneado = codigoPrueba;
+            
+            // Abrir modal
+            abrirModalTrazabilidad();
+            
+            // Llenar automáticamente los campos para prueba
+            setTimeout(() => {
+                document.getElementById('trazabilidad-supplier').value = 'PRUEBA';
+                document.getElementById('trazabilidad-part-number').value = '0RH5602C622';
+                document.getElementById('trazabilidad-lot-number').value = '202507250003';
+                
+                console.log('Modal llenado automáticamente para prueba');
+                console.log('💡 Ahora haz clic en "Crear Regla" para probar el backend');
+            }, 500);
         }
 
         function buscarYSeleccionarCodigoMaterial(codigo) {
@@ -775,6 +1287,60 @@
         function mostrarNotificacionEscaneo(codigo, cantidad, lote) {
             // Llenar automáticamente los campos inferiores
             llenarCamposInferiores(codigo);
+            
+            // Mostrar notificación visual de éxito
+            mostrarNotificacionExito(`Código procesado automáticamente`, 
+                `Parte: ${codigo}${lote ? ` | Lote: ${lote}` : ''}`);
+            
+            // NO limpiar campo - permitir que el usuario vea el código procesado
+            
+            // *** VERIFICACIÓN RÁPIDA DE REGISTRO AUTOMÁTICO TRAS ESCANEO ***
+            setTimeout(() => {
+                verificarRegistroAutomaticoTrasEscaneo();
+            }, 500); // Reducido a 0.5 segundos para mayor velocidad
+        }
+
+        function mostrarNotificacionExito(titulo, detalle) {
+            // Crear notificación temporal
+            const notificacion = document.createElement('div');
+            notificacion.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #28a745, #20c997);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+                z-index: 10001;
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 14px;
+                max-width: 350px;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            
+            notificacion.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 5px;">${titulo}</div>
+                <div style="font-size: 12px; opacity: 0.9;">${detalle}</div>
+            `;
+            
+            document.body.appendChild(notificacion);
+            
+            // Animar entrada
+            setTimeout(() => {
+                notificacion.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Remover después de 3 segundos
+            setTimeout(() => {
+                notificacion.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notificacion.parentNode) {
+                        notificacion.parentNode.removeChild(notificacion);
+                    }
+                }, 300);
+            }, 3000);
         }
 
         // Contador global para números secuenciales del código de material recibido
@@ -808,10 +1374,10 @@
                 } else {
                     contadorSecuencial = 1;
                     proximoCodigoCompleto = '';
-                    console.error(`❌ Error en respuesta HTTP: ${response.status}`);
+                    console.error(`Error en respuesta HTTP: ${response.status}`);
                 }
             } catch (error) {
-                console.error('❌ Error de conexión al cargar secuencial:', error);
+                console.error('Error de conexión al cargar secuencial:', error);
                 contadorSecuencial = 1;
                 proximoCodigoCompleto = '';
             }
@@ -847,7 +1413,11 @@
                     llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
                     llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
                     llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || '');
-                    llenarCampoPorId('numero_lote_material', '');
+                    // ✅ CORREGIDO: NO sobrescribir el número de lote si ya tiene un valor (del escaneo)
+                    const inputLote = document.getElementById('numero_lote_material');
+                    if (inputLote && !inputLote.value.trim()) {
+                        inputLote.value = ''; // Solo limpiar si está vacío
+                    }
                     
                 } else {
                     llenarCampoPorId('codigo_material_recibido', codigoMaterialRecibidoCompleto);
@@ -855,7 +1425,11 @@
                     // ✅ CORREGIDO: Si no hay información completa, dejar vacío en lugar de usar secuencial
                     llenarCampoPorId('numero_parte_lower', '');
                     llenarCampoPorId('almacen_especificacion_material', '');
-                    llenarCampoPorId('numero_lote_material', '');
+                    // ✅ CORREGIDO: NO sobrescribir el número de lote si ya tiene un valor (del escaneo)
+                    const inputLote = document.getElementById('numero_lote_material');
+                    if (inputLote && !inputLote.value.trim()) {
+                        inputLote.value = ''; // Solo limpiar si está vacío
+                    }
                 }
             }).catch(error => {
                 console.error('❌ Error al cargar secuencial:', error);
@@ -1041,8 +1615,8 @@
                             }
                         }, 500); // Esperar 500ms para asegurar que la BD se actualice
                         
-                        // Limpiar formulario
-                        limpiarFormulario();
+                        // Limpiar formulario automáticamente después de guardar exitosamente
+                        limpiarFormularioParaSiguienteEscaneo();
                         // Recargar tabla automáticamente
                         consultarRegistros();
                     } else {
@@ -1074,7 +1648,8 @@
         function limpiarFormulario() {
             document.getElementById('forma_material').selectedIndex = 0;
             document.getElementById('cliente').selectedIndex = 0;
-            document.getElementById('codigoMaterialOriginal').value = '';
+            // NO limpiar el campo de escaneo automáticamente
+            // document.getElementById('codigoMaterialOriginal').value = '';
             document.getElementById('codigoMaterialSelect').innerHTML = '<option value="">Seleccionar</option>';
             document.getElementById('material_importacion_local').selectedIndex = 0;
             
@@ -1096,6 +1671,160 @@
             }
             
             // El contador secuencial se recarga desde BD después de cada guardado exitoso
+        }
+
+        // Función específica para limpiar después de guardar exitosamente
+        function limpiarFormularioParaSiguienteEscaneo() {
+            // Limpiar TODOS los campos para el siguiente escaneo
+            document.getElementById('forma_material').selectedIndex = 0;
+            // NO limpiar cliente - mantener selección para eficiencia
+            // document.getElementById('cliente').selectedIndex = 0;
+            
+            // *** LIMPIEZA RÁPIDA DEL CAMPO DE ESCANEO ***
+            // Mostrar resultado brevemente y limpiar rápido para escaneo continuo
+            const inputEscaneo = document.getElementById('codigoMaterialOriginal');
+            const indicador = document.getElementById('indicadorEscaneo');
+            
+            // Cambiar visual para indicar que se guardó exitosamente
+            inputEscaneo.className = 'campo-escaneo-exito';
+            indicador.textContent = 'GUARDADO';
+            indicador.title = 'Código guardado exitosamente';
+            
+            // *** LIMPIAR RÁPIDAMENTE DESPUÉS DE 1 SEGUNDO PARA ESCANEO CONTINUO ***
+            setTimeout(() => {
+                inputEscaneo.value = '';
+                inputEscaneo.className = 'campo-escaneo-listo';
+                inputEscaneo.placeholder = 'Listo para escanear siguiente código...';
+                indicador.textContent = 'LISTO';
+                indicador.title = 'Campo listo para escanear';
+                
+                // *** RESETEAR CONTROL PARA SIGUIENTE ESCANEO ***
+                yaGuardadoEnEsteEscaneo = false;
+                
+                // Enfocar para siguiente escaneo
+                inputEscaneo.focus();
+            }, 1000); // Reducido a 1 segundo para mayor velocidad
+            
+            // Limpiar select de código de material
+            document.getElementById('codigoMaterialSelect').innerHTML = '<option value="">Seleccionar</option>';
+            document.getElementById('material_importacion_local').selectedIndex = 0;
+            
+            // Restablecer fechas a hoy
+            setFechasHoy();
+            
+            // Limpiar todos los campos del formulario
+            document.getElementById('cantidad_actual').value = '';
+            document.getElementById('numero_lote_material').value = '';
+            document.getElementById('codigo_material_recibido').value = '';
+            document.getElementById('numero_parte_lower').value = '';
+            document.getElementById('cantidad_estandarizada').value = '';
+            document.getElementById('codigo_material_lower').value = '';
+            document.getElementById('propiedad_material').value = '';
+            document.getElementById('almacen_especificacion_material').value = '';
+
+        }
+
+        // *** NUEVA FUNCIÓN: Verificar registro automático SOLO tras escaneo ***
+        function verificarRegistroAutomaticoTrasEscaneo() {
+            // *** CONTROL: No permitir múltiples guardados del mismo escaneo ***
+            if (yaGuardadoEnEsteEscaneo) {
+                console.log('🔒 Ya se guardó este escaneo - ignorando duplicado');
+                return;
+            }
+            
+            // Verificar si el checkbox de registro automático está marcado
+            const checkboxRegistroAuto = document.getElementById('checkbox_registro_almacen');
+            
+            if (!checkboxRegistroAuto || !checkboxRegistroAuto.checked) {
+                console.log('🤖 Registro automático desactivado - no se guardará automáticamente');
+                return; // No hacer nada si no está marcado
+            }
+            
+            // Verificar que los campos esenciales estén llenos
+            const validacion = validarCamposParaRegistroAuto();
+            
+            // Si todos los campos están llenos, guardar automáticamente
+            if (validacion.valido) {
+                
+                // *** MARCAR COMO YA GUARDADO ANTES DE GUARDAR ***
+                yaGuardadoEnEsteEscaneo = true;
+                
+                guardarFormulario();
+                
+            } else {
+                console.log('⏳ Registro automático tras escaneo: Faltan campos:', validacion.camposFaltantes);
+                mostrarNotificacionExito('Registro automático', 
+                    `Faltan campos: ${validacion.camposFaltantes.join(', ')}`);
+            }
+        }
+
+        // *** FUNCIÓN: Contador específico para escaneo automático ***
+        function mostrarContadorAutomaticoEscaneo(segundos) {
+            // Verificar si ya existe un contador activo
+            const contadorExistente = document.getElementById('contador_automatico_escaneo');
+            if (contadorExistente) {
+                console.log('🔒 Ya hay un contador activo - cancelando nuevo guardado');
+                return;
+            }
+            
+            // Crear elemento de contador específico para escaneo
+            const contador = document.createElement('div');
+            contador.className = 'countdown-indicator';
+            contador.id = 'contador_automatico_escaneo';
+            
+            let segundosRestantes = segundos;
+            
+            function actualizarContador() {
+                contador.innerHTML = `
+                    <div style="font-size: 18px; margin-bottom: 5px;">📱 ESCANEO DETECTADO</div>
+                    <div style="font-size: 14px;">Guardando automáticamente en <strong>${segundosRestantes}s</strong></div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">Click para cancelar</div>
+                `;
+                
+                if (segundosRestantes <= 0) {
+                    // Guardar automáticamente
+                    guardarFormulario();
+                    contador.remove();
+                } else {
+                    segundosRestantes--;
+                    setTimeout(actualizarContador, 1000);
+                }
+            }
+            
+            // Permitir cancelar haciendo click en el contador
+            contador.addEventListener('click', function() {
+                this.remove();
+                // *** RESETEAR CONTROL AL CANCELAR ***
+                yaGuardadoEnEsteEscaneo = false;
+                mostrarNotificacionExito('Guardado automático cancelado', 'El código fue procesado pero no se guardó automáticamente');
+            });
+            
+            // Agregar al DOM y comenzar contador
+            document.body.appendChild(contador);
+            actualizarContador();
+        }
+
+        // *** FUNCIÓN AUXILIAR: Validar campos para registro automático ***
+        function validarCamposParaRegistroAuto() {
+            const camposRequeridos = [
+                { id: 'codigoMaterialOriginal', nombre: 'Código original' },
+                { id: 'codigo_material_recibido', nombre: 'Código recibido' },
+                { id: 'almacen_especificacion_material', nombre: 'Especificación' }
+            ];
+            
+            const camposFaltantes = [];
+            
+            for (const campo of camposRequeridos) {
+                const elemento = document.getElementById(campo.id);
+                if (!elemento || !elemento.value || elemento.value.trim() === '') {
+                    camposFaltantes.push(campo.nombre);
+                }
+            }
+            
+            return {
+                valido: camposFaltantes.length === 0,
+                camposFaltantes: camposFaltantes
+            };
         }
         
         // Establecer fechas a hoy al cargar la página
@@ -3922,6 +4651,162 @@ if (document.readyState === 'loading') {
         };
         
         // Mostrar funciones principales disponibles
+
+        // ========== FUNCIONES DE MODAL DE TRAZABILIDAD ==========
+        
+        function abrirModalTrazabilidad() {
+            const modal = document.getElementById('trazabilidad-modal');
+            
+            // Obtener el texto del último código escaneado
+            const textoActual = window.ultimoCodigoEscaneado || document.getElementById('codigoMaterialOriginal')?.value || '';
+            
+            // Llenar el área de texto con el código escaneado
+            const areaTexto = document.getElementById('trazabilidad-raw-text');
+            if (areaTexto) {
+                areaTexto.textContent = textoActual;
+                
+                // Configurar selección directa de texto
+                configurarSeleccionDirecta();
+            }
+            
+            // Mostrar el modal
+            modal.style.display = 'flex';
+            
+            // Limpiar campos
+            document.getElementById('trazabilidad-supplier').value = '';
+            document.getElementById('trazabilidad-part-number').value = '';
+            document.getElementById('trazabilidad-lot-number').value = '';
+            
+            console.log('Modal de trazabilidad abierto con código:', textoActual);
+        }
+
+        function configurarSeleccionDirecta() {
+            const areaTexto = document.getElementById('trazabilidad-raw-text');
+            let ultimoCampoActivo = null;
+            
+            // Eventos para enfocar campos
+            document.getElementById('trazabilidad-part-number').addEventListener('focus', function() {
+                ultimoCampoActivo = this;
+            });
+            
+            document.getElementById('trazabilidad-lot-number').addEventListener('focus', function() {
+                ultimoCampoActivo = this;
+            });
+            
+            // Evento de selección en el área de texto
+            areaTexto.addEventListener('mouseup', function() {
+                const seleccion = window.getSelection().toString().trim();
+                if (seleccion && ultimoCampoActivo) {
+                    ultimoCampoActivo.value = seleccion;
+                    ultimoCampoActivo.blur(); // Quitar el foco
+                    ultimoCampoActivo = null;
+                    window.getSelection().removeAllRanges(); // Limpiar selección
+                }
+            });
+        }
+
+        function cerrarModalTrazabilidad() {
+            const modal = document.getElementById('trazabilidad-modal');
+            modal.style.display = 'none';
+            
+            // Limpiar todos los campos
+            document.getElementById('trazabilidad-raw-text').textContent = '';
+            document.getElementById('trazabilidad-supplier').value = '';
+            document.getElementById('trazabilidad-part-number').value = '';
+            document.getElementById('trazabilidad-lot-number').value = '';
+        }
+
+        // Variables globales para la selección de texto
+        let textoSeleccionado = '';
+        let campoActivo = '';
+
+        async function guardarReglaTrazabilidad() {
+            const proveedor = document.getElementById('trazabilidad-supplier').value.trim();
+            const numeroParte = document.getElementById('trazabilidad-part-number').value.trim();
+            const numeroLote = document.getElementById('trazabilidad-lot-number').value.trim();
+            const textoOriginal = document.getElementById('trazabilidad-raw-text').textContent.trim();
+            
+            console.log('🔍 Datos del formulario:', { proveedor, numeroParte, numeroLote, textoOriginal });
+            
+            // Validar campos requeridos
+            if (!proveedor || !numeroParte) {
+                alert('Por favor completa al menos los campos de Proveedor y Número de Parte');
+                return;
+            }
+            
+            // Crear la regla
+            const nuevaRegla = {
+                id: Date.now().toString(),
+                proveedor: proveedor,
+                texto_original: textoOriginal,
+                numero_parte: numeroParte,
+                numero_lote: numeroLote || '',
+                fecha_creacion: new Date().toISOString(),
+                activa: true
+            };
+            
+            console.log('📝 Enviando nueva regla:', nuevaRegla);
+            
+            try {
+                // Enviar al backend para guardar en rules.json
+                const response = await fetch('/guardar_regla_trazabilidad', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(nuevaRegla)
+                });
+                
+                console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+                
+                if (response.ok) {
+                    const resultado = await response.json();
+                    console.log('✅ Resultado exitoso:', resultado);
+                    alert('Regla guardada exitosamente');
+                    
+                    // Cerrar modal
+                    cerrarModalTrazabilidad();
+                    
+                    // Aplicar la regla inmediatamente
+                    aplicarReglaInmediata(numeroParte, numeroLote);
+                    
+                } else {
+                    const errorData = await response.json();
+                    console.error('❌ Error del servidor:', errorData);
+                    throw new Error(errorData.error || 'Error desconocido del servidor');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error completo:', error);
+                alert('Error al guardar la regla: ' + error.message);
+            }
+        }
+
+        function aplicarReglaInmediata(numeroParte, numeroLote) {
+            // Buscar y seleccionar el código de material
+            if (numeroParte) {
+                buscarYSeleccionarCodigoMaterial(numeroParte);
+            }
+            
+            // Llenar el número de lote
+            if (numeroLote) {
+                const inputLote = document.getElementById('numero_lote_material');
+                if (inputLote) {
+                    inputLote.value = numeroLote;
+                }
+            }
+            
+            // Mostrar notificación
+            mostrarNotificacionEscaneo(numeroParte, null, numeroLote);
+        }
+
+        // Cerrar modal al hacer click fuera de él
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('trazabilidad-modal');
+            if (event.target === modal) {
+                cerrarModalTrazabilidad();
+            }
+        });
     </script>
 
 </body>

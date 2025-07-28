@@ -17,15 +17,15 @@
     <meta name="msapplication-tap-highlight" content="no">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="../static/manifest.json">
+    <link rel="manifest" href="/static/manifest.json">
     
     <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="../static/logo.png">
+    <link rel="apple-touch-icon" href="/static/logo.png">
     <link rel="apple-touch-icon" sizes="72x72" href="../static/logo.png">
     <link rel="apple-touch-icon" sizes="152x152" href="../static/logo.png">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="../static/logo.png">
+    <link rel="icon" type="image/png" href="/static/logo.png">
     <link rel="shortcut icon" href="../static/logo.png">
     
     <!-- Bootstrap CSS -->
@@ -36,9 +36,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Font LG Regular - COMENTADO: Problema MIME -->
     <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/yahirmonogatari/lg-fonts/lg-regular.css"> -->
-    <link rel="stylesheet" href="../static/style.css">
-    <link rel="stylesheet" href="../static/styleHeader.css">
-    <link rel="stylesheet" href="../static/css/responsive-mobile.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/styleHeader.css">
+    <link rel="stylesheet" href="/static/css/responsive-mobile.css">
     
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -145,9 +145,10 @@
     </style>
     
     <!-- Sistema de Permisos Dropdowns -->
-    <script src="../static/js/permisos-dropdowns.js"></script>
+    <script src="/static/js/permisos-dropdowns.js"></script>
     <!-- <script src="../static/js/permisos-botones.js"></script> COMENTADO: Versión con problemas -->
-    <script src="../static/js/permisos-botones-simple.js"></script>
+    <script src="/static/js/permisos-botones-simple.js"></script>
+    <script src="/static/js/scriptMain.js"></script>
     
 </head>
 <body>
@@ -159,7 +160,7 @@
             <!-- Logo y bienvenida a la izquierda -->
             <div class="container-logo-welcome-hamburguer">
             <div class="logo-welcome-container">    
-                <img src="../static/logo.png" alt="Ilsan Electronics Logo" class="logo">
+                <img src="/static/logo.png" alt="Ilsan Electronics Logo" class="logo">
                 <div class="welcome-text">
                     <span>Bienvenido,</span> {{ usuario }}
                                 </div>
@@ -440,22 +441,20 @@
 </div>
 
     <!-- Sistema nuevo desactivado - usando mobile-lists-hamburger.js -->
-    <!--
     <button class="mobile-lists-toggle" id="mobile-lists-toggle" title="Ver listas">
-        <i class="bi bi-list-ul"></i>
-    </button>
-    
-    <div class="mobile-lists-overlay" id="mobile-lists-overlay"></div>
-    
-    <div class="mobile-lists-menu" id="mobile-lists-menu">
-        <div class="mobile-lists-header">
-            <span id="mobile-lists-title">Información Básica</span>
-            <button class="mobile-lists-close" id="mobile-lists-close">×</button>
-        </div>
-        <div class="mobile-lists-content" id="mobile-lists-content">
-        </div>
+    <i class="bi bi-list-ul"></i>
+</button>
+
+<div class="mobile-lists-overlay" id="mobile-lists-overlay"></div>
+
+<div class="mobile-lists-menu" id="mobile-lists-menu">
+    <div class="mobile-lists-header">
+        <span id="mobile-lists-title">Información Básica</span>
+        <button class="mobile-lists-close" id="mobile-lists-close">×</button>
     </div>
-    -->
+    <div class="mobile-lists-content" id="mobile-lists-content">
+    </div>
+</div>
 
     <!-- Agrega este overlay justo después del header -->
     <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
@@ -904,44 +903,49 @@
                 }
                 
                 // Cargar el archivo de lista
-                fetch(listUrl)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.text();
-                    })
-                    .then(html => {
-                        // Procesar el HTML y convertirlo para móvil
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = html;
-                        
-                        // Buscar el sidebar en el HTML cargado
-                        const sidebar = tempDiv.querySelector('.app-sidebar');
-                        if (sidebar) {
-                            convertSidebarToMobileFormat(sidebar);
-                            mobileListsTitle.textContent = title;
-                        } else {
-                            // Si no hay sidebar, mostrar mensaje
-                            mobileListsContent.innerHTML = `
-                                <div style="text-align: center; padding: 40px; color: white;">
-                                    <p>No se encontraron listas para esta sección</p>
-                                    <p style="font-size: 12px; color: #ccc;">Sección: ${title}</p>
-                                </div>
-                            `;
-                            mobileListsTitle.textContent = title;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error cargando lista:', error);
-                        mobileListsContent.innerHTML = `
-                            <div style="text-align: center; padding: 40px; color: white;">
-                                <p>Error cargando la lista</p>
-                                <p style="font-size: 12px; color: #ccc;">${error.message}</p>
-                            </div>
-                        `;
-                        mobileListsTitle.textContent = title;
-                    });
+                fetch(`/cargar_template`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ template_path: listUrl.replace('/templates/', '') })
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    console.log('Fetch successful, status:', response.status);
+    return response.text();
+})
+.then(html => {
+    console.log('HTML received, length:', html.length);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const sidebar = tempDiv.querySelector('.app-sidebar');
+    if (sidebar) {
+        console.log('Sidebar found, sections:', sidebar.querySelectorAll('.sidebar-section').length);
+        convertSidebarToMobileFormat(sidebar);
+        mobileListsTitle.textContent = title;
+        console.log('Conversion completed, content set');
+    } else {
+        console.log('No sidebar found in HTML');
+        mobileListsContent.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: white;">
+                <p>No se encontraron listas para esta sección</p>
+                <p style="font-size: 12px; color: #ccc;">Sección: ${title}</p>
+            </div>
+        `;
+        mobileListsTitle.textContent = title;
+    }
+})
+.catch(error => {
+    console.error('Error cargando lista:', error);
+    mobileListsContent.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: white;">
+            <p>Error cargando la lista</p>
+            <p style="font-size: 12px; color: #ccc;">${error.message}</p>
+        </div>
+    `;
+    mobileListsTitle.textContent = title;
+});
             }
             
             // Función para convertir el sidebar a formato móvil
@@ -992,9 +996,9 @@
                 setupMobileDropdowns();
                 
                 // Inicializar el sistema de permisos para el contenido cargado dinámicamente
-                if (typeof PermisosDropdowns !== 'undefined') {
-                    PermisosDropdowns.procesarNuevoContenido(mobileListsContent);
-                }
+                // if (typeof PermisosDropdowns !== 'undefined') {
+                //     PermisosDropdowns.procesarNuevoContenido(mobileListsContent);
+                // } // Comentado para evitar TypeError
             }
             
             // Función para configurar dropdowns móviles
@@ -2233,7 +2237,7 @@
         // Inicializar el sistema de permisos cuando la página esté completamente cargada
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof PermisosDropdowns !== 'undefined') {
-                PermisosDropdowns.inicializar();
+                PermisosDropdowns.init();
             }
         });
 </script>

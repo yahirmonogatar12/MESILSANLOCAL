@@ -8,11 +8,11 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarReparacion">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlReparacion()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de item de reparacion" 
                             data-permiso-boton="Control de resultado de reparacion">Control de resultado de reparacion</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlItemReparado()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de item de reparacion" 
                             data-permiso-boton="Control de item reparado">Control de item reparado</li>
@@ -25,11 +25,11 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarMSL">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialSMT()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de material" 
                             data-permiso-boton="Historial de cambio de material de SMT">Historial de cambio de material de SMT</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialMaterialMaquina()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de material" 
                             data-permiso-boton="Historial de cambio de material por maquina">Historial de cambio de material por maquina</li> 
@@ -42,15 +42,15 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarReporte">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialPegamento()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de Sub Material" 
                             data-permiso-boton="Historial de uso de pegamento de soldadura">Historial de uso de pegamento de soldadura</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialMask()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de Sub Material" 
                             data-permiso-boton="Historial de uso de mask de metal">Historial de uso de mask de metal</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialSqueeguee()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de Sub Material" 
                             data-permiso-boton="Historial de uso de squeeguee">Historial de uso de squeeguee</li>
@@ -63,7 +63,7 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarEmpaque">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarProcessInterlockHistory()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Interlock History" 
                             data-permiso-boton="Process interlock History">Process interlock History</li>
@@ -76,11 +76,11 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarWarehousing">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlMasterSample()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de Master Sample de SMT" 
                             data-permiso-boton="Control de Master Sample de SMT">Control de Master Sample de SMT</li>
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialInspeccionMaster()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de Master Sample de SMT" 
                             data-permiso-boton="Historial de inspeccion de Master Sample de SMT">Historial de inspeccion de Master Sample de SMT</li>
@@ -93,7 +93,7 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarOtrasIdentificaciones">
-                    <li class="sidebar-link" tabindex="0" onclick="mostrarControlInspeccionOQC()"
+                    <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Inspeccion de calidad" 
                             data-permiso-boton="Control de inspeccion de OQC">Control de inspeccion de OQC</li>
@@ -115,212 +115,5 @@
             PermisosDropdowns.inicializar();
         }
     });
-    
-    // Función para cargar el historial de cambio de material de SMT
-    window.cargarHistorialSMT = function() {
-        const appContent = document.querySelector('main.app-content');
-        if (!appContent) {
-            console.error('No se encontró el contenedor app-content');
-            return;
-        }
-        
-        // Mostrar indicador de carga mejorado
-        appContent.innerHTML = `
-            <div class="loading-container" style="
-                display: flex; 
-                flex-direction: column; 
-                justify-content: center; 
-                align-items: center; 
-                height: 400px; 
-                background: #f8f9fa; 
-                border-radius: 10px; 
-                margin: 20px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            ">
-                <div class="spinner-border text-primary" role="status" style="margin-bottom: 20px;">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-                <h4 style="color: #495057; margin: 0;">Cargando Historial de Cambio de Material de SMT</h4>
-                <p style="color: #6c757d; margin: 5px 0 0 0;">Preparando interfaz y conectando con los datos...</p>
-            </div>
-        `;
-        
-        // Realizar petición AJAX a la nueva API con mejor manejo de errores
-        fetch('/api/historial-cambio-material-smt-content', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'include'
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error('No tienes permisos para acceder a esta funcionalidad');
-                } else if (response.status === 401) {
-                    throw new Error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente');
-                } else {
-                    throw new Error(`Error del servidor: ${response.status} - ${response.statusText}`);
-                }
-            }
-            return response.text();
-        })
-        .then(html => {
-            console.log('HTML content loaded successfully');
-            
-            // Insertar el contenido HTML
-            appContent.innerHTML = html;
-            
-            // Función para cargar recursos dinámicamente
-            function cargarRecursos() {
-                return new Promise((resolve, reject) => {
-                    let recursosCompletos = 0;
-                    const totalRecursos = 2; // CSS + JS
-                    
-                    function checkComplete() {
-                        recursosCompletos++;
-                        if (recursosCompletos >= totalRecursos) {
-                            resolve();
-                        }
-                    }
-                    
-                    // Cargar CSS específico si no está ya cargado
-                    if (!document.querySelector('link[href*="historial_cambio_material_smt.css"]')) {
-                        const link = document.createElement('link');
-                        link.rel = 'stylesheet';
-                        link.href = '/static/css/historial_cambio_material_smt.css?v=' + Date.now();
-                        link.onload = function() {
-                            console.log('✅ CSS del historial de SMT cargado');
-                            checkComplete();
-                        };
-                        link.onerror = function() {
-                            console.warn('⚠️ Error al cargar CSS, continuando...');
-                            checkComplete();
-                        };
-                        document.head.appendChild(link);
-                    } else {
-                        checkComplete();
-                    }
-                    
-                    // Cargar JavaScript específico
-                    const existingScript = document.querySelector('script[src*="historial_cambio_material_smt.js"]');
-                    if (existingScript) {
-                        existingScript.remove();
-                    }
-                    
-                    const script = document.createElement('script');
-                    script.src = '/static/js/historial_cambio_material_smt.js?v=' + Date.now();
-                    script.onload = function() {
-                        console.log('✅ JavaScript del historial de SMT cargado correctamente');
-                        checkComplete();
-                    };
-                    script.onerror = function() {
-                        console.error('❌ Error al cargar el JavaScript del historial de SMT');
-                        checkComplete(); // Continúa aunque falle
-                    };
-                    document.head.appendChild(script);
-                });
-            }
-            
-            // Cargar recursos y luego inicializar
-            cargarRecursos().then(() => {
-                // Esperar un poco para que el script se ejecute completamente
-                setTimeout(() => {
-                    try {
-                        // Establecer fechas por defecto
-                        const fechaHoy = new Date().toISOString().split('T')[0];
-                        const hace7dias = new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0];
-                        
-                        const dateFromField = document.getElementById('filterDateFrom');
-                        const dateToField = document.getElementById('filterDateTo');
-                        
-                        if (dateFromField && !dateFromField.value) dateFromField.value = hace7dias;
-                        if (dateToField && !dateToField.value) dateToField.value = fechaHoy;
-                        
-                        console.log('✅ Historial de cambio de material de SMT iniciado correctamente');
-                        
-                        // Mostrar mensaje de éxito temporal
-                        const successDiv = document.createElement('div');
-                        successDiv.innerHTML = `
-                            <div style="
-                                position: fixed; 
-                                top: 20px; 
-                                right: 20px; 
-                                background: #28a745; 
-                                color: white; 
-                                padding: 10px 20px; 
-                                border-radius: 5px; 
-                                z-index: 10000;
-                                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                            ">
-                                ✅ Historial de SMT cargado exitosamente
-                            </div>
-                        `;
-                        document.body.appendChild(successDiv);
-                        
-                        setTimeout(() => {
-                            if (successDiv.parentNode) {
-                                successDiv.parentNode.removeChild(successDiv);
-                            }
-                        }, 3000);
-                        
-                    } catch (initError) {
-                        console.warn('Advertencia en inicialización:', initError);
-                    }
-                }, 500);
-            });
-            
-        })
-        .catch(error => {
-            console.error('Error al cargar el historial de SMT:', error);
-            appContent.innerHTML = `
-                <div class="error-container" style="
-                    display: flex; 
-                    flex-direction: column; 
-                    justify-content: center; 
-                    align-items: center; 
-                    height: 400px; 
-                    text-align: center; 
-                    color: #dc3545;
-                    background: #f8f9fa;
-                    border-radius: 10px;
-                    margin: 20px;
-                    padding: 20px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                ">
-                    <div style="font-size: 3rem; margin-bottom: 20px;">⚠️</div>
-                    <h3 style="margin: 0 0 10px 0;">Error al cargar el contenido</h3>
-                    <p style="margin: 0 0 15px 0;">No se pudo cargar el Historial de Cambio de Material de SMT</p>
-                    <p style="font-size: 14px; color: #666; margin: 0 0 20px 0; max-width: 400px;">${error.message}</p>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="window.cargarHistorialSMT()" style="
-                            padding: 10px 20px; 
-                            background: #007bff; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 5px; 
-                            cursor: pointer;
-                            font-size: 14px;
-                        " onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
-                            🔄 Reintentar
-                        </button>
-                        <button onclick="location.reload()" style="
-                            padding: 10px 20px; 
-                            background: #6c757d; 
-                            color: white; 
-                            border: none; 
-                            border-radius: 5px; 
-                            cursor: pointer;
-                            font-size: 14px;
-                        " onmouseover="this.style.background='#545b62'" onmouseout="this.style.background='#6c757d'">
-                            ↻ Recargar Página
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-    }
 </script>
 </div>

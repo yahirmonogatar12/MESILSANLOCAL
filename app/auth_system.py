@@ -15,6 +15,7 @@ from flask import session, jsonify, request, redirect, url_for, g, current_app
 from datetime import datetime, timedelta, timezone
 import traceback
 from .db import get_db_connection
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class AuthSystem:
     def __init__(self, app=None):

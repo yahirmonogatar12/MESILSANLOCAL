@@ -130,7 +130,7 @@
         if (isMobile()) {
             setupMobileDropdown(newButton, targetElement, dropdownId);
         } else {
-            setupDesktopDropdown(newButton, targetElement, dropdownId);
+            setupDesktopDropdown(newButton, targetElement, dropdownId, targetSelector);
         }
     }
     
@@ -188,10 +188,14 @@
     // ===============================================
     // CONFIGURACIÓN DESKTOP
     // ===============================================
-    function setupDesktopDropdown(button, targetElement, dropdownId) {
+    function setupDesktopDropdown(button, targetElement, dropdownId, targetSelector) {
         log(`🖥️ Configurando dropdown desktop: ${dropdownId}`);
         
         // Crear instancia de Bootstrap Collapse
+        if (!targetElement) {
+            console.error(`Target element not found for dropdown: ${dropdownId}, selector: ${targetSelector}`);
+            return;
+        }
         const collapseInstance = new bootstrap.Collapse(targetElement, {
             toggle: false
         });
@@ -199,8 +203,16 @@
         dropdownInstances.set(dropdownId, collapseInstance);
         
         // EXPANDIR POR DEFECTO EN PC (solo si no tiene clase collapsed-by-user)
-        if (!targetElement.classList.contains('collapsed-by-user')) {
+        if (targetElement && !targetElement.classList.contains('collapsed-by-user')) {
             setTimeout(() => {
+                if (!targetElement) {
+                    console.error(`Target element became null for dropdown: ${dropdownId}`);
+                    return;
+                }
+                if (!collapseInstance._element) {
+                    console.error(`Collapse instance element is null for ${dropdownId}`);
+                    return;
+                }
                 if (!targetElement.classList.contains('show')) {
                     collapseInstance.show();
                     button.setAttribute('aria-expanded', 'true');
