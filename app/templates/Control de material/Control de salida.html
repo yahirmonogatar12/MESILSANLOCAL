@@ -2915,6 +2915,1016 @@
         
         console.log('✅ Solución definitiva de historial cargada - Use: solucionarHistorialDefinitiva()');
 
+        // ===================================================================
+        // � AUTO-INICIALIZACIÓN DE FUNCIONALIDAD HISTORIAL - INDEPENDIENTE
+        // ===================================================================
+        
+        // Función principal que controla todo el historial de salidas
+        function inicializarHistorialSalida() {
+            console.log('� INICIALIZANDO HISTORIAL DE SALIDA - Auto-detección AJAX');
+            
+            // Buscar elementos principales
+            const btnHistorial = document.getElementById('btnHistorialSalida');
+            const btnRegistro = document.getElementById('btnRegistroSalida');
+            const btnConsultar = document.querySelector('#historialSection button[onclick*="consultarSalidas"]');
+            
+            if (!btnHistorial || !btnRegistro) {
+                console.log('⚠️ Botones no encontrados, reintentando...');
+                return false;
+            }
+            
+            console.log('✅ Elementos encontrados, configurando funcionalidad...');
+            
+            // FUNCIÓN: Mostrar historial
+            function mostrarHistorial() {
+                console.log('📊 Mostrando historial de salidas...');
+                
+                const historialSection = document.getElementById('historialSection');
+                const tablasRegistro = document.getElementById('tablasRegistroSalida');
+                
+                if (!historialSection || !tablasRegistro) {
+                    console.error('❌ Elementos de historial no encontrados');
+                    return;
+                }
+                
+                // Ocultar registro y mostrar historial
+                tablasRegistro.style.display = 'none';
+                historialSection.style.display = 'block';
+                historialSection.style.visibility = 'visible';
+                historialSection.style.opacity = '1';
+                
+                // Configurar fechas automáticamente
+                const hoy = new Date().toISOString().split('T')[0];
+                const fechaDesde = document.getElementById('salida_fecha_desde');
+                const fechaHasta = document.getElementById('salida_fecha_hasta');
+                
+                if (fechaDesde && !fechaDesde.value) fechaDesde.value = hoy;
+                if (fechaHasta && !fechaHasta.value) fechaHasta.value = hoy;
+                
+                // Actualizar estilos de botones
+                btnHistorial.style.cssText = 'background-color: #e74c3c; color: white; font-weight: bold;';
+                btnRegistro.style.cssText = 'background-color: #95a5a6; color: #2c3e50;';
+                
+                console.log('✅ HISTORIAL MOSTRADO EXITOSAMENTE');
+            }
+            
+            // FUNCIÓN: Mostrar registro
+            function mostrarRegistro() {
+                console.log('📝 Mostrando registro de salidas...');
+                
+                const historialSection = document.getElementById('historialSection');
+                const tablasRegistro = document.getElementById('tablasRegistroSalida');
+                
+                if (!historialSection || !tablasRegistro) {
+                    console.error('❌ Elementos de registro no encontrados');
+                    return;
+                }
+                
+                // Ocultar historial y mostrar registro
+                historialSection.style.display = 'none';
+                tablasRegistro.style.display = 'block';
+                tablasRegistro.style.visibility = 'visible';
+                tablasRegistro.style.opacity = '1';
+                
+                // Actualizar estilos de botones
+                btnRegistro.style.cssText = 'background-color: #27ae60; color: white; font-weight: bold;';
+                btnHistorial.style.cssText = 'background-color: #95a5a6; color: #2c3e50;';
+                
+                console.log('✅ REGISTRO MOSTRADO EXITOSAMENTE');
+            }
+            
+            // FUNCIÓN: Consultar datos
+            async function consultarDatos() {
+                console.log('🔍 Consultando datos de historial...');
+                
+                try {
+                    const codigoFiltro = document.getElementById('salida_filtro_codigo')?.value?.trim() || '';
+                    const fechaDesde = document.getElementById('salida_fecha_desde')?.value || '';
+                    const fechaHasta = document.getElementById('salida_fecha_hasta')?.value || '';
+                    
+                    let url = '/consultar_historial_salidas';
+                    const params = new URLSearchParams();
+                    
+                    if (codigoFiltro) params.append('codigo', codigoFiltro);
+                    if (fechaDesde) params.append('fecha_desde', fechaDesde);
+                    if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+                    
+                    if (params.toString()) url += '?' + params.toString();
+                    
+                    const response = await fetch(url);
+                    const salidas = await response.json();
+                    
+                    if (Array.isArray(salidas)) {
+                        actualizarTablaSalidas(salidas);
+                        mostrarExito(`Consulta exitosa: ${salidas.length} registros encontrados`);
+                    } else {
+                        mostrarError('Error en la consulta de datos');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Error al consultar:', error);
+                    mostrarError('Error al consultar datos: ' + error.message);
+                }
+            }
+            
+            // CONFIGURAR EVENT LISTENERS
+            
+            // Remover event listeners existentes
+            btnHistorial.removeAttribute('onclick');
+            btnRegistro.removeAttribute('onclick');
+            
+            // Agregar nuevos event listeners
+            btnHistorial.addEventListener('click', function(e) {
+                e.preventDefault();
+                mostrarHistorial();
+            });
+            
+            btnRegistro.addEventListener('click', function(e) {
+                e.preventDefault();
+                mostrarRegistro();
+            });
+            
+            // Configurar botón consultar si existe
+            if (btnConsultar) {
+                btnConsultar.removeAttribute('onclick');
+                btnConsultar.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    consultarDatos();
+                });
+            }
+            
+            // También buscar otros botones de consultar por selector más general
+            const otrosBtnConsultar = document.querySelectorAll('#historialSection button');
+            otrosBtnConsultar.forEach(btn => {
+                if (btn.textContent.toLowerCase().includes('consultar')) {
+                    btn.removeAttribute('onclick');
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        consultarDatos();
+                    });
+                }
+            });
+            
+            console.log('✅ HISTORIAL INICIALIZADO CORRECTAMENTE');
+            return true;
+        }
+        
+        // ===================================================================
+        // � AUTO-REINICIALIZACIÓN DESPUÉS DE CARGAS AJAX
+        // ===================================================================
+        
+        // Función que detecta cuando la página se ha cargado completamente
+        function detectarCargaCompleta() {
+            // Intentar inicializar múltiples veces para asegurar que funcione
+            let intentos = 0;
+            const maxIntentos = 10;
+            
+            const intervalos = setInterval(() => {
+                intentos++;
+                
+                if (inicializarHistorialSalida()) {
+                    clearInterval(intervalos);
+                    console.log('✅ Historial inicializado en intento:', intentos);
+                } else if (intentos >= maxIntentos) {
+                    clearInterval(intervalos);
+                    console.log('⚠️ No se pudo inicializar historial después de', maxIntentos, 'intentos');
+                }
+            }, 500); // Intentar cada 500ms
+        }
+        
+        // ===================================================================
+        // 🎯 HOOK PARA INTERCEPTAR CARGAS AJAX Y AUTO-REINICIALIZAR
+        // ===================================================================
+        
+        // Interceptar cuando el contenido de este módulo se carga
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            // Guardar la función original
+            const originalCargar = window.cargarContenidoDinamico;
+            
+            // Sobrescribir la función para detectar cuando se carga este módulo
+            window.cargarContenidoDinamico = function(containerId, templatePath, initCallback = null) {
+                // Llamar a la función original
+                const resultado = originalCargar.call(this, containerId, templatePath, initCallback);
+                
+                // Si se está cargando el módulo de salida, reinicializar
+                if (templatePath && templatePath.includes('salida')) {
+                    console.log('🔄 Detectada carga AJAX de Control de Salida, reinicializando...');
+                    setTimeout(detectarCargaCompleta, 100);
+                }
+                
+                return resultado;
+            };
+        }
+        
+        // ===================================================================
+        // 🚀 INICIALIZACIÓN AUTOMÁTICA EN MÚLTIPLES PUNTOS
+        // ===================================================================
+        
+        // 1. Si DOM ya está listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', detectarCargaCompleta);
+        } else {
+            detectarCargaCompleta();
+        }
+        
+        // 2. Intentos adicionales por si AJAX se demora
+        setTimeout(detectarCargaCompleta, 100);
+        setTimeout(detectarCargaCompleta, 500);
+        setTimeout(detectarCargaCompleta, 1000);
+        
+        // 3. Función global de debugging que siempre estará disponible
+        window.debugHistorialSalida = function() {
+            console.log('🧪 DEBUGGING HISTORIAL DE SALIDA');
+            
+            const estado = {
+                elementosEncontrados: {
+                    btnHistorial: !!document.getElementById('btnHistorialSalida'),
+                    btnRegistro: !!document.getElementById('btnRegistroSalida'),
+                    historialSection: !!document.getElementById('historialSection'),
+                    tablasRegistro: !!document.getElementById('tablasRegistroSalida')
+                },
+                funcionesDisponibles: {
+                    inicializarHistorialSalida: typeof inicializarHistorialSalida === 'function',
+                    consultarSalidas: typeof consultarSalidas === 'function',
+                    mostrarHistorialSalida: typeof mostrarHistorialSalida === 'function'
+                }
+            };
+            
+            console.table(estado.elementosEncontrados);
+            console.table(estado.funcionesDisponibles);
+            
+            // Intentar reinicializar
+            if (inicializarHistorialSalida()) {
+                console.log('✅ Reinicialización exitosa');
+            } else {
+                console.log('❌ Falló la reinicialización');
+            }
+            
+            return estado;
+        };
+        
+        console.log('🚀 SISTEMA DE AUTO-INICIALIZACIÓN HISTORIAL CARGADO');
+        console.log('💡 Use debugHistorialSalida() para debugging');
+
+        // ===================================================================
+        // 🔧 FUNCIÓN DE ACTIVACIÓN MANUAL (COMPATIBILIDAD CON VERSIÓN ANTERIOR)
+        // ===================================================================
+        
+        window.activarHistorialDirecto = function() {
+            console.log('🔄 Activación manual solicitada, redirigiendo a sistema automático...');
+            return detectarCargaCompleta();
+                        tablasRegistro: !!tablasRegistro
+                    });
+                    
+                    // Si no encuentra historialSection, buscar alternativas
+                    if (!historialSection) {
+                        console.log('⚠️ Buscando historialSection alternativo...');
+                        
+                        // Buscar por query selector más amplio
+                        historialSection = document.querySelector('[id*="historial"]') ||
+                                         document.querySelector('.historial') ||
+                                         document.querySelector('[class*="historial"]');
+                        
+                        if (!historialSection) {
+                            console.log('🔧 Creando historialSection desde cero...');
+                            
+                            // Crear sección de historial completamente nueva
+                            historialSection = document.createElement('div');
+                            historialSection.id = 'historialSection';
+                            historialSection.innerHTML = `
+                                <div style="background: linear-gradient(135deg, #2c3e50, #3498db); color: white; padding: 30px; border-radius: 15px; margin: 20px 0; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                                    <div style="text-align: center; margin-bottom: 20px;">
+                                        <h2 style="color: #ecf0f1; margin: 0; font-size: 24px;">🔥 HISTORIAL DE SALIDA ACTIVADO 🔥</h2>
+                                        <p style="color: #bdc3c7; margin: 10px 0;">Sistema funcionando independientemente</p>
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;">
+                                        <div>
+                                            <label style="display: block; margin-bottom: 5px; color: #ecf0f1;">Fecha desde:</label>
+                                            <input type="date" id="salida_fecha_desde" style="padding: 8px; border-radius: 5px; border: none;">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; margin-bottom: 5px; color: #ecf0f1;">Fecha hasta:</label>
+                                            <input type="date" id="salida_fecha_hasta" style="padding: 8px; border-radius: 5px; border: none;">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; margin-bottom: 5px; color: #ecf0f1;">Código material:</label>
+                                            <input type="text" id="salida_filtro_codigo" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; border: none;">
+                                        </div>
+                                        <div style="display: flex; align-items: end; gap: 10px;">
+                                            <button onclick="consultarSalidas()" style="background: #27ae60; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                                                🔍 Consultar
+                                            </button>
+                                            <button onclick="limpiarFiltros()" style="background: #e67e22; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer;">
+                                                🧹 Limpiar
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px;">
+                                        <table id="salida_tablaSalidas" style="width: 100%; border-collapse: collapse; color: white;">
+                                            <thead>
+                                                <tr style="background: rgba(0,0,0,0.3);">
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Fecha</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Proceso</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Código Recibido</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Código Material</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Número Parte</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: center;">Disp</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: center;">Hist</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Código Original</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Lote</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Máquina</th>
+                                                    <th style="padding: 12px; border: 1px solid rgba(255,255,255,0.2); text-align: left;">Departamento</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td colspan="11" style="padding: 20px; text-align: center; color: #bdc3c7; font-style: italic;">
+                                                        Haga clic en "Consultar" para cargar los datos del historial
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <div id="salida_totalInfo" style="margin-top: 10px; color: #bdc3c7; text-align: center;">Total Rows: 0</div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Buscar dónde insertarlo
+                            const contenedor = document.querySelector('main') ||
+                                             document.querySelector('.container') ||
+                                             document.querySelector('.app-content') ||
+                                             document.body;
+                            
+                            contenedor.appendChild(historialSection);
+                            console.log('✅ historialSection creado e insertado');
+                        }
+                    }
+                    
+                    // PASO 3: Ocultar completamente las tablas de registro
+                    if (tablasRegistro) {
+                        tablasRegistro.style.cssText = `
+                            display: none !important;
+                            visibility: hidden !important;
+                            opacity: 0 !important;
+                            position: absolute !important;
+                            left: -9999px !important;
+                        `;
+                        console.log('✅ Tablas de registro ocultadas');
+                    }
+                    
+                    // También ocultar otros elementos que puedan interferir
+                    const elementosRegistro = document.querySelectorAll('[id*="registro"], [class*="registro"]');
+                    elementosRegistro.forEach(elemento => {
+                        if (elemento !== historialSection && elemento.id !== 'salida_tablaSalidas') {
+                            elemento.style.display = 'none';
+                        }
+                    });
+                    
+                    // PASO 4: Mostrar y forzar visibilidad del historial
+                    historialSection.style.cssText = `
+                        display: block !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        z-index: 10000 !important;
+                        position: relative !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                    `;
+                    
+                    // PASO 5: Configurar fechas automáticamente
+                    const hoy = new Date().toISOString().split('T')[0];
+                    const fechaDesde = document.getElementById('salida_fecha_desde');
+                    const fechaHasta = document.getElementById('salida_fecha_hasta');
+                    
+                    if (fechaDesde && !fechaDesde.value) {
+                        fechaDesde.value = hoy;
+                    }
+                    if (fechaHasta && !fechaHasta.value) {
+                        fechaHasta.value = hoy;
+                    }
+                    
+                    // PASO 6: Actualizar estilo del botón
+                    btnHistorial.style.cssText = `
+                        background-color: #27ae60 !important;
+                        color: white !important;
+                        font-weight: bold !important;
+                        border: 2px solid #2ecc71 !important;
+                        transform: scale(1.05) !important;
+                    `;
+                    
+                    // PASO 7: Scroll suave al historial
+                    setTimeout(() => {
+                        historialSection.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start' 
+                        });
+                    }, 100);
+                    
+                    // PASO 8: Mostrar mensaje de confirmación
+                    const mensaje = document.createElement('div');
+                    mensaje.style.cssText = `
+                        position: fixed !important;
+                        top: 20px !important;
+                        right: 20px !important;
+                        background: #27ae60 !important;
+                        color: white !important;
+                        padding: 15px 20px !important;
+                        border-radius: 8px !important;
+                        z-index: 99999 !important;
+                        font-weight: bold !important;
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
+                    `;
+                    mensaje.innerHTML = `
+                        <div>✅ HISTORIAL ACTIVADO</div>
+                        <div style="font-size: 12px; margin-top: 5px;">Método directo funcionando</div>
+                    `;
+                    document.body.appendChild(mensaje);
+                    
+                    setTimeout(() => {
+                        if (mensaje && mensaje.parentNode) {
+                            mensaje.remove();
+                        }
+                    }, 5000);
+                    
+                    console.log('🎉 HISTORIAL ACTIVADO EXITOSAMENTE - Método directo');
+                    
+                    return false; // Prevenir comportamiento por defecto
+                };
+                
+                // PASO 3: También agregar event listener como respaldo
+                btnHistorial.addEventListener('click', btnHistorial.onclick);
+                
+                // PASO 4: Trigger inmediato para probar
+                btnHistorial.click();
+                
+                return '✅ HISTORIAL ACTIVADO CON MÉTODO DIRECTO';
+                
+            } catch (error) {
+                console.error('❌ Error en activarHistorialDirecto:', error);
+                
+                // FALLBACK: Crear historial directamente en el body
+                const fallback = document.createElement('div');
+                fallback.style.cssText = `
+                    position: fixed !important;
+                    top: 50px !important;
+                    left: 50px !important;
+                    right: 50px !important;
+                    bottom: 50px !important;
+                    background: red !important;
+                    color: white !important;
+                    padding: 30px !important;
+                    z-index: 999999 !important;
+                    border-radius: 15px !important;
+                    overflow: auto !important;
+                `;
+                fallback.innerHTML = `
+                    <h1>🔥 HISTORIAL FORZADO (FALLBACK EXTREMO) 🔥</h1>
+                    <p>Si ves esto, el historial está funcionando a pesar de todos los errores.</p>
+                    <p>Error: ${error.message}</p>
+                    <button onclick="this.parentElement.remove()" style="background: white; color: red; padding: 10px; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">
+                        Cerrar
+                    </button>
+                `;
+                document.body.appendChild(fallback);
+                
+                return 'Fallback extremo activado';
+            }
+        };
+        
+        // ===================================================================
+        // 🔥 SOLUCIÓN ULTRA-SIMPLE - SOLO CAMBIAR DISPLAY
+        // ===================================================================
+        
+        window.simpleHistorial = function() {
+            console.log('🔥 SOLUCIÓN ULTRA-SIMPLE EJECUTADA');
+            
+            // PASO 1: Obtener elementos directamente
+            const historial = document.getElementById('historialSection');
+            const registro = document.getElementById('tablasRegistroSalida');
+            const btnHistorial = document.getElementById('btnHistorialSalida');
+            const btnRegistro = document.getElementById('btnRegistroSalida');
+            
+            console.log('📊 Elementos encontrados:', {
+                historial: !!historial,
+                registro: !!registro,
+                btnHistorial: !!btnHistorial,
+                btnRegistro: !!btnRegistro
+            });
+            
+            if (!historial) {
+                console.error('❌ historialSection no encontrado');
+                alert('ERROR: historialSection no encontrado');
+                return 'Error: historialSection no encontrado';
+            }
+            
+            if (!registro) {
+                console.error('❌ tablasRegistroSalida no encontrado');
+                alert('ERROR: tablasRegistroSalida no encontrado');
+                return 'Error: tablasRegistroSalida no encontrado';
+            }
+            
+            // PASO 2: Cambios simples y directos
+            console.log('🔧 Aplicando cambios directos...');
+            
+            // Ocultar registro
+            registro.style.display = 'none';
+            
+            // Mostrar historial
+            historial.style.display = 'block';
+            historial.style.visibility = 'visible';
+            historial.style.opacity = '1';
+            
+            // Configurar fechas
+            const hoy = new Date().toISOString().split('T')[0];
+            const fechaDesde = document.getElementById('salida_fecha_desde');
+            const fechaHasta = document.getElementById('salida_fecha_hasta');
+            
+            if (fechaDesde) fechaDesde.value = hoy;
+            if (fechaHasta) fechaHasta.value = hoy;
+            
+            // Cambiar colores de botones
+            if (btnHistorial) {
+                btnHistorial.style.backgroundColor = '#e74c3c';
+                btnHistorial.style.color = 'white';
+            }
+            if (btnRegistro) {
+                btnRegistro.style.backgroundColor = '#95a5a6';
+                btnRegistro.style.color = '#2c3e50';
+            }
+            
+            console.log('✅ HISTORIAL MOSTRADO - Estado:', {
+                historialDisplay: historial.style.display,
+                registroDisplay: registro.style.display
+            });
+            
+            // Scroll suave
+            historial.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            return '✅ HISTORIAL SIMPLE ACTIVADO';
+        };
+        
+        // ===================================================================
+        // 🔥 REEMPLAZAR COMPLETAMENTE EL ONCLICK DEL BOTÓN
+        // ===================================================================
+        
+        // Esperar a que el DOM esté listo y reemplazar el onclick
+        function reemplazarOnclickHistorial() {
+            const btnHistorial = document.getElementById('btnHistorialSalida');
+            
+            if (!btnHistorial) {
+                console.log('⏳ Botón historial no encontrado, reintentando...');
+                setTimeout(reemplazarOnclickHistorial, 500);
+                return;
+            }
+            
+            console.log('🔧 REEMPLAZANDO ONCLICK DEL BOTÓN HISTORIAL');
+            
+            // Eliminar onclick existente
+            btnHistorial.removeAttribute('onclick');
+            
+            // Remover event listeners existentes
+            btnHistorial.onclick = null;
+            
+            // Agregar nuevo event listener SIMPLE
+            btnHistorial.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('🔥 CLICK SIMPLE EN HISTORIAL');
+                
+                // Ejecutar función ultra-simple
+                window.simpleHistorial();
+                
+                return false;
+            });
+            
+            console.log('✅ ONCLICK REEMPLAZADO EXITOSAMENTE');
+        }
+        
+        // ===================================================================
+        // 🔥 SOLUCIÓN COMPATIBLE CON AJAX - PERSISTENTE Y AUTOREGISTRABLE
+        // ===================================================================
+        
+        // PASO 1: Crear funciones persistentes en window que sobrevivan a recargas AJAX
+        (function() {
+            console.log('🚀 INICIANDO SOLUCIÓN ANTI-AJAX PARA HISTORIAL');
+            
+            // Función principal que siempre estará disponible
+            window.HISTORIAL_SOLUCION = {
+                activo: false,
+                elementos: {},
+                
+                // Función principal para mostrar historial
+                mostrar: function() {
+                    console.log('🔥 EJECUTANDO HISTORIAL_SOLUCION.mostrar()');
+                    
+                    try {
+                        // Buscar elementos cada vez (por si fueron recreados por AJAX)
+                        this.elementos = {
+                            historial: document.getElementById('historialSection'),
+                            registro: document.getElementById('tablasRegistroSalida'),
+                            btnHistorial: document.getElementById('btnHistorialSalida'),
+                            btnRegistro: document.getElementById('btnRegistroSalida')
+                        };
+                        
+                        console.log('📊 Elementos encontrados:', {
+                            historial: !!this.elementos.historial,
+                            registro: !!this.elementos.registro,
+                            btnHistorial: !!this.elementos.btnHistorial,
+                            btnRegistro: !!this.elementos.btnRegistro
+                        });
+                        
+                        if (!this.elementos.historial) {
+                            console.error('❌ historialSection NO ENCONTRADO');
+                            alert('ERROR: No se encontró la sección de historial');
+                            return false;
+                        }
+                        
+                        if (!this.elementos.registro) {
+                            console.error('❌ tablasRegistroSalida NO ENCONTRADO');
+                            alert('ERROR: No se encontró la sección de registro');
+                            return false;
+                        }
+                        
+                        // CAMBIOS DIRECTOS Y SIMPLES
+                        console.log('🔧 Aplicando cambios de visibilidad...');
+                        
+                        // Ocultar registro
+                        this.elementos.registro.style.display = 'none';
+                        this.elementos.registro.style.visibility = 'hidden';
+                        
+                        // Mostrar historial
+                        this.elementos.historial.style.display = 'block';
+                        this.elementos.historial.style.visibility = 'visible';
+                        this.elementos.historial.style.opacity = '1';
+                        
+                        // Configurar fechas
+                        const hoy = new Date().toISOString().split('T')[0];
+                        const fechaDesde = document.getElementById('salida_fecha_desde');
+                        const fechaHasta = document.getElementById('salida_fecha_hasta');
+                        
+                        if (fechaDesde) fechaDesde.value = hoy;
+                        if (fechaHasta) fechaHasta.value = hoy;
+                        
+                        // Cambiar apariencia de botones
+                        if (this.elementos.btnHistorial) {
+                            this.elementos.btnHistorial.style.backgroundColor = '#e74c3c';
+                            this.elementos.btnHistorial.style.color = 'white';
+                            this.elementos.btnHistorial.style.fontWeight = 'bold';
+                        }
+                        if (this.elementos.btnRegistro) {
+                            this.elementos.btnRegistro.style.backgroundColor = '#95a5a6';
+                            this.elementos.btnRegistro.style.color = '#2c3e50';
+                        }
+                        
+                        console.log('✅ HISTORIAL MOSTRADO EXITOSAMENTE');
+                        console.log('📊 Estado final:', {
+                            historialDisplay: this.elementos.historial.style.display,
+                            registroDisplay: this.elementos.registro.style.display
+                        });
+                        
+                        // Scroll al historial
+                        setTimeout(() => {
+                            this.elementos.historial.scrollIntoView({ 
+                                behavior: 'smooth', 
+                                block: 'start' 
+                            });
+                        }, 100);
+                        
+                        this.activo = true;
+                        return true;
+                        
+                    } catch (error) {
+                        console.error('❌ Error en HISTORIAL_SOLUCION.mostrar:', error);
+                        alert('ERROR: ' + error.message);
+                        return false;
+                    }
+                },
+                
+                // Función para instalar el onclick
+                instalarOnclick: function() {
+                    console.log('🔧 INSTALANDO ONCLICK PERSISTENTE...');
+                    
+                    const btn = document.getElementById('btnHistorialSalida');
+                    if (!btn) {
+                        console.log('⏳ Botón no encontrado, reintentando...');
+                        setTimeout(() => this.instalarOnclick(), 500);
+                        return;
+                    }
+                    
+                    // Eliminar onclick anterior
+                    btn.removeAttribute('onclick');
+                    btn.onclick = null;
+                    
+                    // Instalar nuevo onclick
+                    btn.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🎯 CLICK INTERCEPTADO - Ejecutando HISTORIAL_SOLUCION');
+                        this.mostrar();
+                        return false;
+                    };
+                    
+                    console.log('✅ ONCLICK INSTALADO EXITOSAMENTE');
+                },
+                
+                // Función para verificar y reparar
+                verificarYReparar: function() {
+                    console.log('🔍 VERIFICANDO ESTADO DEL HISTORIAL...');
+                    
+                    const btn = document.getElementById('btnHistorialSalida');
+                    if (!btn) {
+                        console.log('⚠️ Botón historial no encontrado');
+                        return;
+                    }
+                    
+                    // Verificar si el onclick está instalado
+                    if (!btn.onclick || btn.onclick.toString().indexOf('HISTORIAL_SOLUCION') === -1) {
+                        console.log('🔧 Onclick no instalado, instalando...');
+                        this.instalarOnclick();
+                    } else {
+                        console.log('✅ Onclick ya está instalado correctamente');
+                    }
+                }
+            };
+            
+            // Función de compatibilidad hacia atrás
+            window.simpleHistorial = function() {
+                return window.HISTORIAL_SOLUCION.mostrar();
+            };
+            
+            console.log('✅ HISTORIAL_SOLUCION registrado en window');
+        })();
+        
+        // PASO 2: Auto-instalación que funciona con AJAX
+        function autoInstalarHistorial() {
+            console.log('🚀 AUTO-INSTALACIÓN DE HISTORIAL...');
+            
+            // Verificar si ya está instalado
+            if (window.HISTORIAL_SOLUCION) {
+                window.HISTORIAL_SOLUCION.verificarYReparar();
+            }
+            
+            // Programar verificaciones periódicas
+            setTimeout(() => {
+                if (window.HISTORIAL_SOLUCION) {
+                    window.HISTORIAL_SOLUCION.verificarYReparar();
+                }
+            }, 1000);
+            
+            setTimeout(() => {
+                if (window.HISTORIAL_SOLUCION) {
+                    window.HISTORIAL_SOLUCION.verificarYReparar();
+                }
+            }, 3000);
+        }
+        
+        // PASO 3: Múltiples puntos de entrada para diferentes estados de carga
+        
+        // Si el DOM ya está listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', autoInstalarHistorial);
+        } else {
+            autoInstalarHistorial();
+        }
+        
+        // Instalación inmediata
+        setTimeout(autoInstalarHistorial, 100);
+        setTimeout(autoInstalarHistorial, 500);
+        setTimeout(autoInstalarHistorial, 1000);
+        setTimeout(autoInstalarHistorial, 2000);
+        
+        // PASO 4: Hook para después de cargas AJAX
+        
+        // Interceptar cargas AJAX comunes
+        const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+        if (originalInnerHTML) {
+            Object.defineProperty(Element.prototype, 'innerHTML', {
+                set: function(value) {
+                    originalInnerHTML.set.call(this, value);
+                    
+                    // Si se actualiza algún contenedor, reinstalar el historial
+                    if (this.id && (this.id.includes('container') || this.id.includes('content'))) {
+                        console.log('🔄 Contenido AJAX actualizado, reinstalando historial...');
+                        setTimeout(() => {
+                            if (window.HISTORIAL_SOLUCION) {
+                                window.HISTORIAL_SOLUCION.verificarYReparar();
+                            }
+                        }, 100);
+                    }
+                },
+                get: originalInnerHTML.get
+            });
+        }
+        
+        // PASO 5: Función de debugging persistente
+        window.debugHistorial = function() {
+            console.log('🐛 DEBUG HISTORIAL PERSISTENTE');
+            
+            if (!window.HISTORIAL_SOLUCION) {
+                return '❌ HISTORIAL_SOLUCION no disponible';
+            }
+            
+            const estado = {
+                sistemaActivo: !!window.HISTORIAL_SOLUCION,
+                elementosEncontrados: {},
+                estadoVisibilidad: {}
+            };
+            
+            // Verificar elementos
+            const historial = document.getElementById('historialSection');
+            const registro = document.getElementById('tablasRegistroSalida');
+            const btnHistorial = document.getElementById('btnHistorialSalida');
+            
+            estado.elementosEncontrados = {
+                historial: !!historial,
+                registro: !!registro,
+                btnHistorial: !!btnHistorial
+            };
+            
+            if (historial) {
+                estado.estadoVisibilidad.historial = {
+                    display: historial.style.display,
+                    visibility: historial.style.visibility,
+                    computed: getComputedStyle(historial).display
+                };
+            }
+            
+            if (registro) {
+                estado.estadoVisibilidad.registro = {
+                    display: registro.style.display,
+                    visibility: registro.style.visibility,
+                    computed: getComputedStyle(registro).display
+                };
+            }
+            
+            if (btnHistorial) {
+                estado.estadoVisibilidad.boton = {
+                    onclick: !!btnHistorial.onclick,
+                    onclickContiene: btnHistorial.onclick ? 
+                        btnHistorial.onclick.toString().includes('HISTORIAL_SOLUCION') : false
+                };
+            }
+            
+            console.log('📊 Estado completo:', estado);
+            return estado;
+        };
+        
+        console.log('✅ SOLUCIÓN ANTI-AJAX COMPLETAMENTE CARGADA');
+        console.log('🎯 Para usar: window.HISTORIAL_SOLUCION.mostrar() o simpleHistorial()');
+        console.log('🐛 Para debug: debugHistorial()');
+
+        // ===================================================================
+        // 🚀 IMPLEMENTACIÓN DIRECTA EN AJAX - ELEGANTE Y ESPECÍFICA
+        // ===================================================================
+        
+        // Función principal auto-ejecutable que se inicializa inmediatamente
+        (function inicializarControlSalidaAJAX() {
+            console.log('🚀 INICIALIZANDO CONTROL DE SALIDA - Implementación directa AJAX');
+            
+            // Esperar a que los elementos estén disponibles
+            function esperarElementosYConfigurar() {
+                const btnHistorial = document.getElementById('btnHistorialSalida');
+                const btnRegistro = document.getElementById('btnRegistroSalida');
+                const historialSection = document.getElementById('historialSection');
+                const tablasRegistro = document.getElementById('tablasRegistroSalida');
+                
+                if (!btnHistorial || !btnRegistro || !historialSection || !tablasRegistro) {
+                    // Reintentar después de 200ms
+                    setTimeout(esperarElementosYConfigurar, 200);
+                    return;
+                }
+                
+                console.log('✅ Todos los elementos encontrados, configurando...');
+                
+                // ==========================================
+                // FUNCIÓN: Mostrar Historial
+                // ==========================================
+                function mostrarHistorial() {
+                    console.log('📊 Mostrando historial...');
+                    
+                    // Ocultar registro
+                    tablasRegistro.style.display = 'none';
+                    
+                    // Mostrar historial
+                    historialSection.style.display = 'block';
+                    historialSection.style.visibility = 'visible';
+                    historialSection.style.opacity = '1';
+                    
+                    // Configurar fechas automáticamente
+                    const hoy = new Date().toISOString().split('T')[0];
+                    const fechaDesde = document.getElementById('salida_fecha_desde');
+                    const fechaHasta = document.getElementById('salida_fecha_hasta');
+                    
+                    if (fechaDesde && !fechaDesde.value) fechaDesde.value = hoy;
+                    if (fechaHasta && !fechaHasta.value) fechaHasta.value = hoy;
+                    
+                    // Actualizar botones
+                    btnHistorial.style.cssText = 'background-color: #e74c3c; color: white; font-weight: bold;';
+                    btnRegistro.style.cssText = 'background-color: #95a5a6; color: #2c3e50;';
+                    
+                    console.log('✅ HISTORIAL MOSTRADO EXITOSAMENTE');
+                }
+                
+                // ==========================================
+                // FUNCIÓN: Mostrar Registro
+                // ==========================================
+                function mostrarRegistro() {
+                    console.log('📝 Mostrando registro...');
+                    
+                    // Ocultar historial
+                    historialSection.style.display = 'none';
+                    
+                    // Mostrar registro
+                    tablasRegistro.style.display = 'block';
+                    tablasRegistro.style.visibility = 'visible';
+                    tablasRegistro.style.opacity = '1';
+                    
+                    // Actualizar botones
+                    btnRegistro.style.cssText = 'background-color: #27ae60; color: white; font-weight: bold;';
+                    btnHistorial.style.cssText = 'background-color: #95a5a6; color: #2c3e50;';
+                    
+                    console.log('✅ REGISTRO MOSTRADO EXITOSAMENTE');
+                }
+                
+                // ==========================================
+                // CONFIGURAR EVENT LISTENERS
+                // ==========================================
+                
+                // Limpiar event listeners existentes
+                btnHistorial.removeAttribute('onclick');
+                btnRegistro.removeAttribute('onclick');
+                
+                // Agregar nuevos event listeners
+                btnHistorial.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    mostrarHistorial();
+                });
+                
+                btnRegistro.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    mostrarRegistro();
+                });
+                
+                // Configurar botón consultar
+                const btnConsultar = document.querySelector('#historialSection button');
+                if (btnConsultar && btnConsultar.textContent.toLowerCase().includes('consultar')) {
+                    btnConsultar.removeAttribute('onclick');
+                    btnConsultar.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (typeof consultarSalidas === 'function') {
+                            consultarSalidas();
+                        } else {
+                            console.log('🔍 Función consultarSalidas no disponible');
+                        }
+                    });
+                }
+                
+                console.log('✅ EVENT LISTENERS CONFIGURADOS EXITOSAMENTE');
+                
+                // ==========================================
+                // FUNCIONES GLOBALES DE DEBUGGING
+                // ==========================================
+                
+                window.testHistorialDirecto = function() {
+                    console.log('🧪 PROBANDO HISTORIAL DIRECTO...');
+                    mostrarHistorial();
+                    return '✅ Test completado - ¿Se muestra el historial?';
+                };
+                
+                window.testRegistroDirecto = function() {
+                    console.log('🧪 PROBANDO REGISTRO DIRECTO...');
+                    mostrarRegistro();
+                    return '✅ Test completado - ¿Se muestra el registro?';
+                };
+                
+                window.estadoControlSalida = function() {
+                    return {
+                        elementosEncontrados: {
+                            btnHistorial: !!btnHistorial,
+                            btnRegistro: !!btnRegistro,
+                            historialSection: !!historialSection,
+                            tablasRegistro: !!tablasRegistro
+                        },
+                        estadoVisibilidad: {
+                            historialDisplay: historialSection.style.display,
+                            registroDisplay: tablasRegistro.style.display
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                };
+                
+                console.log('🎯 CONTROL DE SALIDA INICIALIZADO COMPLETAMENTE');
+                console.log('💡 Funciones disponibles: testHistorialDirecto(), testRegistroDirecto(), estadoControlSalida()');
+            }
+            
+            // Iniciar configuración
+            esperarElementosYConfigurar();
+            
+        })(); // Auto-ejecutar la función inmediatamente
+
     </script>
 </body>
 </html>

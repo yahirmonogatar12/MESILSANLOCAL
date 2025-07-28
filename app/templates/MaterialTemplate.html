@@ -2894,5 +2894,562 @@
         // ===============================================
 </script>
 </div>
+
+<!-- ===================================================================== -->
+<!-- 🔥 FUNCIONES GLOBALES PARA HISTORIAL DE SALIDA - SIEMPRE DISPONIBLES -->
+<!-- ===================================================================== -->
+<script>
+(function() {
+    console.log('🚀 INICIANDO SISTEMA GLOBAL DE HISTORIAL DE SALIDA');
+    
+    // ===================================================================
+    // 🔥 OBJETO GLOBAL PERSISTENTE PARA HISTORIAL DE SALIDA
+    // ===================================================================
+    window.HISTORIAL_GLOBAL = {
+        activo: false,
+        instalado: false,
+        
+        // Función principal para mostrar historial
+        mostrar: function() {
+            console.log('🔥 EJECUTANDO HISTORIAL_GLOBAL.mostrar()');
+            
+            try {
+                // Buscar elementos cada vez (por si fueron recreados por AJAX)
+                const elementos = {
+                    historial: document.getElementById('historialSection'),
+                    registro: document.getElementById('tablasRegistroSalida'),
+                    btnHistorial: document.getElementById('btnHistorialSalida'),
+                    btnRegistro: document.getElementById('btnRegistroSalida')
+                };
+                
+                console.log('📊 Elementos encontrados:', {
+                    historial: !!elementos.historial,
+                    registro: !!elementos.registro,
+                    btnHistorial: !!elementos.btnHistorial,
+                    btnRegistro: !!elementos.btnRegistro
+                });
+                
+                if (!elementos.historial) {
+                    console.error('❌ historialSection NO ENCONTRADO');
+                    console.log('🔍 Intentando encontrar en toda la página...');
+                    
+                    // Buscar en todo el documento
+                    const todosLosElementos = document.querySelectorAll('*');
+                    const historialEncontrados = [];
+                    
+                    todosLosElementos.forEach(el => {
+                        if (el.id && el.id.toLowerCase().includes('historial')) {
+                            historialEncontrados.push(el.id);
+                        }
+                    });
+                    
+                    console.log('🔍 Elementos con "historial" encontrados:', historialEncontrados);
+                    
+                    alert('ERROR: No se encontró la sección de historial.\n\nAsegúrate de estar en la sección "Control de Salida"');
+                    return 'Error: Debes estar en Control de Salida';
+                }
+                
+                if (!elementos.registro) {
+                    console.error('❌ tablasRegistroSalida NO ENCONTRADO');
+                    alert('ERROR: No se encontró la sección de registro');
+                    return 'Error: Sección de registro no encontrada';
+                }
+                
+                // CAMBIOS DIRECTOS Y SIMPLES
+                console.log('🔧 Aplicando cambios de visibilidad...');
+                
+                // Ocultar registro
+                elementos.registro.style.display = 'none';
+                elementos.registro.style.visibility = 'hidden';
+                
+                // Mostrar historial
+                elementos.historial.style.display = 'block';
+                elementos.historial.style.visibility = 'visible';
+                elementos.historial.style.opacity = '1';
+                
+                // Configurar fechas
+                const hoy = new Date().toISOString().split('T')[0];
+                const fechaDesde = document.getElementById('salida_fecha_desde');
+                const fechaHasta = document.getElementById('salida_fecha_hasta');
+                
+                if (fechaDesde) fechaDesde.value = hoy;
+                if (fechaHasta) fechaHasta.value = hoy;
+                
+                // Cambiar apariencia de botones
+                if (elementos.btnHistorial) {
+                    elementos.btnHistorial.style.backgroundColor = '#e74c3c';
+                    elementos.btnHistorial.style.color = 'white';
+                    elementos.btnHistorial.style.fontWeight = 'bold';
+                }
+                if (elementos.btnRegistro) {
+                    elementos.btnRegistro.style.backgroundColor = '#95a5a6';
+                    elementos.btnRegistro.style.color = '#2c3e50';
+                }
+                
+                console.log('✅ HISTORIAL MOSTRADO EXITOSAMENTE');
+                console.log('📊 Estado final:', {
+                    historialDisplay: elementos.historial.style.display,
+                    registroDisplay: elementos.registro.style.display
+                });
+                
+                // Scroll al historial
+                setTimeout(() => {
+                    elementos.historial.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 100);
+                
+                this.activo = true;
+                return '✅ HISTORIAL ACTIVADO GLOBALMENTE';
+                
+            } catch (error) {
+                console.error('❌ Error en HISTORIAL_GLOBAL.mostrar:', error);
+                alert('ERROR: ' + error.message);
+                return 'Error: ' + error.message;
+            }
+        },
+        
+        // Función para mostrar registro de salida
+        mostrarRegistro: function() {
+            console.log('🔄 EJECUTANDO HISTORIAL_GLOBAL.mostrarRegistro()');
+            
+            try {
+                const elementos = {
+                    historial: document.getElementById('historialSection'),
+                    registro: document.getElementById('tablasRegistroSalida'),
+                    btnHistorial: document.getElementById('btnHistorialSalida'),
+                    btnRegistro: document.getElementById('btnRegistroSalida')
+                };
+                
+                if (!elementos.historial || !elementos.registro) {
+                    console.error('❌ Elementos no encontrados para mostrar registro');
+                    return 'Error: Elementos no encontrados';
+                }
+                
+                // Ocultar historial
+                elementos.historial.style.display = 'none';
+                elementos.historial.style.visibility = 'hidden';
+                
+                // Mostrar registro
+                elementos.registro.style.display = 'flex';
+                elementos.registro.style.visibility = 'visible';
+                elementos.registro.style.opacity = '1';
+                
+                // Cambiar apariencia de botones
+                if (elementos.btnRegistro) {
+                    elementos.btnRegistro.style.backgroundColor = '#3498db';
+                    elementos.btnRegistro.style.color = 'white';
+                    elementos.btnRegistro.style.fontWeight = 'bold';
+                }
+                if (elementos.btnHistorial) {
+                    elementos.btnHistorial.style.backgroundColor = '#95a5a6';
+                    elementos.btnHistorial.style.color = '#2c3e50';
+                    elementos.btnHistorial.style.fontWeight = 'normal';
+                }
+                
+                console.log('✅ REGISTRO MOSTRADO EXITOSAMENTE');
+                
+                // Scroll al registro
+                setTimeout(() => {
+                    elementos.registro.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start' 
+                    });
+                }, 100);
+                
+                this.activo = false;
+                return '✅ REGISTRO ACTIVADO';
+                
+            } catch (error) {
+                console.error('❌ Error en HISTORIAL_GLOBAL.mostrarRegistro:', error);
+                return 'Error: ' + error.message;
+            }
+        },
+        
+        // Función para consultar salidas
+        consultar: function() {
+            console.log('🔍 EJECUTANDO HISTORIAL_GLOBAL.consultar()');
+            
+            try {
+                const codigoFiltro = document.getElementById('salida_filtro_codigo')?.value?.trim() || '';
+                const fechaDesde = document.getElementById('salida_fecha_desde')?.value || '';
+                const fechaHasta = document.getElementById('salida_fecha_hasta')?.value || '';
+
+                // Validación de fechas
+                if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+                    alert('La fecha desde no puede ser mayor que la fecha hasta');
+                    return 'Error: Fechas inválidas';
+                }
+
+                // Mostrar mensaje de carga
+                this.mostrarMensaje('Consultando salidas...', 'info');
+
+                let url = '/consultar_historial_salidas';
+                const params = new URLSearchParams();
+
+                if (codigoFiltro) params.append('codigo_material', codigoFiltro);
+                if (fechaDesde) params.append('fecha_desde', fechaDesde);
+                if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+
+                if (params.toString()) {
+                    url += '?' + params.toString();
+                }
+
+                console.log('📤 Consultando URL:', url);
+
+                return fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(salidas => {
+                        console.log('📥 Respuesta recibida:', salidas);
+                        
+                        if (Array.isArray(salidas)) {
+                            this.actualizarTablaSalidas(salidas);
+                            this.mostrarMensaje(`✅ ${salidas.length} salidas encontradas`, 'success');
+                            return `✅ ${salidas.length} salidas consultadas`;
+                        } else {
+                            throw new Error(salidas.error || 'Respuesta inválida del servidor');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error al consultar salidas:', error);
+                        this.mostrarMensaje('Error al consultar salidas: ' + error.message, 'error');
+                        return 'Error: ' + error.message;
+                    });
+
+            } catch (error) {
+                console.error('❌ Error en HISTORIAL_GLOBAL.consultar:', error);
+                this.mostrarMensaje('Error interno: ' + error.message, 'error');
+                return 'Error: ' + error.message;
+            }
+        },
+        
+        // Función para actualizar tabla de salidas
+        actualizarTablaSalidas: function(salidas) {
+            const tbody = document.querySelector('#salida_tablaSalidas tbody');
+            if (!tbody) {
+                console.error('❌ Tabla de salidas no encontrada');
+                return;
+            }
+            
+            if (salidas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" class="no-data">No hay datos registrados</td></tr>';
+                return;
+            }
+
+            let html = '';
+            salidas.forEach(salida => {
+                html += `
+                    <tr>
+                        <td>${this.formatearFecha(salida.fecha_salida) || ''}</td>
+                        <td>${salida.proceso_salida || ''}</td>
+                        <td>${salida.codigo_material_recibido || ''}</td>
+                        <td>${salida.codigo_material || ''}</td>
+                        <td>${salida.numero_parte || ''}</td>
+                        <td>${salida.disp || ''}</td>
+                        <td>${salida.hist || ''}</td>
+                        <td>${salida.codigo_material_original || ''}</td>
+                        <td>${salida.numero_lote_material || ''}</td>
+                        <td>${salida.maquina_linea || ''}</td>
+                        <td>${salida.departamento_salida || ''}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            console.log('✅ Tabla actualizada con', salidas.length, 'registros');
+        },
+        
+        // Función para formatear fechas
+        formatearFecha: function(fechaISO) {
+            if (!fechaISO) return '';
+            try {
+                const fecha = new Date(fechaISO);
+                return fecha.toLocaleString('es-ES', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                return fechaISO;
+            }
+        },
+        
+        // Función para mostrar mensajes
+        mostrarMensaje: function(mensaje, tipo) {
+            let contenedor = document.getElementById('historial-global-mensaje');
+            if (!contenedor) {
+                contenedor = document.createElement('div');
+                contenedor.id = 'historial-global-mensaje';
+                contenedor.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    color: white;
+                    font-weight: bold;
+                    z-index: 100000;
+                    max-width: 400px;
+                    word-wrap: break-word;
+                `;
+                document.body.appendChild(contenedor);
+            }
+
+            // Establecer color según tipo
+            switch (tipo) {
+                case 'success':
+                    contenedor.style.backgroundColor = '#27ae60';
+                    break;
+                case 'error':
+                    contenedor.style.backgroundColor = '#e74c3c';
+                    break;
+                case 'info':
+                    contenedor.style.backgroundColor = '#3498db';
+                    break;
+                default:
+                    contenedor.style.backgroundColor = '#95a5a6';
+            }
+
+            contenedor.textContent = mensaje;
+            contenedor.style.display = 'block';
+
+            // Auto-ocultar después de 3 segundos
+            setTimeout(() => {
+                contenedor.style.display = 'none';
+            }, 3000);
+        },
+        
+        // Función para instalar el onclick
+        instalar: function() {
+            console.log('🔧 INSTALANDO ONCLICK GLOBAL...');
+            
+            const btnHistorial = document.getElementById('btnHistorialSalida');
+            const btnRegistro = document.getElementById('btnRegistroSalida');
+            const btnConsultar = document.querySelector('button[onclick*="consultarSalidas"]') || 
+                               document.getElementById('btnConsultarSalidas') ||
+                               document.querySelector('button:contains("Consultar")');
+            
+            if (!btnHistorial) {
+                console.log('⏳ Botón historial no encontrado en esta página');
+                return 'Botón historial no encontrado - Navega a Control de Salida';
+            }
+            
+            // INSTALAR ONCLICK HISTORIAL
+            btnHistorial.removeAttribute('onclick');
+            btnHistorial.onclick = null;
+            btnHistorial.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🎯 CLICK HISTORIAL INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                this.mostrar();
+                return false;
+            };
+            
+            // INSTALAR ONCLICK REGISTRO
+            if (btnRegistro) {
+                btnRegistro.removeAttribute('onclick');
+                btnRegistro.onclick = null;
+                btnRegistro.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🎯 CLICK REGISTRO INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                    this.mostrarRegistro();
+                    return false;
+                };
+                console.log('✅ Onclick registro instalado');
+            }
+            
+            // BUSCAR E INSTALAR BOTÓN CONSULTAR
+            const botonesConsultar = document.querySelectorAll('button');
+            botonesConsultar.forEach(btn => {
+                if (btn.textContent && btn.textContent.toLowerCase().includes('consultar')) {
+                    btn.removeAttribute('onclick');
+                    btn.onclick = null;
+                    btn.onclick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🎯 CLICK CONSULTAR INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                        this.consultar();
+                        return false;
+                    };
+                    console.log('✅ Onclick consultar instalado en:', btn.textContent);
+                }
+            });
+            
+            this.instalado = true;
+            console.log('✅ ONCLICK GLOBAL INSTALADO EXITOSAMENTE');
+            return '✅ TODOS LOS ONCLICKS INSTALADOS';
+        },
+        
+        // Función para verificar estado
+        verificar: function() {
+            const estado = {
+                sistema: 'HISTORIAL_GLOBAL',
+                timestamp: new Date().toISOString(),
+                instalado: this.instalado,
+                activo: this.activo,
+                elementos: {},
+                pagina: window.location.pathname || 'desconocida'
+            };
+            
+            // Verificar elementos
+            const historial = document.getElementById('historialSection');
+            const registro = document.getElementById('tablasRegistroSalida');
+            const btnHistorial = document.getElementById('btnHistorialSalida');
+            
+            estado.elementos = {
+                historial: !!historial,
+                registro: !!registro,
+                btnHistorial: !!btnHistorial
+            };
+            
+            if (historial) {
+                estado.estadoHistorial = {
+                    display: historial.style.display || 'no definido',
+                    visibility: historial.style.visibility || 'no definido',
+                    computed: getComputedStyle(historial).display
+                };
+            }
+            
+            if (registro) {
+                estado.estadoRegistro = {
+                    display: registro.style.display || 'no definido',
+                    visibility: registro.style.visibility || 'no definido',
+                    computed: getComputedStyle(registro).display
+                };
+            }
+            
+            if (btnHistorial) {
+                estado.estadoBoton = {
+                    onclick: !!btnHistorial.onclick,
+                    onclickGlobal: btnHistorial.onclick ? 
+                        btnHistorial.onclick.toString().includes('HISTORIAL_GLOBAL') : false
+                };
+            }
+            
+            console.log('📊 Estado completo HISTORIAL_GLOBAL:', estado);
+            return estado;
+        },
+        
+        // Auto-instalación inteligente
+        autoInstalar: function() {
+            console.log('🤖 AUTO-INSTALACIÓN INTELIGENTE...');
+            
+            // Verificar si estamos en la página correcta
+            const btn = document.getElementById('btnHistorialSalida');
+            if (btn && !this.instalado) {
+                this.instalar();
+            }
+            
+            // Programar verificaciones futuras
+            setTimeout(() => {
+                if (!this.instalado) {
+                    const btnNow = document.getElementById('btnHistorialSalida');
+                    if (btnNow) {
+                        this.instalar();
+                    }
+                }
+            }, 2000);
+        }
+    };
+    
+    // ===================================================================
+    // 🔥 FUNCIONES GLOBALES DE COMPATIBILIDAD
+    // ===================================================================
+    
+    // Función principal que siempre funciona
+    window.debugHistorial = function() {
+        console.log('🐛 DEBUG HISTORIAL GLOBAL');
+        return window.HISTORIAL_GLOBAL.verificar();
+    };
+    
+    // Función simple para mostrar historial
+    window.mostrarHistorial = function() {
+        return window.HISTORIAL_GLOBAL.mostrar();
+    };
+    
+    // Función para mostrar registro
+    window.mostrarRegistro = function() {
+        return window.HISTORIAL_GLOBAL.mostrarRegistro();
+    };
+    
+    // Función para consultar salidas
+    window.consultarSalidas = function() {
+        return window.HISTORIAL_GLOBAL.consultar();
+    };
+    
+    // Función para instalar onclick
+    window.instalarHistorial = function() {
+        return window.HISTORIAL_GLOBAL.instalar();
+    };
+    
+    // Funciones de compatibilidad hacia atrás
+    window.mostrarHistorialSalida = function() {
+        return window.HISTORIAL_GLOBAL.mostrar();
+    };
+    
+    window.mostrarRegistroSalida = function() {
+        return window.HISTORIAL_GLOBAL.mostrarRegistro();
+    };
+    
+    // ===================================================================
+    // 🔥 AUTO-INSTALACIÓN Y MONITOREO
+    // ===================================================================
+    
+    // Auto-instalación inmediata
+    window.HISTORIAL_GLOBAL.autoInstalar();
+    
+    // Auto-instalación después de navegación
+    setTimeout(() => window.HISTORIAL_GLOBAL.autoInstalar(), 1000);
+    setTimeout(() => window.HISTORIAL_GLOBAL.autoInstalar(), 3000);
+    setTimeout(() => window.HISTORIAL_GLOBAL.autoInstalar(), 5000);
+    
+    // Interceptar cargas AJAX para reinstalar
+    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    if (originalInnerHTML) {
+        Object.defineProperty(Element.prototype, 'innerHTML', {
+            set: function(value) {
+                originalInnerHTML.set.call(this, value);
+                
+                // Si se actualiza contenido relacionado con control de salida
+                if (this.id && (
+                    this.id.includes('control-salida') || 
+                    this.id.includes('material') ||
+                    this.id.includes('container')
+                )) {
+                    console.log('🔄 Contenido AJAX actualizado, reinstalando historial global...');
+                    setTimeout(() => {
+                        window.HISTORIAL_GLOBAL.autoInstalar();
+                    }, 500);
+                }
+            },
+            get: originalInnerHTML.get
+        });
+    }
+    
+    console.log('✅ SISTEMA GLOBAL DE HISTORIAL CARGADO');
+    console.log('🎯 Funciones disponibles:');
+    console.log('   - debugHistorial()');
+    console.log('   - mostrarHistorial()'); 
+    console.log('   - mostrarRegistro()');
+    console.log('   - consultarSalidas()');
+    console.log('   - instalarHistorial()');
+    console.log('   - window.HISTORIAL_GLOBAL.verificar()');
+    console.log('🔧 Funciones de compatibilidad:');
+    console.log('   - mostrarHistorialSalida()');
+    console.log('   - mostrarRegistroSalida()');
+    console.log('   - window.HISTORIAL_GLOBAL.consultar()');
+    
+})();
+</script>
+
 </body>
 </html>
