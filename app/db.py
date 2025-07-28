@@ -92,10 +92,21 @@ def init_db():
             proceso_salida TEXT,
             cantidad_salida REAL,
             fecha_salida TEXT,
+            especificacion_material TEXT,
             fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (codigo_material_recibido) REFERENCES control_material_almacen(codigo_material_recibido)
         )
     ''')
+    
+    # Agregar columna especificacion_material si no existe (para tablas existentes)
+    try:
+        cursor.execute("ALTER TABLE control_material_salida ADD COLUMN especificacion_material TEXT")
+        print("✅ Columna 'especificacion_material' agregada a control_material_salida")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            print("ℹ️ Columna 'especificacion_material' ya existe en control_material_salida")
+        else:
+            print(f"⚠️ Error al agregar columna especificacion_material: {e}")
     
     # Tabla para inventario general (unificado por número de parte)
     cursor.execute('''

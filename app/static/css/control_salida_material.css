@@ -53,7 +53,7 @@
         /* Botonera */
         .material-toolbar {
             display: flex;
-            justify-content: space-between;
+            justify-content: space-between !important;
             align-items: center;
             gap: 10px;
             margin-bottom: 5px;

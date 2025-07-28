@@ -230,8 +230,7 @@
     border-collapse: collapse;
     margin: 0;
     font-size: 11px;
-    background-color: #40424F;
-    table-layout: fixed; /* <-- Importante para que funcione el resize */
+    background-color: #40424F; /* <-- Importante para que funcione el resize */
     max-width: 100%;
 }
 

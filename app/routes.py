@@ -1717,6 +1717,136 @@ def material_control_salida():
         print(f"Error al cargar Control de salida: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/consultar_especificacion_por_numero_parte')
+@login_requerido
+def consultar_especificacion_por_numero_parte():
+    """Consultar especificación de material por número de parte directamente en BD"""
+    try:
+        numero_parte = request.args.get('numero_parte', '').strip()
+        
+        if not numero_parte:
+            return jsonify({
+                'success': False,
+                'error': 'Número de parte requerido'
+            }), 400
+        
+        print(f"🔍 Consultando especificación para número de parte: {numero_parte}")
+        
+        # Consultar en la tabla de materiales usando get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Intentar diferentes consultas para encontrar el material
+        consultas = [
+            "SELECT * FROM materiales WHERE numero_parte = ?",
+            "SELECT * FROM materiales WHERE TRIM(numero_parte) = ?",
+            "SELECT * FROM materiales WHERE numero_parte LIKE ?",
+            "SELECT * FROM materiales WHERE codigo_material = ?",
+            "SELECT * FROM materiales WHERE codigo_material_original = ?"
+        ]
+        
+        material_encontrado = None
+        
+        for consulta in consultas:
+            if "LIKE" in consulta:
+                parametro = f"%{numero_parte}%"
+            else:
+                parametro = numero_parte
+                
+            print(f"🔍 Ejecutando consulta: {consulta} con parámetro: {parametro}")
+            
+            try:
+                cursor.execute(consulta, (parametro,))
+                result = cursor.fetchone()
+                
+                if result:
+                    material_encontrado = result
+                    print(f"✅ Material encontrado con consulta: {consulta}")
+                    break
+            except Exception as consulta_error:
+                print(f"❌ Error en consulta: {consulta_error}")
+                continue
+        
+        if not material_encontrado:
+            print(f"❌ No se encontró material con número de parte: {numero_parte}")
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': f'No se encontró material con número de parte: {numero_parte}'
+            })
+        
+        # Convertir resultado a diccionario
+        # Obtener nombres de columnas
+        cursor.execute("PRAGMA table_info(materiales)")
+        columns_result = cursor.fetchall()
+        column_names = [col[1] for col in columns_result] if columns_result else []
+        
+        # Crear diccionario con nombres de columnas
+        material_dict = {}
+        for i, value in enumerate(material_encontrado):
+            if i < len(column_names):
+                material_dict[column_names[i]] = value
+        
+        conn.close()
+        print(f"📦 Material completo encontrado: {material_dict}")
+        
+        # Buscar especificación en diferentes campos posibles
+        campos_especificacion = [
+            'especificacion_material',
+            'especificacion',
+            'descripcion_material',
+            'descripcion',
+            'nombre_material',
+            'descripcion_completa'
+        ]
+        
+        especificacion_encontrada = None
+        campo_usado = None
+        
+        for campo in campos_especificacion:
+            if campo in material_dict and material_dict[campo] and str(material_dict[campo]).strip():
+                especificacion_encontrada = str(material_dict[campo]).strip()
+                campo_usado = campo
+                print(f"✅ Especificación encontrada en campo '{campo}': {especificacion_encontrada}")
+                break
+        
+        if not especificacion_encontrada:
+            # Si no encontramos especificación directa, buscar campos descriptivos largos
+            campos_descriptivos = []
+            for key, value in material_dict.items():
+                if isinstance(value, str) and len(value) > 15 and not any(x in key.lower() for x in ['codigo', 'numero', 'cantidad', 'fecha', 'id']):
+                    campos_descriptivos.append((key, value))
+            
+            if campos_descriptivos:
+                especificacion_encontrada = campos_descriptivos[0][1]
+                campo_usado = campos_descriptivos[0][0]
+                print(f"💡 Usando campo descriptivo '{campo_usado}': {especificacion_encontrada}")
+        
+        if especificacion_encontrada:
+            return jsonify({
+                'success': True,
+                'especificacion': especificacion_encontrada,
+                'campo_origen': campo_usado,
+                'numero_parte': numero_parte,
+                'material_completo': material_dict
+            })
+        else:
+            print(f"⚠️ No se encontró especificación para el material")
+            print(f"📋 Campos disponibles: {list(material_dict.keys())}")
+            return jsonify({
+                'success': False,
+                'error': 'No se encontró especificación en el material',
+                'material_disponible': material_dict,
+                'campos_disponibles': list(material_dict.keys())
+            })
+            
+    except Exception as e:
+        print(f"❌ Error consultando especificación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error interno: {str(e)}'
+        }), 500
+
 @app.route('/material/control_calidad')
 @login_requerido
 def material_control_calidad():
@@ -1966,8 +2096,8 @@ def guardar_salida_lote():
         cursor.execute('''
             INSERT INTO control_material_salida (
                 codigo_material_recibido, numero_lote, modelo, depto_salida, 
-                proceso_salida, cantidad_salida, fecha_salida
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                proceso_salida, cantidad_salida, fecha_salida, especificacion_material
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             codigo_material_recibido,
             data.get('numero_lote', ''),
@@ -1975,7 +2105,8 @@ def guardar_salida_lote():
             data.get('depto_salida', ''),
             data.get('proceso_salida', ''),
             cantidad_salida,
-            data.get('fecha_salida', '')
+            data.get('fecha_salida', ''),
+            data.get('especificacion_material', '')
         ))
         
         conn.commit()
@@ -2028,7 +2159,8 @@ def consultar_historial_salidas():
                 a.codigo_material_original,
                 s.numero_lote,
                 s.modelo as maquina_linea,
-                s.depto_salida as departamento
+                s.depto_salida as departamento,
+                s.especificacion_material
             FROM control_material_salida s
             LEFT JOIN control_material_almacen a ON s.codigo_material_recibido = a.codigo_material_recibido
             WHERE 1=1
@@ -2203,6 +2335,7 @@ def procesar_salida_material():
         depto_salida = data.get('depto_salida', '')
         proceso_salida = data.get('proceso_salida', '')
         fecha_salida = data.get('fecha_salida', '')
+        especificacion_material = data.get('especificacion_material', '')
         
         if cantidad_salida <= 0:
             return jsonify({'success': False, 'error': 'La cantidad de salida debe ser mayor a 0'}), 400
@@ -2263,11 +2396,11 @@ def procesar_salida_material():
         cursor.execute('''
             INSERT INTO control_material_salida (
                 codigo_material_recibido, numero_lote, modelo, depto_salida,
-                proceso_salida, cantidad_salida, fecha_salida, fecha_registro
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                proceso_salida, cantidad_salida, fecha_salida, fecha_registro, especificacion_material
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             codigo_recibido, numero_lote, modelo, depto_salida,
-            proceso_salida, cantidad_salida, fecha_salida, fecha_registro
+            proceso_salida, cantidad_salida, fecha_salida, fecha_registro, especificacion_material
         ))
         
         nueva_cantidad = stock_disponible - cantidad_salida
