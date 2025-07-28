@@ -1199,7 +1199,36 @@ def control_almacen():
 @app.route('/control_salida')
 @login_requerido
 def control_salida():
-    return render_template('Control de material/Control de salida.html')
+    """
+    🚀 Ruta principal para Control de Salida de Material
+    
+    Características:
+    - Autenticación requerida
+    - Información del usuario para personalización
+    - Configuración inicial del módulo
+    - Datos de contexto para mejor experiencia
+    """
+    try:
+        usuario = session.get('usuario', 'Usuario')
+        
+        # Obtener información adicional del usuario si está disponible
+        user_info = {
+            'username': usuario,
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'module': 'Control de Salida'
+        }
+        
+        print(f"✅ Control de Salida cargado para usuario: {usuario}")
+        
+        return render_template('Control de material/Control de salida.html', 
+                             usuario=usuario,
+                             user_info=user_info)
+                             
+    except Exception as e:
+        print(f"❌ Error al cargar Control de Salida: {e}")
+        return render_template('Control de material/Control de salida.html', 
+                             usuario='Usuario',
+                             error='Error al cargar el módulo')
 
 @app.route('/control_calidad')
 @login_requerido
@@ -3677,3 +3706,309 @@ def guardar_regla_trazabilidad():
         print(f"❌ Error guardando regla de trazabilidad: {e}")
         print(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
+# ===================================================================
+# 🚀 RUTAS ADICIONALES PARA CONTROL DE SALIDA OPTIMIZADO
+# ===================================================================
+
+@app.route('/control_salida/estado', methods=['GET'])
+@login_requerido
+def control_salida_estado():
+    """
+    🔍 Obtener estado general del módulo Control de Salida
+    
+    Retorna:
+    - Estadísticas del día
+    - Configuración del usuario
+    - Estado del sistema
+    """
+    try:
+        usuario = session.get('usuario', 'Usuario')
+        hoy = time.strftime('%Y-%m-%d')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Obtener estadísticas del día
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_salidas,
+                COALESCE(SUM(cantidad_salida), 0) as total_cantidad
+            FROM salidas_material 
+            WHERE DATE(fecha_salida) = ?
+        ''', (hoy,))
+        
+        stats = cursor.fetchone()
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'estado': {
+                'usuario': usuario,
+                'fecha': hoy,
+                'estadisticas': {
+                    'salidas_hoy': stats['total_salidas'] if stats else 0,
+                    'cantidad_total_hoy': stats['total_cantidad'] if stats else 0
+                },
+                'configuracion': {
+                    'auto_focus': True,
+                    'scan_mode': 'optimized',
+                    'version': '2.0'
+                }
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo estado Control de Salida: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/control_salida/configuracion', methods=['GET', 'POST'])
+@login_requerido
+def control_salida_configuracion():
+    """
+    ⚙️ Gestionar configuración del usuario para Control de Salida
+    
+    GET: Obtener configuración actual
+    POST: Guardar nueva configuración
+    """
+    try:
+        usuario = session.get('usuario', 'Usuario')
+        
+        if request.method == 'GET':
+            # Obtener configuración del usuario
+            config = cargar_configuracion_usuario(usuario)
+            
+            # Configuración por defecto para Control de Salida
+            control_salida_config = config.get('control_salida', {
+                'registro_automatico': True,
+                'verificacion_requerida': True,
+                'auto_focus': True,
+                'mostrar_ayuda': True,
+                'tiempo_mensaje': 2500
+            })
+            
+            return jsonify({
+                'success': True,
+                'configuracion': control_salida_config
+            })
+            
+        elif request.method == 'POST':
+            # Guardar nueva configuración
+            data = request.get_json()
+            
+            if not data:
+                return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
+            
+            # Cargar configuración existente
+            config = cargar_configuracion_usuario(usuario)
+            config['control_salida'] = data
+            
+            # Guardar configuración actualizada
+            success = guardar_configuracion_usuario(usuario, config)
+            
+            return jsonify({
+                'success': success,
+                'message': 'Configuración guardada exitosamente' if success else 'Error al guardar configuración'
+            })
+            
+    except Exception as e:
+        print(f"❌ Error en configuración Control de Salida: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/control_salida/validar_stock', methods=['POST'])
+@login_requerido
+def control_salida_validar_stock():
+    """
+    📊 Validar stock disponible antes de procesar salida
+    
+    Útil para validaciones rápidas sin procesar la salida
+    """
+    try:
+        data = request.get_json()
+        codigo_recibido = data.get('codigo_recibido')
+        cantidad_requerida = float(data.get('cantidad_requerida', 1))
+        
+        if not codigo_recibido:
+            return jsonify({'success': False, 'error': 'Código de material requerido'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Buscar material por código
+        cursor.execute('''
+            SELECT 
+                codigo_material_recibido,
+                numero_parte,
+                especificacion,
+                cantidad_actual,
+                numero_lote_material
+            FROM control_material_almacen 
+            WHERE codigo_material_recibido = ? OR codigo_material = ?
+            ORDER BY fecha_registro DESC
+            LIMIT 1
+        ''', (codigo_recibido, codigo_recibido))
+        
+        material = cursor.fetchone()
+        conn.close()
+        
+        if not material:
+            return jsonify({
+                'success': False,
+                'disponible': False,
+                'error': 'Material no encontrado'
+            })
+        
+        cantidad_actual = float(material['cantidad_actual'] or 0)
+        stock_suficiente = cantidad_actual >= cantidad_requerida
+        
+        return jsonify({
+            'success': True,
+            'disponible': stock_suficiente,
+            'material': {
+                'codigo': material['codigo_material_recibido'],
+                'numero_parte': material['numero_parte'],
+                'especificacion': material['especificacion'],
+                'stock_actual': cantidad_actual,
+                'cantidad_requerida': cantidad_requerida,
+                'diferencia': cantidad_actual - cantidad_requerida,
+                'lote': material['numero_lote_material']
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error validando stock: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/control_salida/reporte_diario', methods=['GET'])
+@login_requerido
+def control_salida_reporte_diario():
+    """
+    📈 Generar reporte diario de salidas de material
+    
+    Parámetros opcionales:
+    - fecha: fecha específica (YYYY-MM-DD)
+    - formato: 'json' o 'excel'
+    """
+    try:
+        fecha = request.args.get('fecha', time.strftime('%Y-%m-%d'))
+        formato = request.args.get('formato', 'json')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Consultar salidas del día
+        cursor.execute('''
+            SELECT 
+                fecha_salida,
+                codigo_material_recibido,
+                numero_parte,
+                cantidad_salida,
+                modelo,
+                numero_lote,
+                proceso_salida,
+                departamento
+            FROM salidas_material 
+            WHERE DATE(fecha_salida) = ?
+            ORDER BY fecha_salida DESC
+        ''', (fecha,))
+        
+        salidas = cursor.fetchall()
+        
+        # Estadísticas resumen
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_salidas,
+                COALESCE(SUM(cantidad_salida), 0) as cantidad_total,
+                COUNT(DISTINCT numero_parte) as partes_diferentes,
+                COUNT(DISTINCT modelo) as modelos_diferentes
+            FROM salidas_material 
+            WHERE DATE(fecha_salida) = ?
+        ''', (fecha,))
+        
+        estadisticas = cursor.fetchone()
+        conn.close()
+        
+        if formato == 'json':
+            return jsonify({
+                'success': True,
+                'fecha': fecha,
+                'estadisticas': {
+                    'total_salidas': estadisticas['total_salidas'],
+                    'cantidad_total': estadisticas['cantidad_total'],
+                    'partes_diferentes': estadisticas['partes_diferentes'],
+                    'modelos_diferentes': estadisticas['modelos_diferentes']
+                },
+                'salidas': [dict(row) for row in salidas]
+            })
+        
+        # TODO: Implementar exportación a Excel si se requiere
+        return jsonify({'success': False, 'error': 'Formato no soportado aún'}), 400
+        
+    except Exception as e:
+        print(f"❌ Error generando reporte diario: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===================================================================
+# 🔧 RUTAS DE MANTENIMIENTO Y DEBUGGING PARA CONTROL DE SALIDA
+# ===================================================================
+
+@app.route('/control_salida/debug/test_connection', methods=['GET'])
+@login_requerido
+def control_salida_test_connection():
+    """
+    🧪 Probar conexión y funcionalidad básica del módulo
+    """
+    try:
+        tests = []
+        
+        # Test 1: Conexión a base de datos
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1')
+            conn.close()
+            tests.append({'test': 'Database Connection', 'status': 'OK'})
+        except Exception as e:
+            tests.append({'test': 'Database Connection', 'status': 'FAIL', 'error': str(e)})
+        
+        # Test 2: Verificar tablas necesarias
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Verificar tabla salidas_material
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='salidas_material'")
+            if cursor.fetchone():
+                tests.append({'test': 'Table salidas_material', 'status': 'OK'})
+            else:
+                tests.append({'test': 'Table salidas_material', 'status': 'MISSING'})
+            
+            # Verificar tabla control_material_almacen
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='control_material_almacen'")
+            if cursor.fetchone():
+                tests.append({'test': 'Table control_material_almacen', 'status': 'OK'})
+            else:
+                tests.append({'test': 'Table control_material_almacen', 'status': 'MISSING'})
+            
+            conn.close()
+        except Exception as e:
+            tests.append({'test': 'Table Verification', 'status': 'FAIL', 'error': str(e)})
+        
+        # Test 3: Funciones de inventario
+        try:
+            from .db import actualizar_inventario_general_salida
+            tests.append({'test': 'Inventory Functions', 'status': 'OK'})
+        except Exception as e:
+            tests.append({'test': 'Inventory Functions', 'status': 'FAIL', 'error': str(e)})
+        
+        return jsonify({
+            'success': True,
+            'tests': tests,
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'overall_status': 'OK' if all(t['status'] == 'OK' for t in tests) else 'ISSUES'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en test de conexión: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

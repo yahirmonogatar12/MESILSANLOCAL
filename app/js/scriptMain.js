@@ -296,6 +296,24 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlSalidaContainer.style.display = 'block';
+                
+                // Inicializar el contenido de control de salida después de mostrarlo
+                setTimeout(() => {
+                    
+                    // Usar la nueva función global del módulo
+                    if (typeof window.inicializarControlSalidaModule === 'function') {
+                        window.inicializarControlSalidaModule();
+                    } else {
+                        console.warn('⚠️ inicializarControlSalidaModule no disponible, intentando métodos individuales');
+                        
+                        // Fallback a la función anterior
+                        if (typeof window.inicializarControlSalida === 'function') {
+                            window.inicializarControlSalida();
+                        } else {
+                            console.warn('⚠️ inicializarControlSalida no disponible');
+                        }
+                    }
+                }, 200);
             };
             
             window.mostrarControlRetorno = function() {

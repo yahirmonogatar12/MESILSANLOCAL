@@ -261,7 +261,217 @@
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="control-salida-container" style="display: none;">
-            <!-- El contenido se cargará dinámicamente con JavaScript -->
+            <!-- Contenido embebido del Control de Salida para evitar problemas de carga dinámica -->
+            <link rel="stylesheet" href="/static/css/control_salida_material.css">
+            <link rel="stylesheet" href="/static/css/control_salida_material_responsive.css">
+            
+            <div class="material-toolbar">
+                <!-- Contenedor izquierdo: Campo de escaneo -->
+                <div class="scan-container">
+                    <div class="material-form-group">
+                        <label>Código de material recibido</label>
+                        <input type="text" id="salida_codigo_material_recibido" placeholder="Escanear código aquí..." onkeydown="procesarEscaneoRapido(event)" autocomplete="off">
+                    </div>
+                </div>
+                <div class="material-form-group verification-group">
+                    <label>Verificación de salida (Requerido)</label>
+                    <input type="text" id="salida_verificacion_codigo" placeholder="Escanear código de verificación..." onkeydown="procesarVerificacion(event)" autocomplete="off" style="border: 2px solid #e74c3c;">
+                </div>
+
+                <!-- Contenedor derecho: Checkboxes -->
+                <div class="checkbox-container">
+                    <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
+                        <input type="checkbox" id="salida_registroAutomatico" style="transform: scale(1.0); accent-color: #27ae60;" checked>
+                        Registro automático
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
+                        <input type="checkbox" id="salida_verificacionBOM" style="transform: scale(1.0); accent-color: #8e44ad;">
+                        Verificación de BOM
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer;">
+                        <input type="checkbox" id="salida_peps" style="transform: scale(1.0); accent-color: #27ae60;">
+                        PEPS
+                    </label>
+                </div>
+            </div>
+            <div class="material-form-section">
+                <div class="material-form-row three-column">
+                    <div class="material-form-group">
+                        <label>Modelo <span style="color: #95a5a6; font-size: 11px;">(Opcional)</span></label>
+                        <div class="salida-search-container">
+                            <input type="text" class="salida-search-dropdown" id="salida_modelo_search" placeholder="Buscar modelo (opcional)..." onkeyup="filtrarModelosSalida()" onclick="mostrarDropdownSalida()" />
+                            <div class="salida-dropdown-list" id="salidaDropdownList" style="display: none;">
+                                <!-- Los modelos se cargarán dinámicamente aquí -->
+                            </div>
+                            <!-- Campo oculto para el valor real del modelo -->
+                            <input type="hidden" id="salida_modelo" name="modelo" />
+                        </div>
+                    </div>
+                    <div class="material-form-group">
+                        <!-- Campo movido arriba -->
+                    </div>
+                    <div class="material-form-group">
+                        <button class="material-btn secondary" id="salida_btnGuardarSalida" onclick="procesarSalidaManual()" style="display: none;">Guardar Salida</button>
+                    </div>
+                </div>
+                <div class="material-form-row three-column">
+                    <div class="material-form-group">
+                        <label>Código de material original</label>
+                        <input type="text" id="salida_codigo_material_original" readonly>
+                    </div>
+                    <div class="material-form-group">
+                        <label>Código de material</label>
+                        <input type="text" id="salida_codigo_material" readonly>
+                    </div>
+                    <div class="material-form-group">
+                        <label>Especificación de material</label>
+                        <input type="text" id="salida_especificacion_material" readonly>
+                    </div>
+                </div>
+                <div class="material-form-row three-column">
+                    <div class="material-form-group">
+                        <label>Numero de parte</label>
+                        <input type="text" id="salida_numero_parte" readonly>
+                    </div>
+                    <div class="material-form-group">
+                        <label>Cantidad actual</label>
+                        <input type="text" id="salida_cantidad_actual" readonly>
+                    </div>
+                    <div class="material-form-group">
+                        <label>Numero de lote de material</label>
+                        <input type="text" id="salida_numero_lote_material" readonly>
+                    </div>
+                </div>
+                <div class="material-form-row three-column">
+                    <div class="material-form-group">
+                        <label>Fecha de salida</label>
+                        <input type="date" id="salida_fecha_salida_form" value="">
+                    </div>
+                    <div class="material-form-group">
+                        <!-- Campo vacío -->
+                    </div>
+                    <div class="material-form-group">
+                        <!-- Campo vacío -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="material-table-container">
+                <div class="material-table-controls">
+                    <button class="material-btn" id="btnRegistroSalida" onclick="mostrarRegistroSalida()">Registro de salida</button>
+                    <button class="material-btn" id="btnHistorialSalida" onclick="mostrarHistorialSalida()">Historial de salida</button>
+                    
+                    <!-- Control de Plan -->
+                    <div class="plan-control" style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
+                        <label style="color: #ecf0f1; font-weight: 600; font-size: 14px;">Plan:</label>
+                        <input type="text" id="plan_cantidad" placeholder="500" value="1" 
+                               style="width: 60px; padding: 4px 6px; border: 2px solid #3498db; border-radius: 4px; 
+                                      background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; font-size: 12px;"
+                               onchange="actualizarCantidadesPlan()" onkeyup="actualizarCantidadesPlan()">
+                        <span style="color: #95a5a6; font-size: 12px;">unidades</span>
+                    </div>
+                </div>
+
+                <!-- Tablas para modo Registro de salida - siempre visibles -->
+                <div id="tablasRegistroSalida" class="registro-tablas-container" style="display: flex; gap: 20px; margin: 20px 0;">
+                    <!-- Primera tabla - Información general del BOM -->
+                    <div class="tabla-container" style="flex: 1;">
+                        <h4 style="margin: 0 0 10px 0; color: #ecf0f1; font-size: 14px; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Componentes del BOM seleccionado</h4>
+                        <table class="material-table">
+                            <thead>
+                                <tr>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Número de parte</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Especificación</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Cantidad total</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">PLAN</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Faltantes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla1BOM">
+                                <tr>
+                                    <td colspan="5" class="no-data" style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;">Seleccione un modelo para ver componentes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Divisor vertical -->
+                    <div style="width: 2px; background-color: #bdc3c7; margin: 0 10px; border-radius: 1px;"></div>
+
+                    <!-- Segunda tabla - Detalles del material seleccionado -->
+                    <div class="tabla-container" style="flex: 1;">
+                        <h4 style="margin: 0 0 10px 0; color: #ecf0f1; font-size: 14px; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Material actual para salida</h4>
+                        <table class="material-table">
+                            <thead>
+                                <tr>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Número de parte</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Descripción</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Cantidad disponible</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Cantidad requerida</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Estado</th>
+                                    <th style="background-color: #34495e; color: #ecf0f1; border: 1px solid #2c3e50;">Código de material</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla2BOM">
+                                <tr>
+                                    <td colspan="6" class="no-data" style="color: #7f8c8d; font-style: italic; text-align: center; padding: 20px;">Seleccione un componente de la tabla izquierda</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Controles y tabla de historial -->
+                <div id="historialSection" style="display: none;">
+                    <div class="material-table-controls" id="historialControles" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;">
+                        <!-- Filtros de fecha - lado izquierdo -->
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <div class="material-form-group">
+                                <label>Fecha desde</label>
+                                <input type="date" id="salida_fecha_desde">
+                            </div>
+                            <div class="material-form-group">
+                                <label>Fecha hasta</label>
+                                <input type="date" id="salida_fecha_hasta">
+                            </div>
+                        </div>
+                        
+                        <!-- Controles principales - lado derecho -->
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <div class="material-form-group">
+                                <label>Código de material recibido</label>
+                                <input type="text" id="salida_filtro_codigo" placeholder="Buscar por código...">
+                            </div>
+                            <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
+                            <button class="material-btn" onclick="limpiarFiltros()" style="background-color: #95a5a6;">Limpiar filtros</button>
+                            <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
+                        </div>
+                    </div>
+                    <table class="material-table" id="salida_tablaSalidas">
+                        <thead>
+                            <tr>
+                                <th>Fecha de salida</th>
+                                <th>Proceso de salida</th>
+                                <th>Código de material recibido</th>
+                                <th>Código de material</th>
+                                <th>Número de parte</th>
+                                <th>Disp.</th>
+                                <th>Hist.</th>
+                                <th>Código de material original</th>
+                                <th>Número de lote</th>
+                                <th>Máquina(linea)</th>
+                                <th>Departamento de salida</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="11" class="no-data">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="total-info" id="salida_totalInfo">Total Rows: 0</div>
+                </div>
+            </div>
         </div>
         <div id="control-retorno-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
@@ -1936,18 +2146,16 @@
                 materialContentArea.style.display = 'block';
                 controlSalidaContainer.style.display = 'block';
                 
-                // Cargar contenido dinámicamente con callback de inicialización
-                cargarContenidoDinamico('control-salida-container', '/material/control_salida', () => {
-
-                    
-                    // Intentar inicializar funciones de control de salida (sin mensajes de advertencia)
+                // Inicializar directamente sin carga dinámica (contenido ya embebido)
+                setTimeout(() => {
                     if (typeof window.inicializarControlSalidaModule === 'function') {
                         window.inicializarControlSalidaModule();
+                    } else if (typeof inicializarControlSalida === 'function') {
+                        inicializarControlSalida();
+                    } else {
+                        console.warn('⚠️ Funciones de inicialización de Control de Salida no disponibles');
                     }
-                })
-                .catch(error => {
-                    console.error('Error cargando control de salida:', error);
-                });
+                }, 200);
                 
 
             };
@@ -2240,6 +2448,450 @@
                 PermisosDropdowns.init();
             }
         });
+        
+        // ===============================================
+        // CONTROL DE SALIDA - FUNCIONES EMBEBIDAS
+        // ===============================================
+        
+        // Variables globales para Control de Salida
+        let materialActual = null;
+        let verificacionCompletada = false;
+
+        // Función global para inicializar cuando se muestra el control de salida
+        window.inicializarControlSalidaModule = function() {
+            setTimeout(() => {
+                inicializarControlSalida();
+            }, 100);
+        };
+
+        // Función de inicialización simplificada
+        function inicializarControlSalida() {
+            // Establecer fecha actual
+            const hoy = new Date().toISOString().split('T')[0];
+            const fechaSalidaForm = document.getElementById('salida_fecha_salida_form');
+            
+            if (fechaSalidaForm) fechaSalidaForm.value = hoy;
+
+            // Establecer fecha actual en los filtros de historial
+            const fechaDesde = document.getElementById('salida_fecha_desde');
+            const fechaHasta = document.getElementById('salida_fecha_hasta');
+            
+            if (fechaDesde) fechaDesde.value = hoy;
+            if (fechaHasta) fechaHasta.value = hoy;
+
+            // Configurar listeners para el checkbox de registro automático
+            configurarRegistroAutomatico();
+
+            // Cargar modelos disponibles en el BOM
+            if (typeof cargarModelosBOM === 'function') {
+                cargarModelosBOM();
+            }
+
+            // Enfocar campo de código
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
+            if (codigoInput) {
+                setTimeout(() => codigoInput.focus(), 100);
+            }
+
+            // Mostrar por defecto las tablas de registro
+            if (typeof mostrarRegistroSalida === 'function') {
+                mostrarRegistroSalida();
+            }
+        }
+
+        // Nueva función para configurar el comportamiento del registro automático
+        function configurarRegistroAutomatico() {
+            const checkbox = document.getElementById('salida_registroAutomatico');
+            const btnGuardar = document.getElementById('salida_btnGuardarSalida');
+            
+            if (checkbox && btnGuardar) {
+                // Configurar estado inicial
+                actualizarModoRegistro();
+                
+                // Listener para cambios en el checkbox
+                checkbox.addEventListener('change', function() {
+                    actualizarModoRegistro();
+                });
+            }
+        }
+
+        // Función para actualizar el modo de registro según el checkbox
+        function actualizarModoRegistro() {
+            const checkbox = document.getElementById('salida_registroAutomatico');
+            const btnGuardar = document.getElementById('salida_btnGuardarSalida');
+            
+            if (checkbox && btnGuardar) {
+                if (checkbox.checked) {
+                    btnGuardar.style.display = 'none';
+                } else {
+                    btnGuardar.style.display = 'block';
+                }
+            }
+        }
+
+        // FUNCIÓN PRINCIPAL: Procesar escaneo ultra rápido
+        async function procesarEscaneoRapido(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                
+                const codigo = event.target.value.trim();
+                
+                if (!codigo) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/buscar_material_por_codigo?codigo_recibido=${encodeURIComponent(codigo)}`);
+                    const data = await response.json();
+
+                    if (!data.success || !data.material) {
+                        mostrarMensajeSimple(data.error || 'Material no encontrado', 'error');
+                        return;
+                    }
+
+                    const material = data.material;
+                    
+                    rellenarCamposMaterial(material);
+                    materialActual = material;
+                    
+                    limpiarVerificacion();
+                    
+                    const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+                    if (campoVerificacion) {
+                        setTimeout(() => {
+                            campoVerificacion.focus();
+                        }, 300);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarMensajeSimple('Error al buscar material', 'error');
+                }
+            }
+        }
+
+        // Nueva función para procesar verificación de salida
+        function procesarVerificacion(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                
+                const codigoVerificacion = event.target.value.trim();
+                
+                if (!codigoVerificacion) {
+                    return;
+                }
+                
+                if (!materialActual) {
+                    mostrarMensajeSimple('Primero debe escanear un material', 'error');
+                    event.target.value = '';
+                    return;
+                }
+                
+                const coincidencias = verificarCoincidencias(codigoVerificacion, materialActual);
+                
+                if (coincidencias.length > 0) {
+                    mostrarMensajeSimple(`✅ Verificado: ${coincidencias.join(', ')}`, 'success');
+                    verificacionCompletada = true;
+                    
+                    event.target.style.border = '2px solid #27ae60';
+                    event.target.readOnly = true;
+                    
+                    const checkbox = document.getElementById('salida_registroAutomatico');
+                    const registroAutomatico = checkbox ? checkbox.checked : false;
+                    
+                    if (registroAutomatico) {
+                        setTimeout(async () => {
+                            await procesarSalidaAutomaticaDespuesVerificacion();
+                        }, 500);
+                    } else {
+                        mostrarMensajeSimple('Verificación completada - Haga clic en "Guardar Salida"', 'info');
+                    }
+                    
+                } else {
+                    mostrarMensajeSimple('❌ Código no coincide con el material', 'error');
+                    verificacionCompletada = false;
+                    event.target.value = '';
+                    event.target.focus();
+                }
+            }
+        }
+
+        // Función para verificar coincidencias entre el código escaneado y los datos del material
+        function verificarCoincidencias(codigoVerificacion, material) {
+            const coincidencias = [];
+            
+            const camposAVerificar = [
+                { campo: 'codigo_material_recibido', nombre: 'Código Recibido' },
+                { campo: 'codigo_material', nombre: 'Código Material' },
+                { campo: 'codigo_material_original', nombre: 'Código Original' },
+                { campo: 'numero_parte', nombre: 'Número de Parte' },
+                { campo: 'numero_lote_material', nombre: 'Lote' }
+            ];
+            
+            camposAVerificar.forEach(item => {
+                const valorCampo = material[item.campo];
+                if (valorCampo && codigoVerificacion.includes(valorCampo)) {
+                    coincidencias.push(item.nombre);
+                }
+                if (valorCampo && valorCampo.includes(codigoVerificacion)) {
+                    if (!coincidencias.includes(item.nombre)) {
+                        coincidencias.push(item.nombre);
+                    }
+                }
+            });
+            
+            return coincidencias;
+        }
+
+        // Función para limpiar verificación cuando se cambie de material
+        function limpiarVerificacion() {
+            const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+            
+            if (campoVerificacion) {
+                campoVerificacion.value = '';
+                campoVerificacion.style.border = '2px solid #e74c3c';
+                campoVerificacion.readOnly = false;
+            }
+            
+            verificacionCompletada = false;
+        }
+
+        // Función para rellenar campos del material
+        function rellenarCamposMaterial(material) {
+            const campos = [
+                'salida_codigo_material_original',
+                'salida_codigo_material', 
+                'salida_especificacion_material',
+                'salida_numero_parte',
+                'salida_cantidad_actual',
+                'salida_numero_lote_material'
+            ];
+            
+            campos.forEach(campoId => {
+                const campo = document.getElementById(campoId);
+                const propiedad = campoId.replace('salida_', '');
+                if (campo && material[propiedad]) {
+                    campo.value = material[propiedad];
+                }
+            });
+        }
+
+        // Nueva función para procesamiento automático después de verificación exitosa
+        async function procesarSalidaAutomaticaDespuesVerificacion() {
+            try {
+                const codigo = document.getElementById('salida_codigo_material_recibido')?.value?.trim();
+                
+                if (!codigo || !materialActual || !verificacionCompletada) {
+                    mostrarMensajeSimple('Error: faltan datos para procesar salida', 'error');
+                    return;
+                }
+                
+                const modelo = document.getElementById('salida_modelo')?.value || 'SIN_MODELO';
+                const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
+
+                if (cantidadSalida <= 0) {
+                    mostrarMensajeSimple('Sin stock disponible', 'error');
+                    return;
+                }
+
+                const salidaResponse = await fetch('/procesar_salida_material', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codigo_material_recibido: codigo,
+                        cantidad_salida: cantidadSalida,
+                        modelo: modelo,
+                        numero_lote: materialActual.numero_lote_material || '',
+                        fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
+                        depto_salida: 'Producción',
+                        proceso_salida: 'SMT 1st SIDE',
+                        codigo_verificacion: document.getElementById('salida_verificacion_codigo')?.value || ''
+                    })
+                });
+
+                const salidaData = await salidaResponse.json();
+
+                if (salidaData.success) {
+                    const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
+                    mostrarMensajeSimple(`✅ Salida automática procesada: ${cantidadSalida}${modeloTexto}`, 'success');
+                    
+                    setTimeout(() => {
+                        limpiarCamposMaterial();
+                    }, 1000);
+                    
+                } else {
+                    mostrarMensajeSimple('Error al procesar salida automática', 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en procesamiento automático:', error);
+                mostrarMensajeSimple('Error interno en procesamiento automático', 'error');
+            }
+        }
+
+        // Nueva función para procesamiento manual con botón
+        async function procesarSalidaManual() {
+            const codigo = document.getElementById('salida_codigo_material_recibido')?.value?.trim();
+            
+            if (!codigo) {
+                mostrarMensajeSimple('Ingrese código de material', 'error');
+                return;
+            }
+            
+            if (!materialActual) {
+                mostrarMensajeSimple('Primero busque el material escaneando o escribiendo código', 'error');
+                return;
+            }
+            
+            if (!verificacionCompletada) {
+                mostrarMensajeSimple('Debe completar la verificación de salida primero', 'error');
+                return;
+            }
+            
+            try {
+                const modelo = document.getElementById('salida_modelo')?.value || 'SIN_MODELO';
+                const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
+
+                if (cantidadSalida <= 0) {
+                    mostrarMensajeSimple('Sin stock disponible', 'error');
+                    return;
+                }
+
+                const salidaResponse = await fetch('/procesar_salida_material', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        codigo_material_recibido: codigo,
+                        cantidad_salida: cantidadSalida,
+                        modelo: modelo,
+                        numero_lote: materialActual.numero_lote_material || '',
+                        fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
+                        depto_salida: 'Producción',
+                        proceso_salida: 'SMT 1st SIDE',
+                        codigo_verificacion: document.getElementById('salida_verificacion_codigo')?.value || ''
+                    })
+                });
+
+                const salidaData = await salidaResponse.json();
+
+                if (salidaData.success) {
+                    const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
+                    mostrarMensajeSimple(`Salida procesada: ${cantidadSalida}${modeloTexto} | Inventario actualizándose`, 'success');
+                    
+                    setTimeout(() => {
+                        limpiarCamposMaterial();
+                    }, 1500);
+                    
+                } else {
+                    mostrarMensajeSimple('Error al procesar salida manual', 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error en procesamiento manual:', error);
+                mostrarMensajeSimple('Error interno en procesamiento manual', 'error');
+            }
+        }
+
+        // Función para limpiar campos del material
+        function limpiarCamposMaterial() {
+            const campos = [
+                'salida_codigo_material_recibido',
+                'salida_codigo_material_original',
+                'salida_codigo_material', 
+                'salida_especificacion_material',
+                'salida_numero_parte',
+                'salida_cantidad_actual',
+                'salida_numero_lote_material'
+            ];
+            
+            campos.forEach(campoId => {
+                const campo = document.getElementById(campoId);
+                if (campo) {
+                    campo.value = '';
+                }
+            });
+            
+            limpiarVerificacion();
+            materialActual = null;
+            
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
+            if (codigoInput) {
+                setTimeout(() => codigoInput.focus(), 100);
+            }
+        }
+
+        // Función para mostrar mensajes simples
+        function mostrarMensajeSimple(mensaje, tipo) {
+            const colores = {
+                success: '#27ae60',
+                error: '#e74c3c',
+                info: '#3498db',
+                warning: '#f39c12'
+            };
+            
+            const div = document.createElement('div');
+            div.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${colores[tipo] || '#3498db'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                z-index: 10000;
+                font-size: 14px;
+                max-width: 300px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            `;
+            div.textContent = mensaje;
+            
+            document.body.appendChild(div);
+            
+            setTimeout(() => {
+                div.remove();
+            }, 3000);
+        }
+
+        // Funciones dummy para evitar errores
+        function mostrarRegistroSalida() {
+            console.log('Mostrando registro de salida');
+        }
+        
+        function mostrarHistorialSalida() {
+            console.log('Mostrando historial de salida');
+        }
+        
+        function cargarModelosBOM() {
+            console.log('Cargando modelos BOM');
+        }
+        
+        function filtrarModelosSalida() {
+            console.log('Filtrando modelos');
+        }
+        
+        function mostrarDropdownSalida() {
+            console.log('Mostrando dropdown');
+        }
+        
+        function actualizarCantidadesPlan() {
+            console.log('Actualizando cantidades plan');
+        }
+        
+        function consultarSalidas() {
+            console.log('Consultando salidas');
+        }
+        
+        function limpiarFiltros() {
+            console.log('Limpiando filtros');
+        }
+        
+        function exportarExcel() {
+            console.log('Exportando Excel');
+        }
+        
+        // ===============================================
+        // FIN CONTROL DE SALIDA - FUNCIONES EMBEBIDAS
+        // ===============================================
 </script>
 </div>
 </body>
