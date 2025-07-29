@@ -321,6 +321,91 @@
     </div>
 </div>
 
+<!-- Modal de Unidades -->
+<div id="modal-unidades" class="trazabilidad-modal">
+    <div class="trazabilidad-modal-content" style="max-width: 500px; background-color: #32323E; border: 2px solid #20688C; color: #ecf0f1;">
+        <h2 style="color: #ecf0f1; text-align: center; margin-bottom: 20px; font-family: 'LG regular', sans-serif; border-bottom: 2px solid #20688C; padding-bottom: 15px;">Especificar Cantidad de Unidades</h2>
+        <p style="color: #bdc3c7; text-align: center; margin-bottom: 25px; font-family: 'LG regular', sans-serif;">¿Cuántas unidades desea imprimir e ingresar al inventario?</p>
+        
+        <div style="margin-bottom: 25px; padding: 20px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
+            <label for="cantidad-unidades" style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 10px; text-align: center;">Cantidad:</label>
+            <input type="number" id="cantidad-unidades" min="1" max="999" value="1" style="width: 100%; padding: 15px; background: #7B8181; border: 2px solid #3498db; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; text-align: center; font-size: 18px; font-weight: bold;">
+        </div>
+        
+        <div style="margin-bottom: 25px; padding: 15px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
+            <strong style="color: #f39c12; font-family: 'LG regular', sans-serif;">Proceso:</strong><br>
+            <ol style="color: #bdc3c7; font-family: 'LG regular', sans-serif; margin: 10px 0 0 20px; line-height: 1.6;">
+                <li>Se imprimirán las etiquetas consecutivas</li>
+                <li>Se abrirá ventana de asignación de lotes</li>
+                <li>Deberá escanear proveedor + etiqueta para cada unidad</li>
+            </ol>
+        </div>
+        
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button class="material-btn" onclick="cerrarModalUnidades()" style="background: #e74c3c; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Cancelar</button>
+            <button class="material-btn" onclick="procesarImpresionUnidades()" style="background: #3498db; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Imprimir e Iniciar Asignación</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Asignación de Lotes -->
+<div id="modal-asignacion-lotes" class="trazabilidad-modal">
+    <div class="trazabilidad-modal-content" style="max-width: 900px; background-color: #32323E; border: 2px solid #20688C; color: #ecf0f1;">
+        <h2 style="color: #ecf0f1; text-align: center; margin-bottom: 20px; font-family: 'LG regular', sans-serif; border-bottom: 2px solid #20688C; padding-bottom: 15px;">Asignación de Lotes de Proveedor</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
+            <p style="color: #bdc3c7; font-family: 'LG regular', sans-serif; margin: 0;">Asigne el lote de proveedor a cada etiqueta impresa escaneando:</p>
+            <div style="text-align: right;">
+                <span style="color: #28a745; font-weight: bold; font-family: 'LG regular', sans-serif;">Asignadas: <span id="contador-asignadas">0</span></span> / 
+                <span style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif;">Total: <span id="contador-total">0</span></span>
+            </div>
+        </div>
+        
+        <div style="background: #2D363D; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #20688C;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                <div>
+                    <label style="color: #e74c3c; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">1. Escanear Lote de Proveedor:</label>
+                    <input type="text" id="escaneo-lote-proveedor" placeholder="Escanee el código del proveedor..." 
+                           style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #e74c3c; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px;"
+                           onkeydown="procesarEscaneoLoteProveedor(event)"
+                           oninput="detectarEscaneoLoteAutomatico(event)">
+                </div>
+                <div>
+                    <label style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">2. Escanear Etiqueta Impresa:</label>
+                    <input type="text" id="escaneo-etiqueta-impresa" placeholder="Escanee la etiqueta que se imprimió..." 
+                           style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #636779; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px; cursor: not-allowed;"
+                           onkeydown="procesarEscaneoEtiquetaImpresa(event)" 
+                           onfocus="console.log('🎯 ENFOQUE en campo etiqueta')" 
+                           oninput="detectarEscaneoEtiquetaAutomatico(event)" 
+                           onkeypress="console.log('⌨️ TECLA presionada:', event.key)">
+                </div>
+            </div>
+        </div>
+        
+        <div style="max-height: 300px; overflow-y: auto; border: 2px solid #20688C; border-radius: 8px; background-color: #2D363D;">
+            <table style="width: 100%; border-collapse: collapse; font-family: 'LG regular', sans-serif;">
+                <thead style="background: #33334D; position: sticky; top: 0; border-bottom: 2px solid #20688C;">
+                    <tr>
+                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">#</th>
+                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Etiqueta Impresa</th>
+                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Lote Proveedor</th>
+                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Estado</th>
+                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-asignaciones">
+                    <!-- Se llena dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="trazabilidad-buttons" style="margin-top: 25px; display: flex; gap: 15px; justify-content: center;">
+            <button class="material-btn" onclick="cancelarAsignacionLotes()" style="background: #e74c3c; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Cancelar Todo</button>
+            <button class="material-btn" onclick="continuarSinAsignar()" style="background: #f39c12; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Continuar Sin Asignar</button>
+            <button class="material-btn" onclick="finalizarAsignacionLotes()" id="btn-finalizar-asignacion" style="background: #636779; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: not-allowed; transition: all 0.3s;" disabled>Finalizar Asignación</button>
+        </div>
+    </div>
+</div>
+
 <!-- Formulario principal con autocomplete deshabilitado -->
 <form autocomplete="off" data-form-type="other"
 <!-- Fila 1: SOLO Forma de material, ancho completo -->
@@ -488,9 +573,10 @@
         <div class="material-form-group"></div>
         <div class="material-form-group" style="justify-self: end;">
             <div style="display: flex; gap: 4px; align-items: center;">
-                <button class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()">Guardar</button>
-                <button class="material-btn botones-almacen" id="btnImprimir" onclick="manejarImpresion()">Imprimir</button>
-                <button class="material-btn botones-almacen" id="btnConfigImpresora" onclick="verificarImpresoraZebra()" style="background: #6c757d; font-size: 9px; padding: 6px 8px; min-width: 80px; text-align: center;">CONF. DE IMPRESORA</button>
+                <button type="button" class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()" style="display: none;">Guardar</button>
+                <button type="button" class="material-btn botones-almacen" id="btnUnidades" onclick="event.preventDefault(); abrirModalUnidades()" style="background: #28a745; display: none;">UNIDADES</button>
+                <button type="button" class="material-btn botones-almacen" id="btnImprimir" onclick="manejarImpresion()" style="display: none;">Imprimir</button>
+                <button type="button" class="material-btn botones-almacen" id="btnConfigImpresora" onclick="verificarImpresoraZebra()" style="background: #6c757d; font-size: 9px; padding: 6px 8px; min-width: 80px; text-align: center;">CONF. DE IMPRESORA</button>
             </div>
         </div>
         <div class="material-form-group">
@@ -513,7 +599,7 @@
                 <input type="date" id="filtro_fecha_fin" style="width: 130px; height: 24px; font-size: 10px; min-width: 100px;">
             </div>
             <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                <button class="material-btn" id="btnConsultar" onclick="consultarRegistros()">Consultar</button>
+                <button type="button" class="material-btn" id="btnConsultar" onclick="event.preventDefault(); consultarRegistros()">Consultar</button>
                 <button class="material-btn secondary" onclick="exportarExcel()">Exportar Excel</button>
             </div>
         </div>
@@ -1031,16 +1117,10 @@
                 console.log('🔄 Nuevo escaneo iniciado - resetear control de guardado');
             }
             
-            // Detectar Enter (método tradicional)
+            // Detectar Enter (método tradicional) - Solo prevenir comportamiento por defecto
             if (event.key === 'Enter') {
                 event.preventDefault();
-                const codigoCompleto = input.value.trim();
-                
-                if (codigoCompleto) {
-                    console.log('Enter detectado - procesando código:', codigoCompleto);
-                    parsearYDistribuirCodigo(codigoCompleto);
-                    // NO limpiar automáticamente con Enter - permitir que el usuario guarde
-                }
+                console.log('Enter detectado - no procesar, mantener datos del escaneo');
                 return;
             }
             
@@ -1151,6 +1231,10 @@
                     }
                     
                     mostrarNotificacionEscaneo(resultado.partNumber, null, resultado.lotNumber);
+                    
+                    // Verificar si es material existente para mostrar botón de unidades
+                    verificarMaterialExistente(codigoCompleto);
+                    
                     // NO limpiar el campo automáticamente - permitir que el usuario vea el código
                     return;
                 }
@@ -4652,6 +4736,656 @@ if (document.readyState === 'loading') {
         
         // Mostrar funciones principales disponibles
 
+        // ========== FUNCIONES DEL NUEVO FLUJO DE UNIDADES ==========
+        
+        // Variables globales para el flujo de unidades
+        let materialExistente = null;
+        let etiquetasImpresas = [];
+        let asignacionesLotes = [];
+        
+        // Función para detectar si el material ya existe y mostrar botón UNIDADES
+        function verificarMaterialExistente(codigoEscaneado) {
+            // Simular verificación en base de datos
+            // En implementación real, hacer llamada AJAX
+            
+            // Por ahora, simular que existe si tiene cierto formato
+            if (codigoEscaneado && codigoEscaneado.length > 5) {
+                // Usar el número de parte como base para el código consecutivo
+                const codigoOriginal = document.getElementById('numero_parte_lower')?.value || codigoEscaneado;
+                materialExistente = {
+                    codigo: codigoOriginal,
+                    nombre: 'Material Existente',
+                    especificacion: 'Especificación del material'
+                };
+                
+                // Mostrar botón UNIDADES y ocultar otros
+                document.getElementById('btnUnidades').style.display = 'inline-block';
+                document.getElementById('btnGuardar').style.display = 'none';
+                document.getElementById('btnImprimir').style.display = 'none';
+                
+                // Llenar campos automáticamente
+                llenarCamposAutomaticamente(materialExistente);
+                
+                return true;
+            }
+            
+            // Si no existe, mostrar botones normales
+            document.getElementById('btnUnidades').style.display = 'none';
+            document.getElementById('btnGuardar').style.display = 'inline-block';
+            document.getElementById('btnImprimir').style.display = 'inline-block';
+            
+            return false;
+        }
+        
+        function llenarCamposAutomaticamente(material) {
+            // Llenar campos con datos del material existente
+            document.getElementById('codigo_material_recibido').value = material.codigo;
+            document.getElementById('almacen_especificacion_material').value = material.especificacion;
+            // Agregar más campos según sea necesario
+        }
+        
+        function abrirModalUnidades() {
+            if (!materialExistente) {
+                alert('Error: No hay material seleccionado');
+                return;
+            }
+            
+            document.getElementById('modal-unidades').style.display = 'flex';
+            document.getElementById('cantidad-unidades').focus();
+        }
+        
+        function cerrarModalUnidades() {
+            document.getElementById('modal-unidades').style.display = 'none';
+        }
+        
+        function procesarImpresionUnidades() {
+            const cantidad = parseInt(document.getElementById('cantidad-unidades').value);
+            
+            if (!cantidad || cantidad < 1 || cantidad > 999) {
+                alert('Por favor ingrese una cantidad válida (1-999)');
+                return;
+            }
+            
+            try {
+                // Cerrar modal de unidades
+                cerrarModalUnidades();
+                
+                // Mostrar indicador de impresión
+                mostrarIndicadorProceso('Imprimiendo ' + cantidad + ' etiquetas...');
+                
+                // Generar códigos consecutivos para las etiquetas
+                etiquetasImpresas = [];
+                // Usar el número de parte como base para el código consecutivo
+                const codigoBase = document.getElementById('numero_parte_lower')?.value || materialExistente.codigo;
+                
+                console.log(`🚀 Generando ${cantidad} etiquetas para: ${codigoBase}`);
+                console.log(`📊 Contador secuencial: ${contadorSecuencial}`);
+                
+                // Generar todos los códigos usando el contador ya cargado
+                for (let i = 1; i <= cantidad; i++) {
+                    const codigoConsecutivo = generarCodigoConsecutivo(codigoBase, i);
+                    etiquetasImpresas.push({
+                        numero: i,
+                        codigo: codigoConsecutivo,
+                        loteProveedor: null,
+                        asignado: false
+                    });
+                }
+                
+                console.log('✅ Etiquetas generadas:', etiquetasImpresas);
+                
+                // Imprimir etiquetas secuencialmente con retardo
+                let indice = 0;
+                function imprimirSiguiente() {
+                    if (indice < etiquetasImpresas.length) {
+                        const etiqueta = etiquetasImpresas[indice];
+                        console.log(`🖨️ Imprimiendo etiqueta ${indice + 1}/${cantidad}: ${etiqueta.codigo}`);
+                        imprimirEtiquetaIndividual(etiqueta.codigo, indice + 1, cantidad);
+                        indice++;
+                        
+                        // Continuar con la siguiente después de 1 segundo
+                        setTimeout(imprimirSiguiente, 1000);
+                    } else {
+                        // Todas impresas
+                        console.log('🎯 Todas las etiquetas enviadas a impresión');
+                        ocultarIndicadorProceso();
+                        abrirModalAsignacionLotes();
+                    }
+                }
+                
+                // Iniciar impresión
+                imprimirSiguiente();
+                
+            } catch (error) {
+                console.error('Error en impresión:', error);
+                alert('Error al imprimir etiquetas: ' + error.message);
+                ocultarIndicadorProceso();
+            }
+        }
+        
+        function generarCodigoConsecutivo(codigoBase, numero) {
+            // Usar el formato correcto con coma, como en el backend
+            const fechaActual = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const secuencial = (contadorSecuencial + numero - 1).toString().padStart(4, '0');
+            const codigoGenerado = `${codigoBase},${fechaActual}${secuencial}`;
+            
+            console.log(`📋 Código consecutivo generado: ${codigoGenerado} (base: ${contadorSecuencial}, número: ${numero})`);
+            return codigoGenerado;
+        }
+        
+        async function imprimirEtiquetaIndividual(codigo, numero, total) {
+            console.log(`Imprimiendo etiqueta ${numero}/${total}: ${codigo}`);
+            
+            try {
+                // Imprimir usando la función existente de Zebra
+                await imprimirZebraAutomatico(codigo);
+                
+                // Pequeño delay entre impresiones para evitar saturar la impresora
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+            } catch (error) {
+                console.error(`Error imprimiendo etiqueta ${numero}:`, error);
+                // Continuar con las siguientes etiquetas aunque una falle
+                throw new Error(`Error en etiqueta ${numero}: ${error.message}`);
+            }
+        }
+        
+        function abrirModalAsignacionLotes() {
+            // Inicializar tabla de asignaciones
+            asignacionesLotes = [...etiquetasImpresas];
+            
+            // Actualizar contadores
+            document.getElementById('contador-total').textContent = etiquetasImpresas.length;
+            document.getElementById('contador-asignadas').textContent = '0';
+            
+            // Limpiar y preparar campos de escaneo
+            const campoLote = document.getElementById('escaneo-lote-proveedor');
+            const campoEtiqueta = document.getElementById('escaneo-etiqueta-impresa');
+            
+            // Limpiar valores
+            campoLote.value = '';
+            campoEtiqueta.value = '';
+            
+            // Configurar estado inicial del campo de etiqueta (disponible)
+            campoEtiqueta.readOnly = false;
+            campoEtiqueta.removeAttribute('readonly');
+            campoEtiqueta.removeAttribute('disabled');
+            campoEtiqueta.style.cursor = 'text';
+            campoEtiqueta.style.pointerEvents = 'auto';
+            campoEtiqueta.style.background = '#7B8181';
+            
+            console.log('🔓 Campo etiqueta inicializado como DISPONIBLE');
+            
+            // Restaurar colores iniciales
+            campoLote.style.background = '#7B8181';
+            campoEtiqueta.style.background = '#7B8181';
+            
+            console.log('Modal inicializado - Campo etiqueta bloqueado:', {
+                disabled: campoEtiqueta.disabled,
+                readOnly: campoEtiqueta.readOnly
+            });
+            
+            // Llenar tabla
+            actualizarTablaAsignaciones();
+            
+            // Mostrar modal
+            document.getElementById('modal-asignacion-lotes').style.display = 'flex';
+            
+            // Enfocar automáticamente en el primer campo para comenzar el escaneo
+            setTimeout(() => {
+                campoLote.focus();
+                campoLote.select();
+            }, 300);
+        }
+        
+        function actualizarTablaAsignaciones() {
+            const tbody = document.getElementById('tabla-asignaciones');
+            tbody.innerHTML = '';
+            
+            asignacionesLotes.forEach((item, index) => {
+                const fila = document.createElement('tr');
+                fila.style.backgroundColor = item.asignado ? '#28a745' : '#2D363D';
+                fila.style.color = '#ecf0f1';
+                fila.style.fontFamily = "'LG regular', sans-serif";
+                
+                fila.innerHTML = `
+                    <td style="padding: 10px; border: 1px solid #20688C; text-align: center; color: #ecf0f1; font-family: 'LG regular', sans-serif;">${item.numero}</td>
+                    <td style="padding: 10px; border: 1px solid #20688C; font-family: 'LG regular', sans-serif; font-size: 12px; color: #ecf0f1;">${item.codigo}</td>
+                    <td style="padding: 10px; border: 1px solid #20688C; font-family: 'LG regular', sans-serif; font-size: 12px; color: #ecf0f1;">${item.loteProveedor || '-'}</td>
+                    <td style="padding: 10px; border: 1px solid #20688C; text-align: center;">
+                        <span style="color: ${item.asignado ? '#ffffff' : '#e74c3c'}; font-weight: bold; font-family: 'LG regular', sans-serif;">
+                            ${item.asignado ? '✓ ASIGNADO' : '⏳ PENDIENTE'}
+                        </span>
+                    </td>
+                    <td style="padding: 10px; border: 1px solid #20688C; text-align: center;">
+                        ${item.asignado ? 
+                            `<button onclick="desasignarLote(${index})" style="background: #e74c3c; color: white; border: 2px solid #20688C; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: 'LG regular', sans-serif; font-weight: bold; transition: all 0.3s;">Desasignar</button>` :
+                            `<button onclick="enfocarAsignacion(${index})" style="background: #3498db; color: white; border: 2px solid #20688C; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: 'LG regular', sans-serif; font-weight: bold; transition: all 0.3s;">Asignar</button>`
+                        }
+                    </td>
+                `;
+                
+                tbody.appendChild(fila);
+            });
+            
+            // Actualizar contador de asignadas
+            const asignadas = asignacionesLotes.filter(item => item.asignado).length;
+            document.getElementById('contador-asignadas').textContent = asignadas;
+            
+            // Habilitar/deshabilitar botón finalizar
+            const btnFinalizar = document.getElementById('btn-finalizar-asignacion');
+            const todasAsignadas = asignadas === asignacionesLotes.length;
+            btnFinalizar.disabled = !todasAsignadas;
+            
+            // Actualizar estilo del botón según su estado
+            if (todasAsignadas) {
+                btnFinalizar.style.background = '#28a745';
+                btnFinalizar.style.cursor = 'pointer';
+            } else {
+                btnFinalizar.style.background = '#636779';
+                btnFinalizar.style.cursor = 'not-allowed';
+            }
+        }
+        
+        // Variables de control para evitar ejecuciones múltiples
+        let procesandoLote = false;
+        let procesandoEtiqueta = false;
+        
+        // Funciones de detección automática de escaneo
+        function detectarEscaneoLoteAutomatico(event) {
+            const valor = event.target.value.trim();
+            console.log('🔍 Detectando lote automático - Longitud:', valor.length, 'Valor:', valor);
+            
+            // Detectar cuando el código tenga longitud típica de lote
+            if (valor.length >= 25 && !procesandoLote) { // Evitar ejecuciones múltiples
+                procesandoLote = true;
+                console.log('✅ Longitud suficiente detectada, procesando automáticamente...');
+                setTimeout(() => {
+                    // Simular Enter para procesar automáticamente
+                    const enterEvent = new KeyboardEvent('keydown', {
+                        key: 'Enter',
+                        code: 'Enter',
+                        keyCode: 13,
+                        which: 13,
+                        bubbles: true
+                    });
+                    event.target.dispatchEvent(enterEvent);
+                    console.log('🚀 Evento Enter simulado para lote');
+                    
+                    // Resetear flag después de un tiempo
+                    setTimeout(() => {
+                        procesandoLote = false;
+                    }, 1000);
+                }, 200); // Aumentado el delay para mayor estabilidad
+            }
+        }
+        
+        function detectarEscaneoEtiquetaAutomatico(event) {
+            const valor = event.target.value.trim();
+            console.log('🔍 Detectando etiqueta automática - Longitud:', valor.length, 'Valor:', valor);
+            
+            // Detectar cuando el código tenga longitud típica de etiqueta
+            if (valor.length >= 20 && !procesandoEtiqueta) { // Evitar ejecuciones múltiples
+                procesandoEtiqueta = true;
+                console.log('✅ Longitud suficiente detectada, procesando automáticamente...');
+                setTimeout(() => {
+                    // Simular Enter para procesar automáticamente
+                    const enterEvent = new KeyboardEvent('keydown', {
+                        key: 'Enter',
+                        code: 'Enter',
+                        keyCode: 13,
+                        which: 13,
+                        bubbles: true
+                    });
+                    event.target.dispatchEvent(enterEvent);
+                    console.log('🚀 Evento Enter simulado para etiqueta');
+                    
+                    // Resetear flag después de un tiempo
+                    setTimeout(() => {
+                        procesandoEtiqueta = false;
+                    }, 1000);
+                }, 200); // Aumentado el delay para mayor estabilidad
+            }
+        }
+        
+        function procesarEscaneoLoteProveedor(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const loteProveedor = event.target.value.trim();
+                
+                if (loteProveedor) {
+                    // Guardar el lote para uso posterior
+                    ultimoLoteEscaneado = loteProveedor;
+                    // Cambiar colores para indicar progreso
+                    const campoEtiqueta = document.getElementById('escaneo-etiqueta-impresa');
+                    
+                    console.log('✅ Lote escaneado, cambiando colores visuales');
+                    
+                    // Cambiar colores para indicar que el lote fue escaneado
+                    event.target.style.background = '#d4edda';
+                    event.target.style.border = '2px solid #28a745';
+                    
+                    // Desbloquear y resaltar el campo de etiqueta
+                    campoEtiqueta.readOnly = false;
+                    campoEtiqueta.removeAttribute('readonly');
+                    campoEtiqueta.removeAttribute('disabled');
+                    campoEtiqueta.style.cursor = 'text';
+                    campoEtiqueta.style.pointerEvents = 'auto';
+                    campoEtiqueta.style.background = '#7B8181';
+                    campoEtiqueta.style.border = '2px solid #3498db';
+                    
+                    console.log('🔓 Campo etiqueta desbloqueado y resaltado para escaneo');
+                    
+                    // Enfocar automáticamente el campo de etiqueta para flujo continuo
+                    setTimeout(() => {
+                        campoEtiqueta.focus();
+                        campoEtiqueta.select(); // Seleccionar todo el contenido para sobrescribir fácilmente
+                        console.log('🎯 Flujo automático: Campo etiqueta enfocado para escaneo');
+                    }, 100); // Reducido el tiempo para mayor fluidez
+                }
+            }
+        }
+        
+        // Variable global para mantener el último lote escaneado
+        let ultimoLoteEscaneado = '';
+        
+        // Función para limpiar el lote cuando se necesite
+        function limpiarLoteActual() {
+            ultimoLoteEscaneado = '';
+            const campoLote = document.getElementById('escaneo-lote-proveedor');
+            campoLote.value = '';
+            campoLote.style.background = '#7B8181';
+            campoLote.style.border = '2px solid #e74c3c';
+            console.log('🧹 Lote limpiado para nueva secuencia');
+        }
+        
+        function procesarEscaneoEtiquetaImpresa(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const etiquetaEscaneada = event.target.value.trim();
+                const loteProveedor = document.getElementById('escaneo-lote-proveedor').value.trim() || ultimoLoteEscaneado;
+                
+                if (!loteProveedor) {
+                    alert('Primero debe escanear el lote del proveedor');
+                    return;
+                }
+                
+                if (!etiquetaEscaneada) {
+                    alert('Debe escanear una etiqueta');
+                    return;
+                }
+                
+                // Buscar la etiqueta en la lista
+                const indiceEtiqueta = asignacionesLotes.findIndex(item => 
+                    item.codigo === etiquetaEscaneada && !item.asignado
+                );
+                
+                if (indiceEtiqueta === -1) {
+                    alert('Etiqueta no encontrada o ya asignada: ' + etiquetaEscaneada);
+                    // Limpiar solo el campo de etiqueta para reintentar
+                    event.target.value = '';
+                    event.target.focus();
+                    return;
+                }
+                
+                // Asignar lote automáticamente
+                asignacionesLotes[indiceEtiqueta].loteProveedor = loteProveedor;
+                asignacionesLotes[indiceEtiqueta].asignado = true;
+                
+                // Actualizar tabla inmediatamente
+                actualizarTablaAsignaciones();
+                
+                // Mostrar confirmación visual rápida
+                console.log(`✅ Asignado: ${etiquetaEscaneada} → ${loteProveedor}`);
+                
+                // Limpiar ambos campos para nueva secuencia lote-etiqueta
+                document.getElementById('escaneo-etiqueta-impresa').value = '';
+                document.getElementById('escaneo-lote-proveedor').value = '';
+                
+                // Limpiar también la variable global del lote
+                ultimoLoteEscaneado = '';
+                
+                // Resetear flags de procesamiento para permitir nuevos escaneos
+                procesandoEtiqueta = false;
+                procesandoLote = false;
+                console.log('🔄 Flags de procesamiento y lote reseteados');
+                
+                // Restaurar colores iniciales de ambos campos
+                document.getElementById('escaneo-etiqueta-impresa').style.background = '#7B8181';
+                document.getElementById('escaneo-etiqueta-impresa').style.border = '2px solid #636779';
+                
+                const campoLote = document.getElementById('escaneo-lote-proveedor');
+                campoLote.style.background = '#7B8181';
+                campoLote.style.border = '2px solid #e74c3c';
+                
+                // Flujo automático: enfocar el campo de lote para nueva secuencia
+                setTimeout(() => {
+                    campoLote.focus();
+                    campoLote.select();
+                    console.log('🔄 Flujo automático: Campo lote enfocado para nueva secuencia');
+                }, 100); // Tiempo reducido para mayor fluidez
+                
+                // Verificar si todas las etiquetas están asignadas
+                 const totalAsignadas = asignacionesLotes.filter(item => item.asignado).length;
+                 if (totalAsignadas === asignacionesLotes.length) {
+                     setTimeout(() => {
+                         alert('¡Todas las etiquetas han sido asignadas! Puede finalizar el proceso.');
+                     }, 500);
+                 }
+                
+                console.log('Asignación completada:', {
+                    etiqueta: etiquetaEscaneada,
+                    loteProveedor: loteProveedor
+                });
+            }
+        }
+        
+        function enfocarAsignacion(indice) {
+            // Enfocar en los campos de escaneo para asignar esta etiqueta específica
+            document.getElementById('escaneo-lote-proveedor').focus();
+            
+            // Opcional: mostrar qué etiqueta se va a asignar
+            const etiqueta = asignacionesLotes[indice];
+            console.log('Preparando asignación para etiqueta:', etiqueta.codigo);
+        }
+        
+        function desasignarLote(indice) {
+            if (confirm('¿Está seguro de desasignar este lote?')) {
+                asignacionesLotes[indice].loteProveedor = null;
+                asignacionesLotes[indice].asignado = false;
+                actualizarTablaAsignaciones();
+            }
+        }
+        
+        function cancelarAsignacionLotes() {
+            if (confirm('¿Está seguro de cancelar todo el proceso? Se perderán todas las asignaciones.')) {
+                document.getElementById('modal-asignacion-lotes').style.display = 'none';
+                etiquetasImpresas = [];
+                asignacionesLotes = [];
+                materialExistente = null;
+                
+                // Restaurar botones originales
+                document.getElementById('btnUnidades').style.display = 'none';
+                document.getElementById('btnGuardar').style.display = 'inline-block';
+                document.getElementById('btnImprimir').style.display = 'inline-block';
+            }
+        }
+        
+        function continuarSinAsignar() {
+            const sinAsignar = asignacionesLotes.filter(item => !item.asignado);
+            
+            if (sinAsignar.length > 0) {
+                const mensaje = `ADVERTENCIA: ${sinAsignar.length} etiquetas no han sido asignadas.\n\n` +
+                              `Las etiquetas sin asignar NO se darán de alta en el inventario.\n` +
+                              `¿Está seguro de continuar?`;
+                
+                if (confirm(mensaje)) {
+                    finalizarAsignacionLotes(true);
+                }
+            } else {
+                finalizarAsignacionLotes();
+            }
+        }
+        
+        async function finalizarAsignacionLotes(permitirSinAsignar = false) {
+            const asignadas = asignacionesLotes.filter(item => item.asignado);
+            const sinAsignar = asignacionesLotes.filter(item => !item.asignado);
+            
+            if (!permitirSinAsignar && sinAsignar.length > 0) {
+                alert(`Faltan ${sinAsignar.length} asignaciones por completar`);
+                return;
+            }
+            
+            try {
+                mostrarIndicadorProceso('Guardando entradas en inventario...');
+                
+                // Procesar solo las etiquetas asignadas
+                for (const item of asignadas) {
+                    await guardarEntradaInventario(item);
+                }
+                
+                ocultarIndicadorProceso();
+                
+                // Mostrar resumen
+                const mensaje = `Proceso completado:\n\n` +
+                              `✓ Etiquetas asignadas y guardadas: ${asignadas.length}\n` +
+                              (sinAsignar.length > 0 ? `⚠ Etiquetas no asignadas: ${sinAsignar.length}\n` : '') +
+                              `\nLas etiquetas asignadas han sido registradas en el inventario.`;
+                
+                alert(mensaje);
+                
+                // Cerrar modal y limpiar
+                document.getElementById('modal-asignacion-lotes').style.display = 'none';
+                limpiarFormularioCompleto();
+                
+            } catch (error) {
+                console.error('Error al finalizar asignaciones:', error);
+                alert('Error al guardar en inventario: ' + error.message);
+                ocultarIndicadorProceso();
+            }
+        }
+        
+        async function guardarEntradaInventario(item) {
+            try {
+                // Preparar datos del formulario usando el código consecutivo como código_material_recibido
+                const formData = {
+                    forma_material: document.getElementById('forma_material').value,
+                    cliente: document.getElementById('cliente').value,
+                    codigo_material_original: materialExistente.codigo, // El código original escaneado
+                    codigo_material: document.getElementById('codigoMaterialSelect').value,
+                    material_importacion_local: document.getElementById('material_importacion_local').value,
+                    fecha_recibo: document.getElementById('fecha_recibo').value,
+                    fecha_fabricacion: document.getElementById('fecha_fabricacion').value,
+                    cantidad_actual: document.getElementById('cantidad_actual').value,
+                    numero_lote_material: item.loteProveedor, // El lote del proveedor asignado
+                    codigo_material_recibido: item.codigo, // EL CÓDIGO CONSECUTIVO GENERADO
+                    numero_parte: document.getElementById('numero_parte_lower').value,
+                    cantidad_estandarizada: document.getElementById('cantidad_estandarizada').value,
+                    codigo_material_final: document.getElementById('codigo_material_lower').value,
+                    propiedad_material: document.getElementById('propiedad_material').value,
+                    especificacion: document.getElementById('almacen_especificacion_material').value
+                };
+                
+                console.log('Guardando entrada con código consecutivo:', {
+                    codigo_original: materialExistente.codigo,
+                    codigo_consecutivo: item.codigo,
+                    lote_proveedor: item.loteProveedor
+                });
+                
+                // Enviar al mismo endpoint que usa guardarFormulario
+                const response = await fetch('/guardar_control_almacen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al guardar');
+                }
+                
+                console.log('✅ Entrada guardada exitosamente:', item.codigo);
+                
+            } catch (error) {
+                console.error('❌ Error guardando entrada:', error);
+                throw error;
+            }
+        }
+        
+        function limpiarFormularioCompleto() {
+            // Limpiar todas las variables globales
+            materialExistente = null;
+            etiquetasImpresas = [];
+            asignacionesLotes = [];
+            
+            // Limpiar campos del formulario
+            document.getElementById('codigo_material_recibido').value = '';
+            document.getElementById('almacen_especificacion_material').value = '';
+            
+            // Restaurar botones
+            document.getElementById('btnUnidades').style.display = 'none';
+            document.getElementById('btnGuardar').style.display = 'inline-block';
+            document.getElementById('btnImprimir').style.display = 'inline-block';
+            
+            // Limpiar y restaurar completamente el campo de escaneo
+            limpiarCampoManual();
+        }
+        
+        function mostrarIndicadorProceso(mensaje) {
+            // Crear o actualizar indicador de proceso
+            let indicador = document.getElementById('indicador-proceso');
+            if (!indicador) {
+                indicador = document.createElement('div');
+                indicador.id = 'indicador-proceso';
+                indicador.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: linear-gradient(135deg, #3498db, #2980b9);
+                    color: white;
+                    padding: 20px 30px;
+                    border-radius: 12px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+                    z-index: 10002;
+                    text-align: center;
+                    animation: pulso-proceso 1.5s infinite;
+                `;
+                document.body.appendChild(indicador);
+                
+                // Agregar animación CSS
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes pulso-proceso {
+                        0%, 100% { transform: translate(-50%, -50%) scale(1); }
+                        50% { transform: translate(-50%, -50%) scale(1.05); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            indicador.textContent = mensaje;
+            indicador.style.display = 'block';
+        }
+        
+        function ocultarIndicadorProceso() {
+            const indicador = document.getElementById('indicador-proceso');
+            if (indicador) {
+                indicador.style.display = 'none';
+            }
+        }
+        
+        // La función procesarScaneo ya fue modificada directamente arriba
+        
         // ========== FUNCIONES DE MODAL DE TRAZABILIDAD ==========
         
         function abrirModalTrazabilidad() {

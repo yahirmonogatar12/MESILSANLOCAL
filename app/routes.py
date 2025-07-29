@@ -191,7 +191,7 @@ def login_requerido(f):
         
         # Verificar si hay usuario en sesión
         if 'usuario' not in session:
-            print("❌ No hay usuario en sesión")
+            print("No hay usuario en sesión")
             return redirect(url_for('login'))
         
         usuario = session.get('usuario')
