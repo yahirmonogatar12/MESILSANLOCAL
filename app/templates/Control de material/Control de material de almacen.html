@@ -330,16 +330,8 @@
         <div style="margin-bottom: 25px; padding: 20px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
             <label for="cantidad-unidades" style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 10px; text-align: center;">Cantidad:</label>
             <input type="number" id="cantidad-unidades" min="1" max="999" value="1" style="width: 100%; padding: 15px; background: #7B8181; border: 2px solid #3498db; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; text-align: center; font-size: 18px; font-weight: bold;">
-        </div>
-        
-        <div style="margin-bottom: 25px; padding: 15px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
-            <strong style="color: #f39c12; font-family: 'LG regular', sans-serif;">Proceso:</strong><br>
-            <ol style="color: #bdc3c7; font-family: 'LG regular', sans-serif; margin: 10px 0 0 20px; line-height: 1.6;">
-                <li>Se imprimirán las etiquetas consecutivas</li>
-                <li>Se abrirá ventana de asignación de lotes</li>
-                <li>Deberá escanear proveedor + etiqueta para cada unidad</li>
-            </ol>
-        </div>
+        </div>    
+
         
         <div style="display: flex; gap: 15px; justify-content: center;">
             <button class="material-btn" onclick="cerrarModalUnidades()" style="background: #e74c3c; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Cancelar</button>
@@ -374,22 +366,22 @@
                     <input type="text" id="escaneo-etiqueta-impresa" placeholder="Escanee la etiqueta que se imprimió..." 
                            style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #636779; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px; cursor: not-allowed;"
                            onkeydown="procesarEscaneoEtiquetaImpresa(event)" 
-                           onfocus="console.log('🎯 ENFOQUE en campo etiqueta')" 
+                           onfocus="console.log('ENFOQUE en campo etiqueta')" 
                            oninput="detectarEscaneoEtiquetaAutomatico(event)" 
-                           onkeypress="console.log('⌨️ TECLA presionada:', event.key)">
+                           onkeypress="console.log('TECLA presionada:', event.key)">
                 </div>
             </div>
         </div>
         
-        <div style="max-height: 300px; overflow-y: auto; border: 2px solid #20688C; border-radius: 8px; background-color: #2D363D;">
+        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #5A7A8A; border-radius: 6px; background-color: #2D363D;">
             <table style="width: 100%; border-collapse: collapse; font-family: 'LG regular', sans-serif;">
                 <thead style="background: #33334D; position: sticky; top: 0; border-bottom: 2px solid #20688C;">
                     <tr>
-                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">#</th>
-                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Etiqueta Impresa</th>
-                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Lote Proveedor</th>
-                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Estado</th>
-                        <th style="padding: 12px; border: 1px solid #20688C; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold;">Acciones</th>
+                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">#</th>
+                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Etiqueta Impresa</th>
+                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Lote Proveedor</th>
+                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Estado</th>
+                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tabla-asignaciones">
@@ -398,10 +390,32 @@
             </table>
         </div>
         
-        <div class="trazabilidad-buttons" style="margin-top: 25px; display: flex; gap: 15px; justify-content: center;">
-            <button class="material-btn" onclick="cancelarAsignacionLotes()" style="background: #e74c3c; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Cancelar Todo</button>
-            <button class="material-btn" onclick="continuarSinAsignar()" style="background: #f39c12; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Continuar Sin Asignar</button>
-            <button class="material-btn" onclick="finalizarAsignacionLotes()" id="btn-finalizar-asignacion" style="background: #636779; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: not-allowed; transition: all 0.3s;" disabled>Finalizar Asignación</button>
+        <div class="trazabilidad-buttons" style="margin-top: 25px; position: relative; display: flex; justify-content: center; align-items: center;">
+            <button class="material-btn" onclick="finalizarAsignacionLotes()" id="btn-finalizar-asignacion" style="background: #636779; color: white; padding: 12px 24px; border: 2px solid #5A7A8A; border-radius: 6px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: not-allowed; transition: all 0.3s; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);" disabled>Finalizar Asignación</button>
+            <button class="material-btn" onclick="continuarSinAsignar()" style="position: absolute; right: 0; background: #e74c3c; color: white; padding: 4px 8px; border: 1px solid #c0392b; border-radius: 3px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 10px; box-shadow: 0 1px 3px rgba(231, 76, 60, 0.4); text-transform: uppercase; letter-spacing: 0.3px;">Continuar Sin Asignar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Advertencia -->
+<div id="modal-advertencia" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center;">
+    <div style="background: #2D363D; border: 2px solid #e74c3c; border-radius: 8px; padding: 25px; max-width: 500px; margin: 20px; box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3);">
+        <h3 style="color: #e74c3c; font-family: 'LG regular', sans-serif; font-weight: bold; margin: 0 0 15px 0; text-align: center; font-size: 18px;">ADVERTENCIA</h3>
+        <div id="mensaje-advertencia" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; margin-bottom: 20px; line-height: 1.5; text-align: center;"></div>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button onclick="cerrarModalAdvertencia()" style="background: #636779; color: white; padding: 10px 20px; border: 1px solid #5A7A8A; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">Cancelar</button>
+            <button onclick="confirmarAdvertencia()" style="background: #e74c3c; color: white; padding: 10px 20px; border: 1px solid #e74c3c; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">Continuar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Proceso Completado -->
+<div id="modal-completado" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center;">
+    <div style="background: #2D363D; border: 2px solid #5A8A5A; border-radius: 8px; padding: 25px; max-width: 500px; margin: 20px; box-shadow: 0 4px 20px rgba(90, 138, 90, 0.3);">
+        <h3 style="color: #5A8A5A; font-family: 'LG regular', sans-serif; font-weight: bold; margin: 0 0 15px 0; text-align: center; font-size: 18px;">PROCESO COMPLETADO</h3>
+        <div id="mensaje-completado" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; margin-bottom: 20px; line-height: 1.5; text-align: center;"></div>
+        <div style="display: flex; justify-content: center;">
+            <button onclick="cerrarModalCompletado()" style="background: #5A8A5A; color: white; padding: 10px 20px; border: 1px solid #4a7c59; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">OK</button>
         </div>
     </div>
 </div>
@@ -763,7 +777,7 @@
                     <div style="text-align: center; margin-top: 30px;">
                         <button onclick="this.closest('div').parentNode.remove()" 
                             style="padding: 12px 30px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 500;">
-                            ✓ Entendido
+                            Entendido
                         </button>
                     </div>
                 </div>
@@ -1053,7 +1067,7 @@
                         labelRegistro.style.fontWeight = 'bold';
                         textoRegistro.textContent = 'Registro automático ACTIVO';
                         
-                        mostrarNotificacionExito('Registro automático activado', 'Guardado INSTANTÁNEO tras detectar escaneo - sin esperas');
+                        // Registro automático activado
                         
                         // NO verificar inmediatamente - solo tras escaneo
                         // setTimeout(() => {
@@ -1065,7 +1079,7 @@
                         labelRegistro.style.fontWeight = 'normal';
                         textoRegistro.textContent = 'Registro automático';
                         
-                        mostrarNotificacionExito('Registro automático desactivado', 'Debes presionar Guardar manualmente');
+                        // Registro automático desactivado
                     }
                 });
             }
@@ -1372,10 +1386,6 @@
             // Llenar automáticamente los campos inferiores
             llenarCamposInferiores(codigo);
             
-            // Mostrar notificación visual de éxito
-            mostrarNotificacionExito(`Código procesado automáticamente`, 
-                `Parte: ${codigo}${lote ? ` | Lote: ${lote}` : ''}`);
-            
             // NO limpiar campo - permitir que el usuario vea el código procesado
             
             // *** VERIFICACIÓN RÁPIDA DE REGISTRO AUTOMÁTICO TRAS ESCANEO ***
@@ -1664,7 +1674,7 @@
                 })
                 .then(data => {
                     if (data.success) {
-                        mostrarNotificacionImpresion('Registro guardado exitosamente', 'success');
+                        // Registro guardado exitosamente
                         
                         // *** CAPTURAR DATOS ANTES DE LIMPIAR FORMULARIO ***
                         const datosParaEtiqueta = {
@@ -1836,9 +1846,8 @@
                 guardarFormulario();
                 
             } else {
-                console.log('⏳ Registro automático tras escaneo: Faltan campos:', validacion.camposFaltantes);
-                mostrarNotificacionExito('Registro automático', 
-                    `Faltan campos: ${validacion.camposFaltantes.join(', ')}`);
+                console.log('Registro automático tras escaneo: Faltan campos:', validacion.camposFaltantes);
+                // Campos faltantes para registro automático
             }
         }
 
@@ -1880,7 +1889,7 @@
                 this.remove();
                 // *** RESETEAR CONTROL AL CANCELAR ***
                 yaGuardadoEnEsteEscaneo = false;
-                mostrarNotificacionExito('Guardado automático cancelado', 'El código fue procesado pero no se guardó automáticamente');
+                // Guardado automático cancelado
             });
             
             // Agregar al DOM y comenzar contador
@@ -2122,7 +2131,7 @@ if (document.readyState === 'loading') {
             // Usar la función de impresión con datos específicos
             await imprimirZebraAutomaticoConDatos(datosEtiqueta);
             
-            mostrarNotificacionImpresion('Etiqueta reimpresa con datos de SQL', 'success');
+            // Etiqueta reimpresa con datos de SQL
         }
         
         // Función para imprimir desde formulario
@@ -2137,7 +2146,7 @@ if (document.readyState === 'loading') {
             // Usar la función de impresión automática existente
             await imprimirZebraAutomatico(codigo);
             
-            mostrarNotificacionImpresion('Etiqueta impresa correctamente', 'success');
+            // Etiqueta impresa correctamente
         }
 
         
@@ -2743,15 +2752,14 @@ if (document.readyState === 'loading') {
                 // 2. Generar comando ZPL según el tipo configurado
                 const comandoZPL = generarComandoZPLDirecto(codigo, configuracion.tipo);
                 
-                // 3. Mostrar notificación de inicio
-                mostrarNotificacionImpresion('Enviando a impresora Zebra ZT230...', 'info');
+                // 3. Enviando a impresora Zebra ZT230
                 
                 // 4. Enviar al servicio de impresión Win32
                 await enviarAServicioWin32(comandoZPL, codigo, configuracion);
                 
             } catch (error) {
                 console.error('❌ Error en impresión automática:', error);
-                mostrarNotificacionImpresion('Error al imprimir: ' + error.message, 'error');
+                // Error al imprimir
                 
                 // Fallback: Usar método anterior
                 try {
@@ -2903,7 +2911,7 @@ if (document.readyState === 'loading') {
                 const printResult = await printResponse.json();
                 
                 if (printResponse.ok && printResult.status === 'printed') {
-                    mostrarNotificacionImpresion(`Etiqueta impresa en ${printResult.printer}`, 'success');
+                    // Etiqueta impresa en impresora
                     
                     // Log adicional
                     
@@ -2945,7 +2953,7 @@ if (document.readyState === 'loading') {
                 const result = await response.json();
                 
                 if (result.success) {
-                    mostrarNotificacionImpresion('Etiqueta procesada correctamente', 'success');
+                    // Etiqueta procesada correctamente
                 } else {
                     throw new Error(result.error || 'Error en método fallback');
                 }
@@ -4810,8 +4818,7 @@ if (document.readyState === 'loading') {
                 // Cerrar modal de unidades
                 cerrarModalUnidades();
                 
-                // Mostrar indicador de impresión
-                mostrarIndicadorProceso('Imprimiendo ' + cantidad + ' etiquetas...');
+                // Procesar impresión directamente
                 
                 // Generar códigos consecutivos para las etiquetas
                 etiquetasImpresas = [];
@@ -4839,7 +4846,7 @@ if (document.readyState === 'loading') {
                 function imprimirSiguiente() {
                     if (indice < etiquetasImpresas.length) {
                         const etiqueta = etiquetasImpresas[indice];
-                        console.log(`🖨️ Imprimiendo etiqueta ${indice + 1}/${cantidad}: ${etiqueta.codigo}`);
+                        console.log(`Imprimiendo etiqueta ${indice + 1}/${cantidad}: ${etiqueta.codigo}`);
                         imprimirEtiquetaIndividual(etiqueta.codigo, indice + 1, cantidad);
                         indice++;
                         
@@ -4847,7 +4854,7 @@ if (document.readyState === 'loading') {
                         setTimeout(imprimirSiguiente, 1000);
                     } else {
                         // Todas impresas
-                        console.log('🎯 Todas las etiquetas enviadas a impresión');
+                        console.log('Todas las etiquetas enviadas a impresión');
                         ocultarIndicadorProceso();
                         abrirModalAsignacionLotes();
                     }
@@ -4914,7 +4921,7 @@ if (document.readyState === 'loading') {
             campoEtiqueta.style.pointerEvents = 'auto';
             campoEtiqueta.style.background = '#7B8181';
             
-            console.log('🔓 Campo etiqueta inicializado como DISPONIBLE');
+            console.log('Campo etiqueta inicializado como DISPONIBLE');
             
             // Restaurar colores iniciales
             campoLote.style.background = '#7B8181';
@@ -4944,23 +4951,23 @@ if (document.readyState === 'loading') {
             
             asignacionesLotes.forEach((item, index) => {
                 const fila = document.createElement('tr');
-                fila.style.backgroundColor = item.asignado ? '#28a745' : '#2D363D';
+                fila.style.backgroundColor = item.asignado ? '#5A8A5A' : '#2D363D';
                 fila.style.color = '#ecf0f1';
                 fila.style.fontFamily = "'LG regular', sans-serif";
                 
                 fila.innerHTML = `
-                    <td style="padding: 10px; border: 1px solid #20688C; text-align: center; color: #ecf0f1; font-family: 'LG regular', sans-serif;">${item.numero}</td>
-                    <td style="padding: 10px; border: 1px solid #20688C; font-family: 'LG regular', sans-serif; font-size: 12px; color: #ecf0f1;">${item.codigo}</td>
-                    <td style="padding: 10px; border: 1px solid #20688C; font-family: 'LG regular', sans-serif; font-size: 12px; color: #ecf0f1;">${item.loteProveedor || '-'}</td>
-                    <td style="padding: 10px; border: 1px solid #20688C; text-align: center;">
-                        <span style="color: ${item.asignado ? '#ffffff' : '#e74c3c'}; font-weight: bold; font-family: 'LG regular', sans-serif;">
-                            ${item.asignado ? '✓ ASIGNADO' : '⏳ PENDIENTE'}
-                        </span>
+                    <td style="padding: 6px; border: 0.5px solid #5A7A8A; text-align: center; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-size: 11px;">${item.numero}</td>
+                    <td style="padding: 6px; border: 0.5px solid #5A7A8A; font-family: 'LG regular', sans-serif; font-size: 10px; color: #ecf0f1;">${item.codigo}</td>
+                    <td style="padding: 6px; border: 0.5px solid #5A7A8A; font-family: 'LG regular', sans-serif; font-size: 10px; color: #ecf0f1;">${item.loteProveedor || '-'}</td>
+                    <td style="padding: 6px; border: 0.5px solid #5A7A8A; text-align: center;">
+                        <span style="color: ${item.asignado ? '#ffffff' : '#C85A5A'}; font-weight: bold; font-family: 'LG regular', sans-serif; font-size: 10px;">
+                             ${item.asignado ? 'ASIGNADO' : 'PENDIENTE'}
+                         </span>
                     </td>
-                    <td style="padding: 10px; border: 1px solid #20688C; text-align: center;">
+                    <td style="padding: 6px; border: 0.5px solid #5A7A8A; text-align: center;">
                         ${item.asignado ? 
-                            `<button onclick="desasignarLote(${index})" style="background: #e74c3c; color: white; border: 2px solid #20688C; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: 'LG regular', sans-serif; font-weight: bold; transition: all 0.3s;">Desasignar</button>` :
-                            `<button onclick="enfocarAsignacion(${index})" style="background: #3498db; color: white; border: 2px solid #20688C; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: 'LG regular', sans-serif; font-weight: bold; transition: all 0.3s;">Asignar</button>`
+                            `<button onclick="desasignarLote(${index})" style="background: #C85A5A; color: white; border: 1px solid #5A7A8A; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 10px; transition: all 0.3s;">Desasignar</button>` :
+                            `<button onclick="enfocarAsignacion(${index})" style="background: #6A9BD1; color: white; border: 1px solid #5A7A8A; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 10px; transition: all 0.3s;">Asignar</button>`
                         }
                     </td>
                 `;
@@ -4979,11 +4986,15 @@ if (document.readyState === 'loading') {
             
             // Actualizar estilo del botón según su estado
             if (todasAsignadas) {
-                btnFinalizar.style.background = '#28a745';
+                btnFinalizar.style.background = '#5A8A5A';
                 btnFinalizar.style.cursor = 'pointer';
+                btnFinalizar.style.boxShadow = '0 2px 8px rgba(90, 138, 90, 0.4)';
+                btnFinalizar.style.borderColor = '#4a7c59';
             } else {
                 btnFinalizar.style.background = '#636779';
                 btnFinalizar.style.cursor = 'not-allowed';
+                btnFinalizar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+                btnFinalizar.style.borderColor = '#5A7A8A';
             }
         }
         
@@ -4994,7 +5005,7 @@ if (document.readyState === 'loading') {
         // Funciones de detección automática de escaneo
         function detectarEscaneoLoteAutomatico(event) {
             const valor = event.target.value.trim();
-            console.log('🔍 Detectando lote automático - Longitud:', valor.length, 'Valor:', valor);
+            console.log('Detectando lote automático - Longitud:', valor.length, 'Valor:', valor);
             
             // Detectar cuando el código tenga longitud típica de lote
             if (valor.length >= 25 && !procesandoLote) { // Evitar ejecuciones múltiples
@@ -5022,7 +5033,7 @@ if (document.readyState === 'loading') {
         
         function detectarEscaneoEtiquetaAutomatico(event) {
             const valor = event.target.value.trim();
-            console.log('🔍 Detectando etiqueta automática - Longitud:', valor.length, 'Valor:', valor);
+            console.log('Detectando etiqueta automática - Longitud:', valor.length, 'Valor:', valor);
             
             // Detectar cuando el código tenga longitud típica de etiqueta
             if (valor.length >= 20 && !procesandoEtiqueta) { // Evitar ejecuciones múltiples
@@ -5074,13 +5085,13 @@ if (document.readyState === 'loading') {
                     campoEtiqueta.style.background = '#7B8181';
                     campoEtiqueta.style.border = '2px solid #3498db';
                     
-                    console.log('🔓 Campo etiqueta desbloqueado y resaltado para escaneo');
+                    console.log('Campo etiqueta desbloqueado y resaltado para escaneo');
                     
                     // Enfocar automáticamente el campo de etiqueta para flujo continuo
                     setTimeout(() => {
                         campoEtiqueta.focus();
                         campoEtiqueta.select(); // Seleccionar todo el contenido para sobrescribir fácilmente
-                        console.log('🎯 Flujo automático: Campo etiqueta enfocado para escaneo');
+                        console.log('Flujo automático: Campo etiqueta enfocado para escaneo');
                     }, 100); // Reducido el tiempo para mayor fluidez
                 }
             }
@@ -5096,7 +5107,7 @@ if (document.readyState === 'loading') {
             campoLote.value = '';
             campoLote.style.background = '#7B8181';
             campoLote.style.border = '2px solid #e74c3c';
-            console.log('🧹 Lote limpiado para nueva secuencia');
+            console.log('Lote limpiado para nueva secuencia');
         }
         
         function procesarEscaneoEtiquetaImpresa(event) {
@@ -5215,16 +5226,44 @@ if (document.readyState === 'loading') {
             const sinAsignar = asignacionesLotes.filter(item => !item.asignado);
             
             if (sinAsignar.length > 0) {
-                const mensaje = `ADVERTENCIA: ${sinAsignar.length} etiquetas no han sido asignadas.\n\n` +
-                              `Las etiquetas sin asignar NO se darán de alta en el inventario.\n` +
+                const mensaje = `${sinAsignar.length} etiquetas no han sido asignadas.<br><br>` +
+                              `<span style="color: #e74c3c; font-weight: bold;">Las etiquetas sin asignar NO se darán de alta en el inventario.</span><br><br>` +
                               `¿Está seguro de continuar?`;
                 
-                if (confirm(mensaje)) {
-                    finalizarAsignacionLotes(true);
-                }
+                mostrarModalAdvertencia(mensaje);
             } else {
                 finalizarAsignacionLotes();
             }
+        }
+        
+        // Funciones para el modal de advertencia
+        function mostrarModalAdvertencia(mensaje) {
+            document.getElementById('mensaje-advertencia').innerHTML = mensaje;
+            const modal = document.getElementById('modal-advertencia');
+            modal.style.display = 'flex';
+        }
+        
+        function cerrarModalAdvertencia() {
+            document.getElementById('modal-advertencia').style.display = 'none';
+        }
+        
+        function confirmarAdvertencia() {
+            cerrarModalAdvertencia();
+            finalizarAsignacionLotes(true);
+        }
+        
+        // Funciones para el modal de proceso completado
+        function mostrarModalCompletado(mensaje) {
+            document.getElementById('mensaje-completado').innerHTML = mensaje;
+            const modal = document.getElementById('modal-completado');
+            modal.style.display = 'flex';
+        }
+        
+        function cerrarModalCompletado() {
+            document.getElementById('modal-completado').style.display = 'none';
+            // Cerrar modal y limpiar después de confirmar
+            document.getElementById('modal-asignacion-lotes').style.display = 'none';
+            limpiarFormularioCompleto();
         }
         
         async function finalizarAsignacionLotes(permitirSinAsignar = false) {
@@ -5247,16 +5286,11 @@ if (document.readyState === 'loading') {
                 ocultarIndicadorProceso();
                 
                 // Mostrar resumen
-                const mensaje = `Proceso completado:\n\n` +
-                              `✓ Etiquetas asignadas y guardadas: ${asignadas.length}\n` +
-                              (sinAsignar.length > 0 ? `⚠ Etiquetas no asignadas: ${sinAsignar.length}\n` : '') +
-                              `\nLas etiquetas asignadas han sido registradas en el inventario.`;
+                const mensaje = `<strong>Etiquetas asignadas y guardadas:</strong> ${asignadas.length}<br>` +
+                              (sinAsignar.length > 0 ? `<strong>Etiquetas no asignadas:</strong> ${sinAsignar.length}<br><br>` : '<br>') +
+                              `<span style="color: #5A8A5A; font-weight: bold;">Las etiquetas asignadas han sido registradas en el inventario.</span>`;
                 
-                alert(mensaje);
-                
-                // Cerrar modal y limpiar
-                document.getElementById('modal-asignacion-lotes').style.display = 'none';
-                limpiarFormularioCompleto();
+                mostrarModalCompletado(mensaje);
                 
             } catch (error) {
                 console.error('Error al finalizar asignaciones:', error);

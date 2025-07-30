@@ -1,0 +1,835 @@
+/* Estilos específicos para Control de Embarque */
+/* Usando prefijo 'embarque-' para evitar conflictos */
+
+/* Variables CSS para Control de Embarque */
+:root {
+    --embarque-primary: #2c5aa0;
+    --embarque-secondary: #34495e;
+    --embarque-success: #27ae60;
+    --embarque-danger: #e74c3c;
+    --embarque-warning: #f39c12;
+    --embarque-info: #3498db;
+    --embarque-light: #ecf0f1;
+    --embarque-dark: #2c3e50;
+    --embarque-bg-main: #32323E;
+    --embarque-bg-secondary: #2D363D;
+    --embarque-border: #5A7A8A;
+}
+
+/* Reset y estilos base para embarque */
+.embarque-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--embarque-bg-main);
+    border-radius: 8px;
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+}
+
+/* Modales específicos para embarque */
+.embarque-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    align-items: center;
+    justify-content: center;
+}
+
+.embarque-modal-content {
+    background-color: var(--embarque-bg-main);
+    padding: 25px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border: 2px solid var(--embarque-primary);
+}
+
+.embarque-modal-content-large {
+    background-color: var(--embarque-bg-main);
+    padding: 25px;
+    border-radius: 8px;
+    width: 95%;
+    max-width: 1000px;
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border: 2px solid var(--embarque-primary);
+}
+
+.embarque-modal h2 {
+    color: var(--embarque-info);
+    border-bottom: 2px solid var(--embarque-info);
+    padding-bottom: 10px;
+    margin-top: 0;
+    text-align: center;
+    font-family: 'LG regular', sans-serif;
+}
+
+/* Campos de formulario para embarque */
+.embarque-field {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 10px;
+    align-items: center;
+    margin: 15px 0;
+}
+
+.embarque-field label {
+    font-weight: 500;
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+}
+
+.embarque-field input {
+    padding: 10px;
+    font-size: 14px;
+    background-color: #7B8181;
+    color: #ffffff;
+    border-radius: 4px;
+    font-family: 'LG regular', sans-serif;
+    border: 2px solid var(--embarque-border);
+}
+
+/* Botones específicos para embarque */
+.embarque-buttons {
+    margin-top: 20px;
+    text-align: right;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.embarque-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: white;
+    transition: all 0.3s;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+}
+
+.embarque-btn.primary {
+    background-color: var(--embarque-info);
+    border: 2px solid var(--embarque-primary);
+}
+
+.embarque-btn.primary:hover {
+    background-color: var(--embarque-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.embarque-btn.danger {
+    background-color: var(--embarque-danger);
+    border: 2px solid #c0392b;
+}
+
+.embarque-btn.danger:hover {
+    background-color: #c0392b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Secciones del formulario */
+.embarque-form-section {
+    background-color: var(--embarque-bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--embarque-border);
+}
+
+.embarque-form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 15px;
+}
+
+.embarque-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.embarque-form-group label {
+    color: var(--embarque-light);
+    font-weight: bold;
+    font-family: 'LG regular', sans-serif;
+    font-size: 14px;
+}
+
+.embarque-form-group input,
+.embarque-form-group select,
+.embarque-form-group textarea {
+    padding: 12px;
+    background: #7B8181;
+    border: 2px solid var(--embarque-border);
+    color: #ffffff;
+    font-family: 'LG regular', sans-serif;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.embarque-form-group input:focus,
+.embarque-form-group select:focus,
+.embarque-form-group textarea:focus {
+    border-color: var(--embarque-info);
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+/* Estilos para campos de escaneo */
+.embarque-input-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.embarque-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.embarque-campo-escaneo {
+    width: 100%;
+    padding: 12px 80px 12px 12px;
+    background: linear-gradient(135deg, #e8f5e8, #f0f8ff);
+    border: 2px solid var(--embarque-success);
+    color: var(--embarque-dark);
+    font-family: 'LG regular', sans-serif;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.embarque-campo-escaneo.embarque-campo-activo {
+    background: linear-gradient(135deg, #ffe6e6, #fff0f0);
+    border: 2px solid var(--embarque-danger);
+    box-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
+    animation: embarque-pulso-escaneo 1.5s infinite ease-in-out;
+}
+
+.embarque-indicador {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: bold;
+    color: var(--embarque-success);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.3s;
+}
+
+.embarque-btn-limpiar {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 2px 6px;
+    font-size: 10px;
+    background: var(--embarque-danger);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.embarque-btn-limpiar:hover {
+    background: #c0392b;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.embarque-btn-cam {
+    padding: 8px 12px;
+    font-size: 12px;
+    background: var(--embarque-info);
+    color: white;
+    border: 2px solid var(--embarque-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.embarque-btn-cam:hover {
+    background: var(--embarque-primary);
+    transform: translateY(-2px);
+}
+
+/* Estilos para la sección de información del modal */
+.embarque-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: var(--embarque-bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--embarque-border);
+}
+
+.embarque-contador {
+    text-align: right;
+}
+
+.embarque-asignados {
+    color: var(--embarque-success);
+    font-weight: bold;
+    font-family: 'LG regular', sans-serif;
+}
+
+.embarque-total {
+    color: var(--embarque-info);
+    font-weight: bold;
+    font-family: 'LG regular', sans-serif;
+}
+
+/* Sección de escaneo */
+.embarque-escaneo-section {
+    background: var(--embarque-bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--embarque-border);
+}
+
+.embarque-escaneo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+.embarque-label-po {
+    color: var(--embarque-danger);
+    font-weight: bold;
+    font-family: 'LG regular', sans-serif;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.embarque-label-material {
+    color: var(--embarque-info);
+    font-weight: bold;
+    font-family: 'LG regular', sans-serif;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.embarque-input-escaneo {
+    width: 100%;
+    padding: 12px;
+    background: #7B8181;
+    border: 2px solid var(--embarque-danger);
+    color: #ffffff;
+    font-family: 'LG regular', sans-serif;
+    border-radius: 4px;
+    font-size: 12px;
+    transition: all 0.3s;
+}
+
+.embarque-input-material {
+    width: 100%;
+    padding: 12px;
+    background: #7B8181;
+    border: 2px solid #636779;
+    color: #ffffff;
+    font-family: 'LG regular', sans-serif;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: not-allowed;
+    transition: all 0.3s;
+}
+
+.embarque-input-material:enabled {
+    border-color: var(--embarque-info);
+    cursor: text;
+}
+
+/* Tabla de asignaciones */
+.embarque-tabla-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--embarque-border);
+    border-radius: 6px;
+    background-color: var(--embarque-bg-secondary);
+    margin-bottom: 20px;
+}
+
+.embarque-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'LG regular', sans-serif;
+}
+
+.embarque-tabla-header {
+    background: #33334D;
+    position: sticky;
+    top: 0;
+    border-bottom: 2px solid var(--embarque-primary);
+}
+
+.embarque-th {
+    padding: 6px;
+    border: 0.5px solid var(--embarque-border);
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+}
+
+.embarque-td {
+    padding: 6px;
+    border: 0.5px solid var(--embarque-border);
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+    font-size: 10px;
+    text-align: center;
+}
+
+.embarque-estado-asignado {
+    color: var(--embarque-success);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.embarque-estado-pendiente {
+    color: var(--embarque-warning);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.embarque-btn-eliminar {
+    padding: 3px 8px;
+    background: var(--embarque-danger);
+    color: white;
+    border: 1px solid #c0392b;
+    border-radius: 3px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 9px;
+}
+
+.embarque-btn-eliminar:hover {
+    background: #c0392b;
+    transform: scale(1.05);
+}
+
+/* Contenedor de botones principales */
+.embarque-buttons-container {
+    margin-top: 25px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.embarque-btn-finalizar {
+    background: #636779;
+    color: white;
+    padding: 12px 24px;
+    border: 2px solid var(--embarque-border);
+    border-radius: 6px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: not-allowed;
+    transition: all 0.3s;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.embarque-btn-finalizar:enabled {
+    background: var(--embarque-success);
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
+    border-color: #27ae60;
+}
+
+.embarque-btn-finalizar:enabled:hover {
+    background: #229954;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(39, 174, 96, 0.6);
+}
+
+.embarque-btn-continuar {
+    position: absolute;
+    right: 0;
+    background: var(--embarque-danger);
+    color: white;
+    padding: 4px 8px;
+    border: 1px solid #c0392b;
+    border-radius: 3px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 10px;
+    box-shadow: 0 1px 3px rgba(231, 76, 60, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.embarque-btn-continuar:hover {
+    background: #c0392b;
+    transform: scale(1.05);
+}
+
+/* Modales de overlay */
+.embarque-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Modal de advertencia */
+.embarque-modal-advertencia-content {
+    background: var(--embarque-bg-secondary);
+    border: 2px solid var(--embarque-danger);
+    border-radius: 8px;
+    padding: 25px;
+    max-width: 500px;
+    margin: 20px;
+    box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3);
+}
+
+.embarque-advertencia-titulo {
+    color: var(--embarque-danger);
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-size: 18px;
+}
+
+.embarque-advertencia-mensaje {
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.embarque-advertencia-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.embarque-btn-cancelar {
+    background: #636779;
+    color: white;
+    padding: 10px 20px;
+    border: 1px solid var(--embarque-border);
+    border-radius: 4px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.embarque-btn-cancelar:hover {
+    background: #4a5568;
+    transform: translateY(-2px);
+}
+
+.embarque-btn-confirmar {
+    background: var(--embarque-danger);
+    color: white;
+    padding: 10px 20px;
+    border: 1px solid var(--embarque-danger);
+    border-radius: 4px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.embarque-btn-confirmar:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+}
+
+/* Modal de proceso completado */
+.embarque-modal-completado-content {
+    background: var(--embarque-bg-secondary);
+    border: 2px solid var(--embarque-success);
+    border-radius: 8px;
+    padding: 25px;
+    max-width: 500px;
+    margin: 20px;
+    box-shadow: 0 4px 20px rgba(39, 174, 96, 0.3);
+}
+
+.embarque-completado-titulo {
+    color: var(--embarque-success);
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-size: 18px;
+}
+
+.embarque-completado-mensaje {
+    color: var(--embarque-light);
+    font-family: 'LG regular', sans-serif;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.embarque-completado-buttons {
+    display: flex;
+    justify-content: center;
+}
+
+.embarque-btn-ok {
+    background: var(--embarque-success);
+    color: white;
+    padding: 10px 20px;
+    border: 1px solid #229954;
+    border-radius: 4px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.embarque-btn-ok:hover {
+    background: #229954;
+    transform: translateY(-2px);
+}
+
+/* Botones de acción principales */
+.embarque-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    padding: 20px;
+    background-color: var(--embarque-bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--embarque-border);
+}
+
+.embarque-btn-registrar {
+    background: var(--embarque-success);
+    color: white;
+    padding: 14px 28px;
+    border: 2px solid #27ae60;
+    border-radius: 6px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.embarque-btn-registrar:hover {
+    background: #229954;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.5);
+}
+
+.embarque-btn-imprimir {
+    background: var(--embarque-info);
+    color: white;
+    padding: 14px 28px;
+    border: 2px solid var(--embarque-primary);
+    border-radius: 6px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.embarque-btn-imprimir:hover {
+    background: var(--embarque-primary);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+}
+
+.embarque-btn-limpiar-form {
+    background: var(--embarque-warning);
+    color: white;
+    padding: 14px 28px;
+    border: 2px solid #e67e22;
+    border-radius: 6px;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+}
+
+.embarque-btn-limpiar-form:hover {
+    background: #e67e22;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.5);
+}
+
+/* Animaciones específicas para embarque */
+@keyframes embarque-pulso-escaneo {
+    0%, 100% { 
+        box-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
+    }
+    50% { 
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+    }
+}
+
+@keyframes embarque-bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Responsive para embarque */
+@media (max-width: 768px) {
+    .embarque-container {
+        padding: 15px;
+    }
+    
+    .embarque-form-row {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .embarque-escaneo-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .embarque-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .embarque-modal-content,
+    .embarque-modal-content-large {
+        width: 95%;
+        margin: 10px;
+        padding: 20px;
+    }
+    
+    .embarque-buttons-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .embarque-btn-continuar {
+        position: static;
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .embarque-field {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    
+    .embarque-tabla-container {
+        font-size: 12px;
+    }
+    
+    .embarque-th,
+    .embarque-td {
+        padding: 4px;
+        font-size: 10px;
+    }
+}
+
+/* Estados de validación específicos para embarque */
+.embarque-campo-valido {
+    border-color: var(--embarque-success) !important;
+    background: linear-gradient(135deg, #d1edff, #e3f2fd) !important;
+}
+
+.embarque-campo-error {
+    border-color: var(--embarque-danger) !important;
+    background: linear-gradient(135deg, #ffe6e6, #fff0f0) !important;
+}
+
+.embarque-campo-procesando {
+    border-color: var(--embarque-warning) !important;
+    background: linear-gradient(135deg, #fff3cd, #fef7e0) !important;
+}
+
+/* Utilidades específicas para embarque */
+.embarque-text-center { text-align: center; }
+.embarque-text-left { text-align: left; }
+.embarque-text-right { text-align: right; }
+
+.embarque-mb-10 { margin-bottom: 10px; }
+.embarque-mb-15 { margin-bottom: 15px; }
+.embarque-mb-20 { margin-bottom: 20px; }
+
+.embarque-mt-10 { margin-top: 10px; }
+.embarque-mt-15 { margin-top: 15px; }
+.embarque-mt-20 { margin-top: 20px; }
+
+.embarque-hidden { display: none; }
+.embarque-visible { display: block; }
+
+/* Efectos hover adicionales */
+.embarque-form-group input:hover,
+.embarque-form-group select:hover,
+.embarque-form-group textarea:hover {
+    border-color: var(--embarque-info);
+    transform: translateY(-1px);
+}
+
+.embarque-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Scrollbar personalizado para embarque */
+.embarque-tabla-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.embarque-tabla-container::-webkit-scrollbar-track {
+    background: var(--embarque-bg-main);
+    border-radius: 4px;
+}
+
+.embarque-tabla-container::-webkit-scrollbar-thumb {
+    background: var(--embarque-border);
+    border-radius: 4px;
+}
+
+.embarque-tabla-container::-webkit-scrollbar-thumb:hover {
+    background: var(--embarque-info);
+}
