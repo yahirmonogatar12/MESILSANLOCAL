@@ -1637,6 +1637,17 @@ def lista_control_produccion():
         print(f"Error al cargar LISTA_CONTROLDEPRODUCCION: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/control_produccion/control_embarque')
+@login_requerido
+@requiere_permiso_dropdown('LISTA_CONTROLDEPRODUCCION', 'Control de plan de produccion', 'Control de embarque')
+def control_embarque():
+    """Cargar la página de Control de Embarque"""
+    try:
+        return render_template('Control de produccion/Control de embarque.html')
+    except Exception as e:
+        print(f"Error al cargar Control de embarque: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/listas/control_proceso')
 @login_requerido
 def lista_control_proceso():
@@ -4145,3 +4156,663 @@ def control_salida_test_connection():
     except Exception as e:
         print(f"❌ Error en test de conexión: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# Rutas de importación AJAX para todas las secciones de material
+@app.route('/importar_excel_almacen', methods=['POST'])
+def importar_excel_almacen():
+    """Importación AJAX para Control de Material de Almacén"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        registros_insertados = 0
+        errores = []
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Insertar en tabla de control de almacén (ajustar según estructura de tu tabla)
+                cursor.execute("""
+                    INSERT OR REPLACE INTO control_almacen 
+                    (codigo_material_recibido, codigo_material, numero_parte, numero_lote, 
+                     propiedad_material, fecha_recibo, cantidad_recibida, ubicacion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get('Codigo Material Recibido', '')),
+                    str(row.get('Codigo Material', '')),
+                    str(row.get('Numero Parte', '')),
+                    str(row.get('Numero Lote', '')),
+                    str(row.get('Propiedad Material', '')),
+                    str(row.get('Fecha Recibo', '')),
+                    str(row.get('Cantidad Recibida', 0)),
+                    str(row.get('Ubicacion', ''))
+                ))
+                registros_insertados += 1
+            except Exception as e:
+                errores.append(f"Fila {index + 1}: {str(e)}")
+        
+        conn.commit()
+        
+        mensaje = f"Importación completada. {registros_insertados} registros insertados."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error durante la importación: {str(e)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+@app.route('/produccion/info')
+@login_requerido
+def produccion_info():
+    try:
+        return render_template('CONTROL DE PRODUCCION/info_produccion.html')
+    except Exception as e:
+        return f'Error al cargar información de producción: {str(e)}', 500
+
+# ===============================================
+# RUTAS PARA CARGA DINÁMICA DE CONTENEDORES
+# ===============================================
+
+@app.route('/material/recibo_pago')
+@login_requerido
+def material_recibo_pago():
+    """Cargar dinámicamente el recibo y pago del material"""
+    try:
+        return render_template('Control de material/Recibo y pago del material.html')
+    except Exception as e:
+        print(f"Error al cargar Recibo y pago del material: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/historial_material')
+@login_requerido
+def material_historial_material():
+    """Cargar dinámicamente el historial de material"""
+    try:
+        return render_template('Control de material/Historial de material.html')
+    except Exception as e:
+        print(f"Error al cargar Historial de material: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/material_sustituto')
+@login_requerido
+def material_material_sustituto():
+    """Cargar dinámicamente el material sustituto"""
+    try:
+        return render_template('Control de material/Material sustituto.html')
+    except Exception as e:
+        print(f"Error al cargar Material sustituto: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/consultar_peps')
+@login_requerido
+def material_consultar_peps():
+    """Cargar dinámicamente consultar PEPS"""
+    try:
+        return render_template('Control de material/Consultar PEPS.html')
+    except Exception as e:
+        print(f"Error al cargar Consultar PEPS: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/longterm_inventory')
+@login_requerido
+def material_longterm_inventory():
+    """Cargar dinámicamente el control de Long-Term Inventory"""
+    try:
+        return render_template('Control de material/Control de Long-Term Inventory.html')
+    except Exception as e:
+        print(f"Error al cargar Control de Long-Term Inventory: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/material/ajuste_numero')
+@login_requerido
+def material_ajuste_numero():
+    """Cargar dinámicamente el ajuste de número de parte"""
+    try:
+        return render_template('Control de material/Ajuste de número de parte.html')
+    except Exception as e:
+        print(f"Error al cargar Ajuste de número de parte: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/importar_excel_salida', methods=['POST'])
+def importar_excel_salida():
+    """Importación AJAX para Control de Salida"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        registros_insertados = 0
+        errores = []
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Insertar en tabla de control de salida
+                cursor.execute("""
+                    INSERT OR REPLACE INTO control_salida 
+                    (fecha_salida, proceso_salida, codigo_material_recibido, codigo_material, 
+                     numero_parte, cantidad_salida, destino)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get('Fecha Salida', '')),
+                    str(row.get('Proceso Salida', '')),
+                    str(row.get('Codigo Material Recibido', '')),
+                    str(row.get('Codigo Material', '')),
+                    str(row.get('Numero Parte', '')),
+                    str(row.get('Cantidad Salida', 0)),
+                    str(row.get('Destino', ''))
+                ))
+                registros_insertados += 1
+            except Exception as e:
+                errores.append(f"Fila {index + 1}: {str(e)}")
+        
+        conn.commit()
+        
+        mensaje = f"Importación completada. {registros_insertados} registros insertados."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error durante la importación: {str(e)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+@app.route('/importar_excel_retorno', methods=['POST'])
+def importar_excel_retorno():
+    """Importación AJAX para Control de Material de Retorno"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        registros_insertados = 0
+        errores = []
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Insertar en tabla de control de retorno
+                cursor.execute("""
+                    INSERT OR REPLACE INTO control_retorno 
+                    (codigo_material, numero_parte, cantidad_retorno, fecha_retorno, 
+                     motivo_retorno, estado_material)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get('Codigo Material', '')),
+                    str(row.get('Numero Parte', '')),
+                    str(row.get('Cantidad Retorno', 0)),
+                    str(row.get('Fecha Retorno', '')),
+                    str(row.get('Motivo Retorno', '')),
+                    str(row.get('Estado Material', ''))
+                ))
+                registros_insertados += 1
+            except Exception as e:
+                errores.append(f"Fila {index + 1}: {str(e)}")
+        
+        conn.commit()
+        
+        mensaje = f"Importación completada. {registros_insertados} registros insertados."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error durante la importación: {str(e)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+@app.route('/importar_excel_registro', methods=['POST'])
+def importar_excel_registro():
+    """Importación AJAX para Registro de Material Real"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        registros_insertados = 0
+        errores = []
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Insertar en tabla de registro de material real
+                cursor.execute("""
+                    INSERT OR REPLACE INTO registro_material_real 
+                    (codigo_material, numero_parte, cantidad_real, fecha_registro, 
+                     ubicacion_fisica, estado_inventario)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get('Codigo Material', '')),
+                    str(row.get('Numero Parte', '')),
+                    str(row.get('Cantidad Real', 0)),
+                    str(row.get('Fecha Registro', '')),
+                    str(row.get('Ubicacion Fisica', '')),
+                    str(row.get('Estado Inventario', ''))
+                ))
+                registros_insertados += 1
+            except Exception as e:
+                errores.append(f"Fila {index + 1}: {str(e)}")
+        
+        conn.commit()
+        
+        mensaje = f"Importación completada. {registros_insertados} registros insertados."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error durante la importación: {str(e)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+@app.route('/importar_excel_estatus_inventario', methods=['POST'])
+def importar_excel_estatus_inventario():
+    """Importación AJAX para Estatus de Material - Inventario"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        registros_insertados = 0
+        errores = []
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Insertar en tabla de estatus inventario
+                cursor.execute("""
+                    INSERT OR REPLACE INTO estatus_inventario 
+                    (codigo_material, numero_parte, cantidad_disponible, estatus_material, 
+                     fecha_actualizacion, ubicacion)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get('Codigo Material', '')),
+                    str(row.get('Numero Parte', '')),
+                    str(row.get('Cantidad Disponible', 0)),
+                    str(row.get('Estatus Material', '')),
+                    str(row.get('Fecha Actualizacion', '')),
+                    str(row.get('Ubicacion', ''))
+                ))
+                registros_insertados += 1
+            except Exception as e:
+                errores.append(f"Fila {index + 1}: {str(e)}")
+        
+        conn.commit()
+        
+        mensaje = f"Importación completada. {registros_insertados} registros insertados."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error durante la importación: {str(e)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+@app.route('/importar_excel_estatus_recibido', methods=['POST'])
+def importar_excel_estatus_recibido():
+    """Importación AJAX para Estatus de Material - Material Recibido"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        registros_insertados = 0
+        errores = []
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Insertar en tabla de material recibido
+                cursor.execute("""
+                    INSERT OR REPLACE INTO material_recibido 
+                    (codigo_material_recibido, codigo_material, numero_parte, fecha_recibo, 
+                     cantidad_recibida, proveedor, estado_recepcion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get('Codigo Material Recibido', '')),
+                    str(row.get('Codigo Material', '')),
+                    str(row.get('Numero Parte', '')),
+                    str(row.get('Fecha Recibo', '')),
+                    str(row.get('Cantidad Recibida', 0)),
+                    str(row.get('Proveedor', '')),
+                    str(row.get('Estado Recepcion', ''))
+                ))
+                registros_insertados += 1
+            except Exception as e:
+                errores.append(f"Fila {index + 1}: {str(e)}")
+        
+        conn.commit()
+        
+        mensaje = f"Importación completada. {registros_insertados} registros insertados."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error durante la importación: {str(e)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+@app.route('/importar_excel_historial', methods=['POST'])
+def importar_excel_historial():
+    """Importación AJAX para Historial de Inventario Real"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+        except Exception as e:
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        registros_insertados = 0
+        errores = []
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Insertar en tabla de historial de inventario
+                cursor.execute("""
+                    INSERT OR REPLACE INTO historial_inventario 
+                    (codigo_material, numero_parte, fecha_movimiento, tipo_movimiento, 
+                     cantidad_anterior, cantidad_nueva, usuario, observaciones)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    str(row.get('Codigo Material', '')),
+                    str(row.get('Numero Parte', '')),
+                    str(row.get('Fecha Movimiento', '')),
+                    str(row.get('Tipo Movimiento', '')),
+                    str(row.get('Cantidad Anterior', 0)),
+                    str(row.get('Cantidad Nueva', 0)),
+                    str(row.get('Usuario', '')),
+                    str(row.get('Observaciones', ''))
+                ))
+                registros_insertados += 1
+            except Exception as e:
+                errores.append(f"Fila {index + 1}: {str(e)}")
+        
+        conn.commit()
+        
+        mensaje = f"Importación completada. {registros_insertados} registros insertados."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({'success': True, 'message': mensaje})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Error durante la importación: {str(e)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)

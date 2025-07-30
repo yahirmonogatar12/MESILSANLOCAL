@@ -615,6 +615,8 @@
             <div style="display: flex; gap: 6px; flex-shrink: 0;">
                 <button type="button" class="material-btn" id="btnConsultar" onclick="event.preventDefault(); consultarRegistros()">Consultar</button>
                 <button class="material-btn secondary" onclick="exportarExcel()">Exportar Excel</button>
+                <input type="file" id="importarExcelAlmacen" onchange="importarExcelAlmacen()" style="display:none" accept=".xlsx,.xls" />
+                <button class="material-btn secondary" onclick="document.getElementById('importarExcelAlmacen').click()">Importar Excel</button>
             </div>
         </div>
 
@@ -5575,6 +5577,45 @@ if (document.readyState === 'loading') {
                 cerrarModalTrazabilidad();
             }
         });
+
+        // Función de importación AJAX con fetch
+        function importarExcelAlmacen() {
+            const fileInput = document.getElementById('importarExcelAlmacen');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Por favor selecciona un archivo Excel.");
+                return;
+            }
+            
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            alert("Procesando archivo, por favor espere...");
+            
+            fetch('/importar_excel_almacen', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
+                    fileInput.value = ''; // Limpiar input
+                } else {
+                    alert("Error al importar: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al importar el archivo");
+            });
+        }
     </script>
 
 </body>

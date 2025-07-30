@@ -1,0 +1,61 @@
+<div class="produccion-info-content">
+    <h2>Control de Producción</h2>
+    <p>Bienvenido al módulo de Control de Producción. Seleccione una opción del menú lateral para acceder a las diferentes funcionalidades.</p>
+    
+    <div class="info-cards">
+        <div class="info-card">
+            <h3>Control de Embarque</h3>
+            <p>Gestione el proceso de embarque de productos terminados.</p>
+        </div>
+        
+        <!-- Aquí se pueden agregar más tarjetas informativas según las funcionalidades disponibles -->
+    </div>
+</div>
+
+<style>
+.produccion-info-content {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.produccion-info-content h2 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+.info-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.info-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.info-card h3 {
+    color: #495057;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.info-card p {
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.5;
+}
+</style>

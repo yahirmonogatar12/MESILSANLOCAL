@@ -13,534 +13,322 @@
     <!-- Estilos específicos para Control de Embarque -->
     <link rel="stylesheet" href="/static/css/control_embarque.css">
     
-    <!-- Scripts necesarios -->
-    <script src="/static/js/jquery.min.js"></script>
-    <script src="/static/js/popper.min.js"></script>
-    <script src="/static/js/bootstrap.min.js"></script>
-    <script src="/static/js/fontawesome.all.min.js"></script>
-    <script src="/static/js/Chart.min.js"></script>
-    <script src="/static/js/jquery.dataTables.min.js"></script>
-    <script src="/static/js/dataTables.bootstrap5.min.js"></script>
-    <script src="/static/js/sweetalert2.all.min.js"></script>
-    <script src="/static/js/moment.min.js"></script>
-    <script src="/static/js/daterangepicker.js"></script>
-    <script src="/static/js/select2.min.js"></script>
-    <script src="/static/js/flatpickr.min.js"></script>
-    <script src="/static/js/autoNumeric.min.js"></script>
+    <!-- Scripts necesarios desde CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/autonumeric@4.6.0"></script>
     
 </head>
 <body>
 
-<!-- Modal de Registro de PO de Embarque -->
-<div id="embarque-modal-po" class="embarque-modal">
-    <div class="embarque-modal-content">
-        <h2>Registrar Nuevo PO de Embarque</h2>
-        <p>Ingrese los datos del PO de compra de embarque:</p>
-        
-        <form autocomplete="off">
-        <div class="embarque-field">
-            <label for="embarque-po-codigo">Código de PO:</label>
-            <input type="text" id="embarque-po-codigo" placeholder="Ej: PO-EMB-2024-001" autocomplete="off">
-        </div>
-        
-        <div class="embarque-field">
-            <label for="embarque-proveedor">Proveedor:</label>
-            <input type="text" id="embarque-proveedor" placeholder="Nombre del proveedor" autocomplete="off">
-        </div>
-        
-        <div class="embarque-field">
-            <label for="embarque-fecha-embarque">Fecha de Embarque:</label>
-            <input type="date" id="embarque-fecha-embarque" autocomplete="off">
-        </div>
-        
-        <div class="embarque-field">
-            <label for="embarque-destino">Destino:</label>
-            <input type="text" id="embarque-destino" placeholder="Puerto/Ciudad de destino" autocomplete="off">
-        </div>
-        </form>
-        
-        <div class="embarque-buttons">
-            <button class="embarque-btn danger" onclick="cerrarModalEmbarquePO()">Cancelar</button>
-            <button class="embarque-btn primary" onclick="guardarPOEmbarque()">Registrar PO</button>
-        </div>
-    </div>
-</div>
+<div id="embarque-main-container-unique" class="embarque-main-container">
 
-<!-- Modal de Asignación de Materiales -->
-<div id="embarque-modal-asignacion" class="embarque-modal">
-    <div class="embarque-modal-content-large">
-        <h2>Asignación de Materiales al Embarque</h2>
-        <div class="embarque-info-header">
-            <p>Asigne los materiales al PO de embarque escaneando:</p>
-            <div class="embarque-contador">
-                <span class="embarque-asignados">Asignados: <span id="embarque-contador-asignados">0</span></span> / 
-                <span class="embarque-total">Total: <span id="embarque-contador-total">0</span></span>
-            </div>
+<!-- Toolbar con filtros y botones -->
+<div id="embarque-toolbar-unique" class="embarque-toolbar">
+    <!-- Filtros -->
+    <div id="embarque-filters-unique" class="embarque-filters">
+        <div class="embarque-filter-group">
+            <label>Fecha de registro</label>
+            <input type="date" id="embarque-fecha-inicio-unique" value="2025-07-23">
+            <span>~</span>
+            <input type="date" id="embarque-fecha-fin-unique" value="2025-07-30">
         </div>
         
-        <div class="embarque-escaneo-section">
-            <div class="embarque-escaneo-grid">
-                <div>
-                    <label class="embarque-label-po">1. Escanear PO de Embarque:</label>
-                    <input type="text" id="embarque-escaneo-po" placeholder="Escanee el código del PO..." 
-                           class="embarque-input-escaneo"
-                           onkeydown="procesarEscaneoPOEmbarque(event)"
-                           oninput="detectarEscaneoPOAutomatico(event)">
-                </div>
-                <div>
-                    <label class="embarque-label-material">2. Escanear Material:</label>
-                    <input type="text" id="embarque-escaneo-material" placeholder="Escanee el material a asignar..." 
-                           class="embarque-input-material"
-                           onkeydown="procesarEscaneoMaterialEmbarque(event)" 
-                           oninput="detectarEscaneoMaterialAutomatico(event)">
-                </div>
-            </div>
+        <div class="embarque-filter-group">
+            <label>Cliente</label>
+            <select id="embarque-filtro-cliente-unique">
+                <option value="">Todos</option>
+                <option value="LG_REFRIS">LG_REFRIS</option>
+                <option value="LG_ESTUFAS">LG_ESTUFAS</option>
+            </select>
         </div>
         
-        <div class="embarque-tabla-container">
-            <table class="embarque-tabla">
-                <thead class="embarque-tabla-header">
-                    <tr>
-                        <th class="embarque-th">#</th>
-                        <th class="embarque-th">Código de Material</th>
-                        <th class="embarque-th">PO Embarque</th>
-                        <th class="embarque-th">Estado</th>
-                        <th class="embarque-th">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="embarque-tabla-asignaciones">
-                    <!-- Se llena dinámicamente -->
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="embarque-buttons-container">
-            <button class="embarque-btn-finalizar" onclick="finalizarAsignacionEmbarque()" id="embarque-btn-finalizar" disabled>Finalizar Asignación</button>
-            <button class="embarque-btn-continuar" onclick="continuarSinAsignarEmbarque()">Continuar Sin Asignar</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Advertencia -->
-<div id="embarque-modal-advertencia" class="embarque-modal-overlay">
-    <div class="embarque-modal-advertencia-content">
-        <h3 class="embarque-advertencia-titulo">ADVERTENCIA</h3>
-        <div id="embarque-mensaje-advertencia" class="embarque-advertencia-mensaje"></div>
-        <div class="embarque-advertencia-buttons">
-            <button onclick="cerrarModalAdvertenciaEmbarque()" class="embarque-btn-cancelar">Cancelar</button>
-            <button onclick="confirmarAdvertenciaEmbarque()" class="embarque-btn-confirmar">Continuar</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Proceso Completado -->
-<div id="embarque-modal-completado" class="embarque-modal-overlay">
-    <div class="embarque-modal-completado-content">
-        <h3 class="embarque-completado-titulo">PROCESO COMPLETADO</h3>
-        <div id="embarque-mensaje-completado" class="embarque-completado-mensaje"></div>
-        <div class="embarque-completado-buttons">
-            <button onclick="cerrarModalCompletadoEmbarque()" class="embarque-btn-ok">OK</button>
-        </div>
-    </div>
-</div>
-
-<!-- Formulario principal -->
-<form autocomplete="off" data-form-type="embarque">
-<div class="embarque-container">
-
-    <div class="embarque-form-section">
-        <div class="embarque-form-group">
-            <label>Tipo de Embarque</label>
-            <select id="embarque-tipo" autocomplete="off">
-                <option>Marítimo</option>
-                <option>Aéreo</option>
-                <option>Terrestre</option>
+        <div class="embarque-filter-group">
+            <label>Estado</label>
+            <select id="filtro-estado">
+                <option value="">Plan, Producción</option>
+                <option value="PREPARACION">En Preparación</option>
+                <option value="EMBARCADO">Embarcado</option>
+                <option value="EN_TRANSITO">En Tránsito</option>
+                <option value="ENTREGADO">Entregado</option>
             </select>
         </div>
     </div>
-
-    <div class="embarque-form-section">    
-        <div class="embarque-form-row">
-            <div class="embarque-form-group">
-                <label>Cliente</label>
-                <select id="embarque-cliente" autocomplete="off">
-                    <option value="">Seleccionar</option>
-                    <option value="LG_REFRIS">LG_REFRIS</option>
-                    <option value="LG_ESTUFAS">LG_ESTUFAS</option>
-                </select>
-            </div>
-            <div class="embarque-form-group">
-                <label>Código de PO de Embarque</label>
-                <div class="embarque-input-container">
-                    <div class="embarque-input-wrapper">
-                        <input type="text" id="embarque-codigo-po" name="embarque_codigo_escaneo" class="embarque-campo-escaneo" placeholder="Listo para escanear PO..." onkeydown="procesarEscaneoPO(event)" onfocus="activarModoEscaneoPO()" onblur="desactivarModoEscaneoPO()" autocomplete="off">
-                        <span id="embarque-indicador-escaneo" class="embarque-indicador">LISTO</span>
-                        <button type="button" onclick="limpiarCampoPOManual()" class="embarque-btn-limpiar" title="Limpiar campo">X</button>
-                    </div>
-                    <button type="button" onclick="abrirEscanerPOQR()" class="embarque-btn-cam" title="Escanear PO con cámara">CAM</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="embarque-form-row">
-            <div class="embarque-form-group">
-                <label>Proveedor</label>
-                <select id="embarque-proveedor-select">
-                    <option value="">Seleccionar</option>
-                    <option value="ROHM">ROHM</option>
-                    <option value="SMART">SMART</option>
-                    <option value="INFINEON">INFINEON</option>
-                </select>
-            </div>
-            <div class="embarque-form-group">
-                <label>Fecha de Embarque</label>
-                <input type="date" id="embarque-fecha" autocomplete="off">
-            </div>
-            <div class="embarque-form-group">
-                <label>Puerto/Destino</label>
-                <input type="text" id="embarque-destino-input" placeholder="Puerto o ciudad de destino" autocomplete="off">
-            </div>
-            <div class="embarque-form-group">
-                <label>Estado del Embarque</label>
-                <select id="embarque-estado">
-                    <option value="PREPARACION">En Preparación</option>
-                    <option value="EMBARCADO">Embarcado</option>
-                    <option value="EN_TRANSITO">En Tránsito</option>
-                    <option value="ENTREGADO">Entregado</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <div class="embarque-form-section">
-        <div class="embarque-form-row">
-            <div class="embarque-form-group">
-                <label>Número de Contenedor</label>
-                <input type="text" id="embarque-contenedor" placeholder="Número de contenedor" autocomplete="off">
-            </div>
-            <div class="embarque-form-group">
-                <label>Peso Total (kg)</label>
-                <input type="number" id="embarque-peso" placeholder="0.00" step="0.01" autocomplete="off">
-            </div>
-            <div class="embarque-form-group">
-                <label>Volumen (m³)</label>
-                <input type="number" id="embarque-volumen" placeholder="0.00" step="0.01" autocomplete="off">
-            </div>
-            <div class="embarque-form-group">
-                <label>Observaciones</label>
-                <textarea id="embarque-observaciones" placeholder="Observaciones del embarque" rows="2" autocomplete="off"></textarea>
-            </div>
-        </div>
-    </div>
-
-    <div class="embarque-actions">
-        <button type="button" onclick="registrarEmbarque()" class="embarque-btn-registrar">Registrar Embarque</button>
-        <button type="button" onclick="imprimirEtiquetaEmbarque()" class="embarque-btn-imprimir">Imprimir Etiqueta</button>
-        <button type="button" onclick="limpiarFormularioEmbarque()" class="embarque-btn-limpiar-form">Limpiar</button>
-    </div>
-
+    
+    <!-- Botones de acción -->
+    <button class="embarque-btn embarque-btn-primary" onclick="consultarEmbarques()">
+        <i class="fas fa-search"></i>
+        Consultar
+    </button>
+    <button class="embarque-btn embarque-btn-success" onclick="abrirModalRegistro()">
+        <i class="fas fa-plus"></i>
+        Registrar
+    </button>
+    <button class="embarque-btn embarque-btn-info" onclick="verificarMaterial()">
+        <i class="fas fa-check-circle"></i>
+        Verif. de mat.
+    </button>
+    <button class="embarque-btn embarque-btn-warning" onclick="marcarCompletada()">
+        <i class="fas fa-flag-checkered"></i>
+        Completada
+    </button>
+    <button class="embarque-btn embarque-btn-secondary" onclick="cancelarEmbarque()">
+        <i class="fas fa-times"></i>
+        Cancelar
+    </button>
+    <button class="embarque-btn embarque-btn-success" onclick="exportarExcel()">
+        <i class="fas fa-file-excel"></i>
+        Exportar el excel
+    </button>
 </div>
-</form>
+
+<!-- Tabla principal de embarques -->
+<div class="embarque-table-section">
+    <div class="embarque-table-container">
+        <table class="embarque-data-table" id="tabla-embarques">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all"></th>
+                    <th>Código de PO</th>
+                    <th>Nombre de...</th>
+                    <th>Fecha de re...</th>
+                    <th>Cliente</th>
+                    <th>Código de...</th>
+                    <th>Nombre de...</th>
+                    <th>Proveedor</th>
+                    <th>Total cantid...</th>
+                    <th>Total cantid...</th>
+                    <th>Estado</th>
+                    <th>Código de e...</th>
+                    <th>Fecha de em...</th>
+                    <th>Cantidad em...</th>
+                    <th>Modificado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="15" class="no-data">No hay dato registrado</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="embarque-table-footer">
+        <span>Total Rows : 0</span>
+    </div>
+</div>
+
+<!-- Tabla de materiales -->
+<div class="embarque-materials-section">
+    <div class="embarque-materials-header">
+        <button class="embarque-btn-export" onclick="exportarMateriales()">Exportar el excel</button>
+    </div>
+    
+    <div class="embarque-materials-table-container">
+        <table class="embarque-materials-table" id="tabla-materiales">
+            <thead>
+                <tr>
+                    <th>Código de material</th>
+                    <th>Numero de parte</th>
+                    <th>Vendedor</th>
+                    <th>Deficiencia de producción</th>
+                    <th>Cantidad actual</th>
+                    <th>Cantidad necesaria</th>
+                    <th>Tipo de material</th>
+                    <th>Especificacion de material</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="8" class="no-data">No hay dato registrado</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="embarque-materials-footer">
+        <span>Total Rows : 0</span>
+    </div>
+</div>
+
+
 
 <script>
 // Variables globales para Control de Embarque
-let embarqueAsignaciones = [];
-let embarqueContadorAsignados = 0;
-let embarqueContadorTotal = 0;
-let embarquePOActual = '';
-let embarqueModoEscaneoActivo = false;
-
-// Funciones para manejo de modales
-function cerrarModalEmbarquePO() {
-    document.getElementById('embarque-modal-po').style.display = 'none';
-}
-
-function guardarPOEmbarque() {
-    const codigo = document.getElementById('embarque-po-codigo').value;
-    const proveedor = document.getElementById('embarque-proveedor').value;
-    const fecha = document.getElementById('embarque-fecha-embarque').value;
-    const destino = document.getElementById('embarque-destino').value;
-    
-    if (!codigo || !proveedor || !fecha || !destino) {
-        alert('Por favor complete todos los campos');
-        return;
-    }
-    
-    // Aquí iría la lógica para guardar en la base de datos
-    console.log('Guardando PO de embarque:', { codigo, proveedor, fecha, destino });
-    
-    cerrarModalEmbarquePO();
-    mostrarModalCompletadoEmbarque('PO de embarque registrado exitosamente');
-}
-
-// Funciones para escaneo de PO
-function activarModoEscaneoPO() {
-    embarqueModoEscaneoActivo = true;
-    const campo = document.getElementById('embarque-codigo-po');
-    const indicador = document.getElementById('embarque-indicador-escaneo');
-    
-    campo.classList.add('embarque-campo-activo');
-    indicador.textContent = 'ACTIVO';
-    indicador.style.color = '#e74c3c';
-}
-
-function desactivarModoEscaneoPO() {
-    embarqueModoEscaneoActivo = false;
-    const campo = document.getElementById('embarque-codigo-po');
-    const indicador = document.getElementById('embarque-indicador-escaneo');
-    
-    campo.classList.remove('embarque-campo-activo');
-    indicador.textContent = 'LISTO';
-    indicador.style.color = '#28a745';
-}
-
-function procesarEscaneoPO(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        const codigo = event.target.value.trim();
-        
-        if (codigo) {
-            console.log('PO escaneado:', codigo);
-            embarquePOActual = codigo;
-            
-            // Aquí iría la validación del PO
-            validarPOEmbarque(codigo);
-        }
-    }
-}
-
-function validarPOEmbarque(codigo) {
-    // Simulación de validación
-    console.log('Validando PO de embarque:', codigo);
-    
-    // Aquí iría la lógica de validación real
-    const esValido = true; // Simulación
-    
-    if (esValido) {
-        document.getElementById('embarque-codigo-po').style.background = '#d1edff';
-        document.getElementById('embarque-indicador-escaneo').textContent = 'VÁLIDO';
-        document.getElementById('embarque-indicador-escaneo').style.color = '#007bff';
-    } else {
-        document.getElementById('embarque-codigo-po').style.background = '#ffe6e6';
-        document.getElementById('embarque-indicador-escaneo').textContent = 'ERROR';
-        document.getElementById('embarque-indicador-escaneo').style.color = '#dc3545';
-    }
-}
-
-// Funciones para asignación de materiales
-function procesarEscaneoPOEmbarque(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        const po = event.target.value.trim();
-        
-        if (po) {
-            embarquePOActual = po;
-            document.getElementById('embarque-escaneo-material').disabled = false;
-            document.getElementById('embarque-escaneo-material').focus();
-        }
-    }
-}
-
-function procesarEscaneoMaterialEmbarque(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        const material = event.target.value.trim();
-        
-        if (material && embarquePOActual) {
-            asignarMaterialAEmbarque(material, embarquePOActual);
-            event.target.value = '';
-        }
-    }
-}
-
-function asignarMaterialAEmbarque(material, po) {
-    const asignacion = {
-        id: Date.now(),
-        material: material,
-        po: po,
-        estado: 'ASIGNADO',
-        fecha: new Date().toISOString()
-    };
-    
-    embarqueAsignaciones.push(asignacion);
-    embarqueContadorAsignados++;
-    
-    actualizarTablaAsignacionesEmbarque();
-    actualizarContadoresEmbarque();
-}
-
-function actualizarTablaAsignacionesEmbarque() {
-    const tbody = document.getElementById('embarque-tabla-asignaciones');
-    tbody.innerHTML = '';
-    
-    embarqueAsignaciones.forEach((asignacion, index) => {
-        const fila = document.createElement('tr');
-        fila.innerHTML = `
-            <td class="embarque-td">${index + 1}</td>
-            <td class="embarque-td">${asignacion.material}</td>
-            <td class="embarque-td">${asignacion.po}</td>
-            <td class="embarque-td"><span class="embarque-estado-${asignacion.estado.toLowerCase()}">${asignacion.estado}</span></td>
-            <td class="embarque-td">
-                <button onclick="eliminarAsignacionEmbarque(${asignacion.id})" class="embarque-btn-eliminar">Eliminar</button>
-            </td>
-        `;
-        tbody.appendChild(fila);
-    });
-}
-
-function actualizarContadoresEmbarque() {
-    document.getElementById('embarque-contador-asignados').textContent = embarqueContadorAsignados;
-    document.getElementById('embarque-contador-total').textContent = embarqueContadorTotal;
-    
-    const btnFinalizar = document.getElementById('embarque-btn-finalizar');
-    if (embarqueContadorAsignados > 0) {
-        btnFinalizar.disabled = false;
-        btnFinalizar.style.background = '#5A8A5A';
-        btnFinalizar.style.cursor = 'pointer';
-    }
-}
-
-function eliminarAsignacionEmbarque(id) {
-    embarqueAsignaciones = embarqueAsignaciones.filter(a => a.id !== id);
-    embarqueContadorAsignados--;
-    actualizarTablaAsignacionesEmbarque();
-    actualizarContadoresEmbarque();
-}
-
-// Funciones para modales de advertencia y completado
-function mostrarModalAdvertenciaEmbarque(mensaje) {
-    document.getElementById('embarque-mensaje-advertencia').innerHTML = mensaje;
-    document.getElementById('embarque-modal-advertencia').style.display = 'flex';
-}
-
-function cerrarModalAdvertenciaEmbarque() {
-    document.getElementById('embarque-modal-advertencia').style.display = 'none';
-}
-
-function confirmarAdvertenciaEmbarque() {
-    cerrarModalAdvertenciaEmbarque();
-    // Continuar con la acción
-}
-
-function mostrarModalCompletadoEmbarque(mensaje) {
-    document.getElementById('embarque-mensaje-completado').innerHTML = mensaje;
-    document.getElementById('embarque-modal-completado').style.display = 'flex';
-}
-
-function cerrarModalCompletadoEmbarque() {
-    document.getElementById('embarque-modal-completado').style.display = 'none';
-    limpiarFormularioEmbarque();
-}
+let embarqueData = [];
+let materialesData = [];
 
 // Funciones principales
-function registrarEmbarque() {
-    const datos = {
-        tipo: document.getElementById('embarque-tipo').value,
-        cliente: document.getElementById('embarque-cliente').value,
-        codigoPO: document.getElementById('embarque-codigo-po').value,
-        proveedor: document.getElementById('embarque-proveedor-select').value,
-        fecha: document.getElementById('embarque-fecha').value,
-        destino: document.getElementById('embarque-destino-input').value,
-        estado: document.getElementById('embarque-estado').value,
-        contenedor: document.getElementById('embarque-contenedor').value,
-        peso: document.getElementById('embarque-peso').value,
-        volumen: document.getElementById('embarque-volumen').value,
-        observaciones: document.getElementById('embarque-observaciones').value
-    };
-    
-    if (!datos.codigoPO || !datos.cliente || !datos.proveedor) {
-        mostrarModalAdvertenciaEmbarque('Por favor complete los campos obligatorios: Código PO, Cliente y Proveedor');
-        return;
-    }
-    
-    console.log('Registrando embarque:', datos);
-    mostrarModalCompletadoEmbarque('Embarque registrado exitosamente');
+function consultarEmbarques() {
+    console.log('Consultando embarques...');
+    // Aquí iría la lógica para consultar embarques desde el servidor
+    cargarDatosEmbarques();
 }
 
-function imprimirEtiquetaEmbarque() {
-    const codigoPO = document.getElementById('embarque-codigo-po').value;
+function abrirModalRegistro() {
+    console.log('Abriendo modal de registro...');
+    // Aquí iría la lógica para abrir modal de registro
+    alert('Modal de registro en desarrollo');
+}
+
+function verificarMaterial() {
+    console.log('Verificando material...');
+    // Aquí iría la lógica para verificar material
+    alert('Verificación de material en desarrollo');
+}
+
+function marcarCompletada() {
+    console.log('Marcando como completada...');
+    // Aquí iría la lógica para marcar como completada
+    alert('Función completada en desarrollo');
+}
+
+function cancelarEmbarque() {
+    console.log('Cancelando embarque...');
+    // Aquí iría la lógica para cancelar embarque
+    alert('Función cancelar en desarrollo');
+}
+
+function exportarExcel() {
+    console.log('Exportando a Excel...');
+    // Aquí iría la lógica para exportar a Excel
+    alert('Exportación a Excel en desarrollo');
+}
+
+function exportarMateriales() {
+    console.log('Exportando materiales a Excel...');
+    // Aquí iría la lógica para exportar materiales
+    alert('Exportación de materiales en desarrollo');
+}
+
+// Función para cargar datos de embarques
+function cargarDatosEmbarques() {
+    // Simular datos para mostrar la estructura
+    embarqueData = [
+        // Los datos se cargarían desde el servidor
+    ];
     
-    if (!codigoPO) {
-        mostrarModalAdvertenciaEmbarque('Debe ingresar un código de PO antes de imprimir');
-        return;
-    }
+    actualizarTablaEmbarques();
+}
+
+// Función para actualizar tabla de embarques
+function actualizarTablaEmbarques() {
+    const tbody = document.querySelector('#tabla-embarques tbody');
+    tbody.innerHTML = '';
     
-    console.log('Imprimiendo etiqueta para PO:', codigoPO);
-    mostrarModalCompletadoEmbarque('Etiqueta de embarque enviada a impresión');
-}
-
-function limpiarFormularioEmbarque() {
-    document.querySelectorAll('#embarque-container input, #embarque-container select, #embarque-container textarea').forEach(campo => {
-        if (campo.type === 'checkbox' || campo.type === 'radio') {
-            campo.checked = false;
-        } else {
-            campo.value = '';
-        }
-    });
-    
-    embarqueAsignaciones = [];
-    embarqueContadorAsignados = 0;
-    embarqueContadorTotal = 0;
-    embarquePOActual = '';
-    
-    actualizarTablaAsignacionesEmbarque();
-    actualizarContadoresEmbarque();
-}
-
-function limpiarCampoPOManual() {
-    document.getElementById('embarque-codigo-po').value = '';
-    document.getElementById('embarque-codigo-po').style.background = '';
-    document.getElementById('embarque-indicador-escaneo').textContent = 'LISTO';
-    document.getElementById('embarque-indicador-escaneo').style.color = '#28a745';
-}
-
-function abrirEscanerPOQR() {
-    console.log('Abriendo escáner QR para PO');
-    // Aquí iría la implementación del escáner QR
-}
-
-// Funciones de detección automática
-function detectarEscaneoPOAutomatico(event) {
-    // Lógica para detectar escaneo automático
-}
-
-function detectarEscaneoMaterialAutomatico(event) {
-    // Lógica para detectar escaneo automático
-}
-
-function finalizarAsignacionEmbarque() {
-    if (embarqueAsignaciones.length === 0) {
-        mostrarModalAdvertenciaEmbarque('No hay materiales asignados para finalizar');
-        return;
-    }
-    
-    const mensaje = `
-        <strong>Resumen de Asignación:</strong><br>
-        Materiales asignados: ${embarqueContadorAsignados}<br>
-        PO de embarque: ${embarquePOActual}<br>
-        <span style="color: #5A8A5A; font-weight: bold;">Asignación completada exitosamente</span>
-    `;
-    
-    mostrarModalCompletadoEmbarque(mensaje);
-}
-
-function continuarSinAsignarEmbarque() {
-    if (embarqueAsignaciones.length > 0) {
-        mostrarModalAdvertenciaEmbarque('Hay materiales asignados. ¿Está seguro de continuar sin completar la asignación?');
+    if (embarqueData.length === 0) {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="15" class="no-data">No hay dato registrado</td>';
     } else {
-        mostrarModalCompletadoEmbarque('Proceso continuado sin asignaciones');
+        embarqueData.forEach((item, index) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td><input type="checkbox"></td>
+                <td>${item.codigoPO || ''}</td>
+                <td>${item.nombre || ''}</td>
+                <td>${item.fechaRegistro || ''}</td>
+                <td>${item.cliente || ''}</td>
+                <td>${item.codigo || ''}</td>
+                <td>${item.nombreMaterial || ''}</td>
+                <td>${item.proveedor || ''}</td>
+                <td>${item.totalCantidad || ''}</td>
+                <td>${item.totalCantidadReal || ''}</td>
+                <td>${item.estado || ''}</td>
+                <td>${item.codigoEmbarque || ''}</td>
+                <td>${item.fechaEmbarque || ''}</td>
+                <td>${item.cantidadEmbarque || ''}</td>
+                <td>${item.modificado || ''}</td>
+            `;
+        });
     }
+    
+    // Actualizar contador
+    document.querySelector('.embarque-table-footer span').textContent = `Total Rows : ${embarqueData.length}`;
 }
+
+// Función para actualizar tabla de materiales
+function actualizarTablaMateriales() {
+    const tbody = document.querySelector('#tabla-materiales tbody');
+    tbody.innerHTML = '';
+    
+    if (materialesData.length === 0) {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="8" class="no-data">No hay dato registrado</td>';
+    } else {
+        materialesData.forEach((item, index) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${item.codigoMaterial || ''}</td>
+                <td>${item.numeroParte || ''}</td>
+                <td>${item.vendedor || ''}</td>
+                <td>${item.deficiencia || ''}</td>
+                <td>${item.cantidadActual || ''}</td>
+                <td>${item.cantidadNecesaria || ''}</td>
+                <td>${item.tipoMaterial || ''}</td>
+                <td>${item.especificacion || ''}</td>
+            `;
+        });
+    }
+    
+    // Actualizar contador
+    document.querySelector('.embarque-materials-footer span').textContent = `Total Rows : ${materialesData.length}`;
+}
+
+// Función para manejar el checkbox "Seleccionar todo"
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('#tabla-embarques tbody input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+// Función global para cerrar Control de Embarque
+window.cerrarControlEmbarque = function() {
+    const embarqueContainer = document.querySelector('#embarque-main-container-unique');
+    if (embarqueContainer) {
+        embarqueContainer.style.display = 'none';
+        embarqueContainer.style.visibility = 'hidden';
+        embarqueContainer.style.opacity = '0';
+        console.log('Control de Embarque cerrado');
+    }
+};
+
+// Nota: La función mostrarControlEmbarque está definida en MaterialTemplate.html
+// para manejar la carga dinámica del contenido
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Control de Embarque inicializado');
     
-    // Configurar fecha actual por defecto
-    const hoy = new Date().toISOString().split('T')[0];
-    document.getElementById('embarque-fecha').value = hoy;
+    // Configurar fechas por defecto
+    const hoy = new Date();
+    const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
+    
+    document.getElementById('fecha-inicio').value = fechaInicio.toISOString().split('T')[0];
+    document.getElementById('fecha-fin').value = hoy.toISOString().split('T')[0];
+    
+    // Configurar evento del checkbox "Seleccionar todo"
+    document.getElementById('select-all').addEventListener('change', toggleSelectAll);
+    
+    // Cargar datos iniciales
+    cargarDatosEmbarques();
+    actualizarTablaMateriales();
 });
 </script>
+
+</div> <!-- Cierre de embarque-main-container -->
 
 </body>
 </html>

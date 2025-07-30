@@ -11,7 +11,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de plan de produccion" 
-                            data-permiso-boton="Control de embarque">Control de embarque</li>
+                            data-permiso-boton="Control de embarque"
+                            onclick="window.parent.mostrarControlEmbarque ? window.parent.mostrarControlEmbarque() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control_produccion/control_embarque') : window.location.href='/control_produccion/control_embarque')">Control de embarque</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de plan de produccion" 

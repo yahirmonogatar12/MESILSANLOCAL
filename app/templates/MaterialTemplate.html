@@ -281,10 +281,7 @@
         <div id="material-info-container" style="display: block;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
-        
-        <div id="control-almacen-container" style="display: none;">
-            <!-- El contenido se cargará dinámicamente con JavaScript -->
-        </div>
+
         <div id="control-salida-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
@@ -292,41 +289,49 @@
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="recibo-pago-container" style="display: none;">
-            <h2>Recibo y pago del material</h2>
-            <p>Contenido para Recibo y pago del material - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="historial-material-container" style="display: none;">
-            <h2>Historial de material</h2>
-            <p>Contenido para Historial de material - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="estatus-material-container" style="display: none;">
-            <h2>Estatus de material</h2>
-            <p>Contenido para Estatus de material - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="material-sustituto-container" style="display: none;">
-            <h2>Material sustituto</h2>
-            <p>Contenido para Material sustituto - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="consultar-peps-container" style="display: none;">
-            <h2>Consultar PEPS</h2>
-            <p>Contenido para Consultar PEPS - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="longterm-inventory-container" style="display: none;">
-            <h2>Control de Long-Term Inventory</h2>
-            <p>Contenido para Control de Long-Term Inventory - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="registro-material-container" style="display: none;">
-            <h2>Registro de material real</h2>
-            <p>Contenido para Registro de material real - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="historial-inventario-container" style="display: none;">
-            <h2>Historial de inventario real</h2>
-            <p>Contenido para Historial de inventario real - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="ajuste-numero-container" style="display: none;">
-            <h2>Ajuste de número de parte</h2>
-            <p>Contenido para Ajuste de número de parte - Por implementar</p>
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
+        <div id="control-almacen-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+    </div>
+    
+    <!-- Contenedor específico para el contenido de Control de Producción (LADO DERECHO) -->
+    <div class="produccion-content-area" id="produccion-content-area" style="display: none;">
+        <!-- Contenedor por defecto con información general -->
+        <div id="produccion-info-container" style="display: block;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+        
+        <!-- Aquí se pueden agregar más contenedores específicos para Control de Producción -->
+        <!-- Por ejemplo: -->
+        <!-- <div id="control-embarque-container" style="display: none;"> -->
+        <!--     El contenido se cargará dinámicamente con JavaScript -->
+        <!-- </div> -->
     </div>
     
     <!-- Contenedor específico para el contenido de Información Básica (LADO DERECHO) -->
@@ -864,7 +869,7 @@
                 const sectionContainers = [
                     { id: 'informacion-basica-content-area', section: 'informacion-basica' },
                     { id: 'material-container', section: 'control-material' },
-                    { id: 'control-produccion-content-area', section: 'control-produccion' },
+                    { id: 'produccion-content-area', section: 'control-produccion' },
                     { id: 'control-proceso-content-area', section: 'control-proceso' },
                     { id: 'control-calidad-content-area', section: 'control-calidad' }
                 ];
@@ -1119,7 +1124,7 @@
             const contentAreas = [
                 'informacion-basica-content-area',
                 'material-container',
-                'control-produccion-content-area',
+                'produccion-content-area',
                 'control-proceso-content-area',
                 'control-calidad-content-area'
             ];
@@ -1563,6 +1568,7 @@
             const controlReporteContent = document.getElementById('control-reporte-content');
             const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
             const materialContentArea = document.getElementById('material-content-area');
+            const produccionContentArea = document.getElementById('produccion-content-area');
             const informacionBasicaContentArea = document.getElementById('informacion-basica-content-area');
             const materialInfoContainer = document.getElementById('material-info-container');
             const controlAlmacenContainer = document.getElementById('control-almacen-container');
@@ -1577,10 +1583,13 @@
             const registroMaterialContainer = document.getElementById('registro-material-container');
             const historialInventarioContainer = document.getElementById('historial-inventario-container');
             const ajusteNumeroContainer = document.getElementById('ajuste-numero-container');
+            const produccionInfoContainer = document.getElementById('produccion-info-container');
             const navButtons = document.querySelectorAll('.nav-button');
             
             // Función para ocultar todo el contenido
             function hideAllContent() {
+                console.log('🔄 hideAllContent ejecutándose...');
+                
                 // Ocultar todos los contenedores principales
                 informacionBasicaContent.style.display = 'none';
                 controlMaterialContent.style.display = 'none';
@@ -1593,7 +1602,14 @@
                 
                 // FORZAR ocultar completamente las áreas de contenido
                 materialContentArea.style.display = 'none';
+                produccionContentArea.style.display = 'none';
                 informacionBasicaContentArea.style.display = 'none';
+                
+                // FORZAR ocultar también los sidebars
+                const controlMaterialSidebar = document.getElementById('control-material-content');
+                const controlProduccionSidebar = document.getElementById('control-produccion-content');
+                if (controlMaterialSidebar) controlMaterialSidebar.style.display = 'none';
+                if (controlProduccionSidebar) controlProduccionSidebar.style.display = 'none';
                 
                 // Limpiar contenido de los contenedores principales para evitar superposición
                 const containersToClean = [
@@ -1612,11 +1628,36 @@
                     if (container && container.innerHTML.trim() !== '') {
                         // Solo limpiar si tiene contenido, mantener un placeholder
                         container.innerHTML = '<!-- El contenido se cargará dinámicamente con JavaScript -->';
+                        console.log(`🧹 Contenido limpiado de: ${containerId}`);
                     }
                 });
                 
+                // Limpiar solo el contenido dinámico del área de material, no los contenedores base
+                const materialArea = document.getElementById('material-content-area');
+                if (materialArea) {
+                    // Solo limpiar si contiene contenido de Control de Embarque u otros contenidos dinámicos
+                    const embarqueContainer = materialArea.querySelector('#embarque-main-container-unique');
+                    if (embarqueContainer) {
+                        embarqueContainer.remove();
+                        console.log('🧹 Control de Embarque removido del DOM');
+                    }
+                }
+                
                 hideAllMaterialContainers();
                 hideAllInformacionBasicaContainers();
+                
+                // Cerrar Control de Embarque cuando se cambie a otra sección
+                console.log('🔄 Intentando cerrar Control de Embarque...');
+                if (typeof window.cerrarControlEmbarque === 'function') {
+                    try {
+                        window.cerrarControlEmbarque();
+                        console.log('✅ Control de Embarque cerrado exitosamente');
+                    } catch (error) {
+                        console.error('❌ Error cerrando Control de Embarque:', error);
+                    }
+                } else {
+                    console.log('⚠️ Función cerrarControlEmbarque no disponible');
+                }
             }
             
             // Función para resetear completamente la pestaña de Información Básica
@@ -1920,6 +1961,9 @@
                 materialContentArea.style.display = 'block';
                 materialInfoContainer.style.display = 'block';
                 
+                // IMPORTANTE: Ocultar contenedor de producción
+                produccionContentArea.style.display = 'none';
+                
                 // Cargar contenido dinámicamente
                 cargarContenidoDinamico('material-info-container', '/material/info')
                     .catch(error => console.error('Error cargando info material:', error));
@@ -1930,6 +1974,9 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 controlAlmacenContainer.style.display = 'block';
+                
+                // IMPORTANTE: Ocultar contenedor de producción
+                produccionContentArea.style.display = 'none';
                 
                 // Cargar contenido dinámicamente con callback de inicialización
                 cargarContenidoDinamico('control-almacen-container', '/material/control_almacen', () => {
@@ -1952,6 +1999,31 @@
                 });
                 
 
+            };
+            
+            // Función global para mostrar Control de Embarque
+            window.mostrarControlEmbarque = function() {
+                hideAllMaterialContainers();
+                produccionContentArea.style.display = 'block';
+                produccionInfoContainer.style.display = 'block';
+                
+                // IMPORTANTE: Ocultar contenedor de material
+                materialContentArea.style.display = 'none';
+                
+                // Cargar contenido dinámicamente de Control de Embarque en el contenedor de producción
+                cargarContenidoDinamico('produccion-info-container', '/control_produccion/control_embarque', () => {
+                    // Después de cargar, asegurar que el contenedor esté visible
+                    const embarqueContainer = document.querySelector('#embarque-main-container-unique');
+                    if (embarqueContainer) {
+                        embarqueContainer.style.display = 'block';
+                        embarqueContainer.style.visibility = 'visible';
+                        embarqueContainer.style.opacity = '1';
+                        console.log('Control de Embarque cargado y mostrado correctamente');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cargando Control de Embarque:', error);
+                });
             };
             
             // Funciones para mostrar otros contenidos
@@ -2028,12 +2100,30 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 reciboPagoContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('recibo-pago-container', '/material/recibo_pago', () => {
+                    
+                    // Inicializar funcionalidades específicas si es necesario
+                    if (typeof initReciboPago === 'function') {
+                        initReciboPago();
+                    }
+                });
             };
             
             window.mostrarHistorialMaterial = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 historialMaterialContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('historial-material-container', '/material/historial_material', () => {
+                    
+                    // Inicializar funcionalidades específicas si es necesario
+                    if (typeof initHistorialMaterial === 'function') {
+                        initHistorialMaterial();
+                    }
+                });
             };
             
             window.mostrarEstatusMaterial = function() {
@@ -2055,18 +2145,45 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 materialSustitutoContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('material-sustituto-container', '/material/material_sustituto', () => {
+                    
+                    // Inicializar funcionalidades específicas si es necesario
+                    if (typeof initMaterialSustituto === 'function') {
+                        initMaterialSustituto();
+                    }
+                });
             };
             
             window.mostrarConsultarPeps = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 consultarPepsContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('consultar-peps-container', '/material/consultar_peps', () => {
+                    
+                    // Inicializar funcionalidades específicas si es necesario
+                    if (typeof initConsultarPeps === 'function') {
+                        initConsultarPeps();
+                    }
+                });
             };
             
             window.mostrarLongtermInventory = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 longtermInventoryContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('longterm-inventory-container', '/material/longterm_inventory', () => {
+                    
+                    // Inicializar funcionalidades específicas si es necesario
+                    if (typeof initLongtermInventory === 'function') {
+                        initLongtermInventory();
+                    }
+                });
             };
             
             window.mostrarRegistroMaterial = function() {
@@ -2103,6 +2220,69 @@
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 ajusteNumeroContainer.style.display = 'block';
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('ajuste-numero-container', '/material/ajuste_numero', () => {
+                    
+                    // Inicializar funcionalidades específicas si es necesario
+                    if (typeof initAjusteNumero === 'function') {
+                        initAjusteNumero();
+                    }
+                });
+            };
+            
+            // Función global para mostrar Control de Material
+            window.mostrarControlMaterial = function() {
+                hideAllContent();
+                materialContainer.style.display = 'block';
+                controlMaterialContent.style.display = 'block';
+                
+                // IMPORTANTE: Asegurar que produccion-content-area esté oculto
+                 produccionContentArea.style.display = 'none';
+                 
+                 // IMPORTANTE: Ocultar también el sidebar de Control de Producción
+                 const controlProduccionSidebar = document.getElementById('control-produccion-content');
+                 if (controlProduccionSidebar) {
+                     controlProduccionSidebar.style.display = 'none';
+                 }
+                
+                // Cargar contenido dinámicamente del sidebar de materiales
+                cargarContenidoDinamico('control-material-content', '/listas/control_material')
+                    .then(() => {
+                        // IMPORTANTE: NO ocultar material-content-area aquí
+                        // Las funciones específicas (mostrarInfoMaterial, mostrarControlAlmacen) lo manejarán
+                        hideAllInformacionBasicaContainers();
+                        informacionBasicaContentArea.style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error('Error cargando Control de Material:', error);
+                        // IMPORTANTE: NO ocultar material-content-area en el error
+                        hideAllInformacionBasicaContainers();
+                        informacionBasicaContentArea.style.display = 'none';
+                    });
+            };
+            
+            // Función global para mostrar Control de Producción
+            window.mostrarControlProduccion = function() {
+                hideAllContent();
+                materialContainer.style.display = 'block';
+                controlProduccionContent.style.display = 'block';
+                produccionContentArea.style.display = 'block';
+                produccionInfoContainer.style.display = 'block';
+                
+                // IMPORTANTE: Asegurar que material-content-area esté oculto
+                materialContentArea.style.display = 'none';
+                hideAllMaterialContainers();
+                
+                // IMPORTANTE: Ocultar también el sidebar de Control de Material
+                const controlMaterialSidebar = document.getElementById('control-material-content');
+                if (controlMaterialSidebar) {
+                    controlMaterialSidebar.style.display = 'none';
+                }
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('produccion-info-container', '/produccion/info')
+                    .catch(error => console.error('Error cargando info producción:', error));
             };
             
             // Función global para ocultar el contenido de almacén
@@ -2149,34 +2329,22 @@
                             });
                         
                     } else if (this.id === 'Control de material') {
-                        materialContainer.style.display = 'block';
-                        controlMaterialContent.style.display = 'block';
-                        
-                        // Cargar contenido dinámicamente del sidebar de materiales
-                        cargarContenidoDinamico('control-material-content', '/listas/control_material')
-                            .then(() => {
-                                // No mostrar material-content-area, solo el sidebar
-                                materialContentArea.style.display = 'none';
-                                hideAllMaterialContainers();
-                                // IMPORTANTE: Ocultar también los contenedores de información básica
-                                hideAllInformacionBasicaContainers();
-                                informacionBasicaContentArea.style.display = 'none';
-                            })
-                            .catch(error => {
-                                console.error('Error cargando Control de Material:', error);
-                                // Fallback: ocultar el área de material y información básica
-                                materialContentArea.style.display = 'none';
-                                hideAllMaterialContainers();
-                                hideAllInformacionBasicaContainers();
-                                informacionBasicaContentArea.style.display = 'none';
-                            });
+                        // Usar la función global para mostrar Control de Material
+                        if (typeof window.mostrarControlMaterial === 'function') {
+                            window.mostrarControlMaterial();
+                        } else {
+                            // Fallback si la función no está disponible
+                            materialContainer.style.display = 'block';
+                            controlMaterialContent.style.display = 'block';
+                            materialContentArea.style.display = 'none';
+                            produccionContentArea.style.display = 'none';
+                        }
                         
                     } else if (this.id === 'Control de producción') {
-                        materialContainer.style.display = 'block';
-                        controlProduccionContent.style.display = 'block';
-                        materialContentArea.style.display = 'none';
+                        // Usar la función dedicada que maneja correctamente los contenedores
+                        window.mostrarControlProduccion();
                         
-                        // Cargar contenido dinámicamente
+                        // Cargar contenido dinámicamente en el sidebar
                         cargarContenidoDinamico('control-produccion-content', '/listas/control_produccion')
                             .catch(error => console.error('Error cargando Control de Producción:', error));
                         

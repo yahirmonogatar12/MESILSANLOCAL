@@ -25,6 +25,8 @@
                     <div>
                         <button id="estatus-btn-consultar-inventario" class="estatus-material-btn">Consultar</button>
                         <button id="estatus-btn-exportar-inventario" class="estatus-material-btn secondary">Exportar el excel</button>
+                        <input type="file" id="importarExcelEstatusInventario" onchange="importarExcelEstatusInventario()" style="display:none" accept=".xlsx,.xls" />
+                        <button class="estatus-material-btn secondary" onclick="document.getElementById('importarExcelEstatusInventario').click()">Importar Excel</button>
                     </div>
                 </div>
 
@@ -60,6 +62,8 @@
                     <div></div>
                     <div>
                         <button id="estatus-btn-exportar-recibido" class="estatus-material-btn secondary">Exportar el excel</button>
+                        <input type="file" id="importarExcelEstatusRecibido" onchange="importarExcelEstatusRecibido()" style="display:none" accept=".xlsx,.xls" />
+                        <button class="estatus-material-btn secondary" onclick="document.getElementById('importarExcelEstatusRecibido').click()">Importar Excel</button>
                     </div>
                 </div>
 
@@ -97,5 +101,85 @@
     </div>
 
     <script src="/static/js/Estatus de material.js"></script>
+    
+    <script>
+        // Función de importación AJAX con fetch para inventario
+        function importarExcelEstatusInventario() {
+            const fileInput = document.getElementById('importarExcelEstatusInventario');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Por favor selecciona un archivo Excel.");
+                return;
+            }
+            
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            alert("Procesando archivo, por favor espere...");
+            
+            fetch('/importar_excel_estatus_inventario', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
+                    fileInput.value = ''; // Limpiar input
+                } else {
+                    alert("Error al importar: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al importar el archivo");
+            });
+        }
+        
+        // Función de importación AJAX con fetch para material recibido
+        function importarExcelEstatusRecibido() {
+            const fileInput = document.getElementById('importarExcelEstatusRecibido');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Por favor selecciona un archivo Excel.");
+                return;
+            }
+            
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            alert("Procesando archivo, por favor espere...");
+            
+            fetch('/importar_excel_estatus_recibido', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + " Los datos se han actualizado automáticamente.");
+                    fileInput.value = ''; // Limpiar input
+                } else {
+                    alert("Error al importar: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al importar el archivo");
+            });
+        }
+    </script>
 </body>
 </html>

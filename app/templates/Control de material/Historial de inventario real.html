@@ -14,6 +14,10 @@
             <button class="historial-btn historial-btn-secondary" onclick="exportarHistorialExcel()">
                 <i class="fas fa-file-excel"></i> Exportar Excel
             </button>
+            <input type="file" id="importarExcelHistorial" onchange="importarExcelHistorial()" style="display:none" accept=".xlsx,.xls" />
+            <button class="historial-btn historial-btn-secondary" onclick="document.getElementById('importarExcelHistorial').click()">
+                <i class="fas fa-file-excel"></i> Importar Excel
+            </button>
             <button class="historial-btn historial-btn-purple" onclick="toggleHistorialView()">
                 <i class="fas fa-exchange-alt"></i> Cambiar Vista
             </button>
@@ -1178,6 +1182,47 @@
     window.procesarHistorialScaneo = procesarHistorialScaneo;
     window.abrirHistorialEscaner = abrirHistorialEscaner;
     window.cerrarHistorialQrModal = cerrarHistorialQrModal;
+    
+    // Función de importación AJAX con fetch
+    function importarExcelHistorial() {
+        const fileInput = document.getElementById('importarExcelHistorial');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert("Por favor selecciona un archivo Excel.");
+            return;
+        }
+        
+        if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+            alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        alert("Procesando archivo, por favor espere...");
+        
+        fetch('/importar_excel_historial', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
+                fileInput.value = ''; // Limpiar input
+            } else {
+                alert("Error al importar: " + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error al importar el archivo");
+        });
+    }
+    
+    window.importarExcelHistorial = importarExcelHistorial;
     
     // Ejecutar inicialización inmediatamente si el DOM ya está listo
     if (document.readyState === 'loading') {

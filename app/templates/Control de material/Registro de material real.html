@@ -25,6 +25,12 @@
                 Exportar Excel
             </button>
             
+            <input type="file" id="importarExcelRegistro" onchange="importarExcelRegistro()" style="display:none" accept=".xlsx,.xls" />
+            <button type="button" class="material-btn material-btn-success" onclick="document.getElementById('importarExcelRegistro').click()">
+                <i class="fas fa-file-excel"></i>
+                Importar Excel
+            </button>
+            
             <button type="button" class="material-btn material-btn-warning" onclick="abrirFiltrosInventarioModal()">
                 <i class="fas fa-filter"></i>
                 Filtros Avanzados
@@ -115,5 +121,46 @@
 
     <!-- JavaScript externo -->
     <script src="{{ url_for('static', filename='js/Registro_de_material_real.js') }}"></script>
+    
+    <script>
+        // Función de importación AJAX con fetch
+        function importarExcelRegistro() {
+            const fileInput = document.getElementById('importarExcelRegistro');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Por favor selecciona un archivo Excel.");
+                return;
+            }
+            
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            alert("Procesando archivo, por favor espere...");
+            
+            fetch('/importar_excel_registro', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
+                    fileInput.value = ''; // Limpiar input
+                } else {
+                    alert("Error al importar: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al importar el archivo");
+            });
+        }
+    </script>
 </body>
 </html>

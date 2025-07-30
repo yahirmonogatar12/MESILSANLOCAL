@@ -189,6 +189,8 @@
                         <button class="material-btn secondary" onclick="consultarSalidas()">Consultar</button>
                         <button class="material-btn" onclick="limpiarFiltros()" style="background-color: #95a5a6;">Limpiar filtros</button>
                         <button class="material-btn orange" onclick="exportarExcel()">Exportar el excel</button>
+                        <input type="file" id="importarExcelSalida" onchange="importarExcelSalida()" style="display:none" accept=".xlsx,.xls" />
+                        <button class="material-btn orange" onclick="document.getElementById('importarExcelSalida').click()">Importar Excel</button>
                     </div>
                 </div>
                 <table class="material-table" id="salida_tablaSalidas">
@@ -3251,9 +3253,9 @@
                             
                             // Buscar dónde insertarlo
                             const contenedor = document.querySelector('main') ||
-                                             document.querySelector('.container') ||
-                                             document.querySelector('.app-content') ||
-                                             document.body;
+                                            document.querySelector('.container') ||
+                                            document.querySelector('.app-content') ||
+                                            document.body;
                             
                             contenedor.appendChild(historialSection);
                             console.log('✅ historialSection creado e insertado');
@@ -3922,6 +3924,45 @@
             esperarElementosYConfigurar();
             
         })(); // Auto-ejecutar la función inmediatamente
+
+        // Función de importación AJAX con fetch
+        function importarExcelSalida() {
+            const fileInput = document.getElementById('importarExcelSalida');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Por favor selecciona un archivo Excel.");
+                return;
+            }
+            
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            alert("Procesando archivo, por favor espere...");
+            
+            fetch('/importar_excel_salida', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
+                    fileInput.value = ''; // Limpiar input
+                } else {
+                    alert("Error al importar: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al importar el archivo");
+            });
+        }
 
     </script>
 </body>

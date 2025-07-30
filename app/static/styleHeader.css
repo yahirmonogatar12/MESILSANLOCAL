@@ -2,7 +2,7 @@
 /* Variables y estilos base                      */
 /* ============================================= */
 :root {
-  --header-height: 100px;
+  --header-height: 100px ;
   --mobile-header-height: 80px;
   --mobile-nav-width: 280px;
   --hamburger-size: 30px;
@@ -13,7 +13,7 @@
 /* Header                                        */
 /* ============================================= */
 .app-header {
-  height: var(--header-height);
+  height: var(--header-height)!important;
   background-color: #32323E;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   display: flex;

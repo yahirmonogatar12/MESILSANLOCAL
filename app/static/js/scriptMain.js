@@ -43,6 +43,11 @@ console.log('scriptMain.js loaded');
                 informacionBasicaContentArea.style.display = 'none';
                 hideAllMaterialContainers();
                 hideAllInformacionBasicaContainers();
+                
+                // Cerrar Control de Embarque cuando se cambie a otra sección
+                if (typeof window.cerrarControlEmbarque === 'function') {
+                    window.cerrarControlEmbarque();
+                }
             }
             
             // Función para resetear completamente la pestaña de Información Básica
@@ -432,10 +437,15 @@ console.log('scriptMain.js loaded');
                         }
                         
                     } else if (this.id === 'Control de producción') {
-                        materialContainer.style.display = 'block';
-                        controlProduccionContent.style.display = 'block';
-                        // FORZAR ocultar el área de material cuando no estés en Control de material
-                        materialContentArea.style.display = 'none';
+                        // Usar la función global de MaterialTemplate.html si está disponible
+                        if (typeof window.mostrarControlProduccion === 'function') {
+                            window.mostrarControlProduccion();
+                        } else {
+                            // Fallback básico
+                            materialContainer.style.display = 'block';
+                            controlProduccionContent.style.display = 'block';
+                            materialContentArea.style.display = 'none';
+                        }
                         
                     } else if (this.id === 'Control de proceso') {
                         materialContainer.style.display = 'block';

@@ -56,6 +56,10 @@
                 <button class="material-btn material-btn-success" id="inventario_btn_exportar">
                     <i class="fas fa-file-excel"></i> Exportar Excel
                 </button>
+                <input type="file" id="importarExcelRetorno" onchange="importarExcelRetorno()" style="display:none" accept=".xlsx,.xls" />
+                <button class="material-btn material-btn-success" onclick="document.getElementById('importarExcelRetorno').click()">
+                    <i class="fas fa-file-excel"></i> Importar Excel
+                </button>
                 <button class="material-btn material-btn-warning" id="inventario_btn_actualizar">
                     <i class="fas fa-sync-alt"></i> Actualizar
                 </button>
@@ -426,6 +430,45 @@
             setTimeout(() => {
                 consultarInventario();
             }, 500);
+        }
+
+        // Función de importación AJAX con fetch
+        function importarExcelRetorno() {
+            const fileInput = document.getElementById('importarExcelRetorno');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Por favor selecciona un archivo Excel.");
+                return;
+            }
+            
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                alert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            alert("Procesando archivo, por favor espere...");
+            
+            fetch('/importar_excel_retorno', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + " Haga clic en 'Consultar Inventario' para ver los datos actualizados.");
+                    fileInput.value = ''; // Limpiar input
+                } else {
+                    alert("Error al importar: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Error al importar el archivo");
+            });
         }
 
         // Hacer la función de inicialización disponible globalmente
