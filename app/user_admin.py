@@ -574,14 +574,7 @@ def obtener_permisos_rol(rol_id):
             ORDER BY p.modulo, p.accion
         ''', (rol_id,))
         
-        rows = cursor.fetchall()
-        permisos = []
-        for row in rows:
-            permisos.append({
-                'pagina': row[0],
-                'seccion': row[1],
-                'boton': row[2]
-            })
+        permisos = [dict(row) for row in cursor.fetchall()]
         conn.close()
         
         return jsonify(permisos)
@@ -644,10 +637,11 @@ def obtener_permisos_dropdowns_rol(rol_id):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT rpb.pagina, rpb.seccion, rpb.boton
-            FROM rol_permisos_botones rpb
-            WHERE rpb.rol_id = %s
-            ORDER BY rpb.pagina, rpb.seccion, rpb.boton
+            SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion
+            FROM permisos_botones pb
+            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
+            WHERE rpb.rol_id = %s AND pb.activo = 1
+            ORDER BY pb.pagina, pb.seccion, pb.boton
         ''', (rol_id,))
         
         permisos = [dict(row) for row in cursor.fetchall()]
@@ -680,17 +674,10 @@ def actualizar_permisos_dropdowns_rol():
         
         # Agregar nuevos permisos
         for permiso_id in permisos_ids:
-            # Obtener datos del permiso desde permisos_botones
             cursor.execute('''
-                SELECT pagina, seccion, boton FROM permisos_botones WHERE id = %s
-            ''', (permiso_id,))
-            permiso_data = cursor.fetchone()
-            
-            if permiso_data:
-                cursor.execute('''
-                     INSERT INTO rol_permisos_botones (rol_id, pagina, seccion, boton, fecha_creacion)
-                     VALUES (%s, %s, %s, %s, NOW())
-                 ''', (rol_id, permiso_data[0], permiso_data[1], permiso_data[2]))
+                INSERT INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                VALUES (%s, %s)
+            ''', (rol_id, permiso_id))
         
         conn.commit()
         conn.close()
@@ -1412,38 +1399,83 @@ def actividad_reciente():
 def verificar_permisos_usuario():
     """Obtener todos los permisos de botones del usuario actual"""
     try:
-        usuario_id = session.get('usuario_id')
-        if not usuario_id:
+        username = session.get('username')
+        if not username:
             return jsonify({'error': 'Usuario no autenticado'}), 401
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Obtener el rol del usuario
         cursor.execute('''
-            SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
-            FROM permisos_botones pb
-            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
-            JOIN usuario_roles ur ON rpb.rol_id = ur.rol_id
-            WHERE ur.usuario_id = %s AND pb.activo = 1
-            ORDER BY pb.pagina, pb.seccion, pb.boton
-        ''', (usuario_id,))
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN roles r ON ur.rol_id = r.id
+            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
+            ORDER BY r.nivel DESC
+            LIMIT 1
+        ''', (username,))
         
-        permisos_raw = cursor.fetchall()
+        usuario_rol = cursor.fetchone()
+        if not usuario_rol:
+            conn.close()
+            return jsonify({'error': 'Usuario sin roles asignados'}), 403
+        
+        rol_nombre = usuario_rol[0]
+        
+        # Si es superadmin, tiene todos los permisos
+        if rol_nombre == 'superadmin':
+            # Generar estructura completa de permisos para superadmin
+            permisos_estructurados = {
+                'LISTA_DE_MATERIALES': {
+                    'header': ['nuevo', 'editar', 'eliminar', 'exportar', 'importar'],
+                    'tabla': ['ver', 'filtrar', 'ordenar'],
+                    'acciones': ['guardar', 'cancelar', 'actualizar']
+                },
+                'CONTROL_MATERIAL': {
+                    'header': ['nuevo', 'editar', 'eliminar', 'exportar'],
+                    'tabla': ['ver', 'filtrar', 'ordenar'],
+                    'acciones': ['guardar', 'cancelar']
+                },
+                'CONTROL_PRODUCCION': {
+                    'header': ['nuevo', 'editar', 'eliminar', 'exportar'],
+                    'tabla': ['ver', 'filtrar', 'ordenar'],
+                    'acciones': ['guardar', 'cancelar']
+                },
+                'ADMIN': {
+                    'usuarios': ['crear', 'editar', 'eliminar', 'ver'],
+                    'roles': ['crear', 'editar', 'eliminar', 'ver'],
+                    'permisos': ['asignar', 'revocar', 'ver']
+                }
+            }
+        else:
+            # Obtener permisos específicos del rol
+            cursor.execute('''
+                SELECT DISTINCT rpb.pagina, rpb.seccion, rpb.boton 
+                FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                WHERE u.username = %s AND u.activo = 1
+                ORDER BY rpb.pagina, rpb.seccion, rpb.boton
+            ''', (username,))
+            
+            permisos_raw = cursor.fetchall()
+            
+            # Organizar permisos por página > sección > botón
+            permisos_estructurados = {}
+            for permiso in permisos_raw:
+                pagina, seccion, boton = permiso
+                
+                if pagina not in permisos_estructurados:
+                    permisos_estructurados[pagina] = {}
+                
+                if seccion not in permisos_estructurados[pagina]:
+                    permisos_estructurados[pagina][seccion] = []
+                
+                permisos_estructurados[pagina][seccion].append(boton)
+        
         conn.close()
-        
-        # Organizar permisos por página > sección > botón
-        permisos_estructurados = {}
-        for permiso in permisos_raw:
-            pagina, seccion, boton = permiso
-            
-            if pagina not in permisos_estructurados:
-                permisos_estructurados[pagina] = {}
-            
-            if seccion not in permisos_estructurados[pagina]:
-                permisos_estructurados[pagina][seccion] = []
-            
-            permisos_estructurados[pagina][seccion].append(boton)
-        
         return jsonify(permisos_estructurados)
         
     except Exception as e:
@@ -1454,46 +1486,92 @@ def verificar_permisos_usuario():
 def test_permisos_debug():
     """Endpoint temporal para debuggear permisos (sin autenticación)"""
     try:
-        # Test con usuario admin hardcodeado
+        # Test con usuario ADMIN hardcodeado
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Obtener ID del usuario admin
-        cursor.execute('SELECT id FROM usuarios_sistema WHERE username = %s', ('admin',))
+        # Obtener información del usuario Yahir
+        cursor.execute('SELECT id, username FROM usuarios_sistema WHERE username = %s', ('Yahir',))
         admin_result = cursor.fetchone()
         
         if not admin_result:
-            return jsonify({'error': 'Usuario admin no encontrado'}), 404
+            return jsonify({'error': 'Usuario Yahir no encontrado'}), 404
         
-        usuario_id = admin_result[0]
+        usuario_id, username = admin_result
         
+        # Obtener el rol del usuario
         cursor.execute('''
-            SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
-            FROM permisos_botones pb
-            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
-            JOIN usuario_roles ur ON rpb.rol_id = ur.rol_id
-            WHERE ur.usuario_id = %s AND pb.activo = 1
-            ORDER BY pb.pagina, pb.seccion, pb.boton
-            LIMIT 10
-        ''', (usuario_id,))
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN roles r ON ur.rol_id = r.id
+            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
+            ORDER BY r.nivel DESC
+            LIMIT 1
+        ''', (username,))
         
-        permisos_raw = cursor.fetchall()
+        usuario_rol = cursor.fetchone()
+        if not usuario_rol:
+            return jsonify({'error': 'Usuario sin roles asignados'}), 403
+        
+        rol_nombre = usuario_rol[0]
+        
+        # Si es superadmin, devolver permisos completos
+        if rol_nombre == 'superadmin':
+            permisos_test = {
+                'usuario': username,
+                'rol': rol_nombre,
+                'tipo': 'superadmin_completo',
+                'permisos': {
+                    'LISTA_DE_MATERIALES': {
+                        'header': ['nuevo', 'editar', 'eliminar', 'exportar', 'importar'],
+                        'tabla': ['ver', 'filtrar', 'ordenar'],
+                        'acciones': ['guardar', 'cancelar', 'actualizar']
+                    },
+                    'CONTROL_MATERIAL': {
+                        'header': ['nuevo', 'editar', 'eliminar', 'exportar'],
+                        'tabla': ['ver', 'filtrar', 'ordenar'],
+                        'acciones': ['guardar', 'cancelar']
+                    }
+                }
+            }
+        else:
+            # Obtener permisos específicos del rol
+            cursor.execute('''
+                SELECT DISTINCT rpb.pagina, rpb.seccion, rpb.boton 
+                FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                WHERE u.username = %s AND u.activo = 1
+                ORDER BY rpb.pagina, rpb.seccion, rpb.boton
+                LIMIT 10
+            ''', (username,))
+            
+            permisos_raw = cursor.fetchall()
+            
+            # Organizar permisos
+            permisos_lista = []
+            for permiso in permisos_raw:
+                pagina, seccion, boton = permiso
+                permisos_lista.append({
+                    'pagina': pagina,
+                    'seccion': seccion, 
+                    'boton': boton
+                })
+            
+            permisos_test = {
+                'usuario': username,
+                'rol': rol_nombre,
+                'tipo': 'permisos_especificos',
+                'permisos_lista': permisos_lista
+            }
+        
         conn.close()
-        
-        # Organizar permisos
-        permisos_test = []
-        for permiso in permisos_raw:
-            pagina, seccion, boton = permiso
-            permisos_test.append({
-                'pagina': pagina,
-                'seccion': seccion, 
-                'boton': boton
-            })
         
         return jsonify({
             'usuario_id': usuario_id,
-            'total_permisos_muestra': len(permisos_test),
-            'permisos': permisos_test,
+            'total_permisos_muestra': len(permisos_test.get('permisos_lista', [])) if 'permisos_lista' in permisos_test else len(permisos_test.get('permisos', {})),
+            'resultado': permisos_test,
             'status': 'debug_ok'
         })
         

@@ -48,3 +48,236 @@
 2025-07-31 21:52:33,561 - INFO - [33mPress CTRL+C to quit[0m
 2025-07-31 21:52:36,083 - INFO - 127.0.0.1 - - [31/Jul/2025 21:52:36] "[33mGET /?ide_webview_request_time=1754020355767 HTTP/1.1[0m" 404 -
 2025-07-31 21:52:36,347 - INFO - 127.0.0.1 - - [31/Jul/2025 21:52:36] "[33mGET /@vite/client HTTP/1.1[0m" 404 -
+2025-08-01 10:25:57,329 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.218:5001
+2025-08-01 10:25:57,330 - INFO - [33mPress CTRL+C to quit[0m
+2025-08-01 10:36:50,221 - INFO - 127.0.0.1 - - [01/Aug/2025 10:36:50] "[33mGET /status HTTP/1.1[0m" 404 -
+2025-08-01 10:36:58,154 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.218:5001
+2025-08-01 10:36:58,155 - INFO - [33mPress CTRL+C to quit[0m
+2025-08-01 10:37:10,812 - INFO - 127.0.0.1 - - [01/Aug/2025 10:37:10] "[33mGET /status HTTP/1.1[0m" 404 -
+2025-08-01 10:38:34,283 - INFO - 127.0.0.1 - - [01/Aug/2025 10:38:34] "GET /health HTTP/1.1" 200 -
+2025-08-01 10:38:36,333 - INFO - 127.0.0.1 - - [01/Aug/2025 10:38:36] "[31m[1mPOST /execute HTTP/1.1[0m" 401 -
+2025-08-01 10:38:38,383 - INFO - 127.0.0.1 - - [01/Aug/2025 10:38:38] "[31m[1mPOST /execute HTTP/1.1[0m" 401 -
+2025-08-01 10:39:26,931 - INFO - 127.0.0.1 - - [01/Aug/2025 10:39:26] "GET /health HTTP/1.1" 200 -
+2025-08-01 10:39:28,982 - INFO - Ejecutando query: 
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur O...
+2025-08-01 10:39:28,997 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:39:28,998 - INFO - 127.0.0.1 - - [01/Aug/2025 10:39:28] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:39:31,045 - INFO - Ejecutando query: 
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur O...
+2025-08-01 10:39:31,047 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:39:31,048 - INFO - 127.0.0.1 - - [01/Aug/2025 10:39:31] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:40:43,470 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:43] "GET /health HTTP/1.1" 200 -
+2025-08-01 10:40:45,514 - INFO - Ejecutando query: 
+            SELECT id, username, email, activo, fecha_creacion
+            FROM usuarios_sistema
+  ...
+2025-08-01 10:40:45,516 - INFO - Query SELECT ejecutado exitosamente. Filas: 3
+2025-08-01 10:40:45,517 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:45] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:40:47,554 - INFO - Ejecutando query: 
+            SELECT id, nombre, descripcion, nivel, activo
+            FROM roles
+            ORDER ...
+2025-08-01 10:40:47,568 - INFO - Query SELECT ejecutado exitosamente. Filas: 9
+2025-08-01 10:40:47,569 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:47] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:40:49,620 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:40:49,634 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:40:49,635 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:49] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:40:51,669 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:40:51,672 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:40:51,672 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:51] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:40:53,705 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:40:53,708 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:40:53,708 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:53] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:40:55,760 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:40:55,762 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:40:55,763 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:55] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:40:57,811 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:40:57,812 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:40:57,813 - INFO - 127.0.0.1 - - [01/Aug/2025 10:40:57] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:22,523 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:22] "GET /health HTTP/1.1" 200 -
+2025-08-01 10:43:24,545 - INFO - Ejecutando query: 
+            SELECT id, username, email, activo, fecha_creacion
+            FROM usuarios_sistema
+  ...
+2025-08-01 10:43:24,560 - INFO - Query SELECT ejecutado exitosamente. Filas: 3
+2025-08-01 10:43:24,560 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:24] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:26,606 - INFO - Ejecutando query: 
+                SELECT r.nombre, r.nivel
+                FROM usuario_roles ur
+                JOIN...
+2025-08-01 10:43:26,608 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:26,609 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:26] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:28,650 - INFO - Ejecutando query: 
+                SELECT r.nombre, r.nivel
+                FROM usuario_roles ur
+                JOIN...
+2025-08-01 10:43:28,665 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:28,666 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:28] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:30,711 - INFO - Ejecutando query: 
+                SELECT r.nombre, r.nivel
+                FROM usuario_roles ur
+                JOIN...
+2025-08-01 10:43:30,713 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:30,714 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:30] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:32,761 - INFO - Ejecutando query: 
+            SELECT id, nombre, descripcion, nivel, activo
+            FROM roles
+            ORDER ...
+2025-08-01 10:43:32,764 - INFO - Query SELECT ejecutado exitosamente. Filas: 9
+2025-08-01 10:43:32,764 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:32] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:34,821 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:34,824 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:34,825 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:34] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:36,868 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:36,870 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:36,871 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:36] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:38,933 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:38,936 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:38,936 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:38] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:40,986 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:41,002 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:41,002 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:41] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:43,068 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:43,071 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:43,072 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:43] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:45,124 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:45,126 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:45,127 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:45] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:47,172 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:47,174 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:47,175 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:47] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:49,222 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:49,224 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:49,225 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:49] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:51,271 - INFO - Ejecutando query: 
+                SELECT COUNT(*) FROM usuario_roles WHERE rol_id = %s
+            ...
+2025-08-01 10:43:51,274 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:43:51,275 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:51] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:53,326 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:43:53,329 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:43:53,330 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:53] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:55,391 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:43:55,393 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:43:55,394 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:55] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:57,441 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:43:57,443 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:43:57,443 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:57] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:43:59,493 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:43:59,495 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:43:59,496 - INFO - 127.0.0.1 - - [01/Aug/2025 10:43:59] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:44:01,544 - INFO - Ejecutando query: 
+            SELECT id, username, activo
+            FROM usuarios_sistema
+            WHERE usernam...
+2025-08-01 10:44:01,546 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:44:01,547 - INFO - 127.0.0.1 - - [01/Aug/2025 10:44:01] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:44:38,595 - INFO - 127.0.0.1 - - [01/Aug/2025 10:44:38] "GET /health HTTP/1.1" 200 -
+2025-08-01 10:44:40,631 - INFO - Ejecutando query: 
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur O...
+2025-08-01 10:44:40,646 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:44:40,647 - INFO - 127.0.0.1 - - [01/Aug/2025 10:44:40] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:44:42,690 - INFO - Ejecutando query: 
+            SELECT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur O...
+2025-08-01 10:44:42,692 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:44:42,693 - INFO - 127.0.0.1 - - [01/Aug/2025 10:44:42] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:01,561 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:01] "GET /health HTTP/1.1" 200 -
+2025-08-01 10:54:03,610 - INFO - Ejecutando query: SELECT id, username, email, activo FROM usuarios_sistema ORDER BY id...
+2025-08-01 10:54:03,611 - INFO - Query SELECT ejecutado exitosamente. Filas: 3
+2025-08-01 10:54:03,612 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:03] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:05,663 - INFO - Ejecutando query: 
+                SELECT r.nombre, r.nivel
+                FROM usuario_roles ur
+                JOIN...
+2025-08-01 10:54:05,665 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:54:05,665 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:05] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:07,717 - INFO - Ejecutando query: 
+                SELECT r.nombre, r.nivel
+                FROM usuario_roles ur
+                JOIN...
+2025-08-01 10:54:07,732 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:54:07,733 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:07] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:09,778 - INFO - Ejecutando query: 
+                SELECT r.nombre, r.nivel
+                FROM usuario_roles ur
+                JOIN...
+2025-08-01 10:54:09,780 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:54:09,781 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:09] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:11,833 - INFO - Ejecutando query: SELECT id, username, email, activo FROM usuarios_sistema WHERE username = %s...
+2025-08-01 10:54:11,835 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:54:11,836 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:11] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:13,872 - INFO - Ejecutando query: SELECT id, username, email, activo FROM usuarios_sistema WHERE username = %s...
+2025-08-01 10:54:13,875 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:54:13,876 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:13] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:15,927 - INFO - Ejecutando query: SELECT id, username, email, activo FROM usuarios_sistema WHERE username = %s...
+2025-08-01 10:54:15,928 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:54:15,929 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:15] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:17,973 - INFO - Ejecutando query: SELECT id, username, email, activo FROM usuarios_sistema WHERE username = %s...
+2025-08-01 10:54:17,975 - INFO - Query SELECT ejecutado exitosamente. Filas: 0
+2025-08-01 10:54:17,975 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:17] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:20,019 - INFO - Ejecutando query: SELECT id, username, email, activo FROM usuarios_sistema WHERE username = %s...
+2025-08-01 10:54:20,021 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:54:20,021 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:20] "POST /execute HTTP/1.1" 200 -
+2025-08-01 10:54:22,062 - INFO - Ejecutando query: 
+            SELECT r.nombre, r.nivel
+            FROM usuario_roles ur
+            JOIN roles r ON ...
+2025-08-01 10:54:22,064 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-08-01 10:54:22,065 - INFO - 127.0.0.1 - - [01/Aug/2025 10:54:22] "POST /execute HTTP/1.1" 200 -
