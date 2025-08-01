@@ -1,10 +1,24 @@
-Flask
-pymysql==1.1.0
-python-dotenv==1.0.0
-pandas
-openpyxl==3.1.2
-xlrd==2.0.1
-Werkzeug==2.3.6
-beautifulsoup4==4.13.4
+# Dependencias principales para ISEMM MES
+# Versiones compatibles para hosting
+Flask>=2.3.0,<3.0.0
+Werkzeug>=2.3.0,<3.0.0
+pymysql>=1.0.0
+python-dotenv>=1.0.0
+
+# Para manejo de archivos Excel
+pandas>=2.0.0
+openpyxl>=3.1.0
+xlrd>=2.0.0
+
+# Para web scraping y parsing
+beautifulsoup4>=4.12.0
+
+# Para el proxy HTTP
+flask-cors>=4.0.0
+requests>=2.30.0
+
+# Utilidades
+psutil>=5.9.0
+pytz>=2023.3
 
 

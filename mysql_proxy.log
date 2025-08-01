@@ -1,0 +1,18 @@
+2025-07-31 21:12:29,948 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.218:5001
+2025-07-31 21:12:29,948 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-31 21:12:33,385 - INFO - 127.0.0.1 - - [31/Jul/2025 21:12:33] "GET /health HTTP/1.1" 200 -
+2025-07-31 21:12:35,450 - INFO - 127.0.0.1 - - [31/Jul/2025 21:12:35] "GET /health HTTP/1.1" 200 -
+2025-07-31 21:12:37,499 - INFO - Ejecutando query: SELECT 1 as test...
+2025-07-31 21:12:37,507 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-07-31 21:12:37,508 - INFO - 127.0.0.1 - - [31/Jul/2025 21:12:37] "POST /execute HTTP/1.1" 200 -
+2025-07-31 21:13:53,927 - INFO - 127.0.0.1 - - [31/Jul/2025 21:13:53] "GET /health HTTP/1.1" 200 -
+2025-07-31 21:13:56,992 - INFO - 127.0.0.1 - - [31/Jul/2025 21:13:56] "GET /info HTTP/1.1" 200 -
+2025-07-31 21:14:00,042 - INFO - Ejecutando query: SELECT 1 as test, NOW() as timestamp...
+2025-07-31 21:14:00,057 - INFO - Query SELECT ejecutado exitosamente. Filas: 2
+2025-07-31 21:14:00,057 - INFO - 127.0.0.1 - - [31/Jul/2025 21:14:00] "POST /execute HTTP/1.1" 200 -
+2025-07-31 21:14:03,097 - INFO - Ejecutando query: SELECT COUNT(*) as total_usuarios FROM usuarios_sistema...
+2025-07-31 21:14:03,112 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
+2025-07-31 21:14:03,113 - INFO - 127.0.0.1 - - [31/Jul/2025 21:14:03] "POST /execute HTTP/1.1" 200 -
