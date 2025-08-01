@@ -1,8 +1,14 @@
 # Dependencias principales para ISEMM MES
-# Versiones compatibles para hosting
+# Versiones compatibles para hosting y desarrollo
+
+# Framework web principal
 Flask>=2.3.0,<3.0.0
 Werkzeug>=2.3.0,<3.0.0
+
+# Base de datos
 pymysql>=1.0.0
+
+# Configuración
 python-dotenv>=1.0.0
 
 # Para manejo de archivos Excel
@@ -13,11 +19,11 @@ xlrd>=2.0.0
 # Para web scraping y parsing
 beautifulsoup4>=4.12.0
 
-# Para el proxy HTTP
+# Para el proxy HTTP MySQL (opcional)
 flask-cors>=4.0.0
 requests>=2.30.0
 
-# Utilidades
+# Utilidades básicas
 psutil>=5.9.0
 pytz>=2023.3
 

@@ -16,3 +16,35 @@
 2025-07-31 21:14:03,097 - INFO - Ejecutando query: SELECT COUNT(*) as total_usuarios FROM usuarios_sistema...
 2025-07-31 21:14:03,112 - INFO - Query SELECT ejecutado exitosamente. Filas: 1
 2025-07-31 21:14:03,113 - INFO - 127.0.0.1 - - [31/Jul/2025 21:14:03] "POST /execute HTTP/1.1" 200 -
+2025-07-31 21:28:57,283 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.218:5001
+2025-07-31 21:28:57,284 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-31 21:36:14,805 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.218:5001
+2025-07-31 21:36:14,805 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-31 21:39:11,861 - INFO - 192.168.0.218 - - [31/Jul/2025 21:39:11] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:39:11,887 - INFO - 192.168.0.218 - - [31/Jul/2025 21:39:11] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-07-31 21:39:13,413 - INFO - 192.168.0.218 - - [31/Jul/2025 21:39:13] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:39:13,626 - INFO - 192.168.0.218 - - [31/Jul/2025 21:39:13] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:39:13,815 - INFO - 192.168.0.218 - - [31/Jul/2025 21:39:13] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:39:13,982 - INFO - 192.168.0.218 - - [31/Jul/2025 21:39:13] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:39:14,137 - INFO - 192.168.0.218 - - [31/Jul/2025 21:39:14] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:45:15,884 - INFO - 127.0.0.1 - - [31/Jul/2025 21:45:15] "[33mGET /?ide_webview_request_time=1754018940102 HTTP/1.1[0m" 404 -
+2025-07-31 21:45:16,052 - INFO - 127.0.0.1 - - [31/Jul/2025 21:45:16] "[33mGET /@vite/client HTTP/1.1[0m" 404 -
+2025-07-31 21:45:49,018 - INFO - 127.0.0.1 - - [31/Jul/2025 21:45:49] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:45:49,262 - INFO - 127.0.0.1 - - [31/Jul/2025 21:45:49] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-07-31 21:46:31,174 - INFO - 127.0.0.1 - - [31/Jul/2025 21:46:31] "GET /health HTTP/1.1" 200 -
+2025-07-31 21:46:35,237 - INFO - 100.73.213.50 - - [31/Jul/2025 21:46:35] "[33mGET / HTTP/1.1[0m" 404 -
+2025-07-31 21:46:35,535 - INFO - 100.73.213.50 - - [31/Jul/2025 21:46:35] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-07-31 21:48:44,657 - INFO - 100.111.108.116 - - [31/Jul/2025 21:48:44] "GET /health HTTP/1.1" 200 -
+2025-07-31 21:52:33,560 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.216:5001
+2025-07-31 21:52:33,561 - INFO - [33mPress CTRL+C to quit[0m
+2025-07-31 21:52:36,083 - INFO - 127.0.0.1 - - [31/Jul/2025 21:52:36] "[33mGET /?ide_webview_request_time=1754020355767 HTTP/1.1[0m" 404 -
+2025-07-31 21:52:36,347 - INFO - 127.0.0.1 - - [31/Jul/2025 21:52:36] "[33mGET /@vite/client HTTP/1.1[0m" 404 -
