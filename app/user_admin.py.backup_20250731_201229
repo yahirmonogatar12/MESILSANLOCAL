@@ -90,35 +90,9 @@ def listar_usuarios():
         usuarios = []
         for row in cursor.fetchall():
             usuario = dict(row)
-            
-            # Corregir acceso a roles
-            roles_str = usuario.get('roles', '') or ''
-            usuario['roles'] = roles_str.split(',') if roles_str else []
-            
-            # Convertir campos de fecha/hora a strings para JSON
-            for campo in ['ultimo_acceso', 'fecha_creacion', 'bloqueado_hasta', 'fecha_modificacion']:
-                if usuario.get(campo):
-                    # Convertir datetime/timestamp a string
-                    valor = usuario[campo]
-                    if hasattr(valor, 'strftime'):
-                        usuario[campo] = valor.strftime('%Y-%m-%d %H:%M:%S')
-                    else:
-                        usuario[campo] = str(valor)
-            
-            # Corregir verificación de bloqueo
-            bloqueado_hasta = usuario.get('bloqueado_hasta')
-            if bloqueado_hasta:
-                try:
-                    if isinstance(bloqueado_hasta, str):
-                        fecha_bloqueo = datetime.fromisoformat(bloqueado_hasta)
-                    else:
-                        fecha_bloqueo = bloqueado_hasta
-                    usuario['bloqueado'] = fecha_bloqueo > auth_system.get_mexico_time().replace(tzinfo=None)
-                except:
-                    usuario['bloqueado'] = False
-            else:
-                usuario['bloqueado'] = False
-                
+            usuario['roles'] = row['roles'].split(',') if row['roles'] else []
+            usuario['bloqueado'] = bool(row['bloqueado_hasta'] and 
+                                      datetime.fromisoformat(row['bloqueado_hasta']) > auth_system.get_mexico_time().replace(tzinfo=None))
             usuarios.append(usuario)
         
         conn.close()
@@ -284,15 +258,15 @@ def guardar_usuario():
             mensaje = f'Usuario {data["username"]} creado'
         
         # Actualizar roles
-        cursor.execute('DELETE FROM usuario_roles WHERE usuario_id = %s', (usuario_id,))
+        cursor.execute('DELETE FROM usuario_roles WHERE usuario_id = ?', (usuario_id,))
         
         for rol_nombre in data.get('roles', []):
-            cursor.execute('SELECT id FROM roles WHERE nombre = %s', (rol_nombre,))
+            cursor.execute('SELECT id FROM roles WHERE nombre = ?', (rol_nombre,))
             rol = cursor.fetchone()
             if rol:
                 cursor.execute('''
                     INSERT INTO usuario_roles (usuario_id, rol_id, asignado_por)
-                    VALUES (%s, %s, %s)
+                    VALUES (?, ?, ?)
                 ''', (usuario_id, rol['id'], usuario_actual))
         
         conn.commit()
@@ -353,7 +327,7 @@ def cambiar_estado_usuario():
         
         cursor.execute('''
             UPDATE usuarios_sistema 
-            SET activo = %s, modificado_por = %s, fecha_modificacion = NOW()
+            SET activo = %s, modificado_por = %s, fecha_modificacion = CURRENT_TIMESTAMP
             WHERE username = %s
         ''', (1 if activo else 0, usuario_actual, username))
         
@@ -405,8 +379,8 @@ def desbloquear_usuario():
         cursor.execute('''
             UPDATE usuarios_sistema 
             SET intentos_fallidos = 0, bloqueado_hasta = NULL,
-                modificado_por = %s, fecha_modificacion = NOW()
-            WHERE username = %s
+                modificado_por = ?, fecha_modificacion = CURRENT_TIMESTAMP
+            WHERE username = ?
         ''', (usuario_actual, username))
         
         if cursor.rowcount > 0:
@@ -808,8 +782,8 @@ def sincronizar_permisos_dropdowns():
             
             cursor.execute('''
                 UPDATE permisos_botones 
-                SET descripcion = %s 
-                WHERE pagina = %s AND seccion = %s AND boton = %s AND activo = 1
+                SET descripcion = ? 
+                WHERE pagina = ? AND seccion = ? AND boton = ? AND activo = 1
             ''', (permiso_completo['descripcion'], pagina, seccion, boton))
         
         conn.commit()
@@ -905,7 +879,7 @@ def actualizar_permisos_botones_rol():
         cursor = conn.cursor()
         
         # Obtener nombre del rol para auditoría
-        cursor.execute('SELECT nombre FROM roles WHERE id = %s', (rol_id,))
+        cursor.execute('SELECT nombre FROM roles WHERE id = ?', (rol_id,))
         rol = cursor.fetchone()
         if not rol:
             return jsonify({'error': 'Rol no encontrado'}), 404
@@ -934,7 +908,7 @@ def actualizar_permisos_botones_rol():
             SELECT pb.boton, pb.pagina, pb.seccion
             FROM permisos_botones pb
             JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
-            WHERE rpb.rol_id = %s
+            WHERE rpb.rol_id = ?
         ''', (rol_id,))
         permisos_nuevos = [dict(row) for row in cursor.fetchall()]
         
@@ -1150,7 +1124,7 @@ def detalle_auditoria(id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT * FROM auditoria WHERE id = %s', (id,))
+        cursor.execute('SELECT * FROM auditoria WHERE id = ?', (id,))
         registro = cursor.fetchone()
         
         if not registro:
@@ -1353,7 +1327,7 @@ def actividad_reciente():
                 MAX(fecha_hora) as ultima_actividad,
                 MAX(accion) as ultima_accion
             FROM auditoria 
-            WHERE fecha_hora >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+            WHERE fecha_hora >= datetime('now', '-15 minutes')
             GROUP BY usuario
             ORDER BY ultima_actividad DESC
         ''')
@@ -1446,7 +1420,7 @@ def test_permisos_debug():
         cursor = conn.cursor()
         
         # Obtener ID del usuario admin
-        cursor.execute('SELECT id FROM usuarios_sistema WHERE username = %s', ('admin',))
+        cursor.execute('SELECT id FROM usuarios_sistema WHERE username = ?', ('admin',))
         admin_result = cursor.fetchone()
         
         if not admin_result:
@@ -1459,7 +1433,7 @@ def test_permisos_debug():
             FROM permisos_botones pb
             JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
             JOIN usuario_roles ur ON rpb.rol_id = ur.rol_id
-            WHERE ur.usuario_id = %s AND pb.activo = 1
+            WHERE ur.usuario_id = ? AND pb.activo = 1
             ORDER BY pb.pagina, pb.seccion, pb.boton
             LIMIT 10
         ''', (usuario_id,))
@@ -1516,7 +1490,7 @@ def crear_rol():
         cursor = conn.cursor()
         
         # Verificar que el nombre no exista
-        cursor.execute('SELECT id FROM roles WHERE nombre = %s', (data['nombre'],))
+        cursor.execute('SELECT id FROM roles WHERE nombre = ?', (data['nombre'],))
         if cursor.fetchone():
             return jsonify({'error': 'Ya existe un rol con ese nombre'}), 400
         
@@ -1527,7 +1501,7 @@ def crear_rol():
             # Crear el rol
             cursor.execute('''
                 INSERT INTO roles (nombre, descripcion, nivel, activo)
-                VALUES (%s, %s, %s, 1)
+                VALUES (?, ?, ?, 1)
             ''', (data['nombre'], data['descripcion'], nivel))
             
             rol_id = cursor.lastrowid
@@ -1553,7 +1527,7 @@ def crear_rol():
                 SELECT r.*, COUNT(ur.usuario_id) as total_usuarios
                 FROM roles r
                 LEFT JOIN usuario_roles ur ON r.id = ur.rol_id
-                WHERE r.id = %s
+                WHERE r.id = ?
                 GROUP BY r.id
             ''', (rol_id,))
             
@@ -1599,7 +1573,7 @@ def eliminar_rol(rol_id):
         cursor = conn.cursor()
         
         # Verificar que el rol existe
-        cursor.execute('SELECT * FROM roles WHERE id = %s', (rol_id,))
+        cursor.execute('SELECT * FROM roles WHERE id = ?', (rol_id,))
         rol = cursor.fetchone()
         if not rol:
             print(f"❌ Rol ID {rol_id} no encontrado")
@@ -1616,7 +1590,7 @@ def eliminar_rol(rol_id):
             return jsonify({'error': 'No se puede eliminar un rol del sistema'}), 400
         
         # Verificar que no tenga usuarios asignados
-        cursor.execute('SELECT COUNT(*) as total FROM usuario_roles WHERE rol_id = %s', (rol_id,))
+        cursor.execute('SELECT COUNT(*) as total FROM usuario_roles WHERE rol_id = ?', (rol_id,))
         usuarios_asignados = cursor.fetchone()['total']
         print(f"👥 Usuarios asignados al rol: {usuarios_asignados}")
         
@@ -1634,17 +1608,17 @@ def eliminar_rol(rol_id):
         try:
             # Eliminar permisos asociados al rol
             print("🧹 Eliminando permisos del rol...")
-            cursor.execute('DELETE FROM rol_permisos WHERE rol_id = %s', (rol_id,))
+            cursor.execute('DELETE FROM rol_permisos WHERE rol_id = ?', (rol_id,))
             permisos_eliminados = cursor.rowcount
             print(f"  - Permisos generales eliminados: {permisos_eliminados}")
             
-            cursor.execute('DELETE FROM rol_permisos_botones WHERE rol_id = %s', (rol_id,))
+            cursor.execute('DELETE FROM rol_permisos_botones WHERE rol_id = ?', (rol_id,))
             permisos_botones_eliminados = cursor.rowcount
             print(f"  - Permisos de botones eliminados: {permisos_botones_eliminados}")
             
             # Eliminar el rol
             print("🗑️ Eliminando el rol...")
-            cursor.execute('DELETE FROM roles WHERE id = %s', (rol_id,))
+            cursor.execute('DELETE FROM roles WHERE id = ?', (rol_id,))
             rol_eliminado = cursor.rowcount
             print(f"  - Roles eliminados: {rol_eliminado}")
             
@@ -1716,7 +1690,7 @@ def actualizar_rol(rol_id):
         cursor = conn.cursor()
         
         # Verificar que el rol existe
-        cursor.execute('SELECT * FROM roles WHERE id = %s', (rol_id,))
+        cursor.execute('SELECT * FROM roles WHERE id = ?', (rol_id,))
         rol = cursor.fetchone()
         if not rol:
             return jsonify({'error': 'Rol no encontrado'}), 404
@@ -1742,7 +1716,7 @@ def actualizar_rol(rol_id):
         
         # Verificar que el nombre no exista en otro rol
         if nombre != rol_dict['nombre']:
-            cursor.execute('SELECT id FROM roles WHERE nombre = %s AND id != %s', (nombre, rol_id))
+            cursor.execute('SELECT id FROM roles WHERE nombre = ? AND id != ?', (nombre, rol_id))
             if cursor.fetchone():
                 return jsonify({'error': 'Ya existe otro rol con ese nombre'}), 400
         
@@ -1753,8 +1727,8 @@ def actualizar_rol(rol_id):
             # Actualizar el rol
             cursor.execute('''
                 UPDATE roles 
-                SET nombre = %s, descripcion = %s, nivel = %s
-                WHERE id = %s
+                SET nombre = ?, descripcion = ?, nivel = ?
+                WHERE id = ?
             ''', (nombre, descripcion, nivel, rol_id))
             
             # Registrar en auditoría
@@ -1770,7 +1744,7 @@ def actualizar_rol(rol_id):
             cursor.execute('''
                 INSERT INTO auditoria_usuarios (
                     usuario, accion, detalles, fecha_hora
-                ) VALUES (%s, %s, %s, ?)
+                ) VALUES (?, ?, ?, ?)
             ''', (
                 usuario_actual,
                 'actualizar_rol',
@@ -1786,7 +1760,7 @@ def actualizar_rol(rol_id):
                 SELECT r.*, COUNT(ur.usuario_id) as total_usuarios
                 FROM roles r
                 LEFT JOIN usuario_roles ur ON r.id = ur.rol_id
-                WHERE r.id = %s
+                WHERE r.id = ?
                 GROUP BY r.id
             ''', (rol_id,))
             

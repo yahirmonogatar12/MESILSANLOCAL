@@ -164,7 +164,7 @@ html, body {
   visibility: visible !important;
   opacity: 1 !important;
   min-height: 300px;
-  padding: 20px;
+  padding: 5px;
 }
 
 #informacion-basica-content .app-container {
@@ -194,7 +194,7 @@ html, body {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 5px;
   background-color: #32323E;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -440,7 +440,7 @@ html, body {
 .informacion-basica-content-area > div {
     background-color: #32323E;
     color: lightgray;
-    padding: 20px;
+    padding: 5px;
     border-radius: 0;
     box-shadow: none;
     margin-bottom: 0;

@@ -175,6 +175,9 @@
     <script src="/static/js/permisos-botones-simple.js"></script>
     <script src="/static/js/scriptMain.js"></script>
     
+    <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
+    <script src="/static/js/ajax-content-manager.js"></script>
+    
 </head>
 <body>
     
@@ -1902,7 +1905,7 @@
             window.mostrarControlBOMInfo = function() {
                 // Verificar permisos antes de continuar
                 if (typeof PermisosDropdowns !== 'undefined' && 
-                    !PermisosDropdowns.tienePermiso('LISTA_INFORMACIONBASICA', 'Información básica', 'Control de BOM')) {
+                    !PermisosDropdowns.tienePermiso('LISTA_INFORMACIONBASICA', 'Control de produccion', 'Control de BOM')) {
                     alert('⚠️ No tienes permisos para acceder a: Control de BOM');
                     return false;
                 }

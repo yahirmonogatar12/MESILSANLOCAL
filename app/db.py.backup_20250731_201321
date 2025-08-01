@@ -1,13 +1,6 @@
 """Módulo de base de datos principal - Migrado a MySQL
 Mantiene compatibilidad con las funciones existentes de SQLite"""
 
-def is_mysql_connection():
-    """Detectar si estamos usando MySQL"""
-    from .db_mysql import MYSQL_AVAILABLE
-    return MYSQL_AVAILABLE
-
-
-
 import os
 import pandas as pd
 from dotenv import load_dotenv
@@ -185,7 +178,7 @@ def init_sqlite_db():
         # Crear tablas básicas de SQLite
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS usuarios (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE,
                 password_hash TEXT,
                 area TEXT
@@ -194,7 +187,7 @@ def init_sqlite_db():
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS materiales (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 numero_parte TEXT UNIQUE,
                 descripcion TEXT,
                 categoria TEXT,
@@ -245,7 +238,7 @@ def agregar_entrada_aereo(data):
                 (forma_material, cliente, codigo_material, fecha_fabricacion, 
                  origen_material, cantidad_actual, fecha_recibo, lote_material, 
                  codigo_recibido, numero_parte, propiedad)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 data.get('forma_material'),
                 data.get('cliente'),

@@ -90,7 +90,7 @@ def get_role_permissions(role_name):
             FROM rol_permisos_botones rpb
             JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
             JOIN roles r ON rpb.rol_id = r.id
-            WHERE r.nombre = %s
+            WHERE r.nombre = ?
             ORDER BY pb.pagina, pb.seccion, pb.boton
         """, (role_name,))
         
@@ -139,7 +139,7 @@ def toggle_permission():
         cursor = conn.cursor()
         
         # Obtener IDs de rol y permiso
-        cursor.execute("SELECT id FROM roles WHERE nombre = %s", (role,))
+        cursor.execute("SELECT id FROM roles WHERE nombre = ?", (role,))
         rol_result = cursor.fetchone()
         if not rol_result:
             return jsonify({'error': f'Rol {role} no encontrado'}), 404
@@ -147,7 +147,7 @@ def toggle_permission():
         
         cursor.execute("""
             SELECT id FROM permisos_botones 
-            WHERE pagina = %s AND seccion = %s AND boton = %s
+            WHERE pagina = ? AND seccion = ? AND boton = ?
         """, (pagina, seccion, boton))
         permiso_result = cursor.fetchone()
         if not permiso_result:
@@ -160,13 +160,13 @@ def toggle_permission():
             # Verificar si ya existe
             cursor.execute("""
                 SELECT COUNT(*) FROM rol_permisos_botones 
-                WHERE rol_id = %s AND permiso_boton_id = %s
+                WHERE rol_id = ? AND permiso_boton_id = ?
             """, (rol_id, permiso_id))
             
             if cursor.fetchone()[0] == 0:
                 cursor.execute("""
                     INSERT INTO rol_permisos_botones (rol_id, permiso_boton_id, fecha_asignacion) 
-                    VALUES (%s, %s, NOW())
+                    VALUES (?, ?, datetime('now'))
                 """, (rol_id, permiso_id))
                 message = f'Permiso {pagina}>{seccion}>{boton} asignado a {role}'
             else:
@@ -175,7 +175,7 @@ def toggle_permission():
         elif action == 'remove':
             cursor.execute("""
                 DELETE FROM rol_permisos_botones 
-                WHERE rol_id = %s AND permiso_boton_id = %s
+                WHERE rol_id = ? AND permiso_boton_id = ?
             """, (rol_id, permiso_id))
             message = f'Permiso {pagina}>{seccion}>{boton} removido de {role}'
         else:
@@ -206,7 +206,7 @@ def enable_all_permissions():
         cursor = conn.cursor()
         
         # Obtener ID del rol
-        cursor.execute("SELECT id FROM roles WHERE nombre = %s", (role,))
+        cursor.execute("SELECT id FROM roles WHERE nombre = ?", (role,))
         rol_result = cursor.fetchone()
         if not rol_result:
             return jsonify({'error': f'Rol {role} no encontrado'}), 404
@@ -223,7 +223,7 @@ def enable_all_permissions():
             # Insertar solo si no existe (ignorar duplicados)
             cursor.execute("""
                 INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id, fecha_asignacion) 
-                VALUES (%s, %s, NOW())
+                VALUES (?, ?, datetime('now'))
             """, (rol_id, permiso_id))
             
             if cursor.rowcount > 0:
@@ -254,7 +254,7 @@ def disable_all_permissions():
         cursor = conn.cursor()
         
         # Obtener ID del rol
-        cursor.execute("SELECT id FROM roles WHERE nombre = %s", (role,))
+        cursor.execute("SELECT id FROM roles WHERE nombre = ?", (role,))
         rol_result = cursor.fetchone()
         if not rol_result:
             return jsonify({'error': f'Rol {role} no encontrado'}), 404
@@ -263,7 +263,7 @@ def disable_all_permissions():
         # Eliminar todos los permisos para este rol
         cursor.execute("""
             DELETE FROM rol_permisos_botones 
-            WHERE rol_id = %s
+            WHERE rol_id = ?
         """, (rol_id,))
         
         affected = cursor.rowcount

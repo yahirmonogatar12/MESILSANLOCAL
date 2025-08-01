@@ -16,8 +16,7 @@ from .db import (get_db_connection, init_db, test_database_connection,
 from .db_mysql import (
     execute_query, obtener_materiales, guardar_material,
     obtener_inventario, actualizar_inventario,
-    obtener_bom_por_modelo, guardar_bom_item, obtener_modelos_bom,
-    listar_bom_por_modelo, insertar_bom_desde_dataframe,
+    obtener_bom_por_modelo, guardar_bom_item,
     guardar_configuracion, cargar_configuracion
 )
 import pandas as pd
@@ -1210,7 +1209,7 @@ def guardar_control_almacen():
                 numero_lote_material, codigo_material_recibido, numero_parte, cantidad_estandarizada,
                 codigo_material_final, propiedad_material, especificacion, material_importacion_local_final,
                 estado_desecho, ubicacion_salida
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data.get('forma_material', ''),
             data.get('cliente', ''),
@@ -1292,11 +1291,11 @@ def consultar_control_almacen():
         params = []
         
         if fecha_inicio:
-            query += ' AND date(fecha_recibo) >= %s'
+            query += ' AND date(fecha_recibo) >= ?'
             params.append(fecha_inicio)
             
         if fecha_fin:
-            query += ' AND date(fecha_recibo) <= %s'
+            query += ' AND date(fecha_recibo) <= ?'
             params.append(fecha_fin)
             
         query += ' ORDER BY fecha_registro DESC'
@@ -1408,8 +1407,8 @@ def actualizar_estado_desecho_almacen():
         
         cursor.execute('''
             UPDATE control_material_almacen 
-            SET estado_desecho = %s 
-            WHERE id = %s
+            SET estado_desecho = ? 
+            WHERE id = ?
         ''', (estado_valor, registro_id))
         
         if cursor.rowcount == 0:
@@ -1700,11 +1699,11 @@ def consultar_especificacion_por_numero_parte():
         
         # Intentar diferentes consultas para encontrar el material
         consultas = [
-            "SELECT * FROM materiales WHERE numero_parte = %s",
-            "SELECT * FROM materiales WHERE TRIM(numero_parte) = %s",
+            "SELECT * FROM materiales WHERE numero_parte = ?",
+            "SELECT * FROM materiales WHERE TRIM(numero_parte) = ?",
             "SELECT * FROM materiales WHERE numero_parte LIKE ?",
-            "SELECT * FROM materiales WHERE codigo_material = %s",
-            "SELECT * FROM materiales WHERE codigo_material_original = %s"
+            "SELECT * FROM materiales WHERE codigo_material = ?",
+            "SELECT * FROM materiales WHERE codigo_material_original = ?"
         ]
         
         material_encontrado = None
@@ -1988,7 +1987,7 @@ def buscar_codigo_recibido():
         cursor = conn.cursor()
         
         print(f"🔍 SERVER: Buscando en BD: {codigo}")
-        cursor.execute('SELECT * FROM control_material_almacen WHERE codigo_material_recibido = %s', (codigo,))
+        cursor.execute('SELECT * FROM control_material_almacen WHERE codigo_material_recibido = ?', (codigo,))
         row = cursor.fetchone()
         
         if row:
@@ -2036,7 +2035,7 @@ def guardar_salida_lote():
         cursor = conn.cursor()
         
         # Consultar la fila original
-        cursor.execute('SELECT cantidad_actual FROM control_material_almacen WHERE codigo_material_recibido = %s', (codigo_material_recibido,))
+        cursor.execute('SELECT cantidad_actual FROM control_material_almacen WHERE codigo_material_recibido = ?', (codigo_material_recibido,))
         row = cursor.fetchone()
         
         if not row:
@@ -2051,7 +2050,7 @@ def guardar_salida_lote():
         nueva_cantidad = cantidad_actual - cantidad_salida
         
         # Actualizar la cantidad en almacen
-        cursor.execute('UPDATE control_material SET cantidad_actual = %s WHERE codigo_material_recibido = %s', 
+        cursor.execute('UPDATE control_material SET cantidad_actual = ? WHERE codigo_material_recibido = ?', 
                       (nueva_cantidad, codigo_material_recibido))
         
         # Registrar la salida en control_material_salida
@@ -2059,7 +2058,7 @@ def guardar_salida_lote():
             INSERT INTO control_material_salida (
                 codigo_material_recibido, numero_lote, modelo, depto_salida, 
                 proceso_salida, cantidad_salida, fecha_salida, especificacion_material
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             codigo_material_recibido,
             data.get('numero_lote', ''),
@@ -2131,11 +2130,11 @@ def consultar_historial_salidas():
         params = []
         
         if fecha_inicio:
-            query += ' AND DATE(s.fecha_salida) >= %s'
+            query += ' AND DATE(s.fecha_salida) >= ?'
             params.append(fecha_inicio)
         
         if fecha_fin:
-            query += ' AND DATE(s.fecha_salida) <= %s'
+            query += ' AND DATE(s.fecha_salida) <= ?'
             params.append(fecha_fin)
         
         if numero_lote:
@@ -2196,7 +2195,7 @@ def buscar_material_por_codigo():
         # Buscar el material en almacén (sin filtro de cantidad)
         cursor.execute('''
             SELECT * FROM control_material_almacen 
-            WHERE codigo_material_recibido = %s
+            WHERE codigo_material_recibido = ?
         ''', (codigo_recibido,))
         
         material = cursor.fetchone()
@@ -2208,7 +2207,7 @@ def buscar_material_por_codigo():
         cursor.execute('''
             SELECT COALESCE(SUM(cantidad_salida), 0) as total_salidas
             FROM control_material_salida 
-            WHERE codigo_material_recibido = %s
+            WHERE codigo_material_recibido = ?
         ''', (codigo_recibido,))
         
         resultado_salidas = cursor.fetchone()
@@ -2311,7 +2310,7 @@ def procesar_salida_material():
         # Buscar el material en almacén para obtener información completa
         cursor.execute('''
             SELECT id, cantidad_actual, numero_parte FROM control_material_almacen 
-            WHERE codigo_material_recibido = %s
+            WHERE codigo_material_recibido = ?
         ''', (codigo_recibido,))
         
         material = cursor.fetchone()
@@ -2328,7 +2327,7 @@ def procesar_salida_material():
         cursor.execute('''
             SELECT COALESCE(SUM(cantidad_salida), 0) as total_salidas
             FROM control_material_salida 
-            WHERE codigo_material_recibido = %s
+            WHERE codigo_material_recibido = ?
         ''', (codigo_recibido,))
         
         resultado_salidas = cursor.fetchone()
@@ -2359,7 +2358,7 @@ def procesar_salida_material():
             INSERT INTO control_material_salida (
                 codigo_material_recibido, numero_lote, modelo, depto_salida,
                 proceso_salida, cantidad_salida, fecha_salida, fecha_registro, especificacion_material
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             codigo_recibido, numero_lote, modelo, depto_salida,
             proceso_salida, cantidad_salida, fecha_salida, fecha_registro, especificacion_material
@@ -2427,7 +2426,7 @@ def forzar_actualizacion_inventario(numero_parte):
         cursor.execute('''
             SELECT SUM(cantidad_recibida) as total_entradas
             FROM control_material_almacen 
-            WHERE numero_parte = %s
+            WHERE numero_parte = ?
         ''', (numero_parte,))
         entradas_result = cursor.fetchone()
         total_entradas = entradas_result[0] if entradas_result and entradas_result[0] else 0
@@ -2437,7 +2436,7 @@ def forzar_actualizacion_inventario(numero_parte):
             SELECT SUM(cantidad_salida) as total_salidas
             FROM control_material_salida cms
             JOIN control_material_almacen cma ON cms.codigo_material_recibido = cma.codigo_material_recibido
-            WHERE cma.numero_parte = %s
+            WHERE cma.numero_parte = ?
         ''', (numero_parte,))
         salidas_result = cursor.fetchone()
         total_salidas = salidas_result[0] if salidas_result and salidas_result[0] else 0
@@ -2447,9 +2446,9 @@ def forzar_actualizacion_inventario(numero_parte):
         
         # Actualizar o insertar en inventario_general
         cursor.execute('''
-            INSERT INTO inventario_general 
+            INSERT OR REPLACE INTO inventario_general 
             (numero_parte, cantidad_entradas, cantidad_salidas, cantidad_total, fecha_actualizacion)
-            VALUES (%s, %s, %s, %s, NOW()) ON DUPLICATE KEY UPDATE cantidad_entradas = VALUES(cantidad_entradas), cantidad_salidas = VALUES(cantidad_salidas), cantidad_total = VALUES(cantidad_total), fecha_actualizacion = VALUES(fecha_actualizacion)
+            VALUES (?, ?, ?, ?, datetime('now'))
         ''', (numero_parte, total_entradas, total_salidas, cantidad_total_actual))
         
         conn.commit()
@@ -2544,7 +2543,7 @@ def verificar_estado_inventario():
         cursor.execute('''
             SELECT numero_parte, cantidad_total, fecha_actualizacion 
             FROM inventario_general 
-            WHERE numero_parte = %s
+            WHERE numero_parte = ?
         ''', (numero_parte,))
         
         resultado = cursor.fetchone()
@@ -3010,11 +3009,11 @@ def consultar_inventario_general():
             params.append(f"%{filtros['numeroParte']}%")
             
         if filtros.get('propiedad'):
-            query += ' AND ig.propiedad_material = %s'
+            query += ' AND ig.propiedad_material = ?'
             params.append(filtros['propiedad'])
             
         if filtros.get('cantidadMinima') and float(filtros['cantidadMinima']) > 0:
-            query += ' AND ig.cantidad_total >= %s'
+            query += ' AND ig.cantidad_total >= ?'
             params.append(float(filtros['cantidadMinima']))
         
         query += ' ORDER BY ig.fecha_actualizacion DESC'
@@ -3133,7 +3132,7 @@ def verificar_permiso_dropdown():
             FROM usuarios_sistema u
             JOIN usuario_roles ur ON u.id = ur.usuario_id
             JOIN roles r ON ur.rol_id = r.id
-            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
+            WHERE u.username = ? AND u.activo = 1 AND r.activo = 1
             ORDER BY r.nivel DESC
             LIMIT 1
         ''', (username,))
@@ -3155,7 +3154,7 @@ def verificar_permiso_dropdown():
             JOIN usuario_roles ur ON u.id = ur.usuario_id
             JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
             JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-            WHERE u.username = %s AND pb.pagina = %s AND pb.seccion = %s AND pb.boton = %s
+            WHERE u.username = ? AND pb.pagina = ? AND pb.seccion = ? AND pb.boton = ?
             AND u.activo = 1 AND pb.activo = 1
         ''', (username, pagina, seccion, boton))
         
@@ -3193,7 +3192,7 @@ def obtener_permisos_usuario_actual():
             FROM usuarios_sistema u
             JOIN usuario_roles ur ON u.id = ur.usuario_id
             JOIN roles r ON ur.rol_id = r.id
-            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
+            WHERE u.username = ? AND u.activo = 1 AND r.activo = 1
             ORDER BY r.nivel DESC
             LIMIT 1
         ''', (username,))
@@ -3217,7 +3216,7 @@ def obtener_permisos_usuario_actual():
                 JOIN usuario_roles ur ON u.id = ur.usuario_id
                 JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
                 JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                WHERE u.username = %s AND u.activo = 1 AND pb.activo = 1
+                WHERE u.username = ? AND u.activo = 1 AND pb.activo = 1
                 ORDER BY pb.pagina, pb.seccion, pb.boton
             ''', (username,))
             permisos = cursor.fetchall()
@@ -3830,7 +3829,7 @@ def control_salida_estado():
                 COUNT(*) as total_salidas,
                 COALESCE(SUM(cantidad_salida), 0) as total_cantidad
             FROM salidas_material 
-            WHERE DATE(fecha_salida) = %s
+            WHERE DATE(fecha_salida) = ?
         ''', (hoy,))
         
         stats = cursor.fetchone()
@@ -3939,7 +3938,7 @@ def control_salida_validar_stock():
                 cantidad_actual,
                 numero_lote_material
             FROM control_material_almacen 
-            WHERE codigo_material_recibido = %s OR codigo_material = %s
+            WHERE codigo_material_recibido = ? OR codigo_material = ?
             ORDER BY fecha_registro DESC
             LIMIT 1
         ''', (codigo_recibido, codigo_recibido))
@@ -4004,7 +4003,7 @@ def control_salida_reporte_diario():
                 proceso_salida,
                 departamento
             FROM salidas_material 
-            WHERE DATE(fecha_salida) = %s
+            WHERE DATE(fecha_salida) = ?
             ORDER BY fecha_salida DESC
         ''', (fecha,))
         
@@ -4018,7 +4017,7 @@ def control_salida_reporte_diario():
                 COUNT(DISTINCT numero_parte) as partes_diferentes,
                 COUNT(DISTINCT modelo) as modelos_diferentes
             FROM salidas_material 
-            WHERE DATE(fecha_salida) = %s
+            WHERE DATE(fecha_salida) = ?
         ''', (fecha,))
         
         estadisticas = cursor.fetchone()
@@ -4073,14 +4072,14 @@ def control_salida_test_connection():
             cursor = conn.cursor()
             
             # Verificar tabla salidas_material
-            cursor.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'salidas_material'")
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='salidas_material'")
             if cursor.fetchone():
                 tests.append({'test': 'Table salidas_material', 'status': 'OK'})
             else:
                 tests.append({'test': 'Table salidas_material', 'status': 'MISSING'})
             
             # Verificar tabla control_material_almacen
-            cursor.execute("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'control_material_almacen'")
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='control_material_almacen'")
             if cursor.fetchone():
                 tests.append({'test': 'Table control_material_almacen', 'status': 'OK'})
             else:
@@ -4160,7 +4159,7 @@ def importar_excel_almacen():
                     INSERT OR REPLACE INTO control_almacen 
                     (codigo_material_recibido, codigo_material, numero_parte, numero_lote, 
                      propiedad_material, fecha_recibo, cantidad_recibida, ubicacion)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     str(row.get('Codigo Material Recibido', '')),
                     str(row.get('Codigo Material', '')),
@@ -4317,7 +4316,7 @@ def importar_excel_salida():
                     INSERT OR REPLACE INTO control_salida 
                     (fecha_salida, proceso_salida, codigo_material_recibido, codigo_material, 
                      numero_parte, cantidad_salida, destino)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
                     str(row.get('Fecha Salida', '')),
                     str(row.get('Proceso Salida', '')),
@@ -4401,7 +4400,7 @@ def importar_excel_retorno():
                     INSERT OR REPLACE INTO control_retorno 
                     (codigo_material, numero_parte, cantidad_retorno, fecha_retorno, 
                      motivo_retorno, estado_material)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """, (
                     str(row.get('Codigo Material', '')),
                     str(row.get('Numero Parte', '')),
@@ -4484,7 +4483,7 @@ def importar_excel_registro():
                     INSERT OR REPLACE INTO registro_material_real 
                     (codigo_material, numero_parte, cantidad_real, fecha_registro, 
                      ubicacion_fisica, estado_inventario)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """, (
                     str(row.get('Codigo Material', '')),
                     str(row.get('Numero Parte', '')),
@@ -4567,7 +4566,7 @@ def importar_excel_estatus_inventario():
                     INSERT OR REPLACE INTO estatus_inventario 
                     (codigo_material, numero_parte, cantidad_disponible, estatus_material, 
                      fecha_actualizacion, ubicacion)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """, (
                     str(row.get('Codigo Material', '')),
                     str(row.get('Numero Parte', '')),
@@ -4650,7 +4649,7 @@ def importar_excel_estatus_recibido():
                     INSERT OR REPLACE INTO material_recibido 
                     (codigo_material_recibido, codigo_material, numero_parte, fecha_recibo, 
                      cantidad_recibida, proveedor, estado_recepcion)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
                     str(row.get('Codigo Material Recibido', '')),
                     str(row.get('Codigo Material', '')),
@@ -4734,7 +4733,7 @@ def importar_excel_historial():
                     INSERT OR REPLACE INTO historial_inventario 
                     (codigo_material, numero_parte, fecha_movimiento, tipo_movimiento, 
                      cantidad_anterior, cantidad_nueva, usuario, observaciones)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     str(row.get('Codigo Material', '')),
                     str(row.get('Numero Parte', '')),

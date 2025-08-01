@@ -56,7 +56,7 @@
          */
         async cargarPermisosUsuario() {
             try {
-                const response = await fetch('/obtener_permisos_usuario_actual', {
+                const response = await fetch('/admin/obtener_permisos_usuario_actual', {
                     method: 'GET',
                     credentials: 'include',  // Incluir cookies de sesión
                     headers: {
@@ -306,7 +306,7 @@
             
             // Si no está en cache, verificar en servidor
             try {
-                const response = await fetch('/verificar_permiso_dropdown', {
+                const response = await fetch('/admin/verificar_permiso_dropdown', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

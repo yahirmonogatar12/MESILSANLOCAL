@@ -75,7 +75,7 @@ class AuthSystem:
             # Tabla de usuarios mejorada
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS usuarios_sistema (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     email TEXT,
@@ -96,7 +96,7 @@ class AuthSystem:
             # Tabla de roles
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS roles (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre TEXT UNIQUE NOT NULL,
                     descripcion TEXT,
                     nivel INTEGER DEFAULT 1,
@@ -108,7 +108,7 @@ class AuthSystem:
             # Tabla de permisos
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS permisos (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     modulo TEXT NOT NULL,
                     accion TEXT NOT NULL,
                     descripcion TEXT,
@@ -145,7 +145,7 @@ class AuthSystem:
             # Tabla de auditoría completa
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS auditoria (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     usuario TEXT NOT NULL,
                     modulo TEXT NOT NULL,
                     accion TEXT NOT NULL,
@@ -165,7 +165,7 @@ class AuthSystem:
             # Tabla de sesiones activas
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS sesiones_activas (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     usuario TEXT NOT NULL,
                     token_sesion TEXT UNIQUE NOT NULL,
                     ip_address TEXT,
@@ -179,7 +179,7 @@ class AuthSystem:
             # Tabla de permisos específicos por página/botón
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS permisos_botones (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     pagina TEXT NOT NULL,
                     seccion TEXT NOT NULL,
                     boton TEXT NOT NULL,
@@ -242,7 +242,7 @@ class AuthSystem:
         for nombre, descripcion, nivel in roles_default:
             cursor.execute('''
                 INSERT OR IGNORE INTO roles (nombre, descripcion, nivel) 
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             ''', (nombre, descripcion, nivel))
     
     def _crear_permisos_default(self, cursor):
@@ -301,7 +301,7 @@ class AuthSystem:
         for modulo, accion, descripcion in permisos_default:
             cursor.execute('''
                 INSERT OR IGNORE INTO permisos (modulo, accion, descripcion) 
-                VALUES (%s, %s, %s)
+                VALUES (?, ?, ?)
             ''', (modulo, accion, descripcion))
     
     def _asignar_permisos_roles(self, cursor):
@@ -315,7 +315,7 @@ class AuthSystem:
             for permiso in todos_permisos:
                 cursor.execute('''
                     INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id)
-                    VALUES (%s, %s)
+                    VALUES (?, ?)
                 ''', (superadmin_id[0], permiso[0]))
         
         # Admin - casi todos excepto algunos críticos
@@ -330,7 +330,7 @@ class AuthSystem:
             for permiso in permisos_admin:
                 cursor.execute('''
                     INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id)
-                    VALUES (%s, %s)
+                    VALUES (?, ?)
                 ''', (admin_id[0], permiso[0]))
         
         # Supervisor Almacén
@@ -360,16 +360,16 @@ class AuthSystem:
     
     def _asignar_permisos_especificos(self, cursor, rol_nombre, permisos):
         """Asignar permisos específicos a un rol"""
-        cursor.execute('SELECT id FROM roles WHERE nombre = %s', (rol_nombre,))
+        cursor.execute('SELECT id FROM roles WHERE nombre = ?', (rol_nombre,))
         rol_id = cursor.fetchone()
         if rol_id:
             for modulo, accion in permisos:
-                cursor.execute('SELECT id FROM permisos WHERE modulo = %s AND accion = %s', (modulo, accion))
+                cursor.execute('SELECT id FROM permisos WHERE modulo = ? AND accion = ?', (modulo, accion))
                 permiso_id = cursor.fetchone()
                 if permiso_id:
                     cursor.execute('''
                         INSERT OR IGNORE INTO rol_permisos (rol_id, permiso_id)
-                        VALUES (%s, %s)
+                        VALUES (?, ?)
                     ''', (rol_id[0], permiso_id[0]))
     
     def _crear_permisos_botones_default(self, cursor):
@@ -472,7 +472,7 @@ class AuthSystem:
         for pagina, seccion, boton, descripcion in permisos_botones:
             cursor.execute('''
                 INSERT OR IGNORE INTO permisos_botones (pagina, seccion, boton, descripcion)
-                VALUES (%s, %s, %s, ?)
+                VALUES (?, ?, ?, ?)
             ''', (pagina, seccion, boton, descripcion))
     
     def _asignar_permisos_botones_roles(self, cursor):
@@ -487,7 +487,7 @@ class AuthSystem:
             for permiso in todos_permisos_botones:
                 cursor.execute('''
                     INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
-                    VALUES (%s, %s)
+                    VALUES (?, ?)
                 ''', (superadmin_id[0], permiso[0]))
         
         # Admin - todos excepto configuración crítica
@@ -502,7 +502,7 @@ class AuthSystem:
             for permiso in permisos_admin_botones:
                 cursor.execute('''
                     INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
-                    VALUES (%s, %s)
+                    VALUES (?, ?)
                 ''', (admin_id[0], permiso[0]))
         
         # Supervisor Almacén - solo materiales y control de almacén
@@ -535,7 +535,7 @@ class AuthSystem:
     
     def _asignar_permisos_botones_especificos(self, cursor, rol_nombre, paginas_permitidas, secciones_permitidas):
         """Asignar permisos específicos de botones a un rol"""
-        cursor.execute('SELECT id FROM roles WHERE nombre = %s', (rol_nombre,))
+        cursor.execute('SELECT id FROM roles WHERE nombre = ?', (rol_nombre,))
         rol_id = cursor.fetchone()
         if rol_id:
             # Crear placeholders para la consulta IN
@@ -553,7 +553,7 @@ class AuthSystem:
             for permiso in permisos_botones:
                 cursor.execute('''
                     INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
-                    VALUES (%s, %s)
+                    VALUES (?, ?)
                 ''', (rol_id[0], permiso[0]))
     
     def create_default_admin(self):
@@ -993,7 +993,7 @@ class AuthSystem:
             cursor.execute('''
                 INSERT OR IGNORE INTO permisos_botones 
                 (pagina, seccion, boton, descripcion) 
-                VALUES (%s, %s, %s, ?)
+                VALUES (?, ?, ?, ?)
             ''', (pagina, seccion, nombre_boton, descripcion))
             
             conn.commit()
