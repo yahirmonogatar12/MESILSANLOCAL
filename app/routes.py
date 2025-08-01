@@ -70,19 +70,26 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 
                 rol_nombre = usuario_rol[0]
                 
-                # AHORA TODOS LOS ROLES (incluido superadmin) verifican permisos en base de datos
-                # Verificar permiso específico
-                query_permiso = '''
-                    SELECT COUNT(*) FROM usuarios_sistema u
-                    JOIN usuario_roles ur ON u.id = ur.usuario_id
-                    JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                    JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                    WHERE u.username = %s AND pb.pagina = %s AND pb.seccion = %s AND pb.boton = %s
-                    AND u.activo = 1 AND pb.activo = 1
-                '''
-                
-                result = execute_query(query_permiso, (username, pagina, seccion, boton), fetch='one')
-                tiene_permiso = result[0] > 0 if result else False
+                # Superadmin tiene acceso completo sin verificar base de datos
+                if rol_nombre == 'superadmin':
+                    tiene_permiso = True
+                else:
+                    # Para otros roles, verificar permisos en base de datos
+                    try:
+                        query_permiso = '''
+                            SELECT COUNT(*) FROM usuarios_sistema u
+                            JOIN usuario_roles ur ON u.id = ur.usuario_id
+                            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                            WHERE u.username = %s AND rpb.pagina = %s AND rpb.seccion = %s AND rpb.boton = %s
+                            AND u.activo = 1
+                        '''
+                        
+                        result = execute_query(query_permiso, (username, pagina, seccion, boton), fetch='one')
+                        tiene_permiso = result[0] > 0 if result else False
+                    except Exception as e:
+                        # Si hay error en la consulta (ej: tabla no existe), denegar acceso
+                        print(f"Error verificando permisos: {e}")
+                        tiene_permiso = False
                 
                 if not tiene_permiso:
                     # Respuesta diferente para AJAX vs navegación directa
@@ -149,8 +156,7 @@ def tiene_permiso_boton(nombre_boton):
             JOIN usuario_roles ur ON u.id = ur.usuario_id
             JOIN roles r ON ur.rol_id = r.id
             JOIN rol_permisos_botones rpb ON r.id = rpb.rol_id
-            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-            WHERE u.username = %s AND pb.boton = %s AND pb.activo = 1
+            WHERE u.username = %s AND rpb.boton = %s
             LIMIT 1
         '''
         
@@ -3148,19 +3154,25 @@ def verificar_permiso_dropdown():
         
         # Superadmin tiene todos los permisos
         if rol_nombre == 'superadmin':
+            conn.close()
             return jsonify({'tiene_permiso': True, 'motivo': 'superadmin'})
         
-        # Verificar permiso específico
-        cursor.execute('''
-            SELECT COUNT(*) FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-            WHERE u.username = %s AND pb.pagina = %s AND pb.seccion = %s AND pb.boton = %s
-            AND u.activo = 1 AND pb.activo = 1
-        ''', (username, pagina, seccion, boton))
+        # Verificar permiso específico para otros roles
+        try:
+            cursor.execute('''
+                SELECT COUNT(*) FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                WHERE u.username = %s AND rpb.pagina = %s AND rpb.seccion = %s AND rpb.boton = %s
+                AND u.activo = 1
+            ''', (username, pagina, seccion, boton))
+            
+            tiene_permiso = cursor.fetchone()[0] > 0
+        except Exception as e:
+            # Si hay error en la consulta (ej: tabla no existe), denegar acceso
+            print(f"Error verificando permisos: {e}")
+            tiene_permiso = False
         
-        tiene_permiso = cursor.fetchone()[0] > 0
         conn.close()
         
         return jsonify({
@@ -3213,13 +3225,12 @@ def obtener_permisos_usuario_actual():
         else:
             # Obtener permisos específicos del rol
             cursor.execute('''
-                SELECT pb.pagina, pb.seccion, pb.boton 
+                SELECT rpb.pagina, rpb.seccion, rpb.boton 
                 FROM usuarios_sistema u
                 JOIN usuario_roles ur ON u.id = ur.usuario_id
                 JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                WHERE u.username = %s AND u.activo = 1 AND pb.activo = 1
-                ORDER BY pb.pagina, pb.seccion, pb.boton
+                WHERE u.username = %s AND u.activo = 1
+                ORDER BY rpb.pagina, rpb.seccion, rpb.boton
             ''', (username,))
             permisos = cursor.fetchall()
         
