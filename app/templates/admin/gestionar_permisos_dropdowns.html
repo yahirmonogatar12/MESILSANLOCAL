@@ -1005,7 +1005,11 @@
                 
                 const countElement = document.getElementById(`count-${roleName}`);
                 if (countElement) {
-                    countElement.textContent = `Nivel ${role.nivel} • ${permisos.length} permisos`;
+                    if (Array.isArray(permisos)) {
+                        countElement.textContent = `Nivel ${role.nivel} • ${permisos.length} permisos`;
+                    } else {
+                        countElement.textContent = `Nivel ${role.nivel} • Error`;
+                    }
                 }
             } catch (error) {
                 const countElement = document.getElementById(`count-${roleName}`);
@@ -1260,6 +1264,11 @@
                 // Cargar permisos desde el servidor
                 const response = await fetch(`/admin/obtener_permisos_dropdowns_rol/${role.id}`);
                 const permisosDelRol = await response.json();
+                
+                // Verificar que la respuesta sea válida y sea un array
+                if (!Array.isArray(permisosDelRol)) {
+                    throw new Error('Error en la respuesta del servidor: ' + (permisosDelRol.error || 'Formato de datos inválido'));
+                }
                 
                 // Convertir los permisos del rol a nuestra estructura
                 const permissions = allDropdowns.map(dropdown => {

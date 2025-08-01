@@ -125,7 +125,7 @@ def get_connection():
 def crear_usuario(username, password_hash, area=''):
     """Crear usuario en MySQL"""
     try:
-        query = "INSERT INTO usuarios (username, password_hash, area) VALUES (%s, %s, %s)"
+        query = "INSERT INTO usuarios_sistema (username, password_hash, departamento) VALUES (%s, %s, %s)"
         result = execute_query(query, (username, password_hash, area))
         return result > 0
     except Exception as e:
@@ -135,7 +135,7 @@ def crear_usuario(username, password_hash, area=''):
 def obtener_usuario(username):
     """Obtener usuario por username"""
     try:
-        query = "SELECT * FROM usuarios WHERE username = %s AND activo = TRUE"
+        query = "SELECT * FROM usuarios_sistema WHERE username = %s AND activo = 1"
         return execute_query(query, (username,), fetch='one')
     except Exception as e:
         print(f"Error obteniendo usuario: {e}")
@@ -144,7 +144,7 @@ def obtener_usuario(username):
 def verificar_usuario(username, password_hash):
     """Verificar credenciales de usuario"""
     try:
-        query = "SELECT * FROM usuarios WHERE username = %s AND password_hash = %s AND activo = TRUE"
+        query = "SELECT * FROM usuarios_sistema WHERE username = %s AND password_hash = %s AND activo = 1"
         return execute_query(query, (username, password_hash), fetch='one')
     except Exception as e:
         print(f"Error verificando usuario: {e}")

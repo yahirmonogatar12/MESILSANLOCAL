@@ -134,7 +134,7 @@ def tiene_permiso_boton(nombre_boton):
         username = session['username']
         
         # Verificar si el usuario es superadmin (acceso total)
-        query_usuario = 'SELECT rol FROM usuarios WHERE username = %s'
+        query_usuario = 'SELECT departamento FROM usuarios_sistema WHERE username = %s'
         usuario = execute_query(query_usuario, (username,), fetch='one')
         
         if not usuario:
@@ -145,8 +145,9 @@ def tiene_permiso_boton(nombre_boton):
         
         # Verificar permiso específico del botón
         query_permiso = '''
-            SELECT 1 FROM usuarios u
-            JOIN roles r ON u.rol = r.nombre
+            SELECT 1 FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN roles r ON ur.rol_id = r.id
             JOIN rol_permisos_botones rpb ON r.id = rpb.rol_id
             JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
             WHERE u.username = %s AND pb.boton = %s AND pb.activo = 1
