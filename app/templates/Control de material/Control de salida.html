@@ -167,7 +167,7 @@
 
             <!-- Controles y tabla de historial -->
             <div id="historialSection" style="display: none;">
-                <div class="material-table-controls" id="historialControles" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                <div class="material-table-controls" id="historialControles" style="display: flex; align-items: center; justify-content: space-between;">
                     <!-- Filtros de fecha - lado izquierdo -->
                     <div style="display: flex; gap: 15px; align-items: center;">
                         <div class="material-form-group">
@@ -220,7 +220,7 @@
 
     <script>
         // ===================================================================
-        // 🚀 CONTROL DE SALIDA OPTIMIZADO PARA ESCANEO CON ENTER
+        // CONTROL DE SALIDA OPTIMIZADO PARA ESCANEO CON ENTER
         // ===================================================================
         // 
         // FLUJO ULTRA-RÁPIDO IMPLEMENTADO:
@@ -240,18 +240,82 @@
         let materialActual = null;
         let verificacionCompletada = false;
 
-        // Función global para inicializar cuando se muestra el control de salida (para AJAX)
+        // 🎯 OBSERVADOR PARA DETECTAR CAMBIOS EN EL DOM (AJAX RELOADS)
+        window.configurarObservadorAJAX = function() {
+            if (window.controlSalidaObserver) {
+                window.controlSalidaObserver.disconnect();
+            }
+            
+            window.controlSalidaObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    // Detectar si se agregaron nuevos nodos (carga AJAX)
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        mutation.addedNodes.forEach(function(node) {
+                            // Si el nodo contiene elementos de control de salida
+                            if (node.nodeType === 1 && 
+                                (node.querySelector && node.querySelector('[id*="codigo"], [id*="cantidad"], input') ||
+                                 node.id && (node.id.includes('codigo') || node.id.includes('cantidad')))) {
+                                
+                                console.log('DOM cambió (AJAX), reinstalando listeners de auto-Enter...');
+                                
+                                // Reinstalar listeners después de un breve delay
+                                setTimeout(() => {
+                                    window.configurarEventListenersEscaneo();
+                                }, 100);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // Observar cambios en el body o contenedor principal
+            const targetNode = document.body;
+            const config = { 
+                childList: true, 
+                subtree: true 
+            };
+            
+            window.controlSalidaObserver.observe(targetNode, config);
+            console.log('Observador AJAX activado para auto-Enter');
+        };
+
+        // Función global para inicializar cuando se muestra el control de salida (para AJAX) CON PROTECCIÓN
         window.inicializarControlSalidaModule = function() {
+            // PREVENIR MÚLTIPLES INICIALIZACIONES DE AJAX
+            if (window.controlSalidaInicializadoAJAX) {
+                console.log('Control de salida AJAX ya inicializado, evitando duplicación');
+                return;
+            }
+            
+            // Marcar como inicializado para prevenir duplicación
+            window.controlSalidaInicializadoAJAX = true;
+            
             setTimeout(() => {
                 inicializarControlSalida();
+                // RECONFIGURAR EVENT LISTENERS DESPUÉS DE AJAX
+                setTimeout(() => {
+                    console.log('Reconfigurando listeners después de carga AJAX...');
+                    window.configurarEventListenersEscaneo();
+                    // ACTIVAR OBSERVADOR PARA FUTUROS CAMBIOS AJAX
+                    window.configurarObservadorAJAX();
+                }, 500); // Tiempo extra para asegurar que DOM esté listo
             }, 100);
         };
 
-        // Función de inicialización simplificada
+        // Función de inicialización simplificada CON PROTECCIÓN CONTRA BUCLES
         function inicializarControlSalida() {
+            // PREVENIR MÚLTIPLES INICIALIZACIONES
+            if (window.controlSalidaInicializado) {
+                console.log('⚠️ Control de salida ya inicializado, evitando duplicación');
+                return;
+            }
+            
             console.log('🚀 Inicializando Control de Salida...');
             
             try {
+                // Marcar como inicializado para prevenir duplicación
+                window.controlSalidaInicializado = true;
+                
                 // Establecer fecha actual
                 const hoy = new Date().toISOString().split('T')[0];
                 const fechaSalidaForm = document.getElementById('salida_fecha_salida_form');
@@ -282,7 +346,7 @@
 
                 // 🚀 OPTIMIZACIÓN: Configurar event listeners adicionales para Enter en campos de escaneo
                 setTimeout(() => {
-                    configurarEventListenersEscaneo();
+                    window.configurarEventListenersEscaneo();
                 }, 200); // Pequeña demora para asegurar que el DOM esté listo
 
                 // Enfocar campo de código
@@ -291,7 +355,7 @@
                     setTimeout(() => {
                         codigoInput.focus();
                         console.log('✅ Campo de código enfocado');
-                    }, 100);
+                    }, 300); // Aumentado para evitar conflictos
                 } else {
                     console.error('❌ Campo de código no encontrado');
                 }
@@ -300,71 +364,161 @@
                 mostrarRegistroSalida();
 
                 // No cargar datos automáticamente - solo cuando se haga clic en "Consultar"
-                console.log('✅ Control de Salida inicializado correctamente');
+                console.log('✅ Control de Salida inicializado correctamente SIN BUCLES');
                 
             } catch (error) {
                 console.error('❌ Error en inicialización:', error);
                 mostrarMensajeSimple('Error en inicialización: ' + error.message, 'error');
+                // Permitir reinicialización en caso de error
+                window.controlSalidaInicializado = false;
             }
         }
 
-        // 🚀 Nueva función para configurar event listeners optimizados de escaneo
-        function configurarEventListenersEscaneo() {
+        // Nueva función para limpiar completamente todos los event listeners COMPATIBLE CON AJAX
+        function limpiarEventListeners() {
             const codigoInput = document.getElementById('salida_codigo_material_recibido');
             const verificacionInput = document.getElementById('salida_verificacion_codigo');
             
             if (codigoInput) {
-                // Remover listeners existentes y agregar uno unificado
-                codigoInput.removeEventListener('keydown', procesarEscaneoRapido);
-                codigoInput.removeEventListener('keypress', procesarEscaneoRapido);
-                
-                // Listener único para Enter (usar keydown para mejor compatibilidad)
-                codigoInput.addEventListener('keydown', function(event) {
-                    if (event.key === 'Enter' || event.keyCode === 13) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        console.log('🚀 Enter detectado en código material');
-                        procesarEscaneoRapido(event);
-                    }
-                });
-                
-                // Auto-seleccionar texto al enfocar para escaneo rápido
-                codigoInput.addEventListener('focus', function() {
-                    this.select();
-                });
-                
-                // Mostrar ayuda al enfocar por primera vez
-                codigoInput.addEventListener('focus', function() {
-                    if (!this.dataset.helpShown) {
-                        mostrarMensajeSimple('💡 Flujo rápido: Escanear ➜ Enter ➜ Verificar ➜ Enter', 'info');
-                        this.dataset.helpShown = 'true';
-                    }
-                }, { once: true });
+                // Para AJAX: Solo remover listeners específicos, no reemplazar elemento
+                const nuevoCodigoInput = codigoInput.cloneNode(true);
+                codigoInput.parentNode.replaceChild(nuevoCodigoInput, codigoInput);
+                console.log('✅ Event listeners de código limpiados completamente (AJAX-compatible)');
             }
             
             if (verificacionInput) {
-                // Remover listeners existentes y agregar uno unificado
-                verificacionInput.removeEventListener('keydown', procesarVerificacion);
-                verificacionInput.removeEventListener('keypress', procesarVerificacion);
-                
-                // Listener único para Enter (usar keydown para mejor compatibilidad)
-                verificacionInput.addEventListener('keydown', function(event) {
-                    if (event.key === 'Enter' || event.keyCode === 13) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        console.log('🚀 Enter detectado en verificación');
-                        procesarVerificacion(event);
+                // Para AJAX: Solo remover listeners específicos, no reemplazar elemento
+                const nuevoVerificacionInput = verificacionInput.cloneNode(true);
+                verificacionInput.parentNode.replaceChild(nuevoVerificacionInput, verificacionInput);
+                console.log('✅ Event listeners de verificación limpiados completamente (AJAX-compatible)');
+            }
+        }
+
+        // 🧪 FUNCIÓN DE TEST SIMPLE PARA AUTO-ENTER
+        window.testAutoEnterSimple = function() {
+            console.log('🧪 PROBANDO AUTO-ENTER SIMPLE...');
+            
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
+            if (!codigoInput) {
+                return '❌ Campo código no encontrado';
+            }
+            
+            // Limpiar campo
+            codigoInput.value = '';
+            codigoInput.focus();
+            
+            // Simular escaneo de código largo
+            const codigoPrueba = 'H5602C622.20250728026';
+            console.log('📝 Escribiendo código de prueba:', codigoPrueba);
+            
+            // Escribir caracter por caracter para simular escaneo real
+            let i = 0;
+            const escribirCaracter = () => {
+                if (i < codigoPrueba.length) {
+                    codigoInput.value += codigoPrueba[i];
+                    
+                    // Disparar evento input
+                    const inputEvent = new Event('input', { bubbles: true });
+                    codigoInput.dispatchEvent(inputEvent);
+                    
+                    i++;
+                    setTimeout(escribirCaracter, 50); // 50ms entre caracteres
+                } else {
+                    console.log('✅ Código escrito completo, debería activar auto-Enter');
+                }
+            };
+            
+            escribirCaracter();
+            return '🧪 Test iniciado - observe la consola y los campos';
+        };
+
+        // 🚀 FUNCIÓN ULTRA-SIMPLE PARA AUTO-ENTER (SIN COMPLICACIONES)
+        window.configurarEventListenersEscaneo = function() {
+            console.log('🎯 Configurando Auto-Enter ULTRA-SIMPLE...');
+            
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
+            const verificacionInput = document.getElementById('salida_verificacion_codigo');
+            
+            if (codigoInput) {
+                // MÉTODO 1: Auto-Enter basado en longitud del código
+                codigoInput.addEventListener('input', function(e) {
+                    const codigo = e.target.value.trim();
+                    console.log('📝 Input detectado:', codigo, 'Longitud:', codigo.length);
+                    
+                    // Si tiene 8+ caracteres, activar auto-Enter
+                    if (codigo.length >= 8) {
+                        console.log('🚀 AUTO-ENTER activado para código:', codigo);
+                        setTimeout(() => {
+                            // Simular presionar Enter
+                            const enterEvent = new KeyboardEvent('keydown', {
+                                key: 'Enter',
+                                keyCode: 13,
+                                code: 'Enter',
+                                bubbles: true
+                            });
+                            e.target.dispatchEvent(enterEvent);
+                        }, 150); // 150ms de delay para estabilidad
                     }
                 });
                 
-                // Auto-seleccionar texto al enfocar para escaneo rápido
-                verificacionInput.addEventListener('focus', function() {
-                    this.select();
+                // MÉTODO 2: Procesamiento manual del Enter
+                codigoInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        e.preventDefault();
+                        console.log('⚡ Enter detectado en código, procesando...');
+                        const codigo = e.target.value.trim();
+                        if (codigo) {
+                            procesarEscaneoRapido(e);
+                        }
+                    }
                 });
+                
+                console.log('✅ Auto-Enter configurado para campo CÓDIGO');
+            } else {
+                console.error('❌ Campo código no encontrado');
             }
             
-            console.log('✅ Event listeners de escaneo configurados correctamente');
-        }
+            if (verificacionInput) {
+                // MÉTODO 1: Auto-Enter basado en longitud del código
+                verificacionInput.addEventListener('input', function(e) {
+                    const codigo = e.target.value.trim();
+                    console.log('📝 Input verificación detectado:', codigo, 'Longitud:', codigo.length);
+                    
+                    // Si tiene 8+ caracteres, activar auto-Enter
+                    if (codigo.length >= 8) {
+                        console.log('🚀 AUTO-ENTER activado para verificación:', codigo);
+                        setTimeout(() => {
+                            // Simular presionar Enter
+                            const enterEvent = new KeyboardEvent('keydown', {
+                                key: 'Enter',
+                                keyCode: 13,
+                                code: 'Enter',
+                                bubbles: true
+                            });
+                            e.target.dispatchEvent(enterEvent);
+                        }, 150); // 150ms de delay para estabilidad
+                    }
+                });
+                
+                // MÉTODO 2: Procesamiento manual del Enter
+                verificacionInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        e.preventDefault();
+                        console.log('⚡ Enter detectado en verificación, procesando...');
+                        const codigo = e.target.value.trim();
+                        if (codigo) {
+                            procesarVerificacion(e);
+                        }
+                    }
+                });
+                
+                console.log('✅ Auto-Enter configurado para campo VERIFICACIÓN');
+            } else {
+                console.error('❌ Campo verificación no encontrado');
+            }
+            
+            console.log('🎯 AUTO-ENTER ULTRA-SIMPLE CONFIGURADO EXITOSAMENTE');
+        };
 
         // Nueva función para configurar el comportamiento del registro automático
         function configurarRegistroAutomatico() {
@@ -488,8 +642,7 @@
             return coincidencias;
         }
 
-        // Función para limpiar verificación cuando se cambie de material
-        // 🚀 Función optimizada para limpiar verificación y facilitar flujo rápido
+        // 🚀 Función optimizada para limpiar verificación y facilitar flujo automático
         function limpiarVerificacion() {
             const campoVerificacion = document.getElementById('salida_verificacion_codigo');
             
@@ -498,10 +651,8 @@
                 campoVerificacion.style.border = '2px solid #e74c3c';
                 campoVerificacion.readOnly = false;
                 
-                // Auto-enfocar el campo de verificación para flujo continuo de escaneo
-                setTimeout(() => {
-                    campoVerificacion.focus();
-                }, 20); // Tiempo mínimo para asegurar que el campo esté listo
+                // Resetear cualquier flag de procesamiento
+                campoVerificacion.dataset.processing = 'false';
             }
             
             verificacionCompletada = false;
@@ -519,57 +670,79 @@
                 }, 50); // Tiempo reducido para mayor eficiencia
             }
         }
-        // FUNCIÓN PRINCIPAL: Procesar escaneo ultra rápido
+        // FUNCIÓN PRINCIPAL: Procesar escaneo ultra rápido CON ENTER AUTOMÁTICO
         async function procesarEscaneoRapido(event) {
             console.log('🔍 procesarEscaneoRapido llamada, event:', event);
             
-            // Siempre verificar Enter independientemente del tipo de evento
-            if (event.key === 'Enter' || event.keyCode === 13 || event.type === 'click') {
-                event.preventDefault();
-                
-                const codigo = event.target.value.trim();
-                console.log('📝 Código material:', codigo);
-                
-                if (!codigo) {
-                    console.log('⚠️ Código material vacío');
+            // Prevenir múltiples procesamiento del mismo evento
+            if (event.target.dataset.processing === 'true') {
+                console.log('⚠️ Ya procesando, evitando bucle');
+                return;
+            }
+            
+            const codigo = event.target.value.trim();
+            console.log('📝 Código material:', codigo);
+            
+            if (!codigo) {
+                console.log('⚠️ Código material vacío');
+                return;
+            }
+            
+            // Marcar como procesando para evitar bucles
+            event.target.dataset.processing = 'true';
+            
+            try {
+                // 1. Buscar material primero
+                console.log('🔍 Buscando material con código:', codigo);
+                const response = await fetch(`/buscar_material_por_codigo?codigo_recibido=${encodeURIComponent(codigo)}`);
+                const data = await response.json();
+
+                if (!data.success || !data.material) {
+                    mostrarMensajeSimple(data.error || 'Material no encontrado', 'error');
+                    // Limpiar campo y re-enfocar para siguiente escaneo
+                    event.target.value = '';
+                    setTimeout(() => event.target.focus(), 500);
                     return;
                 }
+
+                const material = data.material;
+                console.log('✅ Material encontrado:', material);
                 
-                try {
-                    // 1. Buscar material primero
-                    console.log('🔍 Buscando material con código:', codigo);
-                    const response = await fetch(`/buscar_material_por_codigo?codigo_recibido=${encodeURIComponent(codigo)}`);
-                    const data = await response.json();
-
-                    if (!data.success || !data.material) {
-                        mostrarMensajeSimple(data.error || 'Material no encontrado', 'error');
-                        return;
-                    }
-
-                    const material = data.material;
-                    console.log('✅ Material encontrado:', material);
-                    
-                    // 2. Rellenar campos del material
-                    rellenarCamposMaterial(material);
-                    materialActual = material;
-                    
-                    // 3. Limpiar verificación anterior
-                    limpiarVerificacion();
-                    
-                    // 4. 🚀 ENFOQUE INMEDIATO al campo de verificación para máxima eficiencia
-                    const campoVerificacion = document.getElementById('salida_verificacion_codigo');
-                    if (campoVerificacion) {
-                        // Reducido de 300ms a 50ms para flujo ultra-rápido de escaneo
-                        setTimeout(() => {
-                            campoVerificacion.focus();
-                            mostrarMensajeSimple('👆 Escanee código de verificación', 'info');
-                        }, 50);
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Error:', error);
-                    mostrarMensajeSimple('Error al buscar material', 'error');
+                // ⛔ VALIDACIÓN CRÍTICA: Verificar stock antes de continuar
+                const stockDisponible = parseFloat(material.cantidad_actual) || 0;
+                if (stockDisponible <= 0) {
+                    manejarStockInsuficiente(codigo, stockDisponible);
+                    return; // SALIR sin procesar más
                 }
+                
+                // 2. Rellenar campos del material SOLO si hay stock
+                rellenarCamposMaterial(material);
+                materialActual = material;
+                
+                // 3. Limpiar verificación anterior
+                limpiarVerificacion();
+                
+                // 4. 🚀 AUTO-ENFOQUE INMEDIATO al campo de verificación
+                const campoVerificacion = document.getElementById('salida_verificacion_codigo');
+                if (campoVerificacion) {
+                    setTimeout(() => {
+                        campoVerificacion.focus();
+                        campoVerificacion.select(); // Seleccionar todo para scan rápido
+                        mostrarMensajeSimple('👆 Escanee código de verificación (Auto-Enter activado)', 'info');
+                    }, 200); // Tiempo suficiente para que se complete el rellenado
+                }
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                mostrarMensajeSimple('Error al buscar material', 'error');
+                // Limpiar campo y re-enfocar para reintento
+                event.target.value = '';
+                setTimeout(() => event.target.focus(), 500);
+            } finally {
+                // Liberar el procesamiento después de 500ms para evitar bucles
+                setTimeout(() => {
+                    event.target.dataset.processing = 'false';
+                }, 500);
             }
         }
 
@@ -887,12 +1060,14 @@
             }
         }
 
-        // FUNCIÓN NUEVA: Limpiar todos los campos del material
+        // FUNCIÓN NUEVA: Limpiar todos los campos del material CON AUTO-ENFOQUE
         function limpiarCamposMaterial() {
             // Limpiar campo de código de material recibido
             const codigoInput = document.getElementById('salida_codigo_material_recibido');
             if (codigoInput) {
                 codigoInput.value = '';
+                // Resetear flags de procesamiento
+                codigoInput.dataset.processing = 'false';
             }
             
             // Limpiar todos los campos del material
@@ -923,12 +1098,14 @@
             materialActual = null;
             verificacionCompletada = false;
             
-            // Enfocar nuevamente el campo de código
+            // 🚀 AUTO-ENFOCAR campo de código para siguiente escaneo
             setTimeout(() => {
                 if (codigoInput) {
                     codigoInput.focus();
+                    codigoInput.select();
+                    mostrarMensajeSimple('✅ Listo para siguiente código (Auto-Enter activado)', 'info');
                 }
-            }, 100);
+            }, 300); // Tiempo suficiente para completar limpieza
         }
 
         // FUNCIÓN SIMPLE: Limpiar código y enfocar (pero mantener campos rellenados)
@@ -1787,7 +1964,62 @@
             actualizarFaltantesBOMInstantaneo();
         }
 
+        // ⛔ FUNCIÓN ESPECÍFICA PARA MANEJAR STOCK INSUFICIENTE
+        function manejarStockInsuficiente(codigo, stockDisponible) {
+            console.warn(`⛔ STOCK INSUFICIENTE para ${codigo}: ${stockDisponible}`);
+            
+            // Limpiar TODOS los campos inmediatamente
+            limpiarCamposMaterial();
+            
+            // Mostrar mensaje claro de error
+            mostrarMensajeSimple(`❌ SIN STOCK: ${codigo} (${stockDisponible})`, 'error');
+            
+            // Re-enfocar campo de código para siguiente escaneo
+            const codigoInput = document.getElementById('salida_codigo_material_recibido');
+            if (codigoInput) {
+                codigoInput.value = '';
+                setTimeout(() => {
+                    codigoInput.focus();
+                }, 500);
+            }
+            
+            // Resetear variables globales
+            materialActual = null;
+            verificacionCompletada = false;
+            
+            console.log('🛑 Flujo detenido por stock insuficiente');
+        }
+
+        // ⛔ PROTECCIÓN GLOBAL ANTI-BUCLE INFINITO
+        window.proteccionApiBucle = {
+            ultimaLlamada: null,
+            minimoTiempo: 2000, // Mínimo 2 segundos entre llamadas iguales
+            
+            puedeEjecutar: function(endpoint, datos = null) {
+                const ahora = Date.now();
+                const clave = endpoint + (datos ? JSON.stringify(datos) : '');
+                
+                if (this.ultimaLlamada && this.ultimaLlamada.clave === clave) {
+                    const tiempoTranscurrido = ahora - this.ultimaLlamada.tiempo;
+                    if (tiempoTranscurrido < this.minimoTiempo) {
+                        console.warn(`⛔ BLOQUEO ANTI-BUCLE: Llamada a ${endpoint} demasiado rápida (${tiempoTranscurrido}ms < ${this.minimoTiempo}ms)`);
+                        return false;
+                    }
+                }
+                
+                this.ultimaLlamada = { clave, tiempo: ahora };
+                return true;
+            }
+        };
+
         async function buscarMaterialPorCodigo(codigo) {
+            // ⛔ VERIFICAR PROTECCIÓN ANTI-BUCLE
+            const endpoint = '/buscar_material_por_codigo';
+            if (!window.proteccionApiBucle.puedeEjecutar(endpoint, { codigo })) {
+                console.warn('🛑 Llamada bloqueada por protección anti-bucle');
+                return;
+            }
+            
             try {
                 mostrarCargando('Buscando material...');
                 
@@ -1796,6 +2028,16 @@
 
                 if (data.success && data.material) {
                     materialActual = data.material;
+                    
+                    // ⛔ VALIDACIÓN CRÍTICA: Verificar stock antes de rellenar campos
+                    const stockDisponible = parseFloat(data.material.cantidad_actual) || 0;
+                    if (stockDisponible <= 0) {
+                        const codigo = data.material.codigo_material_recibido || data.material.codigo_material || 'DESCONOCIDO';
+                        manejarStockInsuficiente(codigo, stockDisponible);
+                        return; // SALIR sin procesar más
+                    }
+                    
+                    // Solo rellenar campos si hay stock disponible
                     rellenarCamposMaterial(data.material);
                     // ✅ OCULTAR mensaje de carga cuando termine exitosamente
                     // (el mensaje se oculta automáticamente en rellenarCamposMaterial)
@@ -2107,6 +2349,7 @@
                 }
 
                 // Debug: mostrar la URL que se está enviando
+                console.log('🔍 Parámetros de consulta:', {
                     codigo: codigoFiltro,
                     fechaDesde: fechaDesde,
                     fechaHasta: fechaHasta
@@ -3198,7 +3441,7 @@
                                         <p style="color: #bdc3c7; margin: 10px 0;">Sistema funcionando independientemente</p>
                                     </div>
                                     
-                                    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;">
+                                    <div style="display: flex; gap: 15px; margin-bottom: 20px; justify-content: center;">
                                         <div>
                                             <label style="display: block; margin-bottom: 5px; color: #ecf0f1;">Fecha desde:</label>
                                             <input type="date" id="salida_fecha_desde" style="padding: 8px; border-radius: 5px; border: none;">
@@ -3918,6 +4161,9 @@
                 
                 console.log('🎯 CONTROL DE SALIDA INICIALIZADO COMPLETAMENTE');
                 console.log('💡 Funciones disponibles: testHistorialDirecto(), testRegistroDirecto(), estadoControlSalida()');
+                
+                // 👁️ ACTIVAR OBSERVADOR AJAX DESDE EL INICIO
+                configurarObservadorAJAX();
             }
             
             // Iniciar configuración

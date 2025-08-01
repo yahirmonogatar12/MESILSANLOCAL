@@ -451,6 +451,147 @@ def cargar_configuracion(clave, valor_por_defecto=None):
         print(f"Error cargando configuración: {e}")
         return valor_por_defecto
 
+# === FUNCIONES ESPECÍFICAS DE CONTROL DE SALIDA ===
+
+def buscar_material_por_codigo_mysql(codigo_recibido):
+    """Buscar material en control_material_almacen por código usando MySQL"""
+    try:
+        query = """
+            SELECT * FROM control_material_almacen 
+            WHERE codigo_material_recibido = %s
+        """
+        return execute_query(query, (codigo_recibido,), fetch='one')
+    except Exception as e:
+        print(f"Error buscando material por código: {e}")
+        return None
+
+def obtener_total_salidas_material(codigo_recibido):
+    """Obtener total de salidas para un código específico usando MySQL"""
+    try:
+        query = """
+            SELECT COALESCE(SUM(cantidad_salida), 0) as total_salidas
+            FROM control_material_salida 
+            WHERE codigo_material_recibido = %s
+        """
+        result = execute_query(query, (codigo_recibido,), fetch='one')
+        return float(result['total_salidas']) if result else 0.0
+    except Exception as e:
+        print(f"Error obteniendo total de salidas: {e}")
+        return 0.0
+
+def registrar_salida_material_mysql(data):
+    """Registrar salida de material usando MySQL"""
+    try:
+        from datetime import datetime
+        fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        query = """
+            INSERT INTO control_material_salida (
+                codigo_material_recibido, numero_lote, modelo, depto_salida,
+                proceso_salida, cantidad_salida, fecha_salida, fecha_registro, especificacion_material
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        params = (
+            data['codigo_material_recibido'],
+            data.get('numero_lote', ''),
+            data.get('modelo', ''),
+            data.get('depto_salida', ''),
+            data.get('proceso_salida', ''),
+            data['cantidad_salida'],
+            data.get('fecha_salida', ''),
+            fecha_registro,
+            data.get('especificacion_material', '')
+        )
+        
+        result = execute_query(query, params)
+        return result > 0
+    except Exception as e:
+        print(f"Error registrando salida de material: {e}")
+        return False
+
+def buscar_material_por_numero_parte_mysql(numero_parte):
+    """Buscar material por número de parte usando MySQL"""
+    try:
+        query = """
+            SELECT * FROM control_material_almacen 
+            WHERE numero_parte = %s
+        """
+        return execute_query(query, (numero_parte,), fetch='all') or []
+    except Exception as e:
+        print(f"Error buscando material por número de parte: {e}")
+        return []
+
+def calcular_inventario_general_mysql(numero_parte):
+    """Calcular inventario general para un número de parte usando MySQL"""
+    try:
+        # Obtener todas las entradas para este número de parte
+        query_entradas = """
+            SELECT SUM(cantidad_recibida) as total_entradas
+            FROM control_material_almacen 
+            WHERE numero_parte = %s
+        """
+        entradas_result = execute_query(query_entradas, (numero_parte,), fetch='one')
+        total_entradas = float(entradas_result['total_entradas']) if entradas_result and entradas_result['total_entradas'] else 0.0
+        
+        # Obtener todas las salidas para este número de parte
+        query_salidas = """
+            SELECT SUM(cms.cantidad_salida) as total_salidas
+            FROM control_material_salida cms
+            JOIN control_material_almacen cma ON cms.codigo_material_recibido = cma.codigo_material_recibido
+            WHERE cma.numero_parte = %s
+        """
+        salidas_result = execute_query(query_salidas, (numero_parte,), fetch='one')
+        total_salidas = float(salidas_result['total_salidas']) if salidas_result and salidas_result['total_salidas'] else 0.0
+        
+        inventario_actual = total_entradas - total_salidas
+        
+        return {
+            'numero_parte': numero_parte,
+            'total_entradas': total_entradas,
+            'total_salidas': total_salidas,
+            'inventario_actual': inventario_actual
+        }
+    except Exception as e:
+        print(f"Error calculando inventario general: {e}")
+        return None
+
+def actualizar_inventario_general_salida_mysql(numero_parte, cantidad_salida):
+    """Actualizar inventario general después de una salida usando MySQL"""
+    try:
+        # Recalcular inventario completo
+        inventario_info = calcular_inventario_general_mysql(numero_parte)
+        
+        if inventario_info:
+            # Actualizar o insertar en la tabla inventario_general
+            query = """
+                INSERT INTO inventario_general (numero_parte, cantidad_actual, fecha_actualizacion)
+                VALUES (%s, %s, NOW())
+                ON DUPLICATE KEY UPDATE
+                    cantidad_actual = %s,
+                    fecha_actualizacion = NOW()
+            """
+            
+            cantidad_actual = inventario_info['inventario_actual']
+            result = execute_query(query, (numero_parte, cantidad_actual, cantidad_actual))
+            
+            print(f"✅ Inventario actualizado para {numero_parte}: {cantidad_actual}")
+            return result > 0
+        
+        return False
+    except Exception as e:
+        print(f"Error actualizando inventario general: {e}")
+        return False
+
+def listar_modelos_bom_mysql():
+    """Listar modelos de BOM usando MySQL"""
+    try:
+        query = "SELECT DISTINCT modelo FROM bom ORDER BY modelo"
+        return execute_query(query, fetch='all') or []
+    except Exception as e:
+        print(f"Error listando modelos BOM: {e}")
+        return []
+
 # === FUNCIONES DE MIGRACIÓN ===
 
 def migrar_desde_sqlite(sqlite_db_path):

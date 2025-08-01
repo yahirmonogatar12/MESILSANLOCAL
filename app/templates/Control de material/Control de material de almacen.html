@@ -574,9 +574,9 @@
             <label>Especificación de material</label>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <input type="text" id="almacen_especificacion_material" readonly placeholder="Se carga automáticamente al seleccionar código" style="flex: 1;">
-                <label class="checkbox-label-almacen" style="display: flex; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer; white-space: nowrap; transition: all 0.3s ease;" id="label_registro_automatico">
-                    <input type="checkbox" id="checkbox_registro_almacen" class="checkbox-almacen" style="transform: scale(1.2); accent-color: #27ae60;">
-                    <span id="texto_registro_automatico">Registro automático</span>
+                <label class="checkbox-label-almacen" style="display: none; align-items: center; gap: 8px; color: #ecf0f1; font-size: 12px; cursor: pointer; white-space: nowrap; transition: all 0.3s ease;" id="label_registro_automatico">
+                    <input type="checkbox" id="checkbox_registro_almacen" class="checkbox-almacen" style="display: none;" disabled title="FUNCIÓN DESACTIVADA PERMANENTEMENTE">
+                    <span id="texto_registro_automatico">Registro automático (DESACTIVADO)</span>
                 </label>
             </div>
         </div>
@@ -1166,14 +1166,15 @@
             }
             
             // Detectar códigos largos (típicos de escáneres) y procesarlos automáticamente
-            setTimeout(() => {
-                const codigoActual = input.value.trim();
-                if (codigoActual.length >= 15) { // Códigos típicos de materiales son largos
-                    console.log('Código largo detectado - procesando automáticamente:', codigoActual);
-                    parsearYDistribuirCodigo(codigoActual);
-                    // NO limpiar automáticamente - dejar que el usuario vea el código
-                }
-            }, 200);
+            // *** CÓDIGO AUTOMÁTICO DESACTIVADO PARA EVITAR BUCLES INFINITOS ***
+            // setTimeout(() => {
+            //     const codigoActual = input.value.trim();
+            //     if (codigoActual.length >= 15) { // Códigos típicos de materiales son largos
+            //         console.log('Código largo detectado - procesando automáticamente:', codigoActual);
+            //         parsearYDistribuirCodigo(codigoActual);
+            //         // NO limpiar automáticamente - dejar que el usuario vea el código
+            //     }
+            // }, 200);
         }
 
         function limpiarCampoEscaneo(input) {
@@ -1203,6 +1204,16 @@
             
             // *** RESETEAR CONTROL DE GUARDADO AL LIMPIAR MANUALMENTE ***
             yaGuardadoEnEsteEscaneo = false;
+            
+            // *** LIMPIAR BUFFERS Y TIMEOUTS PARA PREVENIR BUCLES ***
+            bufferEscaneo = '';
+            if (timeoutEscaneo) {
+                clearTimeout(timeoutEscaneo);
+                timeoutEscaneo = null;
+            }
+            ultimoTiempoEscaneo = 0;
+            
+            console.log('🧹 Campo limpiado manualmente - todos los controles reseteados');
         }
 
         function procesarCodigoManual() {
@@ -1392,7 +1403,7 @@
             
             // *** VERIFICACIÓN RÁPIDA DE REGISTRO AUTOMÁTICO TRAS ESCANEO ***
             setTimeout(() => {
-                verificarRegistroAutomaticoTrasEscaneo();
+                // verificarRegistroAutomaticoTrasEscaneo(); // DESACTIVADO PERMANENTEMENTE
             }, 500); // Reducido a 0.5 segundos para mayor velocidad
         }
 
@@ -5006,6 +5017,12 @@ if (document.readyState === 'loading') {
         
         // Funciones de detección automática de escaneo
         function detectarEscaneoLoteAutomatico(event) {
+            // Solo funcionar en el campo específico del modal de asignación de lotes
+            if (event.target.id !== 'escaneo-lote-proveedor') {
+                console.log('⛔ detectarEscaneoLoteAutomatico - Solo permitido en modal de asignación');
+                return;
+            }
+            
             const valor = event.target.value.trim();
             console.log('Detectando lote automático - Longitud:', valor.length, 'Valor:', valor);
             
@@ -5034,6 +5051,12 @@ if (document.readyState === 'loading') {
         }
         
         function detectarEscaneoEtiquetaAutomatico(event) {
+            // Solo funcionar en el campo específico del modal de asignación de lotes
+            if (event.target.id !== 'escaneo-etiqueta-impresa') {
+                console.log('⛔ detectarEscaneoEtiquetaAutomatico - Solo permitido en modal de asignación');
+                return;
+            }
+            
             const valor = event.target.value.trim();
             console.log('Detectando etiqueta automática - Longitud:', valor.length, 'Valor:', valor);
             
