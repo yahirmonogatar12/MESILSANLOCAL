@@ -86,12 +86,11 @@ def get_role_permissions(role_name):
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT pb.pagina, pb.seccion, pb.boton 
+            SELECT rpb.pagina, rpb.seccion, rpb.boton 
             FROM rol_permisos_botones rpb
-            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
             JOIN roles r ON rpb.rol_id = r.id
             WHERE r.nombre = %s
-            ORDER BY pb.pagina, pb.seccion, pb.boton
+            ORDER BY rpb.pagina, rpb.seccion, rpb.boton
         """, (role_name,))
         
         permisos = cursor.fetchall()
@@ -138,21 +137,12 @@ def toggle_permission():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Obtener IDs de rol y permiso
+        # Obtener ID del rol
         cursor.execute("SELECT id FROM roles WHERE nombre = %s", (role,))
         rol_result = cursor.fetchone()
         if not rol_result:
             return jsonify({'error': f'Rol {role} no encontrado'}), 404
         rol_id = rol_result[0]
-        
-        cursor.execute("""
-            SELECT id FROM permisos_botones 
-            WHERE pagina = %s AND seccion = %s AND boton = %s
-        """, (pagina, seccion, boton))
-        permiso_result = cursor.fetchone()
-        if not permiso_result:
-            return jsonify({'error': f'Permiso {pagina}>{seccion}>{boton} no encontrado'}), 404
-        permiso_id = permiso_result[0]
         
         message = ''
         
@@ -160,14 +150,14 @@ def toggle_permission():
             # Verificar si ya existe
             cursor.execute("""
                 SELECT COUNT(*) FROM rol_permisos_botones 
-                WHERE rol_id = %s AND permiso_boton_id = %s
-            """, (rol_id, permiso_id))
+                WHERE rol_id = %s AND pagina = %s AND seccion = %s AND boton = %s
+            """, (rol_id, pagina, seccion, boton))
             
             if cursor.fetchone()[0] == 0:
                 cursor.execute("""
-                    INSERT INTO rol_permisos_botones (rol_id, permiso_boton_id, fecha_asignacion) 
-                    VALUES (%s, %s, NOW())
-                """, (rol_id, permiso_id))
+                    INSERT INTO rol_permisos_botones (rol_id, pagina, seccion, boton, fecha_creacion) 
+                    VALUES (%s, %s, %s, %s, NOW())
+                """, (rol_id, pagina, seccion, boton))
                 message = f'Permiso {pagina}>{seccion}>{boton} asignado a {role}'
             else:
                 message = f'El permiso ya existía para {role}'
@@ -175,8 +165,8 @@ def toggle_permission():
         elif action == 'remove':
             cursor.execute("""
                 DELETE FROM rol_permisos_botones 
-                WHERE rol_id = %s AND permiso_boton_id = %s
-            """, (rol_id, permiso_id))
+                WHERE rol_id = %s AND pagina = %s AND seccion = %s AND boton = %s
+            """, (rol_id, pagina, seccion, boton))
             message = f'Permiso {pagina}>{seccion}>{boton} removido de {role}'
         else:
             message = f'Acción {action} no válida'
@@ -212,19 +202,19 @@ def enable_all_permissions():
             return jsonify({'error': f'Rol {role} no encontrado'}), 404
         rol_id = rol_result[0]
         
-        # Obtener todos los IDs de permisos disponibles
-        cursor.execute("SELECT id FROM permisos_botones")
+        # Obtener todos los permisos disponibles
+        cursor.execute("SELECT DISTINCT pagina, seccion, boton FROM permisos_botones")
         all_permisos = cursor.fetchall()
         
         added_count = 0
         for permiso_row in all_permisos:
-            permiso_id = permiso_row[0]
+            pagina, seccion, boton = permiso_row
             
             # Insertar solo si no existe (ignorar duplicados)
             cursor.execute("""
-                INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id, fecha_asignacion) 
-                VALUES (%s, %s, NOW())
-            """, (rol_id, permiso_id))
+                INSERT IGNORE INTO rol_permisos_botones (rol_id, pagina, seccion, boton, fecha_creacion) 
+                VALUES (%s, %s, %s, %s, NOW())
+            """, (rol_id, pagina, seccion, boton))
             
             if cursor.rowcount > 0:
                 added_count += 1

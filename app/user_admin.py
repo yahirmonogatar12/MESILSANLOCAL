@@ -574,7 +574,14 @@ def obtener_permisos_rol(rol_id):
             ORDER BY p.modulo, p.accion
         ''', (rol_id,))
         
-        permisos = [dict(row) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        permisos = []
+        for row in rows:
+            permisos.append({
+                'pagina': row[0],
+                'seccion': row[1],
+                'boton': row[2]
+            })
         conn.close()
         
         return jsonify(permisos)
@@ -637,11 +644,10 @@ def obtener_permisos_dropdowns_rol(rol_id):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion
-            FROM permisos_botones pb
-            JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
-            WHERE rpb.rol_id = %s AND pb.activo = 1
-            ORDER BY pb.pagina, pb.seccion, pb.boton
+            SELECT rpb.pagina, rpb.seccion, rpb.boton
+            FROM rol_permisos_botones rpb
+            WHERE rpb.rol_id = %s
+            ORDER BY rpb.pagina, rpb.seccion, rpb.boton
         ''', (rol_id,))
         
         permisos = [dict(row) for row in cursor.fetchall()]
@@ -674,10 +680,17 @@ def actualizar_permisos_dropdowns_rol():
         
         # Agregar nuevos permisos
         for permiso_id in permisos_ids:
+            # Obtener datos del permiso desde permisos_botones
             cursor.execute('''
-                INSERT INTO rol_permisos_botones (rol_id, permiso_boton_id)
-                VALUES (%s, %s)
-            ''', (rol_id, permiso_id))
+                SELECT pagina, seccion, boton FROM permisos_botones WHERE id = %s
+            ''', (permiso_id,))
+            permiso_data = cursor.fetchone()
+            
+            if permiso_data:
+                cursor.execute('''
+                     INSERT INTO rol_permisos_botones (rol_id, pagina, seccion, boton, fecha_creacion)
+                     VALUES (%s, %s, %s, %s, NOW())
+                 ''', (rol_id, permiso_data[0], permiso_data[1], permiso_data[2]))
         
         conn.commit()
         conn.close()
