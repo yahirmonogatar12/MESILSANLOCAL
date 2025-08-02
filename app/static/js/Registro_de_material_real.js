@@ -132,6 +132,12 @@ function renderizarInventarioTabla() {
     }).join('');
 }
 
+// Variables para gestionar event listeners del modal
+let modalEventListeners = {
+    keydown: null,
+    click: null
+};
+
 // Función para ver detalles de lotes específicos
 function verDetallesLotes(numeroParte) {
     console.log(`🔍 Consultando detalles de lotes para: ${numeroParte}`);
@@ -278,10 +284,67 @@ function verDetallesLotes(numeroParte) {
         `;
     });
     
+    // Configurar event listeners para cerrar modal
+    modalEventListeners.keydown = function(e) {
+        if (e.key === 'Escape') {
+            cerrarModalLotes();
+        }
+    };
+    
+    modalEventListeners.click = function(e) {
+        if (e.target === modal) {
+            cerrarModalLotes();
+        }
+    };
+    
+    document.addEventListener('keydown', modalEventListeners.keydown);
+    modal.addEventListener('click', modalEventListeners.click);
+    
     // Limpiar modal cuando se cierre
     modal.addEventListener('hidden.bs.modal', function () {
+        // Limpiar event listeners antes de remover el modal
+        if (modalEventListeners.keydown) {
+            document.removeEventListener('keydown', modalEventListeners.keydown);
+            modalEventListeners.keydown = null;
+        }
+        if (modalEventListeners.click) {
+            modal.removeEventListener('click', modalEventListeners.click);
+            modalEventListeners.click = null;
+        }
         modal.remove();
     });
+}
+
+// Función para cerrar modal de lotes
+function cerrarModalLotes() {
+    const modal = document.getElementById('lotesDetalleModal');
+    if (modal) {
+        // Limpiar event listeners ANTES de remover el modal
+        if (modalEventListeners.keydown) {
+            document.removeEventListener('keydown', modalEventListeners.keydown);
+            modalEventListeners.keydown = null;
+        }
+        if (modalEventListeners.click) {
+            modal.removeEventListener('click', modalEventListeners.click);
+            modalEventListeners.click = null;
+        }
+        
+        // Si existe una instancia de Bootstrap Modal, cerrarla primero
+        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+        if (bootstrapModal) {
+            bootstrapModal.hide();
+            // Esperar a que se complete la animación de cierre
+            modal.addEventListener('hidden.bs.modal', function() {
+                modal.remove();
+            }, { once: true });
+        } else {
+            // Si no hay instancia de Bootstrap, remover directamente
+            modal.remove();
+        }
+    }
+    
+    // Restaurar scroll del body
+    document.body.style.overflow = 'auto';
 }
 
 // Función para filtrar lotes en la tabla de detalles
@@ -572,3 +635,4 @@ window.limpiarFiltrosInventario = limpiarFiltrosInventario;
 window.toggleInventarioSelectAll = toggleInventarioSelectAll;
 window.toggleInventarioSelection = toggleInventarioSelection;
 window.verDetallesLotes = verDetallesLotes;
+window.cerrarModalLotes = cerrarModalLotes;
