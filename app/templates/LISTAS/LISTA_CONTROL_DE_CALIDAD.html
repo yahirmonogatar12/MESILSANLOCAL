@@ -28,7 +28,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de material" 
-                            data-permiso-boton="Historial de cambio de material de SMT">Historial de cambio de material de SMT</li>
+                            data-permiso-boton="Historial de cambio de material de SMT"
+                            onclick="window.parent.mostrarHistorialSMT ? window.parent.mostrarHistorialSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-cambio-smt-container', '/historial-cambio-material-smt-ajax') : window.location.href='/historial-cambio-material-smt')">Historial de cambio de material de SMT</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de material" 

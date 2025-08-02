@@ -78,7 +78,7 @@ function renderizarInventarioTabla() {
     
     // Renderizar filas
     tableBody.innerHTML = inventarioGeneralData.map(item => {
-        const remanente = item.cantidad_total || (item.cantidad_entradas - item.cantidad_salidas);
+        const remanente = item.cantidad_total || 0;
         const statusClass = remanente < 50 ? 'text-danger' : remanente < 100 ? 'text-warning' : 'text-success';
         const isSelected = inventarioSelectedItems.has(item.id);
         
@@ -90,6 +90,16 @@ function renderizarInventarioTabla() {
             }
             return `<td>${valorStr}</td>`;
         }
+        
+        // Crear botón para ver lotes disponibles
+        const totalLotes = item.lotes_disponibles ? item.lotes_disponibles.length : 0;
+        const lotesBoton = totalLotes > 0
+            ? `<button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); verDetallesLotes('${item.numero_parte}')" style="font-size: 11px; padding: 2px 8px;">
+                <i class="fas fa-search"></i> Ver Lotes (${totalLotes})
+               </button>`
+            : '<small class="text-muted">Sin lotes</small>';
+        
+        const lotesTooltip = `${totalLotes} lotes disponibles. Haz clic para ver detalles.`;
         
         return `
             <tr class="${isSelected ? 'registro-selected' : ''}" onclick="seleccionarInventarioItem(${item.id})" style="cursor: pointer; transition: all 0.3s ease;">
@@ -105,23 +115,221 @@ function renderizarInventarioTabla() {
                 <td class="cantidad-col cantidad-remanente ${statusClass}" style="text-align: right; font-weight: bold;">
                     ${formatearNumero(remanente)}
                 </td>
-                <td class="cantidad-col cantidad-entradas" style="text-align: right;">
-                    ${formatearNumero(item.cantidad_entradas)}
-                </td>
-                <td class="cantidad-col cantidad-salidas" style="text-align: right;">
-                    ${formatearNumero(item.cantidad_salidas)}
+                <td style="text-align: center; padding: 8px;" title="${lotesTooltip}">
+                    ${lotesBoton}
                 </td>
                 <td style="font-size: 12px; color: #b0b0b0;">
-                    ${formatearFecha(item.fecha_actualizacion, true)}
+                    ${formatearFecha(item.fecha_ultimo_recibo, true)}
                 </td>
                 <td style="font-size: 12px; color: #b0b0b0;">
-                    ${formatearFecha(item.fecha_creacion, true)}
+                    ${formatearFecha(item.fecha_primer_recibo, true)}
+                </td>
+                <td style="font-size: 11px; color: #6c757d;">
+                    ${item.propiedad_material || 'COMMON USE'}
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+// Función para ver detalles de lotes específicos
+function verDetallesLotes(numeroParte) {
+    console.log(`🔍 Consultando detalles de lotes para: ${numeroParte}`);
     
-    actualizarInventarioContadorSeleccionados();
+    // Crear modal para mostrar detalles de lotes
+    const modalHtml = `
+        <div class="modal fade" id="lotesDetalleModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-boxes"></i> Detalles de Lotes - ${numeroParte}
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Barra de búsqueda -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control" id="buscarLote" placeholder="Buscar por número de lote..." onkeyup="filtrarLotes()">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-control" id="filtroDisponibilidad" onchange="filtrarLotes()">
+                                    <option value="todos">Todos los lotes</option>
+                                    <option value="disponibles">Solo disponibles</option>
+                                    <option value="agotados">Solo agotados</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="lotesDetalleContent">
+                            <div class="text-center">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando detalles de lotes...
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remover modal existente si existe
+    const existingModal = document.getElementById('lotesDetalleModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Agregar modal al DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Mostrar modal
+    const modal = document.getElementById('lotesDetalleModal');
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // Consultar detalles de lotes
+    fetch('/api/inventario/lotes_detalle', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ numero_parte: numeroParte })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const contentDiv = document.getElementById('lotesDetalleContent');
+        
+        if (data.success && data.lotes && data.lotes.length > 0) {
+            const tablaLotes = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm" id="tablaLotesDetalle">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Lote</th>
+                                <th>Cantidad Disponible</th>
+                                <th>Cantidad Original</th>
+                                <th>Total Salidas</th>
+                                <th>Fecha Recibo</th>
+                                <th>Ubicación</th>
+                                <th>Código Material</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.lotes.map(lote => `
+                                <tr class="fila-lote" data-lote="${lote.numero_lote.toLowerCase()}" data-disponible="${lote.cantidad_disponible > 0 ? 'si' : 'no'}">
+                                    <td><strong>${lote.numero_lote}</strong></td>
+                                    <td class="text-right">
+                                        <span class="badge badge-${lote.cantidad_disponible > 0 ? 'success' : 'danger'}">
+                                            ${formatearNumero(lote.cantidad_disponible)}
+                                        </span>
+                                    </td>
+                                    <td class="text-right">${formatearNumero(lote.cantidad_original)}</td>
+                                    <td class="text-right">${formatearNumero(lote.total_salidas)}</td>
+                                    <td>${formatearFecha(lote.fecha_recibo)}</td>
+                                    <td>${lote.ubicacion || 'N/A'}</td>
+                                    <td>${lote.codigo_material || 'N/A'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Total de lotes:</strong> ${data.total_lotes}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Cantidad total disponible:</strong> 
+                            <span class="badge badge-primary">
+                                ${formatearNumero(data.lotes.reduce((sum, lote) => sum + lote.cantidad_disponible, 0))}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            contentDiv.innerHTML = tablaLotes;
+        } else {
+            contentDiv.innerHTML = `
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    No se encontraron lotes disponibles para el número de parte: <strong>${numeroParte}</strong>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error al consultar detalles de lotes:', error);
+        const contentDiv = document.getElementById('lotesDetalleContent');
+        contentDiv.innerHTML = `
+            <div class="alert alert-danger text-center">
+                <i class="fas fa-exclamation-circle"></i>
+                Error al cargar los detalles de lotes: ${error.message}
+            </div>
+        `;
+    });
+    
+    // Limpiar modal cuando se cierre
+    modal.addEventListener('hidden.bs.modal', function () {
+        modal.remove();
+    });
+}
+
+// Función para filtrar lotes en la tabla de detalles
+function filtrarLotes() {
+    const busqueda = document.getElementById('buscarLote').value.toLowerCase();
+    const filtroDisponibilidad = document.getElementById('filtroDisponibilidad').value;
+    const filas = document.querySelectorAll('.fila-lote');
+    let filasVisibles = 0;
+    
+    filas.forEach(fila => {
+        const numeroLote = fila.getAttribute('data-lote');
+        const disponible = fila.getAttribute('data-disponible');
+        
+        let mostrarPorBusqueda = numeroLote.includes(busqueda);
+        let mostrarPorDisponibilidad = true;
+        
+        if (filtroDisponibilidad === 'disponibles') {
+            mostrarPorDisponibilidad = disponible === 'si';
+        } else if (filtroDisponibilidad === 'agotados') {
+            mostrarPorDisponibilidad = disponible === 'no';
+        }
+        
+        if (mostrarPorBusqueda && mostrarPorDisponibilidad) {
+            fila.style.display = '';
+            filasVisibles++;
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+    
+    // Mostrar mensaje si no hay resultados
+    const tabla = document.getElementById('tablaLotesDetalle');
+    let mensajeNoResultados = document.getElementById('mensajeNoResultados');
+    
+    if (filasVisibles === 0) {
+        if (!mensajeNoResultados) {
+            mensajeNoResultados = document.createElement('div');
+            mensajeNoResultados.id = 'mensajeNoResultados';
+            mensajeNoResultados.className = 'alert alert-info text-center mt-3';
+            mensajeNoResultados.innerHTML = '<i class="fas fa-search"></i> No se encontraron lotes que coincidan con los criterios de búsqueda.';
+            tabla.parentNode.appendChild(mensajeNoResultados);
+        }
+        mensajeNoResultados.style.display = 'block';
+    } else {
+        if (mensajeNoResultados) {
+            mensajeNoResultados.style.display = 'none';
+        }
+    }
 }
 
 // Función para formatear números
@@ -363,3 +571,4 @@ window.aplicarFiltrosInventario = aplicarFiltrosInventario;
 window.limpiarFiltrosInventario = limpiarFiltrosInventario;
 window.toggleInventarioSelectAll = toggleInventarioSelectAll;
 window.toggleInventarioSelection = toggleInventarioSelection;
+window.verDetallesLotes = verDetallesLotes;

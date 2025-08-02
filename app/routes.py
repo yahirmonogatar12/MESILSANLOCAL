@@ -2970,44 +2970,43 @@ def consultar_inventario_general():
         print(f"🔍 Consultando inventario general con filtros: {filtros}")
         
         conn = get_db_connection()
+        if conn is None:
+            print("❌ No se pudo obtener conexión a la base de datos")
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo conectar a la base de datos'
+            }), 500
+            
         cursor = conn.cursor()
         
-        # Query principal: Sumar cantidades por número de parte pero mantener información de lotes
+        # Primero verificar que las tablas existen
+        try:
+            cursor.execute("SHOW TABLES LIKE 'control_material_almacen'")
+            if not cursor.fetchone():
+                print("❌ Tabla control_material_almacen no existe")
+                return jsonify({
+                    'success': False,
+                    'error': 'Tabla control_material_almacen no encontrada'
+                }), 500
+        except Exception as table_error:
+            print(f"❌ Error verificando tablas: {table_error}")
+            return jsonify({
+                'success': False,
+                'error': f'Error verificando tablas: {str(table_error)}'
+            }), 500
+        
+        # Query simplificada para evitar problemas de sintaxis
         query = '''
             SELECT 
                 cma.numero_parte,
                 cma.codigo_material,
                 cma.especificacion,
                 cma.propiedad_material,
-                SUM(cma.cantidad_actual - COALESCE(salidas.total_salidas, 0)) as cantidad_total,
+                SUM(cma.cantidad_actual) as cantidad_total,
                 COUNT(DISTINCT cma.numero_lote_material) as total_lotes,
-                GROUP_CONCAT(
-                    DISTINCT CONCAT(
-                        cma.numero_lote_material, ':', 
-                        (cma.cantidad_actual - COALESCE(lote_salidas.salidas_lote, 0))
-                    ) 
-                    ORDER BY cma.fecha_recibo DESC 
-                    SEPARATOR '|'
-                ) as detalle_lotes,
                 MAX(cma.fecha_recibo) as fecha_ultimo_recibo,
                 MIN(cma.fecha_recibo) as fecha_primer_recibo
             FROM control_material_almacen cma
-            LEFT JOIN (
-                SELECT 
-                    cma2.numero_parte,
-                    SUM(cms.cantidad_salida) as total_salidas
-                FROM control_material_salida cms
-                JOIN control_material_almacen cma2 ON cms.codigo_material_recibido = cma2.codigo_material_recibido
-                GROUP BY cma2.numero_parte
-            ) salidas ON cma.numero_parte = salidas.numero_parte
-            LEFT JOIN (
-                SELECT 
-                    cma3.codigo_material_recibido,
-                    SUM(cms2.cantidad_salida) as salidas_lote
-                FROM control_material_salida cms2
-                JOIN control_material_almacen cma3 ON cms2.codigo_material_recibido = cma3.codigo_material_recibido
-                GROUP BY cma3.codigo_material_recibido
-            ) lote_salidas ON cma.codigo_material_recibido = lote_salidas.codigo_material_recibido
             WHERE 1=1
         '''
         
@@ -3032,40 +3031,109 @@ def consultar_inventario_general():
         
         query += ' ORDER BY fecha_ultimo_recibo DESC'
         
+        print(f"🔍 Ejecutando consulta: {query}")
+        print(f"🔍 Con parámetros: {params}")
+        
         cursor.execute(query, params)
         rows = cursor.fetchall()
         
+        print(f"🔍 Filas obtenidas: {len(rows) if rows else 0}")
+        
         inventario = []
         for i, row in enumerate(rows):
-            # Procesar detalles de lotes
-            lotes_info = []
-            if row[6]:  # detalle_lotes
-                for lote_detalle in row[6].split('|'):
-                    if ':' in lote_detalle:
-                        lote, cantidad = lote_detalle.split(':', 1)
-                        cantidad_lote = float(cantidad) if cantidad else 0.0
-                        if cantidad_lote > 0:  # Solo incluir lotes con cantidad positiva
-                            lotes_info.append({
-                                'numero_lote': lote,
-                                'cantidad_disponible': cantidad_lote
-                            })
-            
-            cantidad_total = float(row[4]) if row[4] else 0.0
-            
-            # Solo incluir items con cantidad total positiva
-            if cantidad_total > 0:
-                inventario.append({
-                    'id': i + 1,
-                    'numero_parte': row[0],
-                    'codigo_material': row[1] or row[0],
-                    'especificacion': row[2] or '',
-                    'propiedad_material': row[3] or 'COMMON USE',
-                    'cantidad_total': cantidad_total,
-                    'total_lotes': int(row[5]) if row[5] else 0,
-                    'lotes_disponibles': lotes_info,
-                    'fecha_ultimo_recibo': row[7],
-                    'fecha_primer_recibo': row[8]
-                })
+            try:
+                print(f"🔍 Procesando fila {i}: {row}")
+                
+                # Verificar si row es un diccionario o una tupla
+                if hasattr(row, 'keys'):  # Es un diccionario
+                    cantidad_total = float(row.get('cantidad_total', 0)) if row.get('cantidad_total') else 0.0
+                    numero_parte = row.get('numero_parte', '')
+                    
+                    if cantidad_total > 0:
+                        # Consultar lotes disponibles para este número de parte
+                        lotes_query = '''
+                            SELECT numero_lote_material, cantidad_actual, fecha_recibo
+                            FROM control_material_almacen 
+                            WHERE numero_parte = %s AND cantidad_actual > 0
+                            ORDER BY fecha_recibo DESC
+                        '''
+                        cursor.execute(lotes_query, [numero_parte])
+                        lotes_rows = cursor.fetchall()
+                        
+                        lotes_disponibles = []
+                        for lote_row in lotes_rows:
+                            if hasattr(lote_row, 'keys'):
+                                lotes_disponibles.append({
+                                    'numero_lote': lote_row.get('numero_lote_material', ''),
+                                    'cantidad_disponible': float(lote_row.get('cantidad_actual', 0)),
+                                    'fecha_recibo': lote_row.get('fecha_recibo')
+                                })
+                            else:
+                                lotes_disponibles.append({
+                                    'numero_lote': lote_row[0] or '',
+                                    'cantidad_disponible': float(lote_row[1] or 0),
+                                    'fecha_recibo': lote_row[2]
+                                })
+                        
+                        inventario.append({
+                            'id': i + 1,
+                            'numero_parte': numero_parte,
+                            'codigo_material': row.get('codigo_material', '') or numero_parte,
+                            'especificacion': row.get('especificacion', '') or '',
+                            'propiedad_material': row.get('propiedad_material', '') or 'COMMON USE',
+                            'cantidad_total': cantidad_total,
+                            'total_lotes': int(row.get('total_lotes', 0)) if row.get('total_lotes') else 0,
+                            'lotes_disponibles': lotes_disponibles,
+                            'fecha_ultimo_recibo': row.get('fecha_ultimo_recibo'),
+                            'fecha_primer_recibo': row.get('fecha_primer_recibo')
+                        })
+                else:  # Es una tupla
+                    cantidad_total = float(row[4]) if row[4] else 0.0
+                    numero_parte = row[0]
+                    
+                    if cantidad_total > 0:
+                        # Consultar lotes disponibles para este número de parte
+                        lotes_query = '''
+                            SELECT numero_lote_material, cantidad_actual, fecha_recibo
+                            FROM control_material_almacen 
+                            WHERE numero_parte = %s AND cantidad_actual > 0
+                            ORDER BY fecha_recibo DESC
+                        '''
+                        cursor.execute(lotes_query, [numero_parte])
+                        lotes_rows = cursor.fetchall()
+                        
+                        lotes_disponibles = []
+                        for lote_row in lotes_rows:
+                            if hasattr(lote_row, 'keys'):
+                                lotes_disponibles.append({
+                                    'numero_lote': lote_row.get('numero_lote_material', ''),
+                                    'cantidad_disponible': float(lote_row.get('cantidad_actual', 0)),
+                                    'fecha_recibo': lote_row.get('fecha_recibo')
+                                })
+                            else:
+                                lotes_disponibles.append({
+                                    'numero_lote': lote_row[0] or '',
+                                    'cantidad_disponible': float(lote_row[1] or 0),
+                                    'fecha_recibo': lote_row[2]
+                                })
+                        
+                        inventario.append({
+                            'id': i + 1,
+                            'numero_parte': numero_parte,
+                            'codigo_material': row[1] or numero_parte,
+                            'especificacion': row[2] or '',
+                            'propiedad_material': row[3] or 'COMMON USE',
+                            'cantidad_total': cantidad_total,
+                            'total_lotes': int(row[5]) if row[5] else 0,
+                            'lotes_disponibles': lotes_disponibles,
+                            'fecha_ultimo_recibo': row[6],
+                            'fecha_primer_recibo': row[7]
+                        })
+                        
+            except Exception as row_error:
+                print(f"❌ Error procesando fila {i}: {row_error}")
+                print(f"❌ Datos de la fila: {row}")
+                continue
         
         print(f"✅ Inventario consultado: {len(inventario)} números de parte encontrados")
         
@@ -3314,6 +3382,16 @@ def historial_cambio_material_smt():
     except Exception as e:
         print(f"Error al cargar historial de cambio de material SMT: {e}")
         return f"Error al cargar la página: {str(e)}", 500
+
+@app.route('/historial-cambio-material-smt-ajax')
+def historial_cambio_material_smt_ajax():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    try:
+        return render_template('Control de calidad/historial_cambio_material_smt_ajax.html')
+    except Exception as e:
+        print(f"Error en historial_cambio_material_smt_ajax: {e}")
+        return f"Error interno del servidor: {e}", 500
 
 @app.route('/api/csv_data')
 @login_requerido

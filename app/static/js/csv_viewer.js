@@ -1,4 +1,4 @@
-﻿// Variables globales - prevent redeclaration in dynamic loading
+﻿﻿// Variables globales - prevent redeclaration in dynamic loading
 if (typeof window.csvViewerLoaded === 'undefined') {
     window.csvViewerLoaded = true;
     console.log('🔄 Loading CSV Viewer v3.4');

@@ -1,7 +1,7 @@
 // Variables globales - prevent redeclaration in dynamic loading
 if (typeof window.csvViewerLoaded === 'undefined') {
     window.csvViewerLoaded = true;
-    console.log('🔄 Loading CSV Viewer v3.4');
+    console.log('🔄 Loading CSV Viewer v3.5 - SMT Compatible');
 
 // Variables globales
 var allData = [];
@@ -9,6 +9,28 @@ var filteredData = [];
 
 // Configuración
 var API_BASE = '/api';
+
+// === FUNCIONES AUXILIARES PARA COMPATIBILIDAD CON IDs CON SUFIJO ===
+
+// Función auxiliar para obtener elemento por ID con flexibilidad para sufijos
+function getElementByIdFlexible(baseId) {
+    // Intentar primero con sufijo -smt
+    let element = document.getElementById(baseId + '-smt');
+    if (element) return element;
+    
+    // Si no existe, intentar sin sufijo
+    element = document.getElementById(baseId);
+    return element;
+}
+
+// Función auxiliar para obtener múltiples elementos con flexibilidad
+function getElementsFlexible(baseIds) {
+    const elements = {};
+    baseIds.forEach(id => {
+        elements[id] = getElementByIdFlexible(id);
+    });
+    return elements;
+}
 
 // InicializaciÃ³n cuando se carga la pÃ¡gina
 document.addEventListener('DOMContentLoaded', function() {
@@ -41,9 +63,9 @@ async function probarCarga() {
 async function cargarDatosCSV() {
     mostrarModal();
     try {
-        // Obtener carpeta seleccionada
-        const folderSelect = document.getElementById('filterFolder');
-        const selectedFolder = folderSelect.value;
+        // Obtener carpeta seleccionada usando función auxiliar
+        const folderSelect = getElementByIdFlexible('filterFolder');
+        const selectedFolder = folderSelect ? folderSelect.value : '';
         
         if (!selectedFolder) {
             mostrarAlerta('Por favor seleccione una lÃ­nea/mounter para cargar los datos');
@@ -121,18 +143,25 @@ async function cargarDatosCSV() {
 
 // Actualizar estadÃ­sticas en el panel (solo las que quedan)
 function actualizarEstadisticas(stats) {
-    document.getElementById('statTotalRecords').textContent = stats.total_records || 0;
-    document.getElementById('statOkCount').textContent = stats.ok_count || 0;
-    document.getElementById('statNgCount').textContent = stats.ng_count || 0;
+    const elements = getElementsFlexible(['statTotalRecords', 'statOkCount', 'statNgCount']);
+    
+    if (elements.statTotalRecords) elements.statTotalRecords.textContent = stats.total_records || 0;
+    if (elements.statOkCount) elements.statOkCount.textContent = stats.ok_count || 0;
+    if (elements.statNgCount) elements.statNgCount.textContent = stats.ng_count || 0;
 }
 
 // Actualizar tabla con datos
 function actualizarTabla() {
-    const tbody = document.getElementById('csvTableBody');
+    const tbody = getElementByIdFlexible('csvTableBody');
+    
+    if (!tbody) {
+        console.error('❌ No se encontró el elemento tbody de la tabla');
+        return;
+    }
     
     if (!filteredData || filteredData.length === 0) {
-        const folderSelect = document.getElementById('filterFolder');
-        const selectedFolder = folderSelect.value;
+        const folderSelect = getElementByIdFlexible('filterFolder');
+        const selectedFolder = folderSelect ? folderSelect.value : '';
         let mensaje = 'No hay datos disponibles';
         
         if (selectedFolder) {
@@ -180,20 +209,23 @@ function actualizarTabla() {
 
 // Aplicar filtros
 async function aplicarFiltros() {
-    // Obtener carpeta seleccionada para incluir en filtros
-    const folderSelect = document.getElementById('filterFolder');
-    const selectedFolder = folderSelect.value;
+    // Obtener carpeta seleccionada para incluir en filtros usando función auxiliar
+    const folderSelect = getElementByIdFlexible('filterFolder');
+    const selectedFolder = folderSelect ? folderSelect.value : '';
     
     if (!selectedFolder) {
         return;
     }
 
+    // Obtener elementos de filtro usando función auxiliar
+    const elements = getElementsFlexible(['filterPartName', 'filterResult', 'filterDateFrom', 'filterDateTo']);
+
     const filtros = {
         folder: selectedFolder,  // âœ… AGREGADO: Incluir carpeta en filtros
-        partName: document.getElementById('filterPartName').value.trim(),
-        result: document.getElementById('filterResult').value,
-        dateFrom: document.getElementById('filterDateFrom').value,
-        dateTo: document.getElementById('filterDateTo').value
+        partName: elements.filterPartName ? elements.filterPartName.value.trim() : '',
+        result: elements.filterResult ? elements.filterResult.value : '',
+        dateFrom: elements.filterDateFrom ? elements.filterDateFrom.value : '',
+        dateTo: elements.filterDateTo ? elements.filterDateTo.value : ''
     };
 
     try {
@@ -256,10 +288,12 @@ async function aplicarFiltros() {
     }
 }// Limpiar filtros
 function limpiarFiltros() {
-    document.getElementById('filterPartName').value = '';
-    document.getElementById('filterResult').value = '';
-    document.getElementById('filterDateFrom').value = '';
-    document.getElementById('filterDateTo').value = '';
+    const elements = getElementsFlexible(['filterPartName', 'filterResult', 'filterDateFrom', 'filterDateTo']);
+    
+    if (elements.filterPartName) elements.filterPartName.value = '';
+    if (elements.filterResult) elements.filterResult.value = '';
+    if (elements.filterDateFrom) elements.filterDateFrom.value = '';
+    if (elements.filterDateTo) elements.filterDateTo.value = '';
     
     filteredData = [...allData];
     actualizarTabla();
@@ -269,8 +303,10 @@ function limpiarFiltros() {
 // Establecer fecha actual en los filtros
 function establecerFechaHoy() {
     const fechaHoy = new Date().toISOString().split('T')[0];
-    document.getElementById('filterDateFrom').value = fechaHoy;
-    document.getElementById('filterDateTo').value = fechaHoy;
+    const elements = getElementsFlexible(['filterDateFrom', 'filterDateTo']);
+    
+    if (elements.filterDateFrom) elements.filterDateFrom.value = fechaHoy;
+    if (elements.filterDateTo) elements.filterDateTo.value = fechaHoy;
     
     // Aplicar filtros automÃ¡ticamente despuÃ©s de establecer la fecha
     if (allData.length > 0) {
@@ -335,7 +371,8 @@ function actualizarContadorResultados() {
     const ngCount = filteredData.filter(row => row.Result === 'NG').length;
     
     const texto = `Mostrando ${totalRegistros} registros | OK: ${okCount} | NG: ${ngCount}`;
-    document.getElementById('csvResultText').textContent = texto;
+    const textElement = getElementByIdFlexible('csvResultText');
+    if (textElement) textElement.textContent = texto;
 }
 
 // Utilidades de formato
@@ -413,20 +450,26 @@ function formatearHora(hora) {
 
 // Modales y alertas
 function mostrarModal() {
-    document.getElementById('csvLoadingModal').style.display = 'flex';
+    const modal = getElementByIdFlexible('csvLoadingModal');
+    if (modal) modal.style.display = 'flex';
 }
 
 function ocultarModal() {
-    document.getElementById('csvLoadingModal').style.display = 'none';
+    const modal = getElementByIdFlexible('csvLoadingModal');
+    if (modal) modal.style.display = 'none';
 }
 
 function mostrarAlerta(mensaje) {
-    document.getElementById('csvAlertMessage').textContent = mensaje;
-    document.getElementById('csvAlertModal').style.display = 'flex';
+    const messageElement = getElementByIdFlexible('csvAlertMessage');
+    const modalElement = getElementByIdFlexible('csvAlertModal');
+    
+    if (messageElement) messageElement.textContent = mensaje;
+    if (modalElement) modalElement.style.display = 'flex';
 }
 
 function hideCsvAlert() {
-    document.getElementById('csvAlertModal').style.display = 'none';
+    const modalElement = getElementByIdFlexible('csvAlertModal');
+    if (modalElement) modalElement.style.display = 'none';
 }
 
 // Eventos de teclado para filtros
@@ -436,17 +479,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const fechaHoy = new Date().toISOString().split('T')[0];
     const fechaAyer = new Date(Date.now() - 2*24*60*60*1000).toISOString().split('T')[0]; // Hace 2 dÃ­as
     
-    const dateFromField = document.getElementById('filterDateFrom');
-    const dateToField = document.getElementById('filterDateTo');
+    const dateFromField = getElementByIdFlexible('filterDateFrom');
+    const dateToField = getElementByIdFlexible('filterDateTo');
+    
+    if (dateFromField) dateFromField.value = fechaHoy;
+    if (dateToField) dateToField.value = fechaHoy;
     
     // Establecer un rango de fechas mÃ¡s amplio
-    if (!dateFromField.value) dateFromField.value = fechaAyer;
-    if (!dateToField.value) dateToField.value = fechaHoy;
+    if (dateFromField && !dateFromField.value) dateFromField.value = fechaAyer;
+    if (dateToField && !dateToField.value) dateToField.value = fechaHoy;
     
     // Enter en campos de filtro
-    document.getElementById('filterPartName').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') aplicarFiltros();
-    });
+    const partNameField = getElementByIdFlexible('filterPartName');
+    if (partNameField) {
+        partNameField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') aplicarFiltros();
+        });
+    }
 });
 
 // Nueva funciÃ³n para cargar datos cuando se selecciona una carpeta
@@ -486,10 +535,105 @@ window.establecerFechaHoy = establecerFechaHoy;
 window.exportarDatos = exportarDatos;
 window.hideCsvAlert = hideCsvAlert;
 
+// === FUNCIONES CON SUFIJOS ÚNICOS PARA EVITAR CONFLICTOS EN CARGA AJAX ===
+
+// Funciones con sufijo _smt para uso específico en carga dinámica
+window.cargarDatosCSV_smt = function() {
+    // Redirigir IDs únicos a las funciones originales
+    const originalFilterFolder = document.getElementById('filterFolder');
+    const smtFilterFolder = document.getElementById('filterFolder-smt');
+    
+    if (smtFilterFolder && originalFilterFolder) {
+        // Temporalmente cambiar los IDs para que las funciones originales funcionen
+        const originalId = originalFilterFolder.id;
+        originalFilterFolder.id = 'temp-folder-id';
+        smtFilterFolder.id = 'filterFolder';
+        
+        // Llamar función original
+        cargarDatosCSV().then(() => {
+            // Restaurar IDs
+            smtFilterFolder.id = 'filterFolder-smt';
+            originalFilterFolder.id = originalId;
+        }).catch(() => {
+            // Restaurar IDs en caso de error
+            smtFilterFolder.id = 'filterFolder-smt';
+            originalFilterFolder.id = originalId;
+        });
+    } else {
+        cargarDatosCSV();
+    }
+};
+
+window.cargarDatosPorCarpeta_smt = function() {
+    cargarDatosCSV_smt();
+};
+
+window.aplicarFiltros_smt = function() {
+    aplicarFiltros();
+};
+
+window.limpiarFiltros_smt = function() {
+    limpiarFiltros();
+};
+
+window.establecerFechaHoy_smt = function() {
+    establecerFechaHoy();
+};
+
+window.exportarDatos_smt = function() {
+    exportarDatos();
+};
+
+window.hideCsvAlert_smt = function() {
+    hideCsvAlert();
+};
+
+// Función específica para inicializar el módulo SMT en carga AJAX
+window.initHistorialSMTModule = function() {
+    console.log('🚀 Inicializando módulo Historial SMT con IDs únicos');
+    
+    // Verificar que todos los elementos con sufijo -smt existan
+    const elements = [
+        'csvStatsPanel-smt',
+        'btnRefreshData-smt', 
+        'filterFolder-smt',
+        'csvDataTable-smt',
+        'csvTableBody-smt'
+    ];
+    
+    let allElementsFound = true;
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.warn(`⚠️ Elemento ${id} no encontrado`);
+            allElementsFound = false;
+        }
+    });
+    
+    if (allElementsFound) {
+        console.log('✅ Todos los elementos SMT encontrados correctamente');
+        
+        // Establecer fecha actual en los campos de fecha con sufijo
+        const fechaHoy = new Date().toISOString().split('T')[0];
+        const fechaDesde = document.getElementById('filterDateFrom-smt');
+        const fechaHasta = document.getElementById('filterDateTo-smt');
+        
+        if (fechaDesde) fechaDesde.value = fechaHoy;
+        if (fechaHasta) fechaHasta.value = fechaHoy;
+        
+        console.log('✅ Fechas establecidas en campos SMT');
+    }
+    
+    return allElementsFound;
+};
+
 console.log('Funciones CSV disponibles globalmente:', {
     cargarDatosPorCarpeta: typeof window.cargarDatosPorCarpeta,
     cargarDatosCSV: typeof window.cargarDatosCSV,
-    aplicarFiltros: typeof window.aplicarFiltros
+    aplicarFiltros: typeof window.aplicarFiltros,
+    // Nuevas funciones con sufijo
+    cargarDatosCSV_smt: typeof window.cargarDatosCSV_smt,
+    initHistorialSMTModule: typeof window.initHistorialSMTModule
 });
 
 } // End csvViewerLoaded check

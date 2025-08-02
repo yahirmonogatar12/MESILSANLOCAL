@@ -509,14 +509,22 @@ console.log('scriptMain.js loaded');
                 hideAllContent();
                 controlCalidadContent.style.display = 'block';
                 
-                // Cargar contenido dinámicamente
-                setTimeout(() => {
-                    if (typeof window.cargarHistorialSMT === 'function') {
-                        window.cargarHistorialSMT();
-                    } else {
-                        console.warn('⚠️ cargarHistorialSMT no disponible');
+                // Llamar a la función específica del MaterialTemplate
+                if (typeof window.mostrarHistorialCambioSMT === 'function') {
+                    window.mostrarHistorialCambioSMT();
+                } else {
+                    console.warn('⚠️ mostrarHistorialCambioSMT no disponible');
+                    // Fallback básico
+                    const appContent = document.querySelector('main.app-content');
+                    if (appContent) {
+                        appContent.innerHTML = `
+                            <div class="container-fluid mt-4">
+                                <h2>Historial de cambio de material de SMT</h2>
+                                <p>Funcionalidad en desarrollo...</p>
+                            </div>
+                        `;
                     }
-                }, 100);
+                }
             };
             
             // Función para historial de cambio de material por máquina

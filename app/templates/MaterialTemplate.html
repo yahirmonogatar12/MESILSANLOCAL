@@ -321,6 +321,9 @@
         <div id="control-almacen-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
+        <div id="historial-cambio-smt-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
     </div>
     
     <!-- Contenedor específico para el contenido de Control de Producción (LADO DERECHO) -->
@@ -1586,6 +1589,7 @@
             const registroMaterialContainer = document.getElementById('registro-material-container');
             const historialInventarioContainer = document.getElementById('historial-inventario-container');
             const ajusteNumeroContainer = document.getElementById('ajuste-numero-container');
+            const historialCambioSmtContainer = document.getElementById('historial-cambio-smt-container');
             const produccionInfoContainer = document.getElementById('produccion-info-container');
             const navButtons = document.querySelectorAll('.nav-button');
             
@@ -1693,6 +1697,7 @@
                 registroMaterialContainer.style.display = 'none';
                 historialInventarioContainer.style.display = 'none';
                 ajusteNumeroContainer.style.display = 'none';
+                historialCambioSmtContainer.style.display = 'none';
             }
             
             function hideAllInformacionBasicaContainers() {
@@ -2295,6 +2300,34 @@
                     if (typeof initAjusteNumero === 'function') {
                         initAjusteNumero();
                     }
+                });
+            };
+            
+            // Función global para mostrar Historial de cambio de material SMT
+            window.mostrarHistorialCambioSMT = function() {
+                hideAllMaterialContainers();
+                materialContentArea.style.display = 'block';
+                historialCambioSmtContainer.style.display = 'block';
+                
+                // Cargar estilos específicos para SMT si no están cargados
+                if (!document.getElementById('historial-smt-styles')) {
+                    const link = document.createElement('link');
+                    link.id = 'historial-smt-styles';
+                    link.rel = 'stylesheet';
+                    link.href = '/static/css/historial-smt.css';
+                    document.head.appendChild(link);
+                    console.log('✅ Estilos SMT cargados dinámicamente');
+                }
+                
+                // Cargar contenido dinámicamente
+                cargarContenidoDinamico('historial-cambio-smt-container', '/historial-cambio-material-smt-ajax', () => {
+                    
+                    // Inicializar funcionalidades específicas del historial de cambio de material SMT
+                    if (typeof initHistorialCambioSMT === 'function') {
+                        initHistorialCambioSMT();
+                    }
+                    
+                    console.log('✅ Historial de cambio de material SMT cargado correctamente');
                 });
             };
             
