@@ -151,9 +151,7 @@ function verDetallesLotes(numeroParte) {
                         <h5 class="modal-title">
                             <i class="fas fa-boxes"></i> Detalles de Lotes - ${numeroParte}
                         </h5>
-                        <button type="button" class="close" data-dismiss="modal">
-                            <span>&times;</span>
-                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <!-- Barra de búsqueda -->
@@ -181,7 +179,7 @@ function verDetallesLotes(numeroParte) {
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     </div>
                 </div>
             </div>
