@@ -34,13 +34,21 @@ function getElementsFlexible(baseIds) {
 
 // InicializaciÃ³n cuando se carga la pÃ¡gina
 document.addEventListener('DOMContentLoaded', function() {
-    // Establecer fecha actual en los filtros de fecha
-    const fechaHoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-    document.getElementById('filterDateFrom').value = fechaHoy;
-    document.getElementById('filterDateTo').value = fechaHoy;
+    // Establecer fecha actual en los filtros de fecha y mantenerla siempre actualizada
+    establecerFechaActual();
     
     // No cargar datos automÃ¡ticamente al inicio
 });
+
+// Función para establecer siempre la fecha actual
+function establecerFechaActual() {
+    const fechaHoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    const dateFromField = document.getElementById('filterDateFrom');
+    const dateToField = document.getElementById('filterDateTo');
+    
+    if (dateFromField) dateFromField.value = fechaHoy;
+    if (dateToField) dateToField.value = fechaHoy;
+}
 
 // âœ… FUNCIÃ“N DE DEBUG - Para probar la carga
 async function probarCarga() {
@@ -72,13 +80,8 @@ async function cargarDatosCSV() {
             return;
         }
         
-        // Verificar que las fechas estÃ©n establecidas, si no, usar fecha actual
-        const fechaHoy = new Date().toISOString().split('T')[0];
-        const dateFromField = document.getElementById('filterDateFrom');
-        const dateToField = document.getElementById('filterDateTo');
-        
-        if (!dateFromField.value) dateFromField.value = fechaHoy;
-        if (!dateToField.value) dateToField.value = fechaHoy;
+        // Siempre establecer la fecha actual
+        establecerFechaActual();
         
         // Cargar datos y estadÃ­sticas en paralelo con filtro de carpeta
         const [dataResponse, statsResponse] = await Promise.all([
@@ -504,13 +507,10 @@ function cargarDatosPorCarpeta() {
     const selectedFolder = folderSelect.value;
     
     if (selectedFolder) {
-        // Establecer fechas amplias para mostrar todos los datos disponibles
-        const hoy = new Date();
-        const hace30dias = new Date(hoy.getTime() - 30*24*60*60*1000);
+        // Siempre establecer la fecha actual
+        establecerFechaActual();
         
-        document.getElementById('filterDateFrom').value = hace30dias.toISOString().split('T')[0];
-        document.getElementById('filterDateTo').value = hoy.toISOString().split('T')[0];
-        
+        // Cargar datos automáticamente
         cargarDatosCSV();
     } else {
         // Limpiar datos si no hay carpeta seleccionada
