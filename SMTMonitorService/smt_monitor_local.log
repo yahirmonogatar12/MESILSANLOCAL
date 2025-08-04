@@ -1,0 +1,28 @@
+2025-08-04 15:46:39,537 - __main__ - INFO - Tablas de base de datos verificadas/creadas exitosamente
+2025-08-04 15:46:39,538 - __main__ - INFO - Iniciando SMT CSV Monitor...
+2025-08-04 15:46:39,538 - __main__ - INFO - Procesando archivos existentes...
+2025-08-04 15:46:39,538 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\1line\L1 m1
+2025-08-04 15:46:39,540 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\1line\L1 m2
+2025-08-04 15:46:39,540 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\1line\L1 m3
+2025-08-04 15:46:39,540 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\2line\L2 m1
+2025-08-04 15:46:39,546 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\2line\L2 m2
+2025-08-04 15:46:39,546 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\2line\L2 m3
+2025-08-04 15:46:39,546 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\3line\L3 m1
+2025-08-04 15:46:39,546 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\3line\L3 m2
+2025-08-04 15:46:39,547 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\3line\L3 m3
+2025-08-04 15:46:39,547 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\4line\L4 m1
+2025-08-04 15:46:39,547 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\4line\L4 m2
+2025-08-04 15:46:39,548 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\4line\L4 m3
+2025-08-04 15:46:39,548 - __main__ - INFO - Iniciando monitoreo continuo...
+2025-08-04 15:46:39,548 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\1line\L1 m1
+2025-08-04 15:46:39,548 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\1line\L1 m2
+2025-08-04 15:46:39,548 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\1line\L1 m3
+2025-08-04 15:46:39,548 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\2line\L2 m1
+2025-08-04 15:46:39,548 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\2line\L2 m2
+2025-08-04 15:46:39,549 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\2line\L2 m3
+2025-08-04 15:46:39,549 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\3line\L3 m1
+2025-08-04 15:46:39,549 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\3line\L3 m2
+2025-08-04 15:46:39,549 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\3line\L3 m3
+2025-08-04 15:46:39,549 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\4line\L4 m1
+2025-08-04 15:46:39,549 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\4line\L4 m2
+2025-08-04 15:46:39,551 - __main__ - WARNING - Carpeta no encontrada: C:\LOT CHECK  ALL\4line\L4 m3
