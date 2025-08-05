@@ -1,0 +1,507 @@
+/* Estilos específicos para Plan de Producción */
+/* Usando prefijo 'plan-' para evitar conflictos */
+
+/* Variables CSS para Plan de Producción - usando colores del sistema */
+:root {
+    --plan-primary: #3C3940;
+    --plan-secondary: #502696;
+    --plan-success: #456636;
+    --plan-warning: #e67e22;
+    --plan-danger: #e74c3c;
+    --plan-info: #2980b9;
+    --plan-light: #ecf0f1;
+    --plan-dark: #32323E;
+    --plan-bg-primary: #172A46;
+    --plan-bg-secondary: #40424F;
+    --plan-border: #20688C;
+    --plan-text: lightgray;
+    --plan-text-muted: #bdc3c7;
+    --plan-container-bg: #32323E;
+    --plan-toolbar-bg: #34334E;
+    --plan-bg-main: #32323E;
+    --plan-table-bg: #2c2c2c;
+    --plan-table-header-bg: #3a3a3a;
+    --plan-table-border: #444;
+    --plan-button-hover: #4a4a4a;
+}
+
+/* Reset y estilos base para plan de producción */
+.plan-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--plan-bg-main);
+    border-radius: 8px;
+    color: var(--plan-light);
+    font-family: 'LG regular', sans-serif;
+}
+
+/* Forzar visibilidad del contenido con IDs únicos */
+body, html {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#material-content-area {
+    display: block;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+#plan-produccion-main-container-unique {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    height: auto !important;
+    font-family: 'LG regular', sans-serif;
+    background-color: var(--plan-container-bg);
+    color: var(--plan-text);
+    min-height: 100vh;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+/* Contenedor principal de plan siempre visible */
+.plan-main-container {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    height: auto !important;
+    font-family: 'LG regular', sans-serif;
+    background-color: var(--plan-container-bg);
+    color: var(--plan-text);
+    min-height: 100vh;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+/* Toolbar principal */
+#plan-produccion-toolbar-unique {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: var(--plan-toolbar-bg);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: var(--plan-border) 1px solid;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+/* Filtros */
+#plan-produccion-filters-unique {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.plan-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.plan-filter-group label {
+    color: var(--plan-text);
+    font-weight: 500;
+    font-size: 14px;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.plan-filter-group input,
+.plan-filter-group select {
+    padding: 8px 12px;
+    border: 1px solid var(--plan-border);
+    border-radius: 4px;
+    background-color: var(--plan-bg-secondary);
+    color: var(--plan-text);
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.plan-filter-group input:focus,
+.plan-filter-group select:focus {
+    outline: none;
+    border-color: var(--plan-info);
+    box-shadow: 0 0 0 2px rgba(41, 128, 185, 0.2);
+}
+
+.plan-filter-group span {
+    color: var(--plan-text-muted);
+    margin: 0 5px;
+}
+
+/* Botones */
+.plan-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    margin: 2px;
+}
+
+.plan-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.plan-btn-primary {
+    background-color: var(--plan-primary);
+    color: white;
+}
+
+.plan-btn-primary:hover {
+    background-color: #4a4a4a;
+}
+
+.plan-btn-success {
+    background-color: var(--plan-success);
+    color: white;
+}
+
+.plan-btn-success:hover {
+    background-color: #5a7a4a;
+}
+
+.plan-btn-info {
+    background-color: var(--plan-info);
+    color: white;
+}
+
+.plan-btn-info:hover {
+    background-color: #3498db;
+}
+
+.plan-btn-warning {
+    background-color: var(--plan-warning);
+    color: white;
+}
+
+.plan-btn-warning:hover {
+    background-color: #f39c12;
+}
+
+.plan-btn-secondary {
+    background-color: var(--plan-bg-secondary);
+    color: var(--plan-text);
+    border: 1px solid var(--plan-border);
+}
+
+.plan-btn-secondary:hover {
+    background-color: var(--plan-button-hover);
+}
+
+.plan-btn-danger {
+    background-color: var(--plan-danger);
+    color: white;
+}
+
+.plan-btn-danger:hover {
+    background-color: #c0392b;
+}
+
+/* Sección de tabla principal */
+.plan-table-section {
+    margin-bottom: 30px;
+    background-color: var(--plan-table-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--plan-table-border);
+}
+
+.plan-table-container {
+    overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.plan-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background-color: var(--plan-table-bg);
+}
+
+.plan-data-table thead {
+    background-color: var(--plan-table-header-bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.plan-data-table th {
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--plan-light);
+    border-bottom: 2px solid var(--plan-border);
+    border-right: 1px solid var(--plan-table-border);
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.plan-data-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--plan-table-border);
+    border-right: 1px solid var(--plan-table-border);
+    color: var(--plan-text);
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.plan-data-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.plan-data-table .no-data {
+    text-align: center;
+    color: var(--plan-text-muted);
+    font-style: italic;
+    padding: 40px;
+}
+
+/* Footer de tabla */
+.plan-table-footer {
+    padding: 10px 15px;
+    background-color: var(--plan-toolbar-bg);
+    border-top: 1px solid var(--plan-border);
+    color: var(--plan-text-muted);
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Resumen de planes - Versión compacta */
+.plan-summary-section {
+    background-color: var(--plan-table-bg);
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 15px;
+    border: 1px solid var(--plan-table-border);
+}
+
+.plan-summary-section h3 {
+    color: var(--plan-light);
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.plan-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.plan-summary-item {
+    background-color: var(--plan-bg-secondary);
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--plan-border);
+    text-align: center;
+}
+
+.plan-summary-item label {
+    display: block;
+    color: var(--plan-text-muted);
+    font-size: 10px;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.plan-summary-item .value {
+    color: var(--plan-light);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Estados de plan */
+.plan-estado {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.plan-estado.borrador {
+    background-color: rgba(149, 165, 166, 0.2);
+    color: #95a5a6;
+}
+
+.plan-estado.en-proceso {
+    background-color: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+}
+
+.plan-estado.completado {
+    background-color: rgba(39, 174, 96, 0.2);
+    color: #27ae60;
+}
+
+.plan-estado.cancelado {
+    background-color: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+/* Prioridades */
+.plan-prioridad {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.plan-prioridad.alta {
+    background-color: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+.plan-prioridad.media {
+    background-color: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+}
+
+.plan-prioridad.baja {
+    background-color: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+}
+
+/* Botones de acción en tabla */
+.plan-action-buttons {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.plan-action-btn {
+    padding: 6px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    min-width: 32px;
+    height: 32px;
+}
+
+.plan-action-btn:hover {
+    transform: scale(1.1);
+}
+
+.plan-action-btn.edit {
+    background-color: var(--plan-info);
+    color: white;
+}
+
+.plan-action-btn.view {
+    background-color: var(--plan-success);
+    color: white;
+}
+
+.plan-action-btn.delete {
+    background-color: var(--plan-danger);
+    color: white;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--plan-info);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #plan-produccion-toolbar-unique {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #plan-produccion-filters-unique {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .plan-filter-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .plan-filter-group label {
+        min-width: auto;
+    }
+    
+    .plan-data-table {
+        font-size: 12px;
+    }
+    
+    .plan-data-table th,
+    .plan-data-table td {
+        padding: 8px 4px;
+    }
+    
+    .plan-summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.plan-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Scrollbar personalizado */
+.plan-table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.plan-table-container::-webkit-scrollbar-track {
+    background: var(--plan-bg-secondary);
+}
+
+.plan-table-container::-webkit-scrollbar-thumb {
+    background: var(--plan-border);
+    border-radius: 4px;
+}
+
+.plan-table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--plan-info);
+}

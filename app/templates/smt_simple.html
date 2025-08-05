@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMT - Historial Simple</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'LG regular', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #32323E;
+            color: lightgray;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background-color: #32323E;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #20688C;
+            color: #ecf0f1;
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #ecf0f1;
+        }
+        
+        .header p {
+            font-size: 0.9em;
+            color: lightgray;
+            font-weight: 400;
+        }
+        
+        /* Estadísticas estilo BOM */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #34334E;
+            border-radius: 6px;
+            border: 1px solid #20688C;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background-color: #40424F;
+            border-radius: 4px;
+            border: 1px solid #5F6375;
+            transition: transform 0.2s ease;
+        }
+        
+        .stat-item:hover {
+            transform: translateY(-2px);
+            background-color: #485563;
+        }
+        
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 3px;
+        }
+        
+        .stat-item div:last-child {
+            color: lightgray;
+            font-weight: 500;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Controles estilo BOM */
+        #smt-controls {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #34334E;
+            border-radius: 4px;
+            border: 1px solid #20688C;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        /* Filtros estilo BOM */
+        #smt-filters {
+            margin-bottom: 10px;
+            padding: 12px;
+            background-color: #40424F;
+            border-radius: 4px;
+            border: 1px solid #5F6375;
+        }
+        
+        #smt-filters h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #ecf0f1;
+            font-size: 1em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #ecf0f1;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        /* Inputs estilo BOM */
+        .smt-input,
+        .smt-select {
+            background-color: #2c3e50;
+            color: lightgray;
+            border: 1px solid #34495e;
+            border-radius: 3px;
+            padding: 6px 8px;
+            font-size: 11px;
+            transition: border-color 0.3s;
+        }
+        
+        .smt-input:focus,
+        .smt-select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+            background-color: #34495e;
+        }
+        
+        .smt-input::placeholder {
+            color: #95a5a6;
+            font-style: italic;
+        }
+        
+        /* Botones estilo BOM */
+        .smt-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 3px;
+            background-color: #3C3940;
+            border: 1px solid #20688C;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .smt-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(52, 152, 219, 0.3);
+        }
+        
+        .smt-btn.reload {
+            background-color: #3C3940;
+        }
+        
+        .smt-btn.clear {
+            background-color: #95a5a6;
+        }
+        
+        .smt-btn.clear:hover {
+            background-color: #7f8c8d;
+        }
+        
+        .smt-btn.clear-filters {
+            background-color: #e67e22;
+        }
+        
+        .smt-btn.clear-filters:hover {
+            background-color: #d35400;
+        }
+        
+        #smt-status {
+            color: lightgray;
+            font-weight: 500;
+            padding: 4px 8px;
+            background-color: #40424F;
+            border-radius: 3px;
+            border: 1px solid #5F6375;
+            font-size: 10px;
+        }
+        
+        /* Loading estilo BOM */
+        #smt-loading {
+            text-align: center;
+            padding: 20px;
+            color: #3498db;
+            font-size: 11px;
+            background-color: #40424F;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .smt-loading {
+            text-align: center;
+            padding: 20px;
+            color: #FFFFFF;
+            background-color: #32323E;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .smt-spinner {
+            border: 3px solid #555555;
+            border-top: 3px solid #00D4FF;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: smt-spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes smt-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Tabla compacta estilo BOM */
+        .smt-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #40424F;
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 11px;
+            margin-top: 10px;
+            table-layout: fixed;
+        }
+
+        .smt-table th {
+            background-color: #172A46;
+            color: #ecf0f1;
+            padding: 6px 5px;
+            text-align: center;
+            border: 1px solid #20688C;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 10px;
+            line-height: 1.2;
+            min-width: 60px;
+        }
+
+        .smt-table td {
+            padding: 4px 5px;
+            text-align: center;
+            border: 1px solid #5F6375;
+            background-color: #40424F;
+            color: lightgray;
+            transition: background-color 0.2s;
+            font-size: 10px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: relative;
+            cursor: default;
+        }
+
+        /* Tooltip para celdas con texto cortado */
+        .smt-table td:hover::after {
+            content: attr(title);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: normal;
+            max-width: 300px;
+            min-width: 150px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border: 1px solid #34495e;
+            word-wrap: break-word;
+            text-align: left;
+            line-height: 1.4;
+            pointer-events: none;
+            opacity: 0;
+            animation: tooltipFadeIn 0.3s ease-in-out forwards;
+        }
+
+        .smt-table td[title]:hover::after {
+            opacity: 1;
+        }
+
+        @keyframes tooltipFadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .smt-table tbody tr:hover {
+            background-color: #485563;
+        }
+
+        .smt-table tbody tr:hover td {
+            background-color: #485563;
+        }
+
+        .smt-table tbody tr:nth-child(even) {
+            background-color: #44475A;
+        }
+
+        .smt-table tbody tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        .smt-table tbody tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+        
+        /* Estados OK/NG estilo BOM */
+        .smt-status-ok {
+            color: #27ae60;
+            font-weight: bold;
+            background-color: rgba(39, 174, 96, 0.1);
+            padding: 2px 4px;
+            border-radius: 2px;
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+        
+        .smt-status-ng {
+            color: #e74c3c;
+            font-weight: bold;
+            background-color: rgba(231, 76, 60, 0.1);
+            padding: 2px 4px;
+            border-radius: 2px;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+        
+        /* Mensajes estilo BOM */
+        .smt-message {
+            padding: 8px 12px;
+            margin: 8px 0;
+            border-radius: 3px;
+            font-weight: 500;
+            font-size: 10px;
+        }
+        
+        .smt-success {
+            background-color: rgba(39, 174, 96, 0.1);
+            color: #27ae60;
+            border-left: 3px solid #27ae60;
+        }
+        
+        .smt-error {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            border-left: 3px solid #e74c3c;
+        }
+        
+        /* Responsive para SMT */
+        @media (max-width: 768px) {
+            .container {
+                padding: 5px;
+            }
+            
+            #smt-controls {
+                flex-direction: column;
+                gap: 6px;
+                padding: 8px;
+            }
+            
+            .filter-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .smt-input,
+            .smt-select {
+                font-size: 12px;
+                padding: 8px;
+            }
+            
+            .smt-btn {
+                width: 100%;
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+            
+            #smt-table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .smt-table {
+                min-width: 800px;
+                font-size: 10px;
+            }
+            
+            .smt-table th {
+                font-size: 9px;
+                padding: 4px 3px;
+            }
+            
+            .smt-table td {
+                font-size: 9px;
+                padding: 3px 4px;
+            }
+        }
+        
+        /* Scrollbar personalizada estilo BOM */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #40424F;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #20688C;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        
+        <div class="stats" id="stats">
+            <div class="stat-item">
+                <div class="stat-number" id="today-records">-</div>
+                <div>Hoy</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="ok-records">-</div>
+                <div>OK</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="ng-records">-</div>
+                <div>NG</div>
+            </div>
+        </div>
+        
+        <div id="smt-controls">
+            <button class="smt-btn reload" onclick="cargarDatos()">Recargar Datos</button>
+            <button class="smt-btn clear" onclick="limpiarTabla()">Limpiar Tabla</button>
+            <button class="smt-btn clear-filters" onclick="limpiarFiltros()">Limpiar Filtros</button>
+            <span id="smt-status">Listo para cargar datos</span>
+        </div>
+        
+        <div id="smt-filters">
+            <h3>Filtros de Búsqueda</h3>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="smt-fecha-desde">Fecha Desde:</label>
+                    <input type="date" id="smt-fecha-desde" class="smt-input" onchange="aplicarFiltros()">
+                </div>
+                <div class="filter-group">
+                    <label for="smt-fecha-hasta">Fecha Hasta:</label>
+                    <input type="date" id="smt-fecha-hasta" class="smt-input" onchange="aplicarFiltros()">
+                </div>
+                <div class="filter-group">
+                    <label for="smt-buscar-texto">Buscar:</label>
+                    <input type="text" id="smt-buscar-texto" class="smt-input" placeholder="Lote, código, parte..." onkeyup="aplicarFiltros()">
+                </div>
+            </div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="smt-filtro-linea">Línea:</label>
+                    <select id="smt-filtro-linea" class="smt-select" onchange="aplicarFiltros()">
+                        <option value="">Todas las líneas</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="smt-filtro-maquina">Máquina:</label>
+                    <select id="smt-filtro-maquina" class="smt-select" onchange="aplicarFiltros()">
+                        <option value="">Todas las máquinas</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="smt-filtro-resultado">Resultado:</label>
+                    <select id="smt-filtro-resultado" class="smt-select" onchange="aplicarFiltros()">
+                        <option value="">Todos</option>
+                        <option value="OK">OK</option>
+                        <option value="NG">NG</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div id="smt-message-area"></div>
+        
+        <div id="smt-loading" class="smt-loading" style="display: none;">
+            <div class="smt-spinner"></div>
+            <p>Cargando datos...</p>
+        </div>
+        
+        <table id="smt-data-table" class="smt-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Fecha Scan</th>
+                    <th>Hora Scan</th>
+                    <th>Slot</th>
+                    <th>Resultado</th>
+                    <th>Lote</th>
+                    <th>Código Barras</th>
+                    <th>Código Anterior</th>
+                    <th>Fecha Producto</th>
+                    <th>Parte</th>
+                    <th>Cantidad</th>
+                    <th>SEQ</th>
+                    <th>Proveedor</th>
+                    <th>Base Feeder</th>
+                    <th>Línea</th>
+                    <th>Máquina</th>
+                    <th>Archivo</th>
+                </tr>
+            </thead>
+            <tbody id="smt-table-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Variables globales
+        let datosActuales = [];
+        let datosFiltrados = [];
+        
+        // Mostrar mensaje
+        function mostrarMensaje(texto, tipo = 'success') {
+            const messageArea = document.getElementById('smt-message-area');
+            messageArea.innerHTML = `<div class="smt-message smt-${tipo}">${texto}</div>`;
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+        
+        // Poblar filtros dinámicos con orden correcto
+        function poblarFiltros(datos) {
+            // Obtener líneas únicas y ordenarlas
+            const lineasSet = new Set(datos.map(d => d.linea).filter(Boolean));
+            const lineas = Array.from(lineasSet).sort((a, b) => {
+                // Ordenar 1line, 2line, 3line, 4line, etc.
+                const numA = parseInt(a.replace(/\D/g, '')) || 0;
+                const numB = parseInt(b.replace(/\D/g, '')) || 0;
+                return numA - numB;
+            });
+            
+            // Obtener máquinas únicas y ordenarlas
+            const maquinasSet = new Set(datos.map(d => d.maquina).filter(Boolean));
+            const maquinas = Array.from(maquinasSet).sort((a, b) => {
+                // Extraer línea y máquina (ej: L1 m1 -> L1, m1)
+                const parseLineMachine = (str) => {
+                    const match = str.match(/L(\d+)\s*m(\d+)/i);
+                    if (match) {
+                        return { linea: parseInt(match[1]), maquina: parseInt(match[2]) };
+                    }
+                    return { linea: 0, maquina: 0 };
+                };
+                
+                const parsedA = parseLineMachine(a);
+                const parsedB = parseLineMachine(b);
+                
+                // Primero ordenar por línea, luego por máquina
+                if (parsedA.linea !== parsedB.linea) {
+                    return parsedA.linea - parsedB.linea;
+                }
+                return parsedA.maquina - parsedB.maquina;
+            });
+            
+            // Poblar dropdown de líneas
+            const filtroLinea = document.getElementById('smt-filtro-linea');
+            filtroLinea.innerHTML = '<option value="">Todas las líneas</option>';
+            lineas.forEach(linea => {
+                filtroLinea.innerHTML += `<option value="${linea}">${linea}</option>`;
+            });
+            
+            // Poblar dropdown de máquinas
+            const filtroMaquina = document.getElementById('smt-filtro-maquina');
+            filtroMaquina.innerHTML = '<option value="">Todas las máquinas</option>';
+            maquinas.forEach(maquina => {
+                filtroMaquina.innerHTML += `<option value="${maquina}">${maquina}</option>`;
+            });
+        }
+        
+        // Aplicar filtros
+        function aplicarFiltros() {
+            if (datosActuales.length === 0) {
+                return;
+            }
+            
+            const fechaDesde = document.getElementById('smt-fecha-desde').value;
+            const fechaHasta = document.getElementById('smt-fecha-hasta').value;
+            const buscarTexto = document.getElementById('smt-buscar-texto').value.toLowerCase();
+            const filtroLinea = document.getElementById('smt-filtro-linea').value;
+            const filtroMaquina = document.getElementById('smt-filtro-maquina').value;
+            const filtroResultado = document.getElementById('smt-filtro-resultado').value;
+            
+            datosFiltrados = datosActuales.filter(row => {
+                // Filtro de fecha
+                if (fechaDesde || fechaHasta) {
+                    const fechaRow = row.fecha_formateada || row.ScanDate;
+                    if (fechaRow) {
+                        let fechaComparar = fechaRow;
+                        
+                        // Convertir fecha si está en formato YYYYMMDD
+                        if (fechaRow.length === 8 && !fechaRow.includes('-')) {
+                            const año = fechaRow.substring(0, 4);
+                            const mes = fechaRow.substring(4, 6);
+                            const dia = fechaRow.substring(6, 8);
+                            fechaComparar = `${año}-${mes}-${dia}`;
+                        }
+                        
+                        if (fechaDesde && fechaComparar < fechaDesde) return false;
+                        if (fechaHasta && fechaComparar > fechaHasta) return false;
+                    }
+                }
+                
+                // Filtro de texto (busca en múltiples campos)
+                if (buscarTexto) {
+                    const campos = [
+                        row.LOTNO,
+                        row.Barcode,
+                        row.PreviousBarcode,
+                        row.PartName,
+                        row.Vendor
+                    ];
+                    const textoEncontrado = campos.some(campo => 
+                        campo && campo.toString().toLowerCase().includes(buscarTexto)
+                    );
+                    if (!textoEncontrado) return false;
+                }
+                
+                // Filtro de línea
+                if (filtroLinea && row.linea !== filtroLinea) return false;
+                
+                // Filtro de máquina
+                if (filtroMaquina && row.maquina !== filtroMaquina) return false;
+                
+                // Filtro de resultado
+                if (filtroResultado && row.Result !== filtroResultado) return false;
+                
+                return true;
+            });
+            
+            renderizarTabla(datosFiltrados);
+            
+            // Actualizar contador
+            document.getElementById('smt-status').textContent = 
+                `${datosFiltrados.length} de ${datosActuales.length} registros mostrados`;
+        }
+        
+        // Limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('smt-fecha-desde').value = '';
+            document.getElementById('smt-fecha-hasta').value = '';
+            document.getElementById('smt-buscar-texto').value = '';
+            document.getElementById('smt-filtro-linea').value = '';
+            document.getElementById('smt-filtro-maquina').value = '';
+            document.getElementById('smt-filtro-resultado').value = '';
+            
+            if (datosActuales.length > 0) {
+                datosFiltrados = [...datosActuales];
+                renderizarTabla(datosFiltrados);
+                document.getElementById('smt-status').textContent = `${datosActuales.length} registros cargados`;
+            }
+            
+            mostrarMensaje('Filtros limpiados', 'success');
+        }
+        
+        // Cargar estadísticas
+        async function cargarEstadisticas() {
+            try {
+                const response = await fetch('/api/smt_stats');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    document.getElementById('today-records').textContent = data.stats.hoy || 0;
+                    document.getElementById('ok-records').textContent = data.stats.por_resultado?.OK || 0;
+                    document.getElementById('ng-records').textContent = data.stats.por_resultado?.NG || 0;
+                }
+            } catch (error) {
+                console.error('Error cargando stats:', error);
+            }
+        }
+        
+        // Cargar datos principales
+        async function cargarDatos() {
+            document.getElementById('smt-loading').style.display = 'block';
+            document.getElementById('smt-data-table').style.display = 'none';
+            document.getElementById('smt-status').textContent = 'Cargando...';
+            
+            try {
+                console.log('Iniciando carga de datos...');
+                
+                // Obtener filtros de fecha
+                const fechaDesde = document.getElementById('smt-fecha-desde').value;
+                const fechaHasta = document.getElementById('smt-fecha-hasta').value;
+                
+                // Construir URL con parámetros
+                let url = '/api/historial_smt_data';
+                const params = new URLSearchParams();
+                
+                if (fechaDesde) params.append('fecha_desde', fechaDesde);
+                if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+                
+                if (params.toString()) {
+                    url += '?' + params.toString();
+                }
+                
+                console.log('URL de consulta:', url);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                console.log('Respuesta recibida:', data);
+                
+                document.getElementById('smt-loading').style.display = 'none';
+                
+                if (data.status === 'success') {
+                    datosActuales = data.data || [];
+                    
+                    if (datosActuales.length > 0) {
+                        datosFiltrados = [...datosActuales];
+                        poblarFiltros(datosActuales);
+                        renderizarTabla(datosFiltrados);
+                        document.getElementById('smt-data-table').style.display = 'table';
+                        document.getElementById('smt-status').textContent = `${datosActuales.length} registros cargados`;
+                        mostrarMensaje(`${datosActuales.length} registros cargados exitosamente`, 'success');
+                    } else {
+                        document.getElementById('smt-status').textContent = 'Sin datos';
+                        mostrarMensaje('No se encontraron registros en el rango de fechas seleccionado', 'error');
+                    }
+                } else {
+                    document.getElementById('smt-status').textContent = 'Error';
+                    mostrarMensaje(`Error: ${data.message}`, 'error');
+                }
+                
+                // Actualizar estadísticas
+                cargarEstadisticas();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('smt-loading').style.display = 'none';
+                document.getElementById('smt-status').textContent = 'Error de conexión';
+                mostrarMensaje(`Error de conexión: ${error.message}`, 'error');
+            }
+        }
+        
+        // Renderizar tabla
+        function renderizarTabla(datos) {
+            const tbody = document.getElementById('smt-table-body');
+            tbody.innerHTML = '';
+            
+            datos.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                const resultadoClass = row.Result === 'OK' ? 'smt-status-ok' : 'smt-status-ng';
+                
+                // Función para agregar tooltip solo si el texto es largo
+                const addTooltip = (value) => {
+                    const text = value || '-';
+                    return text.length > 15 ? `title="${text}"` : '';
+                };
+                
+                tr.innerHTML = `
+                    <td ${addTooltip(row.fecha_formateada || row.ScanDate)}>${row.fecha_formateada || row.ScanDate}</td>
+                    <td ${addTooltip(row.hora_formateada || row.ScanTime)}>${row.hora_formateada || row.ScanTime}</td>
+                    <td ${addTooltip(row.SlotNo)}>${row.SlotNo || '-'}</td>
+                    <td class="${resultadoClass}" ${addTooltip(row.Result)}>${row.Result || '-'}</td>
+                    <td ${addTooltip(row.LOTNO)}>${row.LOTNO || '-'}</td>
+                    <td ${addTooltip(row.Barcode)}>${row.Barcode || '-'}</td>
+                    <td ${addTooltip(row.PreviousBarcode)}>${row.PreviousBarcode || '-'}</td>
+                    <td ${addTooltip(row.Productdate)}>${row.Productdate || '-'}</td>
+                    <td ${addTooltip(row.PartName)}>${row.PartName || '-'}</td>
+                    <td ${addTooltip(row.Quantity)}>${row.Quantity || '-'}</td>
+                    <td ${addTooltip(row.SEQ)}>${row.SEQ || '-'}</td>
+                    <td ${addTooltip(row.Vendor)}>${row.Vendor || '-'}</td>
+                    <td ${addTooltip(row.FeederBase)}>${row.FeederBase || '-'}</td>
+                    <td ${addTooltip(row.linea)}>${row.linea || '-'}</td>
+                    <td ${addTooltip(row.maquina)}>${row.maquina || '-'}</td>
+                    <td ${addTooltip(row.archivo)}>${row.archivo || '-'}</td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // Limpiar tabla
+        function limpiarTabla() {
+            document.getElementById('smt-data-table').style.display = 'none';
+            document.getElementById('smt-table-body').innerHTML = '';
+            datosActuales = [];
+            datosFiltrados = [];
+            limpiarFiltros();
+            document.getElementById('smt-status').textContent = 'Tabla limpiada';
+            mostrarMensaje('Tabla limpiada', 'success');
+        }
+        
+        // Establecer fechas por defecto
+        function establecerFechasPorDefecto() {
+            const hoy = new Date();
+            const hace7Dias = new Date();
+            hace7Dias.setDate(hoy.getDate() - 7);
+            
+            document.getElementById('smt-fecha-hasta').value = hoy.toISOString().split('T')[0];
+            document.getElementById('smt-fecha-desde').value = hace7Dias.toISOString().split('T')[0];
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Página cargada - Lista para usar');
+            establecerFechasPorDefecto();
+            cargarEstadisticas();
+            mostrarMensaje('Página lista - Haz clic en "Recargar Datos" para ver la información', 'success');
+        });
+    </script>
+</body>
+</html>

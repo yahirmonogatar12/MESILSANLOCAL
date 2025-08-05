@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar la persona de renuncia</title>
+    <style>
+        /* Reset y estilos base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #2B2D3E;
+            color: #E0E0E0;
+            font-size: 12px;
+            overflow-x: hidden;
+        }
+
+        /* Estilos de scrollbar minimalista */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2B2D3E;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #5A5C6B;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6B6D7C;
+        }
+
+        /* Contenedor principal */
+        .main-container {
+            width: 100%;
+            min-height: 100vh;
+            background-color: #2B2D3E;
+            padding: 5px;
+        }
+
+        /* Barra de título con botones */
+        .title-bar {
+            background-color: #3C3F52;
+            padding: 10px 15px;
+            border: 1px solid #20688C;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .title-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: #E0E0E0;
+            margin-right: auto;
+        }
+
+        /* Botones de la barra de título */
+        .btn-toolbar {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn-toolbar:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-toolbar:active {
+            transform: translateY(0);
+        }
+
+        /* Botón Consultar */
+        .btn-consultar {
+            background-color: #2C3E50;
+            border: 2px solid #3498DB;
+        }
+
+        .btn-consultar:hover {
+            background-color: #34495E;
+            border-color: #2980B9;
+        }
+
+        /* Botón Registro */
+        .btn-registro {
+            background-color: #8E44AD;
+        }
+
+        .btn-registro:hover {
+            background-color: #7B3A9D;
+        }
+
+        /* Botón Exportar */
+        .btn-exportar {
+            background-color: #27AE60;
+        }
+
+        .btn-exportar:hover {
+            background-color: #229954;
+        }
+
+        /* Botón Importar */
+        .btn-importar {
+            background-color: #16A085;
+        }
+
+        .btn-importar:hover {
+            background-color: #138D75;
+        }
+
+        /* Botón Reset Password */
+        .btn-reset {
+            background-color: #E74C3C;
+        }
+
+        .btn-reset:hover {
+            background-color: #C0392B;
+        }
+
+        /* Botón Config */
+        .btn-config {
+            background-color: #95A5A6;
+        }
+
+        .btn-config:hover {
+            background-color: #7F8C8D;
+        }
+
+        /* Botón Reimprimir */
+        .btn-reimprimir {
+            background-color: #3498DB;
+        }
+
+        .btn-reimprimir:hover {
+            background-color: #2980B9;
+        }
+
+        /* Contenedor de tabla */
+        .table-container {
+            background-color: #40424F;
+            margin-top: 5px;
+            border: 1px solid #20688C;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: calc(100vh - 120px);
+        }
+
+        /* Tabla de datos */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .data-table th {
+            background-color: #172A46;
+            color: #E0E0E0;
+            padding: 10px 8px;
+            text-align: center;
+            border: 1px solid #20688C;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #5F6375;
+            background-color: #40424F;
+            color: #E0E0E0;
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Hover en filas */
+        .data-table tbody tr:hover td {
+            background-color: #485563;
+        }
+
+        /* Filas pares */
+        .data-table tbody tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        .data-table tbody tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+
+        /* Checkbox */
+        .table-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #3498DB;
+        }
+
+        /* Columna de expandir */
+        .expand-col {
+            width: 30px;
+            color: #3498DB;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Footer de tabla */
+        .table-footer {
+            background-color: #172A46;
+            padding: 10px 15px;
+            color: #E0E0E0;
+            font-size: 11px;
+            border: 1px solid #20688C;
+            border-top: none;
+        }
+
+        /* Estilos para columnas específicas */
+        .col-checkbox { width: 50px; }
+        .col-usuario { width: 80px; }
+        .col-nombre { width: 300px; }
+        .col-posicion { width: 100px; }
+        .col-departamento { width: 120px; }
+        .col-autoridad { width: 100px; }
+        .col-estatus { width: 50px; }
+        .col-fecha { width: 50px; }
+        .col-expand { width: 30px; }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .title-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .title-text {
+                margin-right: 0;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            .btn-toolbar {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .data-table {
+                font-size: 10px;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 5px 3px;
+                font-size: 9px;
+            }
+
+            .table-container {
+                max-height: calc(100vh - 250px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Barra de título con botones -->
+        <div class="title-bar">
+            <span class="title-text">Consultar la persona de renuncia</span>
+            <button id="btnConsultar" class="btn-toolbar btn-consultar">Consultar</button>
+            <button id="btnRegistro" class="btn-toolbar btn-registro">Registro</button>
+            <button id="btnExportar" class="btn-toolbar btn-exportar">Exportar el excel</button>
+            <button id="btnImportar" class="btn-toolbar btn-importar">Importar el excel</button>
+            <button id="btnResetPassword" class="btn-toolbar btn-reset">Reset Password</button>
+            <button id="btnConfigImpresora" class="btn-toolbar btn-config">Confi. impresora</button>
+            <button id="btnReimprimir" class="btn-toolbar btn-reimprimir">Reimprimir</button>
+        </div>
+
+        <!-- Contenedor de tabla -->
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="col-checkbox"><input type="checkbox" id="checkAll" class="table-checkbox"></th>
+                        <th class="col-usuario">Usuario</th>
+                        <th class="col-nombre">Nombre</th>
+                        <th class="col-posicion">Posicion</th>
+                        <th class="col-departamento">Departamento</th>
+                        <th class="col-autoridad">Autoridad</th>
+                        <th class="col-estatus">Estatus de renuncia de trabajo</th>
+                        <th class="col-fecha">Fecha de renuncia de trabajo</th>
+                        <th class="col-expand">▼</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>1027</td>
+                        <td style="text-align: left;">TREVIÑO CHAVEZ MARTHA LETICIA</td>
+                        <td>사원</td>
+                        <td>생산팀</td>
+                        <td>planning</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>1100</td>
+                        <td style="text-align: left;">Yahir leon Pérez</td>
+                        <td>사원</td>
+                        <td>생산팀</td>
+                        <td>Master</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>1242</td>
+                        <td style="text-align: left;">CARRIZALES MARQUEZ ALEJANDRA NOHELI</td>
+                        <td>사원</td>
+                        <td>생산팀</td>
+                        <td>production</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>1349</td>
+                        <td style="text-align: left;">PUENTE CARDENAS ADRIANA JUDITH</td>
+                        <td>사원</td>
+                        <td>생산팀</td>
+                        <td>production</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>1744</td>
+                        <td style="text-align: left;">GALLARDO NAVARRO DEVANI LIZBETH</td>
+                        <td>사원</td>
+                        <td>품질팀</td>
+                        <td>Quality</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>1775</td>
+                        <td style="text-align: left;">AGUNDIZ MARTÍNEZ KARLA YAZMIN</td>
+                        <td>사원</td>
+                        <td>생산기술(생기팀)</td>
+                        <td>PM</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>1996</td>
+                        <td style="text-align: left;">FRANCISCO GARCIA CATARINA</td>
+                        <td>사원</td>
+                        <td>생산기술(생기팀)</td>
+                        <td>PM</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>2405</td>
+                        <td style="text-align: left;">CAMACHO GANDARA ROSA SHARON</td>
+                        <td>사원</td>
+                        <td>품질팀</td>
+                        <td>Quality</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>374</td>
+                        <td style="text-align: left;">VARGAS RUBIO SALMA</td>
+                        <td>대리</td>
+                        <td>품질팀</td>
+                        <td>Quality</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>451</td>
+                        <td style="text-align: left;">MEDINA HERNÁNDEZ LUIS MARIO</td>
+                        <td>사원</td>
+                        <td>생산기술(생기팀)</td>
+                        <td>PM</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>475</td>
+                        <td style="text-align: left;">HERNANDEZ SANTIAGO GERMAN</td>
+                        <td>대리</td>
+                        <td>생산기술(생기팀)</td>
+                        <td>PM</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>543</td>
+                        <td style="text-align: left;">RIVERA MEZA VERONICA</td>
+                        <td>대리</td>
+                        <td>개발관리</td>
+                        <td>Development</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>545</td>
+                        <td style="text-align: left;">HERRERA TORRES ALICIA</td>
+                        <td>대리</td>
+                        <td>생산팀</td>
+                        <td>planning</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>608</td>
+                        <td style="text-align: left;">CANIZALES ESQUIVEL LIZETH ARACELY</td>
+                        <td>사원</td>
+                        <td>품질팀</td>
+                        <td>Quality</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>798</td>
+                        <td style="text-align: left;">Jesús Alejandro Gámez Regalado</td>
+                        <td>사원</td>
+                        <td>생산팀</td>
+                        <td>Master</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>805</td>
+                        <td style="text-align: left;">SANCHEZ AGUILERA JOSE DANIEL</td>
+                        <td>과장</td>
+                        <td>자재관리</td>
+                        <td>material</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>813</td>
+                        <td style="text-align: left;">LOPEZ GOMEZ MANUEL OTHON</td>
+                        <td>대리</td>
+                        <td>영업(완제품) 출하관리</td>
+                        <td>business</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>838</td>
+                        <td style="text-align: left;">GARCIA GARCIA FRANCISCO EDUARDO</td>
+                        <td>대리</td>
+                        <td>생산기술(생기팀)</td>
+                        <td>PM</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>847</td>
+                        <td style="text-align: left;">DAMIAN CHI OSCAR</td>
+                        <td>과장</td>
+                        <td>품질팀</td>
+                        <td>Quality</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>김병찬</td>
+                        <td style="text-align: left;">김병찬</td>
+                        <td>부장</td>
+                        <td>생산기술(생기팀)</td>
+                        <td>Master</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>김일신</td>
+                        <td style="text-align: left;">김일신</td>
+                        <td>법인장</td>
+                        <td>법인</td>
+                        <td>Master</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>맥승민</td>
+                        <td style="text-align: left;">맥승민</td>
+                        <td>이사</td>
+                        <td>법인</td>
+                        <td>Master</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td>송세호</td>
+                        <td style="text-align: left;">송세호</td>
+                        <td>차장</td>
+                        <td>품질팀</td>
+                        <td>Master</td>
+                        <td><input type="checkbox" class="table-checkbox"></td>
+                        <td></td>
+                        <td>▼</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer de tabla -->
+        <div class="table-footer">
+            Total Rows : 34
+        </div>
+    </div>
+</body>
+</html>

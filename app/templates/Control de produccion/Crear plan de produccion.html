@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de BOM</title>
+    <style>
+        /* Estilos específicos para Control de BOM */
+
+        /* Contenedor principal */
+        #bomMainContainer {
+            font-family: 'LG regular', sans-serif;
+            background-color: #32323E;
+            color: lightgray;
+            min-height: 100vh;
+            padding: 2px;   
+        }
+
+        /* Botonera */
+        #bomToolbar {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+            padding: 8px;
+            background-color: #34334E;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: #20688C 1px solid;
+            flex-wrap: wrap;
+        }
+
+        .bom-dropdown {
+            background-color: #2c3e50;
+            color: lightgray;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 11px;
+            min-width: 200px;
+            transition: border-color 0.3s;
+        }
+
+        .bom-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        /* Estilos para el buscador dropdown */
+        .bom-search-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .bom-search-dropdown {
+            background-color: #34495e;
+            color: #ecf0f1;
+            border: 2px solid #2c3e50;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 300px;
+            transition: border-color 0.3s;
+            font-weight: 500;
+        }
+
+        .bom-search-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            background-color: #2c3e50;
+        }
+
+        .bom-search-dropdown::placeholder {
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .bom-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .bom-dropdown-item {
+            padding: 8px 10px;
+            color: lightgray;
+            cursor: pointer;
+            border-bottom: 1px solid #34495e;
+            transition: background-color 0.2s;
+            font-size: 11px;
+        }
+
+        .bom-dropdown-item:hover {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .bom-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .bom-dropdown-item.hidden {
+            display: none;
+        }
+
+        .bom-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            background-color: #3C3940;
+            border: #20688C 1px solid;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .bom-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        #btnConsultar {
+            background-color: #3C3940;
+        }
+
+        #btnRegistrar {
+            background-color: #502696;
+        }
+
+        #btnRegistrar:hover {
+            background-color: #8e44ad;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+        }
+
+        #btnCancelar {
+            background-color: #95a5a6;
+        }
+
+        #btnCancelar:hover {
+            background-color: #7f8c8d;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+        }
+
+        #btnExportar {
+            background-color: #456636;
+        }
+
+        #btnExportar:hover {
+            background-color: #5a7c42;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(69, 102, 54, 0.3);
+        }
+
+        /* Tabla */
+        #bomTableContainer {
+            background-color: #40424F;
+            padding: 0px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        #bomTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 11px;
+            background-color: #40424F;
+            table-layout: fixed;
+            max-width: 100%;
+        }
+
+        #bomTable th {
+            background-color: #172A46;
+            color: #ecf0f1;
+            padding: 4px 3px;
+            text-align: center;
+            border: 1px solid #20688C;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 9px;
+            line-height: 1.1;
+            min-width: 50px;
+            max-width: 200px;
+            resize: horizontal;
+            cursor: default;
+        }
+
+        /* Tooltip para encabezados largos */
+        #bomTable th:hover::after {
+            content: attr(title);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: normal;
+            max-width: 250px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid #34495e;
+            word-wrap: break-word;
+            text-align: center;
+            line-height: 1.4;
+            pointer-events: none;
+            opacity: 0;
+            animation: tooltipFadeIn 0.2s ease-in-out forwards;
+        }
+
+        #bomTable th[title]:hover::after {
+            opacity: 1;
+        }
+
+        #bomTable th:hover::before {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-1px);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid #2c3e50;
+            z-index: 1001;
+            opacity: 0;
+            animation: tooltipFadeIn 0.2s ease-in-out forwards;
+        }
+
+        #bomTable th[title]:hover::before {
+            opacity: 1;
+        }
+
+        #bomTable td {
+            padding: 3px 2px;
+            text-align: center;
+            border: 1px solid #5F6375;
+            background-color: #40424F;
+            color: lightgray;
+            transition: background-color 0.3s;
+            font-size: 9px;
+            line-height: 1.0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+            position: relative;
+            cursor: default;
+        }
+
+        /* Tooltip para celdas con texto largo */
+        #bomTable td:hover::after {
+            content: attr(data-full-text);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: normal;
+            max-width: 300px;
+            min-width: 150px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid #34495e;
+            word-wrap: break-word;
+            text-align: left;
+            line-height: 1.4;
+            pointer-events: none;
+            opacity: 0;
+            animation: tooltipFadeIn 0.2s ease-in-out forwards;
+        }
+
+        /* Solo mostrar tooltip si hay contenido y es diferente al texto visible */
+        #bomTable td[data-full-text]:hover::after {
+            opacity: 1;
+        }
+
+        /* Animación suave para el tooltip */
+        @keyframes tooltipFadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Flecha del tooltip */
+        #bomTable td:hover::before {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-1px);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid #2c3e50;
+            z-index: 1001;
+            opacity: 0;
+            animation: tooltipFadeIn 0.2s ease-in-out forwards;
+        }
+
+        #bomTable td[data-full-text]:hover::before {
+            opacity: 1;
+        }
+
+        #bomTable tr:hover td {
+            background-color: #485563;
+        }
+
+        #bomTable tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        #bomTable tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+
+        #bomTable tr.filtered-row {
+            display: none;
+        }
+
+        #bomTable tr.highlight-match td {
+            background-color: #2d5a87 !important;
+        }
+
+        #bomTable tr.highlight-match:hover td {
+            background-color: #3d6a97 !important;
+        }
+
+        #bomTable input[type="checkbox"] {
+            transform: scale(1.1);
+            cursor: pointer;
+            accent-color: #3498db;
+        }
+
+        /* Estilos específicos para checkboxes de estado */
+        #bomTable input[type="checkbox"]:checked {
+            accent-color: #27ae60;
+        }
+
+        #bomTable input[type="checkbox"]:not(:checked) {
+            accent-color: #95a5a6;
+        }
+
+        /* Estilos para checkboxes deshabilitados/readonly */
+        #bomTable input[type="checkbox"]:disabled {
+            cursor: not-allowed !important;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        #bomTable input[type="checkbox"]:disabled:checked {
+            accent-color: #27ae60 !important;
+        }
+
+        #bomTable input[type="checkbox"]:disabled:not(:checked) {
+            accent-color: #95a5a6 !important;
+        }
+
+        /* Animación suave para cambios de estado */
+        #bomTable input[type="checkbox"] {
+            transition: accent-color 0.3s ease;
+        }
+
+        #bomTable .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #95a5a6;
+            font-style: italic;
+            background-color: #40424F;
+            font-size: 10px;
+        }
+
+        /* Mensajes de estado */
+        .bom-loading {
+            text-align: center;
+            padding: 15px;
+            color: #3498db;
+            font-size: 10px;
+        }
+
+        .bom-error {
+            text-align: center;
+            padding: 15px;
+            color: #e74c3c;
+            font-size: 10px;
+        }
+
+        /* Contador de resultados */
+        #bomResultCounter {
+            background-color: #40424F;
+            padding: 10px;
+            color: lightgray;
+            font-size: 11px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #bomMainContainer {
+                padding: 5px;
+            }
+
+            #bomToolbar {
+                flex-direction: column;
+                gap: 8px;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+            
+            .bom-search-container {
+                width: 100%;
+            }
+
+            .bom-search-dropdown {
+                min-width: 100%;
+                width: 100%;
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .bom-dropdown-list {
+                font-size: 12px;
+            }
+
+            .bom-dropdown-item {
+                padding: 12px;
+                font-size: 12px;
+            }
+            
+            .bom-btn {
+                width: 100%;
+                padding: 12px 16px;
+                font-size: 14px;
+                margin: 2px 0;
+            }
+            
+            .bom-dropdown {
+                min-width: 100%;
+                width: 100%;
+                font-size: 14px;
+                padding: 10px;
+            }
+            
+            #bomTableContainer {
+                padding: 5px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #bomTable {
+                min-width: 800px;
+                font-size: 10px;
+            }
+
+            #bomTable th {
+                font-size: 8px;
+                padding: 8px 4px;
+                min-width: 60px;
+            }
+
+            #bomTable td {
+                font-size: 8px;
+                padding: 8px 4px;
+                white-space: nowrap;
+            }
+
+            /* Ajustar ancho mínimo de columnas importantes en móvil */
+            #bomTable .col-codigo { min-width: 100px; }
+            #bomTable .col-numero-parte { min-width: 120px; }
+            #bomTable .col-side { min-width: 60px; }
+            #bomTable .col-tipo { min-width: 80px; }
+            #bomTable .col-clasificacion { min-width: 90px; }
+            #bomTable .col-especificacion { min-width: 120px; }
+            #bomTable .col-vender { min-width: 80px; }
+            #bomTable .col-cantidad-total { min-width: 70px; }
+            #bomTable .col-cantidad-original { min-width: 70px; }
+            #bomTable .col-ubicacion { min-width: 80px; }
+            #bomTable .col-material-sustituto { min-width: 70px; }
+            #bomTable .col-material-original { min-width: 70px; }
+            #bomTable .col-registrador { min-width: 80px; }
+            #bomTable .col-fecha { min-width: 120px; }
+
+            /* Mejorar tooltips en móvil */
+            #bomTable th:hover::after,
+            #bomTable td:hover::after {
+                font-size: 12px;
+                max-width: 250px;
+                padding: 10px;
+            }
+
+            /* Contador de resultados en móvil */
+            #bomResultCounter {
+                font-size: 11px;
+                text-align: center;
+                padding: 5px;
+            }
+
+            /* Mensajes de estado en móvil */
+            .bom-loading,
+            .bom-error,
+            .no-data {
+                font-size: 12px;
+                padding: 20px 10px;
+            }
+        }
+
+        /* Para pantallas muy pequeñas */
+        @media (max-width: 480px) {
+            #bomMainContainer {
+                padding: 2px;
+            }
+
+            #bomToolbar {
+                padding: 8px;
+            }
+
+            .bom-search-dropdown {
+                font-size: 12px;
+                padding: 8px;
+            }
+
+            .bom-btn {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            #bomTable {
+                font-size: 9px;
+            }
+
+            #bomTable th {
+                font-size: 7px;
+                padding: 6px 2px;
+            }
+
+            #bomTable td {
+                font-size: 7px;
+                padding: 6px 2px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="bomMainContainer">
+        <!-- Barra de herramientas -->
+        <div id="bomToolbar">
+            <label style="color: lightgray; font-size: 11px;">Fecha de operación</label>
+            <select id="fechaDesde" class="bom-dropdown">
+                <option>01/01/2025</option>
+            </select>
+            <span style="color: lightgray; font-size: 11px;">~</span>
+            <select id="fechaHasta" class="bom-dropdown">
+                <option>11/08/2025</option>
+            </select>
+            <button id="btnConsultar" class="bom-btn">Consultar</button>
+            <button id="btnRegistrar" class="bom-btn">Registrar</button>
+            <button id="btnCancelar" class="bom-btn">Cancelar</button>
+            <button id="btnExportar" class="bom-btn">Exportar el excel</button>
+        </div>
+
+        <!-- Contenedor de la tabla -->
+        <div id="bomTableContainer">
+            <table id="bomTable">
+                <thead>
+                    <tr>
+                        <th id="thCheckAll1" style="width: 40px;">
+                            <input type="checkbox" id="checkAll1">
+                        </th>
+                        <th id="thCheckAll2" style="width: 40px;">
+                            <input type="checkbox" id="checkAll2">
+                        </th>
+                        <th id="thCodigoWO" style="width: 120px;">Código de WO</th>
+                        <th id="thFechaOperacion" style="width: 100px;">Fecha de operaci...</th>
+                        <th id="thCodigoModelo" style="width: 130px;">Código de modelo</th>
+                        <th id="thNombreModelo" style="width: 120px;">Nombre de mode...</th>
+                        <th id="thOrdenProceso" style="width: 120px;">Orden de proce...</th>
+                        <th id="thCantidadPlaneada" style="width: 100px;">Cantidad planea...</th>
+                        <th id="thCodigoPO" style="width: 120px;">Código de PO</th>
+                        <th id="thRegistrar" style="width: 80px;">Registrar</th>
+                        <th id="thModificador" style="width: 150px;">Modificador</th>
+                        <th id="thFechaModificacion" style="width: 150px;">Fecha de modificación</th>
+                        <th id="thExpand" style="width: 40px;">▼</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="row1">
+                        <td>▶</td>
+                        <td><input type="checkbox" id="check1"></td>
+                        <td>WO-250428-0002</td>
+                        <td>2025-04-28</td>
+                        <td>NFM96-1T0000_R013</td>
+                        <td>M1662360000</td>
+                        <td>KEY NORMAL</td>
+                        <td>60</td>
+                        <td>PO-25042500...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-04-28 11:44:17.833</td>
+                        <td>▲</td>
+                    </tr>
+                    <tr id="row2">
+                        <td></td>
+                        <td><input type="checkbox" id="check2"></td>
+                        <td>WO-250428-0001</td>
+                        <td>2025-04-28</td>
+                        <td>NFM96-1K0000_R015</td>
+                        <td>M1662363000</td>
+                        <td>KNOB NORMAL</td>
+                        <td>60</td>
+                        <td>PO-25042500...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-04-28 11:44:06.640</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row3">
+                        <td></td>
+                        <td><input type="checkbox" id="check3"></td>
+                        <td>WO-250425-0001</td>
+                        <td>2025-04-28</td>
+                        <td>NFM961M0032_R019</td>
+                        <td>NFM961M0032</td>
+                        <td>MAIN NORMAL</td>
+                        <td>64</td>
+                        <td>PO-25042500...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-04-25 14:56:58.430</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row4">
+                        <td></td>
+                        <td><input type="checkbox" id="check4"></td>
+                        <td>WO-250326-0003</td>
+                        <td>2025-03-26</td>
+                        <td>NFM96-1T0000_R013</td>
+                        <td>M1662360000</td>
+                        <td>KEY NORMAL</td>
+                        <td>100</td>
+                        <td>PO-25032600...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-26 13:38:48.903</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row5">
+                        <td></td>
+                        <td><input type="checkbox" id="check5"></td>
+                        <td>WO-250326-0002</td>
+                        <td>2025-03-26</td>
+                        <td>NFM96-1K0000_R015</td>
+                        <td>M1662363000</td>
+                        <td>KNOB NORMAL</td>
+                        <td>105</td>
+                        <td>PO-25032600...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-26 13:38:39.657</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row6">
+                        <td></td>
+                        <td><input type="checkbox" id="check6"></td>
+                        <td>WO-250326-0001</td>
+                        <td>2025-03-26</td>
+                        <td>NFM961T0000_R013</td>
+                        <td>NFM961T0000</td>
+                        <td>KEY NORMAL</td>
+                        <td>100</td>
+                        <td>PO-25032600...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-26 13:21:25.350</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row7">
+                        <td></td>
+                        <td><input type="checkbox" id="check7"></td>
+                        <td>WO-250321-0003</td>
+                        <td>2025-03-21</td>
+                        <td>NFM96-1T0000_R013</td>
+                        <td>M1662360000</td>
+                        <td>KEY NORMAL</td>
+                        <td>360</td>
+                        <td>PO-25032100...</td>
+                        <td>✓</td>
+                        <td>송재우</td>
+                        <td>2025-03-21 15:48:57.337</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row8">
+                        <td></td>
+                        <td><input type="checkbox" id="check8"></td>
+                        <td>WO-250321-0002</td>
+                        <td>2025-03-21</td>
+                        <td>NFM96-1K0000_R015</td>
+                        <td>M1662363000</td>
+                        <td>KNOB NORMAL</td>
+                        <td>360</td>
+                        <td>PO-25032100...</td>
+                        <td>✓</td>
+                        <td>송재우</td>
+                        <td>2025-03-21 15:48:27.127</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row9">
+                        <td></td>
+                        <td><input type="checkbox" id="check9"></td>
+                        <td>WO-250321-0001</td>
+                        <td>2025-03-21</td>
+                        <td>NFM961T0000_R013</td>
+                        <td>NFM961T0000</td>
+                        <td>KEY NORMAL</td>
+                        <td>360</td>
+                        <td>PO-25032100...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-21 15:25:09.070</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row10">
+                        <td></td>
+                        <td><input type="checkbox" id="check10"></td>
+                        <td>WO-250319-0005</td>
+                        <td>2025-03-19</td>
+                        <td>NFM961M0032_R019</td>
+                        <td>NFM961M0032</td>
+                        <td>MAIN NORMAL</td>
+                        <td>800</td>
+                        <td>PO-25031900...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-19 12:26:45.087</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row11">
+                        <td></td>
+                        <td><input type="checkbox" id="check11"></td>
+                        <td>WO-250319-0004</td>
+                        <td>2025-03-19</td>
+                        <td>NFM961M0012_R019</td>
+                        <td>NFM961M0012</td>
+                        <td>MAIN NORMAL</td>
+                        <td>18</td>
+                        <td>PO-25031900...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-19 12:26:30.963</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row12">
+                        <td></td>
+                        <td><input type="checkbox" id="check12"></td>
+                        <td>WO-250319-0003</td>
+                        <td>2025-03-19</td>
+                        <td>NFM961M0002_R019</td>
+                        <td>NFM961M0002</td>
+                        <td>MAIN NORMAL</td>
+                        <td>10</td>
+                        <td>PO-25031900...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-19 12:26:18.023</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row13">
+                        <td></td>
+                        <td><input type="checkbox" id="check13"></td>
+                        <td>WO-250319-0002</td>
+                        <td>2025-03-19</td>
+                        <td>NFM961M0032_R019</td>
+                        <td>NFM961M0032</td>
+                        <td>MAIN NORMAL</td>
+                        <td>750</td>
+                        <td>PO-25031900...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-19 11:43:01.170</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row14">
+                        <td></td>
+                        <td><input type="checkbox" id="check14"></td>
+                        <td>WO-250319-0001</td>
+                        <td>2025-03-19</td>
+                        <td>NFM961M0002_R019</td>
+                        <td>NFM961M0002</td>
+                        <td>MAIN NORMAL</td>
+                        <td>14</td>
+                        <td>PO-25031900...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-03-19 11:42:48.690</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row15">
+                        <td></td>
+                        <td><input type="checkbox" id="check15"></td>
+                        <td>WO-250211-0003</td>
+                        <td>2025-02-12</td>
+                        <td>NFM96-1T0000_R013</td>
+                        <td>M1662360000</td>
+                        <td>KEY NORMAL</td>
+                        <td>20</td>
+                        <td>PO-25021100...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-02-11 11:37:43.137</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row16">
+                        <td></td>
+                        <td><input type="checkbox" id="check16"></td>
+                        <td>WO-250211-0002</td>
+                        <td>2025-02-12</td>
+                        <td>NFM961M0012_R019</td>
+                        <td>NFM961M0012</td>
+                        <td>MAIN NORMAL</td>
+                        <td>12</td>
+                        <td>PO-25021100...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-02-11 11:37:29.600</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row17">
+                        <td></td>
+                        <td><input type="checkbox" id="check17"></td>
+                        <td>WO-250211-0001</td>
+                        <td>2025-02-12</td>
+                        <td>NFM961M0032_R019</td>
+                        <td>NFM961M0032</td>
+                        <td>MAIN NORMAL</td>
+                        <td>20</td>
+                        <td>PO-25021100...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-02-11 11:37:04.217</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row18">
+                        <td></td>
+                        <td><input type="checkbox" id="check18"></td>
+                        <td>WO-250207-0001</td>
+                        <td>2025-02-07</td>
+                        <td>NFM961M0032_R019</td>
+                        <td>NFM961M0032</td>
+                        <td>MAIN NORMAL</td>
+                        <td>32</td>
+                        <td>PO-25020700...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-02-07 16:05:52.660</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row19">
+                        <td></td>
+                        <td><input type="checkbox" id="check19"></td>
+                        <td>WO-250201-0001</td>
+                        <td>2025-02-01</td>
+                        <td>NFM96-1T0000_R013</td>
+                        <td>M1662360000</td>
+                        <td>KEY NORMAL</td>
+                        <td>220</td>
+                        <td>PO-25020100...</td>
+                        <td>✓</td>
+                        <td>송재우</td>
+                        <td>2025-02-01 09:15:57.780</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row20">
+                        <td></td>
+                        <td><input type="checkbox" id="check20"></td>
+                        <td>WO-250131-0004</td>
+                        <td>2025-02-06</td>
+                        <td>NFM961M0002_R019</td>
+                        <td>NFM961M0002</td>
+                        <td>MAIN NORMAL</td>
+                        <td>18</td>
+                        <td>PO-25013100...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-01-31 10:15:31.300</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row21">
+                        <td></td>
+                        <td><input type="checkbox" id="check21"></td>
+                        <td>WO-250131-0003</td>
+                        <td>2025-02-06</td>
+                        <td>NFM961M0032_R019</td>
+                        <td>NFM961M0032</td>
+                        <td>MAIN NORMAL</td>
+                        <td>204</td>
+                        <td>PO-25013100...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-01-31 10:15:12.447</td>
+                        <td></td>
+                    </tr>
+                    <tr id="row22">
+                        <td></td>
+                        <td><input type="checkbox" id="check22"></td>
+                        <td>WO-250131-0002</td>
+                        <td>2025-02-01</td>
+                        <td>NFM96-1K0000_R015</td>
+                        <td>M1662363000</td>
+                        <td>KNOB NORMAL</td>
+                        <td>240</td>
+                        <td>PO-25013100...</td>
+                        <td>✓</td>
+                        <td>HERRERA TORRES ALIC...</td>
+                        <td>2025-01-31 10:11:30.700</td>
+                        <td>▼</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Contador de resultados -->
+        <div id="bomResultCounter">
+            Total Rows : 25
+        </div>
+    </div>
+</body>
+</html>

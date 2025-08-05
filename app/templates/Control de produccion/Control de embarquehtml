@@ -1,0 +1,723 @@
+<!-- Template AJAX para Control de embarque -->
+<div id="embarque-unique-container" class="embarque-ajax-container">
+
+<style>
+/* Estilos CSS incrustados para Control de embarque AJAX */
+.embarque-ajax-container {
+    width: 100%;
+    height: 100%;
+    background: #f8f9fa;
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: 'Roboto', sans-serif;
+}
+
+.embarque-main-container-embarque {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 20px;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+.embarque-toolbar-embarque {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.embarque-filters-embarque {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.embarque-filter-group-embarque {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.embarque-filter-group-embarque label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 2px;
+}
+
+.embarque-filter-group-embarque input,
+.embarque-filter-group-embarque select {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+    min-width: 120px;
+}
+
+.embarque-filter-group-embarque span {
+    align-self: flex-end;
+    margin: 0 5px;
+    font-weight: bold;
+    color: #6c757d;
+}
+
+.embarque-btn-embarque {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 2px;
+}
+
+.embarque-btn-primary-embarque {
+    background: #007bff;
+    color: white;
+}
+
+.embarque-btn-primary-embarque:hover {
+    background: #0056b3;
+}
+
+.embarque-btn-success-embarque {
+    background: #28a745;
+    color: white;
+}
+
+.embarque-btn-success-embarque:hover {
+    background: #1e7e34;
+}
+
+.embarque-btn-info-embarque {
+    background: #17a2b8;
+    color: white;
+}
+
+.embarque-btn-info-embarque:hover {
+    background: #117a8b;
+}
+
+.embarque-btn-warning-embarque {
+    background: #ffc107;
+    color: #212529;
+}
+
+.embarque-btn-warning-embarque:hover {
+    background: #e0a800;
+}
+
+.embarque-btn-secondary-embarque {
+    background: #6c757d;
+    color: white;
+}
+
+.embarque-btn-secondary-embarque:hover {
+    background: #545b62;
+}
+
+.embarque-table-section-embarque {
+    margin-bottom: 30px;
+}
+
+.embarque-table-container-embarque {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.embarque-data-table-embarque {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.embarque-data-table-embarque thead {
+    background: #f8f9fa;
+}
+
+.embarque-data-table-embarque th,
+.embarque-data-table-embarque td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+.embarque-data-table-embarque th {
+    font-weight: 600;
+    color: #495057;
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.embarque-data-table-embarque tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.embarque-table-footer-embarque {
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.embarque-materials-section-embarque {
+    margin-top: 20px;
+}
+
+.embarque-materials-header-embarque {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.embarque-btn-export-embarque {
+    padding: 8px 16px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.embarque-btn-export-embarque:hover {
+    background: #1e7e34;
+}
+
+.embarque-materials-table-container-embarque {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.embarque-materials-table-embarque {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.embarque-materials-table-embarque thead {
+    background: #f8f9fa;
+}
+
+.embarque-materials-table-embarque th,
+.embarque-materials-table-embarque td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.embarque-materials-table-embarque th {
+    font-weight: 600;
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.embarque-materials-table-embarque tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.embarque-materials-footer-embarque {
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.no-data-embarque {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .embarque-toolbar-embarque {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .embarque-filters-embarque {
+        justify-content: center;
+    }
+    
+    .embarque-filter-group-embarque {
+        min-width: 140px;
+    }
+}
+</style>
+
+<div id="embarque-main-container-unique-embarque" class="embarque-main-container-embarque">
+
+<!-- Toolbar con filtros y botones -->
+<div id="embarque-toolbar-unique-embarque" class="embarque-toolbar-embarque">
+    <!-- Filtros -->
+    <div id="embarque-filters-unique-embarque" class="embarque-filters-embarque">
+        <div class="embarque-filter-group-embarque">
+            <label>Fecha de registro</label>
+            <input type="date" id="embarque-fecha-inicio-unique-embarque" value="2025-01-23">
+            <span>~</span>
+            <input type="date" id="embarque-fecha-fin-unique-embarque" value="2025-01-30">
+        </div>
+        
+        <div class="embarque-filter-group-embarque">
+            <label>Cliente</label>
+            <select id="embarque-filtro-cliente-unique-embarque">
+                <option value="">Todos</option>
+                <option value="LG_REFRIS">LG_REFRIS</option>
+                <option value="LG_ESTUFAS">LG_ESTUFAS</option>
+            </select>
+        </div>
+        
+        <div class="embarque-filter-group-embarque">
+            <label>Estado</label>
+            <select id="filtro-estado-embarque">
+                <option value="">Plan, Producción</option>
+                <option value="PREPARACION">En Preparación</option>
+                <option value="EMBARCADO">Embarcado</option>
+                <option value="EN_TRANSITO">En Tránsito</option>
+                <option value="ENTREGADO">Entregado</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Botones de acción -->
+    <div class="embarque-actions-embarque">
+        <button class="embarque-btn-embarque embarque-btn-primary-embarque" onclick="consultarEmbarquesAjax()">
+            <i class="fas fa-search"></i>
+            Consultar
+        </button>
+        <button class="embarque-btn-embarque embarque-btn-success-embarque" onclick="abrirModalRegistroAjax()">
+            <i class="fas fa-plus"></i>
+            Registrar
+        </button>
+        <button class="embarque-btn-embarque embarque-btn-info-embarque" onclick="verificarMaterialAjax()">
+            <i class="fas fa-check-circle"></i>
+            Verif. de mat.
+        </button>
+        <button class="embarque-btn-embarque embarque-btn-warning-embarque" onclick="marcarCompletadaAjax()">
+            <i class="fas fa-flag-checkered"></i>
+            Completada
+        </button>
+        <button class="embarque-btn-embarque embarque-btn-secondary-embarque" onclick="cancelarEmbarqueAjax()">
+            <i class="fas fa-times"></i>
+            Cancelar
+        </button>
+        <button class="embarque-btn-embarque embarque-btn-success-embarque" onclick="exportarExcelAjax()">
+            <i class="fas fa-file-excel"></i>
+            Exportar el excel
+        </button>
+    </div>
+</div>
+
+<!-- Tabla principal de embarques -->
+<div class="embarque-table-section-embarque">
+    <div class="embarque-table-container-embarque">
+        <table class="embarque-data-table-embarque" id="tabla-embarques-embarque">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all-embarque"></th>
+                    <th>Código de PO</th>
+                    <th>Nombre de...</th>
+                    <th>Fecha de re...</th>
+                    <th>Cliente</th>
+                    <th>Código de...</th>
+                    <th>Nombre de...</th>
+                    <th>Proveedor</th>
+                    <th>Total cantid...</th>
+                    <th>Total cantid...</th>
+                    <th>Estado</th>
+                    <th>Código de e...</th>
+                    <th>Fecha de em...</th>
+                    <th>Cantidad em...</th>
+                    <th>Modificado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="15" class="no-data-embarque">No hay dato registrado</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="embarque-table-footer-embarque">
+        <span id="total-rows-embarque">Total Rows : 0</span>
+    </div>
+</div>
+
+<!-- Tabla de materiales -->
+<div class="embarque-materials-section-embarque">
+    <div class="embarque-materials-header-embarque">
+        <button class="embarque-btn-export-embarque" onclick="exportarMaterialesAjax()">Exportar el excel</button>
+    </div>
+    
+    <div class="embarque-materials-table-container-embarque">
+        <table class="embarque-materials-table-embarque" id="tabla-materiales-embarque">
+            <thead>
+                <tr>
+                    <th>Código de material</th>
+                    <th>Numero de parte</th>
+                    <th>Vendedor</th>
+                    <th>Deficiencia de producción</th>
+                    <th>Cantidad actual</th>
+                    <th>Cantidad necesaria</th>
+                    <th>Tipo de material</th>
+                    <th>Especificacion de material</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="8" class="no-data-embarque">No hay dato registrado</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="embarque-materials-footer-embarque">
+        <span id="total-materials-embarque">Total Rows : 0</span>
+    </div>
+</div>
+
+</div> <!-- Cierre de embarque-main-container-unique-embarque -->
+
+<script>
+// Variables globales para Control de Embarque AJAX
+let embarqueDataAjax = [];
+let materialesDataAjax = [];
+
+// Funciones principales con sufijo AJAX
+function consultarEmbarquesAjax() {
+    console.log('🔍 Consultando embarques (AJAX)...');
+    try {
+        // Mostrar indicador de carga
+        const tbody = document.querySelector('#tabla-embarques-embarque tbody');
+        tbody.innerHTML = '<tr><td colspan="15" class="no-data-embarque">Cargando datos...</td></tr>';
+        
+        // Simular carga de datos
+        setTimeout(() => {
+            cargarDatosEmbarquesAjax();
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ Error consultando embarques:', error);
+        mostrarErrorAjax('Error al consultar embarques');
+    }
+}
+
+function abrirModalRegistroAjax() {
+    console.log('➕ Abriendo modal de registro (AJAX)...');
+    try {
+        // Implementar modal de registro
+        alert('Modal de registro en desarrollo - Versión AJAX');
+    } catch (error) {
+        console.error('❌ Error abriendo modal:', error);
+        mostrarErrorAjax('Error al abrir modal de registro');
+    }
+}
+
+function verificarMaterialAjax() {
+    console.log('✅ Verificando material (AJAX)...');
+    try {
+        // Implementar verificación de material
+        alert('Verificación de material en desarrollo - Versión AJAX');
+    } catch (error) {
+        console.error('❌ Error verificando material:', error);
+        mostrarErrorAjax('Error al verificar material');
+    }
+}
+
+function marcarCompletadaAjax() {
+    console.log('🏁 Marcando como completada (AJAX)...');
+    try {
+        // Implementar marcar como completada
+        alert('Función completada en desarrollo - Versión AJAX');
+    } catch (error) {
+        console.error('❌ Error marcando completada:', error);
+        mostrarErrorAjax('Error al marcar como completada');
+    }
+}
+
+function cancelarEmbarqueAjax() {
+    console.log('❌ Cancelando embarque (AJAX)...');
+    try {
+        // Implementar cancelar embarque
+        alert('Función cancelar en desarrollo - Versión AJAX');
+    } catch (error) {
+        console.error('❌ Error cancelando embarque:', error);
+        mostrarErrorAjax('Error al cancelar embarque');
+    }
+}
+
+function exportarExcelAjax() {
+    console.log('📊 Exportando a Excel (AJAX)...');
+    try {
+        // Implementar exportación a Excel
+        alert('Exportación a Excel en desarrollo - Versión AJAX');
+    } catch (error) {
+        console.error('❌ Error exportando Excel:', error);
+        mostrarErrorAjax('Error al exportar a Excel');
+    }
+}
+
+function exportarMaterialesAjax() {
+    console.log('📋 Exportando materiales a Excel (AJAX)...');
+    try {
+        // Implementar exportación de materiales
+        alert('Exportación de materiales en desarrollo - Versión AJAX');
+    } catch (error) {
+        console.error('❌ Error exportando materiales:', error);
+        mostrarErrorAjax('Error al exportar materiales');
+    }
+}
+
+// Función para cargar datos de embarques
+function cargarDatosEmbarquesAjax() {
+    try {
+        // Simular datos para mostrar la estructura
+        embarqueDataAjax = [
+            // Los datos se cargarían desde el servidor
+        ];
+        
+        actualizarTablaEmbarquesAjax();
+        console.log('✅ Datos de embarques cargados correctamente');
+        
+    } catch (error) {
+        console.error('❌ Error cargando datos de embarques:', error);
+        mostrarErrorAjax('Error al cargar datos de embarques');
+    }
+}
+
+// Función para actualizar tabla de embarques
+function actualizarTablaEmbarquesAjax() {
+    try {
+        const tbody = document.querySelector('#tabla-embarques-embarque tbody');
+        if (!tbody) {
+            console.error('❌ No se encontró tbody de tabla embarques');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        if (embarqueDataAjax.length === 0) {
+            const row = tbody.insertRow();
+            row.innerHTML = '<td colspan="15" class="no-data-embarque">No hay dato registrado</td>';
+        } else {
+            embarqueDataAjax.forEach((item, index) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td><input type="checkbox"></td>
+                    <td>${item.codigoPO || ''}</td>
+                    <td>${item.nombre || ''}</td>
+                    <td>${item.fechaRegistro || ''}</td>
+                    <td>${item.cliente || ''}</td>
+                    <td>${item.codigo || ''}</td>
+                    <td>${item.nombreMaterial || ''}</td>
+                    <td>${item.proveedor || ''}</td>
+                    <td>${item.totalCantidad || ''}</td>
+                    <td>${item.totalCantidadReal || ''}</td>
+                    <td>${item.estado || ''}</td>
+                    <td>${item.codigoEmbarque || ''}</td>
+                    <td>${item.fechaEmbarque || ''}</td>
+                    <td>${item.cantidadEmbarque || ''}</td>
+                    <td>${item.modificado || ''}</td>
+                `;
+            });
+        }
+        
+        // Actualizar contador
+        const totalElement = document.getElementById('total-rows-embarque');
+        if (totalElement) {
+            totalElement.textContent = `Total Rows : ${embarqueDataAjax.length}`;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error actualizando tabla embarques:', error);
+        mostrarErrorAjax('Error al actualizar tabla de embarques');
+    }
+}
+
+// Función para actualizar tabla de materiales
+function actualizarTablaMaterialesAjax() {
+    try {
+        const tbody = document.querySelector('#tabla-materiales-embarque tbody');
+        if (!tbody) {
+            console.error('❌ No se encontró tbody de tabla materiales');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        if (materialesDataAjax.length === 0) {
+            const row = tbody.insertRow();
+            row.innerHTML = '<td colspan="8" class="no-data-embarque">No hay dato registrado</td>';
+        } else {
+            materialesDataAjax.forEach((item, index) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${item.codigoMaterial || ''}</td>
+                    <td>${item.numeroParte || ''}</td>
+                    <td>${item.vendedor || ''}</td>
+                    <td>${item.deficiencia || ''}</td>
+                    <td>${item.cantidadActual || ''}</td>
+                    <td>${item.cantidadNecesaria || ''}</td>
+                    <td>${item.tipoMaterial || ''}</td>
+                    <td>${item.especificacion || ''}</td>
+                `;
+            });
+        }
+        
+        // Actualizar contador
+        const totalElement = document.getElementById('total-materials-embarque');
+        if (totalElement) {
+            totalElement.textContent = `Total Rows : ${materialesDataAjax.length}`;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error actualizando tabla materiales:', error);
+        mostrarErrorAjax('Error al actualizar tabla de materiales');
+    }
+}
+
+// Función para manejar el checkbox "Seleccionar todo"
+function toggleSelectAllAjax() {
+    try {
+        const selectAll = document.getElementById('select-all-embarque');
+        const checkboxes = document.querySelectorAll('#tabla-embarques-embarque tbody input[type="checkbox"]');
+        
+        if (selectAll && checkboxes.length > 0) {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Error en toggleSelectAll:', error);
+    }
+}
+
+// Función para mostrar errores
+function mostrarErrorAjax(mensaje) {
+    try {
+        console.error('🚨 Error en Control de Embarque:', mensaje);
+        // Aquí se podría implementar un sistema de notificaciones más sofisticado
+        alert(`Error: ${mensaje}`);
+    } catch (error) {
+        console.error('❌ Error mostrando error:', error);
+    }
+}
+
+// Función para manejar errores de red
+function manejarErrorRed(error) {
+    console.error('🌐 Error de red:', error);
+    
+    if (error.status === 404) {
+        mostrarErrorAjax('Recurso no encontrado (404)');
+    } else if (error.status === 500) {
+        mostrarErrorAjax('Error interno del servidor (500)');
+    } else if (error.status === 401 || error.status === 403) {
+        mostrarErrorAjax('Error de autenticación. Por favor, inicie sesión nuevamente.');
+        // Redirigir al login si es necesario
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 2000);
+    } else {
+        mostrarErrorAjax('Error de conexión. Verifique su conexión a internet.');
+    }
+}
+
+// Auto-inicialización del módulo JavaScript
+(function inicializarControlEmbarqueAjax() {
+    console.log('🚀 Inicializando Control de Embarque AJAX...');
+    
+    try {
+        // Configurar fechas por defecto
+        const hoy = new Date();
+        const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
+        
+        const fechaInicioInput = document.getElementById('embarque-fecha-inicio-unique-embarque');
+        const fechaFinInput = document.getElementById('embarque-fecha-fin-unique-embarque');
+        
+        if (fechaInicioInput && fechaFinInput) {
+            fechaInicioInput.value = fechaInicio.toISOString().split('T')[0];
+            fechaFinInput.value = hoy.toISOString().split('T')[0];
+        }
+        
+        // Configurar evento del checkbox "Seleccionar todo"
+        const selectAllCheckbox = document.getElementById('select-all-embarque');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', toggleSelectAllAjax);
+        }
+        
+        // Cargar datos iniciales
+        setTimeout(() => {
+            cargarDatosEmbarquesAjax();
+            actualizarTablaMaterialesAjax();
+        }, 100);
+        
+        console.log('✅ Control de Embarque AJAX inicializado correctamente');
+        
+    } catch (error) {
+        console.error('❌ Error inicializando Control de Embarque AJAX:', error);
+        mostrarErrorAjax('Error al inicializar el módulo');
+    }
+})();
+
+// Función global para cerrar Control de Embarque AJAX
+window.cerrarControlEmbarqueAjax = function() {
+    try {
+        const embarqueContainer = document.getElementById('embarque-unique-container');
+        if (embarqueContainer) {
+            embarqueContainer.style.display = 'none';
+            embarqueContainer.style.visibility = 'hidden';
+            embarqueContainer.style.opacity = '0';
+            console.log('✅ Control de Embarque AJAX cerrado');
+        }
+    } catch (error) {
+        console.error('❌ Error cerrando Control de Embarque AJAX:', error);
+    }
+};
+
+// Exponer funciones globalmente para debugging
+window.embarqueAjaxDebug = {
+    consultarEmbarques: consultarEmbarquesAjax,
+    cargarDatos: cargarDatosEmbarquesAjax,
+    actualizarTabla: actualizarTablaEmbarquesAjax,
+    datos: () => embarqueDataAjax,
+    materiales: () => materialesDataAjax
+};
+
+console.log('📋 Control de Embarque AJAX cargado completamente');
+</script>
+
+</div> <!-- Cierre de embarque-unique-container -->

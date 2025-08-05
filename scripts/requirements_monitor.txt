@@ -1,0 +1,10 @@
+# Dependencias para SMT CSV Monitor
+mysql-connector-python==8.0.33
+watchdog==3.0.0
+python-dateutil==2.8.2
+
+# Opcional para servicio Windows
+pywin32==306
+
+# Para mejor manejo de logs
+colorlog==6.7.0

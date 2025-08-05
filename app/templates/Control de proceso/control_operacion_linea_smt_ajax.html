@@ -1,0 +1,761 @@
+<div id="control-operacion-linea-smt-unique-container" style="display: block;">
+    <style>
+        /* Reset y estilos base para operación línea SMT */
+        #control-operacion-linea-smt-unique-container * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        #control-operacion-linea-smt-unique-container {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #2B2D3E;
+            color: #E0E0E0;
+            font-size: 12px;
+            overflow-x: hidden;
+        }
+
+        /* Estilos de scrollbar minimalista */
+        #control-operacion-linea-smt-unique-container ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        #control-operacion-linea-smt-unique-container ::-webkit-scrollbar-track {
+            background: #2B2D3E;
+            border-radius: 4px;
+        }
+
+        #control-operacion-linea-smt-unique-container ::-webkit-scrollbar-thumb {
+            background: #5A5C6B;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        #control-operacion-linea-smt-unique-container ::-webkit-scrollbar-thumb:hover {
+            background: #6B6D7C;
+        }
+
+        /* Contenedor principal */
+        .main-container-operacion-linea {
+            width: 100%;
+            min-height: 100vh;
+            background-color: #2B2D3E;
+            padding: 5px;
+        }
+
+        /* Barra de título */
+        .title-bar-operacion-linea {
+            background-color: #3C3F52;
+            padding: 10px 15px;
+            border: 1px solid #20688C;
+            border-radius: 4px 4px 0 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #E0E0E0;
+        }
+
+        /* Contenedor del formulario superior */
+        .form-container-operacion-linea {
+            background-color: #40424F;
+            border: 1px solid #20688C;
+            border-top: none;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* Etiquetas */
+        .form-label-operacion-linea {
+            color: #E0E0E0;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Campos de entrada */
+        .form-input-operacion-linea {
+            background-color: #2C3E50;
+            color: #E0E0E0;
+            border: 1px solid #34495E;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 200px;
+        }
+
+        .form-input-operacion-linea:focus {
+            outline: none;
+            border-color: #3498DB;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        /* Botones principales */
+        .btn-primary-operacion-linea {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary-operacion-linea:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary-operacion-linea:active {
+            transform: translateY(0);
+        }
+
+        /* Botón Iniciar */
+        .btn-iniciar-operacion-linea {
+            background-color: #3498DB;
+        }
+
+        .btn-iniciar-operacion-linea:hover {
+            background-color: #2980B9;
+        }
+
+        /* Botón Fin */
+        .btn-fin-operacion-linea {
+            background-color: #E74C3C;
+        }
+
+        .btn-fin-operacion-linea:hover {
+            background-color: #C0392B;
+        }
+
+        /* Botón Pausa */
+        .btn-pausa-operacion-linea {
+            background-color: #95A5A6;
+        }
+
+        .btn-pausa-operacion-linea:hover {
+            background-color: #7F8C8D;
+        }
+
+        /* Barra de herramientas de consulta */
+        .query-toolbar-operacion-linea {
+            background-color: #34334E;
+            border: 1px solid #20688C;
+            padding: 10px 15px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* Dropdowns */
+        .dropdown-operacion-linea {
+            background-color: #2C3E50;
+            color: #E0E0E0;
+            border: 1px solid #34495E;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            min-width: 180px;
+            cursor: pointer;
+        }
+
+        .dropdown-operacion-linea:focus {
+            outline: none;
+            border-color: #3498DB;
+        }
+
+        /* Botón Consultar */
+        .btn-consultar-operacion-linea {
+            background-color: #3C3F52;
+            border: 2px solid #FFB74D;
+        }
+
+        .btn-consultar-operacion-linea:hover {
+            background-color: #4A4D60;
+            border-color: #FFA726;
+        }
+
+        /* Botón Exportar */
+        .btn-exportar-operacion-linea {
+            background-color: #27AE60;
+        }
+
+        .btn-exportar-operacion-linea:hover {
+            background-color: #229954;
+        }
+
+        /* Tabla principal */
+        .main-table-container-operacion-linea {
+            background-color: #40424F;
+            margin-top: 5px;
+            border: 1px solid #20688C;
+            overflow-x: auto;
+        }
+
+        .data-table-operacion-linea {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table-operacion-linea th {
+            background-color: #172A46;
+            color: #E0E0E0;
+            padding: 10px 8px;
+            text-align: left;
+            border: 1px solid #20688C;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .data-table-operacion-linea td {
+            padding: 20px 8px;
+            text-align: center;
+            color: #95A5A6;
+            font-style: italic;
+            background-color: #40424F;
+            font-size: 12px;
+        }
+
+        /* Grid de secciones */
+        .sections-grid-operacion-linea {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Sección panel */
+        .section-panel-operacion-linea {
+            background-color: #40424F;
+            border: 2px solid #20688C;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .section-header-operacion-linea {
+            background-color: #172A46;
+            padding: 10px 15px;
+            border-bottom: 1px solid #20688C;
+            font-size: 12px;
+            font-weight: 600;
+            color: #E0E0E0;
+        }
+
+        .section-toolbar-operacion-linea {
+            background-color: #34334E;
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #20688C;
+            flex-wrap: wrap;
+        }
+
+        /* Botón Verif. Pass */
+        .btn-verif-operacion-linea {
+            background-color: #2C3E50;
+            border: 1px solid #34495E;
+        }
+
+        .btn-verif-operacion-linea:hover {
+            background-color: #34495E;
+        }
+
+        /* Botón Registro */
+        .btn-registro-operacion-linea {
+            background-color: #E67E22;
+        }
+
+        .btn-registro-operacion-linea:hover {
+            background-color: #D35400;
+        }
+
+        /* Botón Activar */
+        .btn-activar-operacion-linea {
+            background-color: #3498DB;
+        }
+
+        .btn-activar-operacion-linea:hover {
+            background-color: #2980B9;
+        }
+
+        /* Botón Registrar (morado) */
+        .btn-registrar-operacion-linea {
+            background-color: #8E44AD;
+        }
+
+        .btn-registrar-operacion-linea:hover {
+            background-color: #7B3A9D;
+        }
+
+        /* Contenedor de tabla de sección */
+        .section-table-container-operacion-linea {
+            overflow-x: auto;
+            background-color: #40424F;
+            min-height: 150px;
+        }
+
+        /* Tabla de sección */
+        .section-table-operacion-linea {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .section-table-operacion-linea th {
+            background-color: #2C3E50;
+            color: #E0E0E0;
+            padding: 8px 6px;
+            text-align: left;
+            border: 1px solid #34495E;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .section-table-operacion-linea td {
+            padding: 20px;
+            text-align: center;
+            color: #95A5A6;
+            font-style: italic;
+            background-color: #40424F;
+        }
+
+        /* Footer de sección */
+        .section-footer-operacion-linea {
+            background-color: #2C3E50;
+            padding: 8px 15px;
+            color: #E0E0E0;
+            font-size: 11px;
+            border-top: 1px solid #34495E;
+        }
+
+        /* Grid de secciones inferiores */
+        .bottom-sections-grid-operacion-linea {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Checkbox */
+        .table-checkbox-operacion-linea {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #3498DB;
+        }
+
+        /* Separador */
+        .separator-operacion-linea {
+            color: #7F8C8D;
+            margin: 0 5px;
+        }
+
+        /* Botón cerrar línea */
+        .btn-close-line-operacion-linea {
+            background-color: transparent;
+            color: #E0E0E0;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-close-line-operacion-linea:hover {
+            color: #E74C3C;
+            background-color: rgba(231, 76, 60, 0.1);
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .sections-grid-operacion-linea {
+                grid-template-columns: 1fr;
+            }
+
+            .bottom-sections-grid-operacion-linea {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-container-operacion-linea {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .query-toolbar-operacion-linea {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .dropdown-operacion-linea, .form-input-operacion-linea {
+                width: 100%;
+            }
+
+            .btn-primary-operacion-linea {
+                width: 100%;
+            }
+
+            .section-toolbar-operacion-linea {
+                flex-direction: column;
+            }
+        }
+    </style>
+
+    <div class="main-container-operacion-linea">
+        <!-- Barra de título -->
+        <div class="title-bar-operacion-linea">Consultar el numero de lote</div>
+        
+        <!-- Formulario superior -->
+        <div class="form-container-operacion-linea">
+            <label class="form-label-operacion-linea">Numero de lote</label>
+            <input type="text" id="numeroLote-operacion-linea" class="form-input-operacion-linea" style="flex: 1;">
+            <label class="form-label-operacion-linea">Informacion de numero de lote</label>
+            <input type="text" id="infoNumeroLote-operacion-linea" class="form-input-operacion-linea" style="flex: 2;" readonly>
+            <button id="btnIniciar-operacion-linea" class="btn-primary-operacion-linea btn-iniciar-operacion-linea">Iniciar(reiniciar)</button>
+            <button id="btnFin-operacion-linea" class="btn-primary-operacion-linea btn-fin-operacion-linea">Fin</button>
+            <button id="btnPausa-operacion-linea" class="btn-primary-operacion-linea btn-pausa-operacion-linea">Pausa</button>
+        </div>
+
+        <!-- Barra de herramientas de consulta -->
+        <div class="query-toolbar-operacion-linea">
+            <label class="form-label-operacion-linea">Fecha de prod.</label>
+            <select id="fechaDesde-operacion-linea" class="dropdown-operacion-linea">
+                <option>28/07/2025</option>
+            </select>
+            <span class="separator-operacion-linea">~</span>
+            <select id="fechaHasta-operacion-linea" class="dropdown-operacion-linea">
+                <option>04/08/2025</option>
+            </select>
+            <label class="form-label-operacion-linea">Linea</label>
+            <select id="linea-operacion-linea" class="dropdown-operacion-linea">
+                <option>Todos</option>
+            </select>
+            <button id="btnCloseLine-operacion-linea" class="btn-close-line-operacion-linea" title="Cerrar">×</button>
+            <div style="margin-left: auto; display: flex; gap: 10px;">
+                <button id="btnConsultar-operacion-linea" class="btn-primary-operacion-linea btn-consultar-operacion-linea">Consultar</button>
+                <button id="btnExportarMain-operacion-linea" class="btn-primary-operacion-linea btn-exportar-operacion-linea">Exportar el excel</button>
+            </div>
+        </div>
+
+        <!-- Tabla principal -->
+        <div class="main-table-container-operacion-linea">
+            <table class="data-table-operacion-linea">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th>Línea</th>
+                        <th>Fecha de producci...</th>
+                        <th>Numero de lote</th>
+                        <th>Estado</th>
+                        <th>Modelo</th>
+                        <th>Proceso</th>
+                        <th>Side</th>
+                        <th>Xout</th>
+                        <th>Cantidad planeada</th>
+                        <th>Cantidad de prod...</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="11">No hay dato registrado</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grid de secciones -->
+        <div class="sections-grid-operacion-linea">
+            <!-- Lista de BOM -->
+            <div class="section-panel-operacion-linea">
+                <div class="section-header-operacion-linea">Lista de BOM</div>
+                <div class="section-toolbar-operacion-linea">
+                    <button id="btnExportarBOM-operacion-linea" class="btn-primary-operacion-linea btn-exportar-operacion-linea">Exportar el excel</button>
+                    <button id="btnVerifPass-operacion-linea" class="btn-primary-operacion-linea btn-verif-operacion-linea">Verif. Pass</button>
+                    <button id="btnRegistroMat-operacion-linea" class="btn-primary-operacion-linea btn-registro-operacion-linea">Registro de mat. sustituto</button>
+                    <button id="btnActivarComb-operacion-linea" class="btn-primary-operacion-linea btn-activar-operacion-linea">Activar la combinacion</button>
+                </div>
+                <div class="section-table-container-operacion-linea">
+                    <table class="section-table-operacion-linea">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;"><input type="checkbox" class="table-checkbox-operacion-linea"></th>
+                                <th>Numer...</th>
+                                <th>Numer...</th>
+                                <th>Codigo...</th>
+                                <th>Numer...</th>
+                                <th>Resulta...</th>
+                                <th>Resulta...</th>
+                                <th>Verifica...</th>
+                                <th>Activar...</th>
+                                <th>Uso de...</th>
+                                <th>Tiempo...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="11">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="section-footer-operacion-linea">Total Rows : 0</div>
+            </div>
+
+            <!-- Historial de cambio de material -->
+            <div class="section-panel-operacion-linea">
+                <div class="section-header-operacion-linea">Historial de cambio de material</div>
+                <div class="section-toolbar-operacion-linea">
+                    <button id="btnExportarHistorial-operacion-linea" class="btn-primary-operacion-linea btn-exportar-operacion-linea" style="margin-left: auto;">Exportar el excel</button>
+                </div>
+                <div class="section-table-container-operacion-linea">
+                    <table class="section-table-operacion-linea">
+                        <thead>
+                            <tr>
+                                <th>Numero de...</th>
+                                <th>Numero de...</th>
+                                <th>Fecha de re...</th>
+                                <th>Codigo de...</th>
+                                <th>Cantidad re...</th>
+                                <th>Cantidad ac...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="section-footer-operacion-linea">Total Rows : 0</div>
+            </div>
+        </div>
+
+        <!-- Grid de secciones inferiores -->
+        <div class="bottom-sections-grid-operacion-linea">
+            <!-- Historial de soldadura -->
+            <div class="section-panel-operacion-linea">
+                <div class="section-header-operacion-linea">Historial de soldadura</div>
+                <div class="section-toolbar-operacion-linea">
+                    <button id="btnRegistrarSold-operacion-linea" class="btn-primary-operacion-linea btn-registrar-operacion-linea">Registrar</button>
+                    <button id="btnExportarSold-operacion-linea" class="btn-primary-operacion-linea btn-exportar-operacion-linea">Exportar el excel</button>
+                </div>
+                <div class="section-table-container-operacion-linea">
+                    <table class="section-table-operacion-linea">
+                        <thead>
+                            <tr>
+                                <th>fecha y...</th>
+                                <th>S/N de s...</th>
+                                <th>Tiempo...</th>
+                                <th>Fecha de...</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historial de metal mask -->
+            <div class="section-panel-operacion-linea">
+                <div class="section-header-operacion-linea">Historial de metal mask</div>
+                <div class="section-toolbar-operacion-linea">
+                    <button id="btnRegistrarMask-operacion-linea" class="btn-primary-operacion-linea btn-registrar-operacion-linea">Registrar</button>
+                    <button id="btnExportarMask-operacion-linea" class="btn-primary-operacion-linea btn-exportar-operacion-linea">Exportar el excel</button>
+                </div>
+                <div class="section-table-container-operacion-linea">
+                    <table class="section-table-operacion-linea">
+                        <thead>
+                            <tr>
+                                <th>fecha y hor...</th>
+                                <th>Numero de...</th>
+                                <th>Cantidad di...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="3">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historial de squeegee -->
+            <div class="section-panel-operacion-linea">
+                <div class="section-header-operacion-linea">Historial de squeegee</div>
+                <div class="section-toolbar-operacion-linea">
+                    <button id="btnRegistrarSqueegee-operacion-linea" class="btn-primary-operacion-linea btn-registrar-operacion-linea">Registrar</button>
+                    <button id="btnExportarSqueegee-operacion-linea" class="btn-primary-operacion-linea btn-exportar-operacion-linea">Exportar el excel</button>
+                </div>
+                <div class="section-table-container-operacion-linea">
+                    <table class="section-table-operacion-linea">
+                        <thead>
+                            <tr>
+                                <th>fecha y hora d...</th>
+                                <th>Numero de co...</th>
+                                <th>Cantidad disp...</th>
+                                <th>Numero de co...</th>
+                                <th>Cantidad disp...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-inicialización del módulo Control de operación de línea SMT
+        document.addEventListener('DOMContentLoaded', function() {
+            initControlOperacionLineaSMT();
+        });
+
+        function initControlOperacionLineaSMT() {
+            console.log('Inicializando Control de operación de línea SMT...');
+            
+            // Configurar event listeners para botones principales
+            const btnIniciar = document.getElementById('btnIniciar-operacion-linea');
+            const btnFin = document.getElementById('btnFin-operacion-linea');
+            const btnPausa = document.getElementById('btnPausa-operacion-linea');
+            const btnConsultar = document.getElementById('btnConsultar-operacion-linea');
+            const btnExportarMain = document.getElementById('btnExportarMain-operacion-linea');
+            
+            if (btnIniciar) {
+                btnIniciar.addEventListener('click', function() {
+                    console.log('Botón Iniciar clickeado');
+                    // Aquí se implementaría la lógica de iniciar
+                });
+            }
+            
+            if (btnFin) {
+                btnFin.addEventListener('click', function() {
+                    console.log('Botón Fin clickeado');
+                    // Aquí se implementaría la lógica de fin
+                });
+            }
+            
+            if (btnPausa) {
+                btnPausa.addEventListener('click', function() {
+                    console.log('Botón Pausa clickeado');
+                    // Aquí se implementaría la lógica de pausa
+                });
+            }
+            
+            if (btnConsultar) {
+                btnConsultar.addEventListener('click', function() {
+                    console.log('Botón Consultar clickeado');
+                    // Aquí se implementaría la lógica de consulta
+                });
+            }
+            
+            if (btnExportarMain) {
+                btnExportarMain.addEventListener('click', function() {
+                    console.log('Botón Exportar principal clickeado');
+                    // Aquí se implementaría la lógica de exportación
+                });
+            }
+            
+            // Configurar event listeners para botones de BOM
+            const btnExportarBOM = document.getElementById('btnExportarBOM-operacion-linea');
+            const btnVerifPass = document.getElementById('btnVerifPass-operacion-linea');
+            const btnRegistroMat = document.getElementById('btnRegistroMat-operacion-linea');
+            const btnActivarComb = document.getElementById('btnActivarComb-operacion-linea');
+            
+            if (btnExportarBOM) {
+                btnExportarBOM.addEventListener('click', function() {
+                    console.log('Botón Exportar BOM clickeado');
+                });
+            }
+            
+            if (btnVerifPass) {
+                btnVerifPass.addEventListener('click', function() {
+                    console.log('Botón Verif. Pass clickeado');
+                });
+            }
+            
+            if (btnRegistroMat) {
+                btnRegistroMat.addEventListener('click', function() {
+                    console.log('Botón Registro de material clickeado');
+                });
+            }
+            
+            if (btnActivarComb) {
+                btnActivarComb.addEventListener('click', function() {
+                    console.log('Botón Activar combinación clickeado');
+                });
+            }
+            
+            // Configurar event listeners para botones de historial
+            const btnExportarHistorial = document.getElementById('btnExportarHistorial-operacion-linea');
+            const btnRegistrarSold = document.getElementById('btnRegistrarSold-operacion-linea');
+            const btnExportarSold = document.getElementById('btnExportarSold-operacion-linea');
+            const btnRegistrarMask = document.getElementById('btnRegistrarMask-operacion-linea');
+            const btnExportarMask = document.getElementById('btnExportarMask-operacion-linea');
+            const btnRegistrarSqueegee = document.getElementById('btnRegistrarSqueegee-operacion-linea');
+            const btnExportarSqueegee = document.getElementById('btnExportarSqueegee-operacion-linea');
+            
+            if (btnExportarHistorial) {
+                btnExportarHistorial.addEventListener('click', function() {
+                    console.log('Botón Exportar Historial clickeado');
+                });
+            }
+            
+            if (btnRegistrarSold) {
+                btnRegistrarSold.addEventListener('click', function() {
+                    console.log('Botón Registrar Soldadura clickeado');
+                });
+            }
+            
+            if (btnExportarSold) {
+                btnExportarSold.addEventListener('click', function() {
+                    console.log('Botón Exportar Soldadura clickeado');
+                });
+            }
+            
+            if (btnRegistrarMask) {
+                btnRegistrarMask.addEventListener('click', function() {
+                    console.log('Botón Registrar Metal Mask clickeado');
+                });
+            }
+            
+            if (btnExportarMask) {
+                btnExportarMask.addEventListener('click', function() {
+                    console.log('Botón Exportar Metal Mask clickeado');
+                });
+            }
+            
+            if (btnRegistrarSqueegee) {
+                btnRegistrarSqueegee.addEventListener('click', function() {
+                    console.log('Botón Registrar Squeegee clickeado');
+                });
+            }
+            
+            if (btnExportarSqueegee) {
+                btnExportarSqueegee.addEventListener('click', function() {
+                    console.log('Botón Exportar Squeegee clickeado');
+                });
+            }
+            
+            console.log('Control de operación de línea SMT inicializado correctamente');
+        }
+    </script>
+</div>

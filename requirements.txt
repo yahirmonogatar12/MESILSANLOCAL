@@ -28,3 +28,7 @@ psutil>=5.9.0
 pytz>=2023.3
 
 
+
+# SMT Monitor dependencies
+mysql-connector-python==8.0.33
+watchdog==3.0.0

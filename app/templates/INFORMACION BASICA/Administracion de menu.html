@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Management</title>
+    <style>
+        /* Reset y estilos base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #2B2D3E;
+            color: #E0E0E0;
+            font-size: 12px;
+            overflow-x: hidden;
+        }
+
+        /* Estilos de scrollbar minimalista */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2B2D3E;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #5A5C6B;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6B6D7C;
+        }
+
+        /* Contenedor principal */
+        .main-container {
+            width: 100%;
+            min-height: 100vh;
+            background-color: #2B2D3E;
+            padding: 5px;
+        }
+
+        /* Barra de herramientas */
+        .toolbar {
+            background-color: #3C3F52;
+            padding: 10px 15px;
+            border: 1px solid #20688C;
+            border-radius: 4px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        /* Botones de la barra de herramientas */
+        .btn-toolbar {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn-toolbar:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Botón Consultar */
+        .btn-consultar {
+            background-color: #2C3E50;
+            border: 2px solid #3498DB;
+        }
+
+        .btn-consultar:hover {
+            background-color: #34495E;
+            border-color: #2980B9;
+        }
+
+        /* Botón Exportar */
+        .btn-exportar {
+            background-color: #27AE60;
+        }
+
+        .btn-exportar:hover {
+            background-color: #229954;
+        }
+
+        /* Botón Importar */
+        .btn-importar {
+            background-color: #16A085;
+        }
+
+        .btn-importar:hover {
+            background-color: #138D75;
+        }
+
+        /* Contenedor de tabla */
+        .table-container {
+            background-color: #40424F;
+            border: 1px solid #20688C;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: calc(100vh - 120px);
+        }
+
+        /* Tabla de datos */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+
+        .data-table th {
+            background-color: #172A46;
+            color: #E0E0E0;
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #20688C;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #5F6375;
+            background-color: #40424F;
+            color: #E0E0E0;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        /* Hover en filas */
+        .data-table tbody tr:hover td {
+            background-color: #485563;
+        }
+
+        /* Filas pares */
+        .data-table tbody tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        .data-table tbody tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+
+        /* Celdas con rowspan */
+        .cell-rowspan {
+            vertical-align: middle;
+            text-align: center;
+            font-weight: 500;
+            background-color: #2C3E50 !important;
+            border: 2px solid #20688C;
+        }
+
+        /* Footer de tabla */
+        .table-footer {
+            background-color: #172A46;
+            padding: 10px 15px;
+            color: #E0E0E0;
+            font-size: 11px;
+            border: 1px solid #20688C;
+            border-top: none;
+        }
+
+        /* Columna de expansión */
+        .expand-col {
+            width: 30px;
+            text-align: center;
+            color: #3498DB;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .data-table {
+                font-size: 10px;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 8px 10px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .btn-toolbar {
+                width: 100%;
+            }
+
+            .data-table {
+                font-size: 9px;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 6px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Barra de herramientas -->
+        <div class="toolbar">
+            <button id="btnConsultar" class="btn-toolbar btn-consultar">Consultar</button>
+            <button id="btnExportar" class="btn-toolbar btn-exportar">Exportar el excel</button>
+            <button id="btnImportar" class="btn-toolbar btn-importar">Importar el excel</button>
+        </div>
+
+        <!-- Contenedor de tabla principal -->
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre de menu principal(coreano)</th>
+                        <th>Nombre de menu principal(ingles)</th>
+                        <th>Nombre de menu principal(español)</th>
+                        <th>Nombre de menu de sub grupo(coreano)</th>
+                        <th>Nombre de menu de sub grupo(ingles)</th>
+                        <th>Nombre de menu de sub grupo(español)</th>
+                        <th>Codigo de menu</th>
+                        <th>Nombre de menu(coreano)</th>
+                        <th>Nombre de menu(ingles)</th>
+                        <th>Nombre de menu(español)</th>
+                        <th class="expand-col">▼</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Basic Info Section -->
+                    <tr>
+                        <td rowspan="23" class="cell-rowspan">기준정보</td>
+                        <td rowspan="23" class="cell-rowspan">Basic Info</td>
+                        <td rowspan="23" class="cell-rowspan">Informacion basica</td>
+                        <td rowspan="8">사용자 관리</td>
+                        <td rowspan="8">User Management</td>
+                        <td rowspan="8">Administracion de usuario</td>
+                        <td>MDM000010</td>
+                        <td>사용자 관리</td>
+                        <td>User Management</td>
+                        <td>Administracion de usuario</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM000020</td>
+                        <td>메뉴 관리</td>
+                        <td>Menu Management</td>
+                        <td>Administracion de menu</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM000030</td>
+                        <td>권한 관리</td>
+                        <td>Authority Management</td>
+                        <td>Administracion de autoridad</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM000040</td>
+                        <td>코드표 관리</td>
+                        <td>CodeList Management</td>
+                        <td>Control de lista de codigo</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM000050</td>
+                        <td>시간표 관리</td>
+                        <td>Schedule Management</td>
+                        <td>Administracion de itinerario</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM000060</td>
+                        <td>라이센스 조회</td>
+                        <td>Licenses Inquiry</td>
+                        <td>Consultar licencias</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM010010</td>
+                        <td>부서 관리</td>
+                        <td>Department Management</td>
+                        <td>Control de departamento</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM010020</td>
+                        <td>공정 관리</td>
+                        <td>Process Management</td>
+                        <td>Control de proceso</td>
+                        <td></td>
+                    </tr>
+                    <!-- Process Management rows -->
+                    <tr>
+                        <td rowspan="6">공정 관리</td>
+                        <td rowspan="6">Process Management</td>
+                        <td rowspan="6">Control de proceso</td>
+                        <td>MDM010030</td>
+                        <td>공정순서그룹 관리</td>
+                        <td>Process Order Group Management</td>
+                        <td>Control de orden de proceso</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM010040</td>
+                        <td>공정순서 관리</td>
+                        <td>Process Order Management</td>
+                        <td>Control de orden de proceso</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM010050</td>
+                        <td>공정별 불량 관리</td>
+                        <td>Defect Management By Process</td>
+                        <td>Control de defecto por proceso</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM010070</td>
+                        <td>설비인터페이스 그룹관리</td>
+                        <td>EquipInterfaceGroup Management</td>
+                        <td>Control de grupo de interfaces de maquina</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM010080</td>
+                        <td>설비인터페이스 관리</td>
+                        <td>Equipment Interface Management</td>
+                        <td>Control de interfaces de maquina</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM010090</td>
+                        <td>인라인 공정 설비 인터락 관리</td>
+                        <td>In Line Equipment Interlock</td>
+                        <td>Control de interlock de maquina en linea</td>
+                        <td></td>
+                    </tr>
+                    <!-- Product Management rows -->
+                    <tr>
+                        <td rowspan="9">생산 관리</td>
+                        <td rowspan="9">Product Management</td>
+                        <td rowspan="9">Control de produccion</td>
+                        <td>MDM020010</td>
+                        <td>모델 관리</td>
+                        <td>Model Management</td>
+                        <td>Control de modelos</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM020020</td>
+                        <td>BOM 관리</td>
+                        <td>BOM Management</td>
+                        <td>Control de BOM</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM020030</td>
+                        <td>SMT BOM 관리</td>
+                        <td>SMT BOM Management</td>
+                        <td>Control de BOM de SMT</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM020040</td>
+                        <td>장비 관리</td>
+                        <td>Equipment Management</td>
+                        <td>Control de maquina</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM020050</td>
+                        <td>인라인 설비 관리</td>
+                        <td>In Line Equipment Management</td>
+                        <td>Control de maquina en linea</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM020060</td>
+                        <td>SMT Tack Time 관리</td>
+                        <td>SMT Tack Time Management</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM020070</td>
+                        <td>공정 StandardTime 관리</td>
+                        <td>Process Standard Time</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>MDM020080</td>
+                        <td>바코드발급규칙(뱃지) 관리</td>
+                        <td>BarcodeManagingRule Management</td>
+                        <td>Regla de mango de Cod. de barr</td>
+                        <td>▼</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer de tabla -->
+        <div class="table-footer">
+            Total Rows : 121
+        </div>
+    </div>
+</body>
+</html>

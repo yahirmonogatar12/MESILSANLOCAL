@@ -39,6 +39,20 @@ auth_system = AuthSystem()
 auth_system.init_database()
 
 # Registrar Blueprints de administración
+
+# SMT Routes Simple
+try:
+    from .smt_routes_date_fixed import smt_bp
+    app.register_blueprint(smt_bp)
+    print("✅ SMT Routes Simple registradas")
+except Exception as e:
+    print(f"❌ Error importando SMT Routes Simple: {e}")
+
+@app.route("/smt-simple")
+def smt_simple():
+    """Página SMT simple sin filtros complicados"""
+    return render_template("smt_simple.html")
+
 app.register_blueprint(user_admin_bp, url_prefix='/admin')
 app.register_blueprint(admin_bp)
 
@@ -1627,13 +1641,52 @@ def lista_control_produccion():
 
 @app.route('/control_produccion/control_embarque')
 @login_requerido
-@requiere_permiso_dropdown('LISTA_CONTROLDEPRODUCCION', 'Control de plan de produccion', 'Control de embarque')
 def control_embarque():
     """Cargar la página de Control de Embarque"""
     try:
         return render_template('Control de produccion/Control de embarque.html')
     except Exception as e:
         print(f"Error al cargar Control de embarque: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/Control de embarque')
+@login_requerido
+def control_embarque_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de embarque"""
+    try:
+        return render_template('Control de produccion/Control de embarquehtml')
+    except Exception as e:
+        print(f"Error al cargar template Control de embarque AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control_produccion/crear_plan')
+@login_requerido
+def crear_plan_produccion():
+    """Cargar la página de Crear Plan de Producción"""
+    try:
+        return render_template('Control de produccion/Crear plan de produccion.html')
+    except Exception as e:
+        print(f"Error al cargar Crear Plan de Producción: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control_proceso/control_produccion_smt')
+@login_requerido
+def control_produccion_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de produccion SMT"""
+    try:
+        return render_template('Control de proceso/Control de produccion SMT.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de produccion SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control_proceso/control_operacion_linea_smt')
+@login_requerido
+def control_operacion_linea_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de operacion de linea SMT"""
+    try:
+        return render_template('Control de proceso/Control de operacion de linea SMT.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de operacion de linea SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route('/listas/control_proceso')
@@ -3396,7 +3449,7 @@ def historial_cambio_material_smt_ajax():
 @app.route('/api/csv_data')
 @login_requerido
 def get_csv_data():
-    """API para obtener datos CSV filtrados por carpeta"""
+    """API para obtener datos SMT desde MySQL (no archivos CSV)"""
     try:
         folder = request.args.get('folder', '')
         print(f"🔍 Solicitud recibida para carpeta: '{folder}'")
@@ -3405,38 +3458,188 @@ def get_csv_data():
             print("❌ No se proporcionó parámetro de carpeta")
             return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
         
-        # Ruta base de los archivos CSV en la red
-        base_path = r"\\192.168.1.230\qa\ILSAN_MES\Mounter_LogFile"
+        # Conectar a MySQL directamente
+        import mysql.connector
         
-        # Construir la ruta completa del folder
-        folder_path = os.path.join(base_path, folder)
+        mysql_config = {
+            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
+            'port': 11550,
+            'user': 'db_rrpq0erbdujn',
+            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
+            'database': 'db_rrpq0erbdujn',
+            'charset': 'utf8mb4'
+        }
         
-        print(f"🔍 Buscando archivos CSV en: {folder_path}")
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
         
-        # Verificar que la ruta existe
-        if not os.path.exists(folder_path):
-            print(f"❌ Ruta no encontrada: {folder_path}")
-            return jsonify({
-                'success': False, 
-                'error': f'Carpeta no encontrada: {folder}',
-                'path': folder_path
-            }), 404
+        print(f"🔍 Consultando datos SMT desde MySQL para carpeta: {folder}")
         
-        # Buscar archivos CSV en la carpeta
-        csv_files = []
-        for file in os.listdir(folder_path):
-            if file.lower().endswith('.csv'):
-                csv_files.append(os.path.join(folder_path, file))
+        # Query para obtener datos de la tabla MySQL
+        query = """
+        SELECT 
+            ScanDate,
+            ScanTime,
+            SlotNo,
+            Result,
+            PreviousBarcode,
+            Productdate,
+            PartName,
+            Quantity,
+            SEQ,
+            Vendor,
+            LOTNO,
+            Barcode,
+            FeederBase,
+            archivo,
+            linea,
+            maquina,
+            fecha_subida
+        FROM logs_maquina
+        WHERE archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s
+        ORDER BY ScanDate DESC, ScanTime DESC
+        LIMIT 1000
+        """
         
-        if not csv_files:
-            print(f"ℹ️ No se encontraron archivos CSV en: {folder_path}")
-            return jsonify({
-                'success': True,
-                'data': [],
-                'message': f'No hay archivos CSV disponibles en la carpeta: {folder}',
-                'files_processed': 0,
-                'path': folder_path
-            })
+        cursor.execute(query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
+        resultados = cursor.fetchall()
+        
+        print(f"� Encontrados {len(resultados)} registros en MySQL")
+        
+        # Convertir datos para JSON
+        all_data = []
+        for resultado in resultados:
+            cleaned_record = {}
+            for key, value in resultado.items():
+                if hasattr(value, 'isoformat'):  # Es una fecha/datetime
+                    cleaned_record[key] = value.isoformat()
+                elif value is None:
+                    cleaned_record[key] = None
+                else:
+                    cleaned_record[key] = str(value)
+            
+            # Mapear nombres para compatibilidad con frontend (usar nombres de la nueva tabla)
+            cleaned_record['ScanDate'] = cleaned_record.get('ScanDate', '')
+            cleaned_record['ScanTime'] = cleaned_record.get('ScanTime', '')
+            cleaned_record['SlotNo'] = cleaned_record.get('SlotNo', '')
+            cleaned_record['Result'] = cleaned_record.get('Result', '')
+            cleaned_record['PartName'] = cleaned_record.get('PartName', '')
+            cleaned_record['SourceFile'] = cleaned_record.get('archivo', '')  # Mapear archivo a SourceFile
+            cleaned_record['LOTNO'] = cleaned_record.get('LOTNO', '')
+            cleaned_record['Barcode'] = cleaned_record.get('Barcode', '')
+            cleaned_record['Quantity'] = cleaned_record.get('Quantity', '')
+            cleaned_record['Vendor'] = cleaned_record.get('Vendor', '')
+            cleaned_record['FeederBase'] = cleaned_record.get('FeederBase', '')
+            cleaned_record['PreviousBarcode'] = cleaned_record.get('PreviousBarcode', '')
+            
+            all_data.append(cleaned_record)
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': all_data,
+            'message': f'Datos MySQL cargados para {folder}: {len(all_data)} registros',
+            'files_processed': len(set([d.get('SourceFile', '') for d in all_data])),
+            'source': 'mysql_logs_maquina'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo datos desde MySQL: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False, 
+            'error': f'Error al consultar base de datos MySQL: {str(e)}'
+        }), 500
+
+
+@app.route('/api/csv_stats')
+@login_requerido
+def get_csv_stats():
+    """API para obtener estadísticas SMT desde MySQL (no archivos CSV)"""
+    try:
+        folder = request.args.get('folder', '')
+        print(f"🔍 Solicitud recibida para estadísticas de carpeta: '{folder}'")
+        
+        if not folder:
+            print("❌ No se proporcionó parámetro de carpeta")
+            return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
+        
+        # Conectar a MySQL directamente
+        import mysql.connector
+        
+        mysql_config = {
+            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
+            'port': 11550,
+            'user': 'db_rrpq0erbdujn',
+            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
+            'database': 'db_rrpq0erbdujn',
+            'charset': 'utf8mb4'
+        }
+        
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        print(f"🔍 Consultando estadísticas SMT desde MySQL para carpeta: {folder}")
+        
+        # Query para obtener estadísticas de la tabla MySQL
+        query = """
+        SELECT 
+            COUNT(*) as total_records,
+            COUNT(DISTINCT archivo) as total_files,
+            COUNT(DISTINCT ScanDate) as total_days,
+            COUNT(CASE WHEN Result = 'OK' THEN 1 END) as ok_count,
+            COUNT(CASE WHEN Result = 'NG' THEN 1 END) as ng_count,
+            MIN(ScanDate) as first_date,
+            MAX(ScanDate) as last_date
+        FROM logs_maquina
+        WHERE archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s
+        """
+        
+        cursor.execute(query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
+        stats = cursor.fetchone()
+        
+        # Query para obtener archivos únicos
+        files_query = """
+        SELECT DISTINCT archivo, COUNT(*) as records
+        FROM logs_maquina
+        WHERE archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s
+        GROUP BY archivo
+        ORDER BY archivo
+        """
+        
+        cursor.execute(files_query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
+        files_info = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"📊 Estadísticas obtenidas: {stats['total_records']} registros de {stats['total_files']} archivos")
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_records': stats['total_records'] or 0,
+                'total_files': stats['total_files'] or 0,
+                'total_days': stats['total_days'] or 0,
+                'ok_count': stats['ok_count'] or 0,
+                'ng_count': stats['ng_count'] or 0,
+                'first_date': stats['first_date'].isoformat() if stats['first_date'] else None,
+                'last_date': stats['last_date'].isoformat() if stats['last_date'] else None
+            },
+            'files': [{'name': f['source_file'], 'records': f['records']} for f in files_info],
+            'message': f'Estadísticas MySQL para {folder}',
+            'source': 'mysql'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo estadísticas desde MySQL: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False, 
+            'error': f'Error al consultar estadísticas MySQL: {str(e)}'
+        }), 500
         
         print(f"📁 Encontrados {len(csv_files)} archivos CSV")
         
@@ -3552,99 +3755,10 @@ def get_csv_data():
             'error': f'Error al acceder a los archivos CSV: {str(e)}'
         }), 500
 
-@app.route('/api/csv_stats')
-@login_requerido
-def get_csv_stats():
-    """API para obtener estadísticas de datos CSV"""
-    try:
-        folder = request.args.get('folder', '')
-        if not folder:
-            return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
-        
-        # Ruta base de los archivos CSV en la red
-        base_path = r"\\192.168.1.230\qa\ILSAN_MES\Mounter_LogFile"
-        folder_path = os.path.join(base_path, folder)
-        
-        print(f"📊 Calculando estadísticas para: {folder_path}")
-        
-        # Verificar que la ruta existe
-        if not os.path.exists(folder_path):
-            return jsonify({
-                'success': False,
-                'error': f'Carpeta no encontrada: {folder}'
-            }), 404
-        
-        # Contadores
-        total_records = 0
-        ok_count = 0
-        ng_count = 0
-        
-        # Buscar y procesar archivos CSV
-        csv_files_found = []
-        for file in os.listdir(folder_path):
-            if file.lower().endswith('.csv'):
-                csv_files_found.append(file)
-        
-        if not csv_files_found:
-            print(f"ℹ️ No se encontraron archivos CSV para estadísticas en: {folder_path}")
-            stats = {
-                'total_records': 0,
-                'ok_count': 0,
-                'ng_count': 0
-            }
-            return jsonify({
-                'success': True,
-                'stats': stats,
-                'message': f'No hay archivos CSV disponibles en la carpeta: {folder}'
-            })
-        
-        for file in csv_files_found:
-                try:
-                    csv_file = os.path.join(folder_path, file)
-                    df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip')
-                    
-                    file_total = len(df)
-                    total_records += file_total
-                    
-                    # Contar OK y NG (la columna puede llamarse 'Result' o similar)
-                    if 'Result' in df.columns:
-                        # Limpiar valores NaN antes de contar
-                        df['Result'] = df['Result'].fillna('')
-                        file_ok = len(df[df['Result'].astype(str).str.upper() == 'OK'])
-                        file_ng = len(df[df['Result'].astype(str).str.upper() == 'NG'])
-                        ok_count += file_ok
-                        ng_count += file_ng
-                    else:
-                        file_ok = 0
-                        file_ng = 0
-                    
-                    print(f"📄 {file}: {file_total} registros, OK: {file_ok}, NG: {file_ng}")
-                    
-                except Exception as file_error:
-                    print(f"⚠️ Error procesando estadísticas de {file}: {str(file_error)}")
-                    continue
-        
-        stats = {
-            'total_records': total_records,
-            'ok_count': ok_count,
-            'ng_count': ng_count
-        }
-        
-        print(f"✅ Estadísticas calculadas: {stats}")
-        
-        return jsonify({
-            'success': True,
-            'stats': stats
-        })
-        
-    except Exception as e:
-        print(f"❌ Error obteniendo estadísticas CSV: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/api/filter_data', methods=['POST'])
 @login_requerido
 def filter_csv_data():
-    """API para filtrar datos CSV"""
+    """API para filtrar datos SMT desde MySQL (no archivos CSV)"""
     try:
         filters = request.get_json()
         folder = filters.get('folder', '')
@@ -3656,109 +3770,101 @@ def filter_csv_data():
         if not folder:
             return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
         
-        # Ruta base de los archivos CSV en la red
-        base_path = r"\\192.168.1.230\qa\ILSAN_MES\Mounter_LogFile"
-        folder_path = os.path.join(base_path, folder)
-        
-        print(f"🔍 Filtrando datos en: {folder_path}")
+        print(f"🔍 Filtrando datos MySQL para carpeta: {folder}")
         print(f"🔍 Filtros: partName={part_name}, result={result}, dateFrom={date_from}, dateTo={date_to}")
         
-        # Verificar que la ruta existe
-        if not os.path.exists(folder_path):
-            return jsonify({
-                'success': False,
-                'error': f'Carpeta no encontrada: {folder}'
-            }), 404
+        # Conectar a MySQL directamente
+        import mysql.connector
         
-        # Leer y filtrar datos
+        mysql_config = {
+            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
+            'port': 11550,
+            'user': 'db_rrpq0erbdujn',
+            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
+            'database': 'db_rrpq0erbdujn',
+            'charset': 'utf8mb4'
+        }
+        
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Construir query dinámicamente con filtros
+        where_conditions = ["source_file LIKE %s"]
+        params = [f"%{folder}%"]
+        
+        if part_name:
+            where_conditions.append("part_name LIKE %s")
+            params.append(f"%{part_name}%")
+        
+        if result:
+            where_conditions.append("result = %s")
+            params.append(result.upper())
+        
+        if date_from:
+            where_conditions.append("ScanDate >= %s")
+            params.append(date_from.replace('-', ''))  # Convertir YYYY-MM-DD a YYYYMMDD
+        
+        if date_to:
+            where_conditions.append("ScanDate <= %s")
+            params.append(date_to.replace('-', ''))  # Convertir YYYY-MM-DD a YYYYMMDD
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        query = f"""
+        SELECT 
+            scan_date,
+            scan_time,
+            slot_no,
+            result,
+            previous_barcode,
+            product_date,
+            part_name,
+            quantity,
+            seq,
+            vendor,
+            lot_no,
+            barcode,
+            feeder_base,
+            source_file,
+            created_at
+        FROM historial_cambio_material_smt
+        WHERE {where_clause}
+        ORDER BY ScanDate DESC, ScanTime DESC
+        LIMIT 5000
+        """
+        
+        cursor.execute(query, params)
+        resultados = cursor.fetchall()
+        
+        print(f"📊 Encontrados {len(resultados)} registros con filtros aplicados")
+        
+        # Convertir datos para JSON y mapear nombres para compatibilidad
         filtered_data = []
-        
-        # Verificar si hay archivos CSV en la carpeta
-        csv_files_found = [f for f in os.listdir(folder_path) if f.lower().endswith('.csv')]
-        
-        if not csv_files_found:
-            print(f"ℹ️ No se encontraron archivos CSV para filtrar en: {folder_path}")
-            stats = {
-                'total_records': 0,
-                'ok_count': 0,
-                'ng_count': 0
-            }
-            return jsonify({
-                'success': True,
-                'data': [],
-                'stats': stats,
-                'message': f'No hay archivos CSV disponibles en la carpeta: {folder}'
-            })
-        
-        for file in csv_files_found:
-                try:
-                    csv_file = os.path.join(folder_path, file)
-                    
-                    # Intentar lectura simple primero
-                    try:
-                        df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip')
-                        print(f"✅ Lectura exitosa: {os.path.basename(csv_file)} - {len(df)} filas")
-                    except Exception as simple_error:
-                        print(f"⚠️ Error con lectura simple: {str(simple_error)}")
-                        continue
-                    
-                    # Limpiar DataFrame de valores NaN antes de filtrar
-                    df = df.fillna('')
-                    
-                    # Agregar nombre del archivo fuente
-                    df['SourceFile'] = os.path.basename(csv_file)
-                    
-                    # Aplicar filtros
-                    if part_name and 'PartName' in df.columns:
-                        df = df[df['PartName'].str.contains(part_name, case=False, na=False)]
-                    
-                    if result and 'Result' in df.columns:
-                        df = df[df['Result'].str.upper() == result.upper()]
-                    
-                    # Filtros de fecha
-                    if (date_from or date_to) and 'ScanDate' in df.columns:
-                        # Convertir ScanDate a formato de fecha para comparación
-                        try:
-                            # Asumir formato YYYYMMDD
-                            df['ScanDateFormatted'] = pd.to_datetime(df['ScanDate'], format='%Y%m%d', errors='coerce')
-                            
-                            if date_from:
-                                date_from_dt = pd.to_datetime(date_from)
-                                df = df[df['ScanDateFormatted'] >= date_from_dt]
-                            
-                            if date_to:
-                                date_to_dt = pd.to_datetime(date_to)
-                                df = df[df['ScanDateFormatted'] <= date_to_dt]
-                            
-                            # Eliminar la columna temporal
-                            df = df.drop('ScanDateFormatted', axis=1)
-                            
-                        except Exception as date_error:
-                            print(f"⚠️ Error procesando filtros de fecha: {date_error}")
-                    
-                    # Convertir a lista de diccionarios y limpiar NaN
-                    file_data = df.to_dict('records')
-                    
-                    # Limpiar valores NaN y convertir a tipos JSON válidos
-                    cleaned_data = []
-                    for record in file_data:
-                        cleaned_record = {}
-                        for key, value in record.items():
-                            # Convertir NaN y valores problemáticos a None (null en JSON)
-                            if pd.isna(value) or str(value).lower() == 'nan':
-                                cleaned_record[key] = None
-                            elif isinstance(value, (int, float)) and (value != value):  # Check for NaN
-                                cleaned_record[key] = None
-                            else:
-                                # Convertir a string para asegurar compatibilidad JSON
-                                cleaned_record[key] = str(value) if value is not None else None
-                        cleaned_data.append(cleaned_record)
-                    
-                    filtered_data.extend(cleaned_data)
-                    
-                except Exception as file_error:
-                    print(f"⚠️ Error filtrando archivo {file}: {str(file_error)}")
-                    continue
+        for resultado in resultados:
+            cleaned_record = {}
+            for key, value in resultado.items():
+                if hasattr(value, 'isoformat'):  # Es una fecha/datetime
+                    cleaned_record[key] = value.isoformat()
+                elif value is None:
+                    cleaned_record[key] = None
+                else:
+                    cleaned_record[key] = str(value)
+            
+            # Mapear nombres para compatibilidad con frontend
+            cleaned_record['ScanDate'] = cleaned_record.get('ScanDate', '')
+            cleaned_record['ScanTime'] = cleaned_record.get('scan_time', '')
+            cleaned_record['SlotNo'] = cleaned_record.get('slot_no', '')
+            cleaned_record['Result'] = cleaned_record.get('result', '')
+            cleaned_record['PartName'] = cleaned_record.get('part_name', '')
+            cleaned_record['SourceFile'] = cleaned_record.get('source_file', '')
+            cleaned_record['LOTNO'] = cleaned_record.get('lot_no', '')
+            cleaned_record['Barcode'] = cleaned_record.get('barcode', '')
+            cleaned_record['Quantity'] = cleaned_record.get('quantity', '')
+            cleaned_record['Vendor'] = cleaned_record.get('vendor', '')
+            cleaned_record['FeederBase'] = cleaned_record.get('feeder_base', '')
+            cleaned_record['PreviousBarcode'] = cleaned_record.get('previous_barcode', '')
+            
+            filtered_data.append(cleaned_record)
         
         # Calcular estadísticas de los datos filtrados
         stats = {
@@ -3767,18 +3873,23 @@ def filter_csv_data():
             'ng_count': len([d for d in filtered_data if str(d.get('Result', '')).upper() == 'NG'])
         }
         
-        print(f"✅ Datos filtrados: {len(filtered_data)} registros")
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Datos filtrados desde MySQL: {len(filtered_data)} registros")
         
         return jsonify({
             'success': True,
             'data': filtered_data,
-            'stats': stats
+            'stats': stats,
+            'source': 'mysql',
+            'message': f'Datos filtrados desde MySQL para {folder}'
         })
         
     except Exception as e:
-        print(f"❌ Error filtrando datos CSV: {e}")
+        print(f"❌ Error filtrando datos desde MySQL: {e}")
         print(f"❌ Traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': f'Error al filtrar datos MySQL: {str(e)}'}), 500
 
 
 def crear_patron_caracteres(texto_original, part_start, part_length, lot_start, lot_length):
@@ -3812,6 +3923,59 @@ def crear_patron_caracteres(texto_original, part_start, part_length, lot_start, 
             # Los caracteres especiales y espacios se mantienen como están
     
     return ''.join(patron)
+
+
+def cargar_configuracion_usuario(usuario):
+    """Cargar configuración específica del usuario"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT configuracion FROM usuarios_sistema 
+            WHERE username = %s
+        """, (usuario,))
+        
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if result and result['configuracion']:
+            import json
+            return json.loads(result['configuracion'])
+        else:
+            return {}
+            
+    except Exception as e:
+        print(f"Error cargando configuración del usuario {usuario}: {e}")
+        return {}
+
+
+def guardar_configuracion_usuario(usuario, config):
+    """Guardar configuración específica del usuario"""
+    try:
+        import json
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        config_json = json.dumps(config)
+        
+        cursor.execute("""
+            UPDATE usuarios_sistema 
+            SET configuracion = %s 
+            WHERE username = %s
+        """, (config_json, usuario))
+        
+        success = cursor.rowcount > 0
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return success
+        
+    except Exception as e:
+        print(f"Error guardando configuración del usuario {usuario}: {e}")
+        return False
 
 @app.route('/guardar_regla_trazabilidad', methods=['POST'])
 def guardar_regla_trazabilidad():
@@ -4875,4 +5039,114 @@ def importar_excel_historial():
         if conn:
             conn.close()
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+            os.remove(temp_path)@app.route('/api/historial_smt_data')
+def api_historial_smt_data():
+    """
+    API endpoint para obtener datos del historial de cambio de material SMT
+    Consulta la tabla historial_cambio_material_smt en MySQL
+    """
+    try:
+        # Obtener parámetros de filtro opcionales
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin') 
+        carpeta = request.args.get('carpeta')
+        barcode = request.args.get('barcode')
+        part_name = request.args.get('part_name')
+        
+        # Importar la conexión MySQL directamente
+        import mysql.connector
+        
+        # Configuración de conexión MySQL (misma que en SMTMonitorService)
+        mysql_config = {
+            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
+            'port': 11550,
+            'user': 'db_rrpq0erbdujn',
+            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
+            'database': 'db_rrpq0erbdujn',
+            'charset': 'utf8mb4',
+            'collation': 'utf8mb4_unicode_ci'
+        }
+        
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Construir query base
+        query = """
+        SELECT 
+            scan_date,
+            scan_time,
+            slot_no,
+            result,
+            previous_barcode,
+            product_date,
+            part_name,
+            quantity,
+            seq,
+            vendor,
+            lot_no,
+            barcode,
+            feeder_base,
+            source_file,
+            created_at
+        FROM historial_cambio_material_smt
+        WHERE 1=1
+        """
+        
+        params = []
+        
+        # Agregar filtros si se proporcionan
+        if fecha_inicio:
+            query += " AND ScanDate >= %s"
+            params.append(fecha_inicio)
+            
+        if fecha_fin:
+            query += " AND ScanDate <= %s"
+            params.append(fecha_fin)
+            
+        if carpeta:
+            query += " AND source_file LIKE %s"
+            params.append(f"%{carpeta}%")
+            
+        if barcode:
+            query += " AND barcode LIKE %s"
+            params.append(f"%{barcode}%")
+            
+        if part_name:
+            query += " AND part_name LIKE %s"
+            params.append(f"%{part_name}%")
+        
+        # Ordenar por fecha más reciente primero
+        query += " ORDER BY ScanDate DESC, ScanTime DESC LIMIT 1000"
+        
+        cursor.execute(query, params)
+        resultados = cursor.fetchall()
+        
+        # Convertir datos para JSON (manejar fechas y decimales)
+        for resultado in resultados:
+            for key, value in resultado.items():
+                if hasattr(value, 'isoformat'):  # Es una fecha/datetime
+                    resultado[key] = value.isoformat()
+                elif isinstance(value, (int, float)):
+                    resultado[key] = value
+                elif value is None:
+                    resultado[key] = ''
+                else:
+                    resultado[key] = str(value)
+        
+        return jsonify({
+            'success': True,
+            'data': resultados,
+            'total': len(resultados)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error al consultar datos SMT: {str(e)}'
+        }), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

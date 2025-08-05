@@ -340,6 +340,29 @@
         <!-- </div> -->
     </div>
     
+    <!-- Contenedor específico para el contenido de Control de Proceso (LADO DERECHO) -->
+    <div class="control-proceso-content-area" id="control-proceso-content-area" style="display: none;">
+        <!-- Contenedor por defecto con información general -->
+        <div id="control-proceso-info-container" style="display: block;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+        <!-- Contenedor específico para Control de producción SMT -->
+        <div id="control-produccion-smt-container" style="display: none;">
+            <!-- Contenedor específico para Control de producción SMT AJAX -->
+        </div>
+        <div id="Control de produccion SMT-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
+        <div id="control-operacion-linea-smt-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
+        <!-- Aquí se pueden agregar más contenedores específicos para Control de Proceso -->
+        <!-- Por ejemplo: -->
+        <!-- <div id="control-calidad-proceso-container" style="display: none;"> -->
+        <!--     El contenido se cargará dinámicamente con JavaScript -->
+        <!-- </div> -->
+    </div>
+    
     <!-- Contenedor específico para el contenido de Información Básica (LADO DERECHO) -->
     <div class="informacion-basica-content-area" id="informacion-basica-content-area" style="display: none;">
         <!-- Contenedor por defecto con información general -->
@@ -574,9 +597,73 @@
                                 setTimeout(setupSimpleFallback, 100);
                             });
                         };
+            
+            // Función AJAX para Control de operación de línea SMT
+            window.mostrarControlOperacionLineaSMT = function() {
+                console.log('🚀 Iniciando carga AJAX de Control de operación de línea SMT...');
+                
+                try {
+                    hideAllMaterialContainers();
+                    
+                    // Mostrar el contenedor de material y el contenido de control de proceso
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) {
+                        controlProcesoContent.style.display = 'block';
+                        controlProcesoContent.style.visibility = 'visible';
+                        controlProcesoContent.style.opacity = '1';
+                        controlProcesoContent.style.position = 'relative';
+                        controlProcesoContent.style.zIndex = '1000';
                     }
-                });
-            } else {
+                    
+                    // Obtener el contenedor específico que ya existe en el HTML
+                    const operacionLineaContainer = document.getElementById('control-operacion-linea-smt-unique-container');
+                    if (!operacionLineaContainer) {
+                        console.error('❌ El contenedor control-operacion-linea-smt-unique-container no existe en el HTML');
+                        return;
+                    }
+                    
+                    // Mostrar el contenedor específico
+                    operacionLineaContainer.style.display = 'block';
+                    operacionLineaContainer.style.visibility = 'visible';
+                    operacionLineaContainer.style.opacity = '1';
+                    
+                    // IMPORTANTE: Ocultar contenedor de material
+                    const materialContentArea = document.getElementById('material-content-area');
+                    if (materialContentArea) materialContentArea.style.display = 'none';
+                    
+                    // Cargar contenido dinámicamente usando la ruta AJAX
+                    cargarContenidoDinamico('control-operacion-linea-smt-unique-container', '/control_proceso/control_operacion_linea_smt', () => {
+                        console.log('✅ Control de operación de línea SMT AJAX cargado exitosamente');
+                        
+                        // Ejecutar inicialización específica del módulo si existe
+                        if (typeof window.inicializarControlOperacionLineaSMT === 'function') {
+                            window.inicializarControlOperacionLineaSMT();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error cargando Control de operación de línea SMT AJAX:', error);
+                        
+                        // Mostrar mensaje de error al usuario
+                        const errorContainer = document.querySelector('#control-operacion-linea-smt-unique-container');
+                        if (errorContainer) {
+                            errorContainer.innerHTML = `
+                                <div class="error-message" style="padding: 20px; text-align: center; color: #dc3545;">
+                                    <h3>❌ Error al cargar Control de operación de línea SMT</h3>
+                                    <p>No se pudo cargar el módulo. Por favor, intente nuevamente.</p>
+                                    <button onclick="window.mostrarControlOperacionLineaSMT()" class="btn btn-primary">Reintentar</button>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error crítico en mostrarControlOperacionLineaSMT:', error);
+                    alert('Error crítico al cargar Control de operación de línea SMT. Consulte la consola para más detalles.');
+                }
+            };
             }
         }, 1000);
     </script>
@@ -1575,6 +1662,7 @@
             const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
             const materialContentArea = document.getElementById('material-content-area');
             const produccionContentArea = document.getElementById('produccion-content-area');
+            const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
             const informacionBasicaContentArea = document.getElementById('informacion-basica-content-area');
             const materialInfoContainer = document.getElementById('material-info-container');
             const controlAlmacenContainer = document.getElementById('control-almacen-container');
@@ -1610,6 +1698,7 @@
                 // FORZAR ocultar completamente las áreas de contenido
                 materialContentArea.style.display = 'none';
                 produccionContentArea.style.display = 'none';
+                controlProcesoContentArea.style.display = 'none';
                 informacionBasicaContentArea.style.display = 'none';
                 
                 // FORZAR ocultar también los sidebars
@@ -2034,6 +2123,178 @@
                 });
             };
             
+            // Función global para mostrar Crear Plan de Producción
+            window.mostrarCrearPlanProduccion = function() {
+                hideAllMaterialContainers();
+                produccionContentArea.style.display = 'block';
+                produccionInfoContainer.style.display = 'block';
+                
+                // IMPORTANTE: Ocultar contenedor de material
+                materialContentArea.style.display = 'none';
+                
+                // Cargar contenido dinámicamente de Crear Plan de Producción en el contenedor de producción
+                cargarContenidoDinamico('produccion-info-container', '/control_produccion/crear_plan', () => {
+                    // Después de cargar, asegurar que el contenedor esté visible
+                    const planContainer = document.querySelector('#plan-produccion-main-container-unique');
+                    if (planContainer) {
+                        planContainer.style.display = 'block';
+                        planContainer.style.visibility = 'visible';
+                        planContainer.style.opacity = '1';
+                        console.log('Crear Plan de Producción cargado y mostrado correctamente');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cargando Crear Plan de Producción:', error);
+                });
+            };
+            
+            // Función AJAX para Control de producción SMT
+            window.mostrarControldeproduccionSMT = function() {
+                console.log('🚀 Iniciando carga AJAX de Control de producción SMT...');
+                
+                try {
+                    hideAllMaterialContainers();
+                    
+                    // Mostrar el área de control de proceso
+                    const controlProcesoArea = document.getElementById('control-produccion-smt-container');
+                    if (controlProcesoArea) {
+                        controlProcesoArea.style.display = 'block';
+                        controlProcesoArea.style.visibility = 'visible';
+                        controlProcesoArea.style.opacity = '1';
+                        controlProcesoArea.style.position = 'relative';
+                        controlProcesoArea.style.zIndex = '1000';
+                    }
+                    
+                    // Asegurar que el contenedor específico esté disponible
+                    // 2. ASEGURAR QUE EL CONTENEDOR ESPECÍFICO EXISTA Y ESTÉ DISPONIBLE
+                    let smtContainer = document.getElementById('Control de produccion SMT-unique-container');
+                    let smtParentContainer = document.getElementById('control-produccion-smt-container');
+                    if (!smtContainer) {
+                        // Si no existe, crearlo dentro del área de control de proceso
+                        console.log('🔧 Creando contenedor Control de produccion SMT-unique-container');
+                        smtContainer = document.createElement('div');
+                        smtContainer.id = 'Control de produccion SMT-unique-container';
+                        // FORZAR ESTILOS PARA OVERRIDE CSS
+                        smtContainer.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1001; width: 100%; min-height: 400px; padding: 5px;';
+                        controlProcesoArea.appendChild(smtContainer);
+                        // Mostrar contenedor padre si existe
+                        if (smtParentContainer) {
+                            smtParentContainer.style.display = 'block';
+                        }
+                    } else {
+                        // FORZAR ESTILOS PARA OVERRIDE CSS
+                        smtContainer.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1001; width: 100%; min-height: 400px; padding: 5px;';
+                        // Mostrar contenedor padre si existe
+                        if (smtParentContainer) {
+                            smtParentContainer.style.display = 'block';
+                        }
+                    }
+                    
+                    // IMPORTANTE: Ocultar contenedor de material
+                    materialContentArea.style.display = 'none';
+                    
+                    // Cargar contenido dinámicamente usando la ruta AJAX
+                    cargarContenidoDinamico('Control de produccion SMT-unique-container', '/control_proceso/control_produccion_smt', () => {
+                        console.log('✅ Control de producción SMT AJAX cargado exitosamente');
+                        
+                        // Verificar que el contenedor específico esté visible
+                        const smtContainer = document.querySelector('#Control de produccion SMT-unique-container');
+                        if (smtContainer) {
+                            smtContainer.style.display = 'block';
+                            smtContainer.style.visibility = 'visible';
+                            smtContainer.style.opacity = '1';
+                            
+                            console.log('📋 Contenedor principal de Control de producción SMT AJAX inicializado');
+                        }
+                        
+                        // Ejecutar inicialización específica del módulo si existe
+                        if (typeof window.inicializarControlProduccionSMT === 'function') {
+                            window.inicializarControlProduccionSMT();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error cargando Control de producción SMT AJAX:', error);
+                        
+                        // Mostrar mensaje de error al usuario
+                        const errorContainer = document.querySelector('#Control de produccion SMT-unique-container');
+                        if (errorContainer) {
+                            errorContainer.innerHTML = `
+                                <div class="error-message" style="padding: 20px; text-align: center; color: #dc3545;">
+                                    <h3>❌ Error al cargar Control de producción SMT</h3>
+                                    <p>No se pudo cargar el módulo. Por favor, intente nuevamente.</p>
+                                    <button onclick="window.mostrarControldeproduccionSMT()" class="btn btn-primary">Reintentar</button>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error crítico en mostrarControldeproduccionSMT:', error);
+                    alert('Error crítico al cargar Control de producción SMT. Consulte la consola para más detalles.');
+                }
+            };
+            
+            // Función AJAX para Control de Embarque con sufijo único
+            window.mostrarControlembarque = function() {
+                console.log('🚀 Iniciando carga AJAX de Control de Embarque...');
+                
+                try {
+                    hideAllMaterialContainers();
+                    produccionContentArea.style.display = 'none';
+                    controlProcesoContentArea.style.display = 'block';
+                    produccionInfoContainer.style.display = 'block';
+                    
+                    // IMPORTANTE: Ocultar contenedor de material
+                    materialContentArea.style.display = 'none';
+                    
+                    // Cargar contenido dinámicamente usando la ruta AJAX
+                    cargarContenidoDinamico('embarque-unique-container', '/Control de embarque', () => {
+                        console.log('✅ Control de Embarque AJAX cargado exitosamente');
+                        
+                        // Verificar que el contenedor específico esté visible
+                        const embarqueContainer = document.querySelector('#embarque-unique-container');
+                        if (embarqueContainer) {
+                            embarqueContainer.style.display = 'block';
+                            embarqueContainer.style.visibility = 'visible';
+                            embarqueContainer.style.opacity = '1';
+                            
+                            // Verificar contenedor principal interno
+                            const mainContainer = document.querySelector('#embarque-main-container-unique-embarque');
+                            if (mainContainer) {
+                                mainContainer.style.display = 'block';
+                                console.log('📋 Contenedor principal de Control de Embarque AJAX inicializado');
+                            }
+                            
+                            // Auto-inicialización ya está incluida en el template
+                            console.log('🎯 Control de Embarque AJAX completamente funcional');
+                        } else {
+                            console.error('❌ No se encontró el contenedor embarque-unique-container');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error cargando Control de Embarque AJAX:', error);
+                        
+                        // Manejo robusto de errores
+                        if (error.status === 404) {
+                            alert('Error 404: Módulo Control de Embarque no encontrado');
+                        } else if (error.status === 500) {
+                            alert('Error 500: Error interno del servidor');
+                        } else if (error.status === 401 || error.status === 403) {
+                            alert('Error de autenticación. Redirigiendo al login...');
+                            setTimeout(() => {
+                                window.location.href = '/login';
+                            }, 2000);
+                        } else {
+                            alert('Error de conexión. Verifique su conexión a internet.');
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error crítico en mostrarControlembarque:', error);
+                    alert('Error crítico al cargar el módulo Control de Embarque');
+                }
+            };
+            
             // Funciones para mostrar otros contenidos
             window.mostrarControlSalida = function() {
                 hideAllMaterialContainers();
@@ -2385,6 +2646,45 @@
                     .catch(error => console.error('Error cargando info producción:', error));
             };
             
+            // Función global para mostrar Control de Proceso
+            window.mostrarControlProceso = function() {
+                hideAllContent();
+                materialContainer.style.display = 'block';
+                controlProcesoContent.style.display = 'block';
+                controlProcesoContentArea.style.display = 'block';
+                
+                // Mostrar contenedor por defecto de control de proceso
+                const controlProcesoInfoContainer = document.getElementById('control-proceso-info-container');
+                if (controlProcesoInfoContainer) {
+                    controlProcesoInfoContainer.style.display = 'block';
+                }
+                
+                // IMPORTANTE: Asegurar que otras áreas estén ocultas
+                materialContentArea.style.display = 'none';
+                produccionContentArea.style.display = 'none';
+                informacionBasicaContentArea.style.display = 'none';
+                hideAllMaterialContainers();
+                
+                // IMPORTANTE: Ocultar sidebars de otras secciones
+                const controlMaterialSidebar = document.getElementById('control-material-content');
+                const controlProduccionSidebar = document.getElementById('control-produccion-content');
+                if (controlMaterialSidebar) {
+                    controlMaterialSidebar.style.display = 'none';
+                }
+                if (controlProduccionSidebar) {
+                    controlProduccionSidebar.style.display = 'none';
+                }
+                
+                // Cargar contenido dinámicamente del sidebar de control de proceso
+                cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso')
+                    .then(() => {
+                        console.log('✅ Contenido de Control de Proceso cargado exitosamente');
+                    })
+                    .catch(error => {
+                        console.error('Error cargando Control de Proceso:', error);
+                    });
+            };
+            
             // Función global para ocultar el contenido de almacén
             window.ocultarControlAlmacen = function() {
                 materialContentArea.style.display = 'none';
@@ -2449,13 +2749,8 @@
                             .catch(error => console.error('Error cargando Control de Producción:', error));
                         
                     } else if (this.id === 'Control de proceso') {
-                        materialContainer.style.display = 'block';
-                        controlProcesoContent.style.display = 'block';
-                        materialContentArea.style.display = 'none';
-                        
-                        // Cargar contenido dinámicamente
-                        cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso')
-                            .catch(error => console.error('Error cargando Control de Proceso:', error));
+                        // Usar la función global para mostrar Control de Proceso
+                        window.mostrarControlProceso();
                         
                     } else if (this.id === 'Control de calidad') {
                         materialContainer.style.display = 'block';

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar el numero de lote</title>
+    <style>
+        /* Reset y estilos base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #2B2D3E;
+            color: #E0E0E0;
+            font-size: 12px;
+            overflow-x: hidden;
+        }
+
+        /* Estilos de scrollbar minimalista */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2B2D3E;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #5A5C6B;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6B6D7C;
+        }
+
+        /* Contenedor principal */
+        .main-container {
+            width: 100%;
+            min-height: 100vh;
+            background-color: #2B2D3E;
+            padding: 5px;
+        }
+
+        /* Barra de título */
+        .title-bar {
+            background-color: #3C3F52;
+            padding: 10px 15px;
+            border: 1px solid #20688C;
+            border-radius: 4px 4px 0 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #E0E0E0;
+        }
+
+        /* Contenedor del formulario superior */
+        .form-container {
+            background-color: #40424F;
+            border: 1px solid #20688C;
+            border-top: none;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* Etiquetas */
+        .form-label {
+            color: #E0E0E0;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Campos de entrada */
+        .form-input {
+            background-color: #2C3E50;
+            color: #E0E0E0;
+            border: 1px solid #34495E;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 200px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3498DB;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        /* Botones principales */
+        .btn-primary {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Botón Iniciar */
+        .btn-iniciar {
+            background-color: #3498DB;
+        }
+
+        .btn-iniciar:hover {
+            background-color: #2980B9;
+        }
+
+        /* Botón Fin */
+        .btn-fin {
+            background-color: #E74C3C;
+        }
+
+        .btn-fin:hover {
+            background-color: #C0392B;
+        }
+
+        /* Botón Pausa */
+        .btn-pausa {
+            background-color: #95A5A6;
+        }
+
+        .btn-pausa:hover {
+            background-color: #7F8C8D;
+        }
+
+        /* Barra de herramientas de consulta */
+        .query-toolbar {
+            background-color: #34334E;
+            border: 1px solid #20688C;
+            padding: 10px 15px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* Dropdowns */
+        .dropdown {
+            background-color: #2C3E50;
+            color: #E0E0E0;
+            border: 1px solid #34495E;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            min-width: 180px;
+            cursor: pointer;
+        }
+
+        .dropdown:focus {
+            outline: none;
+            border-color: #3498DB;
+        }
+
+        /* Botón Consultar */
+        .btn-consultar {
+            background-color: #3C3F52;
+            border: 2px solid #FFB74D;
+        }
+
+        .btn-consultar:hover {
+            background-color: #4A4D60;
+            border-color: #FFA726;
+        }
+
+        /* Botón Exportar */
+        .btn-exportar {
+            background-color: #27AE60;
+        }
+
+        .btn-exportar:hover {
+            background-color: #229954;
+        }
+
+        /* Tabla principal */
+        .main-table-container {
+            background-color: #40424F;
+            margin-top: 5px;
+            border: 1px solid #20688C;
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background-color: #172A46;
+            color: #E0E0E0;
+            padding: 10px 8px;
+            text-align: left;
+            border: 1px solid #20688C;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .data-table td {
+            padding: 20px 8px;
+            text-align: center;
+            color: #95A5A6;
+            font-style: italic;
+            background-color: #40424F;
+            font-size: 12px;
+        }
+
+        /* Grid de secciones */
+        .sections-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Sección panel */
+        .section-panel {
+            background-color: #40424F;
+            border: 2px solid #20688C;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background-color: #172A46;
+            padding: 10px 15px;
+            border-bottom: 1px solid #20688C;
+            font-size: 12px;
+            font-weight: 600;
+            color: #E0E0E0;
+        }
+
+        .section-toolbar {
+            background-color: #34334E;
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #20688C;
+            flex-wrap: wrap;
+        }
+
+        /* Botón Verif. Pass */
+        .btn-verif {
+            background-color: #2C3E50;
+            border: 1px solid #34495E;
+        }
+
+        .btn-verif:hover {
+            background-color: #34495E;
+        }
+
+        /* Botón Registro */
+        .btn-registro {
+            background-color: #E67E22;
+        }
+
+        .btn-registro:hover {
+            background-color: #D35400;
+        }
+
+        /* Botón Activar */
+        .btn-activar {
+            background-color: #3498DB;
+        }
+
+        .btn-activar:hover {
+            background-color: #2980B9;
+        }
+
+        /* Botón Registrar (morado) */
+        .btn-registrar {
+            background-color: #8E44AD;
+        }
+
+        .btn-registrar:hover {
+            background-color: #7B3A9D;
+        }
+
+        /* Contenedor de tabla de sección */
+        .section-table-container {
+            overflow-x: auto;
+            background-color: #40424F;
+            min-height: 150px;
+        }
+
+        /* Tabla de sección */
+        .section-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .section-table th {
+            background-color: #2C3E50;
+            color: #E0E0E0;
+            padding: 8px 6px;
+            text-align: left;
+            border: 1px solid #34495E;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .section-table td {
+            padding: 20px;
+            text-align: center;
+            color: #95A5A6;
+            font-style: italic;
+            background-color: #40424F;
+        }
+
+        /* Footer de sección */
+        .section-footer {
+            background-color: #2C3E50;
+            padding: 8px 15px;
+            color: #E0E0E0;
+            font-size: 11px;
+            border-top: 1px solid #34495E;
+        }
+
+        /* Grid de secciones inferiores */
+        .bottom-sections-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Checkbox */
+        .table-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #3498DB;
+        }
+
+        /* Separador */
+        .separator {
+            color: #7F8C8D;
+            margin: 0 5px;
+        }
+
+        /* Botón cerrar línea */
+        .btn-close-line {
+            background-color: transparent;
+            color: #E0E0E0;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-close-line:hover {
+            color: #E74C3C;
+            background-color: rgba(231, 76, 60, 0.1);
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .sections-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bottom-sections-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .query-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .dropdown, .form-input {
+                width: 100%;
+            }
+
+            .btn-primary {
+                width: 100%;
+            }
+
+            .section-toolbar {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Barra de título -->
+        <div class="title-bar">Consultar el numero de lote</div>
+        
+        <!-- Formulario superior -->
+        <div class="form-container">
+            <label class="form-label">Numero de lote</label>
+            <input type="text" id="numeroLote" class="form-input" style="flex: 1;">
+            <label class="form-label">Informacion de numero de lote</label>
+            <input type="text" id="infoNumeroLote" class="form-input" style="flex: 2;" readonly>
+            <button id="btnIniciar" class="btn-primary btn-iniciar">Iniciar(reiniciar)</button>
+            <button id="btnFin" class="btn-primary btn-fin">Fin</button>
+            <button id="btnPausa" class="btn-primary btn-pausa">Pausa</button>
+        </div>
+
+        <!-- Barra de herramientas de consulta -->
+        <div class="query-toolbar">
+            <label class="form-label">Fecha de prod.</label>
+            <select id="fechaDesde" class="dropdown">
+                <option>28/07/2025</option>
+            </select>
+            <span class="separator">~</span>
+            <select id="fechaHasta" class="dropdown">
+                <option>04/08/2025</option>
+            </select>
+            <label class="form-label">Linea</label>
+            <select id="linea" class="dropdown">
+                <option>Todos</option>
+            </select>
+            <button id="btnCloseLine" class="btn-close-line" title="Cerrar">×</button>
+            <div style="margin-left: auto; display: flex; gap: 10px;">
+                <button id="btnConsultar" class="btn-primary btn-consultar">Consultar</button>
+                <button id="btnExportarMain" class="btn-primary btn-exportar">Exportar el excel</button>
+            </div>
+        </div>
+
+        <!-- Tabla principal -->
+        <div class="main-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th>Línea</th>
+                        <th>Fecha de producci...</th>
+                        <th>Numero de lote</th>
+                        <th>Estado</th>
+                        <th>Modelo</th>
+                        <th>Proceso</th>
+                        <th>Side</th>
+                        <th>Xout</th>
+                        <th>Cantidad planeada</th>
+                        <th>Cantidad de prod...</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="11">No hay dato registrado</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grid de secciones -->
+        <div class="sections-grid">
+            <!-- Lista de BOM -->
+            <div class="section-panel">
+                <div class="section-header">Lista de BOM</div>
+                <div class="section-toolbar">
+                    <button id="btnExportarBOM" class="btn-primary btn-exportar">Exportar el excel</button>
+                    <button id="btnVerifPass" class="btn-primary btn-verif">Verif. Pass</button>
+                    <button id="btnRegistroMat" class="btn-primary btn-registro">Registro de mat. sustituto</button>
+                    <button id="btnActivarComb" class="btn-primary btn-activar">Activar la combinacion</button>
+                </div>
+                <div class="section-table-container">
+                    <table class="section-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;"><input type="checkbox" class="table-checkbox"></th>
+                                <th>Numer...</th>
+                                <th>Numer...</th>
+                                <th>Codigo...</th>
+                                <th>Numer...</th>
+                                <th>Resulta...</th>
+                                <th>Resulta...</th>
+                                <th>Verifica...</th>
+                                <th>Activar...</th>
+                                <th>Uso de...</th>
+                                <th>Tiempo...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="11">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="section-footer">Total Rows : 0</div>
+            </div>
+
+            <!-- Historial de cambio de material -->
+            <div class="section-panel">
+                <div class="section-header">Historial de cambio de material</div>
+                <div class="section-toolbar">
+                    <button id="btnExportarHistorial" class="btn-primary btn-exportar" style="margin-left: auto;">Exportar el excel</button>
+                </div>
+                <div class="section-table-container">
+                    <table class="section-table">
+                        <thead>
+                            <tr>
+                                <th>Numero de...</th>
+                                <th>Numero de...</th>
+                                <th>Fecha de re...</th>
+                                <th>Codigo de...</th>
+                                <th>Cantidad re...</th>
+                                <th>Cantidad ac...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="section-footer">Total Rows : 0</div>
+            </div>
+        </div>
+
+        <!-- Grid de secciones inferiores -->
+        <div class="bottom-sections-grid">
+            <!-- Historial de soldadura -->
+            <div class="section-panel">
+                <div class="section-header">Historial de soldadura</div>
+                <div class="section-toolbar">
+                    <button id="btnRegistrarSold" class="btn-primary btn-registrar">Registrar</button>
+                    <button id="btnExportarSold" class="btn-primary btn-exportar">Exportar el excel</button>
+                </div>
+                <div class="section-table-container">
+                    <table class="section-table">
+                        <thead>
+                            <tr>
+                                <th>fecha y...</th>
+                                <th>S/N de s...</th>
+                                <th>Tiempo...</th>
+                                <th>Fecha de...</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historial de metal mask -->
+            <div class="section-panel">
+                <div class="section-header">Historial de metal mask</div>
+                <div class="section-toolbar">
+                    <button id="btnRegistrarMask" class="btn-primary btn-registrar">Registrar</button>
+                    <button id="btnExportarMask" class="btn-primary btn-exportar">Exportar el excel</button>
+                </div>
+                <div class="section-table-container">
+                    <table class="section-table">
+                        <thead>
+                            <tr>
+                                <th>fecha y hor...</th>
+                                <th>Numero de...</th>
+                                <th>Cantidad di...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="3">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historial de squeegee -->
+            <div class="section-panel">
+                <div class="section-header">Historial de squeegee</div>
+                <div class="section-toolbar">
+                    <button id="btnRegistrarSqueegee" class="btn-primary btn-registrar">Registrar</button>
+                    <button id="btnExportarSqueegee" class="btn-primary btn-exportar">Exportar el excel</button>
+                </div>
+                <div class="section-table-container">
+                    <table class="section-table">
+                        <thead>
+                            <tr>
+                                <th>fecha y hora d...</th>
+                                <th>Numero de co...</th>
+                                <th>Cantidad disp...</th>
+                                <th>Numero de co...</th>
+                                <th>Cantidad disp...</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5">No hay dato registrado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

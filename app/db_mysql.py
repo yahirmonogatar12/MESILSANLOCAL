@@ -50,7 +50,7 @@ def create_tables():
         'materiales': '''
             CREATE TABLE IF NOT EXISTS materiales (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                numero_parte VARCHAR(255) UNIQUE NOT NULL,
+                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
                 descripcion TEXT,
                 categoria VARCHAR(255),
                 ubicacion VARCHAR(255),
@@ -59,33 +59,34 @@ def create_tables():
                 unidad_medida VARCHAR(50),
                 proveedor VARCHAR(255),
                 fecha_creacion DATETIME DEFAULT NOW()
-            )
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
         'inventario': '''
             CREATE TABLE IF NOT EXISTS inventario (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                numero_parte VARCHAR(255) UNIQUE NOT NULL,
+                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
                 cantidad_actual INT DEFAULT 0,
                 ultima_actualizacion DATETIME DEFAULT NOW(),
                 FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)
-            )
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
         'movimientos_inventario': '''
             CREATE TABLE IF NOT EXISTS movimientos_inventario (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                numero_parte VARCHAR(255) NOT NULL,
+                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
                 tipo_movimiento VARCHAR(50) NOT NULL,
                 cantidad INT NOT NULL,
                 comentarios TEXT,
                 fecha_movimiento DATETIME DEFAULT NOW(),
-                usuario VARCHAR(255)
-            )
+                usuario VARCHAR(255),
+                FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
         'bom': '''
             CREATE TABLE IF NOT EXISTS bom (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 modelo VARCHAR(255) NOT NULL,
-                numero_parte VARCHAR(255) NOT NULL,
+                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
                 descripcion TEXT,
                 cantidad INT DEFAULT 1,
                 side VARCHAR(50),
@@ -93,8 +94,9 @@ def create_tables():
                 categoria VARCHAR(255),
                 proveedor VARCHAR(255),
                 fecha_registro DATETIME DEFAULT NOW(),
-                UNIQUE KEY unique_bom (modelo, numero_parte, side)
-            )
+                UNIQUE KEY unique_bom (modelo, numero_parte, side),
+                FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
         'configuracion': '''
             CREATE TABLE IF NOT EXISTS configuracion (

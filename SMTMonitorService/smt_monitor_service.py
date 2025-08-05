@@ -51,7 +51,7 @@ class SMTMonitorService(win32serviceutil.ServiceFramework):
 class SMTCSVMonitor:
     def __init__(self):
         # Configuración de rutas - CAMBIAR PARA LOCAL
-        self.base_path = r"C:\LOT CHECK  ALL"  # Cambiado de red a local
+        self.base_path = r"Z:\LOT CHECK  ALL"  # Cambiado de red a local
         self.folders_to_monitor = []
         
         # Configurar todas las subcarpetas por línea
@@ -102,35 +102,19 @@ class SMTCSVMonitor:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             
-            # Crear tabla principal si no existe
-            create_table_query = """
-            CREATE TABLE IF NOT EXISTS historial_cambio_material_smt (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                scan_date DATE,
-                scan_time TIME,
-                slot_no VARCHAR(50),
-                result VARCHAR(50),
-                previous_barcode VARCHAR(100),
-                product_date VARCHAR(50),
-                part_name VARCHAR(100),
-                quantity VARCHAR(50),
-                seq VARCHAR(50),
-                vendor VARCHAR(100),
-                lotno VARCHAR(100),
-                barcode VARCHAR(100),
-                feeder_base VARCHAR(100),
-                extra_column VARCHAR(100),
-                archivo_origen VARCHAR(255),
-                fecha_procesado TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_scan_date (scan_date),
-                INDEX idx_barcode (barcode),
-                INDEX idx_feeder_base (feeder_base)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """
+            # La tabla ya existe con esta estructura, solo verificamos
+            # No intentamos crearla de nuevo para evitar conflictos
+            self.logger.info("Verificando estructura de tabla existente historial_cambio_material_smt")
             
-            cursor.execute(create_table_query)
+            # Verificar que la tabla existe
+            cursor.execute("SHOW TABLES LIKE 'historial_cambio_material_smt'")
+            if not cursor.fetchone():
+                self.logger.error("La tabla historial_cambio_material_smt no existe en la base de datos")
+                raise Exception("Tabla historial_cambio_material_smt no encontrada")
             
-            # Crear tabla de control de archivos
+            self.logger.info("✓ Tabla historial_cambio_material_smt encontrada")
+            
+            # Crear tabla de control de archivos si no existe
             create_control_query = """
             CREATE TABLE IF NOT EXISTS archivos_procesados_smt (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -239,9 +223,9 @@ class SMTCSVMonitor:
                     insert_query = """
                         INSERT INTO historial_cambio_material_smt 
                         (scan_date, scan_time, slot_no, result, previous_barcode, 
-                         product_date, part_name, quantity, seq, vendor, lotno, 
-                         barcode, feeder_base, extra_column, archivo_origen)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         product_date, part_name, quantity, seq, vendor, lot_no, 
+                         barcode, feeder_base, source_file)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     
                     values = (
@@ -258,7 +242,6 @@ class SMTCSVMonitor:
                         parsed_data['lotno'],
                         parsed_data['barcode'],
                         parsed_data['feeder_base'],
-                        parsed_data['extra_column'],
                         archivo_nombre
                     )
                     

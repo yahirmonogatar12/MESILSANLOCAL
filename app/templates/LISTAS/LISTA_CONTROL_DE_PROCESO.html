@@ -11,11 +11,13 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="Control de produccion SMT">Control de produccion SMT</li>
+                            data-permiso-boton="Control de produccion SMT"
+                            onclick="window.parent.mostrarControldeproduccionSMT ? window.parent.mostrarControldeproduccionSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('Control de produccion SMT-unique-container', '/control_proceso/control_produccion_smt') : window.location.href='/control_proceso/control_produccion_smt')">Control de produccion SMT</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="Control de operacion de linea de SMT">Control de operacion de linea de SMT</li>
+                            data-permiso-boton="Control de operacion de linea de SMT"
+                            onclick="window.parent.mostrarControlOperacionLineaSMT ? window.parent.mostrarControlOperacionLineaSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-operacion-linea-smt-unique-container', '/control_proceso/control_operacion_linea_smt') : window.location.href='/control_proceso/control_operacion_linea_smt')">Control de operacion de linea de SMT</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 

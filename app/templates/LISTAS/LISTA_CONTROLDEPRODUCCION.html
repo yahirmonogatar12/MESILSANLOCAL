@@ -16,7 +16,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de plan de produccion" 
-                            data-permiso-boton="Crear Plan de produccion">Crear Plan de produccion</li>
+                            data-permiso-boton="Crear Plan de produccion"
+                            onclick="window.parent.mostrarCrearPlanProduccion ? window.parent.mostrarCrearPlanProduccion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control_produccion/crear_plan') : window.location.href='/control_produccion/crear_plan')">Crear Plan de produccion</li>
                 </ul>
             </li>
             <li class="sidebar-section">
