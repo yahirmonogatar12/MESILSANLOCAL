@@ -6,6 +6,14 @@ from .config_mysql import execute_query, test_connection
 from datetime import datetime
 import json
 
+# Importar pandas si está disponible
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    print("⚠️ Pandas no disponible - funciones de Excel limitadas")
+
 # Verificar si MySQL está disponible
 try:
     from .config_mysql import MYSQL_AVAILABLE
@@ -25,18 +33,96 @@ def init_db():
         if not test_connection():
             print("❌ Error conectando a MySQL")
             return False
-            
+        
+        # Verificar y reparar foreign keys existentes si es necesario
+        repair_foreign_keys()
+        
         # Crear tablas necesarias
         create_tables()
+        
+        # MIGRAR TABLA MATERIALES (agregar nuevas columnas)
+        print("🔄 Migrando tabla materiales...")
+        migrar_tabla_materiales()
+        
         print("✅ Base de datos MySQL inicializada correctamente")
         return True
     except Exception as e:
         print(f"Error inicializando MySQL: {e}")
         return False
 
+def repair_foreign_keys():
+    """Reparar foreign keys problemáticas - ELIMINAR TODAS Y RECREAR"""
+    print("🔧 Verificando y reparando foreign keys...")
+    
+    try:
+        # Verificar si existe índice en materiales.numero_parte
+        check_index_query = """
+            SHOW INDEX FROM materiales WHERE Column_name = 'numero_parte'
+        """
+        
+        indices = execute_query(check_index_query, fetch='all')
+        
+        if not indices:
+            print("📝 Creando índice faltante en materiales.numero_parte...")
+            add_index_query = "ALTER TABLE materiales ADD INDEX idx_numero_parte (numero_parte(255))"
+            try:
+                execute_query(add_index_query)
+                print("✅ Índice creado exitosamente")
+            except Exception as e:
+                print(f"⚠️ Error creando índice (puede que ya exista): {e}")
+        else:
+            print("✅ Índice en materiales.numero_parte ya existe")
+        
+        # ELIMINAR TODAS LAS FOREIGN KEYS existentes hacia materiales
+        print("🗑️ Eliminando TODAS las foreign keys existentes hacia materiales...")
+        problema_tables = ['inventario', 'movimientos_inventario', 'bom']
+        
+        for table in problema_tables:
+            try:
+                # Verificar si la tabla existe
+                check_table = f"SHOW TABLES LIKE '{table}'"
+                table_exists = execute_query(check_table, fetch='one')
+                
+                if table_exists:
+                    print(f"🔍 Limpiando foreign keys en tabla {table}...")
+                    
+                    # Obtener TODAS las foreign keys existentes hacia materiales
+                    fk_query = f"""
+                        SELECT CONSTRAINT_NAME 
+                        FROM information_schema.KEY_COLUMN_USAGE 
+                        WHERE TABLE_SCHEMA = DATABASE() 
+                        AND TABLE_NAME = '{table}' 
+                        AND REFERENCED_TABLE_NAME = 'materiales'
+                    """
+                    
+                    fks = execute_query(fk_query, fetch='all')
+                    
+                    # Eliminar TODAS las foreign keys encontradas
+                    if fks:
+                        for fk in fks:
+                            fk_name = fk['CONSTRAINT_NAME']
+                            drop_fk_query = f"ALTER TABLE {table} DROP FOREIGN KEY {fk_name}"
+                            try:
+                                execute_query(drop_fk_query)
+                                print(f"🗑️ Foreign key {fk_name} eliminada de {table}")
+                            except Exception as e:
+                                print(f"⚠️ Error eliminando FK {fk_name}: {e}")
+                    else:
+                        print(f"ℹ️ No hay foreign keys existentes en {table}")
+                            
+            except Exception as e:
+                print(f"⚠️ Error verificando tabla {table}: {e}")
+        
+        print("🔧 Limpieza completa de foreign keys completada")
+        
+    except Exception as e:
+        print(f"❌ Error en reparación de foreign keys: {e}")
+
 def create_tables():
-    """Crear tablas necesarias en MySQL"""
-    tables = {
+    """Crear tablas necesarias en MySQL - ORDEN IMPORTANTE"""
+    
+    # PASO 1: Crear tablas base sin foreign keys primero
+    base_tables = {
         'usuarios': '''
             CREATE TABLE IF NOT EXISTS usuarios (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -50,7 +136,19 @@ def create_tables():
         'materiales': '''
             CREATE TABLE IF NOT EXISTS materiales (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                codigo_material VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
                 numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
+                propiedad_material VARCHAR(255),
+                classification VARCHAR(255),
+                especificacion_material TEXT,
+                unidad_empaque VARCHAR(100),
+                ubicacion_material VARCHAR(255),
+                vendedor VARCHAR(255),
+                prohibido_sacar VARCHAR(50),
+                reparable VARCHAR(50),
+                nivel_msl VARCHAR(100),
+                espesor_msl VARCHAR(100),
+                fecha_registro DATETIME DEFAULT NOW(),
                 descripcion TEXT,
                 categoria VARCHAR(255),
                 ubicacion VARCHAR(255),
@@ -58,16 +156,38 @@ def create_tables():
                 stock_maximo INT DEFAULT 0,
                 unidad_medida VARCHAR(50),
                 proveedor VARCHAR(255),
-                fecha_creacion DATETIME DEFAULT NOW()
+                fecha_creacion DATETIME DEFAULT NOW(),
+                INDEX idx_numero_parte (numero_parte(255)),
+                INDEX idx_codigo_material (codigo_material(255))
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
+        'configuracion': '''
+            CREATE TABLE IF NOT EXISTS configuracion (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                clave VARCHAR(255) UNIQUE NOT NULL,
+                valor TEXT,
+                fecha_actualizacion DATETIME DEFAULT NOW()
+            )
+        '''
+    }
+    
+    # Crear tablas base primero
+    print("📝 Creando tablas base...")
+    for table_name, create_sql in base_tables.items():
+        try:
+            execute_query(create_sql)
+            print(f"✅ Tabla base {table_name} creada/verificada")
+        except Exception as e:
+            print(f"❌ Error creando tabla base {table_name}: {e}")
+    
+    # PASO 2: Crear tablas que dependen de materiales (SIN foreign keys primero)
+    dependent_tables_no_fk = {
         'inventario': '''
             CREATE TABLE IF NOT EXISTS inventario (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
                 cantidad_actual INT DEFAULT 0,
-                ultima_actualizacion DATETIME DEFAULT NOW(),
-                FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)
+                ultima_actualizacion DATETIME DEFAULT NOW()
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
         'movimientos_inventario': '''
@@ -78,8 +198,7 @@ def create_tables():
                 cantidad INT NOT NULL,
                 comentarios TEXT,
                 fecha_movimiento DATETIME DEFAULT NOW(),
-                usuario VARCHAR(255),
-                FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)
+                usuario VARCHAR(255)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
         'bom': '''
@@ -94,26 +213,217 @@ def create_tables():
                 categoria VARCHAR(255),
                 proveedor VARCHAR(255),
                 fecha_registro DATETIME DEFAULT NOW(),
-                UNIQUE KEY unique_bom (modelo, numero_parte, side),
-                FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)
+                UNIQUE KEY unique_bom (modelo, numero_parte, side)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
-        ''',
-        'configuracion': '''
-            CREATE TABLE IF NOT EXISTS configuracion (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                clave VARCHAR(255) UNIQUE NOT NULL,
-                valor TEXT,
-                fecha_actualizacion DATETIME DEFAULT NOW()
-            )
         '''
     }
     
-    for table_name, create_sql in tables.items():
+    # Crear tablas dependientes SIN foreign keys
+    print("📝 Creando tablas dependientes (sin foreign keys)...")
+    for table_name, create_sql in dependent_tables_no_fk.items():
         try:
             execute_query(create_sql)
             print(f"✅ Tabla {table_name} creada/verificada")
         except Exception as e:
             print(f"❌ Error creando tabla {table_name}: {e}")
+    
+    # PASO 3: Eliminar foreign keys para backend simplificado
+    print("📝 Preparando backend simplificado...")
+    eliminar_todos_foreign_keys()
+    # add_foreign_keys()  # DESHABILITADO - Backend simplificado sin foreign keys
+
+def eliminar_todos_foreign_keys():
+    """Eliminar todos los foreign keys para usar backend simplificado"""
+    print("🗑️ Eliminando TODOS los foreign keys para backend simplificado...")
+    
+    try:
+        # Lista de tablas que pueden tener foreign keys
+        tablas = ['inventario', 'movimientos_inventario', 'bom']
+        
+        for tabla in tablas:
+            try:
+                # Obtener todos los foreign keys de la tabla
+                query_fks = f"""
+                    SELECT CONSTRAINT_NAME 
+                    FROM information_schema.KEY_COLUMN_USAGE 
+                    WHERE TABLE_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = '{tabla}' 
+                    AND REFERENCED_TABLE_NAME IS NOT NULL
+                """
+                
+                fks = execute_query(query_fks, fetch='all')
+                
+                if fks:
+                    print(f"🔍 Eliminando foreign keys de tabla {tabla}...")
+                    for fk in fks:
+                        constraint_name = fk['CONSTRAINT_NAME']
+                        try:
+                            drop_query = f"ALTER TABLE {tabla} DROP FOREIGN KEY {constraint_name}"
+                            execute_query(drop_query)
+                            print(f"✅ Foreign key {constraint_name} eliminado de {tabla}")
+                        except Exception as e:
+                            print(f"⚠️ No se pudo eliminar {constraint_name}: {e}")
+                else:
+                    print(f"ℹ️ No hay foreign keys en tabla {tabla}")
+                    
+            except Exception as e:
+                print(f"⚠️ Error procesando tabla {tabla}: {e}")
+                
+        print("✅ Limpieza de foreign keys completada")
+        
+    except Exception as e:
+        print(f"❌ Error eliminando foreign keys: {e}")
+
+def add_foreign_keys():
+    """Agregar foreign keys después de crear todas las tablas - MÉTODO DEFINITIVO"""
+    print("🔗 Creando foreign keys con verificación DEFINITIVA...")
+    
+    foreign_keys = [
+        {
+            'table': 'inventario',
+            'constraint': 'fk_inventario_numero_parte',
+            'query': 'ALTER TABLE inventario ADD CONSTRAINT fk_inventario_numero_parte FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)'
+        },
+        {
+            'table': 'movimientos_inventario', 
+            'constraint': 'fk_movimientos_numero_parte',
+            'query': 'ALTER TABLE movimientos_inventario ADD CONSTRAINT fk_movimientos_numero_parte FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)'
+        },
+        {
+            'table': 'bom',
+            'constraint': 'fk_bom_numero_parte', 
+            'query': 'ALTER TABLE bom ADD CONSTRAINT fk_bom_numero_parte FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)'
+        }
+    ]
+    
+    for fk in foreign_keys:
+        try:
+            print(f"📋 Procesando foreign key para tabla {fk['table']}...")
+            
+            # PASO 1: Verificar que la tabla existe
+            check_table_query = f"SHOW TABLES LIKE '{fk['table']}'"
+            table_exists = execute_query(check_table_query, fetch='one')
+            
+            if not table_exists:
+                print(f"⚠️ Tabla {fk['table']} no existe, omitiendo...")
+                continue
+            
+            # PASO 2: Verificar que la tabla materiales existe
+            check_materiales = "SHOW TABLES LIKE 'materiales'"
+            materiales_exists = execute_query(check_materiales, fetch='one')
+            
+            if not materiales_exists:
+                print(f"❌ Tabla materiales no existe, no se pueden crear foreign keys")
+                break
+            
+            # PASO 3: VERIFICACIÓN TRIPLE - Verificar de 3 formas distintas si existe la FK
+            
+            # Verificación 1: Por nombre específico del constraint
+            check_constraint_name = f"""
+                SELECT COUNT(*) as constraint_count
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = '{fk['table']}' 
+                AND CONSTRAINT_NAME = '{fk['constraint']}'
+                AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+            """
+            
+            constraint_result = execute_query(check_constraint_name, fetch='one')
+            constraint_exists = constraint_result.get('constraint_count', 0) if constraint_result else 0
+            
+            # Verificación 2: Por referencia hacia materiales
+            check_any_fk = f"""
+                SELECT COUNT(*) as fk_count
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = '{fk['table']}' 
+                AND REFERENCED_TABLE_NAME = 'materiales'
+                AND REFERENCED_COLUMN_NAME = 'numero_parte'
+            """
+            
+            fk_result = execute_query(check_any_fk, fetch='one')
+            any_fk_exists = fk_result.get('fk_count', 0) if fk_result else 0
+            
+            # Verificación 3: Por nombre exacto en KEY_COLUMN_USAGE
+            check_specific_fk = f"""
+                SELECT COUNT(*) as specific_count
+                FROM information_schema.KEY_COLUMN_USAGE 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = '{fk['table']}' 
+                AND CONSTRAINT_NAME = '{fk['constraint']}'
+            """
+            
+            specific_result = execute_query(check_specific_fk, fetch='one')
+            specific_exists = specific_result.get('specific_count', 0) if specific_result else 0
+            
+            # SI CUALQUIERA de las 3 verificaciones encuentra la FK, NO crearla
+            if constraint_exists > 0 or any_fk_exists > 0 or specific_exists > 0:
+                print(f"✅ Foreign key {fk['constraint']} ya existe (Verificaciones: constraint={constraint_exists}, any_fk={any_fk_exists}, specific={specific_exists})")
+                continue
+            
+            # PASO 4: Verificar índice en materiales antes de crear FK
+            check_index = """
+                SELECT COUNT(*) as index_count
+                FROM information_schema.STATISTICS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'materiales' 
+                AND COLUMN_NAME = 'numero_parte'
+            """
+            
+            index_result = execute_query(check_index, fetch='one')
+            index_count = index_result.get('index_count', 0) if index_result else 0
+            
+            if index_count == 0:
+                print(f"🔧 Creando índice requerido en materiales...")
+                create_index = "ALTER TABLE materiales ADD INDEX idx_numero_parte (numero_parte(255))"
+                execute_query(create_index)
+                print(f"✅ Índice creado")
+            
+            # PASO 5: DOBLE VERIFICACIÓN antes de crear
+            print(f"🔍 Verificación final antes de crear {fk['constraint']}...")
+            
+            # Verificar UNA VEZ MÁS que no existe
+            final_check = f"""
+                SELECT COUNT(*) as final_count
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_NAME = '{fk['table']}' 
+                AND CONSTRAINT_NAME = '{fk['constraint']}'
+            """
+            
+            final_result = execute_query(final_check, fetch='one')
+            final_exists = final_result.get('final_count', 0) if final_result else 0
+            
+            if final_exists > 0:
+                print(f"✅ Foreign key {fk['constraint']} detectada en verificación final - OMITIENDO creación")
+                continue
+            
+            # PASO 6: Crear la foreign key SOLO si todas las verificaciones son negativas
+            print(f"🔗 Creando foreign key {fk['constraint']} (todas las verificaciones pasaron)...")
+            execute_query(fk['query'])
+            print(f"✅ Foreign key {fk['constraint']} creada exitosamente")
+                
+        except Exception as e:
+            error_msg = str(e)
+            
+            # Manejo específico de errores - TODOS los 1826 se consideran éxito
+            if "1826" in error_msg:
+                print(f"✅ Foreign key {fk['constraint']} ya existía (confirmado por MySQL) - CORRECTO")
+                continue  # Este NO es un error, es confirmación de que ya existe
+            elif "1822" in error_msg:
+                print(f"❌ Error de índice para {fk['constraint']}: {error_msg}")
+            elif "1005" in error_msg:
+                print(f"❌ Error de definición para {fk['constraint']}: {error_msg}")
+            elif "1091" in error_msg:
+                print(f"ℹ️ Foreign key {fk['constraint']} ya fue procesada anteriormente")
+                continue
+            else:
+                print(f"❌ Error creando {fk['constraint']}: {error_msg}")
+            
+            # No fallar completamente, continuar con las siguientes
+            continue
+    
+    print("🔗 Proceso de foreign keys completado DEFINITIVAMENTE")
 
 def get_connection():
     """Obtener conexión a MySQL"""
@@ -155,22 +465,118 @@ def verificar_usuario(username, password_hash):
 # === FUNCIONES DE MATERIALES ===
 
 def obtener_materiales():
-    """Obtener lista de materiales desde MySQL"""
+    """Obtener lista de materiales desde MySQL - FORMATO COMPLETO"""
     try:
         query = "SELECT * FROM materiales ORDER BY numero_parte"
-        return execute_query(query, fetch='all') or []
+        result = execute_query(query, fetch='all') or []
+        
+        # Mapear a formato esperado por el frontend
+        materiales_formateados = []
+        for row in result:
+            material = {
+                'id': row.get('id'),
+                'codigoMaterial': row.get('codigo_material', ''),
+                'numeroParte': row.get('numero_parte', ''),
+                'propiedadMaterial': row.get('propiedad_material', ''),
+                'classification': row.get('classification', ''),
+                'especificacionMaterial': row.get('especificacion_material', ''),
+                'unidadEmpaque': row.get('unidad_empaque', ''),
+                'ubicacionMaterial': row.get('ubicacion_material', ''),
+                'vendedor': row.get('vendedor', ''),
+                'prohibidoSacar': row.get('prohibido_sacar', ''),
+                'reparable': row.get('reparable', ''),
+                'nivelMsl': row.get('nivel_msl', ''),
+                'espesorMsl': row.get('espesor_msl', ''),
+                'fechaRegistro': row.get('fecha_registro', ''),
+                'descripcion': row.get('descripcion', ''),
+                'categoria': row.get('categoria', ''),
+                'ubicacion': row.get('ubicacion', ''),
+                'stockMinimo': row.get('stock_minimo', 0),
+                'stockMaximo': row.get('stock_maximo', 0),
+                'unidadMedida': row.get('unidad_medida', ''),
+                'proveedor': row.get('proveedor', ''),
+                'fechaCreacion': row.get('fecha_creacion', '')
+            }
+            materiales_formateados.append(material)
+            
+        return materiales_formateados
     except Exception as e:
         print(f"Error obteniendo materiales: {e}")
         return []
 
-def guardar_material(data):
-    """Guardar material en MySQL"""
+def validar_registro_antes_insercion(row_data):
+    """Validar un registro antes de intentar insertarlo"""
+    errores = []
+    warnings = []
+    
+    # Verificar campos requeridos
+    if not row_data.get('numero_parte') or str(row_data.get('numero_parte')).strip() == '':
+        errores.append("numero_parte está vacío o es NULL")
+    
+    # Verificar longitudes de campos
+    campos_longitud = {
+        'numero_parte': 100,
+        'propiedad_material': 500,
+        'classification': 200,
+        'especificacion_material': 500,
+        'ubicacion_material': 200
+    }
+    
+    for campo, max_len in campos_longitud.items():
+        valor = str(row_data.get(campo, ''))
+        if len(valor) > max_len:
+            errores.append(f"{campo} demasiado largo: {len(valor)} caracteres (máximo {max_len})")
+    
+    # Verificar caracteres problemáticos
+    for campo in ['numero_parte', 'propiedad_material', 'classification']:
+        valor = str(row_data.get(campo, ''))
+        if '\\' in valor or '"' in valor:
+            warnings.append(f"{campo} contiene caracteres especiales: {valor[:50]}...")
+    
+    # Verificar valores numéricos
     try:
+        cantidad = row_data.get('cantidad_inicial', 0)
+        if cantidad is not None and cantidad != '':
+            float(cantidad)
+    except (ValueError, TypeError):
+        warnings.append(f"cantidad_inicial no es numérica: {cantidad}")
+    
+    return errores, warnings
+
+def guardar_material(data):
+    """Guardar material en MySQL - FORMATO COMPLETO CON DEBUG MEJORADO"""
+    try:
+        # VALIDACIONES PREVIAS CON LOGS DETALLADOS
+        numero_parte = data.get('numero_parte', '').strip()
+        if not numero_parte:
+            print(f"❌ ERROR: numero_parte vacío o None en data: {data}")
+            return False
+        
+        # Log de datos recibidos para debug
+        print(f"🔍 DEBUG guardar_material - numero_parte: '{numero_parte}'")
+        print(f"🔍 DEBUG guardar_material - codigo_material: '{data.get('codigo_material', '')}'")
+        
         query = """
-            INSERT INTO materiales (numero_parte, descripcion, categoria, ubicacion, 
-                                  stock_minimo, stock_maximo, unidad_medida, proveedor)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO materiales (
+                codigo_material, numero_parte, propiedad_material, classification, 
+                especificacion_material, unidad_empaque, ubicacion_material, vendedor,
+                prohibido_sacar, reparable, nivel_msl, espesor_msl,
+                descripcion, categoria, ubicacion, stock_minimo, stock_maximo, 
+                unidad_medida, proveedor
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
+                codigo_material = VALUES(codigo_material),
+                propiedad_material = VALUES(propiedad_material),
+                classification = VALUES(classification),
+                especificacion_material = VALUES(especificacion_material),
+                unidad_empaque = VALUES(unidad_empaque),
+                ubicacion_material = VALUES(ubicacion_material),
+                vendedor = VALUES(vendedor),
+                prohibido_sacar = VALUES(prohibido_sacar),
+                reparable = VALUES(reparable),
+                nivel_msl = VALUES(nivel_msl),
+                espesor_msl = VALUES(espesor_msl),
                 descripcion = VALUES(descripcion),
                 categoria = VALUES(categoria),
                 ubicacion = VALUES(ubicacion),
@@ -181,20 +587,81 @@ def guardar_material(data):
         """
         
         params = (
-            data.get('numero_parte'),
-            data.get('descripcion'),
-            data.get('categoria'),
-            data.get('ubicacion'),
+            data.get('codigo_material', ''),
+            numero_parte,
+            data.get('propiedad_material', ''),
+            data.get('classification', ''),
+            data.get('especificacion_material', ''),
+            data.get('unidad_empaque', ''),
+            data.get('ubicacion_material', ''),
+            data.get('vendedor', ''),
+            data.get('prohibido_sacar', ''),
+            data.get('reparable', ''),
+            data.get('nivel_msl', ''),
+            data.get('espesor_msl', ''),
+            data.get('descripcion', ''),
+            data.get('categoria', ''),
+            data.get('ubicacion', ''),
             data.get('stock_minimo', 0),
             data.get('stock_maximo', 0),
-            data.get('unidad_medida'),
-            data.get('proveedor')
+            data.get('unidad_medida', ''),
+            data.get('proveedor', '')
         )
         
+        # Validar longitudes de campos antes de insertar
+        validaciones = [
+            ('codigo_material', params[0], 255),
+            ('numero_parte', params[1], 255),
+            ('propiedad_material', params[2], 255),
+            ('classification', params[3], 255),
+            ('unidad_empaque', params[5], 100),
+            ('ubicacion_material', params[6], 255),
+            ('vendedor', params[7], 255),
+            ('prohibido_sacar', params[8], 50),
+            ('reparable', params[9], 50),
+            ('nivel_msl', params[10], 100),
+            ('espesor_msl', params[11], 100)
+        ]
+        
+        for campo, valor, max_len in validaciones:
+            if valor and len(str(valor)) > max_len:
+                print(f"⚠️ ADVERTENCIA: Campo '{campo}' demasiado largo ({len(str(valor))} > {max_len}): {str(valor)[:50]}...")
+                # Truncar el valor
+                if campo == 'numero_parte':
+                    params = list(params)
+                    params[1] = str(valor)[:max_len]
+                    params = tuple(params)
+                    print(f"🔧 Campo '{campo}' truncado a: {params[1]}")
+        
+        print(f"🔍 DEBUG SQL params length: {len(params)}")
+        print(f"🔍 DEBUG params[0:3]: {params[0:3]}")
+        
         result = execute_query(query, params)
-        return result > 0
+        
+        if result and result > 0:
+            print(f"✅ Material guardado exitosamente: {numero_parte}")
+            return True
+        else:
+            print(f"⚠️ execute_query retornó: {result} para {numero_parte}")
+            return False
+            
     except Exception as e:
-        print(f"Error guardando material: {e}")
+        error_msg = str(e)
+        print(f"❌ ERROR DETALLADO guardando material '{data.get('numero_parte', 'UNKNOWN')}': {error_msg}")
+        
+        # Errores específicos de MySQL
+        if "1062" in error_msg:
+            print(f"🔍 Error de duplicado - numero_parte ya existe: {data.get('numero_parte')}")
+        elif "1406" in error_msg:
+            print(f"🔍 Error de longitud de campo - datos demasiado largos")
+            print(f"🔍 Datos problemáticos: {data}")
+        elif "1364" in error_msg:
+            print(f"🔍 Error de campo requerido - falta valor para campo NOT NULL")
+        elif "1054" in error_msg:
+            print(f"🔍 Error de columna desconocida - verifica estructura de tabla")
+        else:
+            print(f"🔍 Error MySQL genérico: {error_msg}")
+            
         return False
 
 def obtener_material_por_numero(numero_parte):
@@ -205,6 +672,104 @@ def obtener_material_por_numero(numero_parte):
     except Exception as e:
         print(f"Error obteniendo material: {e}")
         return None
+
+def insertar_materiales_desde_excel(df):
+    """Insertar materiales desde DataFrame de Excel con mapeo correcto y DEBUG MEJORADO"""
+    try:
+        if not PANDAS_AVAILABLE:
+            print("❌ Pandas no disponible para importar Excel")
+            return {'insertados': 0, 'omitidos': 0, 'error': 'Pandas no disponible'}
+            
+        insertados = 0
+        omitidos = 0
+        errores_detallados = []
+        
+        # Mapeo de columnas del Excel a la base de datos
+        column_mapping = {
+            'Codigo de material': 'codigo_material',
+            'Numero de parte': 'numero_parte', 
+            'Propiedad de material': 'propiedad_material',
+            'Classification': 'classification',
+            'Especificacion de material': 'especificacion_material',
+            'Unidad de empaque ': 'unidad_empaque',  # Nota el espacio extra
+            'Ubicacion de material': 'ubicacion_material',
+            'Vendedor': 'vendedor',
+            'Prohibido sacar ': 'prohibido_sacar',  # Nota el espacio extra
+            'Reparable': 'reparable',
+            'Nivel de MSL': 'nivel_msl',
+            'Espesor de MSL ': 'espesor_msl',  # Nota el espacio extra
+            'Fecha de registro': 'fecha_registro'
+        }
+        
+        print(f"📊 Procesando {len(df)} filas del Excel...")
+        print(f"🔍 Columnas disponibles en Excel: {list(df.columns)}")
+        
+        for index, row in df.iterrows():
+            try:
+                fila_numero = index + 1
+                print(f"\n🔍 === PROCESANDO FILA {fila_numero} ===")
+                
+                # Mapear datos desde Excel
+                data = {}
+                
+                for excel_col, db_col in column_mapping.items():
+                    if excel_col in row:
+                        value = str(row[excel_col]).strip() if pd.notna(row[excel_col]) else ''
+                        data[db_col] = value
+                        print(f"🔍 {db_col}: '{value[:50]}{'...' if len(value) > 50 else ''}'")
+                    else:
+                        data[db_col] = ''
+                        print(f"⚠️ Columna '{excel_col}' no encontrada en Excel")
+                
+                # Validar que tenga al menos número de parte
+                if not data.get('numero_parte'):
+                    error_msg = f"Fila {fila_numero}: Sin número de parte"
+                    print(f"⚠️ {error_msg}")
+                    errores_detallados.append(error_msg)
+                    omitidos += 1
+                    continue
+                
+                # Guardar material con logging detallado
+                print(f"🔍 Intentando guardar material fila {fila_numero}...")
+                if guardar_material(data):
+                    insertados += 1
+                    print(f"✅ Fila {fila_numero} guardada exitosamente")
+                    if insertados % 100 == 0:  # Log cada 100 insertados
+                        print(f"📝 Procesados {insertados} materiales...")
+                else:
+                    error_msg = f"Fila {fila_numero}: Error al guardar en base de datos"
+                    print(f"❌ {error_msg}")
+                    errores_detallados.append(error_msg)
+                    omitidos += 1
+                    
+            except Exception as e:
+                fila_numero = index + 1
+                error_msg = f"Fila {fila_numero}: {str(e)}"
+                print(f"❌ Error procesando fila {fila_numero}: {e}")
+                errores_detallados.append(error_msg)
+                omitidos += 1
+                continue
+        
+        print(f"\n✅ Importación completada: {insertados} insertados, {omitidos} omitidos")
+        if errores_detallados:
+            print(f"🔍 Errores detallados:")
+            for error in errores_detallados:
+                print(f"  - {error}")
+        
+        return {
+            'insertados': insertados,
+            'omitidos': omitidos,
+            'total': len(df),
+            'errores': errores_detallados
+        }
+        
+    except Exception as e:
+        print(f"❌ Error importando materiales desde Excel: {e}")
+        return {
+            'insertados': 0,
+            'omitidos': len(df) if df is not None else 0,
+            'error': str(e)
+        }
 
 # === FUNCIONES DE INVENTARIO ===
 
@@ -663,8 +1228,335 @@ def migrar_desde_sqlite(sqlite_db_path):
 
 # === FUNCIONES DE PRUEBA ===
 
+def migrar_tabla_materiales():
+    """Migrar tabla materiales existente para agregar nuevas columnas"""
+    print("🔄 Migrando tabla materiales para agregar nuevas columnas...")
+    
+    try:
+        # Lista de columnas nuevas a agregar
+        nuevas_columnas = [
+            ("codigo_material", "VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"),
+            ("propiedad_material", "VARCHAR(255)"),
+            ("classification", "VARCHAR(255)"),
+            ("especificacion_material", "TEXT"),
+            ("unidad_empaque", "VARCHAR(100)"),
+            ("ubicacion_material", "VARCHAR(255)"),
+            ("vendedor", "VARCHAR(255)"),
+            ("prohibido_sacar", "VARCHAR(50)"),
+            ("reparable", "VARCHAR(50)"),
+            ("nivel_msl", "VARCHAR(100)"),
+            ("espesor_msl", "VARCHAR(100)")
+        ]
+        
+        # Verificar qué columnas ya existen
+        check_columns = "SHOW COLUMNS FROM materiales"
+        existing_columns = execute_query(check_columns, fetch='all')
+        existing_names = [col['Field'] for col in existing_columns] if existing_columns else []
+        
+        print(f"📋 Columnas existentes: {existing_names}")
+        
+        # Agregar columnas que no existen
+        for col_name, col_definition in nuevas_columnas:
+            if col_name not in existing_names:
+                try:
+                    alter_query = f"ALTER TABLE materiales ADD COLUMN {col_name} {col_definition}"
+                    execute_query(alter_query)
+                    print(f"✅ Columna {col_name} agregada")
+                except Exception as e:
+                    print(f"⚠️ Error agregando columna {col_name}: {e}")
+            else:
+                print(f"ℹ️ Columna {col_name} ya existe")
+        
+        # Agregar índice para codigo_material si no existe
+        try:
+            index_query = "ALTER TABLE materiales ADD INDEX idx_codigo_material (codigo_material(255))"
+            execute_query(index_query)
+            print("✅ Índice en codigo_material agregado")
+        except Exception as e:
+            if "1061" in str(e):  # Duplicate key name
+                print("ℹ️ Índice en codigo_material ya existe")
+            else:
+                print(f"⚠️ Error agregando índice: {e}")
+        
+        print("🎉 Migración de tabla materiales completada")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error en migración de tabla materiales: {e}")
+        return False
+
+def verificar_estructura_materiales():
+    """Verificar estructura de tabla materiales"""
+    try:
+        query = "DESCRIBE materiales"
+        columnas = execute_query(query, fetch='all')
+        
+        print("📋 ESTRUCTURA ACTUAL DE TABLA MATERIALES:")
+        print("-" * 60)
+        for col in columnas:
+            print(f"  {col['Field']:<25} {col['Type']:<20} {col['Null']:<5} {col['Key']:<5}")
+        print("-" * 60)
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error verificando estructura: {e}")
+        return False
+
+def reparar_tabla_materiales():
+    """Reparar problemas comunes en la tabla materiales"""
+    print("🔧 === REPARANDO TABLA MATERIALES ===")
+    
+    try:
+        # 1. Verificar y reparar la tabla
+        print("🔧 Verificando integridad de tabla...")
+        check_table = "CHECK TABLE materiales"
+        try:
+            check_result = execute_query(check_table, fetch='all')
+            for result in check_result:
+                print(f"📋 {result['Table']}: {result['Msg_type']} - {result['Msg_text']}")
+        except Exception as e:
+            print(f"⚠️ No se pudo verificar tabla: {e}")
+        
+        # 2. Reparar tabla si es necesario
+        print("🔧 Reparando tabla...")
+        repair_table = "REPAIR TABLE materiales"
+        try:
+            repair_result = execute_query(repair_table, fetch='all')
+            for result in repair_result:
+                print(f"🔧 {result['Table']}: {result['Msg_type']} - {result['Msg_text']}")
+        except Exception as e:
+            print(f"⚠️ No se pudo reparar tabla: {e}")
+        
+        # 3. Optimizar tabla
+        print("🔧 Optimizando tabla...")
+        optimize_table = "OPTIMIZE TABLE materiales"
+        try:
+            optimize_result = execute_query(optimize_table, fetch='all')
+            for result in optimize_result:
+                print(f"⚡ {result['Table']}: {result['Msg_type']} - {result['Msg_text']}")
+        except Exception as e:
+            print(f"⚠️ No se pudo optimizar tabla: {e}")
+        
+        # 4. Verificar constrains y foreign keys
+        print("🔧 Verificando constraints...")
+        fk_query = """
+            SELECT CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+            FROM information_schema.KEY_COLUMN_USAGE 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND REFERENCED_TABLE_NAME = 'materiales'
+        """
+        fks = execute_query(fk_query, fetch='all')
+        print(f"📋 Foreign keys encontradas: {len(fks)}")
+        for fk in fks:
+            print(f"  - {fk['TABLE_NAME']}.{fk['COLUMN_NAME']} -> {fk['REFERENCED_TABLE_NAME']}.{fk['REFERENCED_COLUMN_NAME']}")
+        
+        # 5. Verificar y agregar índices faltantes
+        print("🔧 Verificando índices...")
+        required_indexes = [
+            ('idx_numero_parte', 'numero_parte'),
+            ('idx_codigo_material', 'codigo_material')
+        ]
+        
+        existing_indexes_query = "SHOW INDEX FROM materiales"
+        existing_indexes = execute_query(existing_indexes_query, fetch='all')
+        existing_index_names = [idx['Key_name'] for idx in existing_indexes]
+        
+        for idx_name, idx_column in required_indexes:
+            if idx_name not in existing_index_names:
+                try:
+                    create_index_query = f"ALTER TABLE materiales ADD INDEX {idx_name} ({idx_column}(255))"
+                    execute_query(create_index_query)
+                    print(f"✅ Índice {idx_name} creado")
+                except Exception as e:
+                    if "1061" in str(e):  # Duplicate key name
+                        print(f"ℹ️ Índice {idx_name} ya existe")
+                    else:
+                        print(f"⚠️ Error creando índice {idx_name}: {e}")
+            else:
+                print(f"✅ Índice {idx_name} ya existe")
+        
+        print("🎉 Reparación de tabla completada")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error reparando tabla materiales: {e}")
+        return False
+
+def analizar_filas_problematicas():
+    """Analizar patrones comunes en filas que fallan durante importación"""
+    print("🔍 === ANÁLISIS DE FILAS PROBLEMÁTICAS ===")
+    
+    try:
+        # Patrones comunes de filas problemáticas
+        filas_problematicas = [6, 7, 28, 253]
+        
+        print(f"📋 Filas reportadas como problemáticas: {filas_problematicas}")
+        print("🔍 Posibles causas comunes:")
+        print("  1. Datos demasiado largos para los campos")
+        print("  2. Caracteres especiales o encoding incorrecto")
+        print("  3. Números de parte duplicados")
+        print("  4. Campos requeridos vacíos o NULL")
+        print("  5. Formato de fecha incorrecto")
+        print("  6. Problemas de encoding UTF-8")
+        
+        # Verificar duplicados comunes
+        print("\n🔍 Verificando duplicados en la tabla...")
+        duplicados_query = """
+            SELECT numero_parte, COUNT(*) as count 
+            FROM materiales 
+            GROUP BY numero_parte 
+            HAVING COUNT(*) > 1 
+            LIMIT 10
+        """
+        
+        duplicados = execute_query(duplicados_query, fetch='all')
+        if duplicados:
+            print(f"⚠️ Se encontraron {len(duplicados)} números de parte duplicados:")
+            for dup in duplicados:
+                print(f"  - {dup['numero_parte']}: {dup['count']} veces")
+        else:
+            print("✅ No se encontraron duplicados")
+        
+        # Verificar tamaños de campos
+        print("\n🔍 Verificando registros con campos muy largos...")
+        campos_largos_query = """
+            SELECT 
+                numero_parte,
+                LENGTH(propiedad_material) as len_prop,
+                LENGTH(classification) as len_class,
+                LENGTH(especificacion_material) as len_espec,
+                LENGTH(ubicacion_material) as len_ubicacion
+            FROM materiales 
+            WHERE LENGTH(propiedad_material) > 200 
+               OR LENGTH(classification) > 200 
+               OR LENGTH(ubicacion_material) > 200
+            LIMIT 5
+        """
+        
+        campos_largos = execute_query(campos_largos_query, fetch='all')
+        if campos_largos:
+            print(f"⚠️ Se encontraron {len(campos_largos)} registros con campos largos:")
+            for campo in campos_largos:
+                print(f"  - {campo['numero_parte']}: prop={campo['len_prop']}, class={campo['len_class']}, espec={campo['len_espec']}, ubic={campo['len_ubicacion']}")
+        else:
+            print("✅ No se encontraron campos excesivamente largos")
+        
+        # Verificar caracteres especiales
+        print("\n🔍 Verificando caracteres especiales problemáticos...")
+        especiales_query = """
+            SELECT numero_parte, propiedad_material
+            FROM materiales 
+            WHERE propiedad_material LIKE '%\\\\%' 
+               OR propiedad_material LIKE '%"%' 
+               OR propiedad_material LIKE "%'%"
+               OR propiedad_material REGEXP '[^[:print:]]'
+            LIMIT 5
+        """
+        
+        try:
+            especiales = execute_query(especiales_query, fetch='all')
+            if especiales:
+                print(f"⚠️ Se encontraron {len(especiales)} registros con caracteres especiales:")
+                for esp in especiales:
+                    print(f"  - {esp['numero_parte']}: '{esp['propiedad_material'][:50]}...'")
+            else:
+                print("✅ No se encontraron caracteres especiales problemáticos")
+        except Exception as e:
+            print(f"⚠️ No se pudo verificar caracteres especiales: {e}")
+        
+        print("\n📋 RECOMENDACIONES PARA FILAS PROBLEMÁTICAS:")
+        print("  1. Verificar que 'numero_parte' no esté vacío")
+        print("  2. Truncar campos largos antes de insertar")
+        print("  3. Limpiar caracteres especiales")
+        print("  4. Verificar encoding UTF-8 del archivo Excel")
+        print("  5. Validar que no hay duplicados")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error analizando filas problemáticas: {e}")
+        return False
+
+def diagnosticar_problemas_importacion():
+    """Diagnosticar problemas comunes en la importación de materiales"""
+    print("\n🔍 === DIAGNÓSTICO DE PROBLEMAS DE IMPORTACIÓN ===")
+    
+    try:
+        # 1. Verificar conexión a MySQL
+        if not test_connection():
+            print("❌ PROBLEMA: No hay conexión a MySQL")
+            return False
+        else:
+            print("✅ Conexión MySQL OK")
+        
+        # 2. Verificar que existe la tabla materiales
+        check_table = "SHOW TABLES LIKE 'materiales'"
+        table_exists = execute_query(check_table, fetch='one')
+        if not table_exists:
+            print("❌ PROBLEMA: Tabla 'materiales' no existe")
+            return False
+        else:
+            print("✅ Tabla 'materiales' existe")
+        
+        # 3. Verificar estructura de la tabla
+        print("\n📋 Verificando estructura de tabla...")
+        verificar_estructura_materiales()
+        
+        # 4. Verificar índices
+        check_indexes = "SHOW INDEX FROM materiales"
+        indexes = execute_query(check_indexes, fetch='all')
+        print(f"\n📋 Índices existentes ({len(indexes)} encontrados):")
+        for idx in indexes:
+            print(f"  - {idx['Key_name']}: {idx['Column_name']}")
+        
+        # 5. Contar registros existentes
+        count_query = "SELECT COUNT(*) as total FROM materiales"
+        count_result = execute_query(count_query, fetch='one')
+        total_materials = count_result['total'] if count_result else 0
+        print(f"\n📊 Total de materiales en BD: {total_materials}")
+        
+        # 6. Verificar espacio disponible (estimado)
+        size_query = """
+            SELECT 
+                ROUND(((data_length + index_length) / 1024 / 1024), 2) AS 'DB Size in MB' 
+            FROM information_schema.tables 
+            WHERE table_schema = DATABASE() AND table_name = 'materiales'
+        """
+        size_result = execute_query(size_query, fetch='one')
+        if size_result:
+            print(f"📊 Tamaño de tabla materiales: {size_result['DB Size in MB']} MB")
+        
+        # 7. Probar inserción de prueba
+        print("\n🧪 Probando inserción de material de prueba...")
+        test_data = {
+            'codigo_material': 'TEST_DIAG_001',
+            'numero_parte': f'TEST_DIAG_PART_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
+            'propiedad_material': 'Test Material for Diagnostics',
+            'classification': 'TEST',
+            'especificacion_material': 'Material de prueba para diagnóstico',
+            'unidad_empaque': '1',
+            'ubicacion_material': 'TEST_LOCATION',
+            'vendedor': 'TEST_VENDOR'
+        }
+        
+        if guardar_material(test_data):
+            print("✅ Inserción de prueba exitosa")
+            # Eliminar el registro de prueba
+            delete_query = "DELETE FROM materiales WHERE numero_parte = %s"
+            execute_query(delete_query, (test_data['numero_parte'],))
+            print("✅ Registro de prueba eliminado")
+        else:
+            print("❌ PROBLEMA: Falló la inserción de prueba")
+        
+        print("\n🎉 Diagnóstico completado")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error en diagnóstico: {e}")
+        return False
+
 def test_mysql_functions():
-    """Probar funciones de MySQL"""
+    """Probar funciones de MySQL CON DIAGNÓSTICO COMPLETO"""
     print("\n🧪 Probando funciones de MySQL...")
     
     try:
@@ -674,6 +1566,17 @@ def test_mysql_functions():
         else:
             print("❌ Error en conexión MySQL")
             return False
+        
+        # Ejecutar diagnóstico completo
+        print("\n🔍 Ejecutando diagnóstico completo...")
+        diagnosticar_problemas_importacion()
+        
+        # Verificar estructura de materiales
+        verificar_estructura_materiales()
+        
+        # Migrar tabla si es necesario
+        print("\n🔄 Verificando migración de tabla...")
+        migrar_tabla_materiales()
         
         # Inicializar base de datos
         if init_db():

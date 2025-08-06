@@ -6,6 +6,90 @@
     <title>Control de BOM - ISEMM MES</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/control_bom.css') }}">
+    
+    <!-- 🆕 Estilos para el modal de carga de BOM -->
+    <style>
+        /* Modal de carga */
+        #loadingModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #loadingDialog {
+            background: linear-gradient(145deg, #2c3e50, #34495e);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            min-width: 400px;
+            border: 1px solid #4a90c2;
+        }
+
+        .loading-content h3 {
+            color: #ecf0f1;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 300;
+        }
+
+        .loading-content p {
+            color: #bdc3c7;
+            margin: 0 0 30px 0;
+            font-size: 16px;
+        }
+
+        /* Spinner animado */
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #34495e;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Barra de progreso */
+        .loading-progress {
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #34495e;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            border-radius: 4px;
+            animation: progress 2s ease-in-out infinite;
+        }
+
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+    </style>
 </head>
 <body>
 <div class="bom-container">
@@ -77,6 +161,24 @@
     <div id="customAlertDialog" tabindex="0">
         <div id="customAlertMessage"></div>
         <button onclick="hideCustomAlert()" id="customAlertOkBtn">OK</button>
+    </div>
+</div>
+
+<!-- 🆕 Modal de carga para importación de BOM -->
+<div id="loadingModal" style="display: none;">
+    <div id="loadingDialog">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">
+                <h3>Importando BOM...</h3>
+                <p id="loadingMessage">Procesando archivo Excel, por favor espere...</p>
+                <div class="loading-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -282,27 +384,90 @@
             showCustomAlert("Por favor selecciona un archivo Excel válido (.xlsx o .xls)");
             return;
         }
+
+        // 🆕 Mostrar modal de carga inmediatamente
+        showLoadingModal(`Analizando archivo: ${file.name}`);
+        
+        // 🆕 OPCIÓN 1: Seguimiento completo de usuarios
+        // Obtener el usuario de la sesión (puede venir de diferentes fuentes)
+        let usuario = null;
+        
+        // Método 1: Buscar en variables globales de la página
+        if (typeof window.currentUser !== 'undefined') {
+            usuario = window.currentUser;
+        }
+        
+        // Método 2: Buscar en elementos HTML con información del usuario
+        if (!usuario) {
+            const userElement = document.querySelector('[data-usuario]') || 
+                               document.querySelector('.user-info') || 
+                               document.querySelector('#usuario');
+            if (userElement) {
+                usuario = userElement.textContent || userElement.getAttribute('data-usuario');
+            }
+        }
+        
+        // Método 3: Buscar en localStorage
+        if (!usuario) {
+            usuario = localStorage.getItem('usuario') || localStorage.getItem('currentUser');
+        }
+        
+        // Método 4: Buscar en elementos con clases específicas
+        if (!usuario) {
+            const userDisplays = document.querySelectorAll('.usuario, .user-name, .username');
+            for (let display of userDisplays) {
+                if (display.textContent && display.textContent.trim()) {
+                    usuario = display.textContent.trim();
+                    break;
+                }
+            }
+        }
+        
+        // Fallback: Si no encuentra usuario, usar 'Sistema'
+        if (!usuario || usuario.trim() === '') {
+            usuario = 'Sistema';
+        }
+        
+        console.log(`📝 Usuario detectado para BOM import: ${usuario}`);
+        
+        // 🔄 Actualizar mensaje de carga
+        updateLoadingMessage(`Preparando importación para ${usuario}...`);
         
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('registrador', usuario); // 🔑 Parámetro clave para seguimiento
+
+        // 🔄 Simular progreso de carga
+        setTimeout(() => {
+            updateLoadingMessage('Enviando datos al servidor...');
+        }, 500);
         
         fetch('/importar_excel_bom', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            updateLoadingMessage('Procesando respuesta del servidor...');
+            return response.json();
+        })
         .then(data => {
+            // 🚫 Ocultar modal de carga
+            hideLoadingModal();
+            
             if (data.success) {
                 const now = new Date();
                 const fecha = now.toLocaleDateString();
                 const hora = now.toLocaleTimeString();
-                showCustomAlert(`Carga exitosa<br><span style='font-size:0.95em;color:#b0eaff;'>${fecha} ${hora}</span>`);
+                // 📊 Mensaje mejorado con información del usuario
+                showCustomAlert(`Carga exitosa por ${usuario}<br><span style='font-size:0.95em;color:#b0eaff;'>${fecha} ${hora}</span><br><span style='font-size:0.9em;color:#90ee90;'>${data.message || 'Importación completada'}</span>`);
                 fileInput.value = '';
             } else {
                 showCustomAlert("Error al importar BOM: " + data.error);
             }
         })
         .catch(error => {
+            // 🚫 Ocultar modal de carga en caso de error
+            hideLoadingModal();
             console.error('Error:', error);
             showCustomAlert("Error al importar el archivo de BOM");
         });
@@ -651,6 +816,27 @@
     }
     window.hideCustomAlert = function() {
         document.getElementById('customAlertModal').style.display = 'none';
+    }
+
+    // 🆕 Funciones para el modal de carga
+    window.showLoadingModal = function(message = 'Procesando archivo Excel, por favor espere...') {
+        const modal = document.getElementById('loadingModal');
+        const msgElement = document.getElementById('loadingMessage');
+        msgElement.textContent = message;
+        modal.style.display = 'flex';
+        console.log('🔄 Modal de carga mostrado:', message);
+    }
+
+    window.hideLoadingModal = function() {
+        const modal = document.getElementById('loadingModal');
+        modal.style.display = 'none';
+        console.log('✅ Modal de carga ocultado');
+    }
+
+    window.updateLoadingMessage = function(message) {
+        const msgElement = document.getElementById('loadingMessage');
+        msgElement.textContent = message;
+        console.log('📝 Mensaje de carga actualizado:', message);
     }
 </script>
 </body>
