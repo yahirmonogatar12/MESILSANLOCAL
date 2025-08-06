@@ -206,7 +206,7 @@ class MaterialEditDrawer {
         // Inyectar HTML al final del body
         document.body.insertAdjacentHTML('beforeend', drawerHTML);
 
-        // Inyectar estilos CSS desde archivo externo
+        // Inyectar estilos CSS
         this.injectStyles();
     }
 
@@ -441,13 +441,7 @@ class MaterialEditDrawer {
         </style>
         `;
 
-        // Verificar si ya se cargó el CSS con estilos similares a control_bom.css
-        if (!document.querySelector('link[href*="material-edit-drawer-bom.css"]')) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = '/static/css/material-edit-drawer-bom.css';
-            document.head.appendChild(link);
-        }
+        document.head.insertAdjacentHTML('beforeend', styles);
     }
 
     bindEvents() {
