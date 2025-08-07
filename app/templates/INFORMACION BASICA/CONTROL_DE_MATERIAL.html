@@ -29,97 +29,25 @@
         </button>
     </div>
 
-    <!-- Modal de registro -->
-    <div id="modalRegistro" class="material-modal">
-        <div class="material-modal-content">
-            <div class="material-modal-header">
-                <h2 class="material-modal-title">Registro de Material</h2>
-                <button class="material-close" onclick="cerrarModal()">&times;</button>
+    <!-- Modal de carga para importación -->
+    <div id="modalCarga" class="material-modal">
+        <div class="material-modal-content carga-modal">
+            <div class="carga-header">
+                <h3>Importando Excel</h3>
+                <p id="estadoCarga">Procesando archivo...</p>
             </div>
-            <form id="registroForm">
-                <div class="material-form-group">
-                    <label for="codigoMaterial">Código de material *</label>
-                    <input type="text" id="codigoMaterial" name="codigoMaterial" required>
+            <div class="carga-body">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">0%</div>
                 </div>
-                
-                <div class="material-form-group">
-                    <label for="numeroParte">Número de parte *</label>
-                    <input type="text" id="numeroParte" name="numeroParte" required>
+                <div class="carga-detalles">
+                    <p id="detalleCarga">Iniciando importación...</p>
+                    <div class="spinner"></div>
                 </div>
-                
-                <div class="material-form-group">
-                    <label for="propiedadMaterial">Propiedad de material *</label>
-                    <select id="propiedadMaterial" name="propiedadMaterial" required>
-                        <option value="">Seleccionar</option>
-                        <option value="PART">PART</option>
-                        <option value="ETC">ETC</option>
-                        <option value="PCB">PCB</option>
-                    </select>
-                </div>
-                
-                <div class="material-form-group">
-                    <label for="classification">Classification</label>
-                    <input type="text" id="classification" name="classification">
-                </div>
-                
-                <div class="material-form-group">
-                    <label for="especificacionMaterial">Especificación de material</label>
-                    <input type="text" id="especificacionMaterial" name="especificacionMaterial">
-                </div>
-                
-                <div class="material-form-group">
-                    <label for="unidadEmpaque">Unidad de empaque</label>
-                    <input type="number" id="unidadEmpaque" name="unidadEmpaque" value="0">
-                </div>
-                
-                <div class="material-form-group">
-                    <label for="ubicacionMaterial">Ubicación de material</label>
-                    <input type="text" id="ubicacionMaterial" name="ubicacionMaterial">
-                </div>
-                
-                <div class="material-form-group">
-                    <label for="vendedor">Vendedor</label>
-                    <select id="vendedor" name="vendedor">
-                        <option value="">Seleccionar</option>
-                        <option value="ROHM">ROHM</option>
-                        <option value="MOBIS">MOBIS</option>
-                        <option value="PANASONIC">PANASONIC</option>
-                        <option value="PHYCOMP">PHYCOMP</option>
-                    </select>
-                </div>
-                
-                <div class="material-checkbox-group">
-                    <input type="checkbox" id="prohibidoSacar" name="prohibidoSacar">
-                    <label for="prohibidoSacar">Prohibido sacar</label>
-                </div>
-                
-                <div class="material-checkbox-group">
-                    <input type="checkbox" id="reparable" name="reparable">
-                    <label for="reparable">Reparable</label>
-                </div>
-                
-                <div class="material-form-group">
-                    <label for="nivelMSL">Nivel de MSL</label>
-                    <select id="nivelMSL" name="nivelMSL">
-                        <option value="">Seleccionar</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                        <option value="6">6</option>
-                    </select>
-                </div>
-                
-                <div class="material-form-group">
-                    <label for="espesorMSL">Espesor de MSL</label>
-                    <input type="text" id="espesorMSL" name="espesorMSL">
-                </div>
-                
-                <button type="submit" class="material-btn-submit">
-                    <i class="bi bi-check-circle"></i> Registrar Material
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -134,13 +62,12 @@
                     <th style="width: 80px;" title="Clasificación del material">Classification</th>
                     <th style="width: 100px;" title="Especificación técnica detallada del material">Especificación</th>
                     <th style="width: 40px;" title="Cantidad de unidades por empaque">Und.</th>
-                    <th style="width: 80px;" title="Ubicación física del material en almacén">Ubicación</th>
+                    <th style="width: 30px;" title="Ubicación física del material en almacén">Ubicación</th>
                     <th style="width: 70px;" title="Proveedor o vendedor del material">Vendedor</th>
                     <th style="width: 50px;" title="Indica si el material está prohibido para sacar">Prohibido</th>
                     <th style="width: 50px;" title="Indica si el material es reparable">Reparable</th>
                     <th style="width: 40px;" title="Nivel de sensibilidad a la humedad (MSL)">MSL</th>
                     <th style="width: 60px;" title="Espesor del material para MSL">Espesor</th>
-                    <th style="width: 90px;" title="Fecha y hora de registro del material">Registro</th>
                     <th style="width: 80px;" title="Usuario que registró el material">Usuario</th>
                     <th style="width: 60px;" title="Acciones disponibles para el material">Acciones</th>
                 </tr>
@@ -219,7 +146,6 @@
                 <td>${reparableCheckbox}</td>
                 ${crearCelda(limpiarNumero(item.nivelMSL || ''))}
                 ${crearCelda(item.espesorMSL)}
-                ${crearCelda(item.fechaRegistro)}
                 <td>${formatearUsuario(item.usuarioRegistro)}</td>
                 <td class="text-center">${botonEditar}</td>
             `;
@@ -241,64 +167,12 @@
     }
 
     function mostrarFormulario() {
-        document.getElementById("modalRegistro").style.display = "block";
-    }
-
-    function cerrarModal() {
-        document.getElementById("modalRegistro").style.display = "none";
-    }
-
-    // Cerrar modal al hacer clic fuera de él
-    window.onclick = function(event) {
-        var modal = document.getElementById("modalRegistro");
-        if (event.target == modal) {
-            modal.style.display = "none";
+        if (window.materialRegistroDrawer) {
+            window.materialRegistroDrawer.abrirPanelRegistro();
+        } else {
+            console.error('MaterialRegistroDrawer no está inicializado');
         }
     }
-
-    // Manejar el envío del formulario
-    document.getElementById("registroForm").addEventListener("submit", function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const nuevoItem = {
-            codigoMaterial: formData.get('codigoMaterial'),
-            numeroParte: formData.get('numeroParte'),
-            propiedadMaterial: formData.get('propiedadMaterial'),
-            classification: formData.get('classification'),
-            especificacionMaterial: formData.get('especificacionMaterial'),
-            unidadEmpaque: formData.get('unidadEmpaque'),
-            ubicacionMaterial: formData.get('ubicacionMaterial'),
-            vendedor: formData.get('vendedor'),
-            prohibidoSacar: formData.get('prohibidoSacar') ? 1 : 0,  // Convertir a entero
-            reparable: formData.get('reparable') ? 1 : 0,            // Convertir a entero
-            nivelMSL: formData.get('nivelMSL'),
-            espesorMSL: formData.get('espesorMSL')
-        };
-        
-        fetch('/guardar_material', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(nuevoItem)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert("Material registrado exitosamente! Haga clic en 'Consultar' para ver los datos actualizados.");
-                // NO recargar automáticamente la tabla
-                cerrarModal();
-                this.reset();
-            } else {
-                alert("Error al registrar material: " + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("Error al registrar material");
-        });
-    });
 
     function consultar() {
         // Mostrar indicador de carga
@@ -367,10 +241,14 @@
             return;
         }
         
+        // Mostrar modal de carga
+        mostrarModalCarga();
+        
         const formData = new FormData();
         formData.append('file', file);
         
-        alert("Procesando archivo, por favor espere...");
+        // Simular progreso durante la carga
+        simularProgreso();
         
         fetch('/importar_excel', {
             method: 'POST',
@@ -378,16 +256,23 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
-                // NO recargar automáticamente la tabla
-                fileInput.value = '';
-            } else {
-                alert("Error al importar: " + data.error);
-            }
+            // Completar la barra de progreso
+            actualizarProgreso(100, "Importación completada");
+            
+            setTimeout(() => {
+                ocultarModalCarga();
+                
+                if (data.success) {
+                    alert(data.message + " Haga clic en 'Consultar' para ver los datos actualizados.");
+                    fileInput.value = '';
+                } else {
+                    alert("Error al importar: " + data.error);
+                }
+            }, 500);
         })
         .catch(error => {
             console.error('Error:', error);
+            ocultarModalCarga();
             alert("Error al importar el archivo");
         });
     }
@@ -502,17 +387,182 @@ function inicializarPanelLateral() {
 // Ejecutar inicialización cuando se carga este contenido
 setTimeout(inicializarPanelLateral, 500);
 
+// === FUNCIONES PARA MODAL DE CARGA ===
+
+function mostrarModalCarga() {
+    const modal = document.getElementById('modalCarga');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const detalleCarga = document.getElementById('detalleCarga');
+    const estadoCarga = document.getElementById('estadoCarga');
+    
+    // Resetear el modal
+    progressFill.style.width = '0%';
+    progressText.textContent = '0%';
+    detalleCarga.textContent = 'Iniciando importación...';
+    estadoCarga.textContent = 'Procesando archivo...';
+    
+    modal.style.display = 'block';
+}
+
+function ocultarModalCarga() {
+    const modal = document.getElementById('modalCarga');
+    modal.style.display = 'none';
+}
+
+function actualizarProgreso(porcentaje, mensaje) {
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const detalleCarga = document.getElementById('detalleCarga');
+    
+    progressFill.style.width = porcentaje + '%';
+    progressText.textContent = porcentaje + '%';
+    
+    if (mensaje) {
+        detalleCarga.textContent = mensaje;
+    }
+}
+
+function simularProgreso() {
+    let progreso = 0;
+    const mensajes = [
+        'Leyendo archivo Excel...',
+        'Validando datos...',
+        'Procesando registros...',
+        'Guardando en base de datos...',
+        'Finalizando importación...'
+    ];
+    
+    const intervalo = setInterval(() => {
+        progreso += Math.random() * 15 + 5; // Incremento aleatorio entre 5-20%
+        
+        if (progreso > 90) {
+            progreso = 90; // No completar hasta que termine la importación real
+            clearInterval(intervalo);
+        }
+        
+        const mensajeIndex = Math.floor((progreso / 100) * mensajes.length);
+        const mensaje = mensajes[Math.min(mensajeIndex, mensajes.length - 1)];
+        
+        actualizarProgreso(Math.floor(progreso), mensaje);
+    }, 200);
+    
+    // Guardar el intervalo para poder limpiarlo si es necesario
+    window.intervaloCarga = intervalo;
+}
+
 </script>
 
 <!-- Estilos adicionales para botones de editar -->
 <style>
+/* Estilos del modal de carga */
+#modalCarga .carga-modal {
+    max-width: 500px;
+    text-align: center;
+}
+
+#modalCarga .carga-header h3 {
+    color: #2c3e50;
+    margin: 0 0 10px 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+#modalCarga .carga-header p {
+    color: #7f8c8d;
+    margin: 0 0 20px 0;
+    font-size: 14px;
+}
+
+#modalCarga .progress-container {
+    margin: 20px 0;
+}
+
+#modalCarga .progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #ecf0f1;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+#modalCarga .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #2ecc71);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    width: 0%;
+    position: relative;
+}
+
+#modalCarga .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.6),
+        transparent
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+#modalCarga .progress-text {
+    margin-top: 10px;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
+#modalCarga .carga-detalles {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+#modalCarga .carga-detalles p {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+#modalCarga .spinner {
+    margin: 10px auto;
+    width: 30px;
+    height: 30px;
+    border: 3px solid #ecf0f1;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ESTILOS ESPECÍFICOS PARA LA TABLA - MANTENER ORIGINALES */
 /* Mejorar el espaciado en la columna de acciones */
-#tablaMateriales td:last-child {
+.material-table td:last-child {
     padding: 4px; /* Reducir padding */
     white-space: nowrap;
 }
 
-.btn {
+/* SOLO para botones dentro de la tabla */
+.material-table .btn {
     padding: 2px 6px; /* Botones más pequeños */
     border-radius: 3px;
     border: 1px solid transparent;
@@ -526,18 +576,18 @@ setTimeout(inicializarPanelLateral, 500);
     transition: all 0.2s ease;
 }
 
-.btn-sm {
+.material-table .btn-sm {
     padding: 2px 4px; /* Más pequeño */
     font-size: 9px;
 }
 
-.btn-outline-primary {
+.material-table .btn-outline-primary {
     color: #4a90e2;
     border-color: #4a90e2;
     background-color: transparent;
 }
 
-.btn-outline-primary:hover {
+.material-table .btn-outline-primary:hover {
     color: white;
     background-color: #4a90e2;
     border-color: #4a90e2;
@@ -545,11 +595,11 @@ setTimeout(inicializarPanelLateral, 500);
     box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
 }
 
-.text-center {
+.material-table .text-center {
     text-align: center;
 }
 
-/* Centrar checkboxes y botones */
+/* Centrar checkboxes y botones EN LA TABLA */
 .material-table td:nth-child(9),
 .material-table td:nth-child(10),
 .material-table td:nth-child(15) {
@@ -557,7 +607,7 @@ setTimeout(inicializarPanelLateral, 500);
     padding: 2px; /* Padding muy pequeño para checkboxes */
 }
 
-/* Checkboxes más pequeños */
+/* Checkboxes más pequeños EN LA TABLA */
 .material-table input[type="checkbox"] {
     transform: scale(0.8); /* Reducir tamaño de checkboxes */
     margin: 0;

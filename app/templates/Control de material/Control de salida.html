@@ -465,7 +465,6 @@
                 codigoInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' || e.keyCode === 13) {
                         e.preventDefault();
-                        console.log('⚡ Enter detectado en código, procesando...');
                         const codigo = e.target.value.trim();
                         if (codigo) {
                             procesarEscaneoRapido(e);
@@ -504,7 +503,6 @@
                 verificacionInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' || e.keyCode === 13) {
                         e.preventDefault();
-                        console.log('⚡ Enter detectado en verificación, procesando...');
                         const codigo = e.target.value.trim();
                         if (codigo) {
                             procesarVerificacion(e);
@@ -706,7 +704,6 @@
                 }
 
                 const material = data.material;
-                console.log('✅ Material encontrado:', material);
                 
                 // ⛔ VALIDACIÓN CRÍTICA: Verificar stock antes de continuar
                 const stockDisponible = parseFloat(material.cantidad_actual) || 0;
@@ -747,7 +744,7 @@
         }
 
         // Nueva función para procesamiento automático después de verificación exitosa
-        // 🚀 Nueva función optimizada para procesamiento automático después de verificación exitosa
+        // Nueva función optimizada para procesamiento automático después de verificación exitosa
         async function procesarSalidaAutomaticaDespuesVerificacion() {
             try {
                 const codigo = document.getElementById('salida_codigo_material_recibido')?.value?.trim();
@@ -762,7 +759,6 @@
                 
                 // Mostrar mensaje informativo si no hay modelo seleccionado
                 if (modelo === 'SIN_MODELO') {
-                    console.log('⚠️ DEBUG: Procesando salida sin modelo específico');
                 }
 
                 const cantidadSalida = parseFloat(materialActual.cantidad_actual) || 0;
@@ -773,7 +769,7 @@
                 }
 
                 // 2. Procesar salida automática con optimización
-                mostrarMensajeSimple('⚡ Procesando salida...', 'info');
+                mostrarMensajeSimple('Procesando salida...', 'info');
                 
                 const salidaResponse = await fetch('/procesar_salida_material', {
                     method: 'POST',
@@ -845,9 +841,6 @@
                 
                 // Limpiar verificación anterior para el nuevo material
                 limpiarVerificacion();
-                
-                // Mensaje claro indicando que debe usar el botón
-                mostrarMensajeSimple('Material encontrado - Complete verificación y haga clic en "Guardar Salida"', 'info');
                 
                 // Enfocar el campo de verificación
                 const campoVerificacion = document.getElementById('salida_verificacion_codigo');
@@ -2097,7 +2090,6 @@
             });
 
             // Mostrar mensaje más detallado
-            let mensaje = `Material encontrado. Stock disponible: ${material.cantidad_actual}`;
             
             if (material.numero_lote_material) {
                 mensaje += ` | Lote: ${material.numero_lote_material}`;
@@ -2361,14 +2353,36 @@
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const salidas = await response.json();
+                const responseData = await response.json();
 
+                // Manejar nueva estructura de respuesta con contador
+                let salidas = responseData;
+                let totalRegistros = 0;
+                let mostrados = 0;
+                
+                if (responseData && typeof responseData === 'object' && responseData.datos) {
+                    // Nueva estructura con contador
+                    salidas = responseData.datos;
+                    totalRegistros = responseData.total || 0;
+                    mostrados = responseData.mostrados || salidas.length;
+                } else if (Array.isArray(responseData)) {
+                    // Estructura antigua (array directo)
+                    salidas = responseData;
+                    totalRegistros = salidas.length;
+                    mostrados = salidas.length;
+                }
 
                 if (Array.isArray(salidas)) {
                     actualizarTablaSalidas(salidas);
                     const totalInfo = document.getElementById('salida_totalInfo');
                     if (totalInfo) {
-                        const mensaje = `Total Rows: ${salidas.length}`;
+                        let mensaje;
+                        if (totalRegistros === mostrados) {
+                            mensaje = `Total Rows: ${totalRegistros}`;
+                        } else {
+                            mensaje = `Total Rows: ${mostrados} de ${totalRegistros} `;
+                        }
+                        
                         const filtros = [];
                         if (codigoFiltro) {
                             filtros.push(`Código: ${codigoFiltro}`);
@@ -2382,12 +2396,14 @@
                         
                         totalInfo.textContent = filtros.length > 0 ? 
                             `${mensaje} | Filtros: ${filtros.join(', ')}` : mensaje;
+                        totalInfo.style.color = '#3498db';
+                        totalInfo.style.fontWeight = 'bold';
                     }
                     
                     // ✅ OCULTAR mensaje de carga cuando termine exitosamente
                     ocultarMensaje();
                 } else {
-                    console.error('❌ Error en respuesta:', salidas);
+                    console.error('❌ Error en respuesta:', responseData);
                     mostrarError(salidas.error || 'Error al consultar salidas');
                 }
 

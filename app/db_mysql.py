@@ -571,11 +571,6 @@ def guardar_material(data, usuario_registro=None):
         # Información de registro
         usuario_registro = usuario_registro or 'SISTEMA'
         
-        # Log de datos recibidos para debug
-        print(f"🔍 DEBUG guardar_material - numero_parte: '{numero_parte}'")
-        print(f"🔍 DEBUG guardar_material - codigo_material: '{data.get('codigo_material', '')}'")
-        print(f"🔍 DEBUG guardar_material - usuario: '{usuario_registro}'")
-        
         query = """
             INSERT INTO materiales (
                 codigo_material, numero_parte, propiedad_material, classification, 
@@ -616,10 +611,6 @@ def guardar_material(data, usuario_registro=None):
         )
         
         # DEBUG: Mostrar el valor específico de unidad_empaque
-        print(f"🔍 DEBUG PARAMS - unidad_empaque (posición 5): '{params[5]}' | Tipo: {type(params[5])}")
-        print(f"🔍 DEBUG PARAMS - Primeros 6 params: {params[0:6]}")
-        print(f"🔍 DEBUG PARAMS - usuario_registro: '{params[12]}'")
-        
         # Validar longitudes de campos antes de insertar
         validaciones = [
             ('codigo_material', params[0], 512),  # Actualizado a 512 caracteres
@@ -646,9 +637,6 @@ def guardar_material(data, usuario_registro=None):
                     params = tuple(params)
                     print(f"🔧 Campo '{campo}' truncado a: {params[1]}")
         
-        print(f"🔍 DEBUG SQL params length: {len(params)}")
-        print(f"🔍 DEBUG params[0:3]: {params[0:3]}")
-        
         result = execute_query(query, params)
         
         if result and result > 0:
@@ -667,7 +655,6 @@ def guardar_material(data, usuario_registro=None):
             print(f"🔍 Error de duplicado - numero_parte ya existe: {data.get('numero_parte')}")
         elif "1406" in error_msg:
             print(f"🔍 Error de longitud de campo - datos demasiado largos")
-            print(f"🔍 Datos problemáticos: {data}")
         elif "1364" in error_msg:
             print(f"🔍 Error de campo requerido - falta valor para campo NOT NULL")
         elif "1054" in error_msg:
@@ -680,22 +667,12 @@ def guardar_material(data, usuario_registro=None):
 def actualizar_material_completo(codigo_original, nuevos_datos):
     """Actualizar todos los campos de un material existente"""
     try:
-        # PRIMERO: Verificar si el material existe
-        print(f"🔍 DEBUG verificando material con código: '{codigo_original}'")
-        
-        # Buscar el material primero para debug
+        # Buscar el material primero para verificar que existe
         query_verificar = "SELECT codigo_material, numero_parte FROM materiales WHERE codigo_material = %s LIMIT 1"
         material_existente = execute_query(query_verificar, (codigo_original,), fetch='one')
         
         if not material_existente:
-            print(f"❌ Material '{codigo_original}' NO encontrado en la base de datos")
-            # Buscar materiales similares para debug
-            query_similares = "SELECT codigo_material FROM materiales WHERE codigo_material LIKE %s LIMIT 5"
-            similares = execute_query(query_similares, (f"%{codigo_original[:10]}%",), fetch='all')
-            print(f"🔍 Materiales similares encontrados: {[s['codigo_material'] for s in similares] if similares else 'Ninguno'}")
             return {'success': False, 'error': 'No se encontró el material para actualizar'}
-        else:
-            print(f"✅ Material encontrado: {material_existente['codigo_material']} - {material_existente['numero_parte']}")
         
         # Construir la consulta UPDATE dinámicamente
         campos_update = []
@@ -738,15 +715,6 @@ def actualizar_material_completo(codigo_original, nuevos_datos):
         
         # Construir y ejecutar la consulta
         query = f"UPDATE materiales SET {', '.join(campos_update)} WHERE codigo_material = %s"
-        
-        print(f"🔍 DEBUG UPDATE query: {query}")
-        print(f"🔍 DEBUG valores: {valores}")
-        print(f"🔍 DEBUG tipos de valores: {[type(v) for v in valores]}")
-        
-        # Verificar si los valores realmente cambiarían algo
-        query_check = f"SELECT {', '.join([campo.split(' = ')[0] for campo in campos_update])} FROM materiales WHERE codigo_material = %s"
-        valores_actuales = execute_query(query_check, (codigo_original,), fetch='one')
-        print(f"🔍 DEBUG valores actuales en BD: {valores_actuales}")
         
         result = execute_query(query, valores)
         
@@ -1402,12 +1370,12 @@ def verificar_estructura_materiales():
         
         return True
     except Exception as e:
-        print(f"❌ Error verificando estructura: {e}")
+        print(f" Error verificando estructura: {e}")
         return False
 
 def reparar_tabla_materiales():
     """Reparar problemas comunes en la tabla materiales"""
-    print("🔧 === REPARANDO TABLA MATERIALES ===")
+    print(" === REPARANDO TABLA MATERIALES ===")
     
     try:
         # 1. Verificar y reparar la tabla
@@ -1436,7 +1404,7 @@ def reparar_tabla_materiales():
         try:
             optimize_result = execute_query(optimize_table, fetch='all')
             for result in optimize_result:
-                print(f"⚡ {result['Table']}: {result['Msg_type']} - {result['Msg_text']}")
+                print(f" {result['Table']}: {result['Msg_type']} - {result['Msg_text']}")
         except Exception as e:
             print(f"⚠️ No se pudo optimizar tabla: {e}")
         
@@ -1469,20 +1437,20 @@ def reparar_tabla_materiales():
                 try:
                     create_index_query = f"ALTER TABLE materiales ADD INDEX {idx_name} ({idx_column}(255))"
                     execute_query(create_index_query)
-                    print(f"✅ Índice {idx_name} creado")
+                    print(f" Índice {idx_name} creado")
                 except Exception as e:
                     if "1061" in str(e):  # Duplicate key name
-                        print(f"ℹ️ Índice {idx_name} ya existe")
+                        print(f"ℹ Índice {idx_name} ya existe")
                     else:
-                        print(f"⚠️ Error creando índice {idx_name}: {e}")
+                        print(f" Error creando índice {idx_name}: {e}")
             else:
-                print(f"✅ Índice {idx_name} ya existe")
+                print(f" Índice {idx_name} ya existe")
         
-        print("🎉 Reparación de tabla completada")
+        print(" Reparación de tabla completada")
         return True
         
     except Exception as e:
-        print(f"❌ Error reparando tabla materiales: {e}")
+        print(f" Error reparando tabla materiales: {e}")
         return False
 
 def analizar_filas_problematicas():

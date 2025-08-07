@@ -158,7 +158,7 @@
         /* Columna de código original más pequeña */
         .material-table th:nth-child(7),
         .material-table td:nth-child(7) {
-            max-width: 120px;
+            max-width: 100px;
             width: 120px;
         }
         
@@ -4289,9 +4289,9 @@
             }
         },
         
-        // Función para consultar salidas
+        // Función para consultar salidas - OPTIMIZADA PARA VELOCIDAD
         consultar: function() {
-            console.log('🔍 EJECUTANDO HISTORIAL_GLOBAL.consultar()');
+            console.log('� EJECUTANDO CONSULTA ULTRA-RÁPIDA...');
             
             try {
                 const codigoFiltro = document.getElementById('salida_filtro_codigo')?.value?.trim() || '';
@@ -4304,8 +4304,11 @@
                     return 'Error: Fechas inválidas';
                 }
 
-                // Mostrar mensaje de carga
-                this.mostrarMensaje('Consultando salidas...', 'info');
+                // Mostrar indicador de carga normal
+                const tbody = document.querySelector('#salida_tablaSalidas tbody');
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 12px; color: #3498db; font-size: 14px;"><i class="fas fa-circle-notch fa-spin"></i> Cargando...</td></tr>';
+                }
 
                 let url = '/consultar_historial_salidas';
                 const params = new URLSearchParams();
@@ -4318,11 +4321,11 @@
                     url += '?' + params.toString();
                 }
 
-                console.log('📤 Consultando URL:', url);
+                console.log('Consultando URL optimizada:', url);
 
                 return fetch(url, {
                     method: 'GET',
-                    credentials: 'same-origin', // 🔑 INCLUIR COOKIES DE SESIÓN PARA AJAX
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
@@ -4350,15 +4353,32 @@
                         
                         return response.json();
                     })
-                    .then(salidas => {
-                        console.log('📥 Respuesta recibida:', salidas);
+                    .then(responseData => {
+                        console.log('📥 Respuesta recibida:', responseData);
+                        
+                        // Manejar nueva estructura de respuesta con contador
+                        let salidas = responseData;
+                        let totalRegistros = 0;
+                        let mostrados = 0;
+                        
+                        if (responseData && typeof responseData === 'object' && responseData.datos) {
+                            // Nueva estructura con contador
+                            salidas = responseData.datos;
+                            totalRegistros = responseData.total || 0;
+                            mostrados = responseData.mostrados || salidas.length;
+                        } else if (Array.isArray(responseData)) {
+                            // Estructura antigua (array directo)
+                            salidas = responseData;
+                            totalRegistros = salidas.length;
+                            mostrados = salidas.length;
+                        }
                         
                         if (Array.isArray(salidas)) {
                             this.actualizarTablaSalidas(salidas);
-                            this.mostrarMensaje(`✅ ${salidas.length} salidas encontradas`, 'success');
-                            return `✅ ${salidas.length} salidas consultadas`;
+                            this.actualizarContadorResultados(totalRegistros, mostrados);
+                            return `✅ ${mostrados} de ${totalRegistros} registros consultados`;
                         } else {
-                            throw new Error(salidas.error || 'Respuesta inválida del servidor');
+                            throw new Error(responseData.error || 'Respuesta inválida del servidor');
                         }
                     })
                     .catch(error => {
@@ -4406,6 +4426,20 @@
 
             tbody.innerHTML = html;
             console.log('✅ Tabla actualizada con', salidas.length, 'registros');
+        },
+        
+        // Función para actualizar contador de resultados
+        actualizarContadorResultados: function(total, mostrados) {
+            const contadorElemento = document.getElementById('salida_totalInfo');
+            if (contadorElemento) {
+                if (total === mostrados) {
+                    contadorElemento.textContent = `Total Rows: ${total}`;
+                } else {
+                    contadorElemento.textContent = `Total Rows: ${mostrados} de ${total}`;
+                }
+                contadorElemento.style.color = '#FFFFFF';
+                contadorElemento.style.fontWeight = 'bold';
+            }
         },
         
         // 🔧 Función para obtener número de lote de múltiples propiedades posibles
@@ -4764,7 +4798,6 @@
             codigoInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' || e.keyCode === 13) {
                     e.preventDefault();
-                    console.log('⚡ Enter detectado en código, procesando...');
                     const codigo = e.target.value.trim();
                     if (codigo) {
                         // Buscar función procesarEscaneoRapido si está disponible
@@ -4810,7 +4843,7 @@
             verificacionInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' || e.keyCode === 13) {
                     e.preventDefault();
-                    console.log('⚡ Enter detectado en verificación, procesando...');
+
                     const codigo = e.target.value.trim();
                     if (codigo) {
                         // Buscar función procesarVerificacion si está disponible
@@ -4893,8 +4926,8 @@
         console.table(estado);
         
         if (estado.campoCodigoEncontrado && estado.funcionConfiguracionDisponible) {
-            console.log('✅ Todo parece estar bien configurado');
-            return '✅ Auto-Enter configurado correctamente';
+            console.log(' Todo parece estar bien configurado');
+            return ' Auto-Enter configurado correctamente';
         } else {
             console.log('❌ Faltan elementos para auto-Enter');
             return '❌ Configuración incompleta';
@@ -4902,7 +4935,7 @@
     };
 
     // ===================================================================
-    // ⚡ SISTEMA GLOBAL DE ENTER AUTOMÁTICO PARA ESCANEO
+    // SISTEMA GLOBAL DE ENTER AUTOMÁTICO PARA ESCANEO
     // ===================================================================
     
     window.ENTER_AUTOMATICO_GLOBAL = {
@@ -4912,11 +4945,10 @@
         
         // Configurar Enter automático para un campo específico
         configurar: function(campoId, opciones = {}) {
-            console.log('⚡ CONFIGURANDO ENTER AUTOMÁTICO GLOBAL para:', campoId);
             
             const campo = document.getElementById(campoId);
             if (!campo) {
-                console.log('⚠️ Campo no encontrado:', campoId);
+                console.log(' Campo no encontrado:', campoId);
                 return false;
             }
             
@@ -5036,7 +5068,7 @@
             if (!campoData) return;
             
             const codigo = campoData.elemento.value.trim();
-            console.log('⚡ PROCESANDO ENTER AUTOMÁTICO en', campoId, '- Código:', codigo);
+
             
             if (!codigo || codigo.length < 5) {
                 console.log('⚠️ Código muy corto, no se procesa');
@@ -5173,12 +5205,12 @@
             
             // Auto-instalar para Control de Salida si detectamos que estamos en esa página
             if (document.getElementById('salida_codigo_material_recibido') && !this.campos.has('salida_codigo_material_recibido')) {
-                console.log('🛑 Control de Salida detectado - AUTO-INSTALACIÓN DESHABILITADA (evitar bucle infinito)');
+                console.log(' Control de Salida detectado - AUTO-INSTALACIÓN DESHABILITADA (evitar bucle infinito)');
                 // this.autoInstalarSalida(); // DESHABILITADO TEMPORALMENTE
                 // reparaciones++;
             }
-            
-            console.log('✅ Verificación completada -', reparaciones, 'reparaciones realizadas');
+        
+            console.log(' Verificación completada -', reparaciones, 'reparaciones realizadas');
             return {
                 activo: this.activo,
                 camposConfigurados: this.campos.size,
@@ -5188,7 +5220,7 @@
     };
     
     // ===================================================================
-    // ⚡ FUNCIONES GLOBALES DE CONVENIENCIA PARA ENTER AUTOMÁTICO
+    // FUNCIONES GLOBALES DE CONVENIENCIA PARA ENTER AUTOMÁTICO
     // ===================================================================
     
     // Función global para testing
@@ -5197,7 +5229,7 @@
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         if (!codigoInput) {
-            return '❌ Campo código no encontrado';
+            return ' Campo código no encontrado';
         }
         
         // Limpiar campo primero
@@ -5206,13 +5238,13 @@
         
         // Simular escaneo
         const codigoPrueba = 'H5602C622.20250728026';
-        console.log('⚡ Simulando escaneo del código:', codigoPrueba);
+        console.log(' Simulando escaneo del código:', codigoPrueba);
         
         codigoInput.value = codigoPrueba;
         const inputEvent = new Event('input', { bubbles: true });
         codigoInput.dispatchEvent(inputEvent);
         
-        return '🔥 Test ejecutado - Debería activar auto-llenado en 200ms';
+        return ' Test ejecutado - Debería activar auto-llenado en 200ms';
     };
     
     // Función global para forzar auto-llenado
@@ -5221,25 +5253,25 @@
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         if (!codigoInput) {
-            return '❌ Campo código no encontrado';
+            return ' Campo código no encontrado';
         }
         
         const codigo = codigoInput.value.trim();
         if (!codigo) {
-            return '⚠️ No hay código en el campo';
+            return ' No hay código en el campo';
         }
         
         if (typeof buscarMaterialPorCodigo === 'function') {
             console.log('🔍 Ejecutando buscarMaterialPorCodigo para:', codigo);
             buscarMaterialPorCodigo(codigo);
-            return '✅ Auto-llenado forzado ejecutado';
+            return ' Auto-llenado forzado ejecutado';
         } else {
-            return '❌ Función buscarMaterialPorCodigo no disponible';
+            return ' Función buscarMaterialPorCodigo no disponible';
         }
     };
     
     // ===================================================================
-    // ⚡ AUTO-INSTALACIÓN Y MONITOREO ENTER AUTOMÁTICO
+    //  AUTO-INSTALACIÓN Y MONITOREO ENTER AUTOMÁTICO
     // ===================================================================
     
     // Auto-instalación inmediata
@@ -5247,11 +5279,10 @@
     setTimeout(() => window.ENTER_AUTOMATICO_GLOBAL.verificar(), 2000);
     setTimeout(() => window.ENTER_AUTOMATICO_GLOBAL.verificar(), 5000);
     
-    console.log('⚡ ENTER_AUTOMATICO_GLOBAL CARGADO');
     console.log('💡 Funciones disponibles: testEnterAutomaticoEscaneo(), forzarAutoLlenado()');
 
     // ===================================================================
-    // 🔥 AUTO-INSTALACIÓN Y MONITOREO
+    //  AUTO-INSTALACIÓN Y MONITOREO
     // ===================================================================
     
     // Auto-instalación inmediata
@@ -5298,21 +5329,6 @@
         });
     }
     
-    console.log('✅ SISTEMAS GLOBALES CARGADOS');
-    console.log('🎯 Funciones de HISTORIAL disponibles:');
-    console.log('   - debugHistorial()');
-    console.log('   - mostrarHistorial()');
-    console.log('   - mostrarRegistro()');
-    console.log('   - consultarSalidas()');
-    console.log('⚡ Funciones de ENTER AUTOMÁTICO disponibles:');
-    console.log('   - testAutoEnterSimple() ⭐ NUEVA FUNCIÓN GLOBAL');
-    console.log('   - verificarAutoEnter() ⭐ NUEVA FUNCIÓN GLOBAL');
-    console.log('   - configurarEventListenersEscaneo() ⭐ NUEVA FUNCIÓN GLOBAL');
-    console.log('   - configurarObservadorAJAX() ⭐ NUEVA FUNCIÓN GLOBAL');
-    console.log('   - testEnterAutomaticoEscaneo()');
-    console.log('   - forzarAutoLlenado()');
-    console.log('🧪 Para probar auto-Enter: testAutoEnterSimple()');
-    
     // Auto-test cuando se carga MaterialTemplate
     setTimeout(() => {
         if (document.getElementById('salida_codigo_material_recibido')) {
@@ -5320,15 +5336,9 @@
             console.log('💡 Ejecute: testAutoEnterSimple() para probar');
         }
     }, 1000);
-    console.log('🔧 Sistemas activos: HISTORIAL_GLOBAL + ENTER_AUTOMATICO_GLOBAL');
-    console.log('   - window.HISTORIAL_GLOBAL.verificar()');
-    console.log('🔧 Funciones de compatibilidad:');
-    console.log('   - mostrarHistorialSalida()');
-    console.log('   - mostrarRegistroSalida()');
-    console.log('   - window.HISTORIAL_GLOBAL.consultar()');
-    
-})();
-</script>
+
+
+})();</script>
 
 </body>
-</html>
+</html>  

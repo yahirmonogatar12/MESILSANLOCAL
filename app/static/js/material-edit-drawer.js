@@ -7,9 +7,15 @@ window.initializeMaterialDrawer = function() {
         console.log('🎯 Inicializando Panel de Edición de Materiales...');
         window.materialEditDrawer = new MaterialEditDrawer();
         console.log('✅ Panel de Edición de Materiales inicializado');
-        return true;
     }
-    return false;
+    
+    if (!window.materialRegistroDrawer) {
+        console.log('🎯 Inicializando Panel de Registro de Materiales...');
+        window.materialRegistroDrawer = new MaterialRegistroDrawer();
+        console.log('✅ Panel de Registro de Materiales inicializado');
+    }
+    
+    return true;
 };
 
 // Funciones globales para compatibilidad y carga AJAX
@@ -695,6 +701,325 @@ class MaterialEditDrawer {
             saveButton.disabled = true;
         } else {
             saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Guardar Cambios';
+            saveButton.disabled = false;
+        }
+    }
+
+    showSuccess(message) {
+        this.showToast(message, 'success');
+    }
+
+    showError(message) {
+        this.showToast(message, 'error');
+    }
+
+    showToast(message, type) {
+        const toastClass = type === 'success' ? 'bg-success' : 'bg-danger';
+        const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+        
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white ${toastClass} border-0 position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 11000; min-width: 300px;';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas ${icon} me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Usar Bootstrap Toast si está disponible
+        if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+            const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+            bsToast.show();
+        } else {
+            // Fallback sin Bootstrap
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+        }
+        
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+}
+
+// 🎯 Panel Lateral de Registro para Materiales
+class MaterialRegistroDrawer {
+    constructor() {
+        this.createDrawerHTML();
+        this.bindEvents();
+    }
+
+    createDrawerHTML() {
+        const drawerHTML = `
+        <!-- 🎨 Panel Lateral de Registro -->
+        <div id="registroDrawer" class="material-edit-drawer">
+            <div class="drawer-header">
+                <h3><i class="fas fa-plus-circle me-2"></i>Registrar Nuevo Material</h3>
+                <button type="button" class="btn-close-drawer" onclick="materialRegistroDrawer.cerrarDrawer()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="drawer-body">
+                <form id="registroMaterialForm">
+                    <!-- Información Principal -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-info-circle me-2"></i>Información Principal</h5>
+                        
+                        <div class="form-group">
+                            <label for="regCodigoMaterial" class="form-label">
+                                <i class="fas fa-barcode me-1"></i>Código de Material <span class="required">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="regCodigoMaterial" name="codigoMaterial" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regNumeroParte" class="form-label">
+                                <i class="fas fa-hashtag me-1"></i>Número de Parte <span class="required">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="regNumeroParte" name="numeroParte" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regPropiedadMaterial" class="form-label">
+                                <i class="fas fa-tag me-1"></i>Propiedad de Material <span class="required">*</span>
+                            </label>
+                            <select class="form-control" id="regPropiedadMaterial" name="propiedadMaterial" required>
+                                <option value="">Seleccionar propiedad</option>
+                                <option value="PART">PART</option>
+                                <option value="ETC">ETC</option>
+                                <option value="PCB">PCB</option>
+                                <option value="SMD">SMD</option>
+                                <option value="COMMON USE">COMMON USE</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regClassification" class="form-label">
+                                <i class="fas fa-layer-group me-1"></i>Clasificación
+                            </label>
+                            <input type="text" class="form-control" id="regClassification" name="classification" placeholder="Ej: CHIP RESISTOR, CAPACITOR, etc.">
+                        </div>
+                    </div>
+                    
+                    <!-- Especificaciones -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-cogs me-2"></i>Especificaciones</h5>
+                        
+                        <div class="form-group">
+                            <label for="regEspecificacionMaterial" class="form-label">
+                                <i class="fas fa-file-alt me-1"></i>Especificación de Material
+                            </label>
+                            <input type="text" class="form-control" id="regEspecificacionMaterial" name="especificacionMaterial" placeholder="Ej: 120J 1/4W (SMD 3216)">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regUnidadEmpaque" class="form-label">
+                                <i class="fas fa-box me-1"></i>Unidad de Empaque
+                            </label>
+                            <input type="number" class="form-control" id="regUnidadEmpaque" name="unidadEmpaque" value="0" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regUbicacionMaterial" class="form-label">
+                                <i class="fas fa-map-marker-alt me-1"></i>Ubicación de Material
+                            </label>
+                            <input type="text" class="form-control" id="regUbicacionMaterial" name="ubicacionMaterial" placeholder="Ubicación en almacén">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regVendedor" class="form-label">
+                                <i class="fas fa-user-tie me-1"></i>Vendedor
+                            </label>
+                            <input type="text" class="form-control" id="regVendedor" name="vendedor" placeholder="Nombre del vendedor">
+                        </div>
+                    </div>
+                    
+                    <!-- Características MSL -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-thermometer-half me-2"></i>Características MSL</h5>
+                        
+                        <div class="form-group">
+                            <label for="regNivelMsl" class="form-label">
+                                <i class="fas fa-thermometer-half me-1"></i>Nivel de MSL
+                            </label>
+                            <select class="form-control" id="regNivelMsl" name="nivelMSL">
+                                <option value="">Seleccionar nivel</option>
+                                <option value="1">Nivel 1</option>
+                                <option value="2">Nivel 2</option>
+                                <option value="3">Nivel 3</option>
+                                <option value="4">Nivel 4</option>
+                                <option value="5">Nivel 5</option>
+                                <option value="6">Nivel 6</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regEspesorMsl" class="form-label">
+                                <i class="fas fa-ruler me-1"></i>Espesor de MSL
+                            </label>
+                            <input type="text" class="form-control" id="regEspesorMsl" name="espesorMSL" placeholder="Ej: 0.5mm">
+                        </div>
+                    </div>
+                    
+                    <!-- Configuraciones -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-sliders-h me-2"></i>Configuraciones</h5>
+                        
+                        <div class="form-group">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="regProhibidoSacar" name="prohibidoSacar">
+                                <label class="form-check-label" for="regProhibidoSacar">
+                                    <i class="fas fa-ban me-1 text-danger"></i>Prohibido Sacar
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="regReparable" name="reparable">
+                                <label class="form-check-label" for="regReparable">
+                                    <i class="fas fa-tools me-1 text-success"></i>Reparable
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="drawer-footer">
+                <button type="button" class="btn btn-secondary" onclick="materialRegistroDrawer.cerrarDrawer()">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="materialRegistroDrawer.guardarRegistro()">
+                    <i class="fas fa-save me-1"></i>Registrar Material
+                </button>
+            </div>
+        </div>
+
+        <!-- Overlay para registro -->
+        <div id="registroDrawerOverlay" class="drawer-overlay" onclick="materialRegistroDrawer.cerrarDrawer()"></div>
+        `;
+
+        // Inyectar HTML al final del body
+        document.body.insertAdjacentHTML('beforeend', drawerHTML);
+    }
+
+    bindEvents() {
+        // Vincular el evento submit del formulario
+        const form = document.getElementById('registroMaterialForm');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.guardarRegistro();
+            });
+        }
+    }
+
+    abrirPanelRegistro() {
+        // Limpiar formulario
+        this.limpiarFormulario();
+        
+        // Mostrar el drawer
+        document.getElementById('registroDrawer').classList.add('open');
+        document.getElementById('registroDrawerOverlay').classList.add('active');
+
+        console.log('📝 Panel de registro abierto');
+    }
+
+    cerrarDrawer() {
+        document.getElementById('registroDrawer').classList.remove('open');
+        document.getElementById('registroDrawerOverlay').classList.remove('active');
+    }
+
+    limpiarFormulario() {
+        const form = document.getElementById('registroMaterialForm');
+        if (form) {
+            form.reset();
+            // Restablecer valores por defecto
+            document.getElementById('regUnidadEmpaque').value = '0';
+        }
+    }
+
+    async guardarRegistro() {
+        try {
+            // Obtener datos del formulario
+            const formData = new FormData(document.getElementById('registroMaterialForm'));
+            const nuevoItem = {};
+
+            // Convertir FormData a objeto
+            for (let [key, value] of formData.entries()) {
+                nuevoItem[key] = value;
+            }
+
+            // Procesar checkboxes
+            nuevoItem.prohibidoSacar = document.getElementById('regProhibidoSacar').checked ? 1 : 0;
+            nuevoItem.reparable = document.getElementById('regReparable').checked ? 1 : 0;
+
+            // Validar campos requeridos
+            if (!nuevoItem.codigoMaterial) {
+                throw new Error('Código de material es requerido');
+            }
+            if (!nuevoItem.numeroParte) {
+                throw new Error('Número de parte es requerido');
+            }
+            if (!nuevoItem.propiedadMaterial) {
+                throw new Error('Propiedad de material es requerida');
+            }
+
+            // Mostrar indicador de carga
+            this.showLoadingButton(true);
+
+            console.log('📤 Enviando nuevo material:', nuevoItem);
+
+            // Enviar al servidor
+            const response = await fetch('/guardar_material', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(nuevoItem)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Cerrar drawer y limpiar formulario
+                this.cerrarDrawer();
+                this.limpiarFormulario();
+                
+                // Mostrar mensaje de éxito
+                this.showSuccess(result.message || "Material registrado exitosamente! Haga clic en 'Consultar' para ver los datos actualizados.");
+                
+                console.log('✅ Material registrado exitosamente');
+            } else {
+                throw new Error(result.error || 'Error desconocido al registrar');
+            }
+
+        } catch (error) {
+            console.error('❌ Error al registrar material:', error);
+            this.showError('Error al registrar: ' + error.message);
+        } finally {
+            this.showLoadingButton(false);
+        }
+    }
+
+    showLoadingButton(loading) {
+        const saveButton = document.querySelector('#registroDrawer .btn-primary');
+        
+        if (loading) {
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Registrando...';
+            saveButton.disabled = true;
+        } else {
+            saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Registrar Material';
             saveButton.disabled = false;
         }
     }

@@ -888,35 +888,54 @@
             }
         }
 
-        async function cargarCodigosMaterial() {
+        async function cargarCodigosMaterial(busqueda = '') {
             try {
-                const response = await fetch('/obtener_codigos_material');
+                // Construir URL con parámetro de búsqueda si existe
+                const url = busqueda ? `/obtener_codigos_material?busqueda=${encodeURIComponent(busqueda)}` : '/obtener_codigos_material';
+                const response = await fetch(url);
                 
                 if (response.ok) {
-                    codigosMaterial = await response.json();
+                    const data = await response.json();
+                    
+                    // Si es una búsqueda, no sobrescribir codigosMaterial completo
+                    if (busqueda) {
+                        return data; // Devolver resultados de búsqueda
+                    } else {
+                        codigosMaterial = data; // Cargar datos completos
+                        return data;
+                    }
                 } else {
                     console.error('Error al cargar códigos de material, status:', response.status);
                     // Si hay error, usar datos de prueba
-                    codigosMaterial = [
+                    const datosPrueba = [
                         {codigo: 'M2606809020', nombre: 'M2606809020', spec: '68F 1608', cantidad_estandarizada: '1000', propiedad_material: '68F 1608'},
                         {codigo: 'M2609109005', nombre: 'M2609109005', spec: '91F 1608', cantidad_estandarizada: '2000', propiedad_material: '91F 1608'},
                         {codigo: 'NFM961W550504', nombre: 'NFM961W550504', spec: 'S7882_10.1_NOKEY_FW0F', cantidad_estandarizada: '500', propiedad_material: 'S7882_10.1_NOKEY_FW0F'}
                     ];
+                    
+                    if (!busqueda) {
+                        codigosMaterial = datosPrueba;
+                    }
+                    return datosPrueba;
                 }
             } catch (error) {
                 console.error('Error en fetch:', error);
                 // Si hay error, usar datos de prueba
-                codigosMaterial = [
+                const datosPrueba = [
                     {codigo: 'M2606809020', nombre: 'M2606809020', spec: '68F 1608', cantidad_estandarizada: '1000', propiedad_material: '68F 1608'},
                     {codigo: 'M2609109005', nombre: 'M2609109005', spec: '91F 1608', cantidad_estandarizada: '2000', propiedad_material: '91F 1608'},
                     {codigo: 'NFM961W550504', nombre: 'NFM961W550504', spec: 'S7882_10.1_NOKEY_FW0F', cantidad_estandarizada: '500', propiedad_material: 'S7882_10.1_NOKEY_FW0F'}
                 ];
+                
+                if (!busqueda) {
+                    codigosMaterial = datosPrueba;
+                }
+                return datosPrueba;
             }
         }
 
         function abrirModalCodigoMaterial() {
             const modal = document.getElementById('modalCodigoMaterial');
-            const tbody = document.getElementById('tablaCodigosBody');
             const searchInput = document.getElementById('searchInput');
             
             // Cerrar otros dropdowns si están abiertos
@@ -925,23 +944,8 @@
             // Limpiar búsqueda
             searchInput.value = '';
             
-            // Llenar la tabla
-            tbody.innerHTML = '';
-            
-            if (codigosMaterial.length === 0) {
-                // Mostrar mensaje de "no hay datos"
-                const fila = tbody.insertRow();
-                fila.innerHTML = '<td colspan="3" style="text-align: center; padding: 20px; color: #666;">No hay códigos disponibles</td>';
-            } else {
-                codigosMaterial.forEach(codigo => {
-                    const fila = tbody.insertRow();
-                    fila.innerHTML = `
-                        <td onclick="seleccionarCodigo('${codigo.codigo}')">${codigo.codigo}</td>
-                        <td onclick="seleccionarCodigo('${codigo.codigo}')">${codigo.nombre}</td>
-                        <td onclick="seleccionarCodigo('${codigo.codigo}')">${codigo.spec}</td>
-                    `;
-                });
-            }
+            // Mostrar todos los materiales cargados usando la nueva función
+            mostrarResultadosEnTabla(codigosMaterial);
             
             // Mostrar el modal con animación suave
             modal.style.display = 'block';
@@ -984,30 +988,73 @@
             }, 500);
         }
 
-        function filtrarTablaModal() {
+        // Variable para el timeout del debounce
+        let timeoutBusqueda = null;
+
+        async function filtrarTablaModal() {
             const input = document.getElementById('searchInput');
-            const filtro = input.value.toLowerCase();
+            const filtro = input.value.trim();
             const tbody = document.getElementById('tablaCodigosBody');
             
+            // Limpiar timeout anterior
+            if (timeoutBusqueda) {
+                clearTimeout(timeoutBusqueda);
+            }
+            
+            // Si no hay filtro, mostrar todos los materiales cargados
+            if (filtro === '') {
+                mostrarResultadosEnTabla(codigosMaterial);
+                return;
+            }
+            
+            // Agregar indicador de carga
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px;"><i class="fas fa-spinner fa-spin"></i> Buscando...</td></tr>';
+            
+            // Implementar debounce para evitar demasiadas consultas
+            timeoutBusqueda = setTimeout(async () => {
+                try {
+                    console.log(`🔍 Búsqueda inteligente para: "${filtro}"`);
+                    
+                    // Llamar al servidor con búsqueda inteligente
+                    const resultados = await cargarCodigosMaterial(filtro);
+                    
+                    // Mostrar resultados
+                    mostrarResultadosEnTabla(resultados);
+                    
+                    console.log(`✅ Encontrados ${resultados.length} resultados para: "${filtro}"`);
+                    
+                } catch (error) {
+                    console.error('Error en búsqueda:', error);
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px; color: #dc3545;">Error en la búsqueda</td></tr>';
+                }
+            }, 500); // Esperar 500ms después de que el usuario deje de escribir
+        }
+        
+        function mostrarResultadosEnTabla(resultados) {
+            const tbody = document.getElementById('tablaCodigosBody');
             tbody.innerHTML = '';
             
-            const codigosFiltrados = codigosMaterial.filter(codigo => 
-                codigo.codigo.toLowerCase().includes(filtro) ||
-                codigo.nombre.toLowerCase().includes(filtro) ||
-                codigo.spec.toLowerCase().includes(filtro)
-            );
-            
-            if (codigosFiltrados.length === 0) {
+            if (resultados.length === 0) {
                 const fila = tbody.insertRow();
                 fila.innerHTML = '<td colspan="3" style="text-align: center; padding: 15px;">No se encontraron resultados</td>';
             } else {
-                codigosFiltrados.forEach(codigo => {
+                resultados.forEach(codigo => {
                     const fila = tbody.insertRow();
+                    
+                    // Resaltar coincidencias si están marcadas
+                    const codigoMostrar = codigo.coincidencia ? `<strong>${codigo.codigo}</strong>` : codigo.codigo;
+                    const nombreMostrar = codigo.coincidencia ? `<strong>${codigo.nombre}</strong>` : codigo.nombre;
+                    
                     fila.innerHTML = `
-                        <td onclick="seleccionarCodigo('${codigo.codigo}')">${codigo.codigo}</td>
-                        <td onclick="seleccionarCodigo('${codigo.codigo}')">${codigo.nombre}</td>
-                        <td onclick="seleccionarCodigo('${codigo.codigo}')">${codigo.spec}</td>
+                        <td onclick="seleccionarCodigo('${codigo.codigo}')" style="cursor: pointer;">${codigoMostrar}</td>
+                        <td onclick="seleccionarCodigo('${codigo.codigo}')" style="cursor: pointer;">${nombreMostrar}</td>
+                        <td onclick="seleccionarCodigo('${codigo.codigo}')" style="cursor: pointer;">${codigo.spec}</td>
                     `;
+                    
+                    // Agregar clase para resaltar filas con coincidencias
+                    if (codigo.coincidencia) {
+                        fila.style.backgroundColor = '#fff3cd';
+                    }
                 });
             }
         }
@@ -1369,29 +1416,72 @@
             }, 500);
         }
 
-        function buscarYSeleccionarCodigoMaterial(codigo) {
-            // Buscar si el código existe en la lista de materiales
-            const codigoEncontrado = codigosMaterial.find(c => c.codigo === codigo);
+        async function buscarYSeleccionarCodigoMaterial(codigo) {
+            console.log(`🔍 Búsqueda inteligente para código escaneado: "${codigo}"`);
             
-            if (codigoEncontrado) {
-                // Si existe, seleccionarlo automáticamente
-                seleccionarCodigo(codigo);
-            } else {
-                // Si no existe, mostrar en el dropdown pero sin seleccionar
-                const select = document.getElementById('codigoMaterialSelect');
-                select.innerHTML = `
-                    <option value="${codigo}" selected>${codigo} (Código escaneado - no encontrado en BD)</option>
-                    <option value="">Seleccionar</option>
-                `;
-                select.style.backgroundColor = '#fff3cd'; // Resaltar en amarillo
-                console.warn('Código de material no encontrado en la base de datos:', codigo);
+            try {
+                // Primero intentar búsqueda exacta local
+                let codigoEncontrado = codigosMaterial.find(c => c.codigo === codigo);
                 
-                // También llenar campos básicos aunque no esté en BD
-                llenarCamposInferiores(codigo);
+                // Si no se encuentra exactamente, usar búsqueda inteligente del servidor
+                if (!codigoEncontrado) {
+                    console.log(`📡 No encontrado localmente, buscando en servidor: "${codigo}"`);
+                    
+                    // Llamar al servidor con búsqueda inteligente
+                    const resultadosBusqueda = await cargarCodigosMaterial(codigo);
+                    
+                    if (resultadosBusqueda && resultadosBusqueda.length > 0) {
+                        // Tomar el primer resultado (más relevante)
+                        codigoEncontrado = resultadosBusqueda[0];
+                        console.log(`✅ Encontrado por búsqueda inteligente:`, codigoEncontrado);
+                    }
+                }
                 
-                setTimeout(() => {
-                    select.style.backgroundColor = '';
-                }, 3000);
+                if (codigoEncontrado) {
+                    
+                    // Si existe, seleccionarlo automáticamente
+                    seleccionarCodigo(codigoEncontrado.codigo);
+                    
+                    
+                } else {
+                    console.warn(`❌ Código de material no encontrado en la base de datos: ${codigo}`);
+                    
+                    // Si no existe, mostrar en el dropdown pero sin seleccionar
+                    const select = document.getElementById('codigoMaterialSelect');
+                    select.innerHTML = `
+                        <option value="${codigo}" selected>${codigo} (Código escaneado - no encontrado en BD)</option>
+                        <option value="">Seleccionar</option>
+                    `;
+                    select.style.backgroundColor = '#fff3cd'; // Resaltar en amarillo
+                    
+                    // También llenar campos básicos aunque no esté en BD
+                    llenarCamposInferiores(codigo);
+                    
+                    // Mostrar notificación de advertencia
+                    mostrarNotificacionImpresion(`Código no encontrado: ${codigo}`, 'warning');
+                    
+                    setTimeout(() => {
+                        select.style.backgroundColor = '';
+                    }, 3000);
+                }
+                
+            } catch (error) {
+                console.error('Error en búsqueda inteligente:', error);
+                
+                // En caso de error, usar comportamiento original
+                const codigoEncontrado = codigosMaterial.find(c => c.codigo === codigo);
+                
+                if (codigoEncontrado) {
+                    seleccionarCodigo(codigo);
+                } else {
+                    const select = document.getElementById('codigoMaterialSelect');
+                    select.innerHTML = `
+                        <option value="${codigo}" selected>${codigo} (Error en búsqueda)</option>
+                        <option value="">Seleccionar</option>
+                    `;
+                    console.warn('Código de material no encontrado en la base de datos:', codigo);
+                    llenarCamposInferiores(codigo);
+                }
             }
         }
 
