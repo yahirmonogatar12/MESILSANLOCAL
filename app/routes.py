@@ -23,72 +23,6 @@ from .db_mysql import (
 import pandas as pd
 from werkzeug.utils import secure_filename
 
-# 🆕 Función optimizada para inserción masiva
-def execute_bulk_insert(sql, values_list, batch_size=1000):
-    """
-    Ejecuta inserción masiva optimizada para archivos grandes
-    
-    Args:
-        sql: Query SQL con placeholders
-        values_list: Lista de tuplas con los valores
-        batch_size: Tamaño del lote para procesar (default 1000)
-    
-    Returns:
-        bool: True si fue exitoso, False si hubo error
-    """
-    try:
-        # Usar MySQLdb que ya está configurado
-        from .config_mysql import get_mysql_connection
-        import MySQLdb
-        
-        # Obtener conexión MySQL directamente (ya creada)
-        conn = get_mysql_connection()
-        if not conn:
-            print("❌ Error: No se pudo obtener conexión a MySQL")
-            return False
-        
-        cursor = conn.cursor()
-        
-        total_records = len(values_list)
-        processed = 0
-        
-        print(f"🚀 Iniciando inserción masiva: {total_records} registros en lotes de {batch_size}")
-        
-        # Procesar en lotes para evitar timeouts
-        for i in range(0, total_records, batch_size):
-            batch = values_list[i:i + batch_size]
-            
-            try:
-                # Usar executemany para inserción masiva
-                cursor.executemany(sql, batch)
-                conn.commit()
-                
-                processed += len(batch)
-                progress = (processed / total_records) * 100
-                print(f"📊 Progreso: {processed}/{total_records} ({progress:.1f}%)")
-                
-            except MySQLdb.Error as e:
-                print(f"❌ Error en lote {i//batch_size + 1}: {e}")
-                conn.rollback()
-                # Continuar con el siguiente lote en lugar de fallar completamente
-                continue
-        
-        cursor.close()
-        conn.close()
-        
-        print(f"✅ Inserción masiva completada: {processed} registros procesados")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error crítico en execute_bulk_insert: {e}")
-        try:
-            if 'conn' in locals() and conn:
-                conn.rollback()
-                conn.close()
-        except:
-            pass
-        return False
-
 # Importar sistema de autenticación mejorado
 from .auth_system import AuthSystem
 from .user_admin import user_admin_bp
@@ -96,10 +30,6 @@ from .admin_api import admin_bp
 
 app = Flask(__name__)
 app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
-
-# 🆕 Configuración para archivos grandes
-app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32 MB máximo
-app.config['UPLOAD_TIMEOUT'] = 300  # 5 minutos timeout
 
 # Inicializar base de datos original
 init_db()  # Esto crea la tabla si no existe
@@ -415,19 +345,6 @@ def desarrollo():
     usuario = session.get('usuario', 'Invitado')
     return render_template('Control de material/Control de salida.html', usuario=usuario)
 
-@app.route('/control_bom')
-@login_requerido  
-def control_bom():
-    """Ruta principal para Control de BOM"""
-    try:
-        query = "SELECT DISTINCT modelo FROM bom ORDER BY modelo"
-        modelos_result = execute_query(query, fetch='all')
-        modelos = [{'modelo': row['modelo']} for row in modelos_result] if modelos_result else []
-        return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', modelos=modelos)
-    except Exception as e:
-        print(f"Error cargando control BOM: {e}")
-        return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', modelos=[])
-
 
 @app.route('/logout')
 def logout():
@@ -474,189 +391,41 @@ def cargar_template():
         return jsonify({'error': f'Error al cargar el template: {str(e)}'}), 500
 
 @app.route('/importar_excel_bom', methods=['POST'])
+@login_requerido
 def importar_excel_bom():
-    import pandas as pd
-    from datetime import datetime
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No se encontró el archivo'})
     
     file = request.files['file']
-    # Recibir el usuario desde el frontend
-    registrador = request.form.get('registrador', None) or session.get('usuario', 'Sistema')
-    
-    # Generar fecha actual
-    fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    print(f"📝 Usuario registrador: {registrador}")
-    print(f"📅 Fecha registro: {fecha_registro}")
-    
-    if not file:
-        return jsonify({'success': False, 'error': 'No se recibió archivo'})
-    
-    try:
-        # Lee Excel o CSV usando pandas
-        if file.filename.endswith('.xlsx'):
-            df = pd.read_excel(file)
-        elif file.filename.endswith('.csv'):
-            df = pd.read_csv(file)
-        else:
-            return jsonify({'success': False, 'error': 'Archivo no soportado. Use .xlsx o .csv'})
-        
-        if df.empty:
-            return jsonify({'success': False, 'error': 'El archivo está vacío'})
-        
-        print(f"📊 Archivo leído: {len(df)} registros encontrados")
-        
-        # Mapeo de columnas (ajusta según tu archivo Excel)
-        column_mapping = {
-            'Modelo': 'modelo',
-            'Código de material': 'codigo_material',
-            'Número de parte': 'numero_parte',
-            'Side': 'side',
-            'Tipo de material': 'tipo_material',
-            'Classification': 'classification',
-            'Especificación de material': 'especificacion_material',
-            'Vender': 'vender',
-            'Cantidad total': 'cantidad_total',
-            'Cantidad original': 'cantidad_original',
-            'Ubicación': 'ubicacion',
-            'Material sustituto': 'material_sustituto',
-            'Material original': 'material_original'
-        }
-        
-        # Renombrar columnas
-        df = df.rename(columns=column_mapping)
-        
-        # Agrega columnas del sistema automáticamente
-        df['registrador'] = registrador
-        df['fecha_registro'] = fecha_registro
-        
-        # Define las columnas finales en orden
-        columnas_finales = [
-            'modelo', 'codigo_material', 'numero_parte', 'side', 'tipo_material', 'classification',
-            'especificacion_material', 'vender', 'cantidad_total', 'cantidad_original',
-            'ubicacion', 'material_sustituto', 'material_original', 'registrador', 'fecha_registro'
-        ]
-        
-        # Llenar campos vacíos con None y reordenar columnas
-        for col in columnas_finales:
-            if col not in df.columns:
-                df[col] = None
-        
-        df = df[columnas_finales]
-        
-        # Limpiar datos nulos y convertir a valores apropiados
-        df = df.fillna('')  # Reemplazar NaN con string vacío
-        
-        print(f"🔄 Preparando inserción masiva de {len(df)} registros...")
-        
-        # 🚀 INSERCIÓN MASIVA OPTIMIZADA usando execute_query con executemany
-        sql = """
-        INSERT INTO bom (
-            modelo, codigo_material, numero_parte, side, tipo_material, classification,
-            especificacion_material, vender, cantidad_total, cantidad_original,
-            ubicacion, material_sustituto, material_original, registrador, fecha_registro
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            cantidad_total=VALUES(cantidad_total),
-            cantidad_original=VALUES(cantidad_original),
-            fecha_registro=VALUES(fecha_registro),
-            registrador=VALUES(registrador)
-        """
-        
-        # Convertir DataFrame a lista de tuplas para bulk insert
-        values_list = [tuple(row) for row in df.values]
-        
-        # Usar función personalizada para bulk insert
-        success = execute_bulk_insert(sql, values_list)
-        
-        if success:
-            registros_insertados = len(values_list)
-            print(f"✅ Inserción masiva completada: {registros_insertados} registros")
-            
-            return jsonify({
-                'success': True, 
-                'message': f'Se importaron {registros_insertados} registros exitosamente por {registrador} (inserción masiva optimizada)'
-            })
-        else:
-            return jsonify({'success': False, 'error': 'Error en la inserción masiva de datos'})
-            
-    except pd.errors.EmptyDataError:
-        return jsonify({'success': False, 'error': 'El archivo Excel está vacío o corrupto'})
-    except pd.errors.ParserError as e:
-        return jsonify({'success': False, 'error': f'Error al leer el archivo: {str(e)}'})
-    except Exception as e:
-        print(f"❌ Error en importar_excel_bom: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': f'Error al procesar el archivo: {str(e)}'})
-@app.route('/importar_excel_bom_simple', methods=['POST'])
-def importar_excel_bom_simple():
-    """Versión simplificada sin registrador ni fecha_registro"""
-    file = request.files['file']
-    
-    if file:
-        # Lee Excel o CSV usando pandas
-        if file.filename.endswith('.xlsx'):
-            df = pd.read_excel(file)
-        elif file.filename.endswith('.csv'):
-            df = pd.read_csv(file)
-        else:
-            return jsonify({'success': False, 'error': 'Archivo no soportado'})
-        
-        # Mapeo de columnas (ajusta según tu archivo Excel)
-        df = df.rename(columns={
-            'Modelo': 'modelo',
-            'Código de material': 'codigo_material',
-            'Número de parte': 'numero_parte',
-            'Side': 'side',
-            'Tipo de material': 'tipo_material',
-            'Classification': 'classification',
-            'Especificación de material': 'especificacion_material',
-            'Vender': 'vender',
-            'Cantidad total': 'cantidad_total',
-            'Cantidad original': 'cantidad_original',
-            'Ubicación': 'ubicacion',
-            'Material sustituto': 'material_sustituto',
-            'Material original': 'material_original'
-        })
-        
-        # Define las columnas finales en orden (SIN registrador y fecha_registro)
-        columnas = [
-            'modelo', 'codigo_material', 'numero_parte', 'side', 'tipo_material', 'classification',
-            'especificacion_material', 'vender', 'cantidad_total', 'cantidad_original',
-            'ubicacion', 'material_sustituto', 'material_original'
-        ]
-        
-        # Llenar campos vacíos con None
-        for col in columnas:
-            if col not in df.columns:
-                df[col] = None
-        df = df[columnas]
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No se seleccionó ningún archivo'})
 
-        # Inserta los datos a la tabla MySQL usando execute_query
-        try:
-            registros_insertados = 0
-            for _, row in df.iterrows():
-                values = tuple(row)
-                sql = """
-                INSERT INTO bom (
-                    modelo, codigo_material, numero_parte, side, tipo_material, classification,
-                    especificacion_material, vender, cantidad_total, cantidad_original,
-                    ubicacion, material_sustituto, material_original
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    cantidad_total=VALUES(cantidad_total),
-                    cantidad_original=VALUES(cantidad_original)
-                """
-                execute_query(sql, values)
-                registros_insertados += 1
-            
-            return jsonify({
-                'success': True, 
-                'message': f'Se importaron {registros_insertados} registros exitosamente'
-            })
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)})
-    return jsonify({'success': False, 'error': 'No se recibió archivo'})
+    try:
+        print("--- Iniciando importación de BOM ---")
+        df = pd.read_excel(file)
+        
+        # Imprime las columnas detectadas para depuración
+        print(f"Columnas detectadas en el Excel: {df.columns.tolist()}")
+        
+        registrador = session.get('usuario', 'desconocido')
+        
+        # Llamar a la nueva función de la base de datos
+        resultado = insertar_bom_desde_dataframe(df, registrador)
+        
+        insertados = resultado.get('insertados', 0)
+        omitidos = resultado.get('omitidos', 0)
+        
+        mensaje = f"Importación completada: {insertados} registros guardados."
+        if omitidos > 0:
+            mensaje += f" Se omitieron {omitidos} filas por no tener 'Modelo' o 'Número de parte'."
+        
+        print(f"--- Finalizando importación: {mensaje} ---")
+        
+        return jsonify({'success': True, 'message': mensaje})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f"Ocurrió un error: {str(e)}"})
 
 @app.route('/listar_modelos_bom', methods=['GET'])
 @login_requerido
@@ -671,45 +440,22 @@ def listar_modelos_bom():
         print(f"Error al obtener modelos BOM: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Ruta para listar BOM por modelo (para tu tabla JS)
 @app.route('/listar_bom', methods=['POST'])
+@login_requerido
 def listar_bom():
-    data = request.get_json()
-    modelo = data.get('modelo')
-    
-    def convertir_nombre_campos_bom(row):
-        """Convierte nombres de campos de la BD (snake_case) a frontend (camelCase)"""
-        return {
-            'modelo': row.get('modelo'),
-            'codigoMaterial': row.get('codigo_material'),
-            'numeroParte': row.get('numero_parte'),
-            'side': row.get('side'),
-            'tipoMaterial': row.get('tipo_material'),
-            'classification': row.get('classification'),
-            'especificacionMaterial': row.get('especificacion_material'),
-            'vender': row.get('vender'),
-            'cantidadTotal': row.get('cantidad_total'),
-            'cantidadOriginal': row.get('cantidad_original'),
-            'ubicacion': row.get('ubicacion'),
-            'materialSustituto': row.get('material_sustituto'),
-            'materialOriginal': row.get('material_original'),
-            'registrador': row.get('registrador'),
-            'fechaRegistro': row.get('fecha_registro')
-        }
-    
+    """
+    Lista los registros de BOM, opcionalmente filtrados por modelo
+    """
     try:
-        query = "SELECT * FROM bom WHERE modelo = %s ORDER BY numero_parte"
-        rows = execute_query(query, (modelo,), fetch='all')
+        data = request.get_json()
+        modelo = data.get('modelo', 'todos') if data else 'todos'
         
-        # Mapear los nombres de campos para que coincidan con el frontend
-        mapped_rows = [convertir_nombre_campos_bom(row) for row in rows] if rows else []
+        bom_data = listar_bom_por_modelo(modelo)
+        return jsonify(bom_data)
         
-        print(f"📊 BOM consultado para modelo '{modelo}': {len(mapped_rows)} registros encontrados")
-        
-        return jsonify(mapped_rows)
     except Exception as e:
-        print(f"❌ Error en listar_bom: {str(e)}")
-        return jsonify({'error': str(e)})
+        print(f"Error al listar BOM: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/consultar_bom', methods=['GET'])
 @login_requerido
@@ -717,26 +463,6 @@ def consultar_bom():
     """
     Consulta datos de BOM con filtros GET para la interfaz de Control de salida
     """
-    def convertir_nombre_campos_bom(row):
-        """Convierte nombres de campos de la BD (snake_case) a frontend (camelCase)"""
-        return {
-            'modelo': row.get('modelo'),
-            'codigoMaterial': row.get('codigo_material'),
-            'numeroParte': row.get('numero_parte'),
-            'side': row.get('side'),
-            'tipoMaterial': row.get('tipo_material'),
-            'classification': row.get('classification'),
-            'especificacionMaterial': row.get('especificacion_material'),
-            'vender': row.get('vender'),
-            'cantidadTotal': row.get('cantidad_total'),
-            'cantidadOriginal': row.get('cantidad_original'),
-            'ubicacion': row.get('ubicacion'),
-            'materialSustituto': row.get('material_sustituto'),
-            'materialOriginal': row.get('material_original'),
-            'registrador': row.get('registrador'),
-            'fechaRegistro': row.get('fecha_registro')
-        }
-    
     try:
         # Obtener filtros de los parámetros de consulta
         modelo = request.args.get('modelo', '').strip()
@@ -756,12 +482,7 @@ def consultar_bom():
                     if numero_parte.lower() in str(item.get('numero_parte', '')).lower()
                 ]
         
-        # Mapear los nombres de campos para que coincidan con el frontend
-        mapped_data = [convertir_nombre_campos_bom(row) for row in bom_data] if bom_data else []
-        
-        print(f"📊 BOM consultado con filtros - modelo: '{modelo}', numero_parte: '{numero_parte}': {len(mapped_data)} registros")
-        
-        return jsonify(mapped_data)
+        return jsonify(bom_data)
         
     except Exception as e:
         print(f"Error al consultar BOM: {e}")
@@ -962,62 +683,16 @@ def guardar_material_route():
 @app.route('/listar_materiales')
 def listar_materiales():
     try:
-        # Usar función de db_mysql.py que ya devuelve datos formateados
+        # Usar función de db_mysql.py que ya devuelve el formato correcto
         materiales = obtener_materiales() or []
         
-        def convertir_a_entero_seguro(valor):
-            """Convierte un valor a entero de forma segura"""
-            if not valor:
-                return 0
-            
-            # Si ya es entero, devolverlo
-            if isinstance(valor, int):
-                return valor
-            
-            # Si es string, intentar conversión
-            if isinstance(valor, str):
-                valor_str = valor.strip().lower()
-                
-                # Valores que se consideran como "true" o "checked"
-                valores_true = ['1', 'true', 'yes', 'sí', 'si', 'checked', 'x', 'on', 'habilitado', 'activo']
-                # Valores que se consideran como "false" o "unchecked"
-                valores_false = ['0', 'false', 'no', 'unchecked', 'off', 'deshabilitado', 'inactivo', '']
-                
-                if valor_str in valores_true:
-                    return 1
-                elif valor_str in valores_false:
-                    return 0
-                else:
-                    # Intentar conversión directa
-                    try:
-                        return int(float(valor_str))
-                    except:
-                        return 0
-            
-            # Para cualquier otro tipo, intentar conversión directa
-            try:
-                return int(valor)
-            except:
-                return 0
-        
-        # Los datos ya vienen formateados desde obtener_materiales(), solo ajustar campos específicos
-        materiales_procesados = []
-        for material in materiales:
-            material_procesado = material.copy()  # Copiar el material original
-            
-            # Procesar campos específicos que necesitan conversión
-            material_procesado['prohibidoSacar'] = convertir_a_entero_seguro(material.get('prohibidoSacar', 0))
-            material_procesado['reparable'] = convertir_a_entero_seguro(material.get('reparable', 0))
-            
-            materiales_procesados.append(material_procesado)
-        
-        return jsonify(materiales_procesados)
+        # La función obtener_materiales() ya devuelve el formato correcto
+        # No necesitamos procesamiento adicional
+        return jsonify(materiales)
         
     except Exception as e:
-        print(f"Error en listar_materiales: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'Error al cargar materiales: {str(e)}'}), 500
+        print(f"Error obteniendo materiales: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/inventario/lotes_detalle', methods=['POST'])
 @login_requerido
@@ -1123,11 +798,8 @@ def consultar_lotes_detalle():
 
 @app.route('/importar_excel', methods=['POST'])
 def importar_excel():
-    """🆕 Función optimizada para importación masiva de materiales"""
-    import pandas as pd
-    import traceback
-    from datetime import datetime
-    
+    conn = None
+    cursor = None
     temp_path = None
     
     try:
@@ -1139,225 +811,207 @@ def importar_excel():
             return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
         
         if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
-            return jsonify({'success': False, 'error': 'Formato de archivo no soportado. Use .xlsx o .xls'}), 400
-        
-        # Obtener el usuario registrador desde el frontend o sesión
-        registrador = request.form.get('registrador', None) or session.get('usuario', 'Sistema')
-        
-        # Generar fecha actual
-        fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        print(f"📝 Usuario registrador: {registrador}")
-        print(f"📅 Fecha registro: {fecha_registro}")
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
         
         # Guardar el archivo temporalmente
         filename = secure_filename(file.filename)
         temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
         file.save(temp_path)
         
-        # Leer el archivo Excel con pandas
+        # Leer el archivo Excel
         try:
-            if file.filename.endswith('.xlsx'):
-                df = pd.read_excel(temp_path, engine='openpyxl')
-            elif file.filename.endswith('.xls'):
-                df = pd.read_excel(temp_path, engine='xlrd')
-            else:
-                df = pd.read_excel(temp_path)
-                
-            print(f"📊 Archivo leído: {len(df)} registros encontrados")
-            
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
         except Exception as e:
-            return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e)}'}), 500
+            try:
+                df = pd.read_excel(temp_path)
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
         
         # Verificar que el DataFrame no esté vacío
         if df.empty:
             return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
         
+        # Obtener las columnas del Excel
+        columnas_excel = df.columns.tolist()
+        print(f"Columnas detectadas en Excel: {columnas_excel}")
+        
         # Mapeo de columnas (flexible para diferentes nombres)
-        column_mapping = {
-            'Codigo de material': 'codigo_material',
-            'Código de material': 'codigo_material',
-            'codigo_material': 'codigo_material',
-            'Codigo+de+material': 'codigo_material',
-            'Numero de parte': 'numero_parte',
-            'Número de parte': 'numero_parte',
-            'numero_parte': 'numero_parte',
-            'Número+de+parte': 'numero_parte',
-            'Propiedad de material': 'propiedad_material',
-            'propiedad_material': 'propiedad_material',
-            'Propiedad+de+material': 'propiedad_material',
-            'Classification': 'classification',
-            'classification': 'classification',
-            'Clasificación': 'classification',
-            'Clasificacion': 'classification',
-            'Especificacion de material': 'especificacion_material',
-            'Especificación de material': 'especificacion_material',
-            'especificacion_material': 'especificacion_material',
-            'Especificación+de+material': 'especificacion_material',
-            'Unidad de empaque': 'unidad_empaque',
-            'unidad_empaque': 'unidad_empaque',
-            'Unidad+de+empaque': 'unidad_empaque',
-            'Ubicacion de material': 'ubicacion_material',
-            'Ubicación de material': 'ubicacion_material',
-            'ubicacion_material': 'ubicacion_material',
-            'Ubicación+de+material': 'ubicacion_material',
-            'Vendedor': 'vendedor',
-            'vendedor': 'vendedor',
-            'Proveedor': 'vendedor',
-            'proveedor': 'vendedor',
-            'Prohibido sacar': 'prohibido_sacar',
-            'prohibido_sacar': 'prohibido_sacar',
-            'Prohibido+sacar': 'prohibido_sacar',
-            'Reparable': 'reparable',
-            'reparable': 'reparable',
-            'Nivel de MSL': 'nivel_msl',
-            'nivel_msl': 'nivel_msl',
-            'Nivel+de+MSL': 'nivel_msl',
-            'Espesor de MSL': 'espesor_msl',
-            'espesor_msl': 'espesor_msl',
-            'Espesor+de+MSL': 'espesor_msl'
+        mapeo_columnas = {
+            'codigo_material': ['Codigo de material', 'Código de material', 'codigo_material', 'Código+de+material'],
+            'numero_parte': ['Numero de parte', 'Número de parte', 'numero_parte', 'Número+de+parte'],
+            'propiedad_material': ['Propiedad de material', 'propiedad_material', 'Propiedad+de+material'],
+            'classification': ['Classification', 'classification', 'Clasificación', 'Clasificacion'],
+            'especificacion_material': ['Especificacion de material', 'Especificación de material', 'especificacion_material', 'Especificación+de+material'],
+            'unidad_empaque': ['Unidad de empaque', 'unidad_empaque', 'Unidad+de+empaque'],
+            'ubicacion_material': ['Ubicacion de material', 'Ubicación de material', 'ubicacion_material', 'Ubicación+de+material'],
+            'vendedor': ['Vendedor', 'vendedor', 'Proveedor', 'proveedor'],
+            'prohibido_sacar': ['Prohibido sacar', 'prohibido_sacar', 'Prohibido+sacar'],
+            'reparable': ['Reparable', 'reparable'],
+            'nivel_msl': ['Nivel de MSL', 'nivel_msl', 'Nivel+de+MSL'],
+            'espesor_msl': ['Espesor de MSL', 'espesor_msl', 'Espesor+de+MSL']
         }
         
-        # Renombrar columnas
-        df = df.rename(columns=column_mapping)
+        def obtener_valor_columna(row, campo):
+            """Obtiene el valor de una columna usando el mapeo flexible"""
+            posibles_nombres = mapeo_columnas.get(campo, [campo])
+            
+            for nombre in posibles_nombres:
+                if nombre in row:
+                    valor = row[nombre]
+                    if pd.isna(valor) or valor is None:
+                        return ''
+                    return str(valor).strip()
+            
+            # Si no encuentra la columna, usar posición por índice como fallback
+            try:
+                campos_orden = ['codigo_material', 'numero_parte', 'propiedad_material', 'classification',
+                               'especificacion_material', 'unidad_empaque', 'ubicacion_material', 'vendedor',
+                               'prohibido_sacar', 'reparable', 'nivel_msl', 'espesor_msl']
+                if campo in campos_orden:
+                    idx = campos_orden.index(campo)
+                    if idx < len(columnas_excel):
+                        valor = row.get(columnas_excel[idx], '')
+                        if pd.isna(valor) or valor is None:
+                            return ''                   
+                        return str(valor).strip()
+            except:
+                pass
+            
+            return ''
         
-        # Columnas finales en orden
-        columnas_finales = [
-            'codigo_material', 'numero_parte', 'propiedad_material', 'classification',
-            'especificacion_material', 'unidad_empaque', 'ubicacion_material', 'vendedor',
-            'prohibido_sacar', 'reparable', 'nivel_msl', 'espesor_msl'
-        ]
-        
-        # Llenar campos vacíos con valores por defecto
-        for col in columnas_finales:
-            if col not in df.columns:
-                df[col] = None
-        
-        # Reordenar columnas
-        df = df[columnas_finales]
-        
-        # Limpiar y convertir datos
         def convertir_checkbox(valor):
             """Convierte valores de checkbox del Excel a 0 o 1"""
-            if pd.isna(valor) or valor is None:
-                return 0
+            if not valor or pd.isna(valor):
+                return '0'
             
             valor_str = str(valor).strip().lower()
+            
+            # Valores que se consideran como "true" o "checked"
             valores_true = ['1', 'true', 'yes', 'sí', 'si', 'checked', 'x', 'on', 'habilitado', 'activo']
+            # Valores que se consideran como "false" o "unchecked"
+            valores_false = ['0', 'false', 'no', 'unchecked', 'off', 'deshabilitado', 'inactivo', '']
             
             if valor_str in valores_true:
-                return 1
+                return '1'
+            elif valor_str in valores_false:
+                return '0'
             else:
-                return 0
+                # Si no reconoce el valor, asumir false por seguridad
+                return '0'
         
         def limpiar_numero(valor):
             """Limpia números eliminando decimales innecesarios (.0)"""
-            if pd.isna(valor) or valor is None:
+            if not valor or pd.isna(valor):
                 return ''
             
             try:
                 numero = float(valor)
-                if numero % 1 == 0:
-                    return str(int(numero))
+                if numero % 1 == 0:  # Es un número entero
+                    return str(int(numero))  # Devolver como entero sin decimales
                 else:
-                    return str(numero)
+                    return str(numero)  # Mantener decimales si son necesarios
             except (ValueError, TypeError):
+                # Si no es un número válido, devolver como string
                 return str(valor).strip()
         
-        # Procesar datos del DataFrame
-        processed_data = []
+        # Insertar los datos usando funciones de MySQL
+        registros_insertados = 0
         errores = []
         
         for index, row in df.iterrows():
             try:
+                # Convert index to int safely
+                row_number = int(index) + 1 if isinstance(index, (int, float)) else len(errores) + registros_insertados + 1
+                
+                # Obtener valores usando el mapeo flexible
+                codigo_material = obtener_valor_columna(row, 'codigo_material')
+                numero_parte = obtener_valor_columna(row, 'numero_parte')
+                propiedad_material = obtener_valor_columna(row, 'propiedad_material')
+                classification = obtener_valor_columna(row, 'classification')
+                especificacion_material = obtener_valor_columna(row, 'especificacion_material')
+                unidad_empaque = limpiar_numero(obtener_valor_columna(row, 'unidad_empaque'))
+                ubicacion_material = obtener_valor_columna(row, 'ubicacion_material')
+                vendedor = obtener_valor_columna(row, 'vendedor')
+                
+                # Convertir valores de checkbox correctamente
+                prohibido_sacar = int(convertir_checkbox(obtener_valor_columna(row, 'prohibido_sacar')))
+                reparable = int(convertir_checkbox(obtener_valor_columna(row, 'reparable')))
+                
+                nivel_msl = limpiar_numero(obtener_valor_columna(row, 'nivel_msl'))
+                espesor_msl = obtener_valor_columna(row, 'espesor_msl')
+                
                 # Validar que al menos el código de material no esté vacío
-                codigo_material = str(row.get('codigo_material', '') or '').strip()
                 if not codigo_material:
-                    errores.append(f"Fila {index + 1}: Código de material vacío")
+                    errores.append(f"Fila {row_number}: Código de material vacío")
                     continue
                 
-                # Procesar cada campo
-                numero_parte = str(row.get('numero_parte', '') or '').strip()
-                propiedad_material = str(row.get('propiedad_material', '') or '').strip()
-                classification = str(row.get('classification', '') or '').strip()
-                especificacion_material = str(row.get('especificacion_material', '') or '').strip()
-                unidad_empaque = limpiar_numero(row.get('unidad_empaque', ''))
-                ubicacion_material = str(row.get('ubicacion_material', '') or '').strip()
-                vendedor = str(row.get('vendedor', '') or '').strip()
-                prohibido_sacar = convertir_checkbox(row.get('prohibido_sacar', 0))
-                reparable = convertir_checkbox(row.get('reparable', 0))
-                nivel_msl = limpiar_numero(row.get('nivel_msl', ''))
-                espesor_msl = str(row.get('espesor_msl', '') or '').strip()
+                # Preparar datos del material
+                material_data = {
+                    'codigo_material': codigo_material,
+                    'numero_parte': numero_parte,
+                    'propiedad_material': propiedad_material,
+                    'classification': classification,
+                    'especificacion_material': especificacion_material,
+                    'unidad_empaque': unidad_empaque,
+                    'ubicacion_material': ubicacion_material,
+                    'vendedor': vendedor,
+                    'prohibido_sacar': prohibido_sacar,
+                    'reparable': reparable,
+                    'nivel_msl': nivel_msl,
+                    'espesor_msl': espesor_msl
+                }
                 
-                # Agregar tupla de datos procesados
-                processed_data.append((
-                    codigo_material, numero_parte, propiedad_material, classification,
-                    especificacion_material, unidad_empaque, ubicacion_material, vendedor,
-                    prohibido_sacar, reparable, nivel_msl, espesor_msl, fecha_registro
-                ))
+                # Usar función de db_mysql.py CON LOGGING DETALLADO
+                print(f"🔍 === INTENTANDO GUARDAR FILA {row_number} ===")
+                print(f"🔍 Código: '{codigo_material}'")
+                print(f"🔍 Número parte: '{numero_parte}'") 
+                print(f"🔍 Propiedad: '{propiedad_material}'")
+                
+                success = guardar_material(material_data)
+                
+                if success:
+                    registros_insertados += 1
+                    print(f"✅ Fila {row_number} guardada exitosamente")
+                else:
+                    error_msg = f"Fila {row_number}: Error al guardar en base de datos"
+                    errores.append(error_msg)
+                    print(f"❌ {error_msg}")
+                    # Log adicional de datos problemáticos
+                    print(f"🔍 Datos problemáticos fila {row_number}:")
+                    for key, value in material_data.items():
+                        if value and len(str(value)) > 50:
+                            print(f"  - {key}: '{str(value)[:50]}...' (TRUNCADO - longitud: {len(str(value))})")
+                        else:
+                            print(f"  - {key}: '{value}'")
                 
             except Exception as e:
-                errores.append(f"Error en fila {index + 1}: {str(e)}")
+                row_number = int(index) + 1 if isinstance(index, (int, float)) else len(errores) + registros_insertados + 1
+                error_msg = f"Error en fila {row_number}: {str(e)}"
+                errores.append(error_msg)
+                print(f"❌ EXCEPCIÓN en fila {row_number}: {e}")
+                print(f"🔍 Datos que causaron la excepción:")
+                try:
+                    print(f"  - codigo_material: '{codigo_material}'")
+                    print(f"  - numero_parte: '{numero_parte}'")
+                    print(f"  - Row data sample: {dict(list(row.items())[:3])}")
+                except:
+                    print("  - No se pudo mostrar datos de la fila")
                 continue
         
-        # Validar que hay datos para procesar
-        if not processed_data:
-            return jsonify({'success': False, 'error': 'No hay datos válidos para procesar'}), 400
+        # Preparar respuesta
+        mensaje = f'Se importaron {registros_insertados} registros exitosamente'
+        if errores:
+            mensaje += f'. Se encontraron {len(errores)} errores'
+            if len(errores) <= 5:
+                mensaje += f': {"; ".join(errores)}'
         
-        print(f"🔄 Preparando inserción masiva de {len(processed_data)} registros...")
+        return jsonify({'success': True, 'message': mensaje})
         
-        # 🚀 INSERCIÓN MASIVA OPTIMIZADA
-        sql = """
-        INSERT INTO materiales (
-            codigo_material, numero_parte, propiedad_material, classification,
-            especificacion_material, unidad_empaque, ubicacion_material, vendedor,
-            prohibido_sacar, reparable, nivel_msl, espesor_msl, fecha_registro
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            numero_parte=VALUES(numero_parte),
-            propiedad_material=VALUES(propiedad_material),
-            classification=VALUES(classification),
-            especificacion_material=VALUES(especificacion_material),
-            unidad_empaque=VALUES(unidad_empaque),
-            ubicacion_material=VALUES(ubicacion_material),
-            vendedor=VALUES(vendedor),
-            prohibido_sacar=VALUES(prohibido_sacar),
-            reparable=VALUES(reparable),
-            nivel_msl=VALUES(nivel_msl),
-            espesor_msl=VALUES(espesor_msl),
-            fecha_registro=VALUES(fecha_registro)
-        """
-        
-        # Usar función personalizada para bulk insert
-        success = execute_bulk_insert(sql, processed_data)
-        
-        if success:
-            registros_procesados = len(processed_data)
-            print(f"✅ Inserción masiva completada: {registros_procesados} registros")
-            
-            mensaje = f'Se importaron {registros_procesados} registros exitosamente por {registrador} (inserción masiva optimizada)'
-            if errores:
-                mensaje += f'. Se encontraron {len(errores)} errores en el archivo'
-                if len(errores) <= 5:
-                    mensaje += f': {"; ".join(errores)}'
-            
-            return jsonify({
-                'success': True, 
-                'message': mensaje,
-                'registros_procesados': registros_procesados,
-                'errores_encontrados': len(errores)
-            })
-        else:
-            return jsonify({'success': False, 'error': 'Error en la inserción masiva de datos'})
-            
-    except pd.errors.EmptyDataError:
-        return jsonify({'success': False, 'error': 'El archivo Excel está vacío o corrupto'})
-    except pd.errors.ParserError as e:
-        return jsonify({'success': False, 'error': f'Error al leer el archivo: {str(e)}'})
     except Exception as e:
-        print(f"❌ Error en importar_excel: {str(e)}")
+        print(f"Error general en importar_excel: {str(e)}")
+        import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': f'Error al procesar el archivo: {str(e)}'})
+        return jsonify({'success': False, 'error': f'Error al procesar el archivo: {str(e)}'}), 500
         
     finally:
         # Limpiar archivo temporal
@@ -1415,133 +1069,6 @@ def actualizar_campo_material():
         
     except Exception as e:
         print(f"Error al actualizar campo: {str(e)}")
-        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
-
-@app.route('/actualizar_material_completo', methods=['POST'])
-@login_requerido
-def actualizar_material_completo():
-    """Actualizar todos los campos de un material usando panel lateral"""
-    from datetime import datetime
-    import traceback
-    
-    try:
-        print("🔧 Iniciando actualización de material completo...")
-        
-        data = request.get_json()
-        if not data:
-            print("❌ No se proporcionaron datos")
-            return jsonify({'success': False, 'error': 'No se proporcionaron datos'}), 400
-        
-        print(f"📥 Datos recibidos: {data}")
-        
-        # Obtener datos del formulario
-        codigo_material_original = data.get('codigo_material_original')  # El código original para buscar
-        nuevos_datos = data.get('nuevos_datos', {})
-        
-        print(f"🔍 Código original: {codigo_material_original}")
-        print(f"📝 Nuevos datos: {nuevos_datos}")
-        
-        # Validar datos requeridos
-        if not codigo_material_original or not nuevos_datos:
-            print("❌ Faltan datos requeridos")
-            return jsonify({'success': False, 'error': 'Código de material original y nuevos datos requeridos'}), 400
-            
-        # Verificar que el material existe
-        query_verificar = 'SELECT codigo_material FROM materiales WHERE codigo_material = %s'
-        print(f"🔍 Verificando existencia con query: {query_verificar}")
-        print(f"🔍 Parámetros: {(codigo_material_original,)}")
-        
-        material_existe = execute_query(query_verificar, (codigo_material_original,), fetch='one')
-        
-        if not material_existe:
-            print(f"❌ Material no encontrado: {codigo_material_original}")
-            return jsonify({'success': False, 'error': 'Material no encontrado'}), 404
-        
-        print(f"✅ Material encontrado: {material_existe}")
-        
-        # Obtener usuario registrador
-        registrador = session.get('usuario', 'Sistema')
-        fecha_actualizacion = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        print(f"👤 Usuario: {registrador}")
-        print(f"📅 Fecha: {fecha_actualizacion}")
-        
-        # Mapeo de campos frontend a backend
-        mapeo_campos = {
-            'codigoMaterial': 'codigo_material',
-            'numeroParte': 'numero_parte',
-            'propiedadMaterial': 'propiedad_material',
-            'classification': 'classification',
-            'especificacionMaterial': 'especificacion_material',
-            'unidadEmpaque': 'unidad_empaque',
-            'ubicacionMaterial': 'ubicacion_material',
-            'vendedor': 'vendedor',
-            'prohibidoSacar': 'prohibido_sacar',
-            'reparable': 'reparable',
-            'nivelMsl': 'nivel_msl',
-            'espesorMsl': 'espesor_msl'
-        }
-        
-        # Construir consulta SQL dinámicamente
-        set_clauses = []
-        values = []
-        
-        for campo_frontend, valor in nuevos_datos.items():
-            campo_db = mapeo_campos.get(campo_frontend, campo_frontend)
-            
-            print(f"🔄 Procesando: {campo_frontend} -> {campo_db} = {valor}")
-            
-            # Procesar valores especiales
-            if campo_db in ['prohibido_sacar', 'reparable']:
-                valor_procesado = 1 if valor in [True, 1, '1', 'true', 'True'] else 0
-                print(f"✅ Valor boolean procesado: {valor} -> {valor_procesado}")
-                valor = valor_procesado
-            elif valor is None:
-                valor = ''
-                print(f"✅ Valor null convertido a string vacío")
-            
-            set_clauses.append(f"{campo_db} = %s")
-            values.append(valor)
-        
-        # Agregar fecha de actualización
-        set_clauses.append("fecha_registro = %s")
-        values.append(fecha_actualizacion)
-        
-        # Agregar código original para WHERE
-        values.append(codigo_material_original)
-        
-        # Construir y ejecutar query
-        sql = f"UPDATE materiales SET {', '.join(set_clauses)} WHERE codigo_material = %s"
-        
-        print(f"🔧 Query SQL: {sql}")
-        print(f"🔧 Valores: {values}")
-        
-        try:
-            rows_affected = execute_query(sql, values)
-            print(f"📊 Filas afectadas: {rows_affected}")
-        except Exception as sql_error:
-            print(f"❌ Error en execute_query: {sql_error}")
-            traceback.print_exc()
-            return jsonify({'success': False, 'error': f'Error en la base de datos: {str(sql_error)}'}), 500
-        
-        if rows_affected is None or rows_affected == 0:
-            print(f"❌ No se actualizó ninguna fila. rows_affected = {rows_affected}")
-            return jsonify({'success': False, 'error': 'No se pudo actualizar el material - ninguna fila afectada'}), 500
-        
-        print(f"✅ Material actualizado exitosamente: {codigo_material_original} por {registrador}")
-        
-        return jsonify({
-            'success': True, 
-            'message': f'Material actualizado correctamente por {registrador}',
-            'material_actualizado': nuevos_datos,
-            'registrador': registrador,
-            'fecha_actualizacion': fecha_actualizacion,
-            'filas_afectadas': rows_affected
-        })
-        
-    except Exception as e:
-        print(f"❌ Error al actualizar material completo: {str(e)}")
-        traceback.print_exc()
         return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
 
 @app.route('/exportar_excel', methods=['GET'])
@@ -2032,18 +1559,16 @@ def control_de_material_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route('/informacion_basica/control_de_bom')
+@login_requerido
 def control_de_bom_ajax():
     """Ruta para cargar dinámicamente el contenido de Control de BOM"""
-    # Si quieres puedes cargar los modelos disponibles aquí para el buscador
     try:
-        query = "SELECT DISTINCT modelo FROM bom ORDER BY modelo"
-        modelos_result = execute_query(query, fetch='all')
-        modelos = [dict(modelo=row['modelo']) for row in modelos_result] if modelos_result else []
+        # Obtener modelos para pasarlos al template
+        modelos = obtener_modelos_bom()
         return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', modelos=modelos)
     except Exception as e:
         print(f"Error al cargar template Control de BOM: {e}")
-        modelos = []
-        return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', modelos=modelos)
+        return f"Error al cargar el contenido: {str(e)}", 500
 
 # Rutas para cargar contenido dinámicamente (AJAX)
 @app.route('/listas/informacion_basica')

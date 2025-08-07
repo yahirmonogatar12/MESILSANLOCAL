@@ -22,6 +22,49 @@ except ImportError:
 
 print(f"Módulo db_mysql cargado - MySQL disponible: {MYSQL_AVAILABLE}")
 
+def eliminar_foreign_keys_materiales():
+    """Eliminar todas las foreign keys que referencian a la tabla materiales"""
+    print("🗑️ Eliminando foreign keys hacia materiales...")
+    
+    try:
+        # Foreign keys a eliminar
+        foreign_keys_to_drop = [
+            {'table': 'inventario', 'constraint': 'fk_inventario_numero_parte'},
+            {'table': 'movimientos_inventario', 'constraint': 'fk_movimientos_numero_parte'},
+            {'table': 'bom', 'constraint': 'fk_bom_numero_parte'}
+        ]
+        
+        for fk in foreign_keys_to_drop:
+            try:
+                # Verificar si existe la foreign key antes de eliminarla
+                check_query = """
+                    SELECT COUNT(*) as count
+                    FROM information_schema.TABLE_CONSTRAINTS 
+                    WHERE TABLE_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = %s 
+                    AND CONSTRAINT_NAME = %s
+                    AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+                """
+                
+                result = execute_query(check_query, (fk['table'], fk['constraint']), fetch='one')
+                exists = result.get('count', 0) if result else 0
+                
+                if exists > 0:
+                    drop_query = f"ALTER TABLE {fk['table']} DROP FOREIGN KEY {fk['constraint']}"
+                    execute_query(drop_query)
+                    print(f"✅ Foreign key {fk['constraint']} eliminada de {fk['table']}")
+                else:
+                    print(f"ℹ️ Foreign key {fk['constraint']} no existe en {fk['table']}")
+                    
+            except Exception as e:
+                print(f"⚠️ Error eliminando foreign key {fk['constraint']}: {e}")
+                continue
+        
+        print("✅ Eliminación de foreign keys completada")
+        
+    except Exception as e:
+        print(f"❌ Error en eliminación de foreign keys: {e}")
+
 def init_db():
     """Inicializar base de datos MySQL y crear tablas"""
     if not MYSQL_AVAILABLE:
@@ -35,7 +78,7 @@ def init_db():
             return False
         
         # Verificar y reparar foreign keys existentes si es necesario
-        repair_foreign_keys()
+        # repair_foreign_keys()  # COMENTADO: Foreign keys deshabilitadas por solicitud del usuario
         
         # Crear tablas necesarias
         create_tables()
@@ -136,14 +179,14 @@ def create_tables():
         'materiales': '''
             CREATE TABLE IF NOT EXISTS materiales (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                codigo_material VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
-                propiedad_material VARCHAR(255),
-                classification VARCHAR(255),
+                codigo_material VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                numero_parte VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
+                propiedad_material VARCHAR(512),
+                classification VARCHAR(512),
                 especificacion_material TEXT,
                 unidad_empaque VARCHAR(100),
-                ubicacion_material VARCHAR(255),
-                vendedor VARCHAR(255),
+                ubicacion_material VARCHAR(512),
+                vendedor VARCHAR(512),
                 prohibido_sacar VARCHAR(50),
                 reparable VARCHAR(50),
                 nivel_msl VARCHAR(100),
@@ -185,7 +228,7 @@ def create_tables():
         'inventario': '''
             CREATE TABLE IF NOT EXISTS inventario (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
+                numero_parte VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci UNIQUE NOT NULL,
                 cantidad_actual INT DEFAULT 0,
                 ultima_actualizacion DATETIME DEFAULT NOW()
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
@@ -193,7 +236,7 @@ def create_tables():
         'movimientos_inventario': '''
             CREATE TABLE IF NOT EXISTS movimientos_inventario (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                numero_parte VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
                 tipo_movimiento VARCHAR(50) NOT NULL,
                 cantidad INT NOT NULL,
                 comentarios TEXT,
@@ -205,7 +248,7 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS bom (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 modelo VARCHAR(255) NOT NULL,
-                numero_parte VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                numero_parte VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
                 descripcion TEXT,
                 cantidad INT DEFAULT 1,
                 side VARCHAR(50),
@@ -213,7 +256,7 @@ def create_tables():
                 categoria VARCHAR(255),
                 proveedor VARCHAR(255),
                 fecha_registro DATETIME DEFAULT NOW(),
-                UNIQUE KEY unique_bom (modelo, numero_parte, side)
+                UNIQUE KEY unique_bom (modelo, numero_parte(255), side)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         '''
     }
@@ -227,55 +270,18 @@ def create_tables():
         except Exception as e:
             print(f"❌ Error creando tabla {table_name}: {e}")
     
-    # PASO 3: Eliminar foreign keys para backend simplificado
-    print("📝 Preparando backend simplificado...")
-    eliminar_todos_foreign_keys()
-    # add_foreign_keys()  # DESHABILITADO - Backend simplificado sin foreign keys
-
-def eliminar_todos_foreign_keys():
-    """Eliminar todos los foreign keys para usar backend simplificado"""
-    print("🗑️ Eliminando TODOS los foreign keys para backend simplificado...")
-    
-    try:
-        # Lista de tablas que pueden tener foreign keys
-        tablas = ['inventario', 'movimientos_inventario', 'bom']
-        
-        for tabla in tablas:
-            try:
-                # Obtener todos los foreign keys de la tabla
-                query_fks = f"""
-                    SELECT CONSTRAINT_NAME 
-                    FROM information_schema.KEY_COLUMN_USAGE 
-                    WHERE TABLE_SCHEMA = DATABASE() 
-                    AND TABLE_NAME = '{tabla}' 
-                    AND REFERENCED_TABLE_NAME IS NOT NULL
-                """
-                
-                fks = execute_query(query_fks, fetch='all')
-                
-                if fks:
-                    print(f"🔍 Eliminando foreign keys de tabla {tabla}...")
-                    for fk in fks:
-                        constraint_name = fk['CONSTRAINT_NAME']
-                        try:
-                            drop_query = f"ALTER TABLE {tabla} DROP FOREIGN KEY {constraint_name}"
-                            execute_query(drop_query)
-                            print(f"✅ Foreign key {constraint_name} eliminado de {tabla}")
-                        except Exception as e:
-                            print(f"⚠️ No se pudo eliminar {constraint_name}: {e}")
-                else:
-                    print(f"ℹ️ No hay foreign keys en tabla {tabla}")
-                    
-            except Exception as e:
-                print(f"⚠️ Error procesando tabla {tabla}: {e}")
-                
-        print("✅ Limpieza de foreign keys completada")
-        
-    except Exception as e:
-        print(f"❌ Error eliminando foreign keys: {e}")
+    # PASO 3: Agregar foreign keys después de que todas las tablas existen
+    print("📝 Intentando agregar foreign keys...")
+    add_foreign_keys()  # Función internamente deshabilitada
 
 def add_foreign_keys():
     """Agregar foreign keys después de crear todas las tablas - MÉTODO DEFINITIVO"""
+    # FUNCIÓN DESHABILITADA: Foreign keys eliminadas por solicitud del usuario
+    print("⚠️ Función add_foreign_keys() DESHABILITADA - No se crearán foreign keys hacia materiales")
+    return  # Salir inmediatamente sin crear foreign keys
+    
+    # CÓDIGO COMENTADO - NO SE EJECUTARÁ
+    """
     print("🔗 Creando foreign keys con verificación DEFINITIVA...")
     
     foreign_keys = [
@@ -294,7 +300,7 @@ def add_foreign_keys():
             'constraint': 'fk_bom_numero_parte', 
             'query': 'ALTER TABLE bom ADD CONSTRAINT fk_bom_numero_parte FOREIGN KEY (numero_parte) REFERENCES materiales(numero_parte)'
         }
-    ]
+    ]"""
     
     for fk in foreign_keys:
         try:
@@ -515,11 +521,12 @@ def validar_registro_antes_insercion(row_data):
     
     # Verificar longitudes de campos
     campos_longitud = {
-        'numero_parte': 100,
-        'propiedad_material': 500,
-        'classification': 200,
-        'especificacion_material': 500,
-        'ubicacion_material': 200
+        'numero_parte': 512,           # Actualizado a 512 caracteres
+        'codigo_material': 512,        # Actualizado a 512 caracteres
+        'propiedad_material': 512,     # Actualizado a 512 caracteres
+        'classification': 512,         # Actualizado a 512 caracteres
+        'especificacion_material': 65535, # TEXT field
+        'ubicacion_material': 512      # Actualizado a 512 caracteres
     }
     
     for campo, max_len in campos_longitud.items():
@@ -560,11 +567,9 @@ def guardar_material(data):
             INSERT INTO materiales (
                 codigo_material, numero_parte, propiedad_material, classification, 
                 especificacion_material, unidad_empaque, ubicacion_material, vendedor,
-                prohibido_sacar, reparable, nivel_msl, espesor_msl,
-                descripcion, categoria, ubicacion, stock_minimo, stock_maximo, 
-                unidad_medida, proveedor
+                prohibido_sacar, reparable, nivel_msl, espesor_msl
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 codigo_material = VALUES(codigo_material),
                 propiedad_material = VALUES(propiedad_material),
@@ -576,14 +581,7 @@ def guardar_material(data):
                 prohibido_sacar = VALUES(prohibido_sacar),
                 reparable = VALUES(reparable),
                 nivel_msl = VALUES(nivel_msl),
-                espesor_msl = VALUES(espesor_msl),
-                descripcion = VALUES(descripcion),
-                categoria = VALUES(categoria),
-                ubicacion = VALUES(ubicacion),
-                stock_minimo = VALUES(stock_minimo),
-                stock_maximo = VALUES(stock_maximo),
-                unidad_medida = VALUES(unidad_medida),
-                proveedor = VALUES(proveedor)
+                espesor_msl = VALUES(espesor_msl)
         """
         
         params = (
@@ -598,29 +596,26 @@ def guardar_material(data):
             data.get('prohibido_sacar', ''),
             data.get('reparable', ''),
             data.get('nivel_msl', ''),
-            data.get('espesor_msl', ''),
-            data.get('descripcion', ''),
-            data.get('categoria', ''),
-            data.get('ubicacion', ''),
-            data.get('stock_minimo', 0),
-            data.get('stock_maximo', 0),
-            data.get('unidad_medida', ''),
-            data.get('proveedor', '')
+            data.get('espesor_msl', '')
         )
+        
+        # DEBUG: Mostrar el valor específico de unidad_empaque
+        print(f"🔍 DEBUG PARAMS - unidad_empaque (posición 5): '{params[5]}' | Tipo: {type(params[5])}")
+        print(f"🔍 DEBUG PARAMS - Primeros 6 params: {params[0:6]}")
         
         # Validar longitudes de campos antes de insertar
         validaciones = [
-            ('codigo_material', params[0], 255),
-            ('numero_parte', params[1], 255),
-            ('propiedad_material', params[2], 255),
-            ('classification', params[3], 255),
-            ('unidad_empaque', params[5], 100),
-            ('ubicacion_material', params[6], 255),
-            ('vendedor', params[7], 255),
-            ('prohibido_sacar', params[8], 50),
-            ('reparable', params[9], 50),
-            ('nivel_msl', params[10], 100),
-            ('espesor_msl', params[11], 100)
+            ('codigo_material', params[0], 512),  # Actualizado a 512 caracteres
+            ('numero_parte', params[1], 512),     # Actualizado a 512 caracteres  
+            ('propiedad_material', params[2], 512), # Actualizado a 512 caracteres
+            ('classification', params[3], 512),    # Actualizado a 512 caracteres
+            ('unidad_empaque', params[5], 100),   # Mantenido en 100
+            ('ubicacion_material', params[6], 512), # Actualizado a 512 caracteres
+            ('vendedor', params[7], 512),         # Actualizado a 512 caracteres
+            ('prohibido_sacar', params[8], 50),   # Mantenido en 50
+            ('reparable', params[9], 50),         # Mantenido en 50
+            ('nivel_msl', params[10], 100),       # Mantenido en 100
+            ('espesor_msl', params[11], 100)      # Mantenido en 100
         ]
         
         for campo, valor, max_len in validaciones:
@@ -1235,13 +1230,13 @@ def migrar_tabla_materiales():
     try:
         # Lista de columnas nuevas a agregar
         nuevas_columnas = [
-            ("codigo_material", "VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"),
-            ("propiedad_material", "VARCHAR(255)"),
-            ("classification", "VARCHAR(255)"),
+            ("codigo_material", "VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"),
+            ("propiedad_material", "VARCHAR(512)"),
+            ("classification", "VARCHAR(512)"),
             ("especificacion_material", "TEXT"),
             ("unidad_empaque", "VARCHAR(100)"),
-            ("ubicacion_material", "VARCHAR(255)"),
-            ("vendedor", "VARCHAR(255)"),
+            ("ubicacion_material", "VARCHAR(512)"),
+            ("vendedor", "VARCHAR(512)"),
             ("prohibido_sacar", "VARCHAR(50)"),
             ("reparable", "VARCHAR(50)"),
             ("nivel_msl", "VARCHAR(100)"),

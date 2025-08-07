@@ -6,9 +6,6 @@
     <title>Control de Material - ISEMM MES</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/control_material.css') }}">
-    <!-- Bootstrap para iconos y componentes del panel lateral -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
 <div class="material-container">
@@ -123,30 +120,47 @@
         </div>
     </div>
 
+
+    <!-- Modal de carga -->
+    <div id="modalCarga" class="loading-modal" style="display: none;">
+        <div class="loading-modal-content">
+            <div class="loading-header">
+                <h3>Importando Excel</h3>
+                <p>Por favor espere mientras procesamos su archivo...</p>
+            </div>
+            <div class="loading-container">
+                <div class="loading-bar">
+                    <div class="loading-progress" id="progressBar"></div>
+                </div>
+                <div class="loading-percentage" id="loadingPercentage">0%</div>
+            </div>
+            <div class="loading-status" id="loadingStatus">Iniciando importaci�n...</div>
+        </div>
+    </div>
+
     <!-- Tabla de materiales -->
     <div class="material-table-container">
-                <table class="material-table" id="tablaMateriales">
+        <table class="material-table" id="tablaMateriales">
             <thead>
                 <tr>
-                    <th style="width: 120px;" title="Código único de identificación del material">Código</th>
-                    <th style="width: 100px;" title="Número de parte del componente">No. Parte</th>
-                    <th style="width: 80px;" title="Tipo de propiedad del material">Propiedad</th>
-                    <th style="width: 100px;" title="Clasificación del material">Classification</th>
-                    <th style="width: 150px;" title="Especificación técnica detallada del material">Especificación</th>
-                    <th style="width: 60px;" title="Cantidad de unidades por empaque">Und.</th>
-                    <th style="width: 100px;" title="Ubicación física del material en almacén">Ubicación</th>
-                    <th style="width: 100px;" title="Proveedor o vendedor del material">Vendedor</th>
-                    <th style="width: 70px;" title="Indica si el material está prohibido para sacar">Prohibido</th>
-                    <th style="width: 70px;" title="Indica si el material es reparable">Reparable</th>
-                    <th style="width: 60px;" title="Nivel de sensibilidad a la humedad (MSL)">MSL</th>
-                    <th style="width: 80px;" title="Espesor del material para MSL">Espesor</th>
-                    <th style="width: 120px;" title="Fecha y hora de registro del material">Registro</th>
-                    <th style="width: 80px;" title="Acciones disponibles para el material">Acciones</th>
+                    <th title="Código único de identificación del material">Código de material</th>
+                    <th title="Número de parte del componente">Número de parte</th>
+                    <th title="Tipo de propiedad del material">Propiedad de material</th>
+                    <th title="Clasificación del material">Classification</th>
+                    <th title="Especificación técnica detallada del material">Especificación de material</th>
+                    <th title="Cantidad de unidades por empaque">Unidad de empaque</th>
+                    <th title="Ubicación física del material en almacén">Ubicación de material</th>
+                    <th title="Proveedor o vendedor del material">Vendedor</th>
+                    <th title="Indica si el material está prohibido para sacar">Prohibido sacar</th>
+                    <th title="Indica si el material es reparable">Reparable</th>
+                    <th title="Nivel de sensibilidad a la humedad (MSL)">Nivel de MSL</th>
+                    <th title="Espesor del material para MSL">Espesor de MSL</th>
+                    <th title="Fecha y hora de registro del material">Fecha de registro</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="14" class="no-data">
+                    <td colspan="13" class="no-data">
                         No hay datos para mostrar. Haga clic en "Consultar" para cargar los materiales.
                     </td>
                 </tr>
@@ -161,7 +175,7 @@
         tbody.innerHTML = '';
         
         if (!datos || datos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="14" class="no-data">No hay materiales registrados. Use el botón "Registrar" para añadir nuevos materiales.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="no-data">No hay materiales registrados. Use el botón "Registrar" para añadir nuevos materiales.</td></tr>';
             return;
         }
         
@@ -192,11 +206,6 @@
             const prohibidoSacarCheckbox = `<input type="checkbox" ${(item.prohibidoSacar === 1 || item.prohibidoSacar === '1' || item.prohibidoSacar === true) ? 'checked' : ''} onchange="actualizarCampoMaterial('${item.codigoMaterial}', 'prohibidoSacar', this.checked)">`;
             const reparableCheckbox = `<input type="checkbox" ${(item.reparable === 1 || item.reparable === '1' || item.reparable === true) ? 'checked' : ''} onchange="actualizarCampoMaterial('${item.codigoMaterial}', 'reparable', this.checked)">`;
             
-            // Crear botón de editar
-            const botonEditar = `<button class="btn btn-sm btn-outline-primary" onclick="abrirPanelEdicion(this)" title="Editar Material">
-                <i class="fas fa-edit"></i> Editar
-            </button>`;
-            
             row.innerHTML = `
                 ${crearCelda(item.codigoMaterial)}
                 ${crearCelda(item.numeroParte)}
@@ -211,7 +220,6 @@
                 ${crearCelda(limpiarNumero(item.nivelMSL || ''))}
                 ${crearCelda(item.espesorMSL)}
                 ${crearCelda(item.fechaRegistro)}
-                <td class="text-center">${botonEditar}</td>
             `;
             tbody.appendChild(row);
         });
@@ -226,7 +234,7 @@
             .catch(error => {
                 console.error('Error al cargar datos:', error);
                 const tbody = document.querySelector('#tablaMateriales tbody');
-                tbody.innerHTML = '<tr><td colspan="14" class="material-error">Error al cargar los datos. Por favor, intente nuevamente.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="13" class="material-error">Error al cargar los datos. Por favor, intente nuevamente.</td></tr>';
             });
     }
 
@@ -293,7 +301,7 @@
     function consultar() {
         // Mostrar indicador de carga
         const tbody = document.querySelector('#tablaMateriales tbody');
-        tbody.innerHTML = '<tr><td colspan="14" class="material-loading"><div>Cargando materiales...</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="material-loading"><div>Cargando materiales...</div></td></tr>';
         
         // Cargar datos desde el servidor
         cargarDatosDesdeServidor();
@@ -465,125 +473,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
-
-// 🆕 Función para inicializar el panel lateral después de cargar contenido AJAX
-function inicializarPanelLateral() {
-    // Forzar inicialización del drawer si no existe
-    if (typeof window.materialEditDrawer === 'undefined') {
-        console.log('🔄 Inicializando panel lateral después de carga AJAX...');
-        
-        // Cargar el script dinámicamente si no está cargado
-        if (!document.querySelector('script[src*="material-edit-drawer.js"]')) {
-            const script = document.createElement('script');
-            script.src = '{{ url_for("static", filename="js/material-edit-drawer.js") }}';
-            script.onload = function() {
-                console.log('✅ Script del panel lateral cargado via AJAX');
-            };
-            document.head.appendChild(script);
-        } else {
-            // El script ya está cargado, solo inicializar
-            if (window.initializeMaterialDrawer) {
-                window.initializeMaterialDrawer();
-            }
-        }
-    }
-}
-
-// Ejecutar inicialización cuando se carga este contenido
-setTimeout(inicializarPanelLateral, 500);
-
 </script>
-
-<!-- Estilos adicionales para botones de editar -->
-<style>
-.btn {
-    padding: 6px 12px;
-    border-radius: 4px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.2s ease;
-}
-
-.btn-sm {
-    padding: 4px 8px;
-    font-size: 11px;
-}
-
-.btn-outline-primary {
-    color: #4a90e2;
-    border-color: #4a90e2;
-    background-color: transparent;
-}
-
-.btn-outline-primary:hover {
-    color: white;
-    background-color: #4a90e2;
-    border-color: #4a90e2;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
-}
-
-.text-center {
-    text-align: center;
-}
-
-/* Mejorar el espaciado en la columna de acciones */
-#tablaMateriales td:last-child {
-        padding: 8px;
-    white-space: nowrap;
-}
-
-/* Optimización de la tabla para mejor visualización */
-.material-table {
-    table-layout: fixed;
-    width: 100%;
-    font-size: 12px;
-}
-
-.material-table th,
-.material-table td {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 6px 4px;
-}
-
-.material-table th {
-    font-size: 11px;
-    font-weight: 600;
-}
-
-/* Ajustar el contenedor de la tabla */
-.material-table-container {
-    overflow-x: auto;
-    max-width: 100%;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-/* Hacer que las celdas de texto largo muestren tooltip completo */
-.material-table td[data-full-text] {
-    cursor: help;
-}
-
-/* Centrar checkboxes y botones */
-.material-table td:nth-child(9),
-.material-table td:nth-child(10),
-.material-table td:nth-child(14) {
-    text-align: center;
-}
-</style>
-
-<!-- Bootstrap JS para el panel lateral -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Panel Lateral de Edición de Materiales -->
-<script src="{{ url_for('static', filename='js/material-edit-drawer.js') }}"></script>
-
 </body>
 </html>

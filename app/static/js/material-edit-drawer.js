@@ -213,20 +213,21 @@ class MaterialEditDrawer {
     injectStyles() {
         const styles = `
         <style>
-        /* 🎨 Estilos del Panel Lateral de Edición */
+        /* 🎨 Estilos del Panel Lateral de Edición - Estilo del Sistema */
         .material-edit-drawer {
             position: fixed;
             right: -450px;
             top: 0;
             bottom: 0;
             width: 450px;
-            background: #ffffff;
-            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
-            transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            background: #4a5568;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
+            transition: right 0.4s ease;
             z-index: 10000;
             display: flex;
             flex-direction: column;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            border-left: 2px solid #2d3748;
         }
 
         .material-edit-drawer.open {
@@ -240,7 +241,7 @@ class MaterialEditDrawer {
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             z-index: 9999;
             opacity: 0;
             transition: opacity 0.3s ease;
@@ -252,167 +253,182 @@ class MaterialEditDrawer {
         }
 
         .drawer-header {
-            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-            color: white;
-            padding: 20px 25px;
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-bottom: 2px solid #1a202c;
         }
 
         .drawer-header h3 {
             margin: 0;
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 400;
+            color: #e2e8f0;
         }
 
         .btn-close-drawer {
             background: none;
             border: none;
-            color: white;
+            color: #e2e8f0;
             font-size: 18px;
             cursor: pointer;
-            padding: 5px;
-            border-radius: 50%;
+            padding: 8px;
+            border-radius: 0;
             transition: background-color 0.3s ease;
+            width: 36px;
+            height: 36px;
         }
 
         .btn-close-drawer:hover {
-            background-color: rgba(255, 255, 255, 0.2);
+            background-color: #1a202c;
         }
 
         .drawer-body {
             flex: 1;
             overflow-y: auto;
-            padding: 25px;
-            background: #f8f9fa;
+            padding: 20px;
+            background: #3a4556;
         }
 
         .form-section {
-            background: white;
-            border-radius: 12px;
+            background: #4a5568;
+            border-radius: 0;
             padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid #4a90e2;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #2d3748;
         }
 
         .form-section h5 {
-            color: #4a90e2;
-            margin-bottom: 20px;
-            font-size: 16px;
-            font-weight: 600;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e9ecef;
+            color: #cbd5e0;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 400;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2d3748;
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 15px;
         }
 
         .form-label {
-            font-weight: 500;
-            color: #495057;
-            margin-bottom: 8px;
+            color: #cbd5e0;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 400;
             display: block;
         }
 
         .form-label .required {
-            color: #dc3545;
+            color: #5e9ed6;
         }
 
         .form-control {
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 12px 15px;
+            background-color: #2d3748;
+            border: 1px solid #5e9ed6;
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 0;
             font-size: 14px;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            height: 36px;
             width: 100%;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .form-control:focus {
-            border-color: #4a90e2;
-            outline: 0;
-            box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.15);
+            outline: none;
+            border-color: #63b3ed;
+            box-shadow: 0 0 0 1px #63b3ed;
+        }
+
+        .form-control::placeholder {
+            color: #718096;
         }
 
         .form-check-input {
             margin-right: 8px;
-            transform: scale(1.1);
+            background-color: #2d3748;
+            border: 1px solid #5e9ed6;
         }
 
         .form-check-input:checked {
-            background-color: #4a90e2;
-            border-color: #4a90e2;
+            background-color: #5e9ed6;
+            border-color: #5e9ed6;
         }
 
         .form-check-label {
-            font-weight: 500;
+            color: #cbd5e0;
+            font-size: 13px;
+            font-weight: 400;
             cursor: pointer;
         }
 
         .drawer-footer {
-            background: white;
-            padding: 20px 25px;
-            border-top: 1px solid #e9ecef;
+            background: #2d3748;
+            padding: 20px;
+            border-top: 2px solid #1a202c;
             display: flex;
-            gap: 15px;
+            gap: 10px;
             justify-content: flex-end;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
         }
 
         .drawer-footer .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: 500;
+            padding: 8px 24px;
+            border-radius: 0;
+            font-size: 14px;
+            font-weight: 400;
             transition: all 0.3s ease;
             border: none;
+            height: 36px;
+            cursor: pointer;
         }
 
         .drawer-footer .btn-secondary {
-            background-color: #6c757d;
-            color: white;
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border: 1px solid #2d3748;
         }
 
         .drawer-footer .btn-secondary:hover {
-            background-color: #5a6268;
-            transform: translateY(-1px);
+            background-color: #2d3748;
         }
 
         .drawer-footer .btn-primary {
-            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-            color: white;
+            background-color: #5e9ed6;
+            color: #1a202c;
+            border: 1px solid #5e9ed6;
         }
 
         .drawer-footer .btn-primary:hover {
-            background: linear-gradient(135deg, #357abd 0%, #2968a3 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.3);
+            background-color: #63b3ed;
+            border-color: #63b3ed;
         }
 
         .drawer-footer .btn:disabled {
-            opacity: 0.6;
+            opacity: 0.7;
             cursor: not-allowed;
-            transform: none !important;
+            background-color: #1a202c;
         }
 
         /* Scroll personalizado */
         .drawer-body::-webkit-scrollbar {
-            width: 6px;
+            width: 8px;
         }
 
         .drawer-body::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: #2d3748;
         }
 
         .drawer-body::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
+            background: #4a5568;
+            border-radius: 0;
         }
 
         .drawer-body::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+            background: #5e9ed6;
         }
 
         /* Responsive */
@@ -436,7 +452,7 @@ class MaterialEditDrawer {
         }
 
         .material-edit-drawer.open {
-            animation: slideInFromRight 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            animation: slideInFromRight 0.4s ease;
         }
         </style>
         `;
