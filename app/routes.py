@@ -653,6 +653,9 @@ def guardar_material_route():
         return jsonify({'success': False, 'error': 'No data provided'}), 400
     
     try:
+        # Obtener usuario de la sesión
+        usuario_actual = session.get('usuario', 'USUARIO_MANUAL')
+        
         # Preparar datos del material
         material_data = {
             'codigo_material': data.get('codigoMaterial'),
@@ -669,8 +672,9 @@ def guardar_material_route():
             'espesor_msl': data.get('espesorMSL')
         }
         
-        # Usar función de db_mysql.py
-        success = guardar_material(material_data)
+        # Usar función de db_mysql.py con información del usuario
+        print(f"🔍 Material registrado manualmente por: {usuario_actual}")
+        success = guardar_material(material_data, usuario_registro=usuario_actual)
         
         if success:
             return jsonify({'success': True})
@@ -961,17 +965,20 @@ def importar_excel():
                     'espesor_msl': espesor_msl
                 }
                 
-                # Usar función de db_mysql.py CON LOGGING DETALLADO
-                print(f"🔍 === INTENTANDO GUARDAR FILA {row_number} ===")
+                # Obtener usuario de la sesión para registro
+                usuario_actual = session.get('usuario', 'USUARIO_MANUAL')
+                
+                # Usar función de db_mysql.py CON LOGGING DETALLADO E INFORMACIÓN DE USUARIO
+                print(f"🔍 === INTENTANDO GUARDAR FILA {row_number} - Usuario: {usuario_actual} ===")
                 print(f"🔍 Código: '{codigo_material}'")
                 print(f"🔍 Número parte: '{numero_parte}'") 
                 print(f"🔍 Propiedad: '{propiedad_material}'")
                 
-                success = guardar_material(material_data)
+                success = guardar_material(material_data, usuario_registro=usuario_actual)
                 
                 if success:
                     registros_insertados += 1
-                    print(f"✅ Fila {row_number} guardada exitosamente")
+                    print(f"✅ Fila {row_number} guardada exitosamente por {usuario_actual}")
                 else:
                     error_msg = f"Fila {row_number}: Error al guardar en base de datos"
                     errores.append(error_msg)
@@ -3462,7 +3469,7 @@ def obtener_permisos_usuario_actual():
 @login_requerido
 def test_permisos():
     """Página de testing del sistema de permisos"""
-    usuario = session.get('username')
+    usuario = session.get('usuario')
     return render_template('test_permisos.html', usuario=usuario)
 
 @app.route('/test-frontend-permisos')

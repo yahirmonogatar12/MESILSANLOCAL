@@ -141,12 +141,13 @@
                     <th style="width: 40px;" title="Nivel de sensibilidad a la humedad (MSL)">MSL</th>
                     <th style="width: 60px;" title="Espesor del material para MSL">Espesor</th>
                     <th style="width: 90px;" title="Fecha y hora de registro del material">Registro</th>
+                    <th style="width: 80px;" title="Usuario que registró el material">Usuario</th>
                     <th style="width: 60px;" title="Acciones disponibles para el material">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="14" class="no-data">
+                    <td colspan="15" class="no-data">
                         No hay datos para mostrar. Haga clic en "Consultar" para cargar los materiales.
                     </td>
                 </tr>
@@ -161,7 +162,7 @@
         tbody.innerHTML = '';
         
         if (!datos || datos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="14" class="no-data">No hay materiales registrados. Use el botón "Registrar" para añadir nuevos materiales.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="15" class="no-data">No hay materiales registrados. Use el botón "Registrar" para añadir nuevos materiales.</td></tr>';
             return;
         }
         
@@ -197,6 +198,14 @@
                 <i class="fas fa-edit"></i> Editar
             </button>`;
             
+            // Función para mostrar usuario con formato
+            function formatearUsuario(usuario) {
+                if (!usuario || usuario === 'SISTEMA') {
+                    return '<span style="color: #999;">Sistema</span>';
+                }
+                return '<span style="color: #333; font-weight: 500;">' + usuario + '</span>';
+            }
+            
             row.innerHTML = `
                 ${crearCelda(item.codigoMaterial)}
                 ${crearCelda(item.numeroParte)}
@@ -211,6 +220,7 @@
                 ${crearCelda(limpiarNumero(item.nivelMSL || ''))}
                 ${crearCelda(item.espesorMSL)}
                 ${crearCelda(item.fechaRegistro)}
+                <td>${formatearUsuario(item.usuarioRegistro)}</td>
                 <td class="text-center">${botonEditar}</td>
             `;
             tbody.appendChild(row);
@@ -226,7 +236,7 @@
             .catch(error => {
                 console.error('Error al cargar datos:', error);
                 const tbody = document.querySelector('#tablaMateriales tbody');
-                tbody.innerHTML = '<tr><td colspan="14" class="material-error">Error al cargar los datos. Por favor, intente nuevamente.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="15" class="material-error">Error al cargar los datos. Por favor, intente nuevamente.</td></tr>';
             });
     }
 
@@ -293,7 +303,7 @@
     function consultar() {
         // Mostrar indicador de carga
         const tbody = document.querySelector('#tablaMateriales tbody');
-        tbody.innerHTML = '<tr><td colspan="14" class="material-loading"><div>Cargando materiales...</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="material-loading"><div>Cargando materiales...</div></td></tr>';
         
         // Cargar datos desde el servidor
         cargarDatosDesdeServidor();
@@ -542,7 +552,7 @@ setTimeout(inicializarPanelLateral, 500);
 /* Centrar checkboxes y botones */
 .material-table td:nth-child(9),
 .material-table td:nth-child(10),
-.material-table td:nth-child(14) {
+.material-table td:nth-child(15) {
     text-align: center;
     padding: 2px; /* Padding muy pequeño para checkboxes */
 }

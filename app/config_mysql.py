@@ -43,6 +43,21 @@ def get_mysql_connection_string():
         'write_timeout': 60
     }
 
+# Configuración global de MySQL
+MYSQL_CONFIG = {
+    'host': os.getenv('MYSQL_HOST', 'localhost'),
+    'port': int(os.getenv('MYSQL_PORT', '3306')),
+    'user': os.getenv('MYSQL_USERNAME', ''),
+    'passwd': os.getenv('MYSQL_PASSWORD', ''),
+    'db': os.getenv('MYSQL_DATABASE', ''),
+    'charset': 'utf8mb4',
+    'autocommit': True,
+    'ssl_disabled': False,
+    'connect_timeout': 60,
+    'read_timeout': 60,
+    'write_timeout': 60
+}
+
 def get_mysql_connection():
     """Obtener conexión a MySQL"""
     if not MYSQL_AVAILABLE:

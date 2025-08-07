@@ -83,6 +83,12 @@ def init_db():
         # Crear tablas necesarias
         create_tables()
         
+        # Agregar columna usuario_registro si no existe (migración)
+        try:
+            agregar_columna_usuario_registro()
+        except Exception as e:
+            print(f"⚠️ Error en migración usuario_registro: {e}")
+        
         # MIGRAR TABLA MATERIALES (agregar nuevas columnas)
         print("🔄 Migrando tabla materiales...")
         migrar_tabla_materiales()
@@ -192,6 +198,7 @@ def create_tables():
                 nivel_msl VARCHAR(100),
                 espesor_msl VARCHAR(100),
                 fecha_registro DATETIME DEFAULT NOW(),
+                usuario_registro VARCHAR(255),
                 descripcion TEXT,
                 categoria VARCHAR(255),
                 ubicacion VARCHAR(255),
@@ -201,7 +208,8 @@ def create_tables():
                 proveedor VARCHAR(255),
                 fecha_creacion DATETIME DEFAULT NOW(),
                 INDEX idx_numero_parte (numero_parte(255)),
-                INDEX idx_codigo_material (codigo_material(255))
+                INDEX idx_codigo_material (codigo_material(255)),
+                INDEX idx_usuario_registro (usuario_registro)
             ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
         ''',
         'configuracion': '''
@@ -494,6 +502,7 @@ def obtener_materiales():
                 'nivelMsl': row.get('nivel_msl', ''),
                 'espesorMsl': row.get('espesor_msl', ''),
                 'fechaRegistro': row.get('fecha_registro', ''),
+                'usuarioRegistro': row.get('usuario_registro', ''),  # Agregar usuario que registró
                 'descripcion': row.get('descripcion', ''),
                 'categoria': row.get('categoria', ''),
                 'ubicacion': row.get('ubicacion', ''),
@@ -550,7 +559,7 @@ def validar_registro_antes_insercion(row_data):
     
     return errores, warnings
 
-def guardar_material(data):
+def guardar_material(data, usuario_registro=None):
     """Guardar material en MySQL - FORMATO COMPLETO CON DEBUG MEJORADO"""
     try:
         # VALIDACIONES PREVIAS CON LOGS DETALLADOS
@@ -559,17 +568,22 @@ def guardar_material(data):
             print(f"❌ ERROR: numero_parte vacío o None en data: {data}")
             return False
         
+        # Información de registro
+        usuario_registro = usuario_registro or 'SISTEMA'
+        
         # Log de datos recibidos para debug
         print(f"🔍 DEBUG guardar_material - numero_parte: '{numero_parte}'")
         print(f"🔍 DEBUG guardar_material - codigo_material: '{data.get('codigo_material', '')}'")
+        print(f"🔍 DEBUG guardar_material - usuario: '{usuario_registro}'")
         
         query = """
             INSERT INTO materiales (
                 codigo_material, numero_parte, propiedad_material, classification, 
                 especificacion_material, unidad_empaque, ubicacion_material, vendedor,
-                prohibido_sacar, reparable, nivel_msl, espesor_msl
+                prohibido_sacar, reparable, nivel_msl, espesor_msl,
+                usuario_registro
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 codigo_material = VALUES(codigo_material),
                 propiedad_material = VALUES(propiedad_material),
@@ -581,7 +595,8 @@ def guardar_material(data):
                 prohibido_sacar = VALUES(prohibido_sacar),
                 reparable = VALUES(reparable),
                 nivel_msl = VALUES(nivel_msl),
-                espesor_msl = VALUES(espesor_msl)
+                espesor_msl = VALUES(espesor_msl),
+                usuario_registro = VALUES(usuario_registro)
         """
         
         params = (
@@ -596,12 +611,14 @@ def guardar_material(data):
             data.get('prohibido_sacar', ''),
             data.get('reparable', ''),
             data.get('nivel_msl', ''),
-            data.get('espesor_msl', '')
+            data.get('espesor_msl', ''),
+            usuario_registro
         )
         
         # DEBUG: Mostrar el valor específico de unidad_empaque
         print(f"🔍 DEBUG PARAMS - unidad_empaque (posición 5): '{params[5]}' | Tipo: {type(params[5])}")
         print(f"🔍 DEBUG PARAMS - Primeros 6 params: {params[0:6]}")
+        print(f"🔍 DEBUG PARAMS - usuario_registro: '{params[12]}'")
         
         # Validar longitudes de campos antes de insertar
         validaciones = [
@@ -615,7 +632,8 @@ def guardar_material(data):
             ('prohibido_sacar', params[8], 50),   # Mantenido en 50
             ('reparable', params[9], 50),         # Mantenido en 50
             ('nivel_msl', params[10], 100),       # Mantenido en 100
-            ('espesor_msl', params[11], 100)      # Mantenido en 100
+            ('espesor_msl', params[11], 100),     # Mantenido en 100
+            ('usuario_registro', params[12], 255)  # Usuario de registro
         ]
         
         for campo, valor, max_len in validaciones:
@@ -634,7 +652,7 @@ def guardar_material(data):
         result = execute_query(query, params)
         
         if result and result > 0:
-            print(f"✅ Material guardado exitosamente: {numero_parte}")
+            print(f"✅ Material guardado exitosamente: {numero_parte} - Usuario: {usuario_registro}")
             return True
         else:
             print(f"⚠️ execute_query retornó: {result} para {numero_parte}")
@@ -753,7 +771,7 @@ def obtener_material_por_numero(numero_parte):
         print(f"Error obteniendo material: {e}")
         return None
 
-def insertar_materiales_desde_excel(df):
+def insertar_materiales_desde_excel(df, usuario_importacion=None):
     """Insertar materiales desde DataFrame de Excel con mapeo correcto y DEBUG MEJORADO"""
     try:
         if not PANDAS_AVAILABLE:
@@ -763,6 +781,10 @@ def insertar_materiales_desde_excel(df):
         insertados = 0
         omitidos = 0
         errores_detallados = []
+        
+        # Información del usuario que importa
+        usuario_importacion = usuario_importacion or 'USUARIO_EXCEL'
+        print(f"📋 Importación iniciada por usuario: {usuario_importacion}")
         
         # Mapeo de columnas del Excel a la base de datos
         column_mapping = {
@@ -809,13 +831,13 @@ def insertar_materiales_desde_excel(df):
                     omitidos += 1
                     continue
                 
-                # Guardar material con logging detallado
-                print(f"🔍 Intentando guardar material fila {fila_numero}...")
-                if guardar_material(data):
+                # Guardar material con logging detallado e información del usuario
+                print(f"🔍 Intentando guardar material fila {fila_numero} - Usuario: {usuario_importacion}...")
+                if guardar_material(data, usuario_registro=usuario_importacion):
                     insertados += 1
-                    print(f"✅ Fila {fila_numero} guardada exitosamente")
+                    print(f"✅ Fila {fila_numero} guardada exitosamente por {usuario_importacion}")
                     if insertados % 100 == 0:  # Log cada 100 insertados
-                        print(f"📝 Procesados {insertados} materiales...")
+                        print(f"📝 Procesados {insertados} materiales por {usuario_importacion}...")
                 else:
                     error_msg = f"Fila {fila_numero}: Error al guardar en base de datos"
                     print(f"❌ {error_msg}")
@@ -830,7 +852,7 @@ def insertar_materiales_desde_excel(df):
                 omitidos += 1
                 continue
         
-        print(f"\n✅ Importación completada: {insertados} insertados, {omitidos} omitidos")
+        print(f"\n✅ Importación completada por {usuario_importacion}: {insertados} insertados, {omitidos} omitidos")
         if errores_detallados:
             print(f"🔍 Errores detallados:")
             for error in errores_detallados:
@@ -840,7 +862,8 @@ def insertar_materiales_desde_excel(df):
             'insertados': insertados,
             'omitidos': omitidos,
             'total': len(df),
-            'errores': errores_detallados
+            'errores': errores_detallados,
+            'usuario_importacion': usuario_importacion
         }
         
     except Exception as e:
@@ -1674,44 +1697,52 @@ def test_mysql_functions():
 if __name__ == "__main__":
     test_mysql_functions()
 
-def get_mysql_connection():
-    """Obtener conexión MySQL con row_factory simulado"""
+def agregar_columna_usuario_registro():
+    """Agregar columna usuario_registro a la tabla materiales si no existe"""
+    conn = None
+    cursor = None
     try:
-        import mysql.connector
-        from .config_mysql import MYSQL_CONFIG
-        
-        conn = mysql.connector.connect(**MYSQL_CONFIG)
-        
-        # Simular row_factory de SQLite
-        class MySQLRowFactory:
-            def __init__(self, cursor):
-                self.cursor = cursor
-                self.columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        conn = get_mysql_connection()
+        if not conn:
+            print("❌ No se pudo conectar a MySQL")
+            return False
             
-            def fetchone(self):
-                row = self.cursor.fetchone()
-                if row:
-                    return dict(zip(self.columns, row))
-                return None
-            
-            def fetchall(self):
-                rows = self.cursor.fetchall()
-                return [dict(zip(self.columns, row)) for row in rows]
-            
-            def execute(self, query, params=None):
-                return self.cursor.execute(query, params)
-            
-            def close(self):
-                return self.cursor.close()
+        cursor = conn.cursor()
         
-        # Reemplazar cursor con wrapper
-        original_cursor = conn.cursor
-        def cursor_wrapper():
-            cursor = original_cursor()
-            return MySQLRowFactory(cursor)
+        # Verificar si la columna ya existe
+        cursor.execute("SHOW COLUMNS FROM materiales LIKE 'usuario_registro'")
+        result = cursor.fetchone()
         
-        conn.cursor = cursor_wrapper
-        return conn
+        if result:
+            print("✅ La columna usuario_registro ya existe")
+            return True
+            
+        # Agregar la columna si no existe
+        alter_query = "ALTER TABLE materiales ADD COLUMN usuario_registro VARCHAR(255) DEFAULT 'SISTEMA'"
+        cursor.execute(alter_query)
+        
+        # Agregar índice para la nueva columna
+        index_query = "ALTER TABLE materiales ADD INDEX idx_usuario_registro (usuario_registro)"
+        cursor.execute(index_query)
+        
+        conn.commit()
+        print("✅ Columna usuario_registro agregada exitosamente")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error agregando columna usuario_registro: {e}")
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def get_mysql_connection():
+    """Obtener conexión MySQL simple para migraciones"""
+    try:
+        from .config_mysql import get_mysql_connection as config_get_connection
+        return config_get_connection()
         
     except Exception as e:
         print(f"Error conectando a MySQL: {e}")
