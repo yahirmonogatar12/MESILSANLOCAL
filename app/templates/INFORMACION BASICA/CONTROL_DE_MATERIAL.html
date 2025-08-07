@@ -128,20 +128,20 @@
                 <table class="material-table" id="tablaMateriales">
             <thead>
                 <tr>
-                    <th style="width: 120px;" title="Código único de identificación del material">Código</th>
-                    <th style="width: 100px;" title="Número de parte del componente">No. Parte</th>
-                    <th style="width: 80px;" title="Tipo de propiedad del material">Propiedad</th>
-                    <th style="width: 100px;" title="Clasificación del material">Classification</th>
-                    <th style="width: 150px;" title="Especificación técnica detallada del material">Especificación</th>
-                    <th style="width: 60px;" title="Cantidad de unidades por empaque">Und.</th>
-                    <th style="width: 100px;" title="Ubicación física del material en almacén">Ubicación</th>
-                    <th style="width: 100px;" title="Proveedor o vendedor del material">Vendedor</th>
-                    <th style="width: 70px;" title="Indica si el material está prohibido para sacar">Prohibido</th>
-                    <th style="width: 70px;" title="Indica si el material es reparable">Reparable</th>
-                    <th style="width: 60px;" title="Nivel de sensibilidad a la humedad (MSL)">MSL</th>
-                    <th style="width: 80px;" title="Espesor del material para MSL">Espesor</th>
-                    <th style="width: 120px;" title="Fecha y hora de registro del material">Registro</th>
-                    <th style="width: 80px;" title="Acciones disponibles para el material">Acciones</th>
+                    <th style="width: 80px;" title="Código único de identificación del material">Código</th>
+                    <th style="width: 80px;" title="Número de parte del componente">No. Parte</th>
+                    <th style="width: 60px;" title="Tipo de propiedad del material">Propiedad</th>
+                    <th style="width: 80px;" title="Clasificación del material">Classification</th>
+                    <th style="width: 100px;" title="Especificación técnica detallada del material">Especificación</th>
+                    <th style="width: 40px;" title="Cantidad de unidades por empaque">Und.</th>
+                    <th style="width: 80px;" title="Ubicación física del material en almacén">Ubicación</th>
+                    <th style="width: 70px;" title="Proveedor o vendedor del material">Vendedor</th>
+                    <th style="width: 50px;" title="Indica si el material está prohibido para sacar">Prohibido</th>
+                    <th style="width: 50px;" title="Indica si el material es reparable">Reparable</th>
+                    <th style="width: 40px;" title="Nivel de sensibilidad a la humedad (MSL)">MSL</th>
+                    <th style="width: 60px;" title="Espesor del material para MSL">Espesor</th>
+                    <th style="width: 90px;" title="Fecha y hora de registro del material">Registro</th>
+                    <th style="width: 60px;" title="Acciones disponibles para el material">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -496,23 +496,29 @@ setTimeout(inicializarPanelLateral, 500);
 
 <!-- Estilos adicionales para botones de editar -->
 <style>
+/* Mejorar el espaciado en la columna de acciones */
+#tablaMateriales td:last-child {
+    padding: 4px; /* Reducir padding */
+    white-space: nowrap;
+}
+
 .btn {
-    padding: 6px 12px;
-    border-radius: 4px;
+    padding: 2px 6px; /* Botones más pequeños */
+    border-radius: 3px;
     border: 1px solid transparent;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 12px;
+    gap: 2px;
+    font-size: 10px; /* Fuente más pequeña */
     font-weight: 500;
     text-decoration: none;
     transition: all 0.2s ease;
 }
 
 .btn-sm {
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 2px 4px; /* Más pequeño */
+    font-size: 9px;
 }
 
 .btn-outline-primary {
@@ -533,50 +539,18 @@ setTimeout(inicializarPanelLateral, 500);
     text-align: center;
 }
 
-/* Mejorar el espaciado en la columna de acciones */
-#tablaMateriales td:last-child {
-        padding: 8px;
-    white-space: nowrap;
-}
-
-/* Optimización de la tabla para mejor visualización */
-.material-table {
-    table-layout: fixed;
-    width: 100%;
-    font-size: 12px;
-}
-
-.material-table th,
-.material-table td {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 6px 4px;
-}
-
-.material-table th {
-    font-size: 11px;
-    font-weight: 600;
-}
-
-/* Ajustar el contenedor de la tabla */
-.material-table-container {
-    overflow-x: auto;
-    max-width: 100%;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-/* Hacer que las celdas de texto largo muestren tooltip completo */
-.material-table td[data-full-text] {
-    cursor: help;
-}
-
 /* Centrar checkboxes y botones */
 .material-table td:nth-child(9),
 .material-table td:nth-child(10),
 .material-table td:nth-child(14) {
     text-align: center;
+    padding: 2px; /* Padding muy pequeño para checkboxes */
+}
+
+/* Checkboxes más pequeños */
+.material-table input[type="checkbox"] {
+    transform: scale(0.8); /* Reducir tamaño de checkboxes */
+    margin: 0;
 }
 </style>
 

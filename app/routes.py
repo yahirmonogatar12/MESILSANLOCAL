@@ -18,7 +18,7 @@ from .db_mysql import (
     obtener_inventario, actualizar_inventario,
     obtener_bom_por_modelo, guardar_bom_item, obtener_modelos_bom,
     listar_bom_por_modelo, insertar_bom_desde_dataframe,
-    guardar_configuracion, cargar_configuracion
+    guardar_configuracion, cargar_configuracion, actualizar_material_completo
 )
 import pandas as pd
 from werkzeug.utils import secure_filename
@@ -1070,6 +1070,101 @@ def actualizar_campo_material():
     except Exception as e:
         print(f"Error al actualizar campo: {str(e)}")
         return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+@app.route('/actualizar_material_completo', methods=['POST'])
+@login_requerido
+def actualizar_material_completo_route():
+    """Actualizar todos los campos de un material existente"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
+        
+        codigo_original = data.get('codigo_material_original')
+        nuevos_datos = data.get('nuevos_datos')
+        
+        if not codigo_original:
+            return jsonify({'success': False, 'error': 'Código de material original requerido'}), 400
+        
+        if not nuevos_datos:
+            return jsonify({'success': False, 'error': 'Nuevos datos requeridos'}), 400
+        
+        print(f"🔍 DEBUG actualizar_material_completo_route:")
+        print(f"  - codigo_original: '{codigo_original}' (tipo: {type(codigo_original)})")
+        print(f"  - codigo_original length: {len(codigo_original)}")
+        print(f"  - codigo_original repr: {repr(codigo_original)}")
+        print(f"  - nuevos_datos keys: {list(nuevos_datos.keys()) if nuevos_datos else 'None'}")
+        
+        # Limpiar el código original (eliminar espacios y caracteres extraños)
+        codigo_limpio = str(codigo_original).strip()
+        print(f"  - codigo_limpio: '{codigo_limpio}' (length: {len(codigo_limpio)})")
+        
+        # Llamar a la función de db_mysql
+        resultado = actualizar_material_completo(codigo_limpio, nuevos_datos)
+        
+        if resultado['success']:
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+            
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error en actualizar_material_completo_route: {error_msg}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {error_msg}'}), 500
+
+@app.route('/debug_materiales', methods=['GET'])
+@login_requerido
+def debug_materiales():
+    """Endpoint temporal para debug - listar algunos materiales"""
+    try:
+        # Obtener algunos materiales para debug
+        query = "SELECT codigo_material, numero_parte FROM materiales LIMIT 10"
+        materiales = execute_query(query, fetch='all')
+        
+        resultado = {
+            'total_encontrados': len(materiales) if materiales else 0,
+            'materiales': []
+        }
+        
+        if materiales:
+            for material in materiales:
+                resultado['materiales'].append({
+                    'codigo_material': material['codigo_material'],
+                    'numero_parte': material['numero_parte'],
+                    'codigo_length': len(material['codigo_material']) if material['codigo_material'] else 0
+                })
+        
+        return jsonify(resultado), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/debug_estructura_materiales', methods=['GET'])
+@login_requerido
+def debug_estructura_materiales():
+    """Endpoint temporal para debug - ver estructura de tabla materiales"""
+    try:
+        # Obtener estructura de la tabla
+        query = "DESCRIBE materiales"
+        estructura = execute_query(query, fetch='all')
+        
+        resultado = {
+            'columnas': []
+        }
+        
+        if estructura:
+            for columna in estructura:
+                resultado['columnas'].append({
+                    'nombre': columna['Field'],
+                    'tipo': columna['Type'],
+                    'nulo': columna['Null'],
+                    'default': columna['Default']
+                })
+        
+        return jsonify(resultado), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/exportar_excel', methods=['GET'])
 @login_requerido

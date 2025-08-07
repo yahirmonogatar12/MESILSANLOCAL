@@ -659,6 +659,91 @@ def guardar_material(data):
             
         return False
 
+def actualizar_material_completo(codigo_original, nuevos_datos):
+    """Actualizar todos los campos de un material existente"""
+    try:
+        # PRIMERO: Verificar si el material existe
+        print(f"🔍 DEBUG verificando material con código: '{codigo_original}'")
+        
+        # Buscar el material primero para debug
+        query_verificar = "SELECT codigo_material, numero_parte FROM materiales WHERE codigo_material = %s LIMIT 1"
+        material_existente = execute_query(query_verificar, (codigo_original,), fetch='one')
+        
+        if not material_existente:
+            print(f"❌ Material '{codigo_original}' NO encontrado en la base de datos")
+            # Buscar materiales similares para debug
+            query_similares = "SELECT codigo_material FROM materiales WHERE codigo_material LIKE %s LIMIT 5"
+            similares = execute_query(query_similares, (f"%{codigo_original[:10]}%",), fetch='all')
+            print(f"🔍 Materiales similares encontrados: {[s['codigo_material'] for s in similares] if similares else 'Ninguno'}")
+            return {'success': False, 'error': 'No se encontró el material para actualizar'}
+        else:
+            print(f"✅ Material encontrado: {material_existente['codigo_material']} - {material_existente['numero_parte']}")
+        
+        # Construir la consulta UPDATE dinámicamente
+        campos_update = []
+        valores = []
+        
+        # Lista de campos permitidos para actualizar con mapeo correcto
+        mapeo_campos = {
+            'codigoMaterial': 'codigo_material',
+            'numeroParte': 'numero_parte', 
+            'propiedadMaterial': 'propiedad_material',
+            'classification': 'classification',
+            'especificacionMaterial': 'especificacion_material',
+            'unidadEmpaque': 'unidad_empaque',
+            'ubicacionMaterial': 'ubicacion_material',
+            'vendedor': 'vendedor',
+            'prohibidoSacar': 'prohibido_sacar',
+            'reparable': 'reparable',
+            'nivelMsl': 'nivel_msl',  # Mapeo corregido
+            'espesorMsl': 'espesor_msl'  # Mapeo corregido
+        }
+        
+        for campo_frontend, campo_db in mapeo_campos.items():
+            if campo_frontend in nuevos_datos:
+                campos_update.append(f"{campo_db} = %s")
+                valor = nuevos_datos[campo_frontend]
+                
+                # Convertir valores booleanos para campos específicos
+                if campo_frontend in ['prohibidoSacar', 'reparable']:
+                    valor = 1 if valor else 0
+                    
+                valores.append(valor)
+                print(f"  - Mapeando {campo_frontend} -> {campo_db} = {valor}")
+        
+        if not campos_update:
+            print("❌ No hay campos para actualizar")
+            return {'success': False, 'error': 'No hay campos para actualizar'}
+        
+        # Agregar el código original para la condición WHERE
+        valores.append(codigo_original)
+        
+        # Construir y ejecutar la consulta
+        query = f"UPDATE materiales SET {', '.join(campos_update)} WHERE codigo_material = %s"
+        
+        print(f"🔍 DEBUG UPDATE query: {query}")
+        print(f"🔍 DEBUG valores: {valores}")
+        print(f"🔍 DEBUG tipos de valores: {[type(v) for v in valores]}")
+        
+        # Verificar si los valores realmente cambiarían algo
+        query_check = f"SELECT {', '.join([campo.split(' = ')[0] for campo in campos_update])} FROM materiales WHERE codigo_material = %s"
+        valores_actuales = execute_query(query_check, (codigo_original,), fetch='one')
+        print(f"🔍 DEBUG valores actuales en BD: {valores_actuales}")
+        
+        result = execute_query(query, valores)
+        
+        if result and result > 0:
+            print(f"✅ Material {codigo_original} actualizado exitosamente")
+            return {'success': True, 'message': 'Material actualizado exitosamente'}
+        else:
+            print(f"⚠️ UPDATE ejecutado pero 0 filas afectadas para {codigo_original}")
+            return {'success': False, 'error': 'No se pudo actualizar el material - 0 filas afectadas'}
+            
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error actualizando material completo {codigo_original}: {error_msg}")
+        return {'success': False, 'error': f'Error de base de datos: {error_msg}'}
+
 def obtener_material_por_numero(numero_parte):
     """Obtener material por número de parte"""
     try:
