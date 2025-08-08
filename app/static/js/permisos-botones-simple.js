@@ -3,12 +3,19 @@
  * Versión sin MutationObserver para evitar bucles infinitos
  */
 
-class PermisosManagerSimple {
-    constructor() {
-        this.permisosUsuario = {};
-        this.inicializado = false;
-        this.debug = true;
+(() => {
+    // Evitar que el script se ejecute múltiples veces
+    if (window.PermisosManagerSimple) {
+        console.warn('PermisosManagerSimple ya estaba inicializado');
+        return;
     }
+
+        class PermisosManagerSimple {
+        constructor() {
+            this.permisosUsuario = {};
+            this.inicializado = false;
+            this.debug = true;
+        }
 
     /**
      * Inicializar el sistema de permisos
@@ -195,23 +202,25 @@ class PermisosManagerSimple {
             this.aplicarPermisos();
         }
     }
-}
 
-// Crear instancia global
-window.PermisosManagerSimple = new PermisosManagerSimple();
-
-// Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    window.PermisosManagerSimple.inicializar();
-});
-
-// Agregar estilos CSS simplificados
-const style = document.createElement('style');
-style.textContent = `
-    .permiso-denegado {
-        opacity: 0.5 !important;
-        cursor: not-allowed !important;
-        filter: grayscale(50%);
     }
-`;
-document.head.appendChild(style);
+
+    // Crear instancia global
+    window.PermisosManagerSimple = new PermisosManagerSimple();
+
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', () => {
+        window.PermisosManagerSimple.inicializar();
+    });
+
+    // Agregar estilos CSS simplificados
+    const style = document.createElement('style');
+    style.textContent = `
+        .permiso-denegado {
+            opacity: 0.5 !important;
+            cursor: not-allowed !important;
+            filter: grayscale(50%);
+        }
+    `;
+    document.head.appendChild(style);
+})();

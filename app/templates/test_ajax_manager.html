@@ -3,24 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test AjaxContentManager</title>
+    <title>Test AJAX Manager - MESILSANLOCAL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #32323E;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-button {
+            background: #20688C;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: #1a5a7a;
+        }
+        .log-container {
+            background: #2D363D;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .content-target {
+            background: #2D363D;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+            min-height: 200px;
+            position: relative;
+        }
+        .test-info {
+            background: #20688C;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Test AjaxContentManager</h1>
-    <button id="testButton">Cargar Control de Retorno</button>
-    <div id="content-container"></div>
+    <div class="test-container">
+        <h1>🧪 Test AJAX Content Manager</h1>
+        
+        <div class="test-info">
+            <h3>Características del sistema mejorado:</h3>
+            <ul>
+                <li>✅ Carga CSS ANTES de mostrar HTML</li>
+                <li>✅ Indicador visual de carga</li>
+                <li>✅ Verificación de aplicación de estilos</li>
+                <li>✅ Elimina parpadeos (FOUC)</li>
+                <li>✅ Logs detallados en consola</li>
+            </ul>
+        </div>
 
-    <script src="/static/js/ajax-content-manager.js"></script>
+        <div>
+            <h3>Acciones de prueba:</h3>
+            <button class="test-button" onclick="testControlRetorno()">
+                🔧 Cargar Control de Retorno
+            </button>
+            <button class="test-button" onclick="clearContent()">
+                🗑️ Limpiar Contenido
+            </button>
+        </div>
+
+        <div class="log-container" id="logContainer">
+            <strong>📊 Log de actividad:</strong><br>
+            Presiona un botón para ver los logs de carga...
+        </div>
+
+        <div class="content-target" id="contentTarget">
+            <p><strong>🎯 Área de contenido dinámico</strong></p>
+            <p>El contenido AJAX aparecerá aquí. Observa que:</p>
+            <ul>
+                <li>Primero se cargan los CSS</li>
+                <li>Luego aparece el HTML con estilos aplicados</li>
+                <li>No hay parpadeos ni contenido sin formato</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
     <script>
-        document.getElementById('testButton').addEventListener('click', async function() {
-            console.log('🧪 Probando AjaxContentManager...');
-            if (window.AjaxContentManager) {
-                await AjaxContentManager.loadContent('/material/control_retorno', '#content-container');
-                console.log('✅ Contenido cargado exitosamente');
-            } else {
-                console.error('❌ AjaxContentManager no disponible');
+        // Capturar logs de consola para mostrar en pantalla
+        const originalLog = console.log;
+        const originalError = console.error;
+        const logContainer = document.getElementById('logContainer');
+        
+        function addToLog(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : '#4ecdc4';
+            logContainer.innerHTML += `<div style="color: ${color}; margin: 2px 0;">[${timestamp}] ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToLog(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToLog(args.join(' '), 'error');
+        };
+
+        async function testControlRetorno() {
+            addToLog('🚀 Iniciando test de Control de Retorno...', 'log');
+            console.log('=== TEST: Control de Retorno ===');
+            
+            try {
+                await AjaxContentManager.loadContent('/material/control_retorno', '#contentTarget');
+                addToLog('✅ Test completado exitosamente', 'log');
+            } catch (error) {
+                addToLog('❌ Error en test: ' + error.message, 'error');
             }
-        });
+        }
+
+        function clearContent() {
+            document.getElementById('contentTarget').innerHTML = `
+                <p><strong>🎯 Área de contenido dinámico</strong></p>
+                <p>Contenido limpiado. Listo para nueva prueba.</p>
+            `;
+            logContainer.innerHTML = '<strong>📊 Log de actividad:</strong><br>Contenido limpiado.';
+            console.log('🧹 Contenido limpiado');
+        }
+
+        // Log inicial
+        addToLog('🔄 Página de test cargada y lista', 'log');
+        console.log('AjaxContentManager disponible:', typeof AjaxContentManager !== 'undefined');
     </script>
 </body>
 </html>
