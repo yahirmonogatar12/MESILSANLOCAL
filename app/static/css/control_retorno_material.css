@@ -544,3 +544,223 @@
         #control-retorno-container .status-error {
             background-color: #dc3545;
         }
+
+        /* Estilos para historial y lotes */
+        .tipo-movimiento {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .tipo-movimiento.entrada {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+
+        .tipo-movimiento.salida {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+
+        .cantidad-entradas {
+            color: #28a745 !important;
+            font-weight: 600;
+        }
+
+        .cantidad-salidas {
+            color: #dc3545 !important;
+            font-weight: 600;
+        }
+
+        .cantidad-ok {
+            color: #28a745 !important;
+            font-weight: 600;
+        }
+
+        .cantidad-media {
+            color: #ffc107 !important;
+            font-weight: 600;
+        }
+
+        .cantidad-baja {
+            color: #dc3545 !important;
+            font-weight: 600;
+        }
+
+        .detalle-movimiento {
+            font-size: 12px;
+            color: #6c757d;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-summary {
+            background-color: rgba(52, 152, 219, 0.1);
+            border: 1px solid #3498db;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .modal-summary p {
+            margin: 5px 0;
+            font-weight: 500;
+        }
+
+        .modal-summary strong {
+            color: #3498db;
+        }
+
+        /* Modales del estilo trazabilidad */
+        .trazabilidad-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        }
+
+        .trazabilidad-modal-content {
+            background-color: #40424F;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .trazabilidad-modal-header {
+            background-color: #3498db;
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #2980b9;
+        }
+
+        .trazabilidad-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .trazabilidad-modal-body {
+            padding: 25px;
+            overflow-y: auto;
+            flex: 1;
+            color: #e8e8e8;
+            background-color: #40424F;
+        }
+
+        .trazabilidad-modal-body .table-responsive {
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .trazabilidad-modal-body .material-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #4a4c5a;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .trazabilidad-modal-body .material-table th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 2px solid #2980b9;
+        }
+
+        .trazabilidad-modal-body .material-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #5a5c6a;
+            color: #e8e8e8;
+            font-size: 13px;
+        }
+
+        .trazabilidad-modal-body .material-table tr:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .trazabilidad-modal-body .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8b8d97;
+        }
+
+        .trazabilidad-modal-body .no-data i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #6c757d;
+        }
+
+        .trazabilidad-modal-body .no-data p {
+            font-size: 16px;
+            margin: 0;
+        }
+
+        /* Responsivo para modales */
+        @media (max-width: 768px) {
+            .trazabilidad-modal-content {
+                width: 95%;
+                max-height: 95vh;
+            }
+
+            .trazabilidad-modal-header {
+                padding: 15px 20px;
+            }
+
+            .trazabilidad-modal-header h3 {
+                font-size: 16px;
+            }
+
+            .trazabilidad-modal-body {
+                padding: 20px;
+            }
+
+            .trazabilidad-modal-body .material-table th,
+            .trazabilidad-modal-body .material-table td {
+                padding: 8px 6px;
+                font-size: 12px;
+            }
+        }

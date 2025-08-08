@@ -79,10 +79,10 @@
                             <th>Código de Material</th>
                             <th>Propiedad</th>
                             <th>Especificación</th>
-                            <th class="cantidad-col">Entradas</th>
-                            <th class="cantidad-col">Salidas</th>
-                            <th class="cantidad-col">Remanente</th>
-                            <th>Fecha Actualización</th>
+                            <th class="cantidad-col">Cantidad Total</th>
+                            <th class="cantidad-col">Total Lotes</th>
+                            <th class="cantidad-col">Disponible</th>
+                            <th>Último Recibo</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -156,10 +156,9 @@
         function consultarInventario() {
             
             const filtros = {
-                buscar: document.getElementById('inventario_buscar_material').value.trim(),
+                numeroParte: document.getElementById('inventario_buscar_material').value.trim(),
                 propiedad: document.getElementById('inventario_propiedad').value,
-                cantidadMin: document.getElementById('inventario_cantidad_min').value,
-                cantidadMax: document.getElementById('inventario_cantidad_max').value
+                cantidadMinima: document.getElementById('inventario_cantidad_min').value
             };
 
             // Mostrar loader
@@ -177,15 +176,17 @@
             .then(data => {
                 if (data.success) {
                     renderizarTablaInventario(data.inventario);
-                    actualizarEstadisticas(data.estadisticas);
+                    actualizarEstadisticas({
+                        totalItems: data.total,
+                        valorTotal: 0 // Por ahora no calculamos valor total
+                    });
                 } else {
-                    mostrarError('Error al consultar inventario: ' + data.message);
+                    mostrarError('Error al consultar inventario: ' + data.error);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                // Datos de ejemplo mientras se implementa la API
-                cargarDatosEjemplo();
+                mostrarError('Error de conexión al consultar inventario');
             });
         }
 
@@ -256,8 +257,10 @@
             }
 
             tbody.innerHTML = datos.map(item => {
-                const remanente = item.cantidad_total || (item.cantidad_entradas - item.cantidad_salidas);
-                const claseRemanente = remanente <= 0 ? 'cantidad-baja' : remanente < 50 ? 'cantidad-media' : 'cantidad-ok';
+                // Usar los campos correctos del nuevo endpoint
+                const cantidad_total = item.cantidad_total || 0;
+                const total_lotes = item.total_lotes || 0;
+                const claseRemanente = cantidad_total <= 0 ? 'cantidad-baja' : cantidad_total < 50 ? 'cantidad-media' : 'cantidad-ok';
                 
                 return `
                     <tr>
@@ -266,17 +269,17 @@
                         </td>
                         <td class="numero-parte">${item.numero_parte}</td>
                         <td>${item.codigo_material}</td>
-                        <td><span class="propiedad-badge ${item.propiedad_material.toLowerCase().replace(' ', '-')}">${item.propiedad_material}</span></td>
+                        <td><span class="propiedad-badge ${item.propiedad_material.toLowerCase().replace(/\s+/g, '-')}">${item.propiedad_material}</span></td>
                         <td class="especificacion" title="${item.especificacion}">${item.especificacion}</td>
-                        <td class="cantidad-col cantidad-entradas">${formatearNumero(item.cantidad_entradas)}</td>
-                        <td class="cantidad-col cantidad-salidas">${formatearNumero(item.cantidad_salidas)}</td>
-                        <td class="cantidad-col ${claseRemanente}">${formatearNumero(remanente)}</td>
-                        <td class="fecha">${formatearFecha(item.fecha_actualizacion)}</td>
+                        <td class="cantidad-col cantidad-entradas">${formatearNumero(cantidad_total)}</td>
+                        <td class="cantidad-col cantidad-salidas">${total_lotes} lotes</td>
+                        <td class="cantidad-col ${claseRemanente}">${formatearNumero(cantidad_total)}</td>
+                        <td class="fecha">${formatearFecha(item.fecha_ultimo_recibo)}</td>
                         <td class="acciones">
-                            <button class="material-btn material-btn-small material-btn-info" onclick="verDetalleInventario(${item.id})" title="Ver Detalle">
-                                <i class="fas fa-eye"></i>
+                            <button class="material-btn material-btn-small material-btn-info" onclick="verDetalleInventario(${item.id})" title="Ver Lotes Disponibles">
+                                <i class="fas fa-boxes"></i>
                             </button>
-                            <button class="material-btn material-btn-small material-btn-warning" onclick="verMovimientos(${item.id})" title="Ver Movimientos">
+                            <button class="material-btn material-btn-small material-btn-warning" onclick="verMovimientos(${item.id})" title="Ver Historial Completo">
                                 <i class="fas fa-history"></i>
                             </button>
                         </td>
@@ -400,13 +403,185 @@
         }
 
         function verDetalleInventario(id) {
-            // Aquí se podría abrir un modal o navegar a una página de detalle
-            alert(`👁️ Ver detalle del producto ${id} - Funcionalidad por implementar`);
+            // Obtener el número de parte del elemento actual
+            const fila = event.target.closest('tr');
+            const numeroParte = fila.querySelector('.numero-parte').textContent.trim();
+            
+            // Consultar lotes disponibles
+            fetch('/api/inventario/lotes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ numero_parte: numeroParte })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarModalLotes(numeroParte, data.lotes);
+                } else {
+                    alert(`❌ Error al consultar lotes: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error al consultar lotes');
+            });
         }
 
         function verMovimientos(id) {
-            // Aquí se podría abrir un historial de movimientos
-            alert(`📜 Ver movimientos del producto ${id} - Funcionalidad por implementar`);
+            // Obtener el número de parte del elemento actual
+            const fila = event.target.closest('tr');
+            const numeroParte = fila.querySelector('.numero-parte').textContent.trim();
+            
+            // Consultar historial completo
+            fetch('/api/inventario/historial', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ numero_parte: numeroParte })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarModalHistorial(numeroParte, data.historial, data.balance_actual);
+                } else {
+                    alert(`❌ Error al consultar historial: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error al consultar historial');
+            });
+        }
+
+        function mostrarModalLotes(numeroParte, lotes) {
+            // Crear modal de lotes
+            const modalContent = `
+                <div class="trazabilidad-modal-overlay" onclick="cerrarModal(event)">
+                    <div class="trazabilidad-modal-content" onclick="event.stopPropagation()">
+                        <div class="trazabilidad-modal-header">
+                            <h3>� Lotes Disponibles - ${numeroParte}</h3>
+                            <button class="close-btn" onclick="cerrarModal()">&times;</button>
+                        </div>
+                        <div class="trazabilidad-modal-body">
+                            ${lotes.length > 0 ? `
+                                <div class="table-responsive">
+                                    <table class="material-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Número de Lote</th>
+                                                <th>Cantidad Original</th>
+                                                <th>Total Salidas</th>
+                                                <th>Cantidad Disponible</th>
+                                                <th>Fecha Recibo</th>
+                                                <th>Ubicación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${lotes.map(lote => `
+                                                <tr>
+                                                    <td><strong>${lote.numero_lote}</strong></td>
+                                                    <td class="cantidad-col">${formatearNumero(lote.cantidad_original)}</td>
+                                                    <td class="cantidad-col cantidad-salidas">${formatearNumero(lote.total_salidas)}</td>
+                                                    <td class="cantidad-col ${lote.cantidad_disponible > 0 ? 'cantidad-ok' : 'cantidad-baja'}">${formatearNumero(lote.cantidad_disponible)}</td>
+                                                    <td class="fecha">${formatearFecha(lote.fecha_recibo)}</td>
+                                                    <td>${lote.ubicacion_salida || 'No especificada'}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="modal-summary">
+                                    <p><strong>Total de lotes:</strong> ${lotes.length}</p>
+                                    <p><strong>Cantidad total disponible:</strong> ${formatearNumero(lotes.reduce((sum, lote) => sum + lote.cantidad_disponible, 0))}</p>
+                                </div>
+                            ` : `
+                                <div class="no-data">
+                                    <i class="fas fa-box-open"></i>
+                                    <p>No se encontraron lotes disponibles para este número de parte</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalContent);
+        }
+
+        function mostrarModalHistorial(numeroParte, historial, balanceActual) {
+            // Crear modal de historial
+            const modalContent = `
+                <div class="trazabilidad-modal-overlay" onclick="cerrarModal(event)">
+                    <div class="trazabilidad-modal-content" onclick="event.stopPropagation()" style="max-width: 1200px;">
+                        <div class="trazabilidad-modal-header">
+                            <h3>📈 Historial de Movimientos - ${numeroParte}</h3>
+                            <button class="close-btn" onclick="cerrarModal()">&times;</button>
+                        </div>
+                        <div class="trazabilidad-modal-body">
+                            ${historial.length > 0 ? `
+                                <div class="modal-summary" style="margin-bottom: 20px;">
+                                    <p><strong>Balance actual:</strong> <span class="${balanceActual > 0 ? 'cantidad-ok' : 'cantidad-baja'}">${formatearNumero(balanceActual)}</span></p>
+                                    <p><strong>Total de movimientos:</strong> ${historial.length}</p>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="material-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Tipo</th>
+                                                <th>Fecha</th>
+                                                <th>Lote</th>
+                                                <th>Cantidad</th>
+                                                <th>Balance</th>
+                                                <th>Detalle</th>
+                                                <th>Especificación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${historial.map(mov => `
+                                                <tr>
+                                                    <td>
+                                                        <span class="tipo-movimiento ${mov.tipo_movimiento.toLowerCase()}">
+                                                            ${mov.tipo_movimiento === 'ENTRADA' ? '📥' : '📤'} ${mov.tipo_movimiento}
+                                                        </span>
+                                                    </td>
+                                                    <td class="fecha">${formatearFecha(mov.fecha_movimiento)}</td>
+                                                    <td><code>${mov.lote}</code></td>
+                                                    <td class="cantidad-col ${mov.cantidad >= 0 ? 'cantidad-entradas' : 'cantidad-salidas'}">
+                                                        ${mov.cantidad >= 0 ? '+' : ''}${formatearNumero(mov.cantidad)}
+                                                    </td>
+                                                    <td class="cantidad-col ${mov.balance_acumulado > 0 ? 'cantidad-ok' : 'cantidad-baja'}">
+                                                        ${formatearNumero(mov.balance_acumulado)}
+                                                    </td>
+                                                    <td class="detalle-movimiento">${mov.detalle_movimiento}</td>
+                                                    <td class="especificacion" title="${mov.especificacion}">${mov.especificacion}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ` : `
+                                <div class="no-data">
+                                    <i class="fas fa-history"></i>
+                                    <p>No se encontró historial para este número de parte</p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalContent);
+        }
+
+        function cerrarModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const modal = document.querySelector('.trazabilidad-modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
         }
 
         function formatearNumero(numero) {

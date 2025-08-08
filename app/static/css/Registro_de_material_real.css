@@ -206,7 +206,7 @@
     width: 100%;
     border-collapse: collapse;
     margin: 0;
-    font-size: 11px;
+    font-size: 9px;
     background-color: #40424F;
     max-width: 100%;
 }
@@ -214,7 +214,7 @@
 .inventario-table th {
     background-color: #172A46;
     color: #ecf0f1;
-    padding: 8px 6px;
+    padding: 6px 4px;
     text-align: center;
     border: 1px solid #20688C;
     font-weight: 600;
@@ -224,10 +224,10 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    font-size: 10px;
+    font-size: 8px;
     line-height: 1.2;
-    min-width: 60px;
-    max-width: 300px;
+    min-width: 50px;
+    max-width: 200px;
     resize: horizontal;
     cursor: default;
 }
@@ -282,34 +282,34 @@
 }
 
 .inventario-table td {
-    padding: 6px 4px;
+    padding: 4px 3px;
     text-align: center;
     border: 1px solid #5F6375;
     background-color: #40424F;
     color: lightgray;
     transition: background-color 0.3s;
-    font-size: 10px;
+    font-size: 8px;
     line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 150px;
+    max-width: 120px;
     position: relative;
     cursor: default;
 }
 
 /* Fechas más legibles */
 .inventario-table td.fecha-col {
-    font-size: 25px;
+    font-size: 8px;
     font-weight: 500;
-    min-width: 180px;
-    max-width: 200px;
+    min-width: 120px;
+    max-width: 140px;
     font-family: 'Courier New', monospace;
 }
 
 /* Tooltip para celdas con texto largo */
 .inventario-table td:hover::after {
-    content: attr(data-full-text);
+    content: attr(title);
     position: absolute;
     top: 100%;
     left: 50%;
@@ -319,7 +319,7 @@
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 11px;
-    white-space: normal;
+    white-space: pre-line;
     max-width: 300px;
     min-width: 150px;
     z-index: 1000;
@@ -333,7 +333,7 @@
     animation: tooltipFadeIn 0.2s ease-in-out forwards;
 }
 
-.inventario-table td[data-full-text]:hover::after {
+.inventario-table td[title]:hover::after {
     opacity: 1;
 }
 
@@ -353,7 +353,7 @@
     animation: tooltipFadeIn 0.2s ease-in-out forwards;
 }
 
-.inventario-table td[data-full-text]:hover::before {
+.inventario-table td[title]:hover::before {
     opacity: 1;
 }
 
@@ -1065,6 +1065,375 @@ input[type="checkbox"] {
         font-size: 9px;
         padding: 3px 6px;
     }
+}
+
+/* Estilos para modales de historial y lotes */
+.trazabilidad-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+}
+
+.trazabilidad-modal-content {
+    background-color: #40424F;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.trazabilidad-modal-header {
+    background-color: #6c757d;
+    color: white;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid #5a6268;
+}
+
+.trazabilidad-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+}
+
+.close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.trazabilidad-modal-body {
+    padding: 25px;
+    overflow-y: auto;
+    flex: 1;
+    color: #e8e8e8;
+    background-color: #40424F;
+}
+
+.trazabilidad-modal-body .table-responsive {
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.trazabilidad-modal-body .material-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #4a4c5a;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.trazabilidad-modal-body .material-table th {
+    background-color: #6c757d;
+    color: white;
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 2px solid #5a6268;
+}
+
+.trazabilidad-modal-body .material-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #5a5c6a;
+    color: #ffffff;
+    font-size: 13px;
+}
+
+.trazabilidad-modal-body .material-table tr:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+.trazabilidad-modal-body .no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: #8b8d97;
+}
+
+.trazabilidad-modal-body .no-data i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    color: #6c757d;
+}
+
+.trazabilidad-modal-body .no-data p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* Estilos para tipos de movimiento */
+.tipo-movimiento {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tipo-movimiento.entrada {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.tipo-movimiento.salida {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.cantidad-entradas {
+    color: #28a745 !important;
+    font-weight: 600;
+}
+
+.cantidad-salidas {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+
+.cantidad-ok {
+    color: #28a745 !important;
+    font-weight: 600;
+}
+
+.cantidad-media {
+    color: #ffc107 !important;
+    font-weight: 600;
+}
+
+.cantidad-baja {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+
+.detalle-movimiento {
+    font-size: 12px;
+    color: #6c757d;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modal-summary {
+    background-color: rgba(108, 117, 125, 0.1);
+    border: 1px solid #6c757d;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.modal-summary p {
+    margin: 5px 0;
+    font-weight: 500;
+}
+
+.modal-summary strong {
+    color: #ffffff;
+}
+
+/* Estilos para botones de acción pequeños */
+.material-btn-small {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    margin: 0 2px;
+}
+
+.material-btn-small.material-btn-info {
+    background-color: #3498db;
+}
+
+.material-btn-small.material-btn-info:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+.material-btn-small.material-btn-warning {
+    background-color: #f39c12;
+}
+
+.material-btn-small.material-btn-warning:hover {
+    background-color: #e67e22;
+    transform: translateY(-1px);
+}
+
+/* Responsivo para modales */
+@media (max-width: 768px) {
+    .trazabilidad-modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .trazabilidad-modal-header {
+        padding: 15px 20px;
+    }
+
+    .trazabilidad-modal-header h3 {
+        font-size: 16px;
+    }
+
+    .trazabilidad-modal-body {
+        padding: 20px;
+    }
+
+    .trazabilidad-modal-body .material-table th,
+    .trazabilidad-modal-body .material-table td {
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+}
+
+/* Estilos para badges en los modales */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+}
+
+.badge-success {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.badge-danger {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+/* Filtro mejorado para lotes */
+.lotes-filter-container input:focus,
+.lotes-filter-container select:focus {
+    outline: none;
+    border-color: #8b8d97;
+    box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.3);
+}
+
+/* Animación para las filas de lotes */
+.fila-lote {
+    transition: all 0.3s ease;
+}
+
+.fila-lote:hover {
+    background-color: rgba(108, 117, 125, 0.15) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(108, 117, 125, 0.2);
+}
+
+/* Estilo para códigos de lote */
+.fila-lote code {
+    transition: all 0.3s ease;
+}
+
+.fila-lote:hover code {
+    background: rgba(108, 117, 125, 0.5) !important;
+    color: #ffffff !important;
+}
+
+/* Filtro mejorado para lotes */
+.lotes-filter-container input:focus,
+.lotes-filter-container select:focus {
+    outline: none;
+    border-color: #2980b9;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+/* Animación para las filas de lotes */
+.fila-lote {
+    transition: all 0.3s ease;
+}
+
+.fila-lote:hover {
+    background-color: rgba(52, 152, 219, 0.15) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+}
+
+/* Estilo para códigos de lote */
+.fila-lote code {
+    transition: all 0.3s ease;
+}
+
+.fila-lote:hover code {
+    background: rgba(52, 152, 219, 0.25) !important;
+    color: #2980b9 !important;
+}
+
+/* Indicador de carga mejorado */
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mejoras para el modal summary */
+.modal-summary {
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.1), rgba(108, 117, 125, 0.05));
+    border: 1px solid #6c757d;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-summary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6c757d, #5a6268, #6c757d);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 /* Final del archivo CSS del Inventario General */

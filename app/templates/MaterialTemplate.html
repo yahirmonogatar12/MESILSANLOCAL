@@ -3358,8 +3358,17 @@
             }
         }
 
-        // Nueva función para procesamiento manual con botón
+        // Nueva función para procesamiento manual NEUTRALIZADA para salida rápida
         async function procesarSalidaManual() {
+            console.log('🔧 procesarSalidaManual llamada desde MaterialTemplate');
+            
+            // OVERRIDE: Si está en modo salida rápida, usar la función específica
+            if (window.SALIDA_RAPIDA_ACTIVA && window.guardarSalida) {
+                console.log('✅ Detectado modo salida rápida, usando función específica');
+                window.guardarSalida();
+                return;
+            }
+            
             const codigo = document.getElementById('salida_codigo_material_recibido')?.value?.trim();
             
             if (!codigo) {
@@ -3372,10 +3381,8 @@
                 return;
             }
             
-            if (!verificacionCompletada) {
-                mostrarMensajeSimple('Debe completar la verificación de salida primero', 'error');
-                return;
-            }
+            // ELIMINADO: validación de verificación para permitir salida directa
+            console.log('⚡ Procesando salida manual SIN verificación desde MaterialTemplate');
             
             try {
                 const modelo = document.getElementById('salida_modelo')?.value || 'SIN_MODELO';
@@ -3420,7 +3427,7 @@
                         fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
                         especificacion_material: materialActual.especificacion_material || materialActual.especificacion || '',
                         proceso_salida: 'SMT 1st SIDE',
-                        codigo_verificacion: document.getElementById('salida_verificacion_codigo')?.value || ''
+                        codigo_verificacion: 'AUTO' // SIEMPRE AUTO, SIN VERIFICACIÓN
                     })
                 });
 
@@ -3428,18 +3435,21 @@
 
                 if (salidaData.success) {
                     const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
-                    mostrarMensajeSimple(`Salida procesada: ${cantidadSalida}${modeloTexto} | Inventario actualizándose`, 'success');
+                    mostrarMensajeSimple(`✅ Salida procesada: ${cantidadSalida}${modeloTexto}`, 'success');
                     
+                    // Limpiar y preparar para siguiente
                     setTimeout(() => {
-                        limpiarCamposMaterial();
-                    }, 1500);
+                        if (typeof limpiarCamposMaterial === 'function') {
+                            limpiarCamposMaterial();
+                        }
+                    }, 800);
                     
                 } else {
-                    mostrarMensajeSimple('Error al procesar salida manual', 'error');
+                    mostrarMensajeSimple('Error al procesar salida: ' + (salidaData.error || 'Error desconocido'), 'error');
                 }
                 
             } catch (error) {
-                console.error('❌ Error en procesamiento manual:', error);
+                console.error('❌ Error en procesamiento manual desde MaterialTemplate:', error);
                 mostrarMensajeSimple('Error interno en procesamiento manual', 'error');
             }
         }
@@ -3610,16 +3620,6 @@
             }
             
             const celdas = filaConDatos.querySelectorAll('td');
-            console.log('📋 CONTENIDO DE LA PRIMERA FILA CON DATOS:');
-            console.log('  1. Fecha de salida:', celdas[0]?.textContent || 'VACÍO');
-            console.log('  2. Proceso de salida:', celdas[1]?.textContent || 'VACÍO');
-            console.log('  3. Código material recibido:', celdas[2]?.textContent || 'VACÍO');
-            console.log('  4. Código de material:', celdas[3]?.textContent || 'VACÍO');
-            console.log('  5. Número de parte:', celdas[4]?.textContent || 'VACÍO');
-            console.log('  6. Disp.:', celdas[5]?.textContent || 'VACÍO');
-            console.log('  7. Código material original:', celdas[6]?.textContent || 'VACÍO');
-            console.log('  8. 🎯 NÚMERO DE LOTE:', celdas[7]?.textContent || 'VACÍO');
-            console.log('  9. Especificación de material:', celdas[8]?.textContent || 'VACÍO');
             
             const numeroLote = celdas[7]?.textContent || '';
             if (!numeroLote || numeroLote === '') {
