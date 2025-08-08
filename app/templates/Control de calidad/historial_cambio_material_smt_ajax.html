@@ -448,6 +448,172 @@
                 font-size: 9px;
                 padding: 3px 4px;
             }
+            
+            .filterable-header {
+                font-size: 9px;
+                padding: 4px 3px !important;
+                min-width: 80px;
+            }
+            
+            .filterable-header .header-content span {
+                font-size: 9px;
+                line-height: 1.1;
+            }
+            
+            .filter-btn {
+                width: 18px !important;
+                height: 18px !important;
+                font-size: 8px !important;
+            }
+            
+            .header-filter {
+                min-width: 100px !important;
+                font-size: 9px;
+            }
+            
+            .clear-all-filters {
+                padding: 3px 4px !important;
+                font-size: 8px !important;
+                width: 18px !important;
+                height: 18px !important;
+            }
+        }
+
+        /* Estilos para los filtros de cabecera SMT */
+        .filterable-header {
+            position: relative;
+            vertical-align: top;
+            padding: 6px 8px !important;
+            min-width: 120px;
+        }
+
+        .filterable-header .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 32px;
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
+
+        .filterable-header .header-content span {
+            font-size: 11px;
+            font-weight: 600;
+            color: #ecf0f1;
+            text-align: left;
+            line-height: 1.2;
+            flex: 1;
+            min-width: 0;
+            word-wrap: break-word;
+        }
+
+        .filterable-header .filter-btn {
+            background: #2c3e50;
+            border: 1px solid #20688C;
+            color: #3498db;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            font-size: 11px;
+            padding: 0;
+            margin-left: auto;
+        }
+
+        .filterable-header .filter-btn:hover {
+            background: #20688C;
+            color: #ecf0f1;
+            transform: scale(1.1);
+        }
+
+        .filterable-header .filter-btn.active {
+            background: #3498db;
+            color: #fff;
+            border-color: #2980b9;
+        }
+
+        .filterable-header .header-filter {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #2c3e50;
+            border: 1px solid #20688C;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 9999 !important;
+            padding: 5px;
+            margin-top: 2px;
+            min-width: 150px;
+        }
+
+        .filterable-header .filter-select {
+            width: 100%;
+            background: #34495e !important;
+            border: 1px solid #20688C !important;
+            color: lightgray !important;
+            padding: 5px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .filterable-header .filter-select:focus {
+            border-color: #3498db !important;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .filterable-header .filter-select option {
+            background: #2c3e50;
+            color: lightgray;
+            padding: 3px;
+        }
+
+        .clear-all-filters {
+            background: #e74c3c !important;
+            border: 1px solid #c0392b !important;
+            color: #fff !important;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+        }
+
+        .clear-all-filters:hover {
+            background: #c0392b !important;
+            transform: scale(1.05);
+        }
+
+        .clear-all-filters i {
+            font-size: 10px;
+        }
+
+        /* Mejorar el estilo del último header */
+        .smt-table th:last-child {
+            min-width: 100px;
+        }
+
+        .smt-table th:last-child .header-content {
+            justify-content: center;
+        }
+
+        /* Override para evitar conflictos con overflow */
+        .smt-table th:not(.filterable-header) {
+            overflow: hidden;
+        }
+
+        .filterable-header {
+            overflow: visible !important;
         }
         
         /* Scrollbar personalizada estilo BOM */
@@ -503,6 +669,16 @@
                 <div class="filter-group">
                     <label for="smt-fecha-desde">Fecha Desde:</label>
                     <input type="date" id="smt-fecha-desde" class="smt-input" onchange="aplicarFiltros()">
+                    <script>
+                        // Establecer fecha actual inmediatamente cuando se carga el elemento
+                        (function() {
+                            const hoy = new Date().toISOString().split('T')[0];
+                            const fechaInput = document.getElementById('smt-fecha-desde');
+                            if (fechaInput) {
+                                fechaInput.value = hoy;
+                            }
+                        })();
+                    </script>
                 </div>
                 <div class="filter-group">
                     <label for="smt-fecha-hasta">Fecha Hasta:</label>
@@ -547,22 +723,233 @@
         <table id="smt-data-table" class="smt-table" style="display: none;">
             <thead>
                 <tr>
-                    <th>Fecha Scan</th>
-                    <th>Hora Scan</th>
-                    <th>Slot</th>
-                    <th>Resultado</th>
-                    <th>Lote</th>
-                    <th>Código Barras</th>
-                    <th>Código Anterior</th>
-                    <th>Fecha Producto</th>
-                    <th>Parte</th>
-                    <th>Cantidad</th>
-                    <th>SEQ</th>
-                    <th>Proveedor</th>
-                    <th>Base Feeder</th>
-                    <th>Línea</th>
-                    <th>Máquina</th>
-                    <th>Archivo</th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Fecha Scan</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('fechaScan')" title="Filtrar fecha scan">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-fechaScan" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('fechaScan', this.value)">
+                                <option value="">Todas las fechas</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Hora Scan</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('horaScan')" title="Filtrar hora scan">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-horaScan" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('horaScan', this.value)">
+                                <option value="">Todas las horas</option>
+                                <option value="(Non blanks)">(Con hora)</option>
+                                <option value="(Blanks)">(Sin hora)</option>
+                                <option value="manana">Mañana (06:00-12:00)</option>
+                                <option value="tarde">Tarde (12:00-18:00)</option>
+                                <option value="noche">Noche (18:00-00:00)</option>
+                                <option value="madrugada">Madrugada (00:00-06:00)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Slot</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('slot')" title="Filtrar slot">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-slot" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('slot', this.value)">
+                                <option value="">Todos los slots</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Resultado</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('resultado')" title="Filtrar resultado">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-resultado" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('resultado', this.value)">
+                                <option value="">Todos los resultados</option>
+                                <option value="OK">OK</option>
+                                <option value="NG">NG</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Lote</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('lote')" title="Filtrar lote">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-lote" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('lote', this.value)">
+                                <option value="">Todos los lotes</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Código Barras</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('codigoBarras')" title="Filtrar código barras">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-codigoBarras" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('codigoBarras', this.value)">
+                                <option value="">Todos los códigos</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Código Anterior</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('codigoAnterior')" title="Filtrar código anterior">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-codigoAnterior" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('codigoAnterior', this.value)">
+                                <option value="">Todos los códigos</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Parte</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('parte')" title="Filtrar parte">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-parte" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('parte', this.value)">
+                                <option value="">Todas las partes</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Cantidad</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('cantidad')" title="Filtrar cantidad">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-cantidad" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('cantidad', this.value)">
+                                <option value="">Todas las cantidades</option>
+                                <option value="positivo">Solo positivas (> 0)</option>
+                                <option value="negativo">Solo negativas (< 0)</option>
+                                <option value="cero">Solo cero (= 0)</option>
+                                <option value=">=100">Mayores a 100</option>
+                                <option value=">=1000">Mayores a 1000</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>SEQ</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('seq')" title="Filtrar SEQ">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-seq" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('seq', this.value)">
+                                <option value="">Todos los SEQ</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Proveedor</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('proveedor')" title="Filtrar proveedor">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-proveedor" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('proveedor', this.value)">
+                                <option value="">Todos los proveedores</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Base Feeder</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('baseFeeder')" title="Filtrar base feeder">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-baseFeeder" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('baseFeeder', this.value)">
+                                <option value="">Todas las bases</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Línea</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('linea')" title="Filtrar línea">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-linea" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('linea', this.value)">
+                                <option value="">Todas las líneas</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th class="filterable-header">
+                        <div class="header-content">
+                            <span>Máquina</span>
+                            <button type="button" class="filter-btn" onclick="toggleFiltroSMT('maquina')" title="Filtrar máquina">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                        <div id="filtro-maquina" class="header-filter" style="display: none;">
+                            <select class="filter-select" onchange="aplicarFiltroSMT('maquina', this.value)">
+                                <option value="">Todas las máquinas</option>
+                                <option value="(Non blanks)">(No vacíos)</option>
+                                <option value="(Blanks)">(Vacíos)</option>
+                            </select>
+                        </div>
+                    </th>
+                    <th>
+                        <div class="header-content">
+                            <span>Archivo</span>
+                            <button type="button" class="btn btn-sm clear-all-filters" onclick="limpiarTodosFiltrosSMT()" title="Limpiar todos los filtros">
+                                <i class="fas fa-broom"></i>
+                            </button>
+                        </div>
+                    </th>
                 </tr>
             </thead>
             <tbody id="smt-table-body">
@@ -575,6 +962,305 @@
         let datosActuales = [];
         let datosFiltrados = [];
         let estadisticasDelDia = { today: 0, ok: 0, ng: 0 }; // Guardar estadísticas fijas del día
+        
+        // Variables para filtros SMT
+        let datosSMTOriginales = [];
+        let filtrosSMT = {};
+        
+        // Funciones para filtros SMT
+        function toggleFiltroSMT(columna) {
+            const filtroDiv = document.getElementById(`filtro-${columna}`);
+            const filterBtn = document.querySelector(`button[onclick="toggleFiltroSMT('${columna}')"]`);
+            
+            // Cerrar otros filtros
+            document.querySelectorAll('.header-filter').forEach(filter => {
+                if (filter.id !== `filtro-${columna}`) {
+                    filter.style.display = 'none';
+                }
+            });
+            
+            // Quitar active de otros botones
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn !== filterBtn) {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Toggle del filtro actual
+            if (filtroDiv.style.display === 'none' || !filtroDiv.style.display) {
+                filtroDiv.style.display = 'block';
+                filterBtn.classList.add('active');
+                poblarOpcionesFiltroSMT(columna);
+            } else {
+                filtroDiv.style.display = 'none';
+                filterBtn.classList.remove('active');
+            }
+        }
+        
+        function poblarOpcionesFiltroSMT(columna) {
+            const select = document.querySelector(`#filtro-${columna} .filter-select`);
+            if (!select || !datosSMTOriginales.length) return;
+            
+            // Mantener opciones fijas y agregar dinámicas según la columna
+            const opcionesFijas = select.querySelectorAll('option');
+            const valoresUnicos = new Set();
+            
+            // Mapeo de columnas a índices en el array de datos
+            const mapeoColumnas = {
+                'fechaScan': 0,
+                'horaScan': 1,
+                'slot': 2,
+                'resultado': 3,
+                'lote': 4,
+                'codigoBarras': 5,
+                'codigoAnterior': 6,
+                'parte': 7,
+                'cantidad': 8,
+                'seq': 9,
+                'proveedor': 10,
+                'baseFeeder': 11,
+                'linea': 12,
+                'maquina': 13
+            };
+            
+            const indiceColumna = mapeoColumnas[columna];
+            if (indiceColumna === undefined) return;
+            
+            // Obtener valores únicos de la columna
+            datosSMTOriginales.forEach(fila => {
+                const valor = fila[indiceColumna];
+                if (valor && valor.toString().trim()) {
+                    valoresUnicos.add(valor.toString().trim());
+                }
+            });
+            
+            // Agregar opciones dinámicas (solo si no existen en las fijas)
+            const valoresOrdenados = Array.from(valoresUnicos).sort();
+            valoresOrdenados.forEach(valor => {
+                // Verificar si ya existe en opciones fijas
+                let existe = false;
+                for (let option of opcionesFijas) {
+                    if (option.value === valor) {
+                        existe = true;
+                        break;
+                    }
+                }
+                
+                if (!existe) {
+                    const option = document.createElement('option');
+                    option.value = valor;
+                    option.textContent = valor;
+                    select.appendChild(option);
+                }
+            });
+        }
+        
+        function aplicarFiltroSMT(columna, valor) {
+            if (valor === '') {
+                delete filtrosSMT[columna];
+            } else {
+                filtrosSMT[columna] = valor;
+            }
+            
+            aplicarTodosFiltrosSMT();
+            
+            // Cerrar el filtro después de aplicar
+            document.getElementById(`filtro-${columna}`).style.display = 'none';
+            document.querySelector(`button[onclick="toggleFiltroSMT('${columna}')"]`).classList.remove('active');
+        }
+        
+        function aplicarTodosFiltrosSMT() {
+            if (!datosSMTOriginales.length) return;
+            
+            let datosFiltrados = [...datosSMTOriginales];
+            
+            // Mapeo de columnas a índices
+            const mapeoColumnas = {
+                'fechaScan': 0,
+                'horaScan': 1,
+                'slot': 2,
+                'resultado': 3,
+                'lote': 4,
+                'codigoBarras': 5,
+                'codigoAnterior': 6,
+                'parte': 7,
+                'cantidad': 8,
+                'seq': 9,
+                'proveedor': 10,
+                'baseFeeder': 11,
+                'linea': 12,
+                'maquina': 13
+            };
+            
+            // Aplicar cada filtro
+            Object.keys(filtrosSMT).forEach(columna => {
+                const valor = filtrosSMT[columna];
+                const indiceColumna = mapeoColumnas[columna];
+                
+                if (indiceColumna === undefined) return;
+                
+                datosFiltrados = datosFiltrados.filter(fila => {
+                    const valorCelda = fila[indiceColumna];
+                    
+                    if (valor === '(Blanks)') {
+                        return !valorCelda || valorCelda.toString().trim() === '';
+                    } else if (valor === '(Non blanks)') {
+                        return valorCelda && valorCelda.toString().trim() !== '';
+                    } else if (columna === 'fechaScan') {
+                        return aplicarFiltroFecha(valorCelda, valor);
+                    } else if (columna === 'horaScan') {
+                        return aplicarFiltroHora(valorCelda, valor);
+                    } else if (columna === 'cantidad') {
+                        return aplicarFiltroCantidad(valorCelda, valor);
+                    } else {
+                        // Para otros filtros, hacer búsqueda por coincidencia exacta o parcial
+                        if (!valorCelda) return false;
+                        return valorCelda.toString().toLowerCase().includes(valor.toLowerCase());
+                    }
+                });
+            });
+            
+            // Actualizar tabla con datos filtrados
+            actualizarTablaSMT(datosFiltrados);
+        }
+        
+        function aplicarFiltroFecha(fecha, filtro) {
+            if (!fecha) return false;
+            
+            // Normalizar el formato de fecha - puede venir como YYYY-MM-DD o DD/MM/YYYY
+            let fechaObj;
+            if (fecha.includes('-')) {
+                fechaObj = new Date(fecha);
+            } else if (fecha.includes('/')) {
+                const partes = fecha.split('/');
+                // Asumir formato DD/MM/YYYY
+                fechaObj = new Date(partes[2], partes[1] - 1, partes[0]);
+            } else {
+                fechaObj = new Date(fecha);
+            }
+            
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0); // Normalizar a medianoche
+            
+            const ayer = new Date(hoy);
+            ayer.setDate(hoy.getDate() - 1);
+            
+            // Normalizar fecha a comparar
+            fechaObj.setHours(0, 0, 0, 0);
+            
+            switch (filtro) {
+                case 'hoy':
+                    return fechaObj.getTime() === hoy.getTime();
+                case 'ayer':
+                    return fechaObj.getTime() === ayer.getTime();
+                case 'ultima_semana':
+                    const semanaAtras = new Date(hoy);
+                    semanaAtras.setDate(hoy.getDate() - 7);
+                    return fechaObj >= semanaAtras && fechaObj <= hoy;
+                case 'ultimo_mes':
+                    const mesAtras = new Date(hoy);
+                    mesAtras.setMonth(hoy.getMonth() - 1);
+                    return fechaObj >= mesAtras && fechaObj <= hoy;
+                default:
+                    return true;
+            }
+        }
+        
+        function aplicarFiltroHora(hora, filtro) {
+            if (!hora) return false;
+            
+            // Extraer solo la hora del string (formato puede ser HH:MM:SS o HH:MM)
+            const horaStr = hora.toString().split(':')[0];
+            const horaNum = parseInt(horaStr);
+            
+            if (isNaN(horaNum)) return false;
+            
+            switch (filtro) {
+                case 'manana':
+                    return horaNum >= 6 && horaNum < 12;
+                case 'tarde':
+                    return horaNum >= 12 && horaNum < 18;
+                case 'noche':
+                    return horaNum >= 18 && horaNum <= 23;
+                case 'madrugada':
+                    return horaNum >= 0 && horaNum < 6;
+                default:
+                    return true;
+            }
+        }
+        
+        function aplicarFiltroCantidad(cantidad, filtro) {
+            const num = parseFloat(cantidad);
+            if (isNaN(num)) return false;
+            
+            switch (filtro) {
+                case 'positivo':
+                    return num > 0;
+                case 'negativo':
+                    return num < 0;
+                case 'cero':
+                    return num === 0;
+                case '>=100':
+                    return num >= 100;
+                case '>=1000':
+                    return num >= 1000;
+                default:
+                    return true;
+            }
+        }
+        
+        function limpiarTodosFiltrosSMT() {
+            filtrosSMT = {};
+            
+            // Resetear todos los selects
+            document.querySelectorAll('.header-filter select').forEach(select => {
+                select.selectedIndex = 0;
+            });
+            
+            // Cerrar todos los filtros
+            document.querySelectorAll('.header-filter').forEach(filter => {
+                filter.style.display = 'none';
+            });
+            
+            // Quitar active de todos los botones
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Mostrar todos los datos
+            actualizarTablaSMT(datosSMTOriginales);
+        }
+        
+        function actualizarTablaSMT(datos) {
+            const tbody = document.getElementById('smt-table-body');
+            tbody.innerHTML = '';
+            
+            datos.forEach(fila => {
+                const tr = document.createElement('tr');
+                
+                // Agregar cada celda
+                fila.forEach((valor, index) => {
+                    const td = document.createElement('td');
+                    
+                    // Formatear resultado con colores
+                    if (index === 3) { // Columna resultado
+                        if (valor === 'OK') {
+                            td.innerHTML = `<span class="smt-status-ok">${valor}</span>`;
+                        } else if (valor === 'NG') {
+                            td.innerHTML = `<span class="smt-status-ng">${valor}</span>`;
+                        } else {
+                            td.textContent = valor || '';
+                        }
+                    } else {
+                        td.textContent = valor || '';
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+        }
         
         // Mostrar mensaje
         function mostrarMensaje(texto, tipo = 'success') {
@@ -847,12 +1533,30 @@
                     datosActuales = data.data || [];
                     
                     if (datosActuales.length > 0) {
+                        // Guardar datos originales para los filtros SMT
+                        datosSMTOriginales = datosActuales.map(item => [
+                            item.fecha_scan || '',
+                            item.hora_scan || '',
+                            item.slot || '',
+                            item.resultado || '',
+                            item.lote || '',
+                            item.codigo_barras || '',
+                            item.codigo_anterior || '',
+                            item.parte || '',
+                            item.cantidad || '',
+                            item.seq || '',
+                            item.proveedor || '',
+                            item.base_feeder || '',
+                            item.linea || '',
+                            item.maquina || '',
+                            item.archivo || ''
+                        ]);
+                        
                         datosFiltrados = [...datosActuales];
                         poblarFiltros(datosActuales);
                         renderizarTabla(datosFiltrados);
                         document.getElementById('smt-data-table').style.display = 'table';
                         document.getElementById('smt-status').textContent = `${datosActuales.length} registros cargados`;
-                        mostrarMensaje(`${datosActuales.length} registros cargados exitosamente`, 'success');
                         
                         // Actualizar estadísticas del día con los datos cargados
                         calcularEstadisticasDelDia();
@@ -917,7 +1621,6 @@
                     <td ${addTooltip(row.LOTNO)}>${row.LOTNO || '-'}</td>
                     <td ${addTooltip(row.Barcode)}>${row.Barcode || '-'}</td>
                     <td ${addTooltip(row.PreviousBarcode)}>${row.PreviousBarcode || '-'}</td>
-                    <td ${addTooltip(row.Productdate)}>${row.Productdate || '-'}</td>
                     <td ${addTooltip(row.PartName)}>${row.PartName || '-'}</td>
                     <td ${addTooltip(row.Quantity)}>${row.Quantity || '-'}</td>
                     <td ${addTooltip(row.SEQ)}>${row.SEQ || '-'}</td>
@@ -930,6 +1633,27 @@
                 
                 tbody.appendChild(tr);
             });
+            
+            // Actualizar también datos SMT originales con los datos actuales filtrados
+            if (datos.length > 0) {
+                datosSMTOriginales = datos.map(item => [
+                    item.fecha_formateada || item.ScanDate || '',
+                    item.hora_formateada || item.ScanTime || '',
+                    item.SlotNo || '',
+                    item.Result || '',
+                    item.LOTNO || '',
+                    item.Barcode || '',
+                    item.PreviousBarcode || '',
+                    item.PartName || '',
+                    item.Quantity || '',
+                    item.SEQ || '',
+                    item.Vendor || '',
+                    item.FeederBase || '',
+                    item.linea || '',
+                    item.maquina || '',
+                    item.archivo || ''
+                ]);
+            }
         }
         
         // Limpiar tabla
@@ -948,15 +1672,46 @@
             const hoy = new Date();
             const fechaHoy = hoy.toISOString().split('T')[0];
             
-            // Establecer ambas fechas con el día actual para mostrar solo datos de hoy
-            document.getElementById('smt-fecha-desde').value = fechaHoy;
-            document.getElementById('smt-fecha-hasta').value = fechaHoy;
+            // Establecer siempre la fecha desde con el día actual
+            const fechaDesdeInput = document.getElementById('smt-fecha-desde');
+            if (fechaDesdeInput) {
+                fechaDesdeInput.value = fechaHoy;
+            }
+            // Dejar fecha hasta vacía para permitir búsquedas flexibles
+            const fechaHastaInput = document.getElementById('smt-fecha-hasta');
+            if (fechaHastaInput) {
+                fechaHastaInput.value = '';
+            }
+        }
+        
+        // Función para forzar el establecimiento de fechas
+        function forzarFechaActual() {
+            const hoy = new Date();
+            const fechaHoy = hoy.toISOString().split('T')[0];
+            
+            const fechaDesdeInput = document.getElementById('smt-fecha-desde');
+            if (fechaDesdeInput && !fechaDesdeInput.value) {
+                fechaDesdeInput.value = fechaHoy;
+            }
         }
         
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Página cargada - Lista para usar');
+            
+            // Establecer fechas múltiples veces para asegurar que se apliquen
             establecerFechasPorDefecto();
+            
+            // Usar setTimeout para asegurar que los elementos estén completamente cargados
+            setTimeout(() => {
+                establecerFechasPorDefecto();
+                forzarFechaActual();
+            }, 100);
+            
+            // Otra verificación después de 500ms
+            setTimeout(() => {
+                forzarFechaActual();
+            }, 500);
             
             // Solo cargar estadísticas iniciales una vez al inicio
             // No volverá a llamarse para evitar sobrescribir las estadísticas del día
@@ -965,6 +1720,18 @@
             // Cargar automáticamente los datos del día actual
             cargarDatos();
             mostrarMensaje('Cargando datos del día actual...', 'success');
+        });
+        
+        // Cerrar filtros SMT al hacer clic fuera
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.filterable-header')) {
+                document.querySelectorAll('.header-filter').forEach(filter => {
+                    filter.style.display = 'none';
+                });
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+            }
         });
     </script>
 </body>

@@ -290,12 +290,6 @@ function configurarListenersEscaneoMasivo() {
     });
     
     inputRef.focus();
-    console.log('✅ Listeners ULTRA-RÁPIDOS instalados en salidas masivas:');
-    console.log('   - Enter manual (siempre funciona)');
-    console.log('   - Auto-detección SÚPER RÁPIDA para escáner');
-    console.log('   - 150ms para códigos largos (25+ chars)');
-    console.log('   - 300ms para códigos normales (15+ chars)');
-    console.log('   - Sistema anti-duplicación total');
 }
 
 /* =============================================================
@@ -580,5 +574,3 @@ window.procesarEscaneoMasivoItem = procesarEscaneoMasivoItem;
 window.pausarEscaneoMasivo = pausarEscaneoMasivo;
 window.limpiarEscaneoMasivo = limpiarEscaneoMasivo;
 window.procesarSalidasMasivas = procesarSalidasMasivas;
-
-console.log('Módulo de Salidas Masivas cargado correctamente');

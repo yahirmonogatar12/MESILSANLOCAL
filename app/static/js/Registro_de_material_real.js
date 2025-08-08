@@ -2,6 +2,7 @@
 let inventarioGeneralData = [];
 let inventarioSelectedItems = new Set();
 let filtrosActivos = {};
+let filtrosHeaders = {};
 
 // Variables de control para evitar múltiples aperturas
 let modalCargandoLotes = false;
@@ -17,11 +18,30 @@ function initRegistroMaterial() {
         cantidadMinima: 0
     };
     
+    // Inicializar filtros de headers
+    filtrosHeaders = {};
+    
     // Cargar datos iniciales
     consultarInventarioGeneral();
     
     // Configurar eventos de los modales
     setupInventarioModalEvents();
+    
+    // Agregar event listener para cerrar filtros al hacer clic fuera
+    document.addEventListener('click', function(event) {
+        // Si el clic no es en un botón de filtro o dentro de un filtro
+        if (!event.target.closest('.filter-btn') && !event.target.closest('.header-filter')) {
+            // Cerrar todos los filtros
+            document.querySelectorAll('.header-filter').forEach(filter => {
+                filter.style.display = 'none';
+            });
+            
+            // Remover clase active de todos los botones
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
+    });
     
 }
 
@@ -50,17 +70,25 @@ function consultarInventarioGeneral() {
         .then(data => {
             if (data.success) {
                 inventarioGeneralData = data.inventario;
+                datosInventarioOriginal = [...data.inventario]; // Guardar copia para filtros
                 renderizarInventarioTabla();
                 actualizarInventarioContadorSeleccionados();
+                
+                // Poblar opciones de filtros con valores únicos
+                setTimeout(() => {
+                    poblarTodasLasOpcionesFiltros();
+                }, 100);
             } else {
                 console.error('Error al consultar inventario:', data.message);
                 inventarioGeneralData = [];
+                datosInventarioOriginal = [];
                 renderizarInventarioTabla();
             }
         })
         .catch(error => {
             console.error('Error:', error);
             inventarioGeneralData = [];
+            datosInventarioOriginal = [];
             renderizarInventarioTabla();
         });
     }, 800);
@@ -99,7 +127,7 @@ function renderizarInventarioTabla() {
         const totalLotes = item.total_lotes || 0;
         const lotesBoton = totalLotes > 0
             ? `<button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); verDetallesLotes('${item.numero_parte}')" style="font-size: 11px; padding: 2px 8px;">
-                <i class="fas fa-search"></i> Ver Lotes (${totalLotes})
+                <i class="fas fa-search"></i> Ver Lotes
                </button>`
             : '<small class="text-muted">Sin lotes</small>';
         
@@ -616,17 +644,42 @@ function mostrarModalLotes(numeroParte, lotes) {
                 </div>
                 <div class="trazabilidad-modal-body">
                     ${lotes.length > 0 ? `
-                        <!-- Filtro de búsqueda -->
-                        <div class="lotes-filter-container" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; background: rgba(74, 76, 90, 0.3); padding: 15px; border-radius: 8px; border-left: 4px solid #6c757d;">
-                            <div style="flex: 1;">
-                                <label style="display: block; color: #ffffff; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Buscar Lote:</label>
-                                <input type="text" id="filtroLotes" placeholder="Escriba el número de lote..." 
-                                    style="width: 100%; padding: 8px 12px; border: 2px solid #6c757d; border-radius: 6px; background: #40424F; color: #ffffff; font-size: 14px;" 
-                                    oninput="filtrarLotesModal()" autocomplete="off">
+                        <!-- Filtros avanzados para lotes -->
+                        <div class="lotes-filter-container" style="margin-bottom: 20px; background: rgba(74, 76, 90, 0.3); padding: 15px; border-radius: 8px; border-left: 4px solid #6c757d;">
+                            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                                <div>
+                                    <label style="display: block; color: #ffffff; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Buscar Lote:</label>
+                                    <input type="text" id="filtroLotes" placeholder="Escriba el número de lote..." 
+                                        style="width: 100%; padding: 8px 12px; border: 2px solid #6c757d; border-radius: 6px; background: #40424F; color: #ffffff; font-size: 14px;" 
+                                        oninput="filtrarLotesModal()" autocomplete="off">
+                                </div>
+                                <div>
+                                    <label style="display: block; color: #ffffff; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Cantidad Mínima:</label>
+                                    <input type="number" id="filtroCantidadMin" placeholder="0" min="0"
+                                        style="width: 100%; padding: 8px 12px; border: 2px solid #6c757d; border-radius: 6px; background: #40424F; color: #ffffff; font-size: 14px;" 
+                                        oninput="filtrarLotesModal()">
+                                </div>
+                                <div>
+                                    <label style="display: block; color: #ffffff; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Fecha Desde:</label>
+                                    <input type="date" id="filtroFechaDesde"
+                                        style="width: 100%; padding: 8px 12px; border: 2px solid #6c757d; border-radius: 6px; background: #40424F; color: #ffffff; font-size: 14px;" 
+                                        onchange="filtrarLotesModal()">
+                                </div>
+                                <div>
+                                    <label style="display: block; color: #ffffff; font-weight: 600; margin-bottom: 5px; font-size: 13px;">Fecha Hasta:</label>
+                                    <input type="date" id="filtroFechaHasta"
+                                        style="width: 100%; padding: 8px 12px; border: 2px solid #6c757d; border-radius: 6px; background: #40424F; color: #ffffff; font-size: 14px;" 
+                                        onchange="filtrarLotesModal()">
+                                </div>
                             </div>
-                            <div style="min-width: 120px; text-align: center;">
-                                <div style="color: #ffffff; font-weight: 600; font-size: 13px;">Total:</div>
-                                <div id="contadorLotesFiltrados" style="color: #ffffff; font-weight: bold; font-size: 16px;">${lotes.length}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <button onclick="limpiarFiltrosLotes()" style="padding: 6px 12px; background: #6c757d; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 12px;">
+                                    <i class="fas fa-broom"></i> Limpiar Filtros
+                                </button>
+                                <div style="text-align: center;">
+                                    <div style="color: #ffffff; font-weight: 600; font-size: 13px;">Lotes Mostrados:</div>
+                                    <div id="contadorLotesFiltrados" style="color: #ffffff; font-weight: bold; font-size: 16px;">${lotes.length}</div>
+                                </div>
                             </div>
                         </div>
                         
@@ -765,9 +818,13 @@ function mostrarModalHistorial(numeroParte, historial, balanceActual) {
     document.body.insertAdjacentHTML('beforeend', modalContent);
 }
 
-// Función para filtrar lotes en el modal
+// Función para filtrar lotes en el modal (mejorada)
 function filtrarLotesModal() {
     const filtroTexto = document.getElementById('filtroLotes')?.value.toLowerCase() || '';
+    const filtroCantidadMin = parseFloat(document.getElementById('filtroCantidadMin')?.value) || 0;
+    const filtroFechaDesde = document.getElementById('filtroFechaDesde')?.value || '';
+    const filtroFechaHasta = document.getElementById('filtroFechaHasta')?.value || '';
+    
     const filas = document.querySelectorAll('.fila-lote');
     const noResultados = document.getElementById('noResultadosLotes');
     const contador = document.getElementById('contadorLotesFiltrados');
@@ -776,8 +833,45 @@ function filtrarLotesModal() {
     
     filas.forEach(fila => {
         const textoLote = fila.getAttribute('data-lote') || '';
+        const cantidadTexto = fila.querySelector('td:nth-child(2)')?.textContent || '0';
+        const cantidad = parseFloat(cantidadTexto.replace(/[,\s]/g, '')) || 0;
+        const fechaTexto = fila.querySelector('td:nth-child(3)')?.textContent || '';
         
-        if (textoLote.includes(filtroTexto)) {
+        let mostrar = true;
+        
+        // Filtro por texto de lote
+        if (filtroTexto && !textoLote.includes(filtroTexto)) {
+            mostrar = false;
+        }
+        
+        // Filtro por cantidad mínima
+        if (filtroCantidadMin > 0 && cantidad < filtroCantidadMin) {
+            mostrar = false;
+        }
+        
+        // Filtro por fechas
+        if (filtroFechaDesde || filtroFechaHasta) {
+            // Convertir fecha del formato DD/MM/YY a Date
+            const fechaParts = fechaTexto.split('/');
+            if (fechaParts.length === 3) {
+                const dia = parseInt(fechaParts[0]);
+                const mes = parseInt(fechaParts[1]) - 1; // Los meses en JS van de 0-11
+                const anio = 2000 + parseInt(fechaParts[2]); // Asumir 20xx
+                const fechaLote = new Date(anio, mes, dia);
+                
+                if (filtroFechaDesde) {
+                    const fechaDesde = new Date(filtroFechaDesde);
+                    if (fechaLote < fechaDesde) mostrar = false;
+                }
+                
+                if (filtroFechaHasta) {
+                    const fechaHasta = new Date(filtroFechaHasta);
+                    if (fechaLote > fechaHasta) mostrar = false;
+                }
+            }
+        }
+        
+        if (mostrar) {
             fila.style.display = '';
             filasVisibles++;
         } else {
@@ -794,6 +888,15 @@ function filtrarLotesModal() {
     if (contador) {
         contador.textContent = filasVisibles;
     }
+}
+
+// Función para limpiar filtros de lotes
+function limpiarFiltrosLotes() {
+    document.getElementById('filtroLotes').value = '';
+    document.getElementById('filtroCantidadMin').value = '';
+    document.getElementById('filtroFechaDesde').value = '';
+    document.getElementById('filtroFechaHasta').value = '';
+    filtrarLotesModal();
 }
 
 function cerrarModalGeneral(event) {
@@ -825,3 +928,434 @@ window.mostrarModalLotes = mostrarModalLotes;
 window.mostrarModalHistorial = mostrarModalHistorial;
 window.cerrarModalGeneral = cerrarModalGeneral;
 window.filtrarLotesModal = filtrarLotesModal;
+
+// Variables globales para filtros
+let datosInventarioOriginal = [];
+// Variable filtrosActivos ya declarada anteriormente
+
+// Función para togglear la visibilidad de un filtro específico
+function toggleFiltro(campo) {
+    const filtroDiv = document.getElementById(`filtro-${campo}`);
+    const boton = document.querySelector(`[onclick="toggleFiltro('${campo}')"]`);
+    
+    if (!filtroDiv || !boton) {
+        return;
+    }
+    
+    // Cerrar otros filtros abiertos
+    document.querySelectorAll('.header-filter').forEach(filter => {
+        if (filter.id !== `filtro-${campo}`) {
+            filter.style.display = 'none';
+        }
+    });
+    
+    // Remover clase active de otros botones
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        if (btn !== boton) {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Toggle del filtro actual
+    const isVisible = filtroDiv.style.display === 'block';
+    
+    if (!isVisible) {
+        filtroDiv.style.display = 'block';
+        boton.classList.add('active');
+        
+        // Poblar opciones si es necesario
+        setTimeout(() => {
+            poblarOpcionesFiltro(campo);
+        }, 10);
+    } else {
+        filtroDiv.style.display = 'none';
+        boton.classList.remove('active');
+    }
+}
+
+// Función para aplicar filtro desde un header específico
+function aplicarFiltroHeader(campo, valor) {
+    filtrosHeaders[campo] = valor;
+    
+    // Marcar botón como activo si hay filtro aplicado
+    const boton = document.querySelector(`[onclick="toggleFiltro('${campo}')"]`);
+    if (valor && valor !== '') {
+        boton.classList.add('active');
+        boton.style.backgroundColor = '#3498db';
+    } else {
+        boton.classList.remove('active');
+        boton.style.backgroundColor = '';
+    }
+    
+    // Aplicar todos los filtros
+    aplicarTodosLosFiltros();
+    
+    // Cerrar el dropdown del filtro
+    document.getElementById(`filtro-${campo}`).style.display = 'none';
+    boton.classList.remove('active');
+}
+
+// Función principal para aplicar todos los filtros
+function aplicarTodosLosFiltros() {
+    if (!datosInventarioOriginal.length) {
+        console.log('No hay datos para filtrar');
+        return;
+    }
+    
+    // Función helper para manejar filtros de "Blanks" y "Non blanks"
+    function aplicarFiltroBlank(valor, filtro) {
+        if (filtro === "(Blanks)") {
+            return !valor || valor === "" || valor === null || valor === undefined;
+        }
+        if (filtro === "(Non blanks)") {
+            return valor && valor !== "" && valor !== null && valor !== undefined;
+        }
+        if (!filtro) return true; // Sin filtro
+        return String(valor || '').toLowerCase().includes(String(filtro).toLowerCase());
+    }
+    
+    // Función helper para filtros de fecha
+    function aplicarFiltroFecha(fecha, filtro) {
+        if (!filtro) return true;
+        
+        const fechaItem = new Date(fecha);
+        const ahora = new Date();
+        
+        switch(filtro) {
+            case "(Blanks)":
+                return !fecha || fecha === "" || isNaN(fechaItem.getTime());
+            case "(Non blanks)":
+                return fecha && fecha !== "" && !isNaN(fechaItem.getTime());
+            case "ultimos_30":
+                const hace30Dias = new Date(ahora.getTime() - (30 * 24 * 60 * 60 * 1000));
+                return fechaItem >= hace30Dias;
+            case "ultimos_90":
+                const hace90Dias = new Date(ahora.getTime() - (90 * 24 * 60 * 60 * 1000));
+                return fechaItem >= hace90Dias;
+            case "mas_antiguos":
+                const hace6Meses = new Date(ahora.getTime() - (180 * 24 * 60 * 60 * 1000));
+                return fechaItem < hace6Meses;
+            case "este_ano":
+                return fechaItem.getFullYear() === ahora.getFullYear();
+            case "ano_pasado":
+                return fechaItem.getFullYear() === (ahora.getFullYear() - 1);
+            default:
+                return true;
+        }
+    }
+    
+    // Aplicar filtros
+    let datosFiltrados = datosInventarioOriginal.filter(item => {
+        // Filtro por número de parte
+        if (filtrosHeaders.numeroParte && !aplicarFiltroBlank(item.numero_parte, filtrosHeaders.numeroParte)) {
+            return false;
+        }
+        
+        // Filtro por código de material
+        if (filtrosHeaders.codigoMaterial && !aplicarFiltroBlank(item.codigo_material, filtrosHeaders.codigoMaterial)) {
+            return false;
+        }
+        
+        // Filtro por especificación
+        if (filtrosHeaders.especificacion && !aplicarFiltroBlank(item.especificacion, filtrosHeaders.especificacion)) {
+            return false;
+        }
+        
+        // Filtro por cantidad
+        if (filtrosHeaders.cantidadTotal) {
+            const cantidad = parseFloat(item.cantidad_total) || 0;
+            switch(filtrosHeaders.cantidadTotal) {
+                case 'positivo':
+                    if (cantidad <= 0) return false;
+                    break;
+                case 'negativo':
+                    if (cantidad >= 0) return false;
+                    break;
+                case 'cero':
+                    if (cantidad !== 0) return false;
+                    break;
+                case '>=100':
+                    if (cantidad < 100) return false;
+                    break;
+                case '>=500':
+                    if (cantidad < 500) return false;
+                    break;
+                case '>=1000':
+                    if (cantidad < 1000) return false;
+                    break;
+            }
+        }
+        
+        // Filtro por lotes
+        if (filtrosHeaders.lotes) {
+            const numLotes = item.total_lotes || 0;
+            switch(filtrosHeaders.lotes) {
+                case 'con_lotes':
+                    if (numLotes <= 0) return false;
+                    break;
+                case 'sin_lotes':
+                    if (numLotes > 0) return false;
+                    break;
+                case 'muchos_lotes':
+                    if (numLotes <= 5) return false;
+                    break;
+            }
+        }
+        
+        // Filtro por fecha último recibo
+        if (filtrosHeaders.ultimoRecibo && !aplicarFiltroFecha(item.fecha_ultimo_recibo, filtrosHeaders.ultimoRecibo)) {
+            return false;
+        }
+        
+        // Filtro por fecha primer recibo
+        if (filtrosHeaders.primerRecibo && !aplicarFiltroFecha(item.fecha_primer_recibo, filtrosHeaders.primerRecibo)) {
+            return false;
+        }
+        
+        // Filtro por propiedad
+        if (filtrosHeaders.propiedad && !aplicarFiltroBlank(item.propiedad_material, filtrosHeaders.propiedad)) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Actualizar los datos mostrados y renderizar tabla
+    inventarioGeneralData = datosFiltrados;
+    renderizarInventarioTabla();
+    actualizarContadorFiltrado(datosFiltrados.length, datosInventarioOriginal.length);
+    
+    console.log(`Filtros aplicados: ${datosFiltrados.length}/${datosInventarioOriginal.length} elementos mostrados`);
+}
+
+// Función para poblar opciones de un filtro específico
+function poblarOpcionesFiltro(campo) {
+    if (!datosInventarioOriginal.length) {
+        return;
+    }
+    
+    const select = document.querySelector(`#filtro-${campo} .filter-select`);
+    if (!select) {
+        return;
+    }
+    
+    // Mapeo de campos a propiedades del objeto
+    const campoMap = {
+        'numeroParte': 'numero_parte',
+        'codigoMaterial': 'codigo_material', 
+        'especificacion': 'especificacion',
+        'propiedad': 'propiedad_material'
+    };
+    
+    const propiedadObjeto = campoMap[campo];
+    if (!propiedadObjeto) {
+        return;
+    }
+    
+    // Obtener valores únicos
+    const valoresUnicos = [...new Set(datosInventarioOriginal
+        .map(item => item[propiedadObjeto])
+        .filter(val => val && val !== "" && val !== null && val !== undefined)
+    )].sort();
+    
+    // Guardar valor actual
+    const valorActual = select.value;
+    
+    // Limpiar opciones existentes (mantener las primeras 3)
+    const opciones = Array.from(select.options);
+    opciones.forEach((opcion, index) => {
+        if (index > 2) { // Mantener "Todos", "(No vacíos)", "(Vacíos)"
+            opcion.remove();
+        }
+    });
+    
+    // Agregar valores únicos
+    valoresUnicos.forEach(valor => {
+        const option = document.createElement('option');
+        option.value = valor;
+        option.textContent = valor.length > 30 ? valor.substring(0, 30) + '...' : valor;
+        option.title = valor; // Tooltip completo
+        select.appendChild(option);
+    });
+    
+    // Restaurar valor si aún existe
+    if (valorActual && Array.from(select.options).some(opt => opt.value === valorActual)) {
+        select.value = valorActual;
+    }
+}
+
+// Función para limpiar todos los filtros
+function limpiarTodosLosFiltros() {
+    // Limpiar objeto de filtros
+    filtrosHeaders = {};
+    
+    // Resetear todos los selectores
+    document.querySelectorAll('.filter-select').forEach(select => {
+        select.value = '';
+    });
+    
+    // Remover estado activo de botones
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.backgroundColor = '';
+    });
+    
+    // Cerrar todos los filtros
+    document.querySelectorAll('.header-filter').forEach(filter => {
+        filter.style.display = 'none';
+    });
+    
+    // Resetear datos y renderizar tabla completa
+    inventarioGeneralData = [...datosInventarioOriginal];
+    renderizarInventarioTabla();
+    actualizarContadorFiltrado(datosInventarioOriginal.length, datosInventarioOriginal.length);
+    
+    console.log('Todos los filtros han sido limpiados');
+}
+
+// Función para actualizar contador con información de filtrado
+function actualizarContadorFiltrado(filtrados, total) {
+    const totalSpan = document.getElementById('registroTotalRows');
+    const selectedSpan = document.getElementById('registroSelectedCount');
+    
+    if (totalSpan) {
+        if (filtrados < total) {
+            totalSpan.innerHTML = `${filtrados} <small style="color: #f39c12;">(de ${total})</small>`;
+        } else {
+            totalSpan.textContent = total;
+        }
+    }
+    
+    if (selectedSpan) {
+        const seleccionados = Array.from(inventarioSelectedItems).filter(id => 
+            inventarioGeneralData.some(item => item.id === id)
+        ).length;
+        selectedSpan.textContent = seleccionados;
+    }
+}
+
+// Función para poblar todas las opciones de filtros
+function poblarTodasLasOpcionesFiltros() {
+    const campos = ['numeroParte', 'codigoMaterial', 'especificacion', 'propiedad'];
+    campos.forEach(campo => {
+        poblarOpcionesFiltro(campo);
+    });
+}
+
+// Función para renderizar tabla (modificada para manejar filtros)
+function renderizarTablaInventario(datos) {
+    const tbody = document.getElementById('registroMaterialTableBody');
+    if (!tbody) return;
+    
+    if (!datos || datos.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="loading-row">
+                    <i class="fas fa-search"></i>
+                    ${filtrosActivos ? 'No se encontraron resultados con los filtros aplicados' : 'No hay datos de inventario disponibles'}
+                </td>
+            </tr>
+        `;
+        actualizarContadores(0, 0);
+        return;
+    }
+    
+    // Usar la función existente para renderizar filas
+    tbody.innerHTML = datos.map(item => crearFilaInventario(item)).join('');
+    
+    // Actualizar contadores
+    actualizarContadores(datos.length, 0);
+}
+
+// Función para crear fila de inventario (extraída del código existente)
+function crearFilaInventario(item) {
+    // Funciones auxiliares del código original
+    function formatearNumero(numero) {
+        if (numero === null || numero === undefined || numero === '') return '0';
+        const num = parseFloat(numero);
+        return isNaN(num) ? '0' : num.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+    }
+    
+    function crearCelda(valor, maxLength = 20) {
+        const valorStr = String(valor || '');
+        if (valorStr.length > maxLength) {
+            return `<td data-full-text="${valorStr}" title="${valorStr}">${valorStr.substring(0, maxLength)}...</td>`;
+        }
+        return `<td>${valorStr}</td>`;
+    }
+    
+    // Código del botón de lotes
+    const totalLotes = item.total_lotes || 0;
+    const lotesBoton = totalLotes > 0
+        ? `<button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); verDetallesLotes('${item.numero_parte}')" style="font-size: 11px; padding: 2px 8px;">
+            <i class="fas fa-search"></i> Ver Lotes
+           </button>`
+        : '<small class="text-muted">Sin lotes</small>';
+    
+    const lotesTooltip = `${totalLotes} lotes disponibles. Haz clic para ver detalles.`;
+    
+    // Código de cantidad y estado
+    const remanente = parseFloat(item.cantidad_total) || 0;
+    const entradas = item.total_entradas || 0;
+    const salidas = item.total_salidas || 0;
+    const cantidadTooltip = `Entradas: ${formatearNumero(entradas)}\\nSalidas: ${formatearNumero(salidas)}\\nDisponible: ${formatearNumero(remanente)}`;
+    
+    let statusClass, statusIcon;
+    if (remanente > 0) {
+        statusClass = 'cantidad-ok';
+        statusIcon = '';
+    } else if (remanente < 0) {
+        statusClass = 'cantidad-baja';
+        statusIcon = '';
+    } else {
+        statusClass = 'cantidad-cero';
+        statusIcon = '';
+    }
+    
+    // Crear fila
+    return `
+        <tr class="inventario-row ${statusClass}" data-numero-parte="${item.numero_parte}">
+            <td class="inventario-checkbox-column">
+                <input type="checkbox" class="inventario-checkbox" value="${item.numero_parte}">
+            </td>
+            ${crearCelda(item.numero_parte, 15)}
+            ${crearCelda(item.codigo_material, 20)}
+            ${crearCelda(item.especificacion, 25)}
+            <td class="cantidad-cell" title="${cantidadTooltip}">
+                <span class="cantidad-valor ${statusClass}">
+                    ${statusIcon} ${formatearNumero(remanente)}
+                </span>
+            </td>
+            <td class="lotes-cell" title="${lotesTooltip}">
+                ${lotesBoton}
+            </td>
+            <td>${item.fecha_ultimo_recibo || 'N/A'}</td>
+            <td>${item.fecha_primer_recibo || 'N/A'}</td>
+            <td>${item.propiedad_material || 'N/A'}</td>
+            <td class="acciones-cell">
+                <button class="btn btn-sm btn-outline-info" onclick="verHistorialCompleto('${item.numero_parte}')" style="font-size: 11px; padding: 2px 8px;">
+                    <i class="fas fa-history"></i> Historial
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+// Función para actualizar contadores
+function actualizarContadores(total, seleccionados) {
+    const totalElement = document.getElementById('registroTotalRows');
+    const selectedElement = document.getElementById('registroSelectedCount');
+    
+    if (totalElement) totalElement.textContent = total;
+    if (selectedElement) selectedElement.textContent = seleccionados;
+}
+
+// Exponer funciones globalmente
+window.toggleFiltro = toggleFiltro;
+window.aplicarFiltroHeader = aplicarFiltroHeader;
+window.aplicarTodosLosFiltros = aplicarTodosLosFiltros;
+window.limpiarTodosLosFiltros = limpiarTodosLosFiltros;
+window.poblarOpcionesFiltro = poblarOpcionesFiltro;
+window.poblarTodasLasOpcionesFiltros = poblarTodasLasOpcionesFiltros;
+window.actualizarContadorFiltrado = actualizarContadorFiltrado;
+window.limpiarFiltrosLotes = limpiarFiltrosLotes;

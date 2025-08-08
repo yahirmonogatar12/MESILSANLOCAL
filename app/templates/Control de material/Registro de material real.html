@@ -65,15 +65,144 @@
                         <th class="inventario-checkbox-column">
                             <input type="checkbox" id="registroSelectAll" onchange="toggleInventarioSelectAll()">
                         </th>
-                        <th>Número de Parte</th>
-                        <th>Código Material</th>
-                        <th>Especificación</th>
-                        <th>Cantidad Total</th>
-                        <th>Lotes Disponibles</th>
-                        <th>Último Recibo</th>
-                        <th>Primer Recibo</th>
-                        <th>Propiedad</th>
-                        <th>Acciones</th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Número de Parte</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('numeroParte')" title="Filtrar número de parte">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-numeroParte" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('numeroParte', this.value)">
+                                    <option value="">Todos</option>
+                                    <option value="(Non blanks)">(No vacíos)</option>
+                                    <option value="(Blanks)">(Vacíos)</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Código Material</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('codigoMaterial')" title="Filtrar código material">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-codigoMaterial" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('codigoMaterial', this.value)">
+                                    <option value="">Todos</option>
+                                    <option value="(Non blanks)">(No vacíos)</option>
+                                    <option value="(Blanks)">(Vacíos)</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Especificación</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('especificacion')" title="Filtrar especificación">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-especificacion" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('especificacion', this.value)">
+                                    <option value="">Todos</option>
+                                    <option value="(Non blanks)">(No vacíos)</option>
+                                    <option value="(Blanks)">(Vacíos)</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Cantidad Total</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('cantidadTotal')" title="Filtrar cantidad">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-cantidadTotal" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('cantidadTotal', this.value)">
+                                    <option value="">Todas las cantidades</option>
+                                    <option value="positivo">Solo positivas (> 0)</option>
+                                    <option value="negativo">Solo negativas (< 0)</option>
+                                    <option value="cero">Solo cero (= 0)</option>
+                                    <option value=">=100">Mayores a 100</option>
+                                    <option value=">=500">Mayores a 500</option>
+                                    <option value=">=1000">Mayores a 1000</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Lotes Disponibles</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('lotes')" title="Filtrar lotes">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-lotes" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('lotes', this.value)">
+                                    <option value="">Todos</option>
+                                    <option value="con_lotes">Con lotes disponibles</option>
+                                    <option value="sin_lotes">Sin lotes</option>
+                                    <option value="muchos_lotes">Muchos lotes (>5)</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Último Recibo</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('ultimoRecibo')" title="Filtrar fecha último recibo">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-ultimoRecibo" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('ultimoRecibo', this.value)">
+                                    <option value="">Todas las fechas</option>
+                                    <option value="(Non blanks)">(Con fecha)</option>
+                                    <option value="(Blanks)">(Sin fecha)</option>
+                                    <option value="ultimos_30">Últimos 30 días</option>
+                                    <option value="ultimos_90">Últimos 90 días</option>
+                                    <option value="mas_antiguos">Más de 6 meses</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Primer Recibo</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('primerRecibo')" title="Filtrar fecha primer recibo">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-primerRecibo" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('primerRecibo', this.value)">
+                                    <option value="">Todas las fechas</option>
+                                    <option value="(Non blanks)">(Con fecha)</option>
+                                    <option value="(Blanks)">(Sin fecha)</option>
+                                    <option value="este_ano">Este año</option>
+                                    <option value="ano_pasado">Año pasado</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th class="filterable-header">
+                            <div class="header-content">
+                                <span>Propiedad</span>
+                                <button type="button" class="filter-btn" onclick="toggleFiltro('propiedad')" title="Filtrar propiedad">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </div>
+                            <div id="filtro-propiedad" class="header-filter" style="display: none;">
+                                <select class="filter-select" onchange="aplicarFiltroHeader('propiedad', this.value)">
+                                    <option value="">Todas las propiedades</option>
+                                    <option value="(Non blanks)">(No vacíos)</option>
+                                    <option value="(Blanks)">(Vacíos)</option>
+                                </select>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="header-content">
+                                <span>Acciones</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary clear-all-filters" onclick="limpiarTodosLosFiltros()" title="Limpiar todos los filtros">
+                                    <i class="fas fa-broom"></i>
+                                </button>
+                            </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="registroMaterialTableBody">

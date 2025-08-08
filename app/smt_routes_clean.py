@@ -115,7 +115,7 @@ def api_historial_smt_data():
                 PreviousBarcode, Productdate, FeederBase
             FROM historial_cambio_material_smt
             {where_clause}
-            ORDER BY ScanDate DESC, ScanTime DESC
+            ORDER BY id DESC
             LIMIT 1000
         """
 

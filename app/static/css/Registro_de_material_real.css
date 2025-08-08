@@ -219,8 +219,6 @@
     border: 1px solid #20688C;
     font-weight: 600;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -230,6 +228,18 @@
     max-width: 200px;
     resize: horizontal;
     cursor: default;
+}
+
+/* Headers con filtros no deben tener overflow hidden */
+.inventario-table th:not(.filterable-header) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Headers con filtros necesitan overflow visible */
+.inventario-table th.filterable-header {
+    overflow: visible !important;
+    text-overflow: clip !important;
 }
 
 /* Tooltip para encabezados largos */
@@ -1434,6 +1444,156 @@ input[type="checkbox"] {
 @keyframes shimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
+}
+
+/* Estilos para filtros integrados en headers */
+.filterable-header {
+    position: relative !important;
+    padding: 8px 4px !important;
+    background-color: #172A46 !important;
+    border-bottom: 2px solid #20688C !important;
+    vertical-align: top !important;
+    overflow: visible !important;
+}
+
+.header-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    position: relative !important;
+    z-index: 15 !important;
+}
+
+.header-content span {
+    flex: 1 !important;
+    font-weight: 600 !important;
+    color: #ecf0f1 !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+}
+
+.filter-btn {
+    background: transparent !important;
+    border: 1px solid #20688C !important;
+    color: #b0b0b0 !important;
+    padding: 1px 4px !important;
+    border-radius: 2px !important;
+    cursor: pointer !important;
+    font-size: 8px !important;
+    transition: all 0.2s ease !important;
+    min-width: 16px !important;
+    height: 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.filter-btn:hover {
+    background-color: #20688C !important;
+    color: #fff !important;
+    transform: scale(1.1) !important;
+}
+
+.filter-btn.active {
+    background-color: #3498db !important;
+    color: #fff !important;
+    border-color: #3498db !important;
+}
+
+.header-filter {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    background-color: #34334E !important;
+    border: 1px solid #20688C !important;
+    border-top: none !important;
+    z-index: 9999 !important;
+    padding: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+    min-width: 200px !important;
+    white-space: normal !important;
+    display: none !important;
+}
+
+.header-filter[style*="block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.filter-select {
+    width: 100% !important;
+    background-color: #2c2c38 !important;
+    border: 1px solid #20688C !important;
+    color: #e8e8e8 !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+    border-radius: 3px !important;
+    cursor: pointer !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.filter-select:focus {
+    background-color: #3C3940 !important;
+    border-color: #3498db !important;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3) !important;
+    outline: none !important;
+}
+
+.filter-select option {
+    background-color: #2c2c38 !important;
+    color: #e8e8e8 !important;
+    padding: 4px 8px !important;
+}
+
+.filter-select option[value="(Blanks)"] {
+    color: #f39c12 !important;
+    font-style: italic !important;
+}
+
+.filter-select option[value="(Non blanks)"] {
+    color: #2ecc71 !important;
+    font-style: italic !important;
+}
+
+.clear-all-filters {
+    background-color: #e74c3c !important;
+    border-color: #c0392b !important;
+    color: white !important;
+    padding: 1px 4px !important;
+    border-radius: 2px !important;
+    font-size: 8px !important;
+    height: 14px !important;
+    min-width: 16px !important;
+}
+
+.clear-all-filters:hover {
+    background-color: #c0392b !important;
+    transform: scale(1.1) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .header-content span {
+        font-size: 10px;
+    }
+    
+    .filter-btn {
+        font-size: 8px;
+        min-width: 20px;
+        height: 16px;
+    }
+}
+
+/* Ocultar filtros en dispositivos móviles */
+@media (max-width: 768px) {
+    .filter-row {
+        display: none;
+    }
 }
 
 /* Final del archivo CSS del Inventario General */

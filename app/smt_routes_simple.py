@@ -51,7 +51,7 @@ def get_historial_smt_data():
                 maquina,
                 archivo
             FROM historial_cambio_material_smt
-            ORDER BY ScanDate DESC, ScanTime DESC
+            ORDER BY id DESC
             LIMIT 1000
         """
         

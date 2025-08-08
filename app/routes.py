@@ -721,7 +721,7 @@ def consultar_lotes_detalle():
             
         cursor = conn.cursor()
         
-        # Query para obtener todos los lotes de un número de parte específico
+        # Query para obtener todos los lotes de un número de parte específico (solo con inventario disponible)
         if using_mysql:
             query = '''
                 SELECT 
@@ -745,7 +745,8 @@ def consultar_lotes_detalle():
                     FROM control_material_salida cms
                     GROUP BY cms.codigo_material_recibido
                 ) salidas_lote ON cma.codigo_material_recibido = salidas_lote.codigo_material_recibido
-                WHERE cma.numero_parte = %s
+                WHERE cma.numero_parte = %s 
+                  AND (cma.cantidad_actual - COALESCE(salidas_lote.total_salidas, 0)) > 0
                 ORDER BY cma.fecha_recibo DESC
             '''
             print(f"🔍 Ejecutando consulta de lotes con parámetro: {numero_parte}")
