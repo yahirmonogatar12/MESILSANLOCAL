@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AjaxContentManager</title>
+</head>
+<body>
+    <h1>Test AjaxContentManager</h1>
+    <button id="testButton">Cargar Control de Retorno</button>
+    <div id="content-container"></div>
+
+    <script src="/static/js/ajax-content-manager.js"></script>
+    <script>
+        document.getElementById('testButton').addEventListener('click', async function() {
+            console.log('🧪 Probando AjaxContentManager...');
+            if (window.AjaxContentManager) {
+                await AjaxContentManager.loadContent('/material/control_retorno', '#content-container');
+                console.log('✅ Contenido cargado exitosamente');
+            } else {
+                console.error('❌ AjaxContentManager no disponible');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -4322,6 +4322,12 @@ def test_frontend_permisos():
     """Página de testing frontend del sistema de permisos"""
     return send_file('../test_frontend_permisos.html')
 
+@app.route('/test-ajax-manager')
+@login_requerido
+def test_ajax_manager():
+    """Página de testing del AjaxContentManager"""
+    return render_template('test_ajax_manager.html')
+
 # ============== CSV VIEWER ROUTES ==============
 @app.route('/csv-viewer')
 @login_requerido

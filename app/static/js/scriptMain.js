@@ -322,10 +322,17 @@ console.log('scriptMain.js loaded');
                 }, 200);
             };
             
-            window.mostrarControlRetorno = function() {
+            window.mostrarControlRetorno = async function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
-                controlRetornoContainer.style.display = 'block';
+                
+                // Usar AjaxContentManager para cargar contenido dinámicamente
+                if (window.AjaxContentManager) {
+                    await AjaxContentManager.loadContent('/material/control_retorno', '#control-retorno-container');
+                } else {
+                    // Fallback al método original
+                    controlRetornoContainer.style.display = 'block';
+                }
             };
             
             window.mostrarReciboPago = function() {

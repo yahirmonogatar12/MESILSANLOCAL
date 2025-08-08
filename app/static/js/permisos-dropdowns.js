@@ -203,11 +203,21 @@
          */
         validarSidebarLinks(pagina, elementos) {
             elementos.forEach(({ selector, seccion, boton }) => {
-                const elemento = document.querySelector(selector);
-                if (elemento) {
-                    if (!this.tienePermiso(pagina, seccion, boton)) {
-                        this.ocultarElemento(elemento, pagina, seccion, boton);
-                    }
+                let elemento = null;
+
+                // Permitir sintaxis :contains("texto") en el selector
+                const containsMatch = selector.match(/^(.*):contains\("(.+)"\)$/);
+                if (containsMatch) {
+                    const baseSelector = containsMatch[1];
+                    const texto = containsMatch[2];
+                    elemento = Array.from(document.querySelectorAll(baseSelector))
+                        .find(el => el.textContent.trim().includes(texto));
+                } else {
+                    elemento = document.querySelector(selector);
+                }
+
+                if (elemento && !this.tienePermiso(pagina, seccion, boton)) {
+                    this.ocultarElemento(elemento, pagina, seccion, boton);
                 }
             });
         },

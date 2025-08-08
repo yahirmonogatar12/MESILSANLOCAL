@@ -1,0 +1,266 @@
+/* ====== PALETA / BASE ====== */
+:root{
+  --c-bg: #222a36;              /* fondo global */
+  --c-card: #2D363D;            /* panel gris azulado (contenedores) */
+  --c-card-2: #342F46;          /* panel morado (barra fecha) */
+  --c-input: #7B8181;           /* fondo input */
+  --c-input-border: #20688C;    /* borde celeste */
+  --c-text: #E6EEF7;            /* texto normal */
+  --c-text-muted: #C3D2E2;      /* texto suave */
+  --c-btn: #2B3243;             /* botón base gris oscuro */
+  --c-btn-border: #20688C;      /* borde botón */
+  --c-btn-green: #3C7D3C;       /* exportar */
+  --c-btn-green-b: #2c622c;
+  --c-btn-orange: #8B3E12;      /* guardar */
+  --c-btn-orange-b: #5e2c0c;
+  --c-btn-ghost: #3A4154;       /* confi/reimprimir */
+  --c-shadow: rgba(0,0,0,.25);
+}
+
+/* ====== LAYOUT GLOBAL ====== */
+.dm-wrap{
+  max-width: 1500px;
+  margin: 10px auto;
+  padding: 6px;
+  color: var(--c-text);
+  background: var(--c-bg);
+  font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+/* Tarjetas contenedor */
+.dm-card{
+  background: var(--c-card);
+  border: 1px solid var(--c-btn-border);
+  border-radius: 4px;
+  box-shadow: 0 3px 12px var(--c-shadow);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+/* ====== BLOQUE 1: SOLO CÓDIGO RECIBIDO ====== */
+.dm-top-only{
+  padding: 6px 8px;
+}
+.dm-label{
+  display:block;
+  font-size: 11px;
+  color: var(--c-text-muted);
+  margin: 1px 0 2px;
+}
+.dm-input{
+  width: 100%;
+  height: 28px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--c-input-border);
+  background: var(--c-input);
+  color: var(--c-text);
+  outline: none;
+  font-size: 12px;
+}
+
+/* ====== BLOQUE 2: FORM PRINCIPAL REDISEÑADO (COMPACTO) ====== */
+.dm-form-main {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Fila con 2 campos + botón */
+.dm-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+/* Fila con 1 campo + espacio + botón */
+.dm-row-1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+/* Fila con 3 campos */
+.dm-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+
+/* Columnas de campos */
+.dm-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Columna vacía */
+.dm-col-empty {
+  min-height: 1px;
+}
+
+/* Contenedor de botones inline */
+.dm-buttons-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+/* ====== FORM ORIGINAL (DEPRECATED) ====== */
+.dm-form{
+  display: grid;
+  grid-template-columns: 1fr 1fr auto; /* campos-izq, campos-der, botones derecha */
+  gap: 10px;
+  padding: 10px;
+}
+.dm-field{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.dm-field .col{
+  display: block;
+}
+.dm-stack-right{
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+  align-items:flex-end;
+}
+
+/* Inputs reutilizados */
+.dm-input:focus{
+  box-shadow: 0 0 0 2px rgba(32,104,140,.25);
+}
+
+/* Botones */
+.dm-btn{
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 1px solid var(--c-btn-border);
+  background: var(--c-btn);
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+}
+.dm-btn:hover{ filter: brightness(1.08); }
+.dm-btn:active{ transform: translateY(1px); }
+
+.dm-btn-ghost{ background: var(--c-btn-ghost); }
+.dm-btn-orange{ background: var(--c-btn-orange); border-color: var(--c-btn-orange-b); }
+
+/* fila inferior de cantidades */
+.dm-grid-3{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+/* ====== BLOQUE 3: BARRA DE FECHAS/ACCIONES (MORADO) ====== */
+.dm-bar{
+  background: var(--c-card-2);
+  border-top: 1px solid var(--c-btn-border);
+  border-bottom: 1px solid var(--c-btn-border);
+  padding: 8px 10px;
+  display:flex;
+  flex-wrap: wrap;
+  align-items:center;
+  gap: 10px;
+}
+.dm-spacer{ flex:1; }
+.dm-date, .dm-select{
+  height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--c-btn-border);
+  border-radius: 4px;
+  background: var(--c-input);
+  color: #fff;
+}
+.dm-btn-green{ background: var(--c-btn-green); border-color: var(--c-btn-green-b); }
+
+/* ====== ESTILOS PARA TABLA ====== */
+.dm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: var(--c-text);
+}
+
+.dm-table thead {
+  background: #1a1a2e;
+  color: #ffffff;
+}
+
+.dm-table th {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 2px solid var(--c-input-border);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.dm-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #3a3a4a;
+  color: var(--c-text);
+}
+
+.dm-table tr:nth-child(even) {
+  background-color: rgba(255,255,255,0.05);
+}
+
+.dm-table tr:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.dm-table .num {
+  text-align: right;
+}
+
+.dm-checkbox {
+  transform: scale(1.2);
+  accent-color: var(--c-btn-green);
+}
+
+.dm-table-footer {
+  background-color: #1a1a2e;
+  color: var(--c-text);
+  padding: 8px;
+  font-size: 12px;
+  text-align: center;
+  border-top: 1px solid var(--c-input-border);
+  margin-top: 5px;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 1100px){
+  /* Form nuevo responsive */
+  .dm-row-2, .dm-row-1 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .dm-row-3 {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .dm-buttons-inline {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .dm-col-empty {
+    display: none;
+  }
+
+  /* Form original responsive (por compatibilidad) */
+  .dm-form{ grid-template-columns: 1fr; }
+  .dm-stack-right{ align-items: stretch; }
+  .dm-grid-3{ grid-template-columns: 1fr; }
+}
