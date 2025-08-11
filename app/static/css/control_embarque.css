@@ -1,61 +1,383 @@
-/* Estilos específicos para Control de Embarque */
-/* Usando prefijo 'embarque-' para evitar conflictos */
+/* =====================================================
+   ESTILOS PARA CONTROL DE EMBARQUE - SISTEMA PO → WO
+   ===================================================== */
 
-/* Variables CSS para Control de Embarque - usando colores del sistema */
+/* Variables CSS */
 :root {
-    --embarque-primary: #3C3940;
-    --embarque-secondary: #502696;
-    --embarque-success: #456636;
-    --embarque-warning: #e67e22;
-    --embarque-danger: #e74c3c;
-    --embarque-info: #2980b9;
-    --embarque-light: #ecf0f1;
-    --embarque-dark: #32323E;
-    --embarque-bg-primary: #172A46;
-    --embarque-bg-secondary: #40424F;
-    --embarque-border: #20688C;
-    --embarque-text: lightgray;
-    --embarque-text-muted: #bdc3c7;
-    --embarque-container-bg: #32323E;
-    --embarque-toolbar-bg: #34334E;
-    --embarque-bg-main: #32323E;
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --border-color: #dee2e6;
+    --text-muted: #6c757d;
+    
+    /* Colores del tema oscuro */
+    --bg-dark: #32323E;
+    --bg-dark-secondary: #34334E;
+    --text-light: #e9ecef;
+    --border-dark: #495057;
 }
 
-/* Reset y estilos base para embarque */
-.embarque-container {
-    max-width: 1200px;
-    margin: 0 auto;
+/* Contenedor principal */
+.embarque-main-container {
+    font-family: 'Roboto', 'LG regular', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    min-height: 100vh;
     padding: 20px;
-    background-color: var(--embarque-bg-main);
-    border-radius: 8px;
-    color: var(--embarque-light);
-    font-family: 'LG regular', sans-serif;
-}
-
-/* Forzar visibilidad del contenido con IDs únicos */
-body, html {
+    margin: 0;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
 
-#material-content-area {
-    display: block;
-    visibility: visible !important;
-    opacity: 1 !important;
+/* Sobrescribir estilos de Bootstrap para tema oscuro */
+.embarque-main-container .card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-dark);
+    color: var(--text-light);
 }
 
+.embarque-main-container .card-header {
+    background-color: rgba(0, 123, 255, 0.1);
+    border-bottom: 1px solid var(--border-dark);
+    color: var(--text-light);
+}
+
+.embarque-main-container .form-control,
+.embarque-main-container .form-select {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--border-dark);
+    color: var(--text-light);
+}
+
+.embarque-main-container .form-control:focus,
+.embarque-main-container .form-select:focus {
+    background-color: var(--bg-dark);
+    border-color: var(--primary-color);
+    color: var(--text-light);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.embarque-main-container .form-label {
+    color: var(--text-light);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Estilos para las pestañas */
+.embarque-main-container .nav-tabs {
+    border-bottom: 2px solid var(--border-dark);
+}
+
+.embarque-main-container .nav-tabs .nav-link {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+}
+
+.embarque-main-container .nav-tabs .nav-link:hover {
+    border-color: var(--border-dark);
+    color: var(--primary-color);
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.embarque-main-container .nav-tabs .nav-link.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+}
+
+/* Estilos para las tablas */
+.embarque-main-container .table {
+    color: var(--text-light);
+    background-color: transparent;
+}
+
+.embarque-main-container .table-dark {
+    background-color: var(--dark-color);
+    border-color: var(--border-dark);
+}
+
+.embarque-main-container .table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.embarque-main-container .table td,
+.embarque-main-container .table th {
+    border-color: var(--border-dark);
+    padding: 12px 8px;
+    vertical-align: middle;
+}
+
+/* Estilos para badges de estado */
+.badge {
+    font-size: 0.75em;
+    padding: 0.4em 0.6em;
+    font-weight: 500;
+}
+
+/* Estados PO */
+.badge.bg-secondary { background-color: #6c757d !important; }
+.badge.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+.badge.bg-info { background-color: #17a2b8 !important; }
+.badge.bg-primary { background-color: #007bff !important; }
+.badge.bg-success { background-color: #28a745 !important; }
+
+/* Estilos para botones */
+.embarque-main-container .btn {
+    padding: 8px 16px;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.embarque-main-container .btn-group .btn {
+    padding: 6px 12px;
+}
+
+.embarque-main-container .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilos para modales */
+.embarque-main-container .modal-content {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-dark);
+    color: var(--text-light);
+}
+
+.embarque-main-container .modal-header {
+    border-bottom: 1px solid var(--border-dark);
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.embarque-main-container .modal-footer {
+    border-top: 1px solid var(--border-dark);
+}
+
+.embarque-main-container .btn-close {
+    filter: invert(1);
+}
+
+/* Estilos para alertas */
+.embarque-main-container .alert {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.embarque-main-container .alert-info {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: #17a2b8;
+    border-left: 4px solid #17a2b8;
+}
+
+.embarque-main-container .alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border-left: 4px solid #28a745;
+}
+
+/* Estilos para DataTables en tema oscuro */
+.embarque-main-container .dataTables_wrapper {
+    color: var(--text-light);
+}
+
+.embarque-main-container .dataTables_filter input,
+.embarque-main-container .dataTables_length select {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--border-dark);
+    color: var(--text-light);
+    padding: 6px 12px;
+    border-radius: 4px;
+}
+
+.embarque-main-container .dataTables_info,
+.embarque-main-container .dataTables_paginate {
+    color: var(--text-muted);
+}
+
+.embarque-main-container .dataTables_paginate .paginate_button {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-dark);
+    color: var(--text-light) !important;
+    padding: 6px 12px;
+    margin: 0 2px;
+}
+
+.embarque-main-container .dataTables_paginate .paginate_button:hover {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+.embarque-main-container .dataTables_paginate .paginate_button.current {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+    .embarque-main-container {
+        padding: 10px;
+    }
+    
+    .embarque-main-container .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .embarque-main-container .btn-group .btn {
+        margin-bottom: 5px;
+    }
+    
+    .embarque-main-container .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.embarque-main-container .card,
+.embarque-main-container .modal-content {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Estilos para checkboxes */
+.embarque-main-container input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary-color);
+}
+
+/* Estilos para el input-group */
+.embarque-main-container .input-group-text {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-dark);
+    color: var(--text-light);
+}
+
+/* Estilos para loading y estados */
+.embarque-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+.embarque-loading i {
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para estados vacíos */
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Estilos mejorados para iconos */
+.embarque-main-container i {
+    margin-right: 4px;
+}
+
+/* Personalización de SweetAlert2 para tema oscuro */
+.swal2-popup {
+    background-color: var(--bg-dark-secondary) !important;
+    color: var(--text-light) !important;
+}
+
+.swal2-title {
+    color: var(--text-light) !important;
+}
+
+.swal2-content {
+    color: var(--text-light) !important;
+}
+
+/* Transiciones suaves */
+* {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Estilos para tooltips */
+.embarque-main-container [title] {
+    position: relative;
+}
+
+/* Mejoras de accesibilidad */
+.embarque-main-container .btn:focus,
+.embarque-main-container .form-control:focus,
+.embarque-main-container .form-select:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Estilos para mensajes de estado */
+.status-message {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+}
+
+.status-message.success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border-left: 4px solid #28a745;
+}
+
+.status-message.error {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-left: 4px solid #dc3545;
+}
+
+.status-message.warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+    border-left: 4px solid #ffc107;
+}
+
+.status-message i {
+    margin-right: 8px;
+}
+
+/* Forzar visibilidad del contenedor principal */
 #embarque-main-container-unique {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
     width: 100% !important;
     height: auto !important;
-    font-family: 'LG regular', sans-serif;
-    background-color: var(--embarque-container-bg);
-    color: var(--embarque-text);
-    min-height: 100vh;
-    padding: 5px;
 }
 
 /* Contenedor principal de embarque siempre visible */

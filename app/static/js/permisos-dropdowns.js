@@ -213,7 +213,12 @@
                     elemento = Array.from(document.querySelectorAll(baseSelector))
                         .find(el => el.textContent.trim().includes(texto));
                 } else {
-                    elemento = document.querySelector(selector);
+                    try {
+                        elemento = document.querySelector(selector);
+                    } catch (error) {
+                        console.warn(`Selector inválido ignorado: ${selector}`, error);
+                        return; // Saltar a siguiente elemento
+                    }
                 }
 
                 if (elemento && !this.tienePermiso(pagina, seccion, boton)) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de BOM</title>
+    <title>Control de Work Orders (WO)</title>
     <style>
         /* Estilos específicos para Control de BOM */
 
@@ -88,7 +88,7 @@
             border-radius: 0 0 4px 4px;
             max-height: 200px;
             overflow-y: auto;
-            z-index: 1000;
+            z-index: 10000;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
@@ -429,7 +429,127 @@
             font-size: 11px;
         }
 
+        /* Formulario WO */
+        #woFormContainer {
+            background-color: #40424F;
+            padding: 20px;
+            margin-bottom: 10px;
+            border: 1px solid #20688C;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            position: fixed;
+            right: 20px;
+            top: 50px;
+            width: 350px;
+            z-index: 1000;
+        }
+
+        #woFormContainer h3 {
+            color: #ecf0f1;
+            margin: 0 0 20px 0;
+            font-size: 16px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .wo-form-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .wo-form-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .wo-form-field label {
+            color: #4fc3f7;
+            font-size: 12px;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .wo-form-field input,
+        .wo-form-field select {
+            background-color: #2c3e50;
+            color: lightgray;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 12px;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+
+        .wo-form-field input:focus,
+        .wo-form-field select:focus {
+            outline: none;
+            border-color: #3498db;
+            background-color: #34495e;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+        }
+
+        .wo-form-field input[readonly] {
+            background-color: #1a1a1a;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        .wo-form-buttons {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #34495e;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .wo-form-buttons button {
+            min-width: 120px;
+            padding: 10px 15px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .wo-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wo-close-btn:hover {
+            color: #c0392b;
+            transform: scale(1.1);
+        }
+
         /* Responsive */
+        @media (max-width: 768px) {
+            .wo-form-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .wo-form-buttons button {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
         @media (max-width: 768px) {
             #bomMainContainer {
                 padding: 5px;
@@ -580,17 +700,60 @@
         <!-- Barra de herramientas -->
         <div id="bomToolbar">
             <label style="color: lightgray; font-size: 11px;">Fecha de operación</label>
-            <select id="fechaDesde" class="bom-dropdown">
-                <option>01/01/2025</option>
-            </select>
+            <input type="date" id="fechaDesde" class="bom-dropdown" style="max-width: 150px;">
             <span style="color: lightgray; font-size: 11px;">~</span>
-            <select id="fechaHasta" class="bom-dropdown">
-                <option>11/08/2025</option>
-            </select>
-            <button id="btnConsultar" class="bom-btn">Consultar</button>
-            <button id="btnRegistrar" class="bom-btn">Registrar</button>
-            <button id="btnCancelar" class="bom-btn">Cancelar</button>
-            <button id="btnExportar" class="bom-btn">Exportar el excel</button>
+            <input type="date" id="fechaHasta" class="bom-dropdown" style="max-width: 150px;">
+            <button id="btnConsultar" class="bom-btn" onclick="consultarWOs()">Consultar</button>
+            <button id="btnRegistrar" class="bom-btn" onclick="mostrarFormularioWO()">Registrar</button>
+            <button id="btnCancelar" class="bom-btn" onclick="cancelarOperacion()">Cancelar</button>
+            <button id="btnExportar" class="bom-btn" onclick="exportarExcel()">Exportar el excel</button>
+            <button id="btnCrearWO" class="bom-btn" style="background-color: #27ae60;" onclick="mostrarFormularioWO()">Crear Nueva WO</button>
+        </div>
+
+        <!-- Formulario para crear WO -->
+        <div id="woFormContainer" style="display: none;">
+            <button class="wo-close-btn" onclick="ocultarFormularioWO()">×</button>
+            <h3>Crear Nueva Work Order (WO)</h3>
+            <div class="wo-form-grid">
+                <div class="wo-form-field">
+                    <label>Código de WO</label>
+                    <input type="text" id="woCodigoWO" placeholder="WO-250811-0001" readonly>
+                </div>
+                <div class="wo-form-field">
+                    <label>Modelo</label>
+                    <div class="bom-search-container">
+                        <input type="text" class="bom-search-dropdown" id="woModelo" placeholder="Seleccione un modelo" onkeyup="filtrarModelosWO()" onclick="mostrarDropdownWO()" required />
+                        <div class="bom-dropdown-list" id="woDropdownList" style="display: none;">
+                            <!-- Los modelos se cargarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+                <div class="wo-form-field">
+                    <label>Código de PO</label>
+                    <input type="text" id="woCodigoPO" placeholder="" required>
+                </div>
+                <div class="wo-form-field">
+                    <label>Fecha de operación</label>
+                    <input type="date" id="woFechaOperacion" required>
+                </div>
+                <div class="wo-form-field">
+                    <label>Orden de proceso</label>
+                    <select id="woOrdenProceso" required>
+                        <option value="">Seleccionar</option>
+                        <option value="NORMAL">NORMAL</option>
+                        <option value="KEY NORMAL">KEY NORMAL</option>
+                        <option value="KNOB NORMAL">KNOB NORMAL</option>
+                        <option value="MAIN NORMAL">MAIN NORMAL</option>
+                    </select>
+                </div>
+                <div class="wo-form-field">
+                    <label>Cantidad planeada</label>
+                    <input type="number" id="woCantidad" placeholder="0" min="1" required>
+                </div>
+            </div>
+            <div class="wo-form-buttons">
+                <button id="btnGuardarWO" class="bom-btn" style="background-color: #8b5cf6;" onclick="crearNuevaWO()">Registrar</button>
+            </div>
         </div>
 
         <!-- Contenedor de la tabla -->
@@ -618,344 +781,651 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr id="row1">
-                        <td>▶</td>
-                        <td><input type="checkbox" id="check1"></td>
-                        <td>WO-250428-0002</td>
-                        <td>2025-04-28</td>
-                        <td>NFM96-1T0000_R013</td>
-                        <td>M1662360000</td>
-                        <td>KEY NORMAL</td>
-                        <td>60</td>
-                        <td>PO-25042500...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-04-28 11:44:17.833</td>
-                        <td>▲</td>
-                    </tr>
-                    <tr id="row2">
-                        <td></td>
-                        <td><input type="checkbox" id="check2"></td>
-                        <td>WO-250428-0001</td>
-                        <td>2025-04-28</td>
-                        <td>NFM96-1K0000_R015</td>
-                        <td>M1662363000</td>
-                        <td>KNOB NORMAL</td>
-                        <td>60</td>
-                        <td>PO-25042500...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-04-28 11:44:06.640</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row3">
-                        <td></td>
-                        <td><input type="checkbox" id="check3"></td>
-                        <td>WO-250425-0001</td>
-                        <td>2025-04-28</td>
-                        <td>NFM961M0032_R019</td>
-                        <td>NFM961M0032</td>
-                        <td>MAIN NORMAL</td>
-                        <td>64</td>
-                        <td>PO-25042500...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-04-25 14:56:58.430</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row4">
-                        <td></td>
-                        <td><input type="checkbox" id="check4"></td>
-                        <td>WO-250326-0003</td>
-                        <td>2025-03-26</td>
-                        <td>NFM96-1T0000_R013</td>
-                        <td>M1662360000</td>
-                        <td>KEY NORMAL</td>
-                        <td>100</td>
-                        <td>PO-25032600...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-26 13:38:48.903</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row5">
-                        <td></td>
-                        <td><input type="checkbox" id="check5"></td>
-                        <td>WO-250326-0002</td>
-                        <td>2025-03-26</td>
-                        <td>NFM96-1K0000_R015</td>
-                        <td>M1662363000</td>
-                        <td>KNOB NORMAL</td>
-                        <td>105</td>
-                        <td>PO-25032600...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-26 13:38:39.657</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row6">
-                        <td></td>
-                        <td><input type="checkbox" id="check6"></td>
-                        <td>WO-250326-0001</td>
-                        <td>2025-03-26</td>
-                        <td>NFM961T0000_R013</td>
-                        <td>NFM961T0000</td>
-                        <td>KEY NORMAL</td>
-                        <td>100</td>
-                        <td>PO-25032600...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-26 13:21:25.350</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row7">
-                        <td></td>
-                        <td><input type="checkbox" id="check7"></td>
-                        <td>WO-250321-0003</td>
-                        <td>2025-03-21</td>
-                        <td>NFM96-1T0000_R013</td>
-                        <td>M1662360000</td>
-                        <td>KEY NORMAL</td>
-                        <td>360</td>
-                        <td>PO-25032100...</td>
-                        <td>✓</td>
-                        <td>송재우</td>
-                        <td>2025-03-21 15:48:57.337</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row8">
-                        <td></td>
-                        <td><input type="checkbox" id="check8"></td>
-                        <td>WO-250321-0002</td>
-                        <td>2025-03-21</td>
-                        <td>NFM96-1K0000_R015</td>
-                        <td>M1662363000</td>
-                        <td>KNOB NORMAL</td>
-                        <td>360</td>
-                        <td>PO-25032100...</td>
-                        <td>✓</td>
-                        <td>송재우</td>
-                        <td>2025-03-21 15:48:27.127</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row9">
-                        <td></td>
-                        <td><input type="checkbox" id="check9"></td>
-                        <td>WO-250321-0001</td>
-                        <td>2025-03-21</td>
-                        <td>NFM961T0000_R013</td>
-                        <td>NFM961T0000</td>
-                        <td>KEY NORMAL</td>
-                        <td>360</td>
-                        <td>PO-25032100...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-21 15:25:09.070</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row10">
-                        <td></td>
-                        <td><input type="checkbox" id="check10"></td>
-                        <td>WO-250319-0005</td>
-                        <td>2025-03-19</td>
-                        <td>NFM961M0032_R019</td>
-                        <td>NFM961M0032</td>
-                        <td>MAIN NORMAL</td>
-                        <td>800</td>
-                        <td>PO-25031900...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-19 12:26:45.087</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row11">
-                        <td></td>
-                        <td><input type="checkbox" id="check11"></td>
-                        <td>WO-250319-0004</td>
-                        <td>2025-03-19</td>
-                        <td>NFM961M0012_R019</td>
-                        <td>NFM961M0012</td>
-                        <td>MAIN NORMAL</td>
-                        <td>18</td>
-                        <td>PO-25031900...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-19 12:26:30.963</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row12">
-                        <td></td>
-                        <td><input type="checkbox" id="check12"></td>
-                        <td>WO-250319-0003</td>
-                        <td>2025-03-19</td>
-                        <td>NFM961M0002_R019</td>
-                        <td>NFM961M0002</td>
-                        <td>MAIN NORMAL</td>
-                        <td>10</td>
-                        <td>PO-25031900...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-19 12:26:18.023</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row13">
-                        <td></td>
-                        <td><input type="checkbox" id="check13"></td>
-                        <td>WO-250319-0002</td>
-                        <td>2025-03-19</td>
-                        <td>NFM961M0032_R019</td>
-                        <td>NFM961M0032</td>
-                        <td>MAIN NORMAL</td>
-                        <td>750</td>
-                        <td>PO-25031900...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-19 11:43:01.170</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row14">
-                        <td></td>
-                        <td><input type="checkbox" id="check14"></td>
-                        <td>WO-250319-0001</td>
-                        <td>2025-03-19</td>
-                        <td>NFM961M0002_R019</td>
-                        <td>NFM961M0002</td>
-                        <td>MAIN NORMAL</td>
-                        <td>14</td>
-                        <td>PO-25031900...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-03-19 11:42:48.690</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row15">
-                        <td></td>
-                        <td><input type="checkbox" id="check15"></td>
-                        <td>WO-250211-0003</td>
-                        <td>2025-02-12</td>
-                        <td>NFM96-1T0000_R013</td>
-                        <td>M1662360000</td>
-                        <td>KEY NORMAL</td>
-                        <td>20</td>
-                        <td>PO-25021100...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-02-11 11:37:43.137</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row16">
-                        <td></td>
-                        <td><input type="checkbox" id="check16"></td>
-                        <td>WO-250211-0002</td>
-                        <td>2025-02-12</td>
-                        <td>NFM961M0012_R019</td>
-                        <td>NFM961M0012</td>
-                        <td>MAIN NORMAL</td>
-                        <td>12</td>
-                        <td>PO-25021100...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-02-11 11:37:29.600</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row17">
-                        <td></td>
-                        <td><input type="checkbox" id="check17"></td>
-                        <td>WO-250211-0001</td>
-                        <td>2025-02-12</td>
-                        <td>NFM961M0032_R019</td>
-                        <td>NFM961M0032</td>
-                        <td>MAIN NORMAL</td>
-                        <td>20</td>
-                        <td>PO-25021100...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-02-11 11:37:04.217</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row18">
-                        <td></td>
-                        <td><input type="checkbox" id="check18"></td>
-                        <td>WO-250207-0001</td>
-                        <td>2025-02-07</td>
-                        <td>NFM961M0032_R019</td>
-                        <td>NFM961M0032</td>
-                        <td>MAIN NORMAL</td>
-                        <td>32</td>
-                        <td>PO-25020700...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-02-07 16:05:52.660</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row19">
-                        <td></td>
-                        <td><input type="checkbox" id="check19"></td>
-                        <td>WO-250201-0001</td>
-                        <td>2025-02-01</td>
-                        <td>NFM96-1T0000_R013</td>
-                        <td>M1662360000</td>
-                        <td>KEY NORMAL</td>
-                        <td>220</td>
-                        <td>PO-25020100...</td>
-                        <td>✓</td>
-                        <td>송재우</td>
-                        <td>2025-02-01 09:15:57.780</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row20">
-                        <td></td>
-                        <td><input type="checkbox" id="check20"></td>
-                        <td>WO-250131-0004</td>
-                        <td>2025-02-06</td>
-                        <td>NFM961M0002_R019</td>
-                        <td>NFM961M0002</td>
-                        <td>MAIN NORMAL</td>
-                        <td>18</td>
-                        <td>PO-25013100...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-01-31 10:15:31.300</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row21">
-                        <td></td>
-                        <td><input type="checkbox" id="check21"></td>
-                        <td>WO-250131-0003</td>
-                        <td>2025-02-06</td>
-                        <td>NFM961M0032_R019</td>
-                        <td>NFM961M0032</td>
-                        <td>MAIN NORMAL</td>
-                        <td>204</td>
-                        <td>PO-25013100...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-01-31 10:15:12.447</td>
-                        <td></td>
-                    </tr>
-                    <tr id="row22">
-                        <td></td>
-                        <td><input type="checkbox" id="check22"></td>
-                        <td>WO-250131-0002</td>
-                        <td>2025-02-01</td>
-                        <td>NFM96-1K0000_R015</td>
-                        <td>M1662363000</td>
-                        <td>KNOB NORMAL</td>
-                        <td>240</td>
-                        <td>PO-25013100...</td>
-                        <td>✓</td>
-                        <td>HERRERA TORRES ALIC...</td>
-                        <td>2025-01-31 10:11:30.700</td>
-                        <td>▼</td>
-                    </tr>
+                    <!-- Los datos se cargarán dinámicamente desde la API -->
                 </tbody>
             </table>
         </div>
 
         <!-- Contador de resultados -->
         <div id="bomResultCounter">
-            Total Rows : 25
+            Total Rows : 0
         </div>
     </div>
+
+    <script>
+        // Variables globales
+        let modelosBOM = [];
+        let woData = [];
+
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarModelosBOM();
+            configurarEventos();
+            establecerFechaActual();
+            cargarWOs();
+        });
+
+        // Configurar eventos de botones
+        function configurarEventos() {
+            console.log('Configurando eventos...');
+            document.getElementById('btnCrearWO').addEventListener('click', mostrarFormularioWO);
+            document.getElementById('btnCancelarWO').addEventListener('click', ocultarFormularioWO);
+            document.getElementById('btnGuardarWO').addEventListener('click', crearNuevaWO);
+            document.getElementById('btnConsultar').addEventListener('click', consultarWOs);
+            document.getElementById('btnRegistrar').addEventListener('click', mostrarFormularioWO); // Mismo que crear WO
+            document.getElementById('btnCancelar').addEventListener('click', cancelarOperacion); // Nueva función inteligente
+            document.getElementById('btnExportar').addEventListener('click', exportarExcel);
+            
+            // Eventos para checkboxes maestros
+            document.getElementById('checkAll1').addEventListener('change', toggleAllCheckboxes);
+            document.getElementById('checkAll2').addEventListener('change', toggleAllCheckboxes);
+            console.log('Eventos configurados exitosamente');
+        }
+
+        // Establecer fecha actual por defecto
+        function establecerFechaActual() {
+            const hoy = new Date().toISOString().split('T')[0];
+            
+            // Establecer fechas en formulario WO
+            const fechaInput = document.getElementById('woFechaOperacion');
+            if (fechaInput) {
+                fechaInput.value = hoy;
+            }
+            
+            // Establecer fechas en filtros
+            const fechaDesde = document.getElementById('fechaDesde');
+            const fechaHasta = document.getElementById('fechaHasta');
+            
+            if (fechaDesde && fechaHasta) {
+                // Fecha desde: primer día del mes actual
+                const primerDiaDelMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                fechaDesde.value = primerDiaDelMes.toISOString().split('T')[0];
+                
+                // Fecha hasta: hoy
+                fechaHasta.value = hoy;
+            }
+        }
+
+        // Cargar modelos únicos de BOM
+        async function cargarModelosBOM() {
+            try {
+                console.log('Cargando modelos desde /listar_modelos_bom...');
+                const response = await fetch('/listar_modelos_bom', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const modelos = await response.json();
+                console.log('Modelos recibidos:', modelos);
+                
+                if (Array.isArray(modelos) && modelos.length > 0) {
+                    // Los modelos vienen como array de objetos con propiedad 'modelo'
+                    modelosBOM = modelos.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
+                    console.log('Modelos procesados:', modelosBOM);
+                    llenarDropdownModelos();
+                    mostrarMensaje(`${modelosBOM.length} modelos cargados desde Control de BOM`, 'success');
+                } else {
+                    console.warn('No se encontraron modelos en la respuesta');
+                    modelosBOM = [];
+                    llenarDropdownModelos();
+                    mostrarMensaje('No se encontraron modelos en Control de BOM', 'warning');
+                }
+            } catch (error) {
+                console.error('Error cargando modelos BOM:', error);
+                mostrarMensaje('Error cargando modelos de BOM: ' + error.message, 'error');
+                modelosBOM = [];
+                llenarDropdownModelos();
+            }
+        }
+
+        // Llenar dropdown de modelos
+        function llenarDropdownModelos() {
+            const dropdownList = document.getElementById('woDropdownList');
+            
+            if (!dropdownList) {
+                console.error('Element woDropdownList not found in llenarDropdownModelos');
+                return;
+            }
+            
+            dropdownList.innerHTML = '';
+            
+            modelosBOM.forEach(modelo => {
+                const item = document.createElement('div');
+                item.className = 'bom-dropdown-item';
+                item.setAttribute('data-value', modelo);
+                item.textContent = modelo;
+                item.onclick = function() { seleccionarModeloWO(modelo); };
+                dropdownList.appendChild(item);
+            });
+            
+            console.log(`✅ ${modelosBOM.length} modelos cargados en dropdown WO`);
+        }
+
+        // Mostrar formulario de WO
+        async function mostrarFormularioWO() {
+            console.log('mostrarFormularioWO llamada');
+            document.getElementById('woFormContainer').style.display = 'block';
+            document.getElementById('btnCrearWO').style.display = 'none';
+            generarCodigoWO();
+            
+            // Siempre cargar modelos para asegurar que estén disponibles
+            console.log('Cargando modelos BOM...');
+            await cargarModelosBOM();
+            
+            // Verificar que el dropdown esté inicializado correctamente
+            setTimeout(() => {
+                const dropdown = document.getElementById('woDropdownList');
+                const input = document.getElementById('woModelo');
+                if (dropdown && input) {
+                    console.log('Dropdown status check:');
+                    console.log('- Dropdown exists:', !!dropdown);
+                    console.log('- Dropdown display:', dropdown.style.display);
+                    console.log('- Dropdown z-index:', dropdown.style.zIndex);
+                    console.log('- Dropdown items:', dropdown.children.length);
+                    console.log('- Input exists:', !!input);
+                } else {
+                    console.error('Dropdown o input no encontrados');
+                }
+            }, 200);
+        }
+
+        // Generar código de WO automáticamente
+        function generarCodigoWO() {
+            const hoy = new Date();
+            const year = hoy.getFullYear().toString().slice(-2);
+            const month = (hoy.getMonth() + 1).toString().padStart(2, '0');
+            const day = hoy.getDate().toString().padStart(2, '0');
+            
+            // Generar número secuencial (simplificado, en producción se obtendría del servidor)
+            const secuencial = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+            const codigoWO = `WO-${year}${month}${day}-${secuencial}`;
+            
+            document.getElementById('woCodigoWO').value = codigoWO;
+        }
+
+        // Ocultar formulario de WO
+        function ocultarFormularioWO() {
+            document.getElementById('woFormContainer').style.display = 'none';
+            document.getElementById('btnCrearWO').style.display = 'inline-block';
+            limpiarFormularioWO();
+        }
+
+        // Limpiar formulario
+        function limpiarFormularioWO() {
+            document.getElementById('woCodigoWO').value = '';
+            document.getElementById('woCodigoPO').value = '';
+            document.getElementById('woModelo').value = '';
+            document.getElementById('woOrdenProceso').value = '';
+            document.getElementById('woCantidad').value = '';
+            
+            // Ocultar dropdown de modelos
+            const dropdownList = document.getElementById('woDropdownList');
+            if (dropdownList) {
+                dropdownList.style.display = 'none';
+            }
+            
+            establecerFechaActual();
+        }
+
+        // Función para el botón Cancelar de la barra de herramientas
+        function cancelarOperacion() {
+            const formularioVisible = document.getElementById('woFormContainer').style.display !== 'none';
+            
+            if (formularioVisible) {
+                // Si hay un formulario abierto, ocultarlo
+                ocultarFormularioWO();
+                mostrarMensaje('Operación cancelada', 'success');
+            } else {
+                // Si no hay formulario abierto, limpiar filtros y recargar datos
+                establecerFechaActual();
+                cargarWOs();
+                mostrarMensaje('Filtros restablecidos', 'success');
+            }
+        }
+
+        // Crear nueva WO
+        async function crearNuevaWO() {
+            const codigoWO = document.getElementById('woCodigoWO').value.trim();
+            const codigoPO = document.getElementById('woCodigoPO').value.trim();
+            const modelo = document.getElementById('woModelo').value;
+            const ordenProceso = document.getElementById('woOrdenProceso').value;
+            const cantidad = parseInt(document.getElementById('woCantidad').value);
+            const fechaOperacion = document.getElementById('woFechaOperacion').value;
+
+            // Validaciones
+            if (!codigoWO) {
+                mostrarMensaje('Por favor genere un código de WO', 'error');
+                return;
+            }
+            if (!codigoPO) {
+                mostrarMensaje('Por favor ingrese el código PO', 'error');
+                return;
+            }
+            if (!modelo) {
+                mostrarMensaje('Por favor seleccione un modelo', 'error');
+                return;
+            }
+            if (!ordenProceso) {
+                mostrarMensaje('Por favor seleccione una orden de proceso', 'error');
+                return;
+            }
+            if (!cantidad || cantidad <= 0) {
+                mostrarMensaje('Por favor ingrese una cantidad válida', 'error');
+                return;
+            }
+            if (!fechaOperacion) {
+                mostrarMensaje('Por favor seleccione una fecha de operación', 'error');
+                return;
+            }
+
+            // Preparar datos
+            const data = {
+                codigo_wo: codigoWO,
+                codigo_po: codigoPO,
+                modelo: modelo,
+                orden_proceso: ordenProceso,
+                cantidad_planeada: cantidad,
+                fecha_operacion: fechaOperacion
+            };
+
+            try {
+                // Deshabilitar botón durante la creación
+                const btnGuardar = document.getElementById('btnGuardarWO');
+                btnGuardar.disabled = true;
+                btnGuardar.textContent = 'Registrando...';
+
+                const response = await fetch('/api/wo/crear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    mostrarMensaje(`WO creada exitosamente: ${result.data.codigo_wo}`, 'success');
+                    ocultarFormularioWO();
+                    // Recargar la tabla dinámicamente
+                    await cargarWOs();
+                } else {
+                    mostrarMensaje('Error creando WO: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error de conexión al crear WO', 'error');
+            } finally {
+                // Rehabilitar botón
+                const btnGuardar = document.getElementById('btnGuardarWO');
+                btnGuardar.disabled = false;
+                btnGuardar.textContent = 'Registrar';
+            }
+        }
+
+        // Función para mostrar mensajes
+        function mostrarMensaje(mensaje, tipo) {
+            // Crear el elemento de mensaje
+            const msgDiv = document.createElement('div');
+            msgDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 5px;
+                color: white;
+                font-weight: bold;
+                z-index: 10000;
+                max-width: 400px;
+                background-color: ${tipo === 'success' ? '#27ae60' : '#e74c3c'};
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            `;
+            msgDiv.textContent = mensaje;
+            
+            document.body.appendChild(msgDiv);
+            
+            // Eliminar después de 4 segundos
+            setTimeout(() => {
+                if (document.body.contains(msgDiv)) {
+                    document.body.removeChild(msgDiv);
+                }
+            }, 4000);
+        }
+
+        // Función para filtrar modelos en el dropdown de WO
+        function filtrarModelosWO() {
+            const searchInput = document.getElementById('woModelo');
+            const dropdownList = document.getElementById('woDropdownList');
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            // Mostrar el dropdown
+            dropdownList.style.display = 'block';
+            
+            const items = dropdownList.querySelectorAll('.bom-dropdown-item');
+            let hasVisibleItems = false;
+            
+            items.forEach(item => {
+                const modeloText = item.textContent.toLowerCase();
+                if (modeloText.includes(searchTerm)) {
+                    item.classList.remove('hidden');
+                    hasVisibleItems = true;
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+            
+            // Si no hay coincidencias, ocultar el dropdown
+            if (!hasVisibleItems && searchTerm.length > 0) {
+                dropdownList.style.display = 'none';
+            }
+        }
+
+        // Función para mostrar dropdown de WO
+        function mostrarDropdownWO() {
+            console.log('=== mostrarDropdownWO() llamada ===');
+            const dropdownList = document.getElementById('woDropdownList');
+            const searchInput = document.getElementById('woModelo');
+            
+            if (!dropdownList) {
+                console.error('Element woDropdownList not found');
+                return;
+            }
+            
+            if (!searchInput) {
+                console.error('Element woModelo not found');
+                return;
+            }
+            
+            console.log('Elementos encontrados OK');
+            console.log('Modelos disponibles:', modelosBOM.length);
+            console.log('Dropdown actual display:', dropdownList.style.display);
+            console.log('Dropdown actual z-index:', dropdownList.style.zIndex);
+            
+            // Forzar configuración del dropdown
+            dropdownList.style.display = 'block';
+            dropdownList.style.zIndex = '10000';
+            dropdownList.style.position = 'absolute';
+            
+            if (searchInput.value.trim() === '') {
+                // Si el input está vacío, mostrar todos los modelos
+                const items = dropdownList.querySelectorAll('.bom-dropdown-item');
+                console.log('Items en dropdown:', items.length);
+                items.forEach(item => {
+                    item.classList.remove('hidden');
+                });
+                
+                // Si no hay items, llenar el dropdown
+                if (items.length === 0 && modelosBOM.length > 0) {
+                    console.log('Dropdown vacío, llenando con modelos...');
+                    llenarDropdownModelos();
+                }
+            }
+            
+            console.log('Dropdown configurado - display:', dropdownList.style.display);
+            console.log('=== fin mostrarDropdownWO() ===');
+        }
+
+        // Función para seleccionar un modelo del dropdown de WO
+        function seleccionarModeloWO(modelo) {
+            const searchInput = document.getElementById('woModelo');
+            const dropdownList = document.getElementById('woDropdownList');
+            
+            searchInput.value = modelo;
+            dropdownList.style.display = 'none';
+            
+            console.log('Modelo seleccionado para WO:', modelo);
+        }
+
+        // Event listener para cerrar dropdown cuando se hace clic fuera
+        document.addEventListener('click', function(event) {
+            const woSearchContainer = document.querySelector('.bom-search-container');
+            const woDropdownList = document.getElementById('woDropdownList');
+            
+            if (woSearchContainer && !woSearchContainer.contains(event.target)) {
+                woDropdownList.style.display = 'none';
+            }
+        });
+
+        // Función de prueba para verificar modelos
+        function testModelos() {
+            console.log('=== TEST MODELOS ===');
+            console.log('modelosBOM array:', modelosBOM);
+            console.log('modelosBOM length:', modelosBOM.length);
+            
+            const dropdownList = document.getElementById('woDropdownList');
+            console.log('Dropdown element:', dropdownList);
+            console.log('Dropdown innerHTML length:', dropdownList ? dropdownList.innerHTML.length : 'null');
+            
+            if (modelosBOM.length === 0) {
+                console.log('Recargando modelos...');
+                cargarModelosBOM();
+            } else {
+                console.log('Forzando mostrar dropdown...');
+                mostrarDropdownWO();
+            }
+            
+            alert(`Modelos cargados: ${modelosBOM.length}. Ver consola para más detalles.`);
+        }
+
+        // Cargar WOs existentes
+        async function cargarWOs() {
+            try {
+                mostrarCargando(true);
+                const response = await fetch('/api/wo/listar');
+                const result = await response.json();
+                
+                if (result.success) {
+                    woData = result.data;
+                    renderizarTablaWOs(woData);
+                    actualizarContador(woData.length);
+                } else {
+                    console.error('Error cargando WOs:', result.error);
+                    mostrarMensaje('Error cargando WOs: ' + result.error, 'error');
+                    mostrarSinDatos();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error de conexión al cargar WOs', 'error');
+                mostrarSinDatos();
+            } finally {
+                mostrarCargando(false);
+            }
+        }
+
+        // Consultar WOs por fechas
+        async function consultarWOs() {
+            const fechaDesde = document.getElementById('fechaDesde').value;
+            const fechaHasta = document.getElementById('fechaHasta').value;
+
+            try {
+                mostrarCargando(true);
+                const params = new URLSearchParams();
+                if (fechaDesde) params.append('fecha_desde', fechaDesde);
+                if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+
+                const response = await fetch(`/api/wo/listar?${params.toString()}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    woData = result.data;
+                    renderizarTablaWOs(woData);
+                    actualizarContador(woData.length);
+                    mostrarMensaje(`Se encontraron ${woData.length} WOs`, 'success');
+                } else {
+                    console.error('Error consultando WOs:', result.error);
+                    mostrarMensaje('Error consultando WOs: ' + result.error, 'error');
+                    mostrarSinDatos();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error de conexión al consultar WOs', 'error');
+                mostrarSinDatos();
+            } finally {
+                mostrarCargando(false);
+            }
+        }
+
+        // Función para consultar POs (función auxiliar para compatibilidad)
+        async function consultarPOs() {
+            try {
+                mostrarCargando(true);
+                
+                const response = await fetch('/api/po/listar');
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('POs disponibles:', result.data);
+                    mostrarMensaje(`${result.data.length} POs encontradas`, 'success');
+                    // Esta función es para compatibilidad, redirecciona a WOs
+                    consultarWOs();
+                } else {
+                    console.error('Error cargando POs:', result.error);
+                    mostrarMensaje('Error cargando POs: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error de conexión al consultar POs', 'error');
+            } finally {
+                mostrarCargando(false);
+            }
+        }
+
+        // Renderizar tabla de WOs
+        function renderizarTablaWOs(wos) {
+            const tbody = document.querySelector('#bomTable tbody');
+            
+            if (!wos || wos.length === 0) {
+                mostrarSinDatos();
+                return;
+            }
+
+            tbody.innerHTML = '';
+            
+            wos.forEach((wo, index) => {
+                const row = document.createElement('tr');
+                row.id = `row${index + 1}`;
+                
+                row.innerHTML = `
+                    <td>${index === 0 ? '▶' : ''}</td>
+                    <td><input type="checkbox" id="check${index + 1}"></td>
+                    <td>${wo.codigo_wo || ''}</td>
+                    <td>${formatearFecha(wo.fecha_operacion) || ''}</td>
+                    <td>${wo.codigo_modelo || ''}</td>
+                    <td>${wo.nombre_modelo || ''}</td>
+                    <td>${wo.orden_proceso || 'NORMAL'}</td>
+                    <td>${wo.cantidad_planeada || 0}</td>
+                    <td>${wo.codigo_po || ''}</td>
+                    <td>${wo.registrado ? '✓' : '✗'}</td>
+                    <td>${wo.modificador || ''}</td>
+                    <td>${formatearFechaCompleta(wo.fecha_modificacion) || ''}</td>
+                    <td>${index === 0 ? '▲' : ''}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Mostrar sin datos
+        function mostrarSinDatos() {
+            const tbody = document.querySelector('#bomTable tbody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="13" class="no-data">No se encontraron Work Orders</td>
+                </tr>
+            `;
+        }
+
+        // Mostrar estado de carga
+        function mostrarCargando(mostrar) {
+            const tbody = document.querySelector('#bomTable tbody');
+            if (!tbody) {
+                console.warn('Elemento #bomTable tbody no encontrado');
+                return;
+            }
+            
+            if (mostrar) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="bom-loading">Cargando Work Orders...</td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Formatear fecha (YYYY-MM-DD)
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return '';
+            const fecha = new Date(fechaStr);
+            return fecha.toISOString().split('T')[0];
+        }
+
+        // Formatear fecha completa (YYYY-MM-DD HH:mm:ss)
+        function formatearFechaCompleta(fechaStr) {
+            if (!fechaStr) return '';
+            const fecha = new Date(fechaStr);
+            return fecha.toISOString().replace('T', ' ').substring(0, 19);
+        }
+
+        // Actualizar contador de resultados
+        function actualizarContador(cantidad) {
+            const contador = document.getElementById('bomResultCounter');
+            contador.textContent = `Total Rows : ${cantidad}`;
+        }
+
+        // Toggle de todos los checkboxes
+        function toggleAllCheckboxes(event) {
+            const isChecked = event.target.checked;
+            const checkboxes = document.querySelectorAll('#bomTable tbody input[type="checkbox"]');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+        }
+
+        // Exportar a Excel
+        async function exportarExcel() {
+            if (!woData || woData.length === 0) {
+                mostrarMensaje('No hay datos para exportar', 'error');
+                return;
+            }
+
+            try {
+                const fechaDesde = document.getElementById('fechaDesde').value;
+                const fechaHasta = document.getElementById('fechaHasta').value;
+                
+                const params = new URLSearchParams();
+                params.append('formato', 'excel');
+                if (fechaDesde) params.append('fecha_desde', fechaDesde);
+                if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+
+                const response = await fetch(`/api/wo/exportar?${params.toString()}`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `work_orders_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    mostrarMensaje('Excel exportado exitosamente', 'success');
+                } else {
+                    mostrarMensaje('Error al exportar Excel', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error de conexión al exportar Excel', 'error');
+            }
+        }
+    </script>
+
 </body>
 </html>

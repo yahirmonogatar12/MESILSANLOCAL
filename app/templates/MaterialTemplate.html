@@ -168,7 +168,16 @@
             cursor: help;
         }
     </style>
-    
+    <!-- Deshabilitar logs de consola en producción -->
+    <script>
+       /* if (typeof console !== 'undefined') {
+            console._log = console.log;
+            console.log = function () {};
+        }*/
+    </script>
+
+    <!-- Utilidades globales -->
+    <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js"></script>
     <!-- <script src="../static/js/permisos-botones.js"></script> COMENTADO: Versión con problemas -->
@@ -176,7 +185,8 @@
     <script src="/static/js/scriptMain.js"></script>
     
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
-    <script src="/static/js/ajax-content-manager.js"></script>
+    <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
+
     
 </head>
 <body>
@@ -5341,4 +5351,4 @@
 })();</script>
 
 </body>
-</html>  
+</html>

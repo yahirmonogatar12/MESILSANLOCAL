@@ -28,6 +28,13 @@ from .auth_system import AuthSystem
 from .user_admin import user_admin_bp
 from .admin_api import admin_bp
 
+# Importar modelos y funciones PO → WO
+from .po_wo_models import (
+    crear_tablas_po_wo, validar_codigo_po, validar_codigo_wo,
+    generar_codigo_po, generar_codigo_wo, verificar_po_existe, verificar_wo_existe,
+    obtener_po_por_codigo, obtener_wo_por_codigo, listar_pos_por_estado, listar_wos_por_po
+)
+
 app = Flask(__name__)
 app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
 
@@ -434,6 +441,7 @@ def listar_modelos_bom():
     Devuelve la lista de modelos únicos disponibles en la tabla BOM
     """
     try:
+        from .db_mysql import obtener_modelos_bom
         modelos = obtener_modelos_bom()
         return jsonify(modelos)
     except Exception as e:
@@ -6064,3 +6072,622 @@ def api_historial_smt_data():
             cursor.close()
         if conn:
             conn.close()
+
+# =====================================================
+# SISTEMA PO → WO - RUTAS DE API REST
+# =====================================================
+
+from .db_mysql import execute_query
+from datetime import datetime, date
+
+# --- PURCHASE ORDERS (PO) ---
+
+@app.route('/api/po/crear', methods=['POST'])
+@login_requerido
+def crear_po():
+    """Crear nueva Purchase Order (PO)"""
+    try:
+        data = request.get_json()
+        
+        # Validar campos obligatorios
+        if not data.get('cliente') and not data.get('proveedor'):
+            return jsonify({
+                'success': False,
+                'error': 'El campo cliente o proveedor es obligatorio'
+            }), 400
+        
+        # Generar código PO único
+        codigo_po = generar_codigo_po()
+        if not codigo_po:
+            return jsonify({
+                'success': False,
+                'error': 'Error generando código PO'
+            }), 500
+        
+        # Validar código generado
+        valido, mensaje = validar_codigo_po(codigo_po)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código PO inválido: {mensaje}'
+            }), 400
+        
+        # Verificar que no exista duplicado (doble verificación)
+        if verificar_po_existe(codigo_po):
+            return jsonify({
+                'success': False,
+                'error': 'El código PO ya existe'
+            }), 409
+        
+        # Generar código de entrega automáticamente
+        codigo_entrega = f"{codigo_po}-01"
+        
+        # Insertar nueva PO con todos los campos
+        usuario = session.get('username', 'sistema')
+        query = """
+        INSERT INTO embarques (
+            codigo_po, cliente, fecha_registro, estado, usuario_creacion,
+            nombre_po, modelo, proveedor, total_cantidad_entregada, 
+            codigo_entrega, fecha_entrega, cantidad_entregada
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        # Preparar datos
+        cliente = data.get('cliente') or data.get('proveedor')  # Usar proveedor como cliente si no hay cliente
+        fecha_registro = data.get('fecha_registro') or date.today()
+        estado = data.get('estado', 'PLAN')
+        nombre_po = data.get('nombre_po', '')
+        modelo = data.get('modelo', '')
+        proveedor = data.get('proveedor', '')
+        total_cantidad_entregada = data.get('total_cantidad_entregada', 0)
+        fecha_entrega = data.get('fecha_entrega')
+        cantidad_entregada = data.get('cantidad_entregada', 0)
+        
+        # Convertir fecha_entrega a objeto date si es string
+        if isinstance(fecha_entrega, str):
+            try:
+                fecha_entrega = datetime.strptime(fecha_entrega, '%Y-%m-%d').date()
+            except:
+                fecha_entrega = None
+        
+        execute_query(query, (
+            codigo_po, cliente, fecha_registro, estado, usuario,
+            nombre_po, modelo, proveedor, total_cantidad_entregada,
+            codigo_entrega, fecha_entrega, cantidad_entregada
+        ))
+        
+        # Obtener PO creada
+        po_creada = obtener_po_por_codigo(codigo_po)
+        
+        return jsonify({
+            'success': True,
+            'message': 'PO creada exitosamente',
+            'data': po_creada
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error creando PO: {str(e)}'
+        }), 500
+
+@app.route('/api/po/<codigo_po>', methods=['GET'])
+@login_requerido
+def obtener_po(codigo_po):
+    """Obtener información de una PO específica"""
+    try:
+        # Validar formato del código
+        valido, mensaje = validar_codigo_po(codigo_po)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código PO inválido: {mensaje}'
+            }), 400
+        
+        po = obtener_po_por_codigo(codigo_po)
+        if not po:
+            return jsonify({
+                'success': False,
+                'error': 'PO no encontrada'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': po
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error obteniendo PO: {str(e)}'
+        }), 500
+
+@app.route('/api/po/<codigo_po>/estado', methods=['PUT'])
+@login_requerido
+def actualizar_estado_po(codigo_po):
+    """Actualizar estado de una PO"""
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        
+        # Validar estado
+        estados_validos = ['PLAN', 'PREPARACION', 'EMBARCADO', 'EN_TRANSITO', 'ENTREGADO']
+        if nuevo_estado not in estados_validos:
+            return jsonify({
+                'success': False,
+                'error': f'Estado inválido. Debe ser uno de: {", ".join(estados_validos)}'
+            }), 400
+        
+        # Verificar que la PO existe
+        if not verificar_po_existe(codigo_po):
+            return jsonify({
+                'success': False,
+                'error': 'PO no encontrada'
+            }), 404
+        
+        # Actualizar estado
+        query = "UPDATE embarques SET estado = %s WHERE codigo_po = %s"
+        execute_query(query, (nuevo_estado, codigo_po))
+        
+        # Obtener PO actualizada
+        po_actualizada = obtener_po_por_codigo(codigo_po)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Estado de PO actualizado exitosamente',
+            'data': po_actualizada
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error actualizando estado de PO: {str(e)}'
+        }), 500
+
+@app.route('/api/po/listar', methods=['GET'])
+@login_requerido
+def listar_pos():
+    """Listar todas las POs con filtros opcionales"""
+    try:
+        estado = request.args.get('estado')
+        pos = listar_pos_por_estado(estado)
+        
+        return jsonify({
+            'success': True,
+            'data': pos,
+            'total': len(pos)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error listando POs: {str(e)}'
+        }), 500
+
+# --- WORK ORDERS (WO) ---
+
+@app.route('/api/wo/crear', methods=['POST'])
+@login_requerido
+def crear_wo():
+    """Crear nueva Work Order (WO)"""
+    try:
+        data = request.get_json()
+        
+        # Validar campos obligatorios
+        campos_requeridos = ['codigo_po', 'modelo', 'cantidad_planeada', 'fecha_operacion']
+        for campo in campos_requeridos:
+            if not data.get(campo):
+                return jsonify({
+                    'success': False,
+                    'error': f'El campo {campo} es obligatorio'
+                }), 400
+        
+        # Usar código WO proporcionado o generar uno nuevo
+        codigo_wo = data.get('codigo_wo')
+        if not codigo_wo:
+            # Generar código WO único si no se proporciona
+            codigo_wo = generar_codigo_wo()
+        
+        # Obtener otros campos
+        codigo_po = data['codigo_po']
+        orden_proceso = data.get('orden_proceso', 'NORMAL')
+        
+        # Validar cantidad
+        cantidad = data['cantidad_planeada']
+        if not isinstance(cantidad, int) or cantidad <= 0:
+            return jsonify({
+                'success': False,
+                'error': 'La cantidad planeada debe ser un número entero positivo'
+            }), 400
+        
+        # Validar código
+        if not codigo_wo:
+            return jsonify({
+                'success': False,
+                'error': 'Error generando código WO'
+            }), 500
+        
+        # Validar código generado
+        valido, mensaje = validar_codigo_wo(codigo_wo)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código WO inválido: {mensaje}'
+            }), 400
+        
+        # Verificar que no exista duplicado
+        if verificar_wo_existe(codigo_wo):
+            return jsonify({
+                'success': False,
+                'error': 'El código WO ya existe'
+            }), 409
+        
+        # Insertar nueva WO
+        usuario = session.get('username', 'sistema')
+        query = """
+        INSERT INTO work_orders (codigo_wo, codigo_po, modelo, orden_proceso, cantidad_planeada, 
+                               fecha_operacion, modificador, estado, usuario_creacion)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        estado = data.get('estado', 'CREADA')
+        
+        execute_query(query, (
+            codigo_wo, codigo_po, data['modelo'], orden_proceso, cantidad,
+            data['fecha_operacion'], usuario, estado, usuario
+        ))
+        
+        # Obtener WO creada
+        wo_creada = obtener_wo_por_codigo(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'message': 'WO creada exitosamente',
+            'data': wo_creada
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error creando WO: {str(e)}'
+        }), 500
+
+@app.route('/api/wo/<codigo_wo>', methods=['GET'])
+@login_requerido
+def obtener_wo(codigo_wo):
+    """Obtener información de una WO específica"""
+    try:
+        # Validar formato del código
+        valido, mensaje = validar_codigo_wo(codigo_wo)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código WO inválido: {mensaje}'
+            }), 400
+        
+        wo = obtener_wo_por_codigo(codigo_wo)
+        if not wo:
+            return jsonify({
+                'success': False,
+                'error': 'WO no encontrada'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': wo
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error obteniendo WO: {str(e)}'
+        }), 500
+
+@app.route('/api/wo/<codigo_wo>/estado', methods=['PUT'])
+@login_requerido
+def actualizar_estado_wo(codigo_wo):
+    """Actualizar estado de una WO"""
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        
+        # Validar estado
+        estados_validos = ['CREADA', 'PLANIFICADA', 'EN_PRODUCCION', 'CERRADA']
+        if nuevo_estado not in estados_validos:
+            return jsonify({
+                'success': False,
+                'error': f'Estado inválido. Debe ser uno de: {", ".join(estados_validos)}'
+            }), 400
+        
+        # Verificar que la WO existe
+        if not verificar_wo_existe(codigo_wo):
+            return jsonify({
+                'success': False,
+                'error': 'WO no encontrada'
+            }), 404
+        
+        # Actualizar estado
+        usuario = session.get('username', 'sistema')
+        query = "UPDATE work_orders SET estado = %s, modificador = %s WHERE codigo_wo = %s"
+        execute_query(query, (nuevo_estado, usuario, codigo_wo))
+        
+        # Obtener WO actualizada
+        wo_actualizada = obtener_wo_por_codigo(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Estado de WO actualizado exitosamente',
+            'data': wo_actualizada
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error actualizando estado de WO: {str(e)}'
+        }), 500
+
+@app.route('/api/wo/listar', methods=['GET'])
+@login_requerido
+def listar_wos():
+    """Listar todas las WOs con filtros opcionales"""
+    try:
+        codigo_po = request.args.get('codigo_po')
+        wos = listar_wos_por_po(codigo_po)
+        
+        return jsonify({
+            'success': True,
+            'data': wos,
+            'total': len(wos)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error listando WOs: {str(e)}'
+        }), 500
+
+@app.route('/api/bom/modelos', methods=['GET'])
+@login_requerido
+def obtener_modelos_bom():
+    """Obtener lista de modelos únicos de la tabla BOM"""
+    try:
+        from .po_wo_models import obtener_modelos_unicos_bom
+        modelos = obtener_modelos_unicos_bom()
+        
+        return jsonify({
+            'success': True,
+            'data': modelos,
+            'total': len(modelos)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error obteniendo modelos BOM: {str(e)}'
+        }), 500
+
+# --- RUTAS DE CONVERSIÓN PO → WO ---
+
+@app.route('/api/po/<codigo_po>/convertir-wo', methods=['POST'])
+@login_requerido
+def convertir_po_a_wo(codigo_po):
+    """Convertir una PO en WO automáticamente"""
+    try:
+        data = request.get_json() or {}
+        
+        # Verificar que la PO existe
+        po = obtener_po_por_codigo(codigo_po)
+        if not po:
+            return jsonify({
+                'success': False,
+                'error': 'PO no encontrada'
+            }), 404
+        
+        # Validar campos requeridos para WO
+        if not data.get('modelo'):
+            return jsonify({
+                'success': False,
+                'error': 'El campo modelo es obligatorio para crear WO'
+            }), 400
+        
+        if not data.get('cantidad_planeada'):
+            return jsonify({
+                'success': False,
+                'error': 'El campo cantidad_planeada es obligatorio para crear WO'
+            }), 400
+        
+        # Usar fecha actual si no se especifica
+        fecha_operacion = data.get('fecha_operacion', date.today().isoformat())
+        
+        # Crear WO usando el endpoint interno
+        wo_data = {
+            'codigo_po': codigo_po,
+            'modelo': data['modelo'],
+            'cantidad_planeada': data['cantidad_planeada'],
+            'fecha_operacion': fecha_operacion,
+            'estado': data.get('estado', 'CREADA')
+        }
+        
+        # Generar código WO
+        codigo_wo = generar_codigo_wo()
+        if not codigo_wo:
+            return jsonify({
+                'success': False,
+                'error': 'Error generando código WO'
+            }), 500
+        
+        # Insertar WO
+        usuario = session.get('username', 'sistema')
+        query = """
+        INSERT INTO work_orders (codigo_wo, codigo_po, modelo, cantidad_planeada, 
+                               fecha_operacion, modificador, estado, usuario_creacion)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        execute_query(query, (
+            codigo_wo, codigo_po, wo_data['modelo'], wo_data['cantidad_planeada'],
+            wo_data['fecha_operacion'], usuario, wo_data['estado'], usuario
+        ))
+        
+        # Obtener WO creada
+        wo_creada = obtener_wo_por_codigo(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'message': f'PO {codigo_po} convertida exitosamente a WO {codigo_wo}',
+            'data': {
+                'po': po,
+                'wo': wo_creada
+            }
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error convirtiendo PO a WO: {str(e)}'
+        }), 500
+
+# --- RUTAS DE VALIDACIÓN Y VERIFICACIÓN ---
+
+@app.route('/api/validar/codigo-po/<codigo_po>', methods=['GET'])
+@login_requerido
+def validar_codigo_po_endpoint(codigo_po):
+    """Validar formato y existencia de código PO"""
+    try:
+        # Validar formato
+        valido, mensaje = validar_codigo_po(codigo_po)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'valido': False,
+                'mensaje': mensaje
+            })
+        
+        # Verificar existencia
+        existe = verificar_po_existe(codigo_po)
+        
+        return jsonify({
+            'success': True,
+            'valido': True,
+            'existe': existe,
+            'mensaje': 'Código válido' if not existe else 'Código válido pero ya existe'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error validando código PO: {str(e)}'
+        }), 500
+
+@app.route('/api/validar/codigo-wo/<codigo_wo>', methods=['GET'])
+@login_requerido
+def validar_codigo_wo_endpoint(codigo_wo):
+    """Validar formato y existencia de código WO"""
+    try:
+        # Validar formato
+        valido, mensaje = validar_codigo_wo(codigo_wo)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'valido': False,
+                'mensaje': mensaje
+            })
+        
+        # Verificar existencia
+        existe = verificar_wo_existe(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'valido': True,
+            'existe': existe,
+            'mensaje': 'Código válido' if not existe else 'Código válido pero ya existe'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error validando código WO: {str(e)}'
+        }), 500
+
+@app.route('/api/wo/exportar', methods=['GET'])
+@login_requerido
+def exportar_wos_excel():
+    """Exportar WOs a Excel"""
+    try:
+        import io
+        from openpyxl import Workbook
+        from flask import send_file
+        
+        # Obtener parámetros de filtro
+        fecha_desde = request.args.get('fecha_desde')
+        fecha_hasta = request.args.get('fecha_hasta')
+        
+        # Obtener WOs con filtros
+        from .po_wo_models import listar_wos
+        wos = listar_wos(fecha_desde=fecha_desde, fecha_hasta=fecha_hasta)
+        
+        # Crear workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Work Orders"
+        
+        # Definir encabezados
+        headers = [
+            'Código WO', 'Fecha Operación', 'Código Modelo', 'Nombre Modelo',
+            'Orden Proceso', 'Cantidad Planeada', 'Código PO', 'Registrado',
+            'Modificador', 'Fecha Modificación', 'Fecha Creación'
+        ]
+        
+        # Escribir encabezados
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col, value=header)
+        
+        # Escribir datos
+        for row, wo in enumerate(wos, 2):
+            ws.cell(row=row, column=1, value=wo.get('codigo_wo', ''))
+            ws.cell(row=row, column=2, value=wo.get('fecha_operacion', ''))
+            ws.cell(row=row, column=3, value=wo.get('codigo_modelo', ''))
+            ws.cell(row=row, column=4, value=wo.get('nombre_modelo', ''))
+            ws.cell(row=row, column=5, value=wo.get('orden_proceso', ''))
+            ws.cell(row=row, column=6, value=wo.get('cantidad_planeada', 0))
+            ws.cell(row=row, column=7, value=wo.get('codigo_po', ''))
+            ws.cell(row=row, column=8, value='Sí' if wo.get('registrado') else 'No')
+            ws.cell(row=row, column=9, value=wo.get('modificador', ''))
+            ws.cell(row=row, column=10, value=wo.get('fecha_modificacion', ''))
+            ws.cell(row=row, column=11, value=wo.get('fecha_creacion', ''))
+        
+        # Ajustar ancho de columnas
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        # Guardar en buffer
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        
+        # Generar nombre de archivo
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'work_orders_{timestamp}.xlsx'
+        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error exportando WOs: {str(e)}'
+        }), 500

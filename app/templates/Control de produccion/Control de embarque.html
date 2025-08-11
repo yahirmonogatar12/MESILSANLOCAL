@@ -4,11 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="autocomplete" content="off">
-    <title>Control de Embarque - PO de Compra</title>
+    <title>Control de Embarque - Sistema PO → WO</title>
     
     <!-- Fuentes -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=LG+regular&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Estilos específicos para Control de Embarque -->
     <link rel="stylesheet" href="/static/css/control_embarque.css">
@@ -17,281 +29,918 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/autonumeric@4.6.0"></script>
     
 </head>
 <body>
 
 <div id="embarque-main-container-unique" class="embarque-main-container">
 
+<!-- Header con título -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-shipping-fast me-2"></i>Control de Embarque - Sistema PO → WO</h2>
+    <div class="badge bg-info fs-6">
+        <i class="fas fa-exchange-alt me-1"></i>
+        Purchase Orders → Work Orders
+    </div>
+</div>
+
 <!-- Toolbar con filtros y botones -->
-<div id="embarque-toolbar-unique" class="embarque-toolbar">
-    <!-- Filtros -->
-    <div id="embarque-filters-unique" class="embarque-filters">
-        <div class="embarque-filter-group">
-            <label>Fecha de registro</label>
-            <input type="date" id="embarque-fecha-inicio-unique" value="2025-07-23">
-            <span>~</span>
-            <input type="date" id="embarque-fecha-fin-unique" value="2025-07-30">
+<div id="embarque-toolbar-unique" class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <!-- Filtros -->
+            <div class="col-md-3">
+                <label class="form-label">Fecha de registro</label>
+                <div class="input-group">
+                    <input type="date" class="form-control" id="embarque-fecha-inicio-unique">
+                    <span class="input-group-text">~</span>
+                    <input type="date" class="form-control" id="embarque-fecha-fin-unique">
+                </div>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Cliente</label>
+                <select class="form-select" id="embarque-filtro-cliente-unique">
+                    <option value="">Todos</option>
+                    <option value="LG_REFRIS">LG_REFRIS</option>
+                    <option value="LG_ESTUFAS">LG_ESTUFAS</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Estado PO</label>
+                <select class="form-select" id="filtro-estado-po">
+                    <option value="">Todos</option>
+                    <option value="PLAN">Plan</option>
+                    <option value="PREPARACION">En Preparación</option>
+                    <option value="EMBARCADO">Embarcado</option>
+                    <option value="EN_TRANSITO">En Tránsito</option>
+                    <option value="ENTREGADO">Entregado</option>
+                </select>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="col-md-5">
+                <div class="btn-group" role="group">
+                    <button class="btn btn-primary" onclick="consultarPOs()">
+                        <i class="fas fa-search"></i> Consultar POs
+                    </button>
+                    <button class="btn btn-success" onclick="abrirModalCrearPO()">
+                        <i class="fas fa-plus"></i> Nueva PO
+                    </button>
+                    <button class="btn btn-info" onclick="consultarWOs()">
+                        <i class="fas fa-tasks"></i> Ver WOs
+                    </button>
+                    <button class="btn btn-warning" onclick="exportarDatos()">
+                        <i class="fas fa-file-excel"></i> Exportar
+                    </button>
+                </div>
+            </div>
         </div>
-        
-        <div class="embarque-filter-group">
-            <label>Cliente</label>
-            <select id="embarque-filtro-cliente-unique">
-                <option value="">Todos</option>
-                <option value="LG_REFRIS">LG_REFRIS</option>
-                <option value="LG_ESTUFAS">LG_ESTUFAS</option>
-            </select>
-        </div>
-        
-        <div class="embarque-filter-group">
-            <label>Estado</label>
-            <select id="filtro-estado">
-                <option value="">Plan, Producción</option>
-                <option value="PREPARACION">En Preparación</option>
-                <option value="EMBARCADO">Embarcado</option>
-                <option value="EN_TRANSITO">En Tránsito</option>
-                <option value="ENTREGADO">Entregado</option>
-            </select>
-        </div>
-    </div>
-    
-    <!-- Botones de acción -->
-    <button class="embarque-btn embarque-btn-primary" onclick="consultarEmbarques()">
-        <i class="fas fa-search"></i>
-        Consultar
-    </button>
-    <button class="embarque-btn embarque-btn-success" onclick="abrirModalRegistro()">
-        <i class="fas fa-plus"></i>
-        Registrar
-    </button>
-    <button class="embarque-btn embarque-btn-info" onclick="verificarMaterial()">
-        <i class="fas fa-check-circle"></i>
-        Verif. de mat.
-    </button>
-    <button class="embarque-btn embarque-btn-warning" onclick="marcarCompletada()">
-        <i class="fas fa-flag-checkered"></i>
-        Completada
-    </button>
-    <button class="embarque-btn embarque-btn-secondary" onclick="cancelarEmbarque()">
-        <i class="fas fa-times"></i>
-        Cancelar
-    </button>
-    <button class="embarque-btn embarque-btn-success" onclick="exportarExcel()">
-        <i class="fas fa-file-excel"></i>
-        Exportar el excel
-    </button>
-</div>
-
-<!-- Tabla principal de embarques -->
-<div class="embarque-table-section">
-    <div class="embarque-table-container">
-        <table class="embarque-data-table" id="tabla-embarques">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="select-all"></th>
-                    <th>Código de PO</th>
-                    <th>Nombre de...</th>
-                    <th>Fecha de re...</th>
-                    <th>Cliente</th>
-                    <th>Código de...</th>
-                    <th>Nombre de...</th>
-                    <th>Proveedor</th>
-                    <th>Total cantid...</th>
-                    <th>Total cantid...</th>
-                    <th>Estado</th>
-                    <th>Código de e...</th>
-                    <th>Fecha de em...</th>
-                    <th>Cantidad em...</th>
-                    <th>Modificado</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="15" class="no-data">No hay dato registrado</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="embarque-table-footer">
-        <span>Total Rows : 0</span>
     </div>
 </div>
 
-<!-- Tabla de materiales -->
-<div class="embarque-materials-section">
-    <div class="embarque-materials-header">
-        <button class="embarque-btn-export" onclick="exportarMateriales()">Exportar el excel</button>
+<!-- Pestañas para POs y WOs -->
+<ul class="nav nav-tabs mb-3" id="main-tabs">
+    <li class="nav-item">
+        <button class="nav-link active" id="pos-tab" data-bs-toggle="tab" data-bs-target="#pos-panel">
+            <i class="fas fa-shopping-cart me-2"></i>Purchase Orders (PO)
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="wos-tab" data-bs-toggle="tab" data-bs-target="#wos-panel">
+            <i class="fas fa-cogs me-2"></i>Work Orders (WO)
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="main-tab-content">
+    <!-- Panel de Purchase Orders -->
+    <div class="tab-pane fade show active" id="pos-panel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Purchase Orders</h5>
+                <span class="badge bg-primary" id="pos-count">0 POs</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tabla-pos">
+                        <thead class="table-dark">
+                            <tr>
+                                <th><input type="checkbox" id="select-all-pos"></th>
+                                <th>Código PO</th>
+                                <th>Nombre PO</th>
+                                <th>Cliente/Proveedor</th>
+                                <th>Modelo</th>
+                                <th>Fecha Registro</th>
+                                <th>Código Entrega</th>
+                                <th>Cantidad</th>
+                                <th>Estado</th>
+                                <th>Modificado</th>
+                                <th>Usuario</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="12" class="text-center text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>No hay POs registradas
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
     
-    <div class="embarque-materials-table-container">
-        <table class="embarque-materials-table" id="tabla-materiales">
-            <thead>
-                <tr>
-                    <th>Código de material</th>
-                    <th>Numero de parte</th>
-                    <th>Vendedor</th>
-                    <th>Deficiencia de producción</th>
-                    <th>Cantidad actual</th>
-                    <th>Cantidad necesaria</th>
-                    <th>Tipo de material</th>
-                    <th>Especificacion de material</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="8" class="no-data">No hay dato registrado</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="embarque-materials-footer">
-        <span>Total Rows : 0</span>
+    <!-- Panel de Work Orders -->
+    <div class="tab-pane fade" id="wos-panel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Work Orders</h5>
+                <span class="badge bg-success" id="wos-count">0 WOs</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tabla-wos">
+                        <thead class="table-dark">
+                            <tr>
+                                <th><input type="checkbox" id="select-all-wos"></th>
+                                <th>Código WO</th>
+                                <th>Código PO</th>
+                                <th>Modelo</th>
+                                <th>Cantidad</th>
+                                <th>Fecha Operación</th>
+                                <th>Estado</th>
+                                <th>Modificador</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="9" class="text-center text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>No hay WOs registradas
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- Modal para crear nueva PO -->
+<div class="modal fade" id="modalCrearPO" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background-color: #2c3e50; color: white; border: 1px solid #34495e;">
+            <div class="modal-header" style="border-bottom: 1px solid #34495e;">
+                <h5 class="modal-title" style="color: #ecf0f1;">
+                    <i class="fas fa-plus me-2"></i>Control de embarque
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <form id="formCrearPO">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Código de PO</label>
+                            <input type="text" class="form-control po-input" name="codigo_po" 
+                                   placeholder="Se genera automáticamente" readonly
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Nombre de PO</label>
+                            <input type="text" class="form-control po-input" name="nombre_po" 
+                                   placeholder="Ingrese nombre de PO"
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Fecha de registro</label>
+                            <input type="date" class="form-control po-input" name="fecha_registro" 
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Modelo</label>
+                            <select class="form-select po-input" name="modelo" 
+                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                                <option value="">Seleccionar</option>
+                                <option value="NFM96-1T0000">NFM96-1T0000</option>
+                                <option value="NFM96-1K0000">NFM96-1K0000</option>
+                                <option value="NFM961M0032">NFM961M0032</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Proveedor</label>
+                            <select class="form-select po-input" name="proveedor" 
+                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                                <option value="">Seleccionar</option>
+                                <option value="MOBIS">MOBIS</option>
+                                <option value="LG_REFRIS">LG_REFRIS</option>
+                                <option value="LG_ESTUFAS">LG_ESTUFAS</option>
+                                <option value="SAMSUNG">SAMSUNG</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Total cantidad entregada</label>
+                            <input type="number" class="form-control po-input" name="total_cantidad_entregada" 
+                                   placeholder="0" min="0" value="0"
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Código de entrega</label>
+                            <input type="text" class="form-control po-input" name="codigo_entrega" 
+                                   placeholder="Se genera automáticamente" readonly
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Fecha de entrega</label>
+                            <input type="date" class="form-control po-input" name="fecha_entrega" 
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Cantidad entregada</label>
+                            <input type="number" class="form-control po-input" name="cantidad_entregada" 
+                                   placeholder="0" min="0" value="0"
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #34495e;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" 
+                        style="background-color: #95a5a6; border: none; color: white;">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="crearPO()" 
+                        style="background-color: #8e44ad; border: none; color: white;">
+                    <i class="fas fa-save me-2"></i>Registrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Modal para crear WO desde PO -->
+<div class="modal fade" id="modalCrearWO" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-cogs me-2"></i>Convertir PO → WO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCrearWO">
+                    <div class="mb-3">
+                        <label class="form-label">Código PO</label>
+                        <input type="text" class="form-control" name="codigo_po" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Modelo *</label>
+                        <input type="text" class="form-control" name="modelo" placeholder="Ej: LG-REF-001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad Planeada *</label>
+                        <input type="number" class="form-control" name="cantidad_planeada" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Operación *</label>
+                        <input type="date" class="form-control" name="fecha_operacion" required>
+                    </div>
+                    <div class="alert alert-success">
+                        <i class="fas fa-info-circle me-2"></i>
+                        El código WO se generará automáticamente en formato: WO-YYMMDD-####
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="convertirPOaWO()">
+                    <i class="fas fa-exchange-alt me-2"></i>Crear WO
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Modal para cambiar estado -->
+<div class="modal fade" id="modalCambiarEstado" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Cambiar Estado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCambiarEstado">
+                    <input type="hidden" name="codigo" />
+                    <input type="hidden" name="tipo" />
+                    <div class="mb-3">
+                        <label class="form-label">Nuevo Estado</label>
+                        <select class="form-select" name="estado" required>
+                            <!-- Opciones se llenarán dinámicamente -->
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="actualizarEstado()">
+                    <i class="fas fa-save me-2"></i>Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
-// Variables globales para Control de Embarque
-let embarqueData = [];
-let materialesData = [];
+// Variables globales para el sistema PO → WO
+let posData = [];
+let wosData = [];
+let dataTablePOs = null;
+let dataTableWOs = null;
 
-// Funciones principales
-function consultarEmbarques() {
-    console.log('Consultando embarques...');
-    // Aquí iría la lógica para consultar embarques desde el servidor
-    cargarDatosEmbarques();
-}
+// ===========================================
+// FUNCIONES PRINCIPALES
+// ===========================================
 
-function abrirModalRegistro() {
-    console.log('Abriendo modal de registro...');
-    // Aquí iría la lógica para abrir modal de registro
-    alert('Modal de registro en desarrollo');
-}
-
-function verificarMaterial() {
-    console.log('Verificando material...');
-    // Aquí iría la lógica para verificar material
-    alert('Verificación de material en desarrollo');
-}
-
-function marcarCompletada() {
-    console.log('Marcando como completada...');
-    // Aquí iría la lógica para marcar como completada
-    alert('Función completada en desarrollo');
-}
-
-function cancelarEmbarque() {
-    console.log('Cancelando embarque...');
-    // Aquí iría la lógica para cancelar embarque
-    alert('Función cancelar en desarrollo');
-}
-
-function exportarExcel() {
-    console.log('Exportando a Excel...');
-    // Aquí iría la lógica para exportar a Excel
-    alert('Exportación a Excel en desarrollo');
-}
-
-function exportarMateriales() {
-    console.log('Exportando materiales a Excel...');
-    // Aquí iría la lógica para exportar materiales
-    alert('Exportación de materiales en desarrollo');
-}
-
-// Función para cargar datos de embarques
-function cargarDatosEmbarques() {
-    // Simular datos para mostrar la estructura
-    embarqueData = [
-        // Los datos se cargarían desde el servidor
-    ];
+// Configurar fechas por defecto
+function configurarFechasPorDefecto() {
+    const hoy = new Date();
+    const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
     
-    actualizarTablaEmbarques();
+    document.getElementById('embarque-fecha-inicio-unique').value = fechaInicio.toISOString().split('T')[0];
+    document.getElementById('embarque-fecha-fin-unique').value = hoy.toISOString().split('T')[0];
+    
+    // Configurar fecha por defecto en modal WO
+    document.querySelector('#formCrearWO input[name="fecha_operacion"]').value = hoy.toISOString().split('T')[0];
 }
 
-// Función para actualizar tabla de embarques
-function actualizarTablaEmbarques() {
-    const tbody = document.querySelector('#tabla-embarques tbody');
-    tbody.innerHTML = '';
-    
-    if (embarqueData.length === 0) {
-        const row = tbody.insertRow();
-        row.innerHTML = '<td colspan="15" class="no-data">No hay dato registrado</td>';
-    } else {
-        embarqueData.forEach((item, index) => {
-            const row = tbody.insertRow();
-            row.innerHTML = `
-                <td><input type="checkbox"></td>
-                <td>${item.codigoPO || ''}</td>
-                <td>${item.nombre || ''}</td>
-                <td>${item.fechaRegistro || ''}</td>
-                <td>${item.cliente || ''}</td>
-                <td>${item.codigo || ''}</td>
-                <td>${item.nombreMaterial || ''}</td>
-                <td>${item.proveedor || ''}</td>
-                <td>${item.totalCantidad || ''}</td>
-                <td>${item.totalCantidadReal || ''}</td>
-                <td>${item.estado || ''}</td>
-                <td>${item.codigoEmbarque || ''}</td>
-                <td>${item.fechaEmbarque || ''}</td>
-                <td>${item.cantidadEmbarque || ''}</td>
-                <td>${item.modificado || ''}</td>
-            `;
-        });
-    }
-    
-    // Actualizar contador
-    document.querySelector('.embarque-table-footer span').textContent = `Total Rows : ${embarqueData.length}`;
-}
-
-// Función para actualizar tabla de materiales
-function actualizarTablaMateriales() {
-    const tbody = document.querySelector('#tabla-materiales tbody');
-    tbody.innerHTML = '';
-    
-    if (materialesData.length === 0) {
-        const row = tbody.insertRow();
-        row.innerHTML = '<td colspan="8" class="no-data">No hay dato registrado</td>';
-    } else {
-        materialesData.forEach((item, index) => {
-            const row = tbody.insertRow();
-            row.innerHTML = `
-                <td>${item.codigoMaterial || ''}</td>
-                <td>${item.numeroParte || ''}</td>
-                <td>${item.vendedor || ''}</td>
-                <td>${item.deficiencia || ''}</td>
-                <td>${item.cantidadActual || ''}</td>
-                <td>${item.cantidadNecesaria || ''}</td>
-                <td>${item.tipoMaterial || ''}</td>
-                <td>${item.especificacion || ''}</td>
-            `;
-        });
-    }
-    
-    // Actualizar contador
-    document.querySelector('.embarque-materials-footer span').textContent = `Total Rows : ${materialesData.length}`;
-}
-
-// Función para manejar el checkbox "Seleccionar todo"
-function toggleSelectAll() {
-    const selectAll = document.getElementById('select-all');
-    const checkboxes = document.querySelectorAll('#tabla-embarques tbody input[type="checkbox"]');
-    
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAll.checked;
+// Inicializar modal de crear PO
+function inicializarModalCrearPO() {
+    const modal = document.getElementById('modalCrearPO');
+    modal.addEventListener('show.bs.modal', function () {
+        const hoy = new Date().toISOString().split('T')[0];
+        
+        // Establecer fecha de registro por defecto
+        document.querySelector('input[name="fecha_registro"]').value = hoy;
+        
+        // Establecer fecha de entrega por defecto (mismo día)
+        document.querySelector('input[name="fecha_entrega"]').value = hoy;
+        
+        // Limpiar campos
+        document.querySelector('input[name="nombre_po"]').value = '';
+        document.querySelector('select[name="modelo"]').value = '';
+        document.querySelector('select[name="proveedor"]').value = '';
+        document.querySelector('input[name="total_cantidad_entregada"]').value = '0';
+        document.querySelector('input[name="cantidad_entregada"]').value = '0';
     });
+}
+
+// Consultar Purchase Orders
+async function consultarPOs() {
+    try {
+        mostrarCargando('Consultando Purchase Orders...');
+        
+        const estado = document.getElementById('filtro-estado-po').value;
+        const url = `/api/po/listar${estado ? `?estado=${estado}` : ''}`;
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success) {
+            posData = result.data;
+            actualizarTablaPOs();
+            mostrarToast('POs cargadas exitosamente', 'success');
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error consultando POs:', error);
+        mostrarToast('Error consultando POs: ' + error.message, 'error');
+    } finally {
+        ocultarCargando();
+    }
+}
+
+// Consultar Work Orders
+async function consultarWOs() {
+    try {
+        mostrarCargando('Consultando Work Orders...');
+        
+        const response = await fetch('/api/wo/listar');
+        const result = await response.json();
+        
+        if (result.success) {
+            wosData = result.data;
+            actualizarTablaWOs();
+            mostrarToast('WOs cargadas exitosamente', 'success');
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error consultando WOs:', error);
+        mostrarToast('Error consultando WOs: ' + error.message, 'error');
+    } finally {
+        ocultarCargando();
+    }
+}
+
+// Crear nueva Purchase Order
+async function crearPO() {
+    try {
+        const form = document.getElementById('formCrearPO');
+        const formData = new FormData(form);
+        
+        const data = {
+            nombre_po: formData.get('nombre_po'),
+            fecha_registro: formData.get('fecha_registro'),
+            modelo: formData.get('modelo'),
+            proveedor: formData.get('proveedor'),
+            total_cantidad_entregada: parseInt(formData.get('total_cantidad_entregada')) || 0,
+            fecha_entrega: formData.get('fecha_entrega'),
+            cantidad_entregada: parseInt(formData.get('cantidad_entregada')) || 0,
+            cliente: formData.get('proveedor'), // Usar proveedor como cliente
+            estado: 'PLAN'
+        };
+        
+        // Validaciones básicas
+        if (!data.proveedor) {
+            mostrarToast('El proveedor es obligatorio', 'warning');
+            return;
+        }
+        
+        if (!data.fecha_registro) {
+            mostrarToast('La fecha de registro es obligatoria', 'warning');
+            return;
+        }
+        
+        mostrarCargando('Creando Purchase Order...');
+        
+        const response = await fetch('/api/po/crear', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarToast(`PO ${result.data.codigo_po} creada exitosamente`, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalCrearPO')).hide();
+            form.reset();
+            // Auto-generar código de entrega basado en el código PO
+            const codigoEntrega = result.data.codigo_po + '-01';
+            document.querySelector('input[name="codigo_entrega"]').value = codigoEntrega;
+            await consultarPOs(); // Recargar tabla
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error creando PO:', error);
+        mostrarToast('Error creando PO: ' + error.message, 'error');
+    } finally {
+        ocultarCargando();
+    }
+}
+
+// Convertir PO a WO
+async function convertirPOaWO() {
+    try {
+        const form = document.getElementById('formCrearWO');
+        const formData = new FormData(form);
+        
+        const data = {
+            modelo: formData.get('modelo'),
+            cantidad_planeada: parseInt(formData.get('cantidad_planeada')),
+            fecha_operacion: formData.get('fecha_operacion')
+        };
+        
+        const codigoPO = formData.get('codigo_po');
+        
+        if (!data.modelo || !data.cantidad_planeada || !data.fecha_operacion) {
+            mostrarToast('Todos los campos son obligatorios', 'warning');
+            return;
+        }
+        
+        mostrarCargando('Convirtiendo PO → WO...');
+        
+        const response = await fetch(`/api/po/${codigoPO}/convertir-wo`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarToast(`WO ${result.data.wo.codigo_wo} creada desde PO ${codigoPO}`, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalCrearWO')).hide();
+            form.reset();
+            await consultarWOs(); // Recargar tabla WOs
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error convirtiendo PO → WO:', error);
+        mostrarToast('Error convirtiendo PO → WO: ' + error.message, 'error');
+    } finally {
+        ocultarCargando();
+    }
+}
+
+// Actualizar estado (PO o WO)
+async function actualizarEstado() {
+    try {
+        const form = document.getElementById('formCambiarEstado');
+        const formData = new FormData(form);
+        
+        const codigo = formData.get('codigo');
+        const tipo = formData.get('tipo');
+        const estado = formData.get('estado');
+        
+        if (!estado) {
+            mostrarToast('Debe seleccionar un estado', 'warning');
+            return;
+        }
+        
+        mostrarCargando('Actualizando estado...');
+        
+        const endpoint = tipo === 'PO' ? `/api/po/${codigo}/estado` : `/api/wo/${codigo}/estado`;
+        
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ estado })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarToast(`Estado actualizado a ${estado}`, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalCambiarEstado')).hide();
+            
+            // Recargar tabla correspondiente
+            if (tipo === 'PO') {
+                await consultarPOs();
+            } else {
+                await consultarWOs();
+            }
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error('Error actualizando estado:', error);
+        mostrarToast('Error actualizando estado: ' + error.message, 'error');
+    } finally {
+        ocultarCargando();
+    }
+}
+
+// ===========================================
+// FUNCIONES DE INTERFAZ
+// ===========================================
+
+// Abrir modal para crear PO
+function abrirModalCrearPO() {
+    const modal = new bootstrap.Modal(document.getElementById('modalCrearPO'));
+    modal.show();
+}
+
+// Abrir modal para crear WO desde PO
+function abrirModalCrearWO(codigoPO) {
+    const form = document.getElementById('formCrearWO');
+    form.querySelector('input[name="codigo_po"]').value = codigoPO;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalCrearWO'));
+    modal.show();
+}
+
+// Abrir modal para cambiar estado
+function abrirModalCambiarEstado(codigo, tipo) {
+    const form = document.getElementById('formCambiarEstado');
+    form.querySelector('input[name="codigo"]').value = codigo;
+    form.querySelector('input[name="tipo"]').value = tipo;
+    
+    const selectEstado = form.querySelector('select[name="estado"]');
+    selectEstado.innerHTML = '';
+    
+    // Cargar opciones según el tipo
+    const estados = tipo === 'PO' 
+        ? ['PLAN', 'PREPARACION', 'EMBARCADO', 'EN_TRANSITO', 'ENTREGADO']
+        : ['CREADA', 'PLANIFICADA', 'EN_PRODUCCION', 'CERRADA'];
+    
+    estados.forEach(estado => {
+        const option = document.createElement('option');
+        option.value = estado;
+        option.textContent = estado.replace('_', ' ');
+        selectEstado.appendChild(option);
+    });
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalCambiarEstado'));
+    modal.show();
+}
+
+// Actualizar tabla de POs
+function actualizarTablaPOs() {
+    const tbody = document.querySelector('#tabla-pos tbody');
+    tbody.innerHTML = '';
+    
+    if (posData.length === 0) {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td colspan="12" class="text-center text-muted">
+                <i class="fas fa-info-circle me-2"></i>No hay POs registradas
+            </td>
+        `;
+    } else {
+        posData.forEach((po, index) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td><input type="checkbox" value="${po.codigo_po}"></td>
+                <td><span class="badge bg-primary">${po.codigo_po}</span></td>
+                <td>${po.nombre_po || '-'}</td>
+                <td>${po.proveedor || po.cliente || '-'}</td>
+                <td>${po.modelo || '-'}</td>
+                <td>${formatearFecha(po.fecha_registro)}</td>
+                <td>${po.codigo_entrega || '-'}</td>
+                <td>${po.cantidad_entregada || 0}</td>
+                <td>${obtenerBadgeEstado(po.estado, 'PO')}</td>
+                <td>${formatearFecha(po.modificado)}</td>
+                <td>${po.usuario_creacion}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="abrirModalCrearWO('${po.codigo_po}')" title="Crear WO">
+                            <i class="fas fa-cogs"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="abrirModalCambiarEstado('${po.codigo_po}', 'PO')" title="Cambiar Estado">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-info" onclick="verDetallesPO('${po.codigo_po}')" title="Ver Detalles">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+        });
+    }
+    
+    // Actualizar contador
+    document.getElementById('pos-count').textContent = `${posData.length} POs`;
+    
+    // Inicializar DataTable si no existe
+    if (dataTablePOs) {
+        dataTablePOs.destroy();
+    }
+    
+    dataTablePOs = $('#tabla-pos').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+        },
+        pageLength: 10,
+        responsive: true,
+        order: [[3, 'desc']] // Ordenar por fecha de registro
+    });
+}
+
+// Actualizar tabla de WOs
+function actualizarTablaWOs() {
+    const tbody = document.querySelector('#tabla-wos tbody');
+    tbody.innerHTML = '';
+    
+    if (wosData.length === 0) {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td colspan="9" class="text-center text-muted">
+                <i class="fas fa-info-circle me-2"></i>No hay WOs registradas
+            </td>
+        `;
+    } else {
+        wosData.forEach((wo, index) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td><input type="checkbox" value="${wo.codigo_wo}"></td>
+                <td><span class="badge bg-success">${wo.codigo_wo}</span></td>
+                <td><span class="badge bg-primary">${wo.codigo_po}</span></td>
+                <td>${wo.modelo}</td>
+                <td><span class="badge bg-info">${wo.cantidad_planeada}</span></td>
+                <td>${formatearFecha(wo.fecha_operacion)}</td>
+                <td>${obtenerBadgeEstado(wo.estado, 'WO')}</td>
+                <td>${wo.modificador}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" onclick="abrirModalCambiarEstado('${wo.codigo_wo}', 'WO')" title="Cambiar Estado">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-info" onclick="verDetallesWO('${wo.codigo_wo}')" title="Ver Detalles">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+        });
+    }
+    
+    // Actualizar contador
+    document.getElementById('wos-count').textContent = `${wosData.length} WOs`;
+    
+    // Inicializar DataTable si no existe
+    if (dataTableWOs) {
+        dataTableWOs.destroy();
+    }
+    
+    dataTableWOs = $('#tabla-wos').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+        },
+        pageLength: 10,
+        responsive: true,
+        order: [[5, 'desc']] // Ordenar por fecha de operación
+    });
+}
+
+// ===========================================
+// FUNCIONES AUXILIARES
+// ===========================================
+
+// Formatear fecha
+function formatearFecha(fechaStr) {
+    if (!fechaStr) return '-';
+    const fecha = new Date(fechaStr);
+    return fecha.toLocaleDateString('es-ES') + ' ' + fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Obtener badge de estado
+function obtenerBadgeEstado(estado, tipo) {
+    const colores = {
+        // Estados PO
+        'PLAN': 'secondary',
+        'PREPARACION': 'warning',
+        'EMBARCADO': 'info',
+        'EN_TRANSITO': 'primary',
+        'ENTREGADO': 'success',
+        // Estados WO
+        'CREADA': 'secondary',
+        'PLANIFICADA': 'warning',
+        'EN_PRODUCCION': 'primary',
+        'CERRADA': 'success'
+    };
+    
+    const color = colores[estado] || 'secondary';
+    return `<span class="badge bg-${color}">${estado.replace('_', ' ')}</span>`;
+}
+
+// Mostrar modal de carga
+function mostrarCargando(mensaje = 'Cargando...') {
+    Swal.fire({
+        title: mensaje,
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+}
+
+// Ocultar modal de carga
+function ocultarCargando() {
+    Swal.close();
+}
+
+// Mostrar toast notification
+function mostrarToast(mensaje, tipo = 'info') {
+    const iconos = {
+        success: 'success',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    };
+    
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: iconos[tipo],
+        title: mensaje,
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
+}
+
+// Ver detalles de PO
+async function verDetallesPO(codigoPO) {
+    try {
+        const response = await fetch(`/api/po/${codigoPO}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const po = result.data;
+            
+            Swal.fire({
+                title: `Detalles de PO: ${po.codigo_po}`,
+                html: `
+                    <div class="text-start">
+                        <p><strong>Cliente:</strong> ${po.cliente}</p>
+                        <p><strong>Estado:</strong> ${po.estado}</p>
+                        <p><strong>Fecha Registro:</strong> ${formatearFecha(po.fecha_registro)}</p>
+                        <p><strong>Modificado:</strong> ${formatearFecha(po.modificado)}</p>
+                        <p><strong>Usuario:</strong> ${po.usuario_creacion}</p>
+                    </div>
+                `,
+                width: 500,
+                confirmButtonText: 'Cerrar'
+            });
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        mostrarToast('Error obteniendo detalles: ' + error.message, 'error');
+    }
+}
+
+// Ver detalles de WO
+async function verDetallesWO(codigoWO) {
+    try {
+        const response = await fetch(`/api/wo/${codigoWO}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const wo = result.data;
+            
+            Swal.fire({
+                title: `Detalles de WO: ${wo.codigo_wo}`,
+                html: `
+                    <div class="text-start">
+                        <p><strong>Código PO:</strong> ${wo.codigo_po}</p>
+                        <p><strong>Modelo:</strong> ${wo.modelo}</p>
+                        <p><strong>Cantidad:</strong> ${wo.cantidad_planeada}</p>
+                        <p><strong>Estado:</strong> ${wo.estado}</p>
+                        <p><strong>Fecha Operación:</strong> ${formatearFecha(wo.fecha_operacion)}</p>
+                        <p><strong>Modificador:</strong> ${wo.modificador}</p>
+                        <p><strong>Usuario:</strong> ${wo.usuario_creacion}</p>
+                    </div>
+                `,
+                width: 500,
+                confirmButtonText: 'Cerrar'
+            });
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        mostrarToast('Error obteniendo detalles: ' + error.message, 'error');
+    }
+}
+
+// Exportar datos
+function exportarDatos() {
+    const tabActiva = document.querySelector('.nav-link.active').id;
+    
+    if (tabActiva === 'pos-tab') {
+        exportarPOs();
+    } else {
+        exportarWOs();
+    }
+}
+
+// Exportar POs
+function exportarPOs() {
+    if (posData.length === 0) {
+        mostrarToast('No hay datos para exportar', 'warning');
+        return;
+    }
+    
+    mostrarToast('Función de exportación en desarrollo', 'info');
+}
+
+// Exportar WOs
+function exportarWOs() {
+    if (wosData.length === 0) {
+        mostrarToast('No hay datos para exportar', 'warning');
+        return;
+    }
+    
+    mostrarToast('Función de exportación en desarrollo', 'info');
 }
 
 // Función global para cerrar Control de Embarque
@@ -301,30 +950,38 @@ window.cerrarControlEmbarque = function() {
         embarqueContainer.style.display = 'none';
         embarqueContainer.style.visibility = 'hidden';
         embarqueContainer.style.opacity = '0';
-        console.log('Control de Embarque cerrado');
+        console.log('✅ Control de Embarque cerrado');
     }
 };
 
-// Nota: La función mostrarControlEmbarque está definida en MaterialTemplate.html
-// para manejar la carga dinámica del contenido
+// ===========================================
+// INICIALIZACIÓN
+// ===========================================
 
-// Inicialización
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Control de Embarque inicializado');
+    console.log('🚀 Sistema PO → WO inicializado');
     
     // Configurar fechas por defecto
-    const hoy = new Date();
-    const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
+    configurarFechasPorDefecto();
     
-    document.getElementById('fecha-inicio').value = fechaInicio.toISOString().split('T')[0];
-    document.getElementById('fecha-fin').value = hoy.toISOString().split('T')[0];
+    // Inicializar modal de crear PO
+    inicializarModalCrearPO();
     
-    // Configurar evento del checkbox "Seleccionar todo"
-    document.getElementById('select-all').addEventListener('change', toggleSelectAll);
+    // Configurar eventos de checkbox "Seleccionar todo"
+    document.getElementById('select-all-pos').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('#tabla-pos tbody input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+    
+    document.getElementById('select-all-wos').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('#tabla-wos tbody input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+    });
     
     // Cargar datos iniciales
-    cargarDatosEmbarques();
-    actualizarTablaMateriales();
+    consultarPOs();
+    
+    console.log('✅ Control de Embarque - Sistema PO → WO completamente funcional');
 });
 </script>
 

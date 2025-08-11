@@ -33,7 +33,7 @@
             }, 100);
             
         } catch (error) {
-            console.error('❌ Error inicializando sistema de permisos:', error);
+            this.log('⚠️ Error inicializando sistema de permisos:', error);
         }
     }
 
@@ -44,7 +44,12 @@
         try {
             this.log('📡 Cargando permisos del usuario...');
             
-            // Usar endpoint de debug si no hay sesión
+                // Si no hay sesión activa, omitir llamadas para evitar errores 401/403
+            if (!document.cookie.includes('session=')) {
+                this.log('⚠️ No hay sesión activa, se omite carga de permisos.');
+                this.permisosUsuario = {};
+                return;
+            }
             const endpoint = '/admin/verificar_permisos_usuario';
             const response = await fetch(endpoint);
             
@@ -56,7 +61,9 @@
                     // Convertir formato de debug a formato esperado
                     this.permisosUsuario = this.convertirFormatoDebug(debugData.permisos);
                 } else {
-                    throw new Error('Ambos endpoints fallaron');
+                    this.log('⚠️ Endpoint de debug también falló.');
+                    this.permisosUsuario = {};
+                    return;
                 }
             } else {
                 this.permisosUsuario = await response.json();
@@ -64,7 +71,7 @@
             
             this.log('📋 Permisos cargados:', Object.keys(this.permisosUsuario).length, 'páginas');
         } catch (error) {
-            console.error('❌ Error cargando permisos:', error);
+            this.log('⚠️ No se pudieron cargar permisos:', error);
             this.permisosUsuario = {};
         }
     }
@@ -190,6 +197,7 @@
      */
     log(...args) {
         if (this.debug) {
+            console.log(...args);
         }
     }
 

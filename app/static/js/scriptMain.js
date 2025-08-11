@@ -1,4 +1,3 @@
-console.log('scriptMain.js loaded');
  // Mostrar/ocultar el contenedor de material según el botón
         document.addEventListener('DOMContentLoaded', function() {
             const materialContainer = document.getElementById('material-container');
