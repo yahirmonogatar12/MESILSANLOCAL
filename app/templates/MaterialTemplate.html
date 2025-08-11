@@ -167,6 +167,92 @@
             background-color: #f8f9fa;
             cursor: help;
         }
+
+        /* ESTILOS PARA DROPDOWN DE MODELOS - CONTROL DE MODELOS */
+        .bom-search-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .bom-search-dropdown {
+            background-color: #34495e;
+            color: #ecf0f1;
+            border: 2px solid #2c3e50;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 300px;
+            transition: border-color 0.3s;
+            font-weight: 500;
+        }
+
+        .bom-search-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            background-color: #2c3e50;
+        }
+
+        .bom-search-dropdown::placeholder {
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .bom-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .bom-dropdown-item {
+            padding: 8px 10px;
+            color: lightgray;
+            cursor: pointer;
+            border-bottom: 1px solid #34495e;
+            transition: background-color 0.2s;
+            font-size: 11px;
+        }
+
+        .bom-dropdown-item:hover {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .bom-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .bom-dropdown-item.hidden {
+            display: none;
+        }
+
+        .bom-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            background-color: #3C3940;
+            border: #20688C 1px solid;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .bom-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
     </style>
     <!-- Deshabilitar logs de consola en producción -->
     <script>
@@ -478,8 +564,75 @@
         
         <!-- Contenedores adicionales para funciones del sidebar -->
         <div id="control-modelos-info-container" style="display: none;">
-            <h2>Control de modelos</h2>
-            <p>Contenido para Control de modelos - Por implementar</p>
+            <!-- CONTROL DE MODELOS CON DROPDOWN DEL MISMO ESTILO QUE CREAR PLAN DE PRODUCCION -->
+            <div id="modelosMainContainer" style="font-family: 'LG regular', sans-serif; background-color: #32323E; color: lightgray; min-height: 100vh; padding: 2px;">
+                
+                <!-- Título -->
+                <div style="background-color: #34334E; padding: 12px; margin-bottom: 10px; border: #20688C 1px solid;">
+                    <h2 style="margin: 0; color: lightgray; font-size: 18px;">Control de modelos</h2>
+                </div>
+
+                <!-- Formulario de Modelo -->
+                <div id="modeloFormContainer" style="background-color: #40424F; padding: 15px; margin-bottom: 10px; border: #20688C 1px solid;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; align-items: end;">
+                        <div style="display: flex; flex-direction: column;">
+                            <label style="color: lightgray; margin-bottom: 5px; font-size: 12px; font-weight: 500;">Modelo</label>
+                            <div class="bom-search-container" style="position: relative; display: inline-block;">
+                                <input type="text" class="bom-search-dropdown" id="modeloSelector" placeholder="Seleccione un modelo" onkeyup="filtrarModelosControl()" onclick="mostrarDropdownControl()" style="background-color: #34495e; color: #ecf0f1; border: 2px solid #2c3e50; border-radius: 4px; padding: 8px 12px; font-size: 12px; min-width: 300px; transition: border-color 0.3s; font-weight: 500;" />
+                                <div class="bom-dropdown-list" id="modeloDropdownList" style="position: absolute; top: 100%; left: 0; right: 0; background-color: #2c3e50; border: 1px solid #34495e; border-top: none; border-radius: 0 0 4px 4px; max-height: 200px; overflow-y: auto; z-index: 10000; box-shadow: 0 4px 8px rgba(0,0,0,0.3); display: none;">
+                                    <!-- Los modelos se cargarán dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="btnCargarModelo" class="bom-btn" style="padding: 4px 8px; border: none; border-radius: 3px; background-color: #3C3940; border: #20688C 1px solid; color: white; cursor: pointer; font-size: 10px; transition: all 0.3s; font-weight: 500;" onclick="cargarModeloSeleccionado()">Cargar</button>
+                            <button id="btnLimpiarModelo" class="bom-btn" style="padding: 4px 8px; border: none; border-radius: 3px; background-color: #95a5a6; border: #20688C 1px solid; color: white; cursor: pointer; font-size: 10px; transition: all 0.3s; font-weight: 500;" onclick="limpiarSeleccionModelo()">Limpiar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del Modelo Seleccionado -->
+                <div id="modeloInfoContainer" style="background-color: #40424F; padding: 15px; border: #20688C 1px solid; display: none;">
+                    <h3 style="color: lightgray; margin: 0 0 15px 0; font-size: 14px;">Información del Modelo</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        <div>
+                            <label style="color: #95a5a6; font-size: 11px; display: block; margin-bottom: 3px;">Código de Modelo:</label>
+                            <div id="modeloCodigo" style="color: lightgray; font-size: 12px; padding: 5px; background-color: #2c3e50; border-radius: 3px;">-</div>
+                        </div>
+                        <div>
+                            <label style="color: #95a5a6; font-size: 11px; display: block; margin-bottom: 3px;">Nombre:</label>
+                            <div id="modeloNombre" style="color: lightgray; font-size: 12px; padding: 5px; background-color: #2c3e50; border-radius: 3px;">-</div>
+                        </div>
+                        <div>
+                            <label style="color: #95a5a6; font-size: 11px; display: block; margin-bottom: 3px;">Descripción:</label>
+                            <div id="modeloDescripcion" style="color: lightgray; font-size: 12px; padding: 5px; background-color: #2c3e50; border-radius: 3px;">-</div>
+                        </div>
+                        <div>
+                            <label style="color: #95a5a6; font-size: 11px; display: block; margin-bottom: 3px;">Estado:</label>
+                            <div id="modeloEstado" style="color: lightgray; font-size: 12px; padding: 5px; background-color: #2c3e50; border-radius: 3px;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensaje informativo cuando no hay modelos -->
+                <div id="modeloSinDatosContainer" style="background-color: #40424F; padding: 20px; border: #20688C 1px solid; text-align: center; display: none;">
+                    <div style="color: #f39c12; font-size: 14px; margin-bottom: 15px;">
+                        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                        No hay modelos registrados en Control de BOM
+                    </div>
+                    <div style="color: #95a5a6; font-size: 12px; margin-bottom: 20px;">
+                        Para usar esta función, primero debe agregar modelos en el módulo Control de BOM de Información Básica.
+                    </div>
+                    <button class="bom-btn" style="background-color: #3498db;" onclick="irAControlBOM()">
+                        Ir a Control de BOM
+                    </button>
+                </div>
+
+                <!-- Contador de resultados -->
+                <div id="modeloResultCounter" style="color: #95a5a6; font-size: 11px; margin-top: 10px; text-align: center;">
+                    Modelos disponibles: 0
+                </div>
+            </div>
         </div>
         
         <div id="control-bom-info-container" style="display: none;">
@@ -610,8 +763,6 @@
             
             // Función AJAX para Control de operación de línea SMT
             window.mostrarControlOperacionLineaSMT = function() {
-                console.log('🚀 Iniciando carga AJAX de Control de operación de línea SMT...');
-                
                 try {
                     hideAllMaterialContainers();
                     
@@ -646,8 +797,6 @@
                     
                     // Cargar contenido dinámicamente usando la ruta AJAX
                     cargarContenidoDinamico('control-operacion-linea-smt-unique-container', '/control_proceso/control_operacion_linea_smt', () => {
-                        console.log('✅ Control de operación de línea SMT AJAX cargado exitosamente');
-                        
                         // Ejecutar inicialización específica del módulo si existe
                         if (typeof window.inicializarControlOperacionLineaSMT === 'function') {
                             window.inicializarControlOperacionLineaSMT();
@@ -2003,6 +2152,8 @@
                 const container = document.getElementById('control-modelos-info-container');
                 if (container) {
                     container.style.display = 'block';
+                    // Cargar modelos cuando se muestra el contenedor
+                    cargarModelosControl();
                 }
             };
             
@@ -2010,7 +2161,6 @@
                 // Verificar permisos antes de continuar
                 if (typeof PermisosDropdowns !== 'undefined' && 
                     !PermisosDropdowns.tienePermiso('LISTA_INFORMACIONBASICA', 'Control de produccion', 'Control de BOM')) {
-                    alert('⚠️ No tienes permisos para acceder a: Control de BOM');
                     return false;
                 }
                 
@@ -5346,6 +5496,300 @@
             console.log('💡 Ejecute: testAutoEnterSimple() para probar');
         }
     }, 1000);
+
+    // ===== FUNCIONES PARA CONTROL DE MODELOS =====
+    
+    // Variables globales para Control de Modelos
+    let modelosControlBOM = [];
+    
+    // Cargar modelos únicos de BOM para Control de Modelos
+    async function cargarModelosControl() {
+        try {
+            console.log('Cargando modelos desde /listar_modelos_bom para Control de Modelos...');
+            const response = await fetch('/listar_modelos_bom', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const modelos = await response.json();
+            console.log('Modelos recibidos para Control de Modelos:', modelos);
+            
+            if (Array.isArray(modelos) && modelos.length > 0) {
+                // Si hay modelos en la base de datos BOM, usarlos
+                modelosControlBOM = modelos.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
+                console.log('Modelos procesados para Control de Modelos:', modelosControlBOM);
+                llenarDropdownModelosControl();
+                actualizarContadorModelos();
+                ocultarContainerSinDatos();
+                mostrarMensajeModelos(`${modelosControlBOM.length} modelos cargados desde Control de BOM`, 'success');
+            } else {
+                // Si no hay modelos en BOM, mostrar mensaje informativo
+                console.warn('No se encontraron modelos en la tabla BOM');
+                modelosControlBOM = [];
+                llenarDropdownModelosControl();
+                actualizarContadorModelos();
+                mostrarContainerSinDatos();
+                mostrarMensajeModelos('No hay modelos registrados en Control de BOM. Agregue modelos desde Control de BOM primero.', 'warning');
+            }
+        } catch (error) {
+            console.error('Error cargando modelos BOM para Control de Modelos:', error);
+            mostrarMensajeModelos('Error cargando modelos de BOM: ' + error.message, 'error');
+            modelosControlBOM = [];
+            llenarDropdownModelosControl();
+            actualizarContadorModelos();
+        }
+    }
+
+    // Llenar dropdown de modelos para Control de Modelos
+    function llenarDropdownModelosControl() {
+        const dropdownList = document.getElementById('modeloDropdownList');
+        
+        if (!dropdownList) {
+            console.error('Element modeloDropdownList not found');
+            return;
+        }
+        
+        dropdownList.innerHTML = '';
+        
+        if (modelosControlBOM.length === 0) {
+            // Si no hay modelos, mostrar mensaje informativo
+            const item = document.createElement('div');
+            item.className = 'bom-dropdown-item';
+            item.style.fontStyle = 'italic';
+            item.style.color = '#95a5a6';
+            item.textContent = 'No hay modelos en Control de BOM';
+            item.onclick = function() { 
+                mostrarMensajeModelos('Debe agregar modelos en Control de BOM primero', 'warning'); 
+            };
+            dropdownList.appendChild(item);
+        } else {
+            // Si hay modelos, mostrarlos normalmente
+            modelosControlBOM.forEach(modelo => {
+                const item = document.createElement('div');
+                item.className = 'bom-dropdown-item';
+                item.setAttribute('data-value', modelo);
+                item.textContent = modelo;
+                item.onclick = function() { seleccionarModeloControl(modelo); };
+                dropdownList.appendChild(item);
+            });
+        }
+        
+        console.log(`✅ ${modelosControlBOM.length} modelos cargados en dropdown Control de Modelos`);
+    }
+
+    // Función para filtrar modelos en el dropdown de Control de Modelos
+    function filtrarModelosControl() {
+        const searchInput = document.getElementById('modeloSelector');
+        const dropdownList = document.getElementById('modeloDropdownList');
+        const searchTerm = searchInput.value.toLowerCase();
+        
+        // Mostrar el dropdown
+        dropdownList.style.display = 'block';
+        
+        const items = dropdownList.querySelectorAll('.bom-dropdown-item');
+        let hasVisibleItems = false;
+        
+        items.forEach(item => {
+            const modeloText = item.textContent.toLowerCase();
+            if (modeloText.includes(searchTerm)) {
+                item.classList.remove('hidden');
+                hasVisibleItems = true;
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+        
+        // Si no hay coincidencias, ocultar el dropdown
+        if (!hasVisibleItems && searchTerm.length > 0) {
+            dropdownList.style.display = 'none';
+        }
+    }
+
+    // Función para mostrar dropdown de Control de Modelos
+    function mostrarDropdownControl() {
+        console.log('=== mostrarDropdownControl() llamada ===');
+        const dropdownList = document.getElementById('modeloDropdownList');
+        const searchInput = document.getElementById('modeloSelector');
+        
+        if (!dropdownList) {
+            console.error('Element modeloDropdownList not found');
+            return;
+        }
+        
+        if (!searchInput) {
+            console.error('Element modeloSelector not found');
+            return;
+        }
+        
+        console.log('Elementos encontrados OK');
+        console.log('Modelos disponibles:', modelosControlBOM.length);
+        
+        // Forzar configuración del dropdown
+        dropdownList.style.display = 'block';
+        dropdownList.style.zIndex = '10000';
+        dropdownList.style.position = 'absolute';
+        
+        if (searchInput.value.trim() === '') {
+            // Si el input está vacío, mostrar todos los modelos
+            const items = dropdownList.querySelectorAll('.bom-dropdown-item');
+            console.log('Items en dropdown:', items.length);
+            items.forEach(item => {
+                item.classList.remove('hidden');
+            });
+            
+            // Si no hay items, llenar el dropdown
+            if (items.length === 0 && modelosControlBOM.length > 0) {
+                console.log('Dropdown vacío, llenando con modelos...');
+                llenarDropdownModelosControl();
+            }
+        }
+        
+        console.log('Dropdown configurado - display:', dropdownList.style.display);
+        console.log('=== fin mostrarDropdownControl() ===');
+    }
+
+    // Función para seleccionar un modelo del dropdown de Control de Modelos
+    function seleccionarModeloControl(modelo) {
+        const searchInput = document.getElementById('modeloSelector');
+        const dropdownList = document.getElementById('modeloDropdownList');
+        
+        searchInput.value = modelo;
+        dropdownList.style.display = 'none';
+        
+        console.log('Modelo seleccionado para Control de Modelos:', modelo);
+    }
+
+    // Función para cargar modelo seleccionado
+    function cargarModeloSeleccionado() {
+        const modeloSelector = document.getElementById('modeloSelector');
+        const modeloSeleccionado = modeloSelector.value.trim();
+        
+        if (!modeloSeleccionado) {
+            mostrarMensajeModelos('Por favor seleccione un modelo', 'error');
+            return;
+        }
+        
+        // Mostrar información del modelo
+        const infoContainer = document.getElementById('modeloInfoContainer');
+        infoContainer.style.display = 'block';
+        
+        // Ocultar container sin datos
+        ocultarContainerSinDatos();
+        
+        // Llenar datos del modelo
+        document.getElementById('modeloCodigo').textContent = modeloSeleccionado;
+        document.getElementById('modeloNombre').textContent = modeloSeleccionado;
+        document.getElementById('modeloDescripcion').textContent = 'Información detallada del modelo ' + modeloSeleccionado;
+        document.getElementById('modeloEstado').textContent = 'Activo';
+        
+        mostrarMensajeModelos(`Modelo ${modeloSeleccionado} cargado exitosamente`, 'success');
+    }
+
+    // Función para limpiar selección de modelo
+    function limpiarSeleccionModelo() {
+        const modeloSelector = document.getElementById('modeloSelector');
+        const dropdownList = document.getElementById('modeloDropdownList');
+        const infoContainer = document.getElementById('modeloInfoContainer');
+        
+        modeloSelector.value = '';
+        dropdownList.style.display = 'none';
+        infoContainer.style.display = 'none';
+        
+        // Limpiar datos
+        document.getElementById('modeloCodigo').textContent = '-';
+        document.getElementById('modeloNombre').textContent = '-';
+        document.getElementById('modeloDescripcion').textContent = '-';
+        document.getElementById('modeloEstado').textContent = '-';
+        
+        mostrarMensajeModelos('Selección limpiada', 'success');
+    }
+
+    // Actualizar contador de modelos
+    function actualizarContadorModelos() {
+        const contador = document.getElementById('modeloResultCounter');
+        if (contador) {
+            contador.textContent = `Modelos disponibles: ${modelosControlBOM.length}`;
+        }
+    }
+
+    // Mostrar container sin datos
+    function mostrarContainerSinDatos() {
+        const sinDatosContainer = document.getElementById('modeloSinDatosContainer');
+        const infoContainer = document.getElementById('modeloInfoContainer');
+        
+        if (sinDatosContainer) {
+            sinDatosContainer.style.display = 'block';
+        }
+        if (infoContainer) {
+            infoContainer.style.display = 'none';
+        }
+    }
+
+    // Ocultar container sin datos
+    function ocultarContainerSinDatos() {
+        const sinDatosContainer = document.getElementById('modeloSinDatosContainer');
+        if (sinDatosContainer) {
+            sinDatosContainer.style.display = 'none';
+        }
+    }
+
+    // Función para ir a Control de BOM
+    function irAControlBOM() {
+        if (typeof window.mostrarControlBOMInfo === 'function') {
+            window.mostrarControlBOMInfo();
+            mostrarMensajeModelos('Redirigiendo a Control de BOM...', 'success');
+        } else {
+            mostrarMensajeModelos('Error: No se pudo acceder a Control de BOM', 'error');
+        }
+    }
+
+    // Función para mostrar mensajes específicos de Control de Modelos
+    function mostrarMensajeModelos(mensaje, tipo) {
+        const msgDiv = document.createElement('div');
+        msgDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 10000;
+            max-width: 400px;
+            background-color: ${tipo === 'success' ? '#27ae60' : tipo === 'warning' ? '#f39c12' : '#e74c3c'};
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        msgDiv.textContent = mensaje;
+        
+        document.body.appendChild(msgDiv);
+        
+        // Eliminar después de 4 segundos
+        setTimeout(() => {
+            if (document.body.contains(msgDiv)) {
+                document.body.removeChild(msgDiv);
+            }
+        }, 4000);
+    }
+
+    // Event listener para cerrar dropdown cuando se hace clic fuera (Control de Modelos)
+    document.addEventListener('click', function(event) {
+        const modeloSearchContainer = document.querySelector('.bom-search-container');
+        const modeloDropdownList = document.getElementById('modeloDropdownList');
+        
+        if (modeloSearchContainer && !modeloSearchContainer.contains(event.target)) {
+            if (modeloDropdownList) {
+                modeloDropdownList.style.display = 'none';
+            }
+        }
+    });
+
+    // ===== FIN FUNCIONES PARA CONTROL DE MODELOS =====
 
 
 })();</script>

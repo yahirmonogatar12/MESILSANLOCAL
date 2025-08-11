@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Inventario IMD Terminado</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'LG regular','Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#32323E;color:lightgray}
+  .container{max-width:1600px;margin:0 auto;padding:16px}
+  .header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #20688C;padding-bottom:10px;margin-bottom:12px}
+  .header h1{color:#ecf0f1;font-size:22px;font-weight:700}
+  .tabs{display:flex;gap:8px;margin:10px 0 14px}
+  .tab{border:1px solid #20688C;background:#3C3940;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:12px}
+  .tab.active{background:#20688C}
+  .panel{display:none}
+  .panel.active{display:block}
+
+  /* Controles */
+  .controls{display:flex;gap:8px;flex-wrap:wrap;background:#34334E;border:1px solid #20688C;border-radius:6px;padding:10px;margin-bottom:10px}
+  .group{display:flex;flex-direction:column;gap:4px}
+  .label{font-size:10px;text-transform:uppercase;color:#ecf0f1;letter-spacing:.3px}
+  .input,.select{background:#2c3e50;color:lightgray;border:1px solid #34495e;border-radius:4px;padding:6px 8px;font-size:12px}
+  .btn{padding:4px 10px;border-radius:5px;border:1px solid #20688C;background:#3C3940;color:#fff;cursor:pointer;font-size:11px;min-width:auto}
+  .btn:hover{background:#2980b9}
+  .status{margin-left:auto;background:#40424F;border:1px solid #5F6375;border-radius:4px;padding:6px 8px;font-size:11px}
+
+  /* Tabla */
+  .table{width:100%;border-collapse:collapse;background:#40424F;border-radius:6px;overflow:hidden;font-size:11px;margin-top:10px;table-layout:fixed}
+  th{background:#172A46;color:#ecf0f1;padding:7px;border:1px solid #20688C;position:sticky;top:0}
+  td{padding:6px;border:1px solid #5F6375;color:lightgray;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  tbody tr:hover td{background:#485563}
+  /* Loader */
+  .loading{display:none;text-align:center;background:#40424F;border-radius:6px;padding:18px;margin:8px 0}
+  .spinner{border:3px solid #555;border-top:3px solid #00D4FF;border-radius:50%;width:28px;height:28px;margin:0 auto 8px;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Chips */
+  .ok{color:#27ae60;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.35);padding:2px 5px;border-radius:3px;font-weight:600}
+  .ng{color:#e74c3c;background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.35);padding:2px 5px;border-radius:3px;font-weight:600}
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:#20688C;border-radius:3px}
+  ::-webkit-scrollbar-track{background:#40424F}
+  @media(max-width:900px){.status{width:100%;order:99}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Inventario IMD Terminado</h1>
+    <div class="status" id="INVIMDPCBID_globalStatus">Listo</div>
+  </div>
+
+    <div class="tabs">
+    <button class="tab active" data-panel="inventario">Inventario General</button>
+    <button class="tab" data-panel="ubicacion">Ubicación</button>
+    <button class="tab" data-panel="movimientos">Movimientos</button>
+  </div>
+
+  <!-- UBICACIÓN -->
+  <section id="INVIMDPCBID_panel-ubicacion" class="panel">
+    <div class="controls">
+      <div class="group">
+        <label class="label">Fecha desde</label>
+        <input type="date" id="INVIMDPCBID_u-desde" class="input"/>
+      </div>
+      <div class="group">
+        <label class="label">Fecha hasta</label>
+        <input type="date" id="INVIMDPCBID_u-hasta" class="input"/>
+      </div>
+      <div class="group" style="min-width:240px;">
+        <label class="label">Buscar (modelo / nparte / ubicación / carro)</label>
+        <input type="text" id="INVIMDPCBID_u-q" class="input" placeholder="Ej. 0AB123, A1-03, Carro 2"/>
+      </div>
+      <div class="group">
+        <label class="label">Ubicación</label>
+        <select id="INVIMDPCBID_u-ubic" class="select"><option value="">Todas</option></select>
+      </div>
+      <div class="group">
+        <label class="label">Carro</label>
+        <select id="INVIMDPCBID_u-carro" class="select"><option value="">Todos</option></select>
+      </div>
+      <button class="btn" id="INVIMDPCBID_u-buscar">Consultar</button>
+      <button class="btn" id="INVIMDPCBID_u-limpiar">Limpiar</button>
+      <div class="status" id="INVIMDPCBID_u-status">—</div>
+    </div>
+
+    <div id="INVIMDPCBID_u-loading" class="loading"><div class="spinner"></div><p>Cargando ubicación…</p></div>
+    <div style="overflow:auto">
+      <table class="table" id="INVIMDPCBID_u-table">
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Modelo</th><th>No. Parte</th><th>Ubicación</th><th>Cantidad</th><th>Carro</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- MOVIMIENTOS -->
+  <section id="INVIMDPCBID_panel-movimientos" class="panel">
+    <div class="controls">
+      <div class="group">
+        <label class="label">Fecha desde</label>
+        <input type="date" id="INVIMDPCBID_m-desde" class="input"/>
+      </div>
+      <div class="group">
+        <label class="label">Fecha hasta</label>
+        <input type="date" id="INVIMDPCBID_m-hasta" class="input"/>
+      </div>
+      <div class="group" style="min-width:240px;">
+        <label class="label">Buscar (parte / modelo / usuario)</label>
+        <input type="text" id="INVIMDPCBID_m-q" class="input" placeholder="Texto libre"/>
+      </div>
+      <div class="group">
+        <label class="label">Tipo</label>
+        <select id="INVIMDPCBID_m-tipo" class="select">
+          <option value="">Todos</option>
+          <option value="ENTRADA">Entrada</option>
+          <option value="SALIDA">Salida</option>
+          <option value="AJUSTE">Ajuste</option>
+        </select>
+      </div>
+      <button class="btn" id="INVIMDPCBID_m-buscar">Consultar</button>
+      <button class="btn" id="INVIMDPCBID_m-limpiar">Limpiar</button>
+      <div class="status" id="INVIMDPCBID_m-status">—</div>
+    </div>
+
+    <div id="INVIMDPCBID_m-loading" class="loading"><div class="spinner"></div><p>Cargando movimientos…</p></div>
+    <div style="overflow:auto">
+      <table class="table" id="INVIMDPCBID_m-table">
+        <thead>
+          <tr>
+            <th>Fecha/Hora</th><th>Tipo</th><th>No. Parte</th><th>Modelo</th><th>Cantidad</th><th>Ubicación</th><th>Carro</th> 
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- INVENTARIO GENERAL -->
+  <section id="INVIMDPCBID_panel-inventario" class="panel active">
+    <div class="controls">
+      <div class="group" style="min-width:240px;">
+        <label class="label">Buscar (modelo / parte)</label>
+        <input type="text" id="INVIMDPCBID_g-q" class="input" placeholder="Ej. 0AB123, ES1D"/>
+      </div>
+      <div class="group">
+        <label class="label">Stock</label>
+        <select id="INVIMDPCBID_g-stock" class="select">
+          <option value="">Todos</option>
+          <option value=">0">Con stock</option>
+          <option value="=0">Sin stock</option>
+        </select>
+      </div>
+      <button class="btn" id="INVIMDPCBID_g-buscar">Consultar</button>
+      <button class="btn" id="INVIMDPCBID_g-limpiar">Limpiar</button>
+      <div class="status" id="INVIMDPCBID_g-status">—</div>
+    </div>
+
+    <div id="INVIMDPCBID_g-loading" class="loading"><div class="spinner"></div><p>Cargando inventario general…</p></div>
+    <div style="overflow:auto">
+      <table class="table" id="INVIMDPCBID_g-table">
+        <thead>
+          <tr>
+            <th>Modelo</th><th>No. Parte</th><th>Stock Total</th><th>Ubicaciones</th><th>Última Entrada</th><th>Última Salida</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+/* Utilitarios */
+function fmt(v){ return (v === undefined || v === null || v === "") ? "-" : v; }
+function coalesce(a,b){ return (a !== undefined && a !== null) ? a : b; }
+const qs = (sel)=> document.querySelector(sel);
+const qsa = (sel)=> Array.from(document.querySelectorAll(sel));
+const todayISO = ()=> new Date().toISOString().split('T')[0];
+
+function setDefaultDates(ids){
+  ids.forEach(id => { const el = qs('#'+id); if(el && !el.value) el.value = todayISO(); });
+}
+
+/* Tabs */
+qsa('.tab').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    qsa('.tab').forEach(t=>t.classList.remove('active'));
+    qsa('.panel').forEach(p=>p.classList.remove('active'));
+    b.classList.add('active');
+    qs('#INVIMDPCBID_panel-'+b.dataset.panel).classList.add('active');
+  });
+});
+
+/* ============ UBICACIÓN ============ */
+setDefaultDates(['INVIMDPCBID_u-desde']);
+const U = {
+  url: '/api/ubicacion',
+  load: async () => {
+    const desde = qs('#INVIMDPCBID_u-desde').value, hasta = qs('#INVIMDPCBID_u-hasta').value, q = qs('#INVIMDPCBID_u-q').value.trim();
+    const ubic = qs('#INVIMDPCBID_u-ubic').value, carro = qs('#INVIMDPCBID_u-carro').value;
+    const p = new URLSearchParams(); if(desde) p.append('desde',desde); if(hasta) p.append('hasta',hasta);
+    if(q) p.append('q',q); if(ubic) p.append('ubicacion',ubic); if(carro) p.append('carro',carro);
+
+    qs('#INVIMDPCBID_u-loading').style.display='block'; qs('#INVIMDPCBID_u-status').textContent='Cargando…';
+    try{
+      const r = await fetch(U.url + (p.toString()?`?${p.toString()}`:'')); 
+      const data = await r.json();
+      const rows = data.items || data.data || [];
+      const tb = qs('#INVIMDPCBID_u-table tbody'); tb.innerHTML='';
+      // poblar selects únicos
+      const ubicSet = new Set(), carroSet = new Set();
+      rows.forEach(x=>{ if(x.ubicacion) ubicSet.add(x.ubicacion); if(x.carro) carroSet.add(x.carro); });
+      qs('#INVIMDPCBID_u-ubic').innerHTML = '<option value="">Todas</option>'+[...ubicSet].sort().map(u=>`<option>${u}</option>`).join('');
+      qs('#INVIMDPCBID_u-carro').innerHTML = '<option value="">Todos</option>'+[...carroSet].sort().map(c=>`<option>${c}</option>`).join('');
+      // render
+      rows.forEach(x=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${fmt(x.fecha || x.fecha_registro || '')}</td>
+          <td title="${fmt(x.modelo)}">${fmt(x.modelo)}</td>
+          <td title="${fmt(x.nparte)}">${fmt(x.nparte)}</td>
+          <td>${fmt(x.ubicacion)}</td>
+          <td>${fmt(x.cantidad)}</td>
+          <td>${fmt(x.carro)}</td>`;
+        tb.appendChild(tr);
+      });
+      qs('#INVIMDPCBID_u-status').textContent = `${rows.length} registros`;
+    }catch(e){
+      qs('#INVIMDPCBID_u-status').textContent = 'Error de conexión';
+    }finally{ qs('#INVIMDPCBID_u-loading').style.display='none'; }
+  },
+  clear: ()=>{
+    ['INVIMDPCBID_u-hasta','INVIMDPCBID_u-q'].forEach(id=>{ const el=qs('#'+id); if(el) el.value=''; });
+    qs('#INVIMDPCBID_u-ubic').innerHTML='<option value="">Todas</option>';
+    qs('#INVIMDPCBID_u-carro').innerHTML='<option value="">Todos</option>';
+    qs('#INVIMDPCBID_u-table tbody').innerHTML='';
+    qs('#INVIMDPCBID_u-status').textContent='Limpio';
+  }
+};
+qs('#INVIMDPCBID_u-buscar').addEventListener('click', U.load);
+qs('#INVIMDPCBID_u-limpiar').addEventListener('click', U.clear);
+
+/* ============ MOVIMIENTOS ============ */
+setDefaultDates(['INVIMDPCBID_m-desde']);
+const M = {
+  url: '/api/movimientos',
+  load: async ()=>{
+    const p = new URLSearchParams();
+    const desde=qs('#INVIMDPCBID_m-desde').value, hasta=qs('#INVIMDPCBID_m-hasta').value, q=qs('#INVIMDPCBID_m-q').value.trim(), tipo=qs('#INVIMDPCBID_m-tipo').value;
+    if(desde) p.append('desde',desde); if(hasta) p.append('hasta',hasta); if(q) p.append('q',q); if(tipo) p.append('tipo',tipo);
+
+    qs('#INVIMDPCBID_m-loading').style.display='block'; qs('#INVIMDPCBID_m-status').textContent='Cargando…';
+    try{
+      const r = await fetch(M.url + (p.toString()?`?${p.toString()}`:'')); 
+      const data = await r.json();
+      const rows = data.items || data.data || [];
+      const tb = qs('#INVIMDPCBID_m-table tbody'); tb.innerHTML='';
+      rows.forEach(x=>{
+        const tr = document.createElement('tr');
+        const tipoChip = x.tipo==='SALIDA' ? 'ng' : (x.tipo==='ENTRADA' ? 'ok' : '');
+        tr.innerHTML = `
+          <td>${fmt(x.fecha_hora || x.fecha || '')}</td>
+          <td><span class="${tipoChip}">${fmt(x.tipo)}</span></td>
+          <td title="${fmt(x.nparte)}">${fmt(x.nparte)}</td>
+          <td title="${fmt(x.modelo)}">${fmt(x.modelo)}</td>
+          <td>${fmt(x.cantidad)}</td>
+          <td>${fmt(x.ubicacion)}</td>
+          <td>${fmt(x.carro)}</td>`;
+        tb.appendChild(tr);
+      });
+      qs('#INVIMDPCBID_m-status').textContent = `${rows.length} movimientos`;
+    }catch(e){
+      qs('#INVIMDPCBID_m-status').textContent = 'Error de conexión';
+    }finally{ qs('#INVIMDPCBID_m-loading').style.display='none'; }
+  },
+  clear: ()=>{
+    ['INVIMDPCBID_m-hasta','INVIMDPCBID_m-q','INVIMDPCBID_m-tipo'].forEach(id=>{ const el=qs('#'+id); if(el) el.value=''; });
+    qs('#INVIMDPCBID_m-table tbody').innerHTML='';
+    qs('#INVIMDPCBID_m-status').textContent='Limpio';
+  }
+};
+qs('#INVIMDPCBID_m-buscar').addEventListener('click', M.load);
+qs('#INVIMDPCBID_m-limpiar').addEventListener('click', M.clear);
+
+/* ============ INVENTARIO GENERAL ============ */
+const G = {
+  url: '/api/inventario_general',
+  load: async ()=>{
+    const p = new URLSearchParams();
+    const q = qs('#INVIMDPCBID_g-q').value.trim(), stock = qs('#INVIMDPCBID_g-stock').value;
+    if(q) p.append('q',q); if(stock) p.append('stock',stock);
+
+    qs('#INVIMDPCBID_g-loading').style.display='block'; qs('#INVIMDPCBID_g-status').textContent='Cargando…';
+    try{
+      const r = await fetch(G.url + (p.toString()?`?${p.toString()}`:'')); 
+      const data = await r.json();
+      const rows = data.items || data.data || [];
+      const tb = qs('#INVIMDPCBID_g-table tbody'); tb.innerHTML='';
+      rows.forEach(x=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td title="${fmt(x.modelo)}">${fmt(x.modelo)}</td>
+          <td title="${fmt(x.nparte)}">${fmt(x.nparte)}</td>
+          <td>${fmt(x.stock_total)}</td>
+          <td>${fmt(coalesce(x.ubicaciones_distintas, (x.ubicaciones || '')))}</td>
+          <td>${fmt(x.ultima_entrada)}</td>
+          <td>${fmt(x.ultima_salida)}</td>`;
+        tb.appendChild(tr);
+      });
+      qs('#INVIMDPCBID_g-status').textContent = `${rows.length} ítems`;
+    }catch(e){
+      qs('#INVIMDPCBID_g-status').textContent = 'Error de conexión';
+    }finally{ qs('#INVIMDPCBID_g-loading').style.display='none'; }
+  },
+  clear: ()=>{
+    ['INVIMDPCBID_g-q','INVIMDPCBID_g-stock'].forEach(id=>{ const el=qs('#'+id); if(el) el.value=''; });
+    qs('#INVIMDPCBID_g-table tbody').innerHTML='';
+    qs('#INVIMDPCBID_g-status').textContent='Limpio';
+  }
+};
+qs('#INVIMDPCBID_g-buscar').addEventListener('click', G.load);
+qs('#INVIMDPCBID_g-limpiar').addEventListener('click', G.clear);
+
+/* Test mode with mock data when ?test=1 */
+function isTestMode(){ return window.location.search.indexOf('test=1') >= 0; }
+if (isTestMode()){
+  (function(){
+    var mock = {
+      '/api/ubicacion': { items: [
+        {fecha:'2025-08-10', modelo:'ES1D', nparte:'0DR100009MA', ubicacion:'A1-01', cantidad:120, carro:'C1', usuario:'yahir'},
+        {fecha:'2025-08-10', modelo:'US1J', nparte:'0DR100009CC', ubicacion:'B2-03', cantidad:60, carro:'C2', usuario:'admin'}
+      ]},
+      '/api/movimientos': { items: [
+        {fecha_hora:'2025-08-10 08:15', tipo:'ENTRADA', nparte:'0DR100009MA', modelo:'ES1D', cantidad:120, ubicacion:'A1-01', carro:'C1', usuario:'yahir'},
+        {fecha_hora:'2025-08-10 09:10', tipo:'SALIDA', nparte:'0DR100009CC', modelo:'US1J', cantidad:20, ubicacion:'B2-03', carro:'C2', usuario:'admin'}
+      ]},
+      '/api/inventario_general': { items: [
+        {modelo:'ES1D', nparte:'0DR100009MA', stock_total:1000, ubicaciones:'A1-01,C1; B1-02,C3', ultima_entrada:'2025-08-09', ultima_salida:'2025-08-10'},
+        {modelo:'US1J', nparte:'0DR100009CC', stock_total:500, ubicaciones:'B2-03,C2', ultima_entrada:'2025-08-08', ultima_salida:'2025-08-10'}
+      ]}
+    };
+    var realFetch = window.fetch;
+    window.fetch = function(url){
+      var u = (typeof url === 'string') ? url.split('?')[0] : (url && url.url ? url.url.split('?')[0] : '');
+      if (mock[u]){
+        return Promise.resolve(new Response(JSON.stringify(mock[u]), {status:200, headers:{'Content-Type':'application/json'}}));
+      }
+      return realFetch.apply(window, arguments);
+    };
+  })();
+}
+
+/* Auto-cargar al abrir */
+window.addEventListener('DOMContentLoaded', ()=>{
+  // Carga inicial (Inventario general)
+  G.load();
+  // Prepara estados
+  qs('#INVIMDPCBID_globalStatus').textContent = 'Inventario IMD Terminado';
+});
+</script>
+</body>
+</html>

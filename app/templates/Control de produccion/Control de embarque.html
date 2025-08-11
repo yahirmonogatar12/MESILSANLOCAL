@@ -3,197 +3,702 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="autocomplete" content="off">
     <title>Control de Embarque - Sistema PO → WO</title>
     
-    <!-- Fuentes -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=LG+regular&display=swap" rel="stylesheet">
-    
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-    
-    <!-- SweetAlert2 CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Estilos específicos para Control de Embarque -->
-    <link rel="stylesheet" href="/static/css/control_embarque.css">
-    
-    <!-- Scripts necesarios desde CDN -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        /* Estilos específicos para Control de Embarque */
+
+        /* Contenedor principal */
+        #embarqueMainContainer {
+            font-family: 'LG regular', sans-serif;
+            background-color: #32323E;
+            color: lightgray;
+            min-height: 100vh;
+            padding: 2px;   
+        }
+
+        /* Botonera */
+        #embarqueToolbar {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+            padding: 8px;
+            background-color: #34334E;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: #20688C 1px solid;
+            flex-wrap: wrap;
+        }
+
+        .embarque-dropdown {
+            background-color: #2c3e50;
+            color: lightgray;
+            border: 1px solid #34495e;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 11px;
+            min-width: 120px;
+            transition: border-color 0.3s;
+        }
+
+        .embarque-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        /* Estilos para el dropdown de modelos en modal de PO - COPIADOS DE PLAN DE PRODUCCIÓN */
+        .bom-search-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .bom-search-dropdown {
+            background-color: #34495e;
+            color: #ecf0f1;
+            border: 2px solid #2c3e50;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 300px;
+            transition: border-color 0.3s;
+            font-weight: 500;
+        }
+
+        .bom-search-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            background-color: #2c3e50;
+        }
+
+        .bom-search-dropdown::placeholder {
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .bom-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .bom-dropdown-item {
+            padding: 8px 10px;
+            color: lightgray;
+            cursor: pointer;
+            border-bottom: 1px solid #34495e;
+            transition: background-color 0.2s;
+            font-size: 11px;
+        }
+
+        .bom-dropdown-item:hover {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .bom-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .bom-dropdown-item.hidden {
+            display: none;
+        }
+        .embarque-search-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .embarque-search-dropdown {
+            background-color: #34495e;
+            color: #ecf0f1;
+            border: 2px solid #2c3e50;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 300px;
+            transition: border-color 0.3s;
+            font-weight: 500;
+        }
+
+        .embarque-search-dropdown:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            background-color: #2c3e50;
+        }
+
+        .embarque-search-dropdown::placeholder {
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .embarque-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: #2c3e50;
+            border: 1px solid #34495e;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .embarque-dropdown-item {
+            padding: 8px 10px;
+            color: lightgray;
+            cursor: pointer;
+            border-bottom: 1px solid #34495e;
+            transition: background-color 0.2s;
+            font-size: 11px;
+        }
+
+        .embarque-dropdown-item:hover {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .embarque-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .embarque-dropdown-item.hidden {
+            display: none;
+        }
+
+        .embarque-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            background-color: #3C3940;
+            border: #20688C 1px solid;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .embarque-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        #btnConsultar {
+            background-color: #3C3940;
+        }
+
+        #btnRegistrar {
+            background-color: #502696;
+        }
+
+        #btnRegistrar:hover {
+            background-color: #8e44ad;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+        }
+
+        #btnVerWOs {
+            background-color: #0984A8;
+        }
+
+        #btnVerWOs:hover {
+            background-color: #0b98b8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(11, 152, 184, 0.3);
+        }
+
+        #btnExportar {
+            background-color: #f39c12;
+        }
+
+        #btnExportar:hover {
+            background-color: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+        }
+
+        /* Tabla */
+        #embarqueTableContainer {
+            background-color: #40424F;
+            padding: 0px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        #embarqueTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 11px;
+            background-color: #40424F;
+            table-layout: fixed;
+            max-width: 100%;
+        }
+
+        #embarqueTable th {
+            background-color: #172A46;
+            color: #ecf0f1;
+            padding: 4px 3px;
+            text-align: center;
+            border: 1px solid #20688C;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 9px;
+            line-height: 1.1;
+            min-width: 50px;
+            max-width: 200px;
+            resize: horizontal;
+            cursor: default;
+        }
+
+        #embarqueTable td {
+            padding: 3px 2px;
+            text-align: center;
+            border: 1px solid #5F6375;
+            background-color: #40424F;
+            color: lightgray;
+            transition: background-color 0.3s;
+            font-size: 9px;
+            line-height: 1.0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+            position: relative;
+            cursor: default;
+        }
+
+        #embarqueTable tr:hover td {
+            background-color: #485563;
+        }
+
+        #embarqueTable tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        #embarqueTable tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+
+        #embarqueTable input[type="checkbox"] {
+            transform: scale(1.1);
+            cursor: pointer;
+            accent-color: #3498db;
+        }
+
+        #embarqueTable .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #95a5a6;
+            font-style: italic;
+            background-color: #40424F;
+            font-size: 10px;
+        }
+
+        /* Pestañas */
+        .embarque-tabs {
+            display: flex;
+            margin-bottom: 0;
+            background-color: #34334E;
+            border-bottom: 1px solid #20688C;
+        }
+
+        .embarque-tab {
+            padding: 10px 20px;
+            background-color: #2c3e50;
+            color: #bdc3c7;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            border-right: 1px solid #34495e;
+            transition: all 0.3s;
+        }
+
+        .embarque-tab:hover {
+            background-color: #34495e;
+            color: #ecf0f1;
+        }
+
+        .embarque-tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .embarque-tab-content {
+            display: none;
+            background-color: #40424F;
+        }
+
+        .embarque-tab-content.active {
+            display: block;
+        }
+
+        /* Contador de resultados */
+        #embarqueResultCounter {
+            background-color: #40424F;
+            padding: 10px;
+            color: lightgray;
+            font-size: 11px;
+            border-top: 1px solid #34495e;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #embarqueMainContainer {
+                padding: 1px;
+            }
+
+            #embarqueToolbar {
+                padding: 6px;
+                gap: 6px;
+            }
+            
+            .embarque-dropdown {
+                min-width: 100px;
+                font-size: 10px;
+                padding: 4px 6px;
+            }
+
+            .embarque-btn {
+                font-size: 9px;
+                padding: 3px 6px;
+            }
+            
+            #embarqueTable {
+                font-size: 8px;
+            }
+
+            #embarqueTable th {
+                font-size: 7px;
+                padding: 2px 1px;
+            }
+
+            #embarqueTable td {
+                font-size: 8px;
+                padding: 2px 1px;
+            }
+        }
+
+        /* Para pantallas muy pequeñas */
+        @media (max-width: 480px) {
+            #embarqueToolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .embarque-dropdown,
+            .embarque-btn {
+                width: 100%;
+                margin: 2px 0;
+            }
+        }
+
+        /* ===============================
+           ESTILOS PARA MODALES
+        =============================== */
+        .embarque-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .embarque-modal-content {
+            background: #34334E;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .embarque-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #40424F;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .embarque-modal-header h3 {
+            margin: 0;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .embarque-modal-close {
+            background: none;
+            border: none;
+            color: #bbb;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .embarque-modal-close:hover {
+            background: #ff4757;
+            color: white;
+        }
+
+        .embarque-modal-body {
+            padding: 20px;
+        }
+
+        .embarque-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .embarque-form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .embarque-form-group label {
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .embarque-form-group input,
+        .embarque-form-group select {
+            background: #40424F;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 8px 12px;
+            color: #ffffff;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .embarque-form-group input:focus,
+        .embarque-form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .embarque-form-group input::placeholder {
+            color: #aaa;
+        }
+
+        .embarque-form-group select option {
+            background: #40424F;
+            color: #ffffff;
+        }
+
+        .embarque-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #40424F;
+        }
+
+        .embarque-btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .embarque-btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* Responsive para modales */
+        @media (max-width: 768px) {
+            .embarque-modal-content {
+                width: 95%;
+                margin: 10px;
+            }
+            
+            .embarque-form-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .embarque-modal-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
 
-<div id="embarque-main-container-unique" class="embarque-main-container">
-
-<!-- Header con título -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-shipping-fast me-2"></i>Control de Embarque - Sistema PO → WO</h2>
-    <div class="badge bg-info fs-6">
-        <i class="fas fa-exchange-alt me-1"></i>
-        Purchase Orders → Work Orders
-    </div>
-</div>
-
-<!-- Toolbar con filtros y botones -->
-<div id="embarque-toolbar-unique" class="card mb-4">
-    <div class="card-body">
-        <div class="row g-3 align-items-end">
-            <!-- Filtros -->
-            <div class="col-md-3">
-                <label class="form-label">Fecha de registro</label>
-                <div class="input-group">
-                    <input type="date" class="form-control" id="embarque-fecha-inicio-unique">
-                    <span class="input-group-text">~</span>
-                    <input type="date" class="form-control" id="embarque-fecha-fin-unique">
-                </div>
-            </div>
-            
-            <div class="col-md-2">
-                <label class="form-label">Cliente</label>
-                <select class="form-select" id="embarque-filtro-cliente-unique">
-                    <option value="">Todos</option>
-                    <option value="LG_REFRIS">LG_REFRIS</option>
-                    <option value="LG_ESTUFAS">LG_ESTUFAS</option>
-                </select>
-            </div>
-            
-            <div class="col-md-2">
-                <label class="form-label">Estado PO</label>
-                <select class="form-select" id="filtro-estado-po">
-                    <option value="">Todos</option>
-                    <option value="PLAN">Plan</option>
-                    <option value="PREPARACION">En Preparación</option>
-                    <option value="EMBARCADO">Embarcado</option>
-                    <option value="EN_TRANSITO">En Tránsito</option>
-                    <option value="ENTREGADO">Entregado</option>
-                </select>
-            </div>
-            
-            <!-- Botones de acción -->
-            <div class="col-md-5">
-                <div class="btn-group" role="group">
-                    <button class="btn btn-primary" onclick="consultarPOs()">
-                        <i class="fas fa-search"></i> Consultar POs
-                    </button>
-                    <button class="btn btn-success" onclick="abrirModalCrearPO()">
-                        <i class="fas fa-plus"></i> Nueva PO
-                    </button>
-                    <button class="btn btn-info" onclick="consultarWOs()">
-                        <i class="fas fa-tasks"></i> Ver WOs
-                    </button>
-                    <button class="btn btn-warning" onclick="exportarDatos()">
-                        <i class="fas fa-file-excel"></i> Exportar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Pestañas para POs y WOs -->
-<ul class="nav nav-tabs mb-3" id="main-tabs">
-    <li class="nav-item">
-        <button class="nav-link active" id="pos-tab" data-bs-toggle="tab" data-bs-target="#pos-panel">
-            <i class="fas fa-shopping-cart me-2"></i>Purchase Orders (PO)
+<div id="embarqueMainContainer">
+    <!-- Barra de herramientas -->
+    <div id="embarqueToolbar">
+        <!-- Filtros de fecha -->
+        <input type="date" class="embarque-dropdown" id="fechaDesde" placeholder="Fecha desde">
+        <span style="color: #bdc3c7; font-size: 12px;">~</span>
+        <input type="date" class="embarque-dropdown" id="fechaHasta" placeholder="Fecha hasta">
+        
+        <!-- Filtros adicionales -->
+        <select class="embarque-dropdown" id="clienteFilter">
+            <option value="">Todos los clientes</option>
+            <option value="LG_REFRIS">LG_REFRIS</option>
+            <option value="LG_ESTUFAS">LG_ESTUFAS</option>
+        </select>
+        
+        <select class="embarque-dropdown" id="estadoFilter">
+            <option value="">Todos los estados</option>
+            <option value="PLAN">Plan</option>
+            <option value="PREPARACION">En Preparación</option>
+            <option value="EMBARCADO">Embarcado</option>
+            <option value="EN_TRANSITO">En Tránsito</option>
+            <option value="ENTREGADO">Entregado</option>
+        </select>
+        
+        <!-- Botones de acción -->
+        <button class="embarque-btn" id="btnConsultar" onclick="consultarPOs()">
+            📋 Consultar POs
         </button>
-    </li>
-    <li class="nav-item">
-        <button class="nav-link" id="wos-tab" data-bs-toggle="tab" data-bs-target="#wos-panel">
-            <i class="fas fa-cogs me-2"></i>Work Orders (WO)
+        <button class="embarque-btn" id="btnRegistrar" onclick="abrirModalCrearPO()">
+            ➕ Nueva PO
         </button>
-    </li>
-</ul>
+        <button class="embarque-btn" id="btnVerWOs" onclick="consultarWOs()">
+            🔧 Ver WOs
+        </button>
+        <button class="embarque-btn" id="btnExportar" onclick="exportarDatos()">
+            📊 Exportar
+        </button>
+    </div>
 
-<div class="tab-content" id="main-tab-content">
-    <!-- Panel de Purchase Orders -->
-    <div class="tab-pane fade show active" id="pos-panel">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Purchase Orders</h5>
-                <span class="badge bg-primary" id="pos-count">0 POs</span>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="tabla-pos">
-                        <thead class="table-dark">
-                            <tr>
-                                <th><input type="checkbox" id="select-all-pos"></th>
-                                <th>Código PO</th>
-                                <th>Nombre PO</th>
-                                <th>Cliente/Proveedor</th>
-                                <th>Modelo</th>
-                                <th>Fecha Registro</th>
-                                <th>Código Entrega</th>
-                                <th>Cantidad</th>
-                                <th>Estado</th>
-                                <th>Modificado</th>
-                                <th>Usuario</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="12" class="text-center text-muted">
-                                    <i class="fas fa-info-circle me-2"></i>No hay POs registradas
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <!-- Pestañas -->
+    <div class="embarque-tabs">
+        <button class="embarque-tab active" onclick="mostrarTab('pos')">🛒 Purchase Orders (PO)</button>
+        <button class="embarque-tab" onclick="mostrarTab('wos')">🔧 Work Orders (WO)</button>
+    </div>
+
+    <!-- Contenido de Purchase Orders -->
+    <div id="tab-pos" class="embarque-tab-content active">
+        <div id="embarqueTableContainer">
+            <table id="embarqueTable">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="selectAll" class="checkbox-custom" onchange="toggleSelectAll()">
+                        </th>
+                        <th style="width: 80px;" title="Código de Purchase Order">Código de PO</th>
+                        <th style="width: 150px;" title="Nombre de la Purchase Order">Nombre de PO</th>
+                        <th style="width: 100px;" title="Fecha de registro">Fecha de registro</th>
+                        <th style="width: 80px;" title="Cliente">Cliente</th>
+                        <th style="width: 120px;" title="Código de modelo">Código de modelo</th>
+                        <th style="width: 120px;" title="Nombre del modelo">Nombre del modelo</th>
+                        <th style="width: 80px;" title="Proveedor">Proveedor</th>
+                        <th style="width: 100px;" title="Total cantidad planeada">Total cantidad planeada</th>
+                        <th style="width: 100px;" title="Total cantidad de completada">Total cantidad completada</th>
+                        <th style="width: 80px;" title="Estado">Estado</th>
+                        <th style="width: 80px;" title="Código de WO">Código de entrega</th>
+                        <th style="width: 100px;" title="Fecha de operación">Fecha de operación</th>
+                        <th style="width: 80px;" title="Cantidad">Cantidad</th>
+                        <th style="width: 100px;" title="Modificador">Modificador</th>
+                        <th style="width: 100px;" title="Fecha de modificación">Fecha de modificación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="16" class="no-data">No hay Purchase Orders registradas</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
-    
-    <!-- Panel de Work Orders -->
-    <div class="tab-pane fade" id="wos-panel">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Work Orders</h5>
-                <span class="badge bg-success" id="wos-count">0 WOs</span>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="tabla-wos">
-                        <thead class="table-dark">
-                            <tr>
-                                <th><input type="checkbox" id="select-all-wos"></th>
-                                <th>Código WO</th>
-                                <th>Código PO</th>
-                                <th>Modelo</th>
-                                <th>Cantidad</th>
-                                <th>Fecha Operación</th>
-                                <th>Estado</th>
-                                <th>Modificador</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="9" class="text-center text-muted">
-                                    <i class="fas fa-info-circle me-2"></i>No hay WOs registradas
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+
+    <!-- Contenido de Work Orders -->
+    <div id="tab-wos" class="embarque-tab-content">
+        <div id="embarqueTableContainer">
+            <table id="woTable">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="selectAllWO" class="checkbox-custom" onchange="toggleSelectAllWO()">
+                        </th>
+                        <th style="width: 100px;" title="Código de Work Order">Código de WO</th>
+                        <th style="width: 100px;" title="Código de Purchase Order">Código de PO</th>
+                        <th style="width: 120px;" title="Modelo">Modelo</th>
+                        <th style="width: 80px;" title="Cantidad">Cantidad</th>
+                        <th style="width: 120px;" title="Fecha de operación">Fecha de operación</th>
+                        <th style="width: 80px;" title="Estado">Estado</th>
+                        <th style="width: 100px;" title="Modificador">Modificador</th>
+                        <th style="width: 100px;" title="Acciones">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="9" class="no-data">No hay Work Orders registradas</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+    </div>
+
+    <!-- Contador de resultados -->
+    <div id="embarqueResultCounter">
+        Total registros: 0
     </div>
 </div>
+
+<!-- ========================= MODALES BOOTSTRAP ORIGINALES ========================= -->
 
 <!-- Modal para crear nueva PO -->
 <div class="modal fade" id="modalCrearPO" tabindex="-1">
@@ -201,7 +706,7 @@
         <div class="modal-content" style="background-color: #2c3e50; color: white; border: 1px solid #34495e;">
             <div class="modal-header" style="border-bottom: 1px solid #34495e;">
                 <h5 class="modal-title" style="color: #ecf0f1;">
-                    <i class="fas fa-plus me-2"></i>Control de embarque
+                    <i class="fas fa-plus me-2"></i>Nueva Purchase Order (PO)
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -229,56 +734,52 @@
                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Modelo</label>
-                            <select class="form-select po-input" name="modelo" 
-                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
-                                <option value="">Seleccionar</option>
-                                <option value="NFM96-1T0000">NFM96-1T0000</option>
-                                <option value="NFM96-1K0000">NFM96-1K0000</option>
-                                <option value="NFM961M0032">NFM961M0032</option>
-                            </select>
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Cliente</label>
+                            <input type="text" class="form-control po-input" name="cliente" 
+                                   placeholder="Nombre del cliente"
+                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
                         </div>
                     </div>
-                    
+
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Proveedor</label>
-                            <select class="form-select po-input" name="proveedor" 
-                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
-                                <option value="">Seleccionar</option>
-                                <option value="MOBIS">MOBIS</option>
-                                <option value="LG_REFRIS">LG_REFRIS</option>
-                                <option value="LG_ESTUFAS">LG_ESTUFAS</option>
-                                <option value="SAMSUNG">SAMSUNG</option>
-                            </select>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Modelo</label>
+                            <div class="bom-search-container" style="position: relative;">
+                                <input type="text" class="bom-search-dropdown" name="modelo" id="woModelo"
+                                       placeholder="Seleccione un modelo" onkeyup="filtrarModelosWO()" onclick="mostrarDropdownWO()" required
+                                       style="background-color: #34495e; border: 2px solid #2c3e50; color: #ecf0f1; font-size: 12px; min-width: 300px; transition: border-color 0.3s; font-weight: 500; padding: 8px 12px; border-radius: 4px;">
+                                <div class="bom-dropdown-list" id="woDropdownList" style="display: none;">
+                                    <!-- Los modelos se cargarán dinámicamente -->
+                                </div>
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Total cantidad entregada</label>
                             <input type="number" class="form-control po-input" name="total_cantidad_entregada" 
-                                   placeholder="0" min="0" value="0"
+                                   min="0" value="0"
                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
                         </div>
-                    </div>
-                    
-                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Código de entrega</label>
                             <input type="text" class="form-control po-input" name="codigo_entrega" 
-                                   placeholder="Se genera automáticamente" readonly
+                                   placeholder="Ingrese código de entrega (manual)"
                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
                         </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Fecha de entrega</label>
                             <input type="date" class="form-control po-input" name="fecha_entrega" 
                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Cantidad entregada</label>
                             <input type="number" class="form-control po-input" name="cantidad_entregada" 
-                                   placeholder="0" min="0" value="0"
+                                   min="0" value="0"
                                    style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
                         </div>
                     </div>
@@ -369,6 +870,7 @@
         </div>
     </div>
 </div>
+
 <script>
 // Variables globales para el sistema PO → WO
 let posData = [];
@@ -377,7 +879,101 @@ let dataTablePOs = null;
 let dataTableWOs = null;
 
 // ===========================================
-// FUNCIONES PRINCIPALES
+// FUNCIONES AUXILIARES PARA EL NUEVO ESTILO
+// ===========================================
+
+// Mostrar/ocultar pestañas
+function mostrarTab(tab) {
+    // Ocultar todas las pestañas
+    document.querySelectorAll('.embarque-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Remover clase active de todos los botones
+    document.querySelectorAll('.embarque-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Mostrar la pestaña seleccionada
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    
+    // Activar el botón correspondiente
+    event.target.classList.add('active');
+    
+    // Actualizar contador
+    actualizarContador();
+}
+
+// Toggle para checkbox de seleccionar todo en POs
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('#embarqueTable tbody input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+// Toggle para checkbox de seleccionar todo en WOs
+function toggleSelectAllWO() {
+    const selectAll = document.getElementById('selectAllWO');
+    const checkboxes = document.querySelectorAll('#woTable tbody input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+// Actualizar contador de resultados
+function actualizarContador() {
+    const tabActiva = document.querySelector('.embarque-tab.active').textContent;
+    let total = 0;
+    
+    if (tabActiva.includes('Purchase Orders')) {
+        total = posData.length;
+    } else if (tabActiva.includes('Work Orders')) {
+        total = wosData.length;
+    }
+    
+    document.getElementById('embarqueResultCounter').textContent = `Total registros: ${total}`;
+}
+
+// Funciones de utilidad necesarias para consultarPOs
+function mostrarCargando(mensaje = 'Cargando...') {
+    Swal.fire({
+        title: mensaje,
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+}
+
+function ocultarCargando() {
+    Swal.close();
+}
+
+function mostrarToast(mensaje, tipo = 'info') {
+    const iconos = {
+        success: 'success',
+        error: 'error',
+        warning: 'warning',
+        info: 'info'
+    };
+
+    Swal.fire({
+        icon: iconos[tipo] || 'info',
+        title: mensaje,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
+}
+
+// ===========================================
+// FUNCIONES PRINCIPALES ORIGINALES
 // ===========================================
 
 // Configurar fechas por defecto
@@ -385,32 +981,8 @@ function configurarFechasPorDefecto() {
     const hoy = new Date();
     const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
     
-    document.getElementById('embarque-fecha-inicio-unique').value = fechaInicio.toISOString().split('T')[0];
-    document.getElementById('embarque-fecha-fin-unique').value = hoy.toISOString().split('T')[0];
-    
-    // Configurar fecha por defecto en modal WO
-    document.querySelector('#formCrearWO input[name="fecha_operacion"]').value = hoy.toISOString().split('T')[0];
-}
-
-// Inicializar modal de crear PO
-function inicializarModalCrearPO() {
-    const modal = document.getElementById('modalCrearPO');
-    modal.addEventListener('show.bs.modal', function () {
-        const hoy = new Date().toISOString().split('T')[0];
-        
-        // Establecer fecha de registro por defecto
-        document.querySelector('input[name="fecha_registro"]').value = hoy;
-        
-        // Establecer fecha de entrega por defecto (mismo día)
-        document.querySelector('input[name="fecha_entrega"]').value = hoy;
-        
-        // Limpiar campos
-        document.querySelector('input[name="nombre_po"]').value = '';
-        document.querySelector('select[name="modelo"]').value = '';
-        document.querySelector('select[name="proveedor"]').value = '';
-        document.querySelector('input[name="total_cantidad_entregada"]').value = '0';
-        document.querySelector('input[name="cantidad_entregada"]').value = '0';
-    });
+    document.getElementById('fechaDesde').value = fechaInicio.toISOString().split('T')[0];
+    document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
 }
 
 // Consultar Purchase Orders
@@ -418,22 +990,35 @@ async function consultarPOs() {
     try {
         mostrarCargando('Consultando Purchase Orders...');
         
-        const estado = document.getElementById('filtro-estado-po').value;
+        const estado = document.getElementById('estadoFilter')?.value || '';
         const url = `/api/po/listar${estado ? `?estado=${estado}` : ''}`;
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
         
         if (result.success) {
-            posData = result.data;
+            posData = result.data || [];
             actualizarTablaPOs();
-            mostrarToast('POs cargadas exitosamente', 'success');
+            mostrarToast(`${posData.length} Purchase Orders encontradas`, 'success');
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Error desconocido');
         }
+        
     } catch (error) {
         console.error('Error consultando POs:', error);
-        mostrarToast('Error consultando POs: ' + error.message, 'error');
+        mostrarToast('Error consultando Purchase Orders: ' + error.message, 'error');
+        posData = [];
+        actualizarTablaPOs();
     } finally {
         ocultarCargando();
     }
@@ -444,23 +1029,405 @@ async function consultarWOs() {
     try {
         mostrarCargando('Consultando Work Orders...');
         
-        const response = await fetch('/api/wo/listar');
+        const response = await fetch('/api/wo/listar', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
         
         if (result.success) {
-            wosData = result.data;
+            wosData = result.data || [];
             actualizarTablaWOs();
-            mostrarToast('WOs cargadas exitosamente', 'success');
+            mostrarToast(`${wosData.length} Work Orders encontradas`, 'success');
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Error desconocido');
         }
+        
     } catch (error) {
         console.error('Error consultando WOs:', error);
-        mostrarToast('Error consultando WOs: ' + error.message, 'error');
+        mostrarToast('Error consultando Work Orders: ' + error.message, 'error');
+        wosData = [];
+        actualizarTablaWOs();
     } finally {
         ocultarCargando();
     }
 }
+
+// Actualizar tabla de POs
+function actualizarTablaPOs() {
+    const tbody = document.querySelector('#embarqueTable tbody');
+    if (!tbody) {
+        console.error('Elemento #embarqueTable tbody no encontrado');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    if (posData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" class="no-data">No hay Purchase Orders registradas</td></tr>';
+        return;
+    }
+    
+    posData.forEach(po => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="checkbox" class="checkbox-custom row-select" data-po="${po.codigo_po}"></td>
+            <td>${po.codigo_po}</td>
+            <td>${po.nombre_po || '-'}</td>
+            <td>${formatearFecha(po.fecha_registro)}</td>
+            <td>${po.cliente || '-'}</td>
+            <td>${po.modelo || '-'}</td>
+            <td>${po.modelo || '-'}</td>
+            <td>${po.proveedor || '-'}</td>
+            <td>${po.total_cantidad_entregada || 0}</td>
+            <td>${po.cantidad_entregada || 0}</td>
+            <td>${obtenerBadgeEstado(po.estado, 'PO')}</td>
+            <td>${po.codigo_entrega || 'N/A'}</td>
+            <td>${po.fecha_entrega ? formatearFecha(po.fecha_entrega) : 'N/A'}</td>
+            <td>${po.cantidad_entregada || 0}</td>
+            <td>${po.usuario_creacion || 'Sistema'}</td>
+            <td>${po.modificado ? formatearFecha(po.modificado) : 'N/A'}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Actualizar contador
+    actualizarContador();
+}
+
+// Actualizar tabla de WOs
+function actualizarTablaWOs() {
+    const tbody = document.querySelector('#woTable tbody');
+    if (!tbody) {
+        console.error('Elemento #woTable tbody no encontrado');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    if (wosData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay Work Orders registradas</td></tr>';
+        return;
+    }
+    
+    wosData.forEach(wo => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="checkbox" class="checkbox-custom row-select" data-wo="${wo.codigo_wo}"></td>
+            <td>${wo.codigo_wo}</td>
+            <td>${wo.codigo_po}</td>
+            <td>${wo.modelo}</td>
+            <td>${wo.cantidad_planeada || wo.cantidad}</td>
+            <td>${formatearFecha(wo.fecha_operacion)}</td>
+            <td>${obtenerBadgeEstado(wo.estado, 'WO')}</td>
+            <td>${wo.modificador || wo.usuario_creacion}</td>
+            <td>
+                <button onclick="abrirModalCambiarEstado('${wo.codigo_wo}', 'WO')" class="embarque-btn" style="padding: 2px 4px; font-size: 8px;">
+                    ✏️ Estado
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Actualizar contador
+    actualizarContador();
+}
+
+// ===========================================
+// FUNCIONES AUXILIARES
+// ===========================================
+
+// Formatear fecha
+function formatearFecha(fechaStr) {
+    if (!fechaStr) return '-';
+    const fecha = new Date(fechaStr);
+    return fecha.toLocaleDateString('es-ES') + ' ' + fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Obtener badge de estado
+function obtenerBadgeEstado(estado, tipo) {
+    const colores = {
+        // Estados PO
+        'PLAN': 'secondary',
+        'PREPARACION': 'warning', 
+        'EMBARCADO': 'info',
+        'EN_TRANSITO': 'primary',
+        'ENTREGADO': 'success',
+        // Estados WO
+        'CREADA': 'secondary',
+        'PLANIFICADA': 'warning',
+        'EN_PRODUCCION': 'primary',
+        'CERRADA': 'success'
+    };
+    
+    const color = colores[estado] || 'secondary';
+    return `<span style="background-color: #${color === 'secondary' ? '95a5a6' : color === 'warning' ? 'f39c12' : color === 'info' ? '3498db' : color === 'primary' ? '2980b9' : '27ae60'}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px;">${estado.replace('_', ' ')}</span>`;
+}
+
+// ===========================================
+// FUNCIONES DE INTERFAZ - BOOTSTRAP MODALS
+// ===========================================
+
+// Configurar fechas por defecto
+function configurarFechasPorDefecto() {
+    const hoy = new Date();
+    const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
+    
+    // Configurar fecha por defecto en modal WO
+    const fechaOperacionInput = document.querySelector('#formCrearWO input[name="fecha_operacion"]');
+    if (fechaOperacionInput) {
+        fechaOperacionInput.value = hoy.toISOString().split('T')[0];
+    }
+}
+
+// Inicializar modal de crear PO
+// ===========================================
+// FUNCIONES DE MODELOS BOM (COPIADAS DE PLAN DE PRODUCCIÓN)
+// ===========================================
+
+// Variable global para almacenar modelos BOM
+let modelosBOM = [];
+
+// Cargar modelos únicos de BOM
+async function cargarModelosBOM() {
+    try {
+        console.log('Cargando modelos desde /listar_modelos_bom...');
+        const response = await fetch('/listar_modelos_bom', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const modelos = await response.json();
+        console.log('Modelos recibidos:', modelos);
+        
+        if (Array.isArray(modelos) && modelos.length > 0) {
+            // Los modelos vienen como array de objetos con propiedad 'modelo'
+            modelosBOM = modelos.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
+            console.log('Modelos procesados:', modelosBOM);
+            llenarDropdownModelos();
+            console.log(`${modelosBOM.length} modelos cargados desde Control de BOM`);
+        } else {
+            console.warn('No se encontraron modelos en la respuesta');
+            modelosBOM = [];
+            llenarDropdownModelos();
+            console.log('No se encontraron modelos en Control de BOM');
+        }
+    } catch (error) {
+        console.error('Error cargando modelos BOM:', error);
+        modelosBOM = [];
+        llenarDropdownModelos();
+    }
+}
+
+// Llenar dropdown de modelos
+function llenarDropdownModelos() {
+    const dropdownList = document.getElementById('woDropdownList');
+    
+    if (!dropdownList) {
+        console.error('Element woDropdownList not found in llenarDropdownModelos');
+        return;
+    }
+    
+    dropdownList.innerHTML = '';
+    
+    modelosBOM.forEach(modelo => {
+        const item = document.createElement('div');
+        item.className = 'bom-dropdown-item';
+        item.setAttribute('data-value', modelo);
+        item.textContent = modelo;
+        item.onclick = function() { seleccionarModeloWO(modelo); };
+        dropdownList.appendChild(item);
+    });
+    
+    console.log(`✅ ${modelosBOM.length} modelos cargados en dropdown WO`);
+}
+
+// Función para filtrar modelos en el dropdown de WO
+function filtrarModelosWO() {
+    const searchInput = document.getElementById('woModelo');
+    const dropdownList = document.getElementById('woDropdownList');
+    const searchTerm = searchInput.value.toLowerCase();
+    
+    // Mostrar el dropdown
+    dropdownList.style.display = 'block';
+    
+    const items = dropdownList.querySelectorAll('.bom-dropdown-item');
+    let hasVisibleItems = false;
+    
+    items.forEach(item => {
+        const modeloText = item.textContent.toLowerCase();
+        if (modeloText.includes(searchTerm)) {
+            item.classList.remove('hidden');
+            hasVisibleItems = true;
+        } else {
+            item.classList.add('hidden');
+        }
+    });
+    
+    // Si no hay coincidencias, ocultar el dropdown
+    if (!hasVisibleItems && searchTerm.length > 0) {
+        dropdownList.style.display = 'none';
+    }
+}
+
+// Función para mostrar dropdown de WO
+function mostrarDropdownWO() {
+    console.log('=== mostrarDropdownWO() llamada ===');
+    const dropdownList = document.getElementById('woDropdownList');
+    const searchInput = document.getElementById('woModelo');
+    
+    if (!dropdownList) {
+        console.error('Element woDropdownList not found');
+        return;
+    }
+    
+    if (!searchInput) {
+        console.error('Element woModelo not found');
+        return;
+    }
+    
+    console.log('Elementos encontrados OK');
+    console.log('Modelos disponibles:', modelosBOM.length);
+    console.log('Dropdown actual display:', dropdownList.style.display);
+    console.log('Dropdown actual z-index:', dropdownList.style.zIndex);
+    
+    // Forzar configuración del dropdown
+    dropdownList.style.display = 'block';
+    dropdownList.style.zIndex = '10000';
+    dropdownList.style.position = 'absolute';
+    
+    if (searchInput.value.trim() === '') {
+        // Si el input está vacío, mostrar todos los modelos
+        const items = dropdownList.querySelectorAll('.bom-dropdown-item');
+        console.log('Items en dropdown:', items.length);
+        items.forEach(item => {
+            item.classList.remove('hidden');
+        });
+        
+        // Si no hay items, llenar el dropdown
+        if (items.length === 0 && modelosBOM.length > 0) {
+            console.log('Dropdown vacío, llenando con modelos...');
+            llenarDropdownModelos();
+        }
+    }
+    
+    console.log('Dropdown configurado - display:', dropdownList.style.display);
+    console.log('=== fin mostrarDropdownWO() ===');
+}
+
+// Función para seleccionar un modelo del dropdown de WO
+function seleccionarModeloWO(modelo) {
+    const searchInput = document.getElementById('woModelo');
+    const dropdownList = document.getElementById('woDropdownList');
+    
+    searchInput.value = modelo;
+    dropdownList.style.display = 'none';
+    
+    console.log('Modelo seleccionado para embarque:', modelo);
+}
+
+// ===========================================
+// FUNCIONES DE MODAL
+// ===========================================
+
+function inicializarModalCrearPO() {
+    const modal = document.getElementById('modalCrearPO');
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function () {
+            const hoy = new Date().toISOString().split('T')[0];
+            
+            // Establecer fecha de registro por defecto
+            const fechaRegistroInput = document.querySelector('input[name="fecha_registro"]');
+            if (fechaRegistroInput) {
+                fechaRegistroInput.value = hoy;
+            }
+            
+            // Establecer fecha de entrega por defecto (mismo día)
+            const fechaEntregaInput = document.querySelector('input[name="fecha_entrega"]');
+            if (fechaEntregaInput) {
+                fechaEntregaInput.value = hoy;
+            }
+            
+            // Limpiar campos
+            const form = document.getElementById('formCrearPO');
+            if (form) {
+                form.reset();
+                // Volver a setear las fechas después del reset
+                if (fechaRegistroInput) fechaRegistroInput.value = hoy;
+                if (fechaEntregaInput) fechaEntregaInput.value = hoy;
+            }
+            
+            // Cargar modelos de Control de BOM
+            cargarModelosBOM();
+        });
+    }
+}
+
+// Abrir modal para crear PO
+function abrirModalCrearPO() {
+    const modal = new bootstrap.Modal(document.getElementById('modalCrearPO'));
+    modal.show();
+}
+
+// Abrir modal para crear WO desde PO
+function abrirModalCrearWO(codigoPO) {
+    const form = document.getElementById('formCrearWO');
+    const codigoPoInput = form.querySelector('input[name="codigo_po"]');
+    if (codigoPoInput) {
+        codigoPoInput.value = codigoPO;
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalCrearWO'));
+    modal.show();
+}
+
+// Abrir modal para cambiar estado
+function abrirModalCambiarEstado(codigo, tipo) {
+    const form = document.getElementById('formCambiarEstado');
+    const codigoInput = form.querySelector('input[name="codigo"]');
+    const tipoInput = form.querySelector('input[name="tipo"]');
+    
+    if (codigoInput) codigoInput.value = codigo;
+    if (tipoInput) tipoInput.value = tipo;
+    
+    const selectEstado = form.querySelector('select[name="estado"]');
+    if (selectEstado) {
+        selectEstado.innerHTML = '';
+        
+        // Cargar opciones según el tipo
+        const estados = tipo === 'PO' 
+            ? ['PLAN', 'PREPARACION', 'EMBARCADO', 'EN_TRANSITO', 'ENTREGADO']
+            : ['CREADA', 'PLANIFICADA', 'EN_PRODUCCION', 'CERRADA'];
+        
+        estados.forEach(estado => {
+            const option = document.createElement('option');
+            option.value = estado;
+            option.textContent = estado.replace('_', ' ');
+            selectEstado.appendChild(option);
+        });
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalCambiarEstado'));
+    modal.show();
+}
+
+// ===========================================
+// FUNCIONES CRUD
+// ===========================================
 
 // Crear nueva Purchase Order
 async function crearPO() {
@@ -476,11 +1443,17 @@ async function crearPO() {
             total_cantidad_entregada: parseInt(formData.get('total_cantidad_entregada')) || 0,
             fecha_entrega: formData.get('fecha_entrega'),
             cantidad_entregada: parseInt(formData.get('cantidad_entregada')) || 0,
-            cliente: formData.get('proveedor'), // Usar proveedor como cliente
+            codigo_entrega: formData.get('codigo_entrega'),
+            cliente: formData.get('cliente') || formData.get('proveedor'), // Usar cliente o proveedor
             estado: 'PLAN'
         };
         
         // Validaciones básicas
+        if (!data.nombre_po) {
+            mostrarToast('El nombre de PO es obligatorio', 'warning');
+            return;
+        }
+        
         if (!data.proveedor) {
             mostrarToast('El proveedor es obligatorio', 'warning');
             return;
@@ -507,12 +1480,9 @@ async function crearPO() {
             mostrarToast(`PO ${result.data.codigo_po} creada exitosamente`, 'success');
             bootstrap.Modal.getInstance(document.getElementById('modalCrearPO')).hide();
             form.reset();
-            // Auto-generar código de entrega basado en el código PO
-            const codigoEntrega = result.data.codigo_po + '-01';
-            document.querySelector('input[name="codigo_entrega"]').value = codigoEntrega;
             await consultarPOs(); // Recargar tabla
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Error creando PO');
         }
     } catch (error) {
         console.error('Error creando PO:', error);
@@ -559,7 +1529,7 @@ async function convertirPOaWO() {
             form.reset();
             await consultarWOs(); // Recargar tabla WOs
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Error convirtiendo PO → WO');
         }
     } catch (error) {
         console.error('Error convirtiendo PO → WO:', error);
@@ -609,7 +1579,7 @@ async function actualizarEstado() {
                 await consultarWOs();
             }
         } else {
-            throw new Error(result.error);
+            throw new Error(result.error || 'Error actualizando estado');
         }
     } catch (error) {
         console.error('Error actualizando estado:', error);
@@ -619,340 +1589,33 @@ async function actualizarEstado() {
     }
 }
 
-// ===========================================
-// FUNCIONES DE INTERFAZ
-// ===========================================
-
-// Abrir modal para crear PO
-function abrirModalCrearPO() {
-    const modal = new bootstrap.Modal(document.getElementById('modalCrearPO'));
-    modal.show();
-}
-
-// Abrir modal para crear WO desde PO
-function abrirModalCrearWO(codigoPO) {
-    const form = document.getElementById('formCrearWO');
-    form.querySelector('input[name="codigo_po"]').value = codigoPO;
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalCrearWO'));
-    modal.show();
-}
-
-// Abrir modal para cambiar estado
-function abrirModalCambiarEstado(codigo, tipo) {
-    const form = document.getElementById('formCambiarEstado');
-    form.querySelector('input[name="codigo"]').value = codigo;
-    form.querySelector('input[name="tipo"]').value = tipo;
-    
-    const selectEstado = form.querySelector('select[name="estado"]');
-    selectEstado.innerHTML = '';
-    
-    // Cargar opciones según el tipo
-    const estados = tipo === 'PO' 
-        ? ['PLAN', 'PREPARACION', 'EMBARCADO', 'EN_TRANSITO', 'ENTREGADO']
-        : ['CREADA', 'PLANIFICADA', 'EN_PRODUCCION', 'CERRADA'];
-    
-    estados.forEach(estado => {
-        const option = document.createElement('option');
-        option.value = estado;
-        option.textContent = estado.replace('_', ' ');
-        selectEstado.appendChild(option);
-    });
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalCambiarEstado'));
-    modal.show();
-}
-
-// Actualizar tabla de POs
-function actualizarTablaPOs() {
-    const tbody = document.querySelector('#tabla-pos tbody');
-    tbody.innerHTML = '';
-    
-    if (posData.length === 0) {
-        const row = tbody.insertRow();
-        row.innerHTML = `
-            <td colspan="12" class="text-center text-muted">
-                <i class="fas fa-info-circle me-2"></i>No hay POs registradas
-            </td>
-        `;
-    } else {
-        posData.forEach((po, index) => {
-            const row = tbody.insertRow();
-            row.innerHTML = `
-                <td><input type="checkbox" value="${po.codigo_po}"></td>
-                <td><span class="badge bg-primary">${po.codigo_po}</span></td>
-                <td>${po.nombre_po || '-'}</td>
-                <td>${po.proveedor || po.cliente || '-'}</td>
-                <td>${po.modelo || '-'}</td>
-                <td>${formatearFecha(po.fecha_registro)}</td>
-                <td>${po.codigo_entrega || '-'}</td>
-                <td>${po.cantidad_entregada || 0}</td>
-                <td>${obtenerBadgeEstado(po.estado, 'PO')}</td>
-                <td>${formatearFecha(po.modificado)}</td>
-                <td>${po.usuario_creacion}</td>
-                <td>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="abrirModalCrearWO('${po.codigo_po}')" title="Crear WO">
-                            <i class="fas fa-cogs"></i>
-                        </button>
-                        <button class="btn btn-outline-secondary" onclick="abrirModalCambiarEstado('${po.codigo_po}', 'PO')" title="Cambiar Estado">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-outline-info" onclick="verDetallesPO('${po.codigo_po}')" title="Ver Detalles">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-        });
-    }
-    
-    // Actualizar contador
-    document.getElementById('pos-count').textContent = `${posData.length} POs`;
-    
-    // Inicializar DataTable si no existe
-    if (dataTablePOs) {
-        dataTablePOs.destroy();
-    }
-    
-    dataTablePOs = $('#tabla-pos').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-        },
-        pageLength: 10,
-        responsive: true,
-        order: [[3, 'desc']] // Ordenar por fecha de registro
-    });
-}
-
-// Actualizar tabla de WOs
-function actualizarTablaWOs() {
-    const tbody = document.querySelector('#tabla-wos tbody');
-    tbody.innerHTML = '';
-    
-    if (wosData.length === 0) {
-        const row = tbody.insertRow();
-        row.innerHTML = `
-            <td colspan="9" class="text-center text-muted">
-                <i class="fas fa-info-circle me-2"></i>No hay WOs registradas
-            </td>
-        `;
-    } else {
-        wosData.forEach((wo, index) => {
-            const row = tbody.insertRow();
-            row.innerHTML = `
-                <td><input type="checkbox" value="${wo.codigo_wo}"></td>
-                <td><span class="badge bg-success">${wo.codigo_wo}</span></td>
-                <td><span class="badge bg-primary">${wo.codigo_po}</span></td>
-                <td>${wo.modelo}</td>
-                <td><span class="badge bg-info">${wo.cantidad_planeada}</span></td>
-                <td>${formatearFecha(wo.fecha_operacion)}</td>
-                <td>${obtenerBadgeEstado(wo.estado, 'WO')}</td>
-                <td>${wo.modificador}</td>
-                <td>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary" onclick="abrirModalCambiarEstado('${wo.codigo_wo}', 'WO')" title="Cambiar Estado">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-outline-info" onclick="verDetallesWO('${wo.codigo_wo}')" title="Ver Detalles">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-        });
-    }
-    
-    // Actualizar contador
-    document.getElementById('wos-count').textContent = `${wosData.length} WOs`;
-    
-    // Inicializar DataTable si no existe
-    if (dataTableWOs) {
-        dataTableWOs.destroy();
-    }
-    
-    dataTableWOs = $('#tabla-wos').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-        },
-        pageLength: 10,
-        responsive: true,
-        order: [[5, 'desc']] // Ordenar por fecha de operación
-    });
-}
-
-// ===========================================
-// FUNCIONES AUXILIARES
-// ===========================================
-
-// Formatear fecha
-function formatearFecha(fechaStr) {
-    if (!fechaStr) return '-';
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleDateString('es-ES') + ' ' + fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
-// Obtener badge de estado
-function obtenerBadgeEstado(estado, tipo) {
-    const colores = {
-        // Estados PO
-        'PLAN': 'secondary',
-        'PREPARACION': 'warning',
-        'EMBARCADO': 'info',
-        'EN_TRANSITO': 'primary',
-        'ENTREGADO': 'success',
-        // Estados WO
-        'CREADA': 'secondary',
-        'PLANIFICADA': 'warning',
-        'EN_PRODUCCION': 'primary',
-        'CERRADA': 'success'
-    };
-    
-    const color = colores[estado] || 'secondary';
-    return `<span class="badge bg-${color}">${estado.replace('_', ' ')}</span>`;
-}
-
-// Mostrar modal de carga
-function mostrarCargando(mensaje = 'Cargando...') {
-    Swal.fire({
-        title: mensaje,
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
-
-// Ocultar modal de carga
-function ocultarCargando() {
-    Swal.close();
-}
-
-// Mostrar toast notification
-function mostrarToast(mensaje, tipo = 'info') {
-    const iconos = {
-        success: 'success',
-        error: 'error',
-        warning: 'warning',
-        info: 'info'
-    };
-    
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: iconos[tipo],
-        title: mensaje,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true
-    });
-}
-
-// Ver detalles de PO
-async function verDetallesPO(codigoPO) {
-    try {
-        const response = await fetch(`/api/po/${codigoPO}`);
-        const result = await response.json();
-        
-        if (result.success) {
-            const po = result.data;
-            
-            Swal.fire({
-                title: `Detalles de PO: ${po.codigo_po}`,
-                html: `
-                    <div class="text-start">
-                        <p><strong>Cliente:</strong> ${po.cliente}</p>
-                        <p><strong>Estado:</strong> ${po.estado}</p>
-                        <p><strong>Fecha Registro:</strong> ${formatearFecha(po.fecha_registro)}</p>
-                        <p><strong>Modificado:</strong> ${formatearFecha(po.modificado)}</p>
-                        <p><strong>Usuario:</strong> ${po.usuario_creacion}</p>
-                    </div>
-                `,
-                width: 500,
-                confirmButtonText: 'Cerrar'
-            });
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
-        mostrarToast('Error obteniendo detalles: ' + error.message, 'error');
-    }
-}
-
-// Ver detalles de WO
-async function verDetallesWO(codigoWO) {
-    try {
-        const response = await fetch(`/api/wo/${codigoWO}`);
-        const result = await response.json();
-        
-        if (result.success) {
-            const wo = result.data;
-            
-            Swal.fire({
-                title: `Detalles de WO: ${wo.codigo_wo}`,
-                html: `
-                    <div class="text-start">
-                        <p><strong>Código PO:</strong> ${wo.codigo_po}</p>
-                        <p><strong>Modelo:</strong> ${wo.modelo}</p>
-                        <p><strong>Cantidad:</strong> ${wo.cantidad_planeada}</p>
-                        <p><strong>Estado:</strong> ${wo.estado}</p>
-                        <p><strong>Fecha Operación:</strong> ${formatearFecha(wo.fecha_operacion)}</p>
-                        <p><strong>Modificador:</strong> ${wo.modificador}</p>
-                        <p><strong>Usuario:</strong> ${wo.usuario_creacion}</p>
-                    </div>
-                `,
-                width: 500,
-                confirmButtonText: 'Cerrar'
-            });
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
-        mostrarToast('Error obteniendo detalles: ' + error.message, 'error');
-    }
-}
-
-// Exportar datos
 function exportarDatos() {
-    const tabActiva = document.querySelector('.nav-link.active').id;
+    const tabActiva = document.querySelector('.embarque-tab.active').textContent;
     
-    if (tabActiva === 'pos-tab') {
-        exportarPOs();
+    if (tabActiva.includes('Purchase Orders')) {
+        if (posData.length === 0) {
+            mostrarToast('No hay POs para exportar', 'warning');
+            return;
+        }
+        mostrarToast('Exportando Purchase Orders...', 'info');
     } else {
-        exportarWOs();
+        if (wosData.length === 0) {
+            mostrarToast('No hay WOs para exportar', 'warning'); 
+            return;
+        }
+        mostrarToast('Exportando Work Orders...', 'info');
     }
 }
 
-// Exportar POs
-function exportarPOs() {
-    if (posData.length === 0) {
-        mostrarToast('No hay datos para exportar', 'warning');
-        return;
-    }
+// Event listener para cerrar dropdown cuando se hace clic fuera
+document.addEventListener('click', function(event) {
+    const bomSearchContainer = document.querySelector('.bom-search-container');
+    const woDropdownList = document.getElementById('woDropdownList');
     
-    mostrarToast('Función de exportación en desarrollo', 'info');
-}
-
-// Exportar WOs
-function exportarWOs() {
-    if (wosData.length === 0) {
-        mostrarToast('No hay datos para exportar', 'warning');
-        return;
+    if (bomSearchContainer && !bomSearchContainer.contains(event.target) && woDropdownList) {
+        woDropdownList.style.display = 'none';
     }
-    
-    mostrarToast('Función de exportación en desarrollo', 'info');
-}
-
-// Función global para cerrar Control de Embarque
-window.cerrarControlEmbarque = function() {
-    const embarqueContainer = document.querySelector('#embarque-main-container-unique');
-    if (embarqueContainer) {
-        embarqueContainer.style.display = 'none';
-        embarqueContainer.style.visibility = 'hidden';
-        embarqueContainer.style.opacity = '0';
-        console.log('✅ Control de Embarque cerrado');
-    }
-};
+});
 
 // ===========================================
 // INICIALIZACIÓN
@@ -967,25 +1630,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializar modal de crear PO
     inicializarModalCrearPO();
     
-    // Configurar eventos de checkbox "Seleccionar todo"
-    document.getElementById('select-all-pos').addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('#tabla-pos tbody input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = this.checked);
-    });
-    
-    document.getElementById('select-all-wos').addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('#tabla-wos tbody input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = this.checked);
-    });
-    
     // Cargar datos iniciales
     consultarPOs();
     
     console.log('✅ Control de Embarque - Sistema PO → WO completamente funcional');
 });
 </script>
-
-</div> <!-- Cierre de embarque-main-container -->
-
-</body>
-</html>
