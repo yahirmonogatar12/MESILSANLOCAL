@@ -414,9 +414,15 @@
     }
     
     // ===============================================
-    // OBSERVADOR DE MUTACIONES
+    // OBSERVADOR DE MUTACIONES (DESHABILITADO)
     // ===============================================
     function setupMutationObserver() {
+        // Deshabilitamos el MutationObserver automático para evitar bucles infinitos
+        // La reinicialización se manejará explícitamente desde AjaxContentManager
+        log('⚠️ MutationObserver deshabilitado para evitar reinicializaciones duplicadas');
+        
+        // Si necesitas el observer para casos específicos, descomenta el código siguiente:
+        /*
         const observer = new MutationObserver((mutations) => {
             let shouldReinitialize = false;
             
@@ -449,6 +455,7 @@
         eventListeners.push(() => {
             observer.disconnect();
         });
+        */
     }
     
     // ===============================================
@@ -651,7 +658,15 @@
             return window.currentActiveElement;
         }
     };
-    
+
+    // ===============================================
+    // EXPONER FUNCIÓN PARA REINICIALIZACIÓN CONTROLADA
+    // ===============================================
+    window.setupUnifiedDropdowns = function() {
+        log('🔄 Reinicializando dropdowns desde llamada externa...');
+        setupUnifiedDropdowns();
+    };
+
     // ===============================================
     // INICIALIZACIÓN AUTOMÁTICA
     // ===============================================

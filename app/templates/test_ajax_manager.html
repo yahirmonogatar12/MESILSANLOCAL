@@ -65,11 +65,17 @@
             <h3>Características del sistema mejorado:</h3>
             <ul>
                 <li>✅ Carga CSS ANTES de mostrar HTML</li>
-                <li>✅ Indicador visual de carga</li>
-                <li>✅ Verificación de aplicación de estilos</li>
-                <li>✅ Elimina parpadeos (FOUC)</li>
+                <li>✅ Modal de carga profesional con animación</li>
+                <li>✅ Indicadores de progreso en tiempo real</li>
+                <li>✅ Delay adicional de 2 segundos para estabilidad</li>
+                <li>✅ Transición suave con fade-in</li>
+                <li>✅ Elimina COMPLETAMENTE parpadeos (FOUC)</li>
                 <li>✅ Logs detallados en consola</li>
             </ul>
+            <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px; margin-top: 10px;">
+                <strong>⏰ Tiempo total de carga:</strong> ~3-4 segundos<br>
+                <small>Incluye carga de CSS + delay de seguridad de 2s</small>
+            </div>
         </div>
 
         <div>
@@ -123,12 +129,19 @@
         };
 
         async function testControlRetorno() {
-            addToLog('🚀 Iniciando test de Control de Retorno...', 'log');
-            console.log('=== TEST: Control de Retorno ===');
+            addToLog('🚀 Iniciando test de Control de Retorno con modal y delay...', 'log');
+            console.log('=== TEST: Control de Retorno (con delay de 2s) ===');
+            
+            const startTime = Date.now();
             
             try {
                 await AjaxContentManager.loadContent('/material/control_retorno', '#contentTarget');
-                addToLog('✅ Test completado exitosamente', 'log');
+                
+                const endTime = Date.now();
+                const totalTime = ((endTime - startTime) / 1000).toFixed(1);
+                
+                addToLog(`✅ Test completado exitosamente en ${totalTime} segundos`, 'log');
+                addToLog('🎯 Modal mostrado → CSS cargado → Delay 2s → Contenido visible', 'log');
             } catch (error) {
                 addToLog('❌ Error en test: ' + error.message, 'error');
             }

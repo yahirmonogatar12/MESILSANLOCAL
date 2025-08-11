@@ -80,34 +80,135 @@
         });
     }
 
-    // Función para mostrar/ocultar indicador de carga
-    function setLoadingState(target, isLoading) {
-        if (isLoading) {
-            target.style.opacity = '0.7';
-            target.style.pointerEvents = 'none';
-            // Opcional: añadir spinner o mensaje
-            const loader = document.createElement('div');
-            loader.id = 'ajax-loader';
-            loader.style.cssText = `
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: rgba(32, 104, 140, 0.9);
-                color: white;
-                padding: 10px 20px;
-                border-radius: 4px;
-                z-index: 9999;
-                font-size: 14px;
-            `;
-            loader.textContent = 'Cargando estilos...';
-            target.style.position = 'relative';
-            target.appendChild(loader);
+    // Función para mostrar/ocultar modal de carga
+    function showLoadingModal(show, message = 'Cargando contenido...') {
+        const modalId = 'ajax-loading-modal';
+        
+        if (show) {
+            // Crear modal si no existe
+            let modal = document.getElementById(modalId);
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = modalId;
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 99999;
+                    font-family: Arial, sans-serif;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #20688C, #32323E);
+                        padding: 40px;
+                        border-radius: 12px;
+                        text-align: center;
+                        color: white;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                        max-width: 400px;
+                        width: 90%;
+                    ">
+                        <div style="
+                            width: 50px;
+                            height: 50px;
+                            border: 4px solid #ffffff30;
+                            border-top: 4px solid #ffffff;
+                            border-radius: 50%;
+                            animation: ajax-spin 1s linear infinite;
+                            margin: 0 auto 20px;
+                        "></div>
+                        <h3 style="margin: 0 0 10px; font-size: 18px;">${message}</h3>
+                        <p style="margin: 0; opacity: 0.8; font-size: 14px;" id="ajax-loading-text">
+                            Preparando contenido...
+                        </p>
+                    </div>
+                `;
+                
+                // Añadir CSS para animación
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes ajax-spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                document.body.appendChild(modal);
+            }
+            modal.style.display = 'flex';
         } else {
-            target.style.opacity = '';
-            target.style.pointerEvents = '';
-            const loader = target.querySelector('#ajax-loader');
-            if (loader) loader.remove();
+            // Ocultar modal
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+    }
+
+    // Función para actualizar texto del modal
+    function updateLoadingText(text) {
+        const textElement = document.getElementById('ajax-loading-text');
+        if (textElement) {
+            textElement.textContent = text;
+        }
+    }
+
+    // Función para gestionar scripts después de cargar contenido
+    function reinitializeScripts() {
+        console.log('🔄 Reinicializando scripts para contenido dinámico...');
+        
+        // 1. Reinicializar dropdowns unificados de forma controlada
+        if (window.setupUnifiedDropdowns && typeof window.setupUnifiedDropdowns === 'function') {
+            console.log('📋 Reinicializando dropdowns unificados...');
+            try {
+                // Llamar directamente sin MutationObserver
+                window.setupUnifiedDropdowns();
+            } catch (error) {
+                console.warn('⚠️ Error reinicializando dropdowns:', error);
+            }
+        }
+        
+        // 2. Reaplicar permisos de forma controlada
+        if (window.PermisosManagerSimple && window.PermisosManagerSimple.inicializado) {
+            console.log('🔐 Reaplicando permisos para nuevo contenido...');
+            try {
+                // Solo reaplicar permisos, no reinicializar completamente
+                if (typeof window.PermisosManagerSimple.aplicarPermisos === 'function') {
+                    window.PermisosManagerSimple.aplicarPermisos();
+                }
+            } catch (error) {
+                console.warn('⚠️ Error reaplicando permisos:', error);
+            }
+        }
+        
+        // 3. Inicializar otros scripts que puedan necesitarlo
+        reinitializeOtherScripts();
+    }
+    
+    // Función para otros scripts que necesiten reinicialización
+    function reinitializeOtherScripts() {
+        // Aquí se pueden añadir otros scripts que necesiten reinicialización
+        // después de cargar contenido dinámico
+        
+        // Ejemplo: Tooltips de Bootstrap
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            try {
+                // Reinicializar tooltips
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+            } catch (error) {
+                console.warn('⚠️ Error reinicializando tooltips:', error);
+            }
         }
     }
 
@@ -121,12 +222,18 @@
         try {
             console.log('🔄 Iniciando carga AJAX:', url);
             
-            // Mostrar indicador de carga
-            if (showLoader) setLoadingState(target, true);
+            // Mostrar modal de carga
+            if (showLoader) {
+                showLoadingModal(true, 'Cargando contenido...');
+                updateLoadingText('Obteniendo datos del servidor...');
+            }
             
             // 1. Obtener HTML pero NO mostrarlo aún
             const response = await fetch(url, { credentials: 'include' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            updateLoadingText('Procesando contenido HTML...');
+            await new Promise(resolve => setTimeout(resolve, 300)); // Pausa visual
 
             const htmlText = await response.text();
             const parser = new DOMParser();
@@ -138,6 +245,7 @@
 
             // 3. CRÍTICO: Cargar y verificar TODOS los CSS ANTES de mostrar HTML
             if (styleLinks.length > 0) {
+                updateLoadingText(`Cargando ${styleLinks.length} archivos de estilo...`);
                 console.log('⏳ Esperando carga completa de', styleLinks.length, 'archivos CSS...');
                 
                 // Cargar todos los CSS en paralelo
@@ -153,6 +261,9 @@
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
 
+            updateLoadingText('Aplicando estilos...');
+            await new Promise(resolve => setTimeout(resolve, 500)); // Pausa visual
+
             // 4. Crear el contenido OCULTO primero
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = doc.body.innerHTML;
@@ -167,24 +278,37 @@
             await ensureStylesApplied();
             await new Promise(resolve => setTimeout(resolve, 50));
             
-            // 7. AHORA hacer visible el contenido con estilos aplicados
+            updateLoadingText('Finalizando carga...');
+            
+            // 7. DELAY ADICIONAL DE 2 SEGUNDOS como solicitaste
+            console.log('⏰ Aplicando delay adicional de 2 segundos...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // 8. AHORA hacer visible el contenido con estilos aplicados
             tempDiv.style.visibility = 'visible';
             tempDiv.style.opacity = '1';
-            tempDiv.style.transition = 'opacity 0.2s ease-in-out';
+            tempDiv.style.transition = 'opacity 0.3s ease-in-out';
             
-            // 8. Mover contenido del div temporal al contenedor final
+            // 9. Mover contenido del div temporal al contenedor final
+            await new Promise(resolve => setTimeout(resolve, 300)); // Esperar transición
             target.innerHTML = tempDiv.innerHTML;
             
             console.log('📄 HTML insertado con estilos completamente aplicados');
             
-            // Quitar indicador de carga
-            if (showLoader) setLoadingState(target, false);
+            // 10. REINICIALIZAR SCRIPTS para el nuevo contenido
+            updateLoadingText('Configurando funcionalidades...');
+            reinitializeScripts();
             
-            console.log('🎉 Carga AJAX completada SIN parpadeos');
+            console.log('⚙️ Scripts reinicializados para contenido dinámico');
+            
+            // Ocultar modal de carga
+            if (showLoader) showLoadingModal(false);
+            
+            console.log('🎉 Carga AJAX completada SIN parpadeos (con delay de 2s y scripts)');
             
         } catch (error) {
             console.error('❌ Error cargando contenido vía AJAX:', error);
-            if (showLoader) setLoadingState(target, false);
+            if (showLoader) showLoadingModal(false);
         }
     }
 

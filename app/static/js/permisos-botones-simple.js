@@ -205,22 +205,34 @@
 
     }
 
-    // Crear instancia global
-    window.PermisosManagerSimple = new PermisosManagerSimple();
-
-    // Inicializar cuando el DOM esté listo
-    document.addEventListener('DOMContentLoaded', () => {
-        window.PermisosManagerSimple.inicializar();
-    });
-
-    // Agregar estilos CSS simplificados
-    const style = document.createElement('style');
-    style.textContent = `
-        .permiso-denegado {
-            opacity: 0.5 !important;
-            cursor: not-allowed !important;
-            filter: grayscale(50%);
+    // Crear instancia global solo si no existe
+    if (!window.PermisosManagerSimple) {
+        window.PermisosManagerSimple = new PermisosManagerSimple();
+        
+        // Inicializar cuando el DOM esté listo solo si es la primera vez
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.PermisosManagerSimple.inicializar();
+            });
+        } else {
+            // Si el DOM ya está listo, inicializar inmediatamente
+            window.PermisosManagerSimple.inicializar();
         }
-    `;
-    document.head.appendChild(style);
+        
+        // Agregar estilos CSS simplificados solo una vez
+        if (!document.getElementById('permisos-styles')) {
+            const style = document.createElement('style');
+            style.id = 'permisos-styles';
+            style.textContent = `
+                .permiso-denegado {
+                    opacity: 0.5 !important;
+                    cursor: not-allowed !important;
+                    filter: grayscale(50%);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    } else {
+        console.log('📌 PermisosManagerSimple ya existe, no se reinicializa');
+    }
 })();
