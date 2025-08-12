@@ -57,72 +57,7 @@
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
         }
 
-        /* Estilos para el dropdown de modelos en modal de PO - COPIADOS DE PLAN DE PRODUCCIÓN */
-        .bom-search-container {
-            position: relative;
-            display: inline-block;
-        }
-
-        .bom-search-dropdown {
-            background-color: #34495e;
-            color: #ecf0f1;
-            border: 2px solid #2c3e50;
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 12px;
-            min-width: 300px;
-            transition: border-color 0.3s;
-            font-weight: 500;
-        }
-
-        .bom-search-dropdown:focus {
-            outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-            background-color: #2c3e50;
-        }
-
-        .bom-search-dropdown::placeholder {
-            color: #95a5a6;
-            font-style: italic;
-        }
-
-        .bom-dropdown-list {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background-color: #2c3e50;
-            border: 1px solid #34495e;
-            border-top: none;
-            border-radius: 0 0 4px 4px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 10000;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-
-        .bom-dropdown-item {
-            padding: 8px 10px;
-            color: lightgray;
-            cursor: pointer;
-            border-bottom: 1px solid #34495e;
-            transition: background-color 0.2s;
-            font-size: 11px;
-        }
-
-        .bom-dropdown-item:hover {
-            background-color: #3498db;
-            color: white;
-        }
-
-        .bom-dropdown-item:last-child {
-            border-bottom: none;
-        }
-
-        .bom-dropdown-item.hidden {
-            display: none;
-        }
+        /* Estilos para el dropdown de modelos en modal de embarque */
         .embarque-search-container {
             position: relative;
             display: inline-block;
@@ -427,8 +362,357 @@
         }
 
         /* ===============================
-           ESTILOS PARA MODALES
+           ESTILOS PARA MODALES MODERNOS
         =============================== */
+        
+        /* Sobrescribir backdrop de Bootstrap para nuestro diseño */
+        .modal.show .modal-backdrop,
+        .modal-backdrop.show {
+            background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(20,20,30,0.9)) !important;
+            backdrop-filter: blur(8px);
+            animation: fadeInBackdrop 0.3s ease-out;
+        }
+
+        /* Modal backdrop personalizado (para modales loading) */
+        .yahir-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(20,20,30,0.9));
+            backdrop-filter: blur(8px);
+            z-index: 1050;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInBackdrop 0.3s ease-out;
+        }
+
+        @keyframes fadeInBackdrop {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Sobrescribir estilos de modal-dialog de Bootstrap */
+        .modal-dialog {
+            margin: 30px auto !important;
+            max-width: 90vw !important;
+            width: auto !important;
+            height: auto !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            pointer-events: none !important;
+        }
+        
+        /* Asegurar que modales de Bootstrap con yahir-modal se vean correctamente */
+        .modal .modal-dialog .yahir-modal {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            margin: 0;
+            pointer-events: auto !important;
+        }
+        
+        /* Ajustes específicos por tamaño */
+        .modal-dialog[style*="max-width: 800px"] .yahir-modal {
+            width: 800px;
+        }
+        
+        .modal-dialog[style*="max-width: 600px"] .yahir-modal {
+            width: 600px;
+        }
+
+        /* Contenedor principal del modal */
+        .yahir-modal {
+            position: relative;
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border-radius: 20px;
+            box-shadow: 
+                0 25px 60px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: hidden;
+            animation: modalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-origin: center;
+        }
+
+        @keyframes modalSlideIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.7) translateY(-50px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Header del modal */
+        .yahir-modal-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 25px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .yahir-modal-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: translateX(-100%);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .yahir-modal-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .yahir-modal-title i {
+            margin-right: 12px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Botón de cerrar */
+        .yahir-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 35px;
+            height: 35px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            color: #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .yahir-modal-close:hover {
+            background: rgba(255, 59, 48, 0.8);
+            transform: rotate(90deg) scale(1.1);
+            box-shadow: 0 5px 15px rgba(255, 59, 48, 0.4);
+        }
+
+        /* Body del modal */
+        .yahir-modal-body {
+            padding: 35px 30px;
+            background: linear-gradient(180deg, #1a1a2e, #0f0f1e);
+            color: #e8e8e8;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        /* Estilos para formularios */
+        .yahir-form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .yahir-form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #a0a9c0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .yahir-form-input {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .yahir-form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 
+                0 0 0 3px rgba(102, 126, 234, 0.1),
+                0 8px 25px rgba(102, 126, 234, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .yahir-form-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Input readonly */
+        .yahir-form-input[readonly] {
+            background: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.05);
+            color: #8892b0;
+            cursor: not-allowed;
+        }
+
+        /* Footer del modal */
+        .yahir-modal-footer {
+            padding: 25px 30px;
+            background: linear-gradient(180deg, #0f0f1e, #1a1a2e);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        /* Botones del modal */
+        .yahir-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .yahir-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .yahir-btn:hover::before {
+            left: 100%;
+        }
+
+        .yahir-btn-secondary {
+            background: linear-gradient(135deg, #495057, #6c757d);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        .yahir-btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
+        }
+
+        .yahir-btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .yahir-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .yahir-btn-success {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+        }
+
+        .yahir-btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(72, 187, 120, 0.6);
+        }
+
+        .yahir-btn i {
+            margin-right: 8px;
+        }
+
+        /* Alert personalizado */
+        .yahir-alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .yahir-alert-success {
+            background: linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(56, 161, 105, 0.1));
+            border: 1px solid rgba(72, 187, 120, 0.3);
+            color: #68d391;
+        }
+
+        .yahir-alert i {
+            margin-right: 12px;
+            font-size: 16px;
+        }
+
+        /* Row y columnas */
+        .yahir-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px;
+        }
+
+        .yahir-col-6 {
+            flex: 0 0 50%;
+            padding: 0 10px;
+        }
+
+        .yahir-col-12 {
+            flex: 0 0 100%;
+            padding: 0 10px;
+        }
+
+        /* Loading spinner */
+        .yahir-loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #ffffff;
+            animation: spin 0.8s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Estilos para el dropdown de modelos - compatibilidad */
         .embarque-modal {
             position: fixed;
             top: 0;
@@ -566,6 +850,24 @@
 
         /* Responsive para modales */
         @media (max-width: 768px) {
+            .yahir-modal {
+                margin: 20px;
+                max-width: calc(100vw - 40px);
+            }
+            
+            .yahir-col-6 {
+                flex: 0 0 100%;
+            }
+            
+            .yahir-modal-footer {
+                flex-direction: column;
+            }
+            
+            .yahir-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
             .embarque-modal-content {
                 width: 95%;
                 margin: 10px;
@@ -700,141 +1002,180 @@
 
 <!-- ========================= MODALES BOOTSTRAP ORIGINALES ========================= -->
 
-<!-- Modal para crear nueva PO -->
+<!-- Modal para crear nueva PO - DISEÑO MODERNO -->
 <div class="modal fade" id="modalCrearPO" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="background-color: #2c3e50; color: white; border: 1px solid #34495e;">
-            <div class="modal-header" style="border-bottom: 1px solid #34495e;">
-                <h5 class="modal-title" style="color: #ecf0f1;">
-                    <i class="fas fa-plus me-2"></i>Nueva Purchase Order (PO)
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-lg" style="max-width: 800px;">
+        <div class="yahir-modal">
+            <div class="yahir-modal-header">
+                <h3 class="yahir-modal-title">
+                    <i class="fas fa-plus-circle"></i>Nueva Purchase Order (PO)
+                </h3>
+                <button type="button" class="yahir-modal-close" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="modal-body" style="padding: 20px;">
+            
+            <div class="yahir-modal-body">
                 <form id="formCrearPO">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Código de PO</label>
-                            <input type="text" class="form-control po-input" name="codigo_po" 
-                                   placeholder="Se genera automáticamente" readonly
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                    <div class="yahir-row">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Código de PO</label>
+                                <input type="text" class="yahir-form-input" name="codigo_po" 
+                                       placeholder="Se genera automáticamente" readonly>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Nombre de PO</label>
-                            <input type="text" class="form-control po-input" name="nombre_po" 
-                                   placeholder="Ingrese nombre de PO"
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Nombre de PO</label>
+                                <input type="text" class="yahir-form-input" name="nombre_po" 
+                                       placeholder="Ingrese nombre de PO" required>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Fecha de registro</label>
-                            <input type="date" class="form-control po-input" name="fecha_registro" 
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                    <div class="yahir-row">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Fecha de registro</label>
+                                <input type="date" class="yahir-form-input" name="fecha_registro">
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Cliente</label>
-                            <input type="text" class="form-control po-input" name="cliente" 
-                                   placeholder="Nombre del cliente"
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Cliente</label>
+                                <input type="text" class="yahir-form-input" name="cliente" 
+                                       placeholder="Nombre del cliente" required>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Modelo</label>
-                            <div class="bom-search-container" style="position: relative;">
-                                <input type="text" class="bom-search-dropdown" name="modelo" id="woModelo"
-                                       placeholder="Seleccione un modelo" onkeyup="filtrarModelosWO()" onclick="mostrarDropdownWO()" required
-                                       style="background-color: #34495e; border: 2px solid #2c3e50; color: #ecf0f1; font-size: 12px; min-width: 300px; transition: border-color 0.3s; font-weight: 500; padding: 8px 12px; border-radius: 4px;">
-                                <div class="bom-dropdown-list" id="woDropdownList" style="display: none;">
-                                    <!-- Los modelos se cargarán dinámicamente -->
+                    <div class="yahir-row">
+                        <div class="yahir-col-12">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Modelo</label>
+                                <div class="embarque-search-container" style="position: relative;">
+                                    <input type="text" class="embarque-search-dropdown yahir-form-input" name="modelo" id="woModelo"
+                                           placeholder="Seleccione un modelo" onkeyup="filtrarModelosWO()" onclick="mostrarDropdownWO()" required>
+                                    <div class="embarque-dropdown-list" id="woDropdownList" style="display: none;">
+                                        <!-- Los modelos se cargarán dinámicamente -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Total cantidad entregada</label>
-                            <input type="number" class="form-control po-input" name="total_cantidad_entregada" 
-                                   min="0" value="0"
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                    <div class="yahir-row">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Total cantidad entregada</label>
+                                <input type="number" class="yahir-form-input" name="total_cantidad_entregada" 
+                                       min="0" value="0" placeholder="0">
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Código de entrega</label>
-                            <input type="text" class="form-control po-input" name="codigo_entrega" 
-                                   placeholder="Ingrese código de entrega (manual)"
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Código de entrega</label>
+                                <input type="text" class="yahir-form-input" name="codigo_entrega" 
+                                       placeholder="Código de entrega (manual)">
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Fecha de entrega</label>
-                            <input type="date" class="form-control po-input" name="fecha_entrega" 
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                    <div class="yahir-row">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Fecha de entrega</label>
+                                <input type="date" class="yahir-form-input" name="fecha_entrega">
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label" style="color: #bdc3c7; font-size: 12px;">Cantidad entregada</label>
-                            <input type="number" class="form-control po-input" name="cantidad_entregada" 
-                                   min="0" value="0"
-                                   style="background-color: #34495e; border: 1px solid #4a5568; color: white; font-size: 13px;">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Cantidad entregada</label>
+                                <input type="number" class="yahir-form-input" name="cantidad_entregada" 
+                                       min="0" value="0" placeholder="0">
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="yahir-alert yahir-alert-success">
+                        <i class="fas fa-info-circle"></i>
+                        El código de PO se generará automáticamente en formato: PO-YYMMDD-####
                     </div>
                 </form>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid #34495e;">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" 
-                        style="background-color: #95a5a6; border: none; color: white;">
-                    Cancelar
+            
+            <div class="yahir-modal-footer">
+                <button type="button" class="yahir-btn yahir-btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
                 </button>
-                <button type="button" class="btn btn-primary" onclick="crearPO()" 
-                        style="background-color: #8e44ad; border: none; color: white;">
-                    <i class="fas fa-save me-2"></i>Registrar
+                <button type="button" class="yahir-btn yahir-btn-primary" onclick="crearPO()">
+                    <i class="fas fa-save"></i> Registrar PO
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal para crear WO desde PO -->
+<!-- Modal para crear WO desde PO - DISEÑO MODERNO -->
 <div class="modal fade" id="modalCrearWO" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-cogs me-2"></i>Convertir PO → WO</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-lg" style="max-width: 600px;">
+        <div class="yahir-modal">
+            <div class="yahir-modal-header">
+                <h3 class="yahir-modal-title">
+                    <i class="fas fa-exchange-alt"></i>Convertir PO → WO
+                </h3>
+                <button type="button" class="yahir-modal-close" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="modal-body">
+            
+            <div class="yahir-modal-body">
                 <form id="formCrearWO">
-                    <div class="mb-3">
-                        <label class="form-label">Código PO</label>
-                        <input type="text" class="form-control" name="codigo_po" readonly>
+                    <div class="yahir-form-group">
+                        <label class="yahir-form-label">Código PO</label>
+                        <input type="text" class="yahir-form-input" name="codigo_po" readonly>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Modelo *</label>
-                        <input type="text" class="form-control" name="modelo" placeholder="Ej: LG-REF-001" required>
+                    
+                    <div class="yahir-form-group">
+                        <label class="yahir-form-label">Modelo *</label>
+                        <div class="embarque-search-container" style="position: relative;">
+                            <input type="text" class="embarque-search-dropdown yahir-form-input" name="modelo" id="poModelo"
+                                   placeholder="Seleccione un modelo" onkeyup="filtrarModelosPO()" onclick="mostrarDropdownPO()" required />
+                            <div class="embarque-dropdown-list" id="poDropdownList">
+                                <!-- Los modelos se cargarán dinámicamente -->
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Cantidad Planeada *</label>
-                        <input type="number" class="form-control" name="cantidad_planeada" min="1" required>
+                    
+                    <div class="yahir-row">
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Cantidad Planeada *</label>
+                                <input type="number" class="yahir-form-input" name="cantidad_planeada" min="1" required placeholder="Ej: 100">
+                            </div>
+                        </div>
+                        <div class="yahir-col-6">
+                            <div class="yahir-form-group">
+                                <label class="yahir-form-label">Fecha de Operación *</label>
+                                <input type="date" class="yahir-form-input" name="fecha_operacion" required>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Fecha de Operación *</label>
-                        <input type="date" class="form-control" name="fecha_operacion" required>
-                    </div>
-                    <div class="alert alert-success">
-                        <i class="fas fa-info-circle me-2"></i>
+
+                    <div class="yahir-alert yahir-alert-success">
+                        <i class="fas fa-info-circle"></i>
                         El código WO se generará automáticamente en formato: WO-YYMMDD-####
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" onclick="convertirPOaWO()">
-                    <i class="fas fa-exchange-alt me-2"></i>Crear WO
+            
+            <div class="yahir-modal-footer">
+                <button type="button" class="yahir-btn yahir-btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="yahir-btn yahir-btn-success" onclick="convertirPOaWO()">
+                    <i class="fas fa-cogs"></i> Crear WO
                 </button>
             </div>
         </div>
@@ -870,769 +1211,4 @@
         </div>
     </div>
 </div>
-
-<script>
-// Variables globales para el sistema PO → WO
-let posData = [];
-let wosData = [];
-let dataTablePOs = null;
-let dataTableWOs = null;
-
-// ===========================================
-// FUNCIONES AUXILIARES PARA EL NUEVO ESTILO
-// ===========================================
-
-// Mostrar/ocultar pestañas
-function mostrarTab(tab) {
-    // Ocultar todas las pestañas
-    document.querySelectorAll('.embarque-tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    // Remover clase active de todos los botones
-    document.querySelectorAll('.embarque-tab').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Mostrar la pestaña seleccionada
-    document.getElementById(`tab-${tab}`).classList.add('active');
-    
-    // Activar el botón correspondiente
-    event.target.classList.add('active');
-    
-    // Actualizar contador
-    actualizarContador();
-}
-
-// Toggle para checkbox de seleccionar todo en POs
-function toggleSelectAll() {
-    const selectAll = document.getElementById('selectAll');
-    const checkboxes = document.querySelectorAll('#embarqueTable tbody input[type="checkbox"]');
-    
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAll.checked;
-    });
-}
-
-// Toggle para checkbox de seleccionar todo en WOs
-function toggleSelectAllWO() {
-    const selectAll = document.getElementById('selectAllWO');
-    const checkboxes = document.querySelectorAll('#woTable tbody input[type="checkbox"]');
-    
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAll.checked;
-    });
-}
-
-// Actualizar contador de resultados
-function actualizarContador() {
-    const tabActiva = document.querySelector('.embarque-tab.active').textContent;
-    let total = 0;
-    
-    if (tabActiva.includes('Purchase Orders')) {
-        total = posData.length;
-    } else if (tabActiva.includes('Work Orders')) {
-        total = wosData.length;
-    }
-    
-    document.getElementById('embarqueResultCounter').textContent = `Total registros: ${total}`;
-}
-
-// Funciones de utilidad necesarias para consultarPOs
-function mostrarCargando(mensaje = 'Cargando...') {
-    Swal.fire({
-        title: mensaje,
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-}
-
-function ocultarCargando() {
-    Swal.close();
-}
-
-function mostrarToast(mensaje, tipo = 'info') {
-    const iconos = {
-        success: 'success',
-        error: 'error',
-        warning: 'warning',
-        info: 'info'
-    };
-
-    Swal.fire({
-        icon: iconos[tipo] || 'info',
-        title: mensaje,
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true
-    });
-}
-
-// ===========================================
-// FUNCIONES PRINCIPALES ORIGINALES
-// ===========================================
-
-// Configurar fechas por defecto
-function configurarFechasPorDefecto() {
-    const hoy = new Date();
-    const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
-    
-    document.getElementById('fechaDesde').value = fechaInicio.toISOString().split('T')[0];
-    document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
-}
-
-// Consultar Purchase Orders
-async function consultarPOs() {
-    try {
-        mostrarCargando('Consultando Purchase Orders...');
-        
-        const estado = document.getElementById('estadoFilter')?.value || '';
-        const url = `/api/po/listar${estado ? `?estado=${estado}` : ''}`;
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            posData = result.data || [];
-            actualizarTablaPOs();
-            mostrarToast(`${posData.length} Purchase Orders encontradas`, 'success');
-        } else {
-            throw new Error(result.error || 'Error desconocido');
-        }
-        
-    } catch (error) {
-        console.error('Error consultando POs:', error);
-        mostrarToast('Error consultando Purchase Orders: ' + error.message, 'error');
-        posData = [];
-        actualizarTablaPOs();
-    } finally {
-        ocultarCargando();
-    }
-}
-
-// Consultar Work Orders
-async function consultarWOs() {
-    try {
-        mostrarCargando('Consultando Work Orders...');
-        
-        const response = await fetch('/api/wo/listar', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            wosData = result.data || [];
-            actualizarTablaWOs();
-            mostrarToast(`${wosData.length} Work Orders encontradas`, 'success');
-        } else {
-            throw new Error(result.error || 'Error desconocido');
-        }
-        
-    } catch (error) {
-        console.error('Error consultando WOs:', error);
-        mostrarToast('Error consultando Work Orders: ' + error.message, 'error');
-        wosData = [];
-        actualizarTablaWOs();
-    } finally {
-        ocultarCargando();
-    }
-}
-
-// Actualizar tabla de POs
-function actualizarTablaPOs() {
-    const tbody = document.querySelector('#embarqueTable tbody');
-    if (!tbody) {
-        console.error('Elemento #embarqueTable tbody no encontrado');
-        return;
-    }
-    
-    tbody.innerHTML = '';
-    
-    if (posData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="no-data">No hay Purchase Orders registradas</td></tr>';
-        return;
-    }
-    
-    posData.forEach(po => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><input type="checkbox" class="checkbox-custom row-select" data-po="${po.codigo_po}"></td>
-            <td>${po.codigo_po}</td>
-            <td>${po.nombre_po || '-'}</td>
-            <td>${formatearFecha(po.fecha_registro)}</td>
-            <td>${po.cliente || '-'}</td>
-            <td>${po.modelo || '-'}</td>
-            <td>${po.modelo || '-'}</td>
-            <td>${po.proveedor || '-'}</td>
-            <td>${po.total_cantidad_entregada || 0}</td>
-            <td>${po.cantidad_entregada || 0}</td>
-            <td>${obtenerBadgeEstado(po.estado, 'PO')}</td>
-            <td>${po.codigo_entrega || 'N/A'}</td>
-            <td>${po.fecha_entrega ? formatearFecha(po.fecha_entrega) : 'N/A'}</td>
-            <td>${po.cantidad_entregada || 0}</td>
-            <td>${po.usuario_creacion || 'Sistema'}</td>
-            <td>${po.modificado ? formatearFecha(po.modificado) : 'N/A'}</td>
-        `;
-        tbody.appendChild(row);
-    });
-    
-    // Actualizar contador
-    actualizarContador();
-}
-
-// Actualizar tabla de WOs
-function actualizarTablaWOs() {
-    const tbody = document.querySelector('#woTable tbody');
-    if (!tbody) {
-        console.error('Elemento #woTable tbody no encontrado');
-        return;
-    }
-    
-    tbody.innerHTML = '';
-    
-    if (wosData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay Work Orders registradas</td></tr>';
-        return;
-    }
-    
-    wosData.forEach(wo => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><input type="checkbox" class="checkbox-custom row-select" data-wo="${wo.codigo_wo}"></td>
-            <td>${wo.codigo_wo}</td>
-            <td>${wo.codigo_po}</td>
-            <td>${wo.modelo}</td>
-            <td>${wo.cantidad_planeada || wo.cantidad}</td>
-            <td>${formatearFecha(wo.fecha_operacion)}</td>
-            <td>${obtenerBadgeEstado(wo.estado, 'WO')}</td>
-            <td>${wo.modificador || wo.usuario_creacion}</td>
-            <td>
-                <button onclick="abrirModalCambiarEstado('${wo.codigo_wo}', 'WO')" class="embarque-btn" style="padding: 2px 4px; font-size: 8px;">
-                    ✏️ Estado
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-    
-    // Actualizar contador
-    actualizarContador();
-}
-
-// ===========================================
-// FUNCIONES AUXILIARES
-// ===========================================
-
-// Formatear fecha
-function formatearFecha(fechaStr) {
-    if (!fechaStr) return '-';
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleDateString('es-ES') + ' ' + fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
-// Obtener badge de estado
-function obtenerBadgeEstado(estado, tipo) {
-    const colores = {
-        // Estados PO
-        'PLAN': 'secondary',
-        'PREPARACION': 'warning', 
-        'EMBARCADO': 'info',
-        'EN_TRANSITO': 'primary',
-        'ENTREGADO': 'success',
-        // Estados WO
-        'CREADA': 'secondary',
-        'PLANIFICADA': 'warning',
-        'EN_PRODUCCION': 'primary',
-        'CERRADA': 'success'
-    };
-    
-    const color = colores[estado] || 'secondary';
-    return `<span style="background-color: #${color === 'secondary' ? '95a5a6' : color === 'warning' ? 'f39c12' : color === 'info' ? '3498db' : color === 'primary' ? '2980b9' : '27ae60'}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px;">${estado.replace('_', ' ')}</span>`;
-}
-
-// ===========================================
-// FUNCIONES DE INTERFAZ - BOOTSTRAP MODALS
-// ===========================================
-
-// Configurar fechas por defecto
-function configurarFechasPorDefecto() {
-    const hoy = new Date();
-    const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
-    
-    // Configurar fecha por defecto en modal WO
-    const fechaOperacionInput = document.querySelector('#formCrearWO input[name="fecha_operacion"]');
-    if (fechaOperacionInput) {
-        fechaOperacionInput.value = hoy.toISOString().split('T')[0];
-    }
-}
-
-// Inicializar modal de crear PO
-// ===========================================
-// FUNCIONES DE MODELOS BOM (COPIADAS DE PLAN DE PRODUCCIÓN)
-// ===========================================
-
-// Variable global para almacenar modelos BOM
-let modelosBOM = [];
-
-// Cargar modelos únicos de BOM
-async function cargarModelosBOM() {
-    try {
-        console.log('Cargando modelos desde /listar_modelos_bom...');
-        const response = await fetch('/listar_modelos_bom', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const modelos = await response.json();
-        console.log('Modelos recibidos:', modelos);
-        
-        if (Array.isArray(modelos) && modelos.length > 0) {
-            // Los modelos vienen como array de objetos con propiedad 'modelo'
-            modelosBOM = modelos.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
-            console.log('Modelos procesados:', modelosBOM);
-            llenarDropdownModelos();
-            console.log(`${modelosBOM.length} modelos cargados desde Control de BOM`);
-        } else {
-            console.warn('No se encontraron modelos en la respuesta');
-            modelosBOM = [];
-            llenarDropdownModelos();
-            console.log('No se encontraron modelos en Control de BOM');
-        }
-    } catch (error) {
-        console.error('Error cargando modelos BOM:', error);
-        modelosBOM = [];
-        llenarDropdownModelos();
-    }
-}
-
-// Llenar dropdown de modelos
-function llenarDropdownModelos() {
-    const dropdownList = document.getElementById('woDropdownList');
-    
-    if (!dropdownList) {
-        console.error('Element woDropdownList not found in llenarDropdownModelos');
-        return;
-    }
-    
-    dropdownList.innerHTML = '';
-    
-    modelosBOM.forEach(modelo => {
-        const item = document.createElement('div');
-        item.className = 'bom-dropdown-item';
-        item.setAttribute('data-value', modelo);
-        item.textContent = modelo;
-        item.onclick = function() { seleccionarModeloWO(modelo); };
-        dropdownList.appendChild(item);
-    });
-    
-    console.log(` ${modelosBOM.length} modelos cargados en dropdown WO`);
-}
-
-// Función para filtrar modelos en el dropdown de WO
-function filtrarModelosWO() {
-    const searchInput = document.getElementById('woModelo');
-    const dropdownList = document.getElementById('woDropdownList');
-    const searchTerm = searchInput.value.toLowerCase();
-    
-    // Mostrar el dropdown
-    dropdownList.style.display = 'block';
-    
-    const items = dropdownList.querySelectorAll('.bom-dropdown-item');
-    let hasVisibleItems = false;
-    
-    items.forEach(item => {
-        const modeloText = item.textContent.toLowerCase();
-        if (modeloText.includes(searchTerm)) {
-            item.classList.remove('hidden');
-            hasVisibleItems = true;
-        } else {
-            item.classList.add('hidden');
-        }
-    });
-    
-    // Si no hay coincidencias, ocultar el dropdown
-    if (!hasVisibleItems && searchTerm.length > 0) {
-        dropdownList.style.display = 'none';
-    }
-}
-
-// Función para mostrar dropdown de WO
-function mostrarDropdownWO() {
-    console.log('=== mostrarDropdownWO() llamada ===');
-    const dropdownList = document.getElementById('woDropdownList');
-    const searchInput = document.getElementById('woModelo');
-    
-    if (!dropdownList) {
-        console.error('Element woDropdownList not found');
-        return;
-    }
-    
-    if (!searchInput) {
-        console.error('Element woModelo not found');
-        return;
-    }
-    
-    console.log('Elementos encontrados OK');
-    console.log('Modelos disponibles:', modelosBOM.length);
-    console.log('Dropdown actual display:', dropdownList.style.display);
-    console.log('Dropdown actual z-index:', dropdownList.style.zIndex);
-    
-    // Forzar configuración del dropdown
-    dropdownList.style.display = 'block';
-    dropdownList.style.zIndex = '10000';
-    dropdownList.style.position = 'absolute';
-    
-    if (searchInput.value.trim() === '') {
-        // Si el input está vacío, mostrar todos los modelos
-        const items = dropdownList.querySelectorAll('.bom-dropdown-item');
-        console.log('Items en dropdown:', items.length);
-        items.forEach(item => {
-            item.classList.remove('hidden');
-        });
-        
-        // Si no hay items, llenar el dropdown
-        if (items.length === 0 && modelosBOM.length > 0) {
-            console.log('Dropdown vacío, llenando con modelos...');
-            llenarDropdownModelos();
-        }
-    }
-    
-    console.log('Dropdown configurado - display:', dropdownList.style.display);
-    console.log('=== fin mostrarDropdownWO() ===');
-}
-
-// Función para seleccionar un modelo del dropdown de WO
-function seleccionarModeloWO(modelo) {
-    const searchInput = document.getElementById('woModelo');
-    const dropdownList = document.getElementById('woDropdownList');
-    
-    searchInput.value = modelo;
-    dropdownList.style.display = 'none';
-    
-    console.log('Modelo seleccionado para embarque:', modelo);
-}
-
-// ===========================================
-// FUNCIONES DE MODAL
-// ===========================================
-
-function inicializarModalCrearPO() {
-    const modal = document.getElementById('modalCrearPO');
-    if (modal) {
-        modal.addEventListener('show.bs.modal', function () {
-            const hoy = new Date().toISOString().split('T')[0];
-            
-            // Establecer fecha de registro por defecto
-            const fechaRegistroInput = document.querySelector('input[name="fecha_registro"]');
-            if (fechaRegistroInput) {
-                fechaRegistroInput.value = hoy;
-            }
-            
-            // Establecer fecha de entrega por defecto (mismo día)
-            const fechaEntregaInput = document.querySelector('input[name="fecha_entrega"]');
-            if (fechaEntregaInput) {
-                fechaEntregaInput.value = hoy;
-            }
-            
-            // Limpiar campos
-            const form = document.getElementById('formCrearPO');
-            if (form) {
-                form.reset();
-                // Volver a setear las fechas después del reset
-                if (fechaRegistroInput) fechaRegistroInput.value = hoy;
-                if (fechaEntregaInput) fechaEntregaInput.value = hoy;
-            }
-            
-            // Cargar modelos de Control de BOM
-            cargarModelosBOM();
-        });
-    }
-}
-
-// Abrir modal para crear PO
-function abrirModalCrearPO() {
-    const modal = new bootstrap.Modal(document.getElementById('modalCrearPO'));
-    modal.show();
-}
-
-// Abrir modal para crear WO desde PO
-function abrirModalCrearWO(codigoPO) {
-    const form = document.getElementById('formCrearWO');
-    const codigoPoInput = form.querySelector('input[name="codigo_po"]');
-    if (codigoPoInput) {
-        codigoPoInput.value = codigoPO;
-    }
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalCrearWO'));
-    modal.show();
-}
-
-// Abrir modal para cambiar estado
-function abrirModalCambiarEstado(codigo, tipo) {
-    const form = document.getElementById('formCambiarEstado');
-    const codigoInput = form.querySelector('input[name="codigo"]');
-    const tipoInput = form.querySelector('input[name="tipo"]');
-    
-    if (codigoInput) codigoInput.value = codigo;
-    if (tipoInput) tipoInput.value = tipo;
-    
-    const selectEstado = form.querySelector('select[name="estado"]');
-    if (selectEstado) {
-        selectEstado.innerHTML = '';
-        
-        // Cargar opciones según el tipo
-        const estados = tipo === 'PO' 
-            ? ['PLAN', 'PREPARACION', 'EMBARCADO', 'EN_TRANSITO', 'ENTREGADO']
-            : ['CREADA', 'PLANIFICADA', 'EN_PRODUCCION', 'CERRADA'];
-        
-        estados.forEach(estado => {
-            const option = document.createElement('option');
-            option.value = estado;
-            option.textContent = estado.replace('_', ' ');
-            selectEstado.appendChild(option);
-        });
-    }
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalCambiarEstado'));
-    modal.show();
-}
-
-// ===========================================
-// FUNCIONES CRUD
-// ===========================================
-
-// Crear nueva Purchase Order
-async function crearPO() {
-    try {
-        const form = document.getElementById('formCrearPO');
-        const formData = new FormData(form);
-        
-        const data = {
-            nombre_po: formData.get('nombre_po'),
-            fecha_registro: formData.get('fecha_registro'),
-            modelo: formData.get('modelo'),
-            proveedor: formData.get('proveedor'),
-            total_cantidad_entregada: parseInt(formData.get('total_cantidad_entregada')) || 0,
-            fecha_entrega: formData.get('fecha_entrega'),
-            cantidad_entregada: parseInt(formData.get('cantidad_entregada')) || 0,
-            codigo_entrega: formData.get('codigo_entrega'),
-            cliente: formData.get('cliente') || formData.get('proveedor'), // Usar cliente o proveedor
-            estado: 'PLAN'
-        };
-        
-        // Validaciones básicas
-        if (!data.nombre_po) {
-            mostrarToast('El nombre de PO es obligatorio', 'warning');
-            return;
-        }
-        
-        if (!data.proveedor) {
-            mostrarToast('El proveedor es obligatorio', 'warning');
-            return;
-        }
-        
-        if (!data.fecha_registro) {
-            mostrarToast('La fecha de registro es obligatoria', 'warning');
-            return;
-        }
-        
-        mostrarCargando('Creando Purchase Order...');
-        
-        const response = await fetch('/api/po/crear', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            mostrarToast(`PO ${result.data.codigo_po} creada exitosamente`, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('modalCrearPO')).hide();
-            form.reset();
-            await consultarPOs(); // Recargar tabla
-        } else {
-            throw new Error(result.error || 'Error creando PO');
-        }
-    } catch (error) {
-        console.error('Error creando PO:', error);
-        mostrarToast('Error creando PO: ' + error.message, 'error');
-    } finally {
-        ocultarCargando();
-    }
-}
-
-// Convertir PO a WO
-async function convertirPOaWO() {
-    try {
-        const form = document.getElementById('formCrearWO');
-        const formData = new FormData(form);
-        
-        const data = {
-            modelo: formData.get('modelo'),
-            cantidad_planeada: parseInt(formData.get('cantidad_planeada')),
-            fecha_operacion: formData.get('fecha_operacion')
-        };
-        
-        const codigoPO = formData.get('codigo_po');
-        
-        if (!data.modelo || !data.cantidad_planeada || !data.fecha_operacion) {
-            mostrarToast('Todos los campos son obligatorios', 'warning');
-            return;
-        }
-        
-        mostrarCargando('Convirtiendo PO → WO...');
-        
-        const response = await fetch(`/api/po/${codigoPO}/convertir-wo`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            mostrarToast(`WO ${result.data.wo.codigo_wo} creada desde PO ${codigoPO}`, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('modalCrearWO')).hide();
-            form.reset();
-            await consultarWOs(); // Recargar tabla WOs
-        } else {
-            throw new Error(result.error || 'Error convirtiendo PO → WO');
-        }
-    } catch (error) {
-        console.error('Error convirtiendo PO → WO:', error);
-        mostrarToast('Error convirtiendo PO → WO: ' + error.message, 'error');
-    } finally {
-        ocultarCargando();
-    }
-}
-
-// Actualizar estado (PO o WO)
-async function actualizarEstado() {
-    try {
-        const form = document.getElementById('formCambiarEstado');
-        const formData = new FormData(form);
-        
-        const codigo = formData.get('codigo');
-        const tipo = formData.get('tipo');
-        const estado = formData.get('estado');
-        
-        if (!estado) {
-            mostrarToast('Debe seleccionar un estado', 'warning');
-            return;
-        }
-        
-        mostrarCargando('Actualizando estado...');
-        
-        const endpoint = tipo === 'PO' ? `/api/po/${codigo}/estado` : `/api/wo/${codigo}/estado`;
-        
-        const response = await fetch(endpoint, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ estado })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            mostrarToast(`Estado actualizado a ${estado}`, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('modalCambiarEstado')).hide();
-            
-            // Recargar tabla correspondiente
-            if (tipo === 'PO') {
-                await consultarPOs();
-            } else {
-                await consultarWOs();
-            }
-        } else {
-            throw new Error(result.error || 'Error actualizando estado');
-        }
-    } catch (error) {
-        console.error('Error actualizando estado:', error);
-        mostrarToast('Error actualizando estado: ' + error.message, 'error');
-    } finally {
-        ocultarCargando();
-    }
-}
-
-function exportarDatos() {
-    const tabActiva = document.querySelector('.embarque-tab.active').textContent;
-    
-    if (tabActiva.includes('Purchase Orders')) {
-        if (posData.length === 0) {
-            mostrarToast('No hay POs para exportar', 'warning');
-            return;
-        }
-        mostrarToast('Exportando Purchase Orders...', 'info');
-    } else {
-        if (wosData.length === 0) {
-            mostrarToast('No hay WOs para exportar', 'warning'); 
-            return;
-        }
-        mostrarToast('Exportando Work Orders...', 'info');
-    }
-}
-
-// Event listener para cerrar dropdown cuando se hace clic fuera
-document.addEventListener('click', function(event) {
-    const bomSearchContainer = document.querySelector('.bom-search-container');
-    const woDropdownList = document.getElementById('woDropdownList');
-    
-    if (bomSearchContainer && !bomSearchContainer.contains(event.target) && woDropdownList) {
-        woDropdownList.style.display = 'none';
-    }
-});
-
-// ===========================================
-// INICIALIZACIÓN
-// ===========================================
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Sistema PO → WO inicializado');
-    
-    // Configurar fechas por defecto
-    configurarFechasPorDefecto();
-    
-    // Inicializar modal de crear PO
-    inicializarModalCrearPO();
-    
-    // Cargar datos iniciales
-    consultarPOs();
-    
-    console.log(' Control de Embarque - Sistema PO → WO completamente funcional');
-});
-</script>
+<script src="{{ url_for('static', filename='js/control-embarque.js') }}"></script>

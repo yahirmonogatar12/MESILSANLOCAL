@@ -1821,7 +1821,7 @@ def control_embarque():
 def control_embarque_ajax():
     """Ruta AJAX para cargar dinámicamente el contenido de Control de embarque"""
     try:
-        return render_template('Control de produccion/Control de embarquehtml')
+        return render_template('Control de produccion/Control de embarque.html')
     except Exception as e:
         print(f"Error al cargar template Control de embarque AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
