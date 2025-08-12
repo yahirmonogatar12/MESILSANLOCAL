@@ -21,24 +21,24 @@ try:
     pymysql.install_as_MySQLdb()
     import MySQLdb
     MYSQL_DIRECT_AVAILABLE = True
-    print("✅ pymysql disponible para conexión directa")
+    print(" pymysql disponible para conexión directa")
 except ImportError:
     MYSQL_DIRECT_AVAILABLE = False
-    print("⚠️ pymysql no disponible - usando solo modo HTTP")
+    print(" pymysql no disponible - usando solo modo HTTP")
 
 # Importar cliente HTTP
 try:
     from .mysql_http_client import MySQLHTTPClient
     HTTP_CLIENT_AVAILABLE = True
-    print("✅ Cliente HTTP disponible")
+    print(" Cliente HTTP disponible")
 except ImportError:
     try:
         from mysql_http_client import MySQLHTTPClient
         HTTP_CLIENT_AVAILABLE = True
-        print("✅ Cliente HTTP disponible")
+        print(" Cliente HTTP disponible")
     except ImportError:
         HTTP_CLIENT_AVAILABLE = False
-        print("⚠️ Cliente HTTP no disponible")
+        print(" Cliente HTTP no disponible")
 
 # Configuración de modo de conexión
 USE_HTTP_PROXY = os.getenv('USE_HTTP_PROXY', 'auto').lower()
@@ -249,7 +249,7 @@ def test_direct_connection():
             connection.close()
             
             if result:
-                print("✅ Conexión directa exitosa")
+                print(" Conexión directa exitosa")
                 return True
         
         print("❌ Error en conexión directa")
@@ -266,7 +266,7 @@ def test_http_connection():
         if client and client.health_check():
             result = client.execute_query("SELECT 1 as test", fetch='one')
             if result and result.get('test') == 1:
-                print("✅ Conexión HTTP exitosa")
+                print(" Conexión HTTP exitosa")
                 return True
         
         print("❌ Error en conexión HTTP")
@@ -300,6 +300,6 @@ if __name__ == "__main__":
     print(f"🌐 Conexión HTTP disponible: {info['http_available']}")
     
     if test_connection():
-        print("✅ Conexión exitosa")
+        print(" Conexión exitosa")
     else:
         print("❌ Error de conexión")

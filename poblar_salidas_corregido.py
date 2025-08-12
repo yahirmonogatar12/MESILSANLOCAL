@@ -10,7 +10,7 @@ try:
     cursor = conn.cursor()
     
     # Poblar datos iniciales de salidas usando los nombres correctos
-    print('🔄 Poblando datos iniciales de salidas...')
+    print(' Poblando datos iniciales de salidas...')
     
     cursor.execute('''
         SELECT 
@@ -40,7 +40,7 @@ try:
             WHERE numero_parte = %s
         ''', (total_salidas, total_salidas, total_salidas, fecha_ultima_salida_nueva, numero_parte))
         
-        print(f"  ✅ {numero_parte}: {total_salidas} salidas")
+        print(f"   {numero_parte}: {total_salidas} salidas")
     
     # Verificar el resultado final
     print('\n=== Verificando inventario consolidado final ===')
@@ -63,7 +63,7 @@ try:
     cursor.close()
     conn.close()
     
-    print('\n✅ Datos de salidas poblados exitosamente')
+    print('\n Datos de salidas poblados exitosamente')
     
 except Exception as e:
     print(f'❌ Error: {e}')

@@ -88,7 +88,7 @@
             
             // Validar que no se intente cargar todos los modelos
             if (modelo === 'todos' || !modelo || modelo.trim() === '') {
-                showCustomAlert('⚠️ Debe seleccionar un modelo específico.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
+                showCustomAlert(' Debe seleccionar un modelo específico.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
                 const tbody = document.querySelector('#bomTableBody');
                 tbody.innerHTML = '<tr><td colspan="15" class="no-data">Seleccione un modelo específico para visualizar los datos de BOM.</td></tr>';
                 return;
@@ -229,7 +229,7 @@
             
             // Validar que haya un modelo seleccionado
             if (!modeloSeleccionado || modeloSeleccionado.trim() === '' || modeloSeleccionado === 'todos') {
-                showCustomAlert('⚠️ Debe seleccionar un modelo específico antes de exportar.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
+                showCustomAlert(' Debe seleccionar un modelo específico antes de exportar.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
                 return;
             }
             
@@ -314,7 +314,7 @@
 
     function actualizarEstadoCheckbox(rowIndex, columnName, isChecked) {
         // Los checkboxes están deshabilitados, esta función no debería ejecutarse
-        console.warn(`⚠️ Intento de modificar checkbox deshabilitado: Fila ${rowIndex}, Columna ${columnName}`);
+        console.warn(` Intento de modificar checkbox deshabilitado: Fila ${rowIndex}, Columna ${columnName}`);
         return false;
     }
 
@@ -400,7 +400,7 @@
         
         // Validar que no se seleccione "todos"
         if (modelo === 'todos') {
-            showCustomAlert('⚠️ Debe seleccionar un modelo específico.<br><br>Por favor elija un modelo de la lista para evitar saturar la pantalla.');
+            showCustomAlert(' Debe seleccionar un modelo específico.<br><br>Por favor elija un modelo de la lista para evitar saturar la pantalla.');
             dropdownList.style.display = 'none';
             return;
         }
@@ -542,7 +542,7 @@
         
         // Validar que haya un modelo seleccionado
         if (!modeloSeleccionado || modeloSeleccionado.trim() === '' || modeloSeleccionado === 'todos') {
-            showCustomAlert('⚠️ Debe seleccionar un modelo específico antes de consultar.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
+            showCustomAlert(' Debe seleccionar un modelo específico antes de consultar.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
             return;
         }
         

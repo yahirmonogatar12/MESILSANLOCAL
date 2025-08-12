@@ -27,13 +27,13 @@ REM Crear tarea que se ejecute al inicio
 schtasks /create /tn "ZebraPrintServiceAuto" /tr "%~dp0start_service_auto.bat" /sc onstart /ru SYSTEM /f
 
 if %errorLevel% equ 0 (
-    echo ✅ Tarea programada creada exitosamente
+    echo  Tarea programada creada exitosamente
     echo.
     echo 2. Configurando para ejecutar ahora...
     schtasks /run /tn "ZebraPrintServiceAuto"
     
     echo.
-    echo ✅ CONFIGURACION COMPLETADA
+    echo  CONFIGURACION COMPLETADA
     echo.
     echo El servicio ahora se iniciara automaticamente:
     echo - Al encender la computadora

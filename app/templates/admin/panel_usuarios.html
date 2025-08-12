@@ -328,7 +328,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-warning">
-                        <strong>⚠️ Atención:</strong> Esta acción es <strong>irreversible</strong>.
+                        <strong> Atención:</strong> Esta acción es <strong>irreversible</strong>.
                     </div>
                     <p>¿Está seguro de que desea eliminar permanentemente el usuario:</p>
                     <div class="text-center">
@@ -503,7 +503,7 @@
         async function editarUsuario(username) {
             // Proteger el usuario admin
             if (username === 'admin') {
-                mostrarNotificacion('⚠️ El usuario administrador está protegido y no puede ser modificado desde este panel por motivos de seguridad.', 'warning');
+                mostrarNotificacion(' El usuario administrador está protegido y no puede ser modificado desde este panel por motivos de seguridad.', 'warning');
                 return;
             }
             
@@ -662,7 +662,7 @@
         function confirmarBorrarUsuario(username) {
             // Proteger el usuario admin
             if (username === 'admin') {
-                mostrarNotificacion('⚠️ El usuario administrador está protegido y no puede ser eliminado.', 'warning');
+                mostrarNotificacion(' El usuario administrador está protegido y no puede ser eliminado.', 'warning');
                 return;
             }
             

@@ -163,14 +163,14 @@
                     </div>
                 </div>
                 <button type="submit">🔍 Filtrar</button>
-                <a href="?" style="margin-left: 10px; padding: 10px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">🔄 Limpiar</a>
+                <a href="?" style="margin-left: 10px; padding: 10px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;"> Limpiar</a>
             </form>
         </div>
 
         {% if rows %}
         <div class="stats">
-            <div class="stat-item total-count">📋 Total: {{rows|length}} registros</div>
-            <div class="stat-item ok-count">✅ OK: {{ok_count}} registros</div>
+            <div class="stat-item total-count"> Total: {{rows|length}} registros</div>
+            <div class="stat-item ok-count"> OK: {{ok_count}} registros</div>
             <div class="stat-item ng-count">❌ NG: {{ng_count}} registros</div>
             <div class="stat-item">📁 Archivos únicos: {{unique_files}}</div>
         </div>
@@ -197,7 +197,7 @@
         </div>
         {% else %}
         <div class="stats">
-            <div class="stat-item">📋 No se encontraron registros con los filtros aplicados</div>
+            <div class="stat-item"> No se encontraron registros con los filtros aplicados</div>
         </div>
         {% endif %}
     </div>

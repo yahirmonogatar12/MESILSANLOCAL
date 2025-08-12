@@ -45,7 +45,7 @@ def crear_inventario_consolidado():
         """
         
         cursor.execute(tabla_inventario)
-        print("✅ Tabla inventario_consolidado creada")
+        print(" Tabla inventario_consolidado creada")
         
         # 2. Crear trigger para actualizaciones de entradas (control_material_almacen)
         trigger_entradas = """
@@ -100,7 +100,7 @@ def crear_inventario_consolidado():
         
         cursor.execute("DROP TRIGGER IF EXISTS tr_actualizar_inventario_entrada")
         cursor.execute(trigger_entradas)
-        print("✅ Trigger de entradas creado")
+        print(" Trigger de entradas creado")
         
         # 3. Crear trigger para actualizaciones de salidas (control_material_salida)
         # Nota: En control_material_salida no hay numero_parte directo, se debe derivar del codigo_material_recibido
@@ -138,7 +138,7 @@ def crear_inventario_consolidado():
         
         cursor.execute("DROP TRIGGER IF EXISTS tr_actualizar_inventario_salida")
         cursor.execute(trigger_salidas)
-        print("✅ Trigger de salidas creado")
+        print(" Trigger de salidas creado")
         
         # 4. Crear trigger para actualizaciones en control_material_almacen
         trigger_update_entradas = """
@@ -163,10 +163,10 @@ def crear_inventario_consolidado():
         
         cursor.execute("DROP TRIGGER IF EXISTS tr_actualizar_inventario_update")
         cursor.execute(trigger_update_entradas)
-        print("✅ Trigger de actualización de entradas creado")
+        print(" Trigger de actualización de entradas creado")
         
         conn.commit()
-        print("🎉 Sistema de inventario consolidado creado exitosamente")
+        print(" Sistema de inventario consolidado creado exitosamente")
         
         # 5. Poblar tabla con datos existentes
         print("📊 Poblando inventario consolidado con datos existentes...")
@@ -232,7 +232,7 @@ def crear_inventario_consolidado():
         filas_afectadas = cursor.rowcount
         conn.commit()
         
-        print(f"✅ Inventario consolidado poblado con {filas_afectadas} registros")
+        print(f" Inventario consolidado poblado con {filas_afectadas} registros")
         
         # 6. Verificar algunos registros
         cursor.execute("""
@@ -243,7 +243,7 @@ def crear_inventario_consolidado():
         """)
         
         registros = cursor.fetchall()
-        print("\n📋 Muestra de inventario consolidado:")
+        print("\n Muestra de inventario consolidado:")
         for reg in registros:
             print(f"  {reg[0]}: Entradas={reg[1]}, Salidas={reg[2]}, Actual={reg[3]}, Lotes={reg[4]}")
         

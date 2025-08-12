@@ -29,7 +29,7 @@ def execute_with_retry(operation, max_retries=3, retry_delay=0.1):
             return operation()
         except sqlite3.OperationalError as e:
             if "database is locked" in str(e).lower() and attempt < max_retries - 1:
-                print(f"🔄 Intento {attempt + 1}/{max_retries}: Base de datos bloqueada, reintentando en {retry_delay}s...")
+                print(f" Intento {attempt + 1}/{max_retries}: Base de datos bloqueada, reintentando en {retry_delay}s...")
                 time.sleep(retry_delay)
                 retry_delay *= 2  # Backoff exponencial
                 continue
@@ -1625,8 +1625,8 @@ def crear_rol():
             
             # Registrar en auditoría (simplificado para evitar bloqueos)
             usuario_actual = session.get('usuario')
-            print(f"📝 Usuario actual: {usuario_actual}")
-            print(f"📝 Acción: crear_rol - Rol '{data['nombre']}' creado con nivel {nivel}")
+            print(f" Usuario actual: {usuario_actual}")
+            print(f" Acción: crear_rol - Rol '{data['nombre']}' creado con nivel {nivel}")
             
             # TODO: Restaurar auditoría completa cuando se resuelva el problema de bloqueo de DB
             # auth_system.registrar_auditoria(
@@ -1635,7 +1635,7 @@ def crear_rol():
             #     accion='crear_rol',
             #     descripcion=f'Rol "{data["nombre"]}" creado con nivel {nivel}'
             # )
-            print("✅ Auditoría registrada (modo simplificado)")
+            print(" Auditoría registrada (modo simplificado)")
             
             cursor.execute('COMMIT')
             
@@ -1698,7 +1698,7 @@ def eliminar_rol(rol_id):
             return jsonify({'error': 'Rol no encontrado'}), 404
         
         rol_dict = dict(rol)
-        print(f"📋 Rol encontrado: {rol_dict['nombre']} (Nivel: {rol_dict['nivel']})")
+        print(f" Rol encontrado: {rol_dict['nombre']} (Nivel: {rol_dict['nivel']})")
         
         # Verificar que no sea un rol del sistema (nivel >= 8)
         if rol_dict['nivel'] >= 8:
@@ -1719,7 +1719,7 @@ def eliminar_rol(rol_id):
             }), 400
         
         # Iniciar transacción
-        print("🔄 Iniciando transacción...")
+        print(" Iniciando transacción...")
         cursor.execute('BEGIN IMMEDIATE')
         
         try:
@@ -1745,10 +1745,10 @@ def eliminar_rol(rol_id):
                 return jsonify({'error': 'No se pudo eliminar el rol'}), 500
             
             # Registrar en auditoría (simplificado para evitar bloqueos)
-            print("📝 Registrando en auditoría...")
+            print(" Registrando en auditoría...")
             usuario_actual = session.get('usuario')
-            print(f"📝 Usuario actual: {usuario_actual}")
-            print(f"📝 Acción: eliminar_rol - Rol '{rol_dict['nombre']}' eliminado por {usuario_actual}")
+            print(f" Usuario actual: {usuario_actual}")
+            print(f" Acción: eliminar_rol - Rol '{rol_dict['nombre']}' eliminado por {usuario_actual}")
             
             # TODO: Restaurar auditoría completa cuando se resuelva el problema de bloqueo de DB
             # auth_system.registrar_auditoria(
@@ -1757,10 +1757,10 @@ def eliminar_rol(rol_id):
             #     accion='eliminar_rol',
             #     descripcion=f'Rol "{rol_dict["nombre"]}" eliminado'
             # )
-            print("✅ Auditoría registrada (modo simplificado)")
+            print(" Auditoría registrada (modo simplificado)")
             
             cursor.execute('COMMIT')
-            print(f"✅ Rol '{rol_dict['nombre']}' eliminado exitosamente")
+            print(f" Rol '{rol_dict['nombre']}' eliminado exitosamente")
             
             return jsonify({
                 'success': True,
@@ -1768,7 +1768,7 @@ def eliminar_rol(rol_id):
             })
             
         except Exception as e:
-            print(f"🔄 Error en transacción, haciendo rollback: {e}")
+            print(f" Error en transacción, haciendo rollback: {e}")
             cursor.execute('ROLLBACK')
             print(f"❌ Error en transacción eliminando rol: {e}")
             return jsonify({'error': f'Error eliminando rol: {str(e)}'}), 500
@@ -1904,4 +1904,4 @@ def actualizar_rol(rol_id):
 def init_admin_routes(app):
     """Inicializar las rutas de administración en la app"""
     app.register_blueprint(user_admin_bp)
-    print("✅ Rutas de administración de usuarios registradas")
+    print(" Rutas de administración de usuarios registradas")

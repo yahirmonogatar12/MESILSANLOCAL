@@ -9,7 +9,7 @@ try:
     conn = pymysql.connect(**config)
     cursor = conn.cursor()
     
-    print('🔄 Eliminando triggers anteriores...')
+    print(' Eliminando triggers anteriores...')
     
     # Eliminar triggers existentes
     triggers_to_drop = [
@@ -24,11 +24,11 @@ try:
     for trigger_name in triggers_to_drop:
         try:
             cursor.execute(f"DROP TRIGGER IF EXISTS {trigger_name}")
-            print(f"✅ Trigger {trigger_name} eliminado")
+            print(f" Trigger {trigger_name} eliminado")
         except Exception as e:
-            print(f"⚠️ Error eliminando trigger {trigger_name}: {e}")
+            print(f" Error eliminando trigger {trigger_name}: {e}")
     
-    print('\n🔄 Creando triggers corregidos...')
+    print('\n Creando triggers corregidos...')
     
     # Trigger AFTER INSERT para salidas (corregido)
     trigger_insert_salida = '''
@@ -197,7 +197,7 @@ try:
     for trigger_name, trigger_sql in triggers:
         try:
             cursor.execute(trigger_sql)
-            print(f"✅ Trigger {trigger_name} creado exitosamente")
+            print(f" Trigger {trigger_name} creado exitosamente")
         except Exception as e:
             print(f"❌ Error creando trigger {trigger_name}: {e}")
     
@@ -205,7 +205,7 @@ try:
     cursor.close()
     conn.close()
     
-    print('\n✅ Todos los triggers corregidos y funcionando')
+    print('\n Todos los triggers corregidos y funcionando')
     
 except Exception as e:
     print(f'❌ Error: {e}')

@@ -98,12 +98,12 @@
             </div>
             
             <button class="btn btn-primary" onclick="ejecutarTestsPermisos()">🧪 Ejecutar Tests</button>
-            <button class="btn btn-info" onclick="mostrarTodosLosPermisos()">📋 Mostrar Todos los Permisos</button>
+            <button class="btn btn-info" onclick="mostrarTodosLosPermisos()"> Mostrar Todos los Permisos</button>
             <button class="btn btn-secondary" onclick="limpiarConsola()">🗑️ Limpiar Consola</button>
         </div>
         
         <div class="test-container">
-            <h3>🎯 Elementos de Prueba con Atributos</h3>
+            <h3> Elementos de Prueba con Atributos</h3>
             <p>Estos elementos deberían aparecer solo si tienes los permisos correspondientes:</p>
             
             <!-- Elementos de prueba con atributos de permisos -->
@@ -174,7 +174,7 @@
                     <p><strong>Total de permisos:</strong> ${data.total_permisos}</p>
                 `;
                 
-                log(`✅ Usuario cargado: ${data.usuario} (${data.rol})`);
+                log(` Usuario cargado: ${data.usuario} (${data.rol})`);
                 log(`📊 Total permisos: ${data.total_permisos}`);
                 
                 return data;
@@ -225,7 +225,7 @@
                 const tienePermiso = PermisosDropdowns.tienePermiso(test.pagina, test.seccion, test.boton);
                 
                 const cssClass = tienePermiso ? 'permitido' : 'denegado';
-                const icono = tienePermiso ? '✅' : '❌';
+                const icono = tienePermiso ? '' : '❌';
                 const status = tienePermiso ? 'PERMITIDO' : 'DENEGADO';
                 
                 html += `
@@ -244,12 +244,12 @@
             }
             
             document.getElementById('permisosTest').innerHTML = html;
-            log('✅ Tests completados');
+            log(' Tests completados');
         }
         
         // Mostrar todos los permisos del usuario
         function mostrarTodosLosPermisos() {
-            log('📋 Permisos del usuario actual:');
+            log(' Permisos del usuario actual:');
             
             if (!permisosUsuario || Object.keys(permisosUsuario).length === 0) {
                 log('❌ No hay permisos cargados');
@@ -312,7 +312,7 @@
                 ejecutarTestsPermisos();
             }, 1000);
             
-            log('✅ Sistema de test listo');
+            log(' Sistema de test listo');
             log('💡 Puedes usar testPermiso(pagina, seccion, boton) en la consola del navegador');
         });
     </script>

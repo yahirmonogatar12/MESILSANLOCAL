@@ -19,7 +19,7 @@ try:
     ''', fetch='all')
     
     if permisos:
-        print('✅ Permiso IMD-SMD TERMINADO encontrado:')
+        print(' Permiso IMD-SMD TERMINADO encontrado:')
         for permiso in permisos:
             print(f'  ID: {permiso["id"] if isinstance(permiso, dict) else permiso[0]}')
             print(f'  Página: {permiso["pagina"] if isinstance(permiso, dict) else permiso[1]}')
@@ -47,7 +47,7 @@ try:
             ''', (rol_id, permiso_id))
             
             print(f"Resultado de asignación: {result_asign}")
-            print("✅ Permiso asignado al rol superadmin")
+            print(" Permiso asignado al rol superadmin")
         else:
             print("❌ No se encontró el rol superadmin")
     else:

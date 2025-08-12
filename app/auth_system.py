@@ -60,7 +60,7 @@ class AuthSystem:
         
         if MYSQL_AVAILABLE:
             # Usar MySQL - las tablas se crean automáticamente
-            print("✅ Sistema de autenticación usando MySQL")
+            print(" Sistema de autenticación usando MySQL")
             return
         
         # Fallback a SQLite
@@ -217,7 +217,7 @@ class AuthSystem:
             self._asignar_permisos_botones_roles(cursor)
             
             conn.commit()
-            print("✅ Sistema de usuarios inicializado correctamente")
+            print(" Sistema de usuarios inicializado correctamente")
             
         except Exception as e:
             print(f"❌ Error inicializando base de datos: {e}")
@@ -594,7 +594,7 @@ class AuthSystem:
                     ''', (admin_id, rol_superadmin[0], 'sistema'))
                 
                 conn.commit()
-                print("✅ Usuario administrador creado: admin/admin123")
+                print(" Usuario administrador creado: admin/admin123")
             
             conn.close()
         except Exception as e:
@@ -885,7 +885,7 @@ class AuthSystem:
                 if isinstance(permisos, dict):
                     if modulo in permisos and accion in permisos[modulo]:
                         tiene_permiso = True
-                        print(f"✅ Permiso encontrado: {modulo}.{accion}")
+                        print(f" Permiso encontrado: {modulo}.{accion}")
                     else:
                         print(f"❌ Permiso no encontrado: {modulo}.{accion} en {permisos.get(modulo, 'módulo no encontrado')}")
                 else:
@@ -911,7 +911,7 @@ class AuthSystem:
                     
                     return redirect('/login')
                 
-                print(f"✅ Permiso concedido: {modulo}.{accion}")
+                print(f" Permiso concedido: {modulo}.{accion}")
                 
                 # Registrar inicio de acción
                 inicio = datetime.now()
@@ -961,7 +961,7 @@ class AuthSystem:
                     return jsonify({'error': 'No autenticado'}), 401
                 return redirect('/login')  # Usar ruta absoluta en lugar de url_for
             
-            print(f"✅ Usuario {session.get('usuario')} accediendo a {request.endpoint}")
+            print(f" Usuario {session.get('usuario')} accediendo a {request.endpoint}")
             # Actualizar última actividad
             self._actualizar_actividad_sesion(session.get('usuario'))
             

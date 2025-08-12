@@ -341,7 +341,7 @@ function formatearFecha(fecha, corto = false) {
 
 function setupInventarioModalEvents() {
     // Configuración básica de eventos
-    console.log('📋 Configurando eventos de modales de inventario');
+    console.log(' Configurando eventos de modales de inventario');
 }
 
 function actualizarInventarioContadorSeleccionados() {

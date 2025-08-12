@@ -42,7 +42,7 @@ def probar_endpoint_directo():
             
             if result.get('success'):
                 inventario = result.get('inventario', [])
-                print(f"✅ Respuesta exitosa")
+                print(f" Respuesta exitosa")
                 print(f"📦 Total registros: {len(inventario)}")
                 
                 if inventario:
@@ -63,11 +63,11 @@ def probar_endpoint_directo():
                         # Verificar cálculo
                         esperado = entradas - salidas
                         if abs(cantidad - esperado) < 0.01:
-                            print(f"   ✅ Cálculo correcto: {entradas:,.0f} - {salidas:,.0f} = {cantidad:,.0f}")
+                            print(f"    Cálculo correcto: {entradas:,.0f} - {salidas:,.0f} = {cantidad:,.0f}")
                         else:
                             print(f"   ❌ Error en cálculo: esperado {esperado:,.0f}, obtenido {cantidad:,.0f}")
                 else:
-                    print("⚠️ No hay datos en el inventario")
+                    print(" No hay datos en el inventario")
                     
             else:
                 print(f"❌ Error en respuesta: {result.get('error', 'Error desconocido')}")
@@ -112,9 +112,9 @@ def mostrar_estado_esperado():
        📉 Salidas: 0
        📦 Disponible: 5,000
     
-    ✅ Tabla: db_rrpq0erbdujn.inventario_consolidado
-    ✅ Registros: 4 números de parte
-    ✅ Conexión MySQL: Funcionando intermitentemente
+     Tabla: db_rrpq0erbdujn.inventario_consolidado
+     Registros: 4 números de parte
+     Conexión MySQL: Funcionando intermitentemente
     """)
 
 if __name__ == "__main__":

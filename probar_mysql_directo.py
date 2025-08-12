@@ -32,7 +32,7 @@ def probar_conexion_mysql():
         
         # Conectar
         connection = pymysql.connect(**config)
-        print("✅ Conexión MySQL exitosa")
+        print(" Conexión MySQL exitosa")
         
         # Probar consulta
         cursor = connection.cursor()
@@ -42,7 +42,7 @@ def probar_conexion_mysql():
         tabla_existe = cursor.fetchone()
         
         if tabla_existe:
-            print("✅ Tabla inventario_consolidado encontrada")
+            print(" Tabla inventario_consolidado encontrada")
             
             # Contar registros
             cursor.execute("SELECT COUNT(*) FROM inventario_consolidado")
@@ -62,7 +62,7 @@ def probar_conexion_mysql():
             """)
             
             registros = cursor.fetchall()
-            print("\n📋 PRIMEROS 3 REGISTROS:")
+            print("\n PRIMEROS 3 REGISTROS:")
             for i, reg in enumerate(registros, 1):
                 numero_parte, entradas, salidas, cantidad = reg
                 print(f"  {i}. {numero_parte}: E:{entradas} - S:{salidas} = {cantidad}")
@@ -73,7 +73,7 @@ def probar_conexion_mysql():
             # Mostrar todas las tablas disponibles
             cursor.execute("SHOW TABLES")
             tablas = cursor.fetchall()
-            print(f"\n📋 TABLAS DISPONIBLES ({len(tablas)}):")
+            print(f"\n TABLAS DISPONIBLES ({len(tablas)}):")
             for tabla in tablas:
                 print(f"  - {tabla[0]}")
         

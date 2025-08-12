@@ -40,17 +40,17 @@ try:
         if test_conn:
             test_conn.close()
             MYSQL_AVAILABLE = True
-            print("✅ Usando MySQL como base de datos")
+            print(" Usando MySQL como base de datos")
         else:
             MYSQL_AVAILABLE = False
-            print("⚠️ MySQL no disponible - usando SQLite como fallback")
+            print(" MySQL no disponible - usando SQLite como fallback")
     except Exception as e:
         MYSQL_AVAILABLE = False
-        print(f"⚠️ Error conectando a MySQL: {e}")
-        print("⚠️ Usando SQLite como fallback")
+        print(f" Error conectando a MySQL: {e}")
+        print(" Usando SQLite como fallback")
 except ImportError as e:
-    print(f"⚠️ Error importando MySQL: {e}")
-    print("⚠️ Usando funciones de fallback SQLite")
+    print(f" Error importando MySQL: {e}")
+    print(" Usando funciones de fallback SQLite")
     MYSQL_AVAILABLE = False
 
 def get_db_connection():
@@ -171,7 +171,7 @@ def create_legacy_tables():
     for table_name, create_sql in tables.items():
         try:
             execute_query(create_sql)
-            print(f"✅ Tabla {table_name} creada/verificada")
+            print(f" Tabla {table_name} creada/verificada")
         except Exception as e:
             print(f"❌ Error creando tabla {table_name}: {e}")
 
@@ -346,13 +346,13 @@ def migrar_datos_sqlite():
     try:
         sqlite_db_path = os.path.join(os.path.dirname(__file__), 'database', 'ISEMM_MES.db')
         if os.path.exists(sqlite_db_path):
-            print("🔄 Iniciando migración desde SQLite...")
+            print(" Iniciando migración desde SQLite...")
             success = migrar_desde_sqlite(sqlite_db_path)
             if success:
-                print("✅ Migración completada exitosamente")
+                print(" Migración completada exitosamente")
             return success
         else:
-            print("⚠️ No se encontró base de datos SQLite para migrar")
+            print(" No se encontró base de datos SQLite para migrar")
             return True
     except Exception as e:
         print(f"❌ Error en migración: {e}")
@@ -379,9 +379,9 @@ def test_database_connection():
 if __name__ == "__main__":
     print("🧪 Probando conexión a base de datos...")
     if test_database_connection():
-        print("✅ Conexión exitosa")
+        print(" Conexión exitosa")
         if init_db():
-            print("✅ Base de datos inicializada")
+            print(" Base de datos inicializada")
         else:
             print("❌ Error inicializando base de datos")
     else:

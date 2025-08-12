@@ -104,12 +104,12 @@ def crear_tablas_po_wo():
     Crear tablas del sistema PO → WO
     """
     try:
-        print("📋 Creando tablas del sistema PO → WO...")
+        print(" Creando tablas del sistema PO → WO...")
         
         # Crear las tablas
         db.create_all()
         
-        print("✅ Tablas embarques y work_orders creadas/verificadas")
+        print(" Tablas embarques y work_orders creadas/verificadas")
         return True
         
     except Exception as e:

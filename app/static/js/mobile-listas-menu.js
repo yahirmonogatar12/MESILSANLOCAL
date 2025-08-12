@@ -32,14 +32,14 @@ class MobileListas {
         const mobileMenuHTML = `
             <div class="mobile-listas-menu" id="${MLM_PREFIX}mobileListas" aria-label="Menú móvil de listas" role="navigation">
                 <button class="mobile-listas-toggle" id="${MLM_PREFIX}toggleMobileListas" aria-haspopup="true" aria-controls="${MLM_PREFIX}mobileListasDropdown" aria-expanded="false">
-                    📋 Listas
+                     Listas
                 </button>
                 <div class="mobile-listas-dropdown" id="${MLM_PREFIX}mobileListasDropdown" style="display: none;">
-                    <div class="mobile-lista-item" data-lista="informacion-basica" tabindex="0">📋 Información Básica</div>
+                    <div class="mobile-lista-item" data-lista="informacion-basica" tabindex="0"> Información Básica</div>
                     <div class="mobile-lista-item" data-lista="control-material" tabindex="0">🔧 Control de Material</div>
                     <div class="mobile-lista-item" data-lista="control-produccion" tabindex="0">🏭 Control de Producción</div>
                     <div class="mobile-lista-item" data-lista="control-proceso" tabindex="0">⚙️ Control de Proceso</div>
-                    <div class="mobile-lista-item" data-lista="control-calidad" tabindex="0">✅ Control de Calidad</div>
+                    <div class="mobile-lista-item" data-lista="control-calidad" tabindex="0"> Control de Calidad</div>
                     <div class="mobile-lista-item" data-lista="control-resultados" tabindex="0">📊 Control de Resultados</div>
                     <div class="mobile-lista-item" data-lista="control-reporte" tabindex="0">📄 Control de Reporte</div>
                     <div class="mobile-lista-item" data-lista="configuracion" tabindex="0">⚙️ Configuración</div>
@@ -178,9 +178,9 @@ class MobileListas {
         
         this.modalBody.innerHTML = `
             <div style="padding: 20px; color: white;">
-                <h4 style="color: #3498db; margin-bottom: 20px;">📋 ${titulo}</h4>
+                <h4 style="color: #3498db; margin-bottom: 20px;"> ${titulo}</h4>
                 <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin: 10px 0;">
-                    <h5 style="color: #2ecc71;">✅ Lista Cargada</h5>
+                    <h5 style="color: #2ecc71;"> Lista Cargada</h5>
                     <p>Esta es la lista de <strong>${titulo}</strong></p>
                     <p>El contenido específico se cargaría desde el servidor.</p>
                 </div>

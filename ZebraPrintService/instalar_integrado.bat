@@ -23,9 +23,9 @@ timeout /t 3 /nobreak >nul
 
 echo.
 echo 2. Verificando dependencias...
-python -c "import flask, flask_cors, win32print; print('✅ Todas las dependencias OK')" 2>nul
+python -c "import flask, flask_cors, win32print; print(' Todas las dependencias OK')" 2>nul
 if %errorLevel% neq 0 (
-    echo ⚠️  Instalando dependencias...
+    echo   Instalando dependencias...
     pip install flask flask-cors pywin32
 )
 
@@ -52,10 +52,10 @@ echo.
 echo 6. Iniciando servicio...
 sc start ZebraFlaskIntegrado
 if %errorLevel% neq 0 (
-    echo ⚠️  Servicio instalado pero no pudo iniciar automáticamente
+    echo   Servicio instalado pero no pudo iniciar automáticamente
     echo Intente iniciar manualmente desde services.msc
 ) else (
-    echo ✅ Servicio iniciado correctamente
+    echo  Servicio iniciado correctamente
 )
 
 echo.
@@ -64,17 +64,17 @@ timeout /t 10 /nobreak >nul
 
 echo.
 echo 8. Probando conectividad...
-powershell -Command "try { $r = Invoke-WebRequest -Uri 'http://localhost:5003' -UseBasicParsing -TimeoutSec 10; Write-Host '✅ SERVICIO FUNCIONANDO - Estado:' $r.StatusCode } catch { Write-Host '⚠️  Servicio iniciando o con problemas...' }"
+powershell -Command "try { $r = Invoke-WebRequest -Uri 'http://localhost:5003' -UseBasicParsing -TimeoutSec 10; Write-Host ' SERVICIO FUNCIONANDO - Estado:' $r.StatusCode } catch { Write-Host '  Servicio iniciando o con problemas...' }"
 
 echo.
 echo ===================================
 echo  INSTALACION COMPLETADA
 echo ===================================
 echo.
-echo ✅ Servicio: ZebraFlaskIntegrado
-echo ✅ Puerto: 5003  
-echo ✅ Ubicación: C:\ZebraService\
-echo ✅ Logs: C:\ZebraService\zebra_flask_service.log
+echo  Servicio: ZebraFlaskIntegrado
+echo  Puerto: 5003  
+echo  Ubicación: C:\ZebraService\
+echo  Logs: C:\ZebraService\zebra_flask_service.log
 echo.
 echo Para gestionar:
 echo - services.msc (buscar "Servicio Zebra Flask Integrado")

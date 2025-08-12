@@ -25,7 +25,7 @@ try:
         ('fecha_ultima_salida', 'DATETIME NULL'),
     ]
     
-    print('\n🔄 Agregando columnas faltantes...')
+    print('\n Agregando columnas faltantes...')
     
     # Agregar columnas si no existen
     for column_name, column_definition in required_columns:
@@ -33,14 +33,14 @@ try:
             try:
                 alter_sql = f"ALTER TABLE inventario_consolidado ADD COLUMN {column_name} {column_definition}"
                 cursor.execute(alter_sql)
-                print(f"✅ Columna {column_name} agregada")
+                print(f" Columna {column_name} agregada")
             except Exception as e:
                 print(f"❌ Error agregando columna {column_name}: {e}")
         else:
-            print(f"ℹ️ Columna {column_name} ya existe")
+            print(f" Columna {column_name} ya existe")
     
     # Ahora poblar datos iniciales de salidas
-    print('\n🔄 Poblando datos iniciales de salidas...')
+    print('\n Poblando datos iniciales de salidas...')
     
     cursor.execute('''
         SELECT 
@@ -69,7 +69,7 @@ try:
             WHERE numero_parte = %s
         ''', (total_salidas, total_salidas, fecha_ultima_salida, numero_parte))
         
-        print(f"  ✅ {numero_parte}: {total_salidas} salidas")
+        print(f"   {numero_parte}: {total_salidas} salidas")
     
     # Verificar el resultado final
     print('\n=== Verificando inventario consolidado final ===')
@@ -92,7 +92,7 @@ try:
     cursor.close()
     conn.close()
     
-    print('\n✅ Estructura corregida y datos poblados exitosamente')
+    print('\n Estructura corregida y datos poblados exitosamente')
     
 except Exception as e:
     print(f'❌ Error: {e}')

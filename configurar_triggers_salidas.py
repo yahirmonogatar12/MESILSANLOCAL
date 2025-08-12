@@ -16,7 +16,7 @@ try:
             return codigo_material_recibido.split(',')[0]
         return codigo_material_recibido
     
-    print('🔄 Creando triggers para control_material_salida...')
+    print(' Creando triggers para control_material_salida...')
     
     # Trigger AFTER INSERT para salidas
     trigger_insert_salida = '''
@@ -143,9 +143,9 @@ try:
     for trigger_name in triggers_to_drop:
         try:
             cursor.execute(f"DROP TRIGGER IF EXISTS {trigger_name}")
-            print(f"✅ Trigger {trigger_name} eliminado (si existía)")
+            print(f" Trigger {trigger_name} eliminado (si existía)")
         except Exception as e:
-            print(f"⚠️ Error eliminando trigger {trigger_name}: {e}")
+            print(f" Error eliminando trigger {trigger_name}: {e}")
     
     # Crear nuevos triggers
     triggers = [
@@ -157,12 +157,12 @@ try:
     for trigger_name, trigger_sql in triggers:
         try:
             cursor.execute(trigger_sql)
-            print(f"✅ Trigger {trigger_name} creado exitosamente")
+            print(f" Trigger {trigger_name} creado exitosamente")
         except Exception as e:
             print(f"❌ Error creando trigger {trigger_name}: {e}")
     
     # Poblar datos iniciales de salidas
-    print('\n🔄 Poblando datos iniciales de salidas...')
+    print('\n Poblando datos iniciales de salidas...')
     
     cursor.execute('''
         SELECT 
@@ -191,7 +191,7 @@ try:
             WHERE numero_parte = %s
         ''', (total_salidas, total_salidas, fecha_ultima_salida, numero_parte))
         
-        print(f"  ✅ {numero_parte}: {total_salidas} salidas")
+        print(f"   {numero_parte}: {total_salidas} salidas")
     
     # Verificar el resultado final
     print('\n=== Verificando inventario consolidado final ===')
@@ -215,7 +215,7 @@ try:
     cursor.close()
     conn.close()
     
-    print('\n✅ Triggers para salidas configurados exitosamente')
+    print('\n Triggers para salidas configurados exitosamente')
     
 except Exception as e:
     print(f'❌ Error: {e}')

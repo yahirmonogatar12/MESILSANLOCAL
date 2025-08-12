@@ -304,10 +304,10 @@ function mostrarAlerta(mensaje, tipo = 'info') {
     const messageDiv = document.getElementById('csvAlertMessage');
     
     const iconMap = {
-        'success': '✅',
+        'success': '',
         'error': '❌', 
-        'warning': '⚠️',
-        'info': 'ℹ️'
+        'warning': '',
+        'info': ''
     };
     
     messageDiv.innerHTML = `

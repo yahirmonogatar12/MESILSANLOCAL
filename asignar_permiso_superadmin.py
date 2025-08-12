@@ -36,7 +36,7 @@ try:
             ''', (rol_id, permiso_id))
             
             print(f"Resultado de asignación: {result}")
-            print("✅ Permiso asignado al rol superadmin")
+            print(" Permiso asignado al rol superadmin")
             
             # Verificar asignación
             verificacion = execute_query('''

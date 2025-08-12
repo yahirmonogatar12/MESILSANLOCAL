@@ -12,15 +12,15 @@ try:
     pymysql.install_as_MySQLdb()
     import MySQLdb
     MYSQL_AVAILABLE = True
-    print("✅ pymysql disponible para config_mysql")
+    print(" pymysql disponible para config_mysql")
 except ImportError:
     MYSQL_AVAILABLE = False
-    print("⚠️ pymysql no disponible para config_mysql - usando modo fallback")
+    print(" pymysql no disponible para config_mysql - usando modo fallback")
 
 def get_mysql_connection_string():
     """Construir cadena de conexión para MySQL"""
     if not MYSQL_AVAILABLE:
-        print("⚠️ MySQL no disponible - retornando None")
+        print(" MySQL no disponible - retornando None")
         return None
         
     host = os.getenv('MYSQL_HOST', 'localhost')
@@ -61,7 +61,7 @@ MYSQL_CONFIG = {
 def get_mysql_connection():
     """Obtener conexión a MySQL"""
     if not MYSQL_AVAILABLE:
-        print("⚠️ MySQL no disponible - retornando None")
+        print(" MySQL no disponible - retornando None")
         return None
         
     try:
@@ -78,7 +78,7 @@ def get_mysql_connection():
 def get_db_connection():
     """Context manager para conexión a MySQL"""
     if not MYSQL_AVAILABLE:
-        print("⚠️ MySQL no disponible - retornando None")
+        print(" MySQL no disponible - retornando None")
         yield None
         return
         
@@ -98,7 +98,7 @@ def get_db_connection():
 def execute_query(query, params=None, fetch=None):
     """Ejecutar consulta en MySQL"""
     if not MYSQL_AVAILABLE:
-        print("⚠️ MySQL no disponible - retornando valores por defecto")
+        print(" MySQL no disponible - retornando valores por defecto")
         if fetch == 'one':
             return None
         elif fetch == 'all':
@@ -108,7 +108,7 @@ def execute_query(query, params=None, fetch=None):
             
     with get_db_connection() as conn:
         if conn is None:
-            print("⚠️ Conexión MySQL no disponible - retornando valores por defecto")
+            print(" Conexión MySQL no disponible - retornando valores por defecto")
             if fetch == 'one':
                 return None
             elif fetch == 'all':
@@ -199,6 +199,6 @@ def test_connection():
 if __name__ == "__main__":
     print("🧪 Probando conexión a MySQL...")
     if test_connection():
-        print("✅ Conexión exitosa")
+        print(" Conexión exitosa")
     else:
         print("❌ Error de conexión")

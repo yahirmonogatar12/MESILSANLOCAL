@@ -90,7 +90,7 @@
                 }));
                 
             } catch (error) {
-                console.warn('⚠️ Error cargando permisos del servidor, usando cache:', error);
+                console.warn(' Error cargando permisos del servidor, usando cache:', error);
                 
                 // Intentar cargar desde cache
                 const cached = localStorage.getItem('permisos_dropdowns');
@@ -110,7 +110,7 @@
          */
         tienePermiso(pagina, seccion, boton) {
             if (!pagina || !seccion || !boton) {
-                if (CONFIG.DEBUG) console.warn('⚠️ Parámetros incompletos para verificar permiso');
+                if (CONFIG.DEBUG) console.warn(' Parámetros incompletos para verificar permiso');
                 return false;
             }
             
@@ -163,7 +163,7 @@
             
             if (!pagina || !seccion || !boton) {
                 if (CONFIG.DEBUG) {
-                    console.warn('⚠️ Elemento sin datos de permisos completos:', elemento);
+                    console.warn(' Elemento sin datos de permisos completos:', elemento);
                 }
                 return;
             }
@@ -239,7 +239,7 @@
             elemento.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                alert(`⚠️ No tienes permisos para acceder a: ${boton}`);
+                alert(` No tienes permisos para acceder a: ${boton}`);
                 return false;
             });
             
@@ -247,7 +247,7 @@
             elemento.addEventListener('touchstart', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                alert(`⚠️ No tienes permisos para acceder a: ${boton}`);
+                alert(` No tienes permisos para acceder a: ${boton}`);
                 return false;
             });
             
@@ -376,7 +376,7 @@
          */
         verificarPermisoAntesFuncion(pagina, seccion, boton, funcionCallback) {
             if (!this.tienePermiso(pagina, seccion, boton)) {
-                alert(`⚠️ No tienes permisos para acceder a: ${boton}`);
+                alert(` No tienes permisos para acceder a: ${boton}`);
                 console.warn(`🚫 Acceso denegado a función: ${pagina} > ${seccion} > ${boton}`);
                 return false;
             }
@@ -399,7 +399,7 @@
                     if (this.tienePermiso(pagina, seccion, boton)) {
                         return funcionOriginal.apply(this, args);
                     } else {
-                        alert(`⚠️ No tienes permisos para acceder a: ${boton}`);
+                        alert(` No tienes permisos para acceder a: ${boton}`);
                         console.warn(`🚫 Acceso denegado a función: ${nombreFuncion}`);
                         return false;
                     }

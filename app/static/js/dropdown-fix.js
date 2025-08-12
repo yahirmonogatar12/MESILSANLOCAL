@@ -39,7 +39,7 @@
         waitForBootstrap(() => {
             setupDropdownFix();
             isInitialized = true;
-            log('✅ Solución universal inicializada correctamente');
+            log(' Solución universal inicializada correctamente');
         });
     }
     
@@ -61,7 +61,7 @@
     // INTERCEPTAR EVENTOS DE BOOTSTRAP
     // ===============================================
     function interceptBootstrapCollapseEvents() {
-        log('🎯 Interceptando eventos de Bootstrap Collapse...');
+        log(' Interceptando eventos de Bootstrap Collapse...');
         
         // Buscar todos los elementos de collapse existentes
         document.querySelectorAll('.collapse').forEach(element => {
@@ -102,7 +102,7 @@
         };
         
         const hiddenHandler = (e) => {
-            log(`✅ Hidden: ${elementId}`);
+            log(` Hidden: ${elementId}`);
             // Asegurar que el elemento esté completamente cerrado
             setTimeout(() => {
                 if (!element.classList.contains('show')) {
@@ -212,7 +212,7 @@
             });
             
             if (shouldReinitialize) {
-                log('🔄 Nuevos elementos detectados, reinicializando...');
+                log(' Nuevos elementos detectados, reinicializando...');
                 setTimeout(() => {
                     setupDropdownFix();
                 }, 100);

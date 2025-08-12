@@ -92,12 +92,12 @@ def demo_rohm_sequence():
     print()
     
     print("=== VENTAJAS DE ESTE MÉTODO ===")
-    print("✅ Funciona con cualquier número de parte ROHM")
-    print("✅ Funciona con cualquier lote ROHM") 
-    print("✅ No depende de números específicos")
-    print("✅ Solo requiere que haya exactamente 2 espacios entre campos")
-    print("✅ Más robusto que regex flexible")
-    print("✅ Más simple que carácter por carácter")
+    print(" Funciona con cualquier número de parte ROHM")
+    print(" Funciona con cualquier lote ROHM") 
+    print(" No depende de números específicos")
+    print(" Solo requiere que haya exactamente 2 espacios entre campos")
+    print(" Más robusto que regex flexible")
+    print(" Más simple que carácter por carácter")
 
 if __name__ == '__main__':
     demo_rohm_sequence()

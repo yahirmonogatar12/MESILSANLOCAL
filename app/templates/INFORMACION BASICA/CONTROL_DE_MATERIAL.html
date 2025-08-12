@@ -365,14 +365,14 @@ document.addEventListener('DOMContentLoaded', function () {
 function inicializarPanelLateral() {
     // Forzar inicialización del drawer si no existe
     if (typeof window.materialEditDrawer === 'undefined') {
-        console.log('🔄 Inicializando panel lateral después de carga AJAX...');
+        console.log(' Inicializando panel lateral después de carga AJAX...');
         
         // Cargar el script dinámicamente si no está cargado
         if (!document.querySelector('script[src*="material-edit-drawer.js"]')) {
             const script = document.createElement('script');
             script.src = '{{ url_for("static", filename="js/material-edit-drawer.js") }}';
             script.onload = function() {
-                console.log('✅ Script del panel lateral cargado via AJAX');
+                console.log(' Script del panel lateral cargado via AJAX');
             };
             document.head.appendChild(script);
         } else {

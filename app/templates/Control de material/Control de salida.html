@@ -339,7 +339,7 @@
         window.CONTROL_SALIDA_FUNCTIONS_LOADED = true;
         window.SALIDA_RAPIDA_ACTIVA = true;
 
-        // 🎯 OBSERVADOR PARA DETECTAR CAMBIOS EN EL DOM (AJAX RELOADS)
+        //  OBSERVADOR PARA DETECTAR CAMBIOS EN EL DOM (AJAX RELOADS)
         window.configurarObservadorAJAX = function() {
             if (window.controlSalidaObserver) {
                 window.controlSalidaObserver.disconnect();
@@ -404,7 +404,7 @@
         // Función de inicialización simplificada
         function inicializarControlSalida() {
             if (window.controlSalidaInicializado) {
-                console.log('⚠️ Control de salida ya inicializado');
+                console.log(' Control de salida ya inicializado');
                 return;
             }
             
@@ -440,13 +440,13 @@
                 if (codigoInput) {
                     setTimeout(() => {
                         codigoInput.focus();
-                        console.log('✅ Campo de código enfocado');
+                        console.log(' Campo de código enfocado');
                     }, 300);
                 }
 
                 // Mostrar por defecto las tablas de registro
                 mostrarRegistroSalida();
-                console.log('✅ Control de Salida SIN VERIFICACIÓN inicializado');
+                console.log(' Control de Salida SIN VERIFICACIÓN inicializado');
                 
             } catch (error) {
                 console.error('❌ Error en inicialización:', error);
@@ -580,7 +580,7 @@
             });
             
             ref.focus();
-            console.log('✅ Sistema INTELIGENTE instalado:');
+            console.log(' Sistema INTELIGENTE instalado:');
             console.log('   - Enter manual (siempre funciona)');
             console.log('   - Auto-detección para escáner carácter-por-carácter');
             console.log('   - 800ms sin caracteres nuevos = código completo');
@@ -631,7 +631,7 @@
             // VERIFICAR SI YA EXISTE EN LA COLA (evitar duplicados)
             const yaExiste = colaEscaneo.some(item => item.codigo === codigo);
             if (yaExiste) {
-                console.log(`⚠️ Código duplicado ignorado: ${codigo}`);
+                console.log(` Código duplicado ignorado: ${codigo}`);
                 return;
             }
             
@@ -661,7 +661,7 @@
             if (procesandoCola || colaEscaneo.length === 0) return;
             
             procesandoCola = true;
-            console.log(`🔄 Iniciando procesamiento de cola (${colaEscaneo.length} items)`);
+            console.log(` Iniciando procesamiento de cola (${colaEscaneo.length} items)`);
             
             while (colaEscaneo.length > 0) {
                 const item = colaEscaneo.shift();
@@ -684,10 +684,10 @@
             }
             
             procesandoCola = false;
-            console.log('✅ Cola de procesamiento completada');
+            console.log(' Cola de procesamiento completada');
             
             if (typeof mostrarMensajeSimple === 'function') {
-                mostrarMensajeSimple('🎉 Todos los escaneos procesados', 'success');
+                mostrarMensajeSimple(' Todos los escaneos procesados', 'success');
             }
         }
         
@@ -709,7 +709,7 @@
                 
                 if (stock <= 0) {
                     if (typeof mostrarMensajeSimple === 'function') {
-                        mostrarMensajeSimple(`⚠️ Sin stock: ${item.codigo.substring(0, 8)}...`, 'warning');
+                        mostrarMensajeSimple(` Sin stock: ${item.codigo.substring(0, 8)}...`, 'warning');
                     }
                     return;
                 }
@@ -752,7 +752,7 @@
                 
                 if (data.success) {
                     if (typeof mostrarMensajeSimple === 'function') {
-                        mostrarMensajeSimple(`✅ ${material.numero_parte || 'Material'}: ${cantidad}`, 'success');
+                        mostrarMensajeSimple(` ${material.numero_parte || 'Material'}: ${cantidad}`, 'success');
                     }
                     
                     // Actualizar faltantes en segundo plano (más rápido)
@@ -781,7 +781,7 @@
             // Actualizar título de la página con contador y estado
             const pendientes = colaEscaneo.length;
             const procesados = contadorEscaneos - pendientes;
-            const estado = procesandoCola ? '🔄' : (pendientes > 0 ? '⏸️' : '✅');
+            const estado = procesandoCola ? '' : (pendientes > 0 ? '⏸️' : '');
             
             document.title = `${estado} Control Salida - Escaneados: ${contadorEscaneos} | Pendientes: ${pendientes}`;
             
@@ -832,7 +832,7 @@
                 
                 if (data.success) {
                     if (typeof mostrarMensajeSimple === 'function') {
-                        mostrarMensajeSimple(`✅ Salida: ${cantidad}`, 'success');
+                        mostrarMensajeSimple(` Salida: ${cantidad}`, 'success');
                     }
                     
                     if (material.numero_parte) {

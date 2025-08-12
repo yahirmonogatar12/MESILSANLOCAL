@@ -1,18 +1,18 @@
-// 🎯 Panel Lateral de Edición para Materiales
-// 📝 Sistema moderno con animaciones para editar materiales
+//  Panel Lateral de Edición para Materiales
+//  Sistema moderno con animaciones para editar materiales
 
 // 🆕 Función global para forzar inicialización (útil para AJAX)
 window.initializeMaterialDrawer = function() {
     if (!window.materialEditDrawer) {
-        console.log('🎯 Inicializando Panel de Edición de Materiales...');
+        console.log(' Inicializando Panel de Edición de Materiales...');
         window.materialEditDrawer = new MaterialEditDrawer();
-        console.log('✅ Panel de Edición de Materiales inicializado');
+        console.log(' Panel de Edición de Materiales inicializado');
     }
     
     if (!window.materialRegistroDrawer) {
-        console.log('🎯 Inicializando Panel de Registro de Materiales...');
+        console.log(' Inicializando Panel de Registro de Materiales...');
         window.materialRegistroDrawer = new MaterialRegistroDrawer();
-        console.log('✅ Panel de Registro de Materiales inicializado');
+        console.log(' Panel de Registro de Materiales inicializado');
     }
     
     return true;
@@ -20,11 +20,11 @@ window.initializeMaterialDrawer = function() {
 
 // Funciones globales para compatibilidad y carga AJAX
 window.abrirPanelEdicion = function(btn) {
-    console.log('🎯 Intentando abrir panel de edición...');
+    console.log(' Intentando abrir panel de edición...');
     
     // Asegurar que el drawer esté inicializado
     if (!window.materialEditDrawer) {
-        console.log('⚠️ MaterialEditDrawer no inicializado, inicializando ahora...');
+        console.log(' MaterialEditDrawer no inicializado, inicializando ahora...');
         window.initializeMaterialDrawer();
         
         // Esperar un momento para que se inicialice
@@ -469,7 +469,7 @@ class MaterialEditDrawer {
     bindEvents() {
         // El sistema ahora genera los botones directamente en la tabla
         // No necesitamos agregar botones automáticamente
-        console.log('🎯 Sistema de panel lateral listo - botones generados en tabla');
+        console.log(' Sistema de panel lateral listo - botones generados en tabla');
     }
 
     addEditButtonsToTable() {
@@ -634,7 +634,7 @@ class MaterialEditDrawer {
                 // Mostrar mensaje de éxito
                 this.showSuccess(result.message);
                 
-                console.log('✅ Material actualizado exitosamente');
+                console.log(' Material actualizado exitosamente');
             } else {
                 throw new Error(result.error || 'Error desconocido al actualizar');
             }
@@ -750,7 +750,7 @@ class MaterialEditDrawer {
     }
 }
 
-// 🎯 Panel Lateral de Registro para Materiales
+//  Panel Lateral de Registro para Materiales
 class MaterialRegistroDrawer {
     constructor() {
         this.createDrawerHTML();
@@ -932,7 +932,7 @@ class MaterialRegistroDrawer {
         document.getElementById('registroDrawer').classList.add('open');
         document.getElementById('registroDrawerOverlay').classList.add('active');
 
-        console.log('📝 Panel de registro abierto');
+        console.log(' Panel de registro abierto');
     }
 
     cerrarDrawer() {
@@ -999,7 +999,7 @@ class MaterialRegistroDrawer {
                 // Mostrar mensaje de éxito
                 this.showSuccess(result.message || "Material registrado exitosamente! Haga clic en 'Consultar' para ver los datos actualizados.");
                 
-                console.log('✅ Material registrado exitosamente');
+                console.log(' Material registrado exitosamente');
             } else {
                 throw new Error(result.error || 'Error desconocido al registrar');
             }
@@ -1078,6 +1078,6 @@ if (document.readyState === 'loading') {
 
 // 🚀 Inicializar el sistema cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎯 Inicializando Panel de Edición de Materiales via DOMContentLoaded...');
+    console.log(' Inicializando Panel de Edición de Materiales via DOMContentLoaded...');
     window.initializeMaterialDrawer();
 });

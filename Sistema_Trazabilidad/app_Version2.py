@@ -95,7 +95,7 @@ def apply_sequence_rule(text, rule):
             start_pos = rule['lotNumberStart']
             length = rule['lotNumberLength']
             
-            print(f"🎯 Aplicando extracción específica del lote:")
+            print(f" Aplicando extracción específica del lote:")
             print(f"- Lote original: '{lot_number}'")
             print(f"- Posición inicio: {start_pos}")
             print(f"- Longitud: {length}")

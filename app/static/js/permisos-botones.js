@@ -23,7 +23,7 @@ class PermisosManager {
             // this.configurarObservadores();  // COMENTADO temporalmente para debuggear
             
             this.inicializado = true;
-            this.log('✅ Sistema de permisos inicializado correctamente');
+            this.log(' Sistema de permisos inicializado correctamente');
         } catch (error) {
             console.error('❌ Error inicializando sistema de permisos:', error);
         }
@@ -40,7 +40,7 @@ class PermisosManager {
             }
             
             this.permisosUsuario = await response.json();
-            this.log('📋 Permisos del usuario cargados:', this.permisosUsuario);
+            this.log(' Permisos del usuario cargados:', this.permisosUsuario);
         } catch (error) {
             console.error('❌ Error cargando permisos:', error);
             this.permisosUsuario = {};
@@ -73,7 +73,7 @@ class PermisosManager {
         const boton = elemento.getAttribute('data-permiso-boton');
 
         if (!pagina || !seccion || !boton) {
-            this.log('⚠️ Elemento sin permisos completos:', elemento);
+            this.log(' Elemento sin permisos completos:', elemento);
             return;
         }
 
@@ -85,7 +85,7 @@ class PermisosManager {
             this.deshabilitarElemento(elemento);
         }
 
-        this.log(`${tienePermiso ? '✅' : '❌'} ${pagina}>${seccion}>${boton}`, elemento);
+        this.log(`${tienePermiso ? '' : '❌'} ${pagina}>${seccion}>${boton}`, elemento);
     }
 
     /**
@@ -227,7 +227,7 @@ class PermisosManager {
             });
             
             if (hayNuevosElementos) {
-                this.log('🔄 Nuevos elementos procesados por Observer');
+                this.log(' Nuevos elementos procesados por Observer');
             }
         });
 
@@ -249,7 +249,7 @@ class PermisosManager {
         try {
             await this.cargarPermisosUsuario();
             this.aplicarPermisos();
-            this.log('🔄 Permisos refrescados');
+            this.log(' Permisos refrescados');
         } catch (error) {
             console.error('❌ Error refrescando permisos:', error);
         }

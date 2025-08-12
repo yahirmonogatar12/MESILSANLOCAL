@@ -16,7 +16,7 @@ def probar_frontend_optimizado():
         
         if response.status_code == 200:
             data = response.json()
-            print(f"✅ Endpoint responde correctamente")
+            print(f" Endpoint responde correctamente")
             print(f"📊 Total de registros: {len(data)}")
             
             # Mostrar algunos ejemplos de datos
@@ -49,7 +49,7 @@ def probar_frontend_optimizado():
                 campos_esperados = ['numero_parte', 'total_entradas', 'total_salidas', 'cantidad_total']
                 for campo in campos_esperados:
                     if campo in sample:
-                        print(f"✅ Campo '{campo}' presente")
+                        print(f" Campo '{campo}' presente")
                     else:
                         print(f"❌ Campo '{campo}' faltante")
             
@@ -76,7 +76,7 @@ def generar_ejemplo_html():
     │                 │              │ +90,000      │
     │                 │              │ -105,000     │
     ├─────────────────┼──────────────┼──────────────┤
-    │ 0CK102CK5DA     │ MAT-002      │ ⚠️ -8,000    │
+    │ 0CK102CK5DA     │ MAT-002      │  -8,000    │
     │                 │              │ +4,000       │
     │                 │              │ -12,000      │
     └─────────────────┴──────────────┴──────────────┘

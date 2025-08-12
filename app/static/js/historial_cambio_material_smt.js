@@ -1,7 +1,7 @@
 // Variables globales - prevent redeclaration in dynamic loading
 if (typeof window.csvViewerLoaded === 'undefined') {
     window.csvViewerLoaded = true;
-    console.log('🔄 Loading CSV Viewer v3.5 - SMT Compatible');
+    console.log(' Loading CSV Viewer v3.5 - SMT Compatible');
 
 // Variables globales
 var allData = [];
@@ -605,13 +605,13 @@ window.initHistorialSMTModule = function() {
     elements.forEach(id => {
         const element = document.getElementById(id);
         if (!element) {
-            console.warn(`⚠️ Elemento ${id} no encontrado`);
+            console.warn(` Elemento ${id} no encontrado`);
             allElementsFound = false;
         }
     });
     
     if (allElementsFound) {
-        console.log('✅ Todos los elementos SMT encontrados correctamente');
+        console.log(' Todos los elementos SMT encontrados correctamente');
         
         // Establecer fecha actual en los campos de fecha con sufijo
         const fechaHoy = new Date().toISOString().split('T')[0];
@@ -621,7 +621,7 @@ window.initHistorialSMTModule = function() {
         if (fechaDesde) fechaDesde.value = fechaHoy;
         if (fechaHasta) fechaHasta.value = fechaHoy;
         
-        console.log('✅ Fechas establecidas en campos SMT');
+        console.log(' Fechas establecidas en campos SMT');
     }
     
     return allElementsFound;

@@ -124,11 +124,11 @@ Separadores: 2 espacios, luego 1 tab
 
 ## Ventajas del sistema de secuencias:
 
-✅ **Precisión**: No usa regex flexible, solo busca separadores exactos
-✅ **Simplicidad**: Fácil de configurar y entender
-✅ **Flexibilidad**: Soporta múltiples tipos de separadores
-✅ **Control de longitud**: Puedes limitar la longitud máxima de cada campo
-✅ **Combinaciones**: Puedes combinar diferentes tipos de separadores
+ **Precisión**: No usa regex flexible, solo busca separadores exactos
+ **Simplicidad**: Fácil de configurar y entender
+ **Flexibilidad**: Soporta múltiples tipos de separadores
+ **Control de longitud**: Puedes limitar la longitud máxima de cada campo
+ **Combinaciones**: Puedes combinar diferentes tipos de separadores
 
 ## Comparación con otros métodos:
 

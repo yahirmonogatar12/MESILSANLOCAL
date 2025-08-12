@@ -52,7 +52,7 @@
         waitForBootstrap(() => {
             setupUnifiedDropdowns();
             isInitialized = true;
-            log(`✅ Sistema unificado inicializado para ${getDeviceType()}`);
+            log(` Sistema unificado inicializado para ${getDeviceType()}`);
         });
     }
     
@@ -86,7 +86,7 @@
             }
         });
         
-        log('✅ Sistemas anteriores limpiados');
+        log(' Sistemas anteriores limpiados');
     }
     
     // ===============================================
@@ -376,7 +376,7 @@
         
         if (!selectableElement) return;
         
-        log(`🎯 Elemento seleccionable clickeado: ${selectableElement.textContent.trim()}`);
+        log(` Elemento seleccionable clickeado: ${selectableElement.textContent.trim()}`);
         
         // LIMPIAR TODAS LAS SELECCIONES ACTIVAS EN TODO EL DOCUMENTO
         const allSelectableElements = document.querySelectorAll(
@@ -405,7 +405,7 @@
         selectableElement.style.borderRadius = '5px';
         selectableElement.style.fontWeight = '500';
         
-        log(`✅ Estado activo aplicado a: ${selectableElement.textContent.trim()}`);
+        log(` Estado activo aplicado a: ${selectableElement.textContent.trim()}`);
         
         // Guardar referencia del elemento activo
         window.currentActiveElement = selectableElement;
@@ -419,7 +419,7 @@
     function setupMutationObserver() {
         // Deshabilitamos el MutationObserver automático para evitar bucles infinitos
         // La reinicialización se manejará explícitamente desde AjaxContentManager
-        log('⚠️ MutationObserver deshabilitado para evitar reinicializaciones duplicadas');
+        log(' MutationObserver deshabilitado para evitar reinicializaciones duplicadas');
         
         // Si necesitas el observer para casos específicos, descomenta el código siguiente:
         /*
@@ -440,7 +440,7 @@
             });
             
             if (shouldReinitialize) {
-                log('🔄 Nuevos elementos detectados, reinicializando...');
+                log(' Nuevos elementos detectados, reinicializando...');
                 setTimeout(() => {
                     setupUnifiedDropdowns();
                 }, 100);
@@ -565,7 +565,7 @@
             window.unifiedDropdowns.activeElement = null;
         }
         
-        log('✅ Todas las selecciones limpiadas');
+        log(' Todas las selecciones limpiadas');
     }
     
     function cleanup() {
@@ -626,11 +626,11 @@
         // Función para testing - NO cerrar dropdowns en clicks específicos
         preventAutoClose: (enabled = true) => {
             if (enabled) {
-                log('⚠️ Modo testing: Auto-cierre deshabilitado');
+                log(' Modo testing: Auto-cierre deshabilitado');
                 // Remover el event listener de document click temporalmente
                 CONFIG.PREVENT_AUTO_CLOSE = true;
             } else {
-                log('✅ Modo normal: Auto-cierre habilitado');
+                log(' Modo normal: Auto-cierre habilitado');
                 CONFIG.PREVENT_AUTO_CLOSE = false;
             }
         },
@@ -663,7 +663,7 @@
     // EXPONER FUNCIÓN PARA REINICIALIZACIÓN CONTROLADA
     // ===============================================
     window.setupUnifiedDropdowns = function() {
-        log('🔄 Reinicializando dropdowns desde llamada externa...');
+        log(' Reinicializando dropdowns desde llamada externa...');
         setupUnifiedDropdowns();
     };
 

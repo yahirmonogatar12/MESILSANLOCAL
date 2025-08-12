@@ -57,10 +57,10 @@ def crear_tablas_po_wo():
         
         # Ejecutar creación de tablas
         execute_query(query_embarques)
-        print("✅ Tabla embarques creada/verificada")
+        print(" Tabla embarques creada/verificada")
         
         execute_query(query_work_orders)
-        print("✅ Tabla work_orders creada/verificada")
+        print(" Tabla work_orders creada/verificada")
         
         return True
         
@@ -422,13 +422,13 @@ def migrar_tabla_embarques():
                 try:
                     query = f"ALTER TABLE embarques {sql_comando}"
                     execute_query(query)
-                    print(f"✅ Columna agregada: {nombre_columna}")
+                    print(f" Columna agregada: {nombre_columna}")
                 except Exception as e:
-                    print(f"⚠️ Error agregando columna {nombre_columna}: {e}")
+                    print(f" Error agregando columna {nombre_columna}: {e}")
             else:
-                print(f"ℹ️ Columna ya existe: {nombre_columna}")
+                print(f" Columna ya existe: {nombre_columna}")
         
-        print("🎉 Migración de tabla embarques completada")
+        print(" Migración de tabla embarques completada")
         
     except Exception as e:
         print(f"❌ Error migrando tabla embarques: {e}")
@@ -453,13 +453,13 @@ def migrar_tabla_work_orders():
                 try:
                     query = f"ALTER TABLE work_orders {sql_comando}"
                     execute_query(query)
-                    print(f"✅ Columna WO agregada: {nombre_columna}")
+                    print(f" Columna WO agregada: {nombre_columna}")
                 except Exception as e:
-                    print(f"⚠️ Error agregando columna WO {nombre_columna}: {e}")
+                    print(f" Error agregando columna WO {nombre_columna}: {e}")
             else:
-                print(f"ℹ️ Columna WO ya existe: {nombre_columna}")
+                print(f" Columna WO ya existe: {nombre_columna}")
         
-        print("🎉 Migración de tabla work_orders completada")
+        print(" Migración de tabla work_orders completada")
         
     except Exception as e:
         print(f"❌ Error migrando tabla work_orders: {e}")
@@ -469,6 +469,6 @@ try:
     crear_tablas_po_wo()
     migrar_tabla_embarques()  # Migrar campos nuevos PO
     migrar_tabla_work_orders()  # Migrar campos nuevos WO
-    print("🎯 Modelos PO → WO inicializados correctamente")
+    print(" Modelos PO → WO inicializados correctamente")
 except Exception as e:
     print(f"❌ Error inicializando modelos PO → WO: {e}")

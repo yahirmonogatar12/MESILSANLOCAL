@@ -268,28 +268,28 @@
                     if (typeof window.inicializarControlAlmacenModule === 'function') {
                         window.inicializarControlAlmacenModule();
                     } else {
-                        console.warn('⚠️ inicializarControlAlmacenModule no disponible, intentando métodos individuales');
+                        console.warn(' inicializarControlAlmacenModule no disponible, intentando métodos individuales');
                         
                         // Fallback a la función anterior
                         if (typeof window.inicializarControlAlmacen === 'function') {
                             window.inicializarControlAlmacen();
                         } else {
-                            console.warn('⚠️ inicializarControlAlmacen no disponible, usando métodos individuales');
+                            console.warn(' inicializarControlAlmacen no disponible, usando métodos individuales');
                             // Fallback a métodos individuales
                             if (typeof cargarCodigosMaterial === 'function') {
                                 cargarCodigosMaterial();
                             } else {
-                                console.warn('⚠️ cargarCodigosMaterial no disponible');
+                                console.warn(' cargarCodigosMaterial no disponible');
                             }
                             if (typeof cargarClienteSeleccionado === 'function') {
                                 cargarClienteSeleccionado();
                             } else {
-                                console.warn('⚠️ cargarClienteSeleccionado no disponible');
+                                console.warn(' cargarClienteSeleccionado no disponible');
                             }
                             if (typeof cargarSiguienteSecuencial === 'function') {
                                 cargarSiguienteSecuencial();
                             } else {
-                                console.warn('⚠️ cargarSiguienteSecuencial no disponible');
+                                console.warn(' cargarSiguienteSecuencial no disponible');
                             }
                         }
                     }
@@ -309,13 +309,13 @@
                     if (typeof window.inicializarControlSalidaModule === 'function') {
                         window.inicializarControlSalidaModule();
                     } else {
-                        console.warn('⚠️ inicializarControlSalidaModule no disponible, intentando métodos individuales');
+                        console.warn(' inicializarControlSalidaModule no disponible, intentando métodos individuales');
                         
                         // Fallback a la función anterior
                         if (typeof window.inicializarControlSalida === 'function') {
                             window.inicializarControlSalida();
                         } else {
-                            console.warn('⚠️ inicializarControlSalida no disponible');
+                            console.warn(' inicializarControlSalida no disponible');
                         }
                     }
                 }, 200);
@@ -519,7 +519,7 @@
                 if (typeof window.mostrarHistorialCambioSMT === 'function') {
                     window.mostrarHistorialCambioSMT();
                 } else {
-                    console.warn('⚠️ mostrarHistorialCambioSMT no disponible');
+                    console.warn(' mostrarHistorialCambioSMT no disponible');
                     // Fallback básico
                     const appContent = document.querySelector('main.app-content');
                     if (appContent) {

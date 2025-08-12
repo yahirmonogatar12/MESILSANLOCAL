@@ -44,7 +44,7 @@ try:
     cursor.close()
     conn.close()
     
-    print('✅ Endpoint optimizado funcionando correctamente')
+    print(' Endpoint optimizado funcionando correctamente')
     
 except Exception as e:
     print(f'❌ Error: {e}')

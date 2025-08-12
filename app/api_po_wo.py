@@ -107,7 +107,7 @@ def crear_po():
         db.session.add(nuevo_embarque)
         db.session.commit()
         
-        print(f"✅ PO creada: {codigo_po}")
+        print(f" PO creada: {codigo_po}")
         return jsonify({"ok": True, "id": nuevo_embarque.id}), 201
         
     except Exception as e:
@@ -146,7 +146,7 @@ def listar_pos():
     # Convertir a diccionario
     resultado = [embarque.to_dict() for embarque in embarques]
     
-    print(f"📋 Listando {len(resultado)} POs")
+    print(f" Listando {len(resultado)} POs")
     return jsonify(resultado), 200
 
 
@@ -179,7 +179,7 @@ def cambiar_estado_po(codigo_po):
     embarque.estado = nuevo_estado
     db.session.commit()
     
-    print(f"✅ Estado PO {codigo_po} cambiado a {nuevo_estado}")
+    print(f" Estado PO {codigo_po} cambiado a {nuevo_estado}")
     return jsonify({"ok": True, "estado": nuevo_estado}), 200
 
 
@@ -273,7 +273,7 @@ def crear_wo():
         db.session.add(nueva_wo)
         db.session.commit()
         
-        print(f"✅ WO creada: {codigo_wo} → {codigo_po}")
+        print(f" WO creada: {codigo_wo} → {codigo_po}")
         return jsonify({"ok": True, "id": nueva_wo.id}), 201
         
     except Exception as e:
@@ -312,7 +312,7 @@ def listar_wos():
     # Convertir a diccionario
     resultado = [wo.to_dict() for wo in work_orders]
     
-    print(f"📋 Listando {len(resultado)} WOs")
+    print(f" Listando {len(resultado)} WOs")
     return jsonify(resultado), 200
 
 
@@ -345,7 +345,7 @@ def cambiar_estado_wo(codigo_wo):
     work_order.estado_wo = nuevo_estado
     db.session.commit()
     
-    print(f"✅ Estado WO {codigo_wo} cambiado a {nuevo_estado}")
+    print(f" Estado WO {codigo_wo} cambiado a {nuevo_estado}")
     return jsonify({"ok": True, "estado": nuevo_estado}), 200
 
 
@@ -402,4 +402,4 @@ def registrar_rutas_po_wo(app):
     Registrar todas las rutas del sistema PO → WO
     """
     app.register_blueprint(api_po_wo)
-    print("✅ Rutas API PO → WO registradas")
+    print(" Rutas API PO → WO registradas")

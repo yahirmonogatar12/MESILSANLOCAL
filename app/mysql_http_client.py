@@ -113,7 +113,7 @@ def test_http_connection():
         
         # Verificar salud
         if client.health_check():
-            print("✅ Proxy MySQL está saludable")
+            print(" Proxy MySQL está saludable")
         else:
             print("❌ Proxy MySQL no responde")
             return False
@@ -127,7 +127,7 @@ def test_http_connection():
         # Probar consulta simple
         result = client.execute_query("SELECT 1 as test", fetch='one')
         if result and result.get('test') == 1:
-            print("✅ Consulta de prueba exitosa")
+            print(" Consulta de prueba exitosa")
             return True
         else:
             print("❌ Error en consulta de prueba")

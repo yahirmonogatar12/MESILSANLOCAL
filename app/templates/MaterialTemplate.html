@@ -701,7 +701,7 @@
         // Verificar si el sistema unificado se cargó correctamente
         setTimeout(function() {
             if (typeof window.unifiedDropdowns === 'undefined') {
-                console.warn('⚠️ Sistema unificado de dropdowns no se cargó, ejecutando fallback...');
+                console.warn(' Sistema unificado de dropdowns no se cargó, ejecutando fallback...');
                 
                 // FALLBACK ULTRA-SIMPLE
                 document.addEventListener('DOMContentLoaded', function() {
@@ -1483,7 +1483,7 @@
                             if (buttonActions[buttonText]) {
                                 buttonActions[buttonText]();
                             } else {
-                                console.warn(`⚠️ No se encontró acción para: ${buttonText}`);
+                                console.warn(` No se encontró acción para: ${buttonText}`);
                             }
                             
                             setTimeout(closeMenu, 300); // Pequeño delay para mejor UX
@@ -1665,7 +1665,7 @@
                         return;
                     }
                     
-                    console.warn('⚠️ Sistema unificado no disponible, usando limpieza manual');
+                    console.warn(' Sistema unificado no disponible, usando limpieza manual');
                     // Fallback manual (código anterior)
                     const dropdownButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
                     dropdownButtons.forEach(button => {
@@ -1688,7 +1688,7 @@
                         return;
                     }
                     
-                    console.warn('⚠️ Sistema unificado no disponible, usando método manual');
+                    console.warn(' Sistema unificado no disponible, usando método manual');
                     // Fallback manual
                     document.querySelectorAll('.collapse.show').forEach(elemento => {
                         elemento.classList.remove('show');
@@ -1878,7 +1878,7 @@
             
             // Función para ocultar todo el contenido
             function hideAllContent() {
-                console.log('🔄 hideAllContent ejecutándose...');
+                console.log(' hideAllContent ejecutándose...');
                 
                 // Ocultar todos los contenedores principales
                 informacionBasicaContent.style.display = 'none';
@@ -1938,16 +1938,16 @@
                 hideAllInformacionBasicaContainers();
                 
                 // Cerrar Control de Embarque cuando se cambie a otra sección
-                console.log('🔄 Intentando cerrar Control de Embarque...');
+                console.log(' Intentando cerrar Control de Embarque...');
                 if (typeof window.cerrarControlEmbarque === 'function') {
                     try {
                         window.cerrarControlEmbarque();
-                        console.log('✅ Control de Embarque cerrado exitosamente');
+                        console.log(' Control de Embarque cerrado exitosamente');
                     } catch (error) {
                         console.error('❌ Error cerrando Control de Embarque:', error);
                     }
                 } else {
-                    console.log('⚠️ Función cerrarControlEmbarque no disponible');
+                    console.log(' Función cerrarControlEmbarque no disponible');
                 }
             }
             
@@ -2391,7 +2391,7 @@
                     
                     // Cargar contenido dinámicamente usando la ruta AJAX
                     cargarContenidoDinamico('Control de produccion SMT-unique-container', '/control_proceso/control_produccion_smt', () => {
-                        console.log('✅ Control de producción SMT AJAX cargado exitosamente');
+                        console.log(' Control de producción SMT AJAX cargado exitosamente');
                         
                         // Verificar que el contenedor específico esté visible
                         const smtContainer = document.querySelector('#Control de produccion SMT-unique-container');
@@ -2400,7 +2400,7 @@
                             smtContainer.style.visibility = 'visible';
                             smtContainer.style.opacity = '1';
                             
-                            console.log('📋 Contenedor principal de Control de producción SMT AJAX inicializado');
+                            console.log(' Contenedor principal de Control de producción SMT AJAX inicializado');
                         }
                         
                         // Ejecutar inicialización específica del módulo si existe
@@ -2445,7 +2445,7 @@
                     
                     // Cargar contenido dinámicamente usando la ruta AJAX
                     cargarContenidoDinamico('embarque-unique-container', '/Control de embarque', () => {
-                        console.log('✅ Control de Embarque AJAX cargado exitosamente');
+                        console.log(' Control de Embarque AJAX cargado exitosamente');
                         
                         // Verificar que el contenedor específico esté visible
                         const embarqueContainer = document.querySelector('#embarque-unique-container');
@@ -2458,11 +2458,11 @@
                             const mainContainer = document.querySelector('#embarque-main-container-unique-embarque');
                             if (mainContainer) {
                                 mainContainer.style.display = 'block';
-                                console.log('📋 Contenedor principal de Control de Embarque AJAX inicializado');
+                                console.log(' Contenedor principal de Control de Embarque AJAX inicializado');
                             }
                             
                             // Auto-inicialización ya está incluida en el template
-                            console.log('🎯 Control de Embarque AJAX completamente funcional');
+                            console.log(' Control de Embarque AJAX completamente funcional');
                         } else {
                             console.error('❌ No se encontró el contenedor embarque-unique-container');
                         }
@@ -2536,7 +2536,7 @@
                     
                     // Cargar contenido dinámicamente usando la versión AJAX
                     cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_proceso/inventario_imd_terminado', () => {
-                        console.log('✅ Inventario IMD Terminado AJAX cargado exitosamente');
+                        console.log(' Inventario IMD Terminado AJAX cargado exitosamente');
                         
                         // Verificar que el contenedor específico esté visible
                         const inventarioContainer = document.querySelector('#inventario-imd-terminado-unique-container');
@@ -2545,8 +2545,8 @@
                             inventarioContainer.style.visibility = 'visible';
                             inventarioContainer.style.opacity = '1';
                             
-                            console.log('📋 Contenedor de Inventario IMD Terminado inicializado');
-                            console.log('🎯 Inventario IMD Terminado AJAX completamente funcional');
+                            console.log(' Contenedor de Inventario IMD Terminado inicializado');
+                            console.log(' Inventario IMD Terminado AJAX completamente funcional');
                         } else {
                             console.error('❌ No se encontró el contenedor inventario-imd-terminado-unique-container');
                         }
@@ -2634,12 +2634,12 @@
                         console.log('🔧 Ejecutando inicializarControlSalida...');
                         inicializarControlSalida();
                     } else {
-                        console.warn('⚠️ Funciones de inicialización de Control de Salida no disponibles');
+                        console.warn(' Funciones de inicialización de Control de Salida no disponibles');
                     }
 
                     // � ACTIVACIÓN AUTOMÁTICA DEL SISTEMA DE AUTO-ENTER PARA AJAX
                     setTimeout(() => {
-                        console.log('🎯 ACTIVANDO AUTO-ENTER SIMPLE DESPUÉS DE CARGA AJAX...');
+                        console.log(' ACTIVANDO AUTO-ENTER SIMPLE DESPUÉS DE CARGA AJAX...');
                         
                         // Verificar que el contenido se haya cargado
                         const codigoInput = document.getElementById('salida_codigo_material_recibido');
@@ -2648,7 +2648,7 @@
                         if (codigoInput && verificacionInput) {
                             // Activar configuración de auto-Enter SIMPLE
                             if (typeof configurarEventListenersEscaneo === 'function') {
-                                console.log('✅ Configurando event listeners de escaneo SIMPLE...');
+                                console.log(' Configurando event listeners de escaneo SIMPLE...');
                                 configurarEventListenersEscaneo();
                                 
                                 // Test inmediato para verificar que funciona
@@ -2668,7 +2668,7 @@
                                     }
                                 }, 500);
                             } else {
-                                console.warn('⚠️ configurarEventListenersEscaneo no disponible');
+                                console.warn(' configurarEventListenersEscaneo no disponible');
                             }
                             
                             // Activar observador AJAX si está disponible
@@ -2680,11 +2680,11 @@
                             // Auto-enfocar el campo de código para iniciar el flujo
                             setTimeout(() => {
                                 codigoInput.focus();
-                                console.log('🎯 Auto-Enter SIMPLE ACTIVADO - Escribe 8+ caracteres');
+                                console.log(' Auto-Enter SIMPLE ACTIVADO - Escribe 8+ caracteres');
                             }, 200);
                             
                         } else {
-                            console.warn('⚠️ Campos de entrada no encontrados para auto-Enter');
+                            console.warn(' Campos de entrada no encontrados para auto-Enter');
                         }
                     }, 300); // Tiempo suficiente para que el DOM se estabilice
 
@@ -2699,7 +2699,7 @@
                             if (!codigoInput.dataset.listenerAdded) {
                                 codigoInput.addEventListener('keydown', procesarEscaneoRapido);
                                 codigoInput.dataset.listenerAdded = 'true';
-                                console.log('✅ Event listener de escaneo reconectado (respaldo)');
+                                console.log(' Event listener de escaneo reconectado (respaldo)');
                             }
                         }
                         
@@ -2710,7 +2710,7 @@
                             if (!verificacionInput.dataset.listenerAdded) {
                                 verificacionInput.addEventListener('keydown', procesarVerificacion);
                                 verificacionInput.dataset.listenerAdded = 'true';
-                                console.log('✅ Event listener de verificación reconectado (respaldo)');
+                                console.log(' Event listener de verificación reconectado (respaldo)');
                             }
                         }
                         
@@ -2721,7 +2721,7 @@
                             if (!btnGuardar.dataset.listenerAdded) {
                                 btnGuardar.addEventListener('click', procesarSalidaManual);
                                 btnGuardar.dataset.listenerAdded = 'true';
-                                console.log('✅ Event listener de botón guardar reconectado (respaldo)');
+                                console.log(' Event listener de botón guardar reconectado (respaldo)');
                             }
                         }
                     }, 500);
@@ -2900,7 +2900,7 @@
                     link.rel = 'stylesheet';
                     link.href = '/static/css/historial-smt.css';
                     document.head.appendChild(link);
-                    console.log('✅ Estilos SMT cargados dinámicamente');
+                    console.log(' Estilos SMT cargados dinámicamente');
                 }
                 
                 // Cargar contenido dinámicamente
@@ -2911,7 +2911,7 @@
                         initHistorialCambioSMT();
                     }
                     
-                    console.log('✅ Historial de cambio de material SMT cargado correctamente');
+                    console.log(' Historial de cambio de material SMT cargado correctamente');
                 });
             };
             
@@ -3001,7 +3001,7 @@
                 // Cargar contenido dinámicamente del sidebar de control de proceso
                 cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso')
                     .then(() => {
-                        console.log('✅ Contenido de Control de Proceso cargado exitosamente');
+                        console.log(' Contenido de Control de Proceso cargado exitosamente');
                     })
                     .catch(error => {
                         console.error('Error cargando Control de Proceso:', error);
@@ -3319,7 +3319,7 @@
                 const coincidencias = verificarCoincidencias(codigoVerificacion, materialActual);
                 
                 if (coincidencias.length > 0) {
-                    mostrarMensajeSimple(`✅ Verificado: ${coincidencias.join(', ')}`, 'success');
+                    mostrarMensajeSimple(` Verificado: ${coincidencias.join(', ')}`, 'success');
                     verificacionCompletada = true;
                     
                     event.target.style.border = '2px solid #27ae60';
@@ -3407,7 +3407,7 @@
                 console.log('📦 Datos recibidos:', data);
                 
                 if (data.success && data.especificacion) {
-                    console.log(`✅ Especificación encontrada desde campo '${data.campo_origen}':`, data.especificacion);
+                    console.log(` Especificación encontrada desde campo '${data.campo_origen}':`, data.especificacion);
                     return data.especificacion;
                 } else {
                     console.log('❌ No se encontró especificación:', data.error || 'Sin especificación disponible');
@@ -3447,13 +3447,13 @@
                         // Buscar la especificación más reciente en el historial
                         for (const salida of data.salidas) {
                             if (salida.especificacion_material && salida.especificacion_material.trim()) {
-                                console.log(`✅ Especificación encontrada en historial:`, salida.especificacion_material);
+                                console.log(` Especificación encontrada en historial:`, salida.especificacion_material);
                                 return salida.especificacion_material.trim();
                             }
                         }
-                        console.log('⚠️ No se encontró especificación en ninguna salida del historial');
+                        console.log(' No se encontró especificación en ninguna salida del historial');
                     } else {
-                        console.log('⚠️ No hay historial de salidas para este número de parte');
+                        console.log(' No hay historial de salidas para este número de parte');
                     }
                 } else {
                     console.log('❌ Error al consultar historial:', response.status);
@@ -3501,17 +3501,17 @@
                     for (const prop of propiedadesPosibles) {
                         if (material[prop] !== undefined && material[prop] !== null && material[prop] !== '') {
                             numeroLote = material[prop];
-                            console.log(`✅ Número de lote encontrado en propiedad '${prop}':`, numeroLote);
+                            console.log(` Número de lote encontrado en propiedad '${prop}':`, numeroLote);
                             break;
                         }
                     }
                     
                     if (numeroLote && campo) {
                         campo.value = numeroLote;
-                        console.log('✅ Campo número de lote rellenado:', numeroLote);
+                        console.log(' Campo número de lote rellenado:', numeroLote);
                     } else {
-                        console.log('⚠️ No se encontró número de lote en ninguna propiedad');
-                        console.log('📋 Propiedades disponibles en material:', Object.keys(material));
+                        console.log(' No se encontró número de lote en ninguna propiedad');
+                        console.log(' Propiedades disponibles en material:', Object.keys(material));
                     }
                 }
                 // 🔧 MANEJO ESPECIAL PARA ESPECIFICACIÓN
@@ -3530,16 +3530,16 @@
                     for (const prop of propiedadesEspecificacion) {
                         if (material[prop] !== undefined && material[prop] !== null && material[prop] !== '') {
                             especificacion = material[prop];
-                            console.log(`✅ Especificación encontrada en propiedad '${prop}':`, especificacion);
+                            console.log(` Especificación encontrada en propiedad '${prop}':`, especificacion);
                             break;
                         }
                     }
                     
                     if (especificacion && campo) {
                         campo.value = especificacion;
-                        console.log('✅ Campo especificación rellenado:', especificacion);
+                        console.log(' Campo especificación rellenado:', especificacion);
                     } else {
-                        console.log('⚠️ No se encontró especificación directamente');
+                        console.log(' No se encontró especificación directamente');
                         
                         // Si no encontramos especificación, intentar consultarla desde historial primero
                         if (material.numero_parte) {
@@ -3548,7 +3548,7 @@
                                 .then(especificacionHistorial => {
                                     if (especificacionHistorial && campo) {
                                         campo.value = especificacionHistorial;
-                                        console.log('✅ Especificación desde historial rellenada:', especificacionHistorial);
+                                        console.log(' Especificación desde historial rellenada:', especificacionHistorial);
                                         
                                         // Actualizar el material actual con la especificación encontrada
                                         if (materialActual) {
@@ -3562,7 +3562,7 @@
                                             .then(especificacionConsultada => {
                                                 if (especificacionConsultada && campo) {
                                                     campo.value = especificacionConsultada;
-                                                    console.log('✅ Especificación desde BD directa rellenada:', especificacionConsultada);
+                                                    console.log(' Especificación desde BD directa rellenada:', especificacionConsultada);
                                                     
                                                     // Actualizar el material actual con la especificación encontrada
                                                     if (materialActual) {
@@ -3638,13 +3638,13 @@
                 for (const prop of propiedadesLote) {
                     if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                         numeroLote = materialActual[prop];
-                        console.log(`✅ Usando número de lote de propiedad '${prop}':`, numeroLote);
+                        console.log(` Usando número de lote de propiedad '${prop}':`, numeroLote);
                         break;
                     }
                 }
                 
                 if (!numeroLote) {
-                    console.log('⚠️ ADVERTENCIA: No se encontró número de lote en el material');
+                    console.log(' ADVERTENCIA: No se encontró número de lote en el material');
                 }
 
                 const salidaResponse = await fetch('/procesar_salida_material', {
@@ -3666,7 +3666,7 @@
 
                 if (salidaData.success) {
                     const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
-                    mostrarMensajeSimple(`✅ Salida automática procesada: ${cantidadSalida}${modeloTexto}`, 'success');
+                    mostrarMensajeSimple(` Salida automática procesada: ${cantidadSalida}${modeloTexto}`, 'success');
                     
                     setTimeout(() => {
                         limpiarCamposMaterial();
@@ -3687,7 +3687,7 @@
             
             // OVERRIDE: Si está en modo salida rápida, usar la función específica
             if (window.SALIDA_RAPIDA_ACTIVA && window.guardarSalida) {
-                console.log('✅ Detectado modo salida rápida, usando función específica');
+                console.log(' Detectado modo salida rápida, usando función específica');
                 window.guardarSalida();
                 return;
             }
@@ -3730,13 +3730,13 @@
                 for (const prop of propiedadesLote) {
                     if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                         numeroLote = materialActual[prop];
-                        console.log(`✅ Usando número de lote de propiedad '${prop}':`, numeroLote);
+                        console.log(` Usando número de lote de propiedad '${prop}':`, numeroLote);
                         break;
                     }
                 }
                 
                 if (!numeroLote) {
-                    console.log('⚠️ ADVERTENCIA: No se encontró número de lote en el material');
+                    console.log(' ADVERTENCIA: No se encontró número de lote en el material');
                 }
 
                 const salidaResponse = await fetch('/procesar_salida_material', {
@@ -3758,7 +3758,7 @@
 
                 if (salidaData.success) {
                     const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
-                    mostrarMensajeSimple(`✅ Salida procesada: ${cantidadSalida}${modeloTexto}`, 'success');
+                    mostrarMensajeSimple(` Salida procesada: ${cantidadSalida}${modeloTexto}`, 'success');
                     
                     // Limpiar y preparar para siguiente
                     setTimeout(() => {
@@ -3840,7 +3840,7 @@
             // Verificar que el campo visual muestre el número de lote
             const campoLote = document.getElementById('salida_numero_lote_material');
             if (campoLote) {
-                console.log('🎯 Campo visual número de lote:', campoLote.value || 'VACÍO');
+                console.log(' Campo visual número de lote:', campoLote.value || 'VACÍO');
             } else {
                 console.log('❌ Campo visual de número de lote no encontrado');
             }
@@ -3850,14 +3850,14 @@
             for (const prop of propiedadesLote) {
                 if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                     mejorLote = materialActual[prop];
-                    console.log(`✅ MEJOR NÚMERO DE LOTE ENCONTRADO: '${mejorLote}' (de propiedad '${prop}')`);
+                    console.log(` MEJOR NÚMERO DE LOTE ENCONTRADO: '${mejorLote}' (de propiedad '${prop}')`);
                     break;
                 }
             }
             
             if (!mejorLote) {
-                console.log('⚠️ NO SE ENCONTRÓ NÚMERO DE LOTE EN NINGUNA PROPIEDAD');
-                console.log('📋 Todas las propiedades del material:', Object.keys(materialActual));
+                console.log(' NO SE ENCONTRÓ NÚMERO DE LOTE EN NINGUNA PROPIEDAD');
+                console.log(' Todas las propiedades del material:', Object.keys(materialActual));
             }
             
             return {
@@ -3897,12 +3897,12 @@
                 const valor = materialActual[prop];
                 if (valor !== undefined && valor !== null && valor !== '') {
                     campoLote.value = valor;
-                    console.log(`✅ Número de lote forzado: '${valor}' (de propiedad '${prop}')`);
+                    console.log(` Número de lote forzado: '${valor}' (de propiedad '${prop}')`);
                     return true;
                 }
             }
             
-            console.log('⚠️ No se pudo forzar - no hay número de lote disponible');
+            console.log(' No se pudo forzar - no hay número de lote disponible');
             return false;
         };
         
@@ -3922,7 +3922,7 @@
             console.log(`📊 Filas encontradas en tabla: ${filas.length}`);
             
             if (filas.length === 0) {
-                console.log('⚠️ No hay filas en la tabla');
+                console.log(' No hay filas en la tabla');
                 return { filas: 0 };
             }
             
@@ -3932,13 +3932,13 @@
                 const celdas = fila.querySelectorAll('td');
                 if (celdas.length > 1 && !celdas[0].textContent.includes('No hay dato')) {
                     filaConDatos = fila;
-                    console.log(`✅ Fila ${index + 1} tiene datos reales`);
+                    console.log(` Fila ${index + 1} tiene datos reales`);
                     return false; // Equivalente a break
                 }
             });
             
             if (!filaConDatos) {
-                console.log('⚠️ No se encontraron filas con datos reales');
+                console.log(' No se encontraron filas con datos reales');
                 return { sinDatos: true };
             }
             
@@ -3950,7 +3950,7 @@
                 console.log('💡 Esto indica que el servidor no está enviando el número de lote');
                 console.log('💡 O que está en una propiedad diferente a las que buscamos');
             } else {
-                console.log('✅ NÚMERO DE LOTE ENCONTRADO EN TABLA:', numeroLote);
+                console.log(' NÚMERO DE LOTE ENCONTRADO EN TABLA:', numeroLote);
             }
             
             return {
@@ -3972,7 +3972,7 @@
                 const [url] = args;
                 
                 if (interceptorActivo && url.includes('consultar_historial_salidas')) {
-                    console.log('🎯 INTERCEPTADO - Consulta al historial de salidas');
+                    console.log(' INTERCEPTADO - Consulta al historial de salidas');
                     
                     return originalFetch.apply(this, args)
                         .then(response => {
@@ -3998,7 +3998,7 @@
                                     console.log('🔍 PROPIEDADES DE ESPECIFICACIÓN:');
                                     propiedadesEspec.forEach(prop => {
                                         if (primeraSalida.hasOwnProperty(prop)) {
-                                            console.log(`  ✅ ${prop}:`, primeraSalida[prop]);
+                                            console.log(`   ${prop}:`, primeraSalida[prop]);
                                         } else {
                                             console.log(`  ❌ ${prop}: NO ENCONTRADO`);
                                         }
@@ -4017,16 +4017,16 @@
                                     console.log('🔍 PROPIEDADES DE NÚMERO DE LOTE:');
                                     propiedadesLote.forEach(prop => {
                                         if (primeraSalida.hasOwnProperty(prop)) {
-                                            console.log(`  ✅ ${prop}:`, primeraSalida[prop]);
+                                            console.log(`   ${prop}:`, primeraSalida[prop]);
                                         } else {
                                             console.log(`  ❌ ${prop}: NO ENCONTRADO`);
                                         }
                                     });
                                     
-                                    console.log('📋 TODAS LAS PROPIEDADES DISPONIBLES:');
+                                    console.log(' TODAS LAS PROPIEDADES DISPONIBLES:');
                                     console.log(Object.keys(primeraSalida));
                                 } else {
-                                    console.log('⚠️ No hay salidas en la respuesta o formato diferente');
+                                    console.log(' No hay salidas en la respuesta o formato diferente');
                                     console.log('🔍 Estructura de datos recibida:', Object.keys(data));
                                 }
                                 
@@ -4042,13 +4042,13 @@
                 return originalFetch.apply(this, args);
             };
             
-            console.log('✅ Interceptor activado. Ahora haga una consulta al historial.');
+            console.log(' Interceptor activado. Ahora haga una consulta al historial.');
             console.log('💡 El interceptor se desactivará automáticamente después de la primera consulta');
             
             return 'Interceptor activado - Consulte el historial para ver los datos del servidor';
         };
         
-        console.log('✅ Funciones de debugging de tabla instaladas');
+        console.log(' Funciones de debugging de tabla instaladas');
         console.log('💡 Comandos disponibles:');
         console.log('   - debugTablaHistorial() - Ver contenido actual de la tabla');
         console.log('   - debugRespuestaServidor() - Interceptar próxima respuesta del servidor');
@@ -4070,13 +4070,13 @@
                 const especificacion = await consultarEspecificacionPorNumeroParte(numeroParte);
                 
                 if (especificacion) {
-                    console.log('✅ ESPECIFICACIÓN ENCONTRADA:', especificacion);
+                    console.log(' ESPECIFICACIÓN ENCONTRADA:', especificacion);
                     
                     // Si estamos en control de salida, rellenar el campo
                     const campoEspecificacion = document.getElementById('salida_especificacion_material');
                     if (campoEspecificacion) {
                         campoEspecificacion.value = especificacion;
-                        console.log('✅ Campo de especificación actualizado');
+                        console.log(' Campo de especificación actualizado');
                     }
                     
                     return especificacion;
@@ -4103,7 +4103,7 @@
                 const [url] = args;
                 
                 if (url.includes('consultar_historial_salidas')) {
-                    console.log('🎯 INTERCEPTANDO CONSULTA DE HISTORIAL:', url);
+                    console.log(' INTERCEPTANDO CONSULTA DE HISTORIAL:', url);
                     
                     return originalFetch.apply(this, args)
                         .then(response => {
@@ -4135,10 +4135,10 @@
                                         data.salidas.forEach((salida, index) => {
                                             salida.especificacion_material = especFinal;
                                             salida.especificacion = especFinal;
-                                            console.log(`✅ Fila ${index + 1} - Especificación: ${especFinal}`);
+                                            console.log(` Fila ${index + 1} - Especificación: ${especFinal}`);
                                         });
                                         
-                                        console.log('🎯 ESPECIFICACIONES APLICADAS A TODAS LAS FILAS');
+                                        console.log(' ESPECIFICACIONES APLICADAS A TODAS LAS FILAS');
                                     }
                                     
                                     return new Response(JSON.stringify(data), {
@@ -4156,7 +4156,7 @@
             };
             
             window.fetchInterceptorEspecificacion = true;
-            console.log('✅ INTERCEPTOR FORZADO ACTIVADO');
+            console.log(' INTERCEPTOR FORZADO ACTIVADO');
             console.log('💡 Próxima consulta de historial será interceptada');
             return true;
         };
@@ -4192,12 +4192,12 @@
                         celdaEspecificacion.style.color = '#27ae60'; // Verde para indicar que fue reparado
                         celdaEspecificacion.title = 'Especificación reparada desde material actual';
                         reparadas++;
-                        console.log(`✅ Fila ${index + 1} reparada con especificación`);
+                        console.log(` Fila ${index + 1} reparada con especificación`);
                     }
                 }
             });
             
-            console.log(`🎯 REPARACIÓN COMPLETADA: ${reparadas} filas reparadas`);
+            console.log(` REPARACIÓN COMPLETADA: ${reparadas} filas reparadas`);
             return reparadas > 0;
         };
         
@@ -4210,7 +4210,7 @@
                 const originalUpdateTable = window.HISTORIAL_GLOBAL.actualizarTabla;
                 
                 window.HISTORIAL_GLOBAL.actualizarTabla = function(salidas) {
-                    console.log('🎯 INTERCEPTANDO ACTUALIZACIÓN - Agregando especificaciones automáticamente');
+                    console.log(' INTERCEPTANDO ACTUALIZACIÓN - Agregando especificaciones automáticamente');
                     
                     // Agregar especificación a cada salida usando el material actual si existe
                     salidas.forEach((salida, index) => {
@@ -4222,7 +4222,7 @@
                                 const especificacion = materialActual.especificacion || materialActual.especificacion_material;
                                 salida.especificacion_material = especificacion;
                                 salida.especificacion = especificacion;
-                                console.log(`✅ Especificación agregada a fila ${index + 1}:`, especificacion);
+                                console.log(` Especificación agregada a fila ${index + 1}:`, especificacion);
                             } else {
                                 // Si no hay material actual, buscar en la primera salida que tenga especificación
                                 const salidaConEspec = salidas.find(s => s.especificacion || s.especificacion_material);
@@ -4230,7 +4230,7 @@
                                     const especificacion = salidaConEspec.especificacion || salidaConEspec.especificacion_material;
                                     salida.especificacion_material = especificacion;
                                     salida.especificacion = especificacion;
-                                    console.log(`✅ Especificación copiada a fila ${index + 1}:`, especificacion);
+                                    console.log(` Especificación copiada a fila ${index + 1}:`, especificacion);
                                 } else {
                                     // Último recurso: especificación por defecto
                                     salida.especificacion_material = 'Especificación no disponible';
@@ -4244,7 +4244,7 @@
                     return originalUpdateTable.call(this, salidas);
                 };
                 
-                console.log('✅ ESPECIFICACIÓN AUTOMÁTICA ACTIVADA PERMANENTEMENTE (HISTORIAL_GLOBAL)');
+                console.log(' ESPECIFICACIÓN AUTOMÁTICA ACTIVADA PERMANENTEMENTE (HISTORIAL_GLOBAL)');
                 console.log('💡 Todas las futuras consultas al historial mostrarán especificaciones');
                 return true;
             }
@@ -4272,10 +4272,10 @@
                                                 salida.especificacion_material = materialActual.especificacion || 
                                                                                materialActual.especificacion_material || 
                                                                                'Especificación desde material';
-                                                console.log(`✅ Especificación añadida a fila ${index + 1}:`, salida.especificacion_material);
+                                                console.log(` Especificación añadida a fila ${index + 1}:`, salida.especificacion_material);
                                             }
                                         });
-                                        console.log('✅ Especificaciones añadidas a respuesta del servidor');
+                                        console.log(' Especificaciones añadidas a respuesta del servidor');
                                     }
                                     
                                     // Devolver respuesta modificada
@@ -4293,12 +4293,12 @@
                 };
                 
                 window.fetchInterceptorEspecificacion = true;
-                console.log('✅ ESPECIFICACIÓN AUTOMÁTICA ACTIVADA (Interceptor fetch)');
+                console.log(' ESPECIFICACIÓN AUTOMÁTICA ACTIVADA (Interceptor fetch)');
                 console.log('💡 Las consultas al historial serán interceptadas y modificadas');
                 return true;
             }
             
-            console.log('⚠️ Interceptor ya estaba activo');
+            console.log(' Interceptor ya estaba activo');
             return true;
         };
         
@@ -4337,7 +4337,7 @@
             // Verificar que el campo visual muestre la especificación
             const campoEspecificacion = document.getElementById('salida_especificacion_material');
             if (campoEspecificacion) {
-                console.log('🎯 Campo visual especificación:', campoEspecificacion.value || 'VACÍO');
+                console.log(' Campo visual especificación:', campoEspecificacion.value || 'VACÍO');
             } else {
                 console.log('❌ Campo visual de especificación no encontrado');
             }
@@ -4347,14 +4347,14 @@
             for (const prop of propiedadesEspecificacion) {
                 if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                     mejorEspecificacion = materialActual[prop];
-                    console.log(`✅ MEJOR ESPECIFICACIÓN ENCONTRADA: '${mejorEspecificacion}' (de propiedad '${prop}')`);
+                    console.log(` MEJOR ESPECIFICACIÓN ENCONTRADA: '${mejorEspecificacion}' (de propiedad '${prop}')`);
                     break;
                 }
             }
             
             if (!mejorEspecificacion) {
-                console.log('⚠️ NO SE ENCONTRÓ ESPECIFICACIÓN EN NINGUNA PROPIEDAD');
-                console.log('📋 Todas las propiedades del material:', Object.keys(materialActual));
+                console.log(' NO SE ENCONTRÓ ESPECIFICACIÓN EN NINGUNA PROPIEDAD');
+                console.log(' Todas las propiedades del material:', Object.keys(materialActual));
             }
             
             return {
@@ -4531,7 +4531,7 @@
                     elementos.btnRegistro.style.color = '#2c3e50';
                 }
                 
-                console.log('✅ HISTORIAL MOSTRADO EXITOSAMENTE');
+                console.log(' HISTORIAL MOSTRADO EXITOSAMENTE');
                 console.log('📊 Estado final:', {
                     historialDisplay: elementos.historial.style.display,
                     registroDisplay: elementos.registro.style.display
@@ -4546,7 +4546,7 @@
                 }, 100);
                 
                 this.activo = true;
-                return '✅ HISTORIAL ACTIVADO GLOBALMENTE';
+                return ' HISTORIAL ACTIVADO GLOBALMENTE';
                 
             } catch (error) {
                 console.error('❌ Error en HISTORIAL_GLOBAL.mostrar:', error);
@@ -4557,7 +4557,7 @@
         
         // Función para mostrar registro de salida
         mostrarRegistro: function() {
-            console.log('🔄 EJECUTANDO HISTORIAL_GLOBAL.mostrarRegistro()');
+            console.log(' EJECUTANDO HISTORIAL_GLOBAL.mostrarRegistro()');
             
             try {
                 const elementos = {
@@ -4593,7 +4593,7 @@
                     elementos.btnHistorial.style.fontWeight = 'normal';
                 }
                 
-                console.log('✅ REGISTRO MOSTRADO EXITOSAMENTE');
+                console.log(' REGISTRO MOSTRADO EXITOSAMENTE');
                 
                 // Scroll al registro
                 setTimeout(() => {
@@ -4604,7 +4604,7 @@
                 }, 100);
                 
                 this.activo = false;
-                return '✅ REGISTRO ACTIVADO';
+                return ' REGISTRO ACTIVADO';
                 
             } catch (error) {
                 console.error('❌ Error en HISTORIAL_GLOBAL.mostrarRegistro:', error);
@@ -4699,7 +4699,7 @@
                         if (Array.isArray(salidas)) {
                             this.actualizarTablaSalidas(salidas);
                             this.actualizarContadorResultados(totalRegistros, mostrados);
-                            return `✅ ${mostrados} de ${totalRegistros} registros consultados`;
+                            return ` ${mostrados} de ${totalRegistros} registros consultados`;
                         } else {
                             throw new Error(responseData.error || 'Respuesta inválida del servidor');
                         }
@@ -4748,7 +4748,7 @@
             });
 
             tbody.innerHTML = html;
-            console.log('✅ Tabla actualizada con', salidas.length, 'registros');
+            console.log(' Tabla actualizada con', salidas.length, 'registros');
         },
         
         // Función para actualizar contador de resultados
@@ -4874,7 +4874,7 @@
             btnHistorial.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('🎯 CLICK HISTORIAL INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                console.log(' CLICK HISTORIAL INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
                 this.mostrar();
                 return false;
             };
@@ -4886,11 +4886,11 @@
                 btnRegistro.onclick = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('🎯 CLICK REGISTRO INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                    console.log(' CLICK REGISTRO INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
                     this.mostrarRegistro();
                     return false;
                 };
-                console.log('✅ Onclick registro instalado');
+                console.log(' Onclick registro instalado');
             }
             
             // BUSCAR E INSTALAR BOTÓN CONSULTAR
@@ -4902,17 +4902,17 @@
                     btn.onclick = (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('🎯 CLICK CONSULTAR INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                        console.log(' CLICK CONSULTAR INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
                         this.consultar();
                         return false;
                     };
-                    console.log('✅ Onclick consultar instalado en:', btn.textContent);
+                    console.log(' Onclick consultar instalado en:', btn.textContent);
                 }
             });
             
             this.instalado = true;
-            console.log('✅ ONCLICK GLOBAL INSTALADO EXITOSAMENTE');
-            return '✅ TODOS LOS ONCLICKS INSTALADOS';
+            console.log(' ONCLICK GLOBAL INSTALADO EXITOSAMENTE');
+            return ' TODOS LOS ONCLICKS INSTALADOS';
         },
         
         // Función para verificar estado
@@ -5046,7 +5046,7 @@
         
         // Simular escaneo de código largo
         const codigoPrueba = 'H5602C622.20250728026';
-        console.log('📝 Escribiendo código de prueba:', codigoPrueba);
+        console.log(' Escribiendo código de prueba:', codigoPrueba);
         
         // Escribir caracter por caracter para simular escaneo real
         let i = 0;
@@ -5058,12 +5058,12 @@
                 const inputEvent = new Event('input', { bubbles: true });
                 codigoInput.dispatchEvent(inputEvent);
                 
-                console.log(`📝 Caracter ${i+1}/${codigoPrueba.length}: "${codigoPrueba[i]}" - Longitud total: ${codigoInput.value.length}`);
+                console.log(` Caracter ${i+1}/${codigoPrueba.length}: "${codigoPrueba[i]}" - Longitud total: ${codigoInput.value.length}`);
                 
                 i++;
                 setTimeout(escribirCaracter, 50); // 50ms entre caracteres
             } else {
-                console.log('✅ Código escrito completo, debería activar auto-Enter');
+                console.log(' Código escrito completo, debería activar auto-Enter');
                 console.log('🔍 Valor final del campo:', codigoInput.value);
                 
                 // Verificar si hay listeners configurados
@@ -5090,7 +5090,7 @@
 
     // 🚀 FUNCIÓN ULTRA-SIMPLE PARA AUTO-ENTER (DISPONIBLE GLOBALMENTE)
     window.configurarEventListenersEscaneo = function() {
-        console.log('🎯 Configurando Auto-Enter ULTRA-SIMPLE desde MaterialTemplate...');
+        console.log(' Configurando Auto-Enter ULTRA-SIMPLE desde MaterialTemplate...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         const verificacionInput = document.getElementById('salida_verificacion_codigo');
@@ -5099,7 +5099,7 @@
             // MÉTODO 1: Auto-Enter basado en longitud del código
             codigoInput.addEventListener('input', function(e) {
                 const codigo = e.target.value.trim();
-                console.log('📝 Input detectado:', codigo, 'Longitud:', codigo.length);
+                console.log(' Input detectado:', codigo, 'Longitud:', codigo.length);
                 
                 // Si tiene 8+ caracteres, activar auto-Enter
                 if (codigo.length >= 8) {
@@ -5129,13 +5129,13 @@
                         } else if (typeof procesarEscaneoRapido === 'function') {
                             procesarEscaneoRapido(e);
                         } else {
-                            console.log('⚠️ procesarEscaneoRapido no disponible');
+                            console.log(' procesarEscaneoRapido no disponible');
                         }
                     }
                 }
             });
             
-            console.log('✅ Auto-Enter configurado para campo CÓDIGO');
+            console.log(' Auto-Enter configurado para campo CÓDIGO');
         } else {
             console.error('❌ Campo código no encontrado');
         }
@@ -5144,7 +5144,7 @@
             // MÉTODO 1: Auto-Enter basado en longitud del código
             verificacionInput.addEventListener('input', function(e) {
                 const codigo = e.target.value.trim();
-                console.log('📝 Input verificación detectado:', codigo, 'Longitud:', codigo.length);
+                console.log(' Input verificación detectado:', codigo, 'Longitud:', codigo.length);
                 
                 // Si tiene 8+ caracteres, activar auto-Enter
                 if (codigo.length >= 8) {
@@ -5175,21 +5175,21 @@
                         } else if (typeof procesarVerificacion === 'function') {
                             procesarVerificacion(e);
                         } else {
-                            console.log('⚠️ procesarVerificacion no disponible');
+                            console.log(' procesarVerificacion no disponible');
                         }
                     }
                 }
             });
             
-            console.log('✅ Auto-Enter configurado para campo VERIFICACIÓN');
+            console.log(' Auto-Enter configurado para campo VERIFICACIÓN');
         } else {
             console.error('❌ Campo verificación no encontrado');
         }
         
-        console.log('🎯 AUTO-ENTER ULTRA-SIMPLE CONFIGURADO EXITOSAMENTE desde MaterialTemplate');
+        console.log(' AUTO-ENTER ULTRA-SIMPLE CONFIGURADO EXITOSAMENTE desde MaterialTemplate');
     };
 
-    // 🎯 OBSERVADOR PARA DETECTAR CAMBIOS EN EL DOM (AJAX RELOADS) - GLOBAL
+    //  OBSERVADOR PARA DETECTAR CAMBIOS EN EL DOM (AJAX RELOADS) - GLOBAL
     window.configurarObservadorAJAX = function() {
         if (window.controlSalidaObserver) {
             window.controlSalidaObserver.disconnect();
@@ -5205,7 +5205,7 @@
                             (node.querySelector && node.querySelector('[id*="codigo"], [id*="cantidad"], input') ||
                              node.id && (node.id.includes('codigo') || node.id.includes('cantidad')))) {
                             
-                            console.log('🔄 DOM cambió (AJAX), reinstalando listeners de auto-Enter...');
+                            console.log(' DOM cambió (AJAX), reinstalando listeners de auto-Enter...');
                             
                             // Reinstalar listeners después de un breve delay
                             setTimeout(() => {
@@ -5302,7 +5302,7 @@
             campo.addEventListener('keydown', (e) => this._onKeydown(e, campoId));
             campo.addEventListener('blur', (e) => this._onBlur(e, campoId));
             
-            console.log('✅ Enter automático configurado para:', campoId);
+            console.log(' Enter automático configurado para:', campoId);
             return true;
         },
         
@@ -5315,7 +5315,7 @@
             const valorActual = event.target.value;
             const tiempoDiferencia = tiempoActual - campoData.ultimoTiempo;
             
-            console.log('📝 Input detectado en', campoId, ':', {
+            console.log(' Input detectado en', campoId, ':', {
                 valor: valorActual,
                 longitud: valorActual.length,
                 tiempoDiferencia: tiempoDiferencia,
@@ -5336,7 +5336,7 @@
             
             // Si detectamos escaneo
             if (esEscaneoRapido || esTextoLargo || esMuchoTextoDeUnaVez) {
-                console.log('🎯 ESCANEO DETECTADO en', campoId, '- Programando Enter automático...');
+                console.log(' ESCANEO DETECTADO en', campoId, '- Programando Enter automático...');
                 
                 // Programar Enter automático
                 const timer = setTimeout(() => {
@@ -5394,7 +5394,7 @@
 
             
             if (!codigo || codigo.length < 5) {
-                console.log('⚠️ Código muy corto, no se procesa');
+                console.log(' Código muy corto, no se procesa');
                 return;
             }
             
@@ -5435,7 +5435,7 @@
             const currentUrl = window.location.pathname;
             if (currentUrl.includes('control_salida') || currentUrl.includes('salida')) {
                 console.log('🛑 AUTO-BÚSQUEDA DESHABILITADA para Control de Salida (evitar bucle infinito)');
-                this._mostrarMensaje('📝 Código escaneado - Manual mode activo', 'info');
+                this._mostrarMensaje(' Código escaneado - Manual mode activo', 'info');
                 return;
             }
             
@@ -5460,8 +5460,8 @@
                 }
             }
             
-            console.log('⚠️ No se encontró función de búsqueda automática');
-            this._mostrarMensaje('📝 Código escaneado - Enter automático aplicado', 'info');
+            console.log(' No se encontró función de búsqueda automática');
+            this._mostrarMensaje(' Código escaneado - Enter automático aplicado', 'info');
         },
         
         // Mostrar mensaje
@@ -5482,7 +5482,7 @@
         // Auto-instalar en Control de Salida
         autoInstalarSalida: function() {
             console.log('� AUTO-INSTALACIÓN DESHABILITADA para Control de Salida (evitar bucle infinito)');
-            console.log('ℹ️ Control de Salida usa su propio sistema de event listeners');
+            console.log(' Control de Salida usa su propio sistema de event listeners');
             return; // DESHABILITADO TEMPORALMENTE
             
             console.log('�🚀 AUTO-INSTALACIÓN ENTER AUTOMÁTICO PARA CONTROL DE SALIDA');
@@ -5503,7 +5503,7 @@
             });
             
             this.activo = true;
-            console.log('✅ ENTER AUTOMÁTICO INSTALADO PARA CONTROL DE SALIDA');
+            console.log(' ENTER AUTOMÁTICO INSTALADO PARA CONTROL DE SALIDA');
         },
         
         // Verificar y reparar configuración
@@ -5516,7 +5516,7 @@
             this.campos.forEach((campoData, campoId) => {
                 const elemento = document.getElementById(campoId);
                 if (!elemento) {
-                    console.log('⚠️ Campo perdido:', campoId, '- Eliminando configuración');
+                    console.log(' Campo perdido:', campoId, '- Eliminando configuración');
                     this.campos.delete(campoId);
                     reparaciones++;
                 } else if (elemento !== campoData.elemento) {
@@ -5641,7 +5641,7 @@
                     this.id.includes('material') ||
                     this.id.includes('container')
                 )) {
-                    console.log('🔄 Contenido AJAX actualizado, reinstalando sistemas globales...');
+                    console.log(' Contenido AJAX actualizado, reinstalando sistemas globales...');
                     setTimeout(() => {
                         window.HISTORIAL_GLOBAL.autoInstalar();
                         window.ENTER_AUTOMATICO_GLOBAL.verificar();
@@ -5655,7 +5655,7 @@
     // Auto-test cuando se carga MaterialTemplate
     setTimeout(() => {
         if (document.getElementById('salida_codigo_material_recibido')) {
-            console.log('🎯 Control de Salida detectado - Auto-test disponible');
+            console.log(' Control de Salida detectado - Auto-test disponible');
             console.log('💡 Ejecute: testAutoEnterSimple() para probar');
         }
     }, 1000);
@@ -5743,7 +5743,7 @@
             });
         }
         
-        console.log(`✅ ${modelosControlBOM.length} modelos cargados en dropdown Control de Modelos`);
+        console.log(` ${modelosControlBOM.length} modelos cargados en dropdown Control de Modelos`);
     }
 
     // Función para filtrar modelos en el dropdown de Control de Modelos

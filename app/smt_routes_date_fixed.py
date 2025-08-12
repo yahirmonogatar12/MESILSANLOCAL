@@ -94,7 +94,7 @@ def get_historial_smt_data():
         query += f" ORDER BY ScanDate DESC, ScanTime DESC LIMIT {limit}"
         
         print(f"🔍 Query: {query}")
-        print(f"📋 Params: {params}")
+        print(f" Params: {params}")
         
         cursor.execute(query, params)
         records = cursor.fetchall()

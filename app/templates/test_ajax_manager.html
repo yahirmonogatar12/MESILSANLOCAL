@@ -64,13 +64,13 @@
         <div class="test-info">
             <h3>Características del sistema mejorado:</h3>
             <ul>
-                <li>✅ Carga CSS ANTES de mostrar HTML</li>
-                <li>✅ Modal de carga profesional con animación</li>
-                <li>✅ Indicadores de progreso en tiempo real</li>
-                <li>✅ Delay adicional de 2 segundos para estabilidad</li>
-                <li>✅ Transición suave con fade-in</li>
-                <li>✅ Elimina COMPLETAMENTE parpadeos (FOUC)</li>
-                <li>✅ Logs detallados en consola</li>
+                <li> Carga CSS ANTES de mostrar HTML</li>
+                <li> Modal de carga profesional con animación</li>
+                <li> Indicadores de progreso en tiempo real</li>
+                <li> Delay adicional de 2 segundos para estabilidad</li>
+                <li> Transición suave con fade-in</li>
+                <li> Elimina COMPLETAMENTE parpadeos (FOUC)</li>
+                <li> Logs detallados en consola</li>
             </ul>
             <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 4px; margin-top: 10px;">
                 <strong>⏰ Tiempo total de carga:</strong> ~3-4 segundos<br>
@@ -94,7 +94,7 @@
         </div>
 
         <div class="content-target" id="contentTarget">
-            <p><strong>🎯 Área de contenido dinámico</strong></p>
+            <p><strong> Área de contenido dinámico</strong></p>
             <p>El contenido AJAX aparecerá aquí. Observa que:</p>
             <ul>
                 <li>Primero se cargan los CSS</li>
@@ -140,8 +140,8 @@
                 const endTime = Date.now();
                 const totalTime = ((endTime - startTime) / 1000).toFixed(1);
                 
-                addToLog(`✅ Test completado exitosamente en ${totalTime} segundos`, 'log');
-                addToLog('🎯 Modal mostrado → CSS cargado → Delay 2s → Contenido visible', 'log');
+                addToLog(` Test completado exitosamente en ${totalTime} segundos`, 'log');
+                addToLog(' Modal mostrado → CSS cargado → Delay 2s → Contenido visible', 'log');
             } catch (error) {
                 addToLog('❌ Error en test: ' + error.message, 'error');
             }
@@ -149,7 +149,7 @@
 
         function clearContent() {
             document.getElementById('contentTarget').innerHTML = `
-                <p><strong>🎯 Área de contenido dinámico</strong></p>
+                <p><strong> Área de contenido dinámico</strong></p>
                 <p>Contenido limpiado. Listo para nueva prueba.</p>
             `;
             logContainer.innerHTML = '<strong>📊 Log de actividad:</strong><br>Contenido limpiado.';
@@ -157,7 +157,7 @@
         }
 
         // Log inicial
-        addToLog('🔄 Página de test cargada y lista', 'log');
+        addToLog(' Página de test cargada y lista', 'log');
         console.log('AjaxContentManager disponible:', typeof AjaxContentManager !== 'undefined');
     </script>
 </body>

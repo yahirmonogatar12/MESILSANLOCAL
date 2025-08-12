@@ -51,7 +51,7 @@ auth_system.init_database()
 try:
     from .smt_routes_date_fixed import smt_bp
     app.register_blueprint(smt_bp)
-    print("✅ SMT Routes Simple registradas")
+    print(" SMT Routes Simple registradas")
 except Exception as e:
     print(f"❌ Error importando SMT Routes Simple: {e}")
 
@@ -122,7 +122,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                     count_value = result[0] if result else 0
                     
                 tiene_permiso = count_value > 0
-                print(f"✅ Tiene permiso: {tiene_permiso} (count: {count_value})")
+                print(f" Tiene permiso: {tiene_permiso} (count: {count_value})")
                 
                 if not tiene_permiso:
                     print(f"❌ Sin permisos para: {pagina} > {seccion} > {boton}")
@@ -154,7 +154,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                         </div>
                         """, 403
                 
-                print(f"✅ Permisos verificados correctamente, ejecutando función...")
+                print(f" Permisos verificados correctamente, ejecutando función...")
                 return f(*args, **kwargs)
                 
             except Exception as e:
@@ -222,7 +222,7 @@ def cargar_usuarios():
         with open(ruta, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print("⚠️ usuarios.json no encontrado, usando solo sistema de BD")
+        print(" usuarios.json no encontrado, usando solo sistema de BD")
         return {}
 
 # ACTUALIZADO: Usar el sistema de autenticación avanzado
@@ -267,7 +267,7 @@ def login():
             auth_message = resultado_auth.get('message', 'Error desconocido') if isinstance(resultado_auth, dict) else str(resultado_auth)
         
         if auth_success:
-            print(f"✅ Login exitoso con sistema BD: {user}")
+            print(f" Login exitoso con sistema BD: {user}")
             session['usuario'] = user
             
             # Registrar auditoría
@@ -312,7 +312,7 @@ def login():
         try:
             usuarios_json = cargar_usuarios()
             if user in usuarios_json and usuarios_json[user] == pw:
-                print(f"✅ Login exitoso con sistema JSON (fallback): {user}")
+                print(f" Login exitoso con sistema JSON (fallback): {user}")
                 session['usuario'] = user
                 
                 # Registrar auditoría del fallback
@@ -332,7 +332,7 @@ def login():
                 elif user.startswith("DDESARROLLO") or user == "3333":
                     return redirect(url_for('desarrollo'))
         except Exception as e:
-            print(f"⚠️ Error en fallback JSON: {e}")
+            print(f" Error en fallback JSON: {e}")
         
         # Si llega aquí, login falló
         print(f"❌ Login fallido: {user}")
@@ -815,7 +815,7 @@ def consultar_lotes_detalle():
                 print(f"❌ Datos de la fila: {row}")
                 continue
         
-        print(f"✅ Detalles de lotes consultados: {len(lotes_detalle)} lotes encontrados para {numero_parte}")
+        print(f" Detalles de lotes consultados: {len(lotes_detalle)} lotes encontrados para {numero_parte}")
         
         return jsonify({
             'success': True,
@@ -1339,7 +1339,7 @@ def obtener_codigos_material():
         
         rows = cursor.fetchall()
         
-        print(f"✅ Se encontraron {len(rows)} materiales" + (f" para búsqueda '{busqueda}'" if busqueda else ""))
+        print(f" Se encontraron {len(rows)} materiales" + (f" para búsqueda '{busqueda}'" if busqueda else ""))
         
         codigos = []
         for row in rows:
@@ -1366,7 +1366,7 @@ def obtener_codigos_material():
         traceback.print_exc()
         
         # En caso de error, devolver datos de prueba para que el sistema funcione
-        print("🔄 Devolviendo datos de prueba como fallback...")
+        print(" Devolviendo datos de prueba como fallback...")
         datos_prueba = [
             {
                 'codigo': 'M2606809020', 
@@ -1430,7 +1430,7 @@ def control_salida():
             'module': 'Control de Salida'
         }
         
-        print(f"✅ Control de Salida cargado para usuario: {usuario}")
+        print(f" Control de Salida cargado para usuario: {usuario}")
         
         return render_template('Control de material/Control de salida.html', 
                              usuario=usuario,
@@ -1707,7 +1707,7 @@ def obtener_siguiente_secuencial():
         for resultado in resultados:
             codigo_recibido = resultado['codigo_material_recibido'] or ''
             
-            print(f"📝 Analizando: codigo_material_recibido='{codigo_recibido}'")
+            print(f" Analizando: codigo_material_recibido='{codigo_recibido}'")
             
             # Buscar patrón exacto: CODIGO_MATERIAL,YYYYMMDD0001
             match = re.match(patron_regex, codigo_recibido)
@@ -1720,15 +1720,15 @@ def obtener_siguiente_secuencial():
                     secuencial_mas_alto = secuencial_encontrado
                     print(f"📊 Nuevo secuencial más alto: {secuencial_mas_alto}")
             else:
-                print(f"⚠️ No coincide con patrón esperado: {codigo_recibido}")
+                print(f" No coincide con patrón esperado: {codigo_recibido}")
         
         siguiente_secuencial = secuencial_mas_alto + 1
         
         # Generar el próximo código de material recibido completo
         siguiente_codigo_completo = f"{codigo_material},{fecha_actual}{siguiente_secuencial:04d}"
         
-        print(f"✅ Siguiente secuencial: {siguiente_secuencial}")
-        print(f"✅ Próximo código completo: {siguiente_codigo_completo}")
+        print(f" Siguiente secuencial: {siguiente_secuencial}")
+        print(f" Próximo código completo: {siguiente_codigo_completo}")
         
         cursor.close()
         conn.close()
@@ -1864,7 +1864,7 @@ def inventario_imd_terminado_ajax():
     try:
         print("🔍 Iniciando carga de Inventario IMD Terminado AJAX...")
         result = render_template('Control de proceso/inventario_imd_terminado_ajax.html')
-        print(f"✅ Template Inventario IMD Terminado AJAX renderizado exitosamente, tamaño: {len(result)} caracteres")
+        print(f" Template Inventario IMD Terminado AJAX renderizado exitosamente, tamaño: {len(result)} caracteres")
         return result
     except Exception as e:
         print(f"❌ Error al cargar template Inventario IMD Terminado AJAX: {e}")
@@ -2041,7 +2041,7 @@ def consultar_especificacion_por_numero_parte():
             if campo in material_dict and material_dict[campo] and str(material_dict[campo]).strip():
                 especificacion_encontrada = str(material_dict[campo]).strip()
                 campo_usado = campo
-                print(f"✅ Especificación encontrada en campo '{campo}': {especificacion_encontrada}")
+                print(f" Especificación encontrada en campo '{campo}': {especificacion_encontrada}")
                 break
         
         if not especificacion_encontrada:
@@ -2065,8 +2065,8 @@ def consultar_especificacion_por_numero_parte():
                 'material_completo': material_dict
             })
         else:
-            print(f"⚠️ No se encontró especificación para el material")
-            print(f"📋 Campos disponibles: {list(material_dict.keys())}")
+            print(f" No se encontró especificación para el material")
+            print(f" Campos disponibles: {list(material_dict.keys())}")
             return jsonify({
                 'success': False,
                 'error': 'No se encontró especificación en el material',
@@ -2194,7 +2194,7 @@ def consultar_estatus_material():
                 'fecha_creacion': row[8] or ''
             })
         
-        print(f"✅ Estatus de material consultado: {len(inventario)} items encontrados")
+        print(f" Estatus de material consultado: {len(inventario)} items encontrados")
         
         return jsonify({
             'success': True,
@@ -2264,7 +2264,7 @@ def buscar_codigo_recibido():
         row = cursor.fetchone()
         
         if row:
-            print("✅ SERVER: Registro encontrado en BD")
+            print(" SERVER: Registro encontrado en BD")
             # Convertir a dict usando nombres de columna
             columns = [desc[0] for desc in cursor.description]
             registro = dict(zip(columns, row))
@@ -2711,15 +2711,15 @@ def procesar_salida_material():
         
         nueva_cantidad = stock_disponible - cantidad_salida
         
-        # ✅ OPTIMIZACIÓN: Actualizar inventario general en BACKGROUND THREAD
+        #  OPTIMIZACIÓN: Actualizar inventario general en BACKGROUND THREAD
         def actualizar_inventario_background():
             """Función para actualizar inventario en segundo plano usando MySQL"""
             try:
                 if numero_parte:
-                    print(f"🔄 BACKGROUND (MySQL): Actualizando inventario para {numero_parte}")
+                    print(f" BACKGROUND (MySQL): Actualizando inventario para {numero_parte}")
                     resultado = actualizar_inventario_general_salida_mysql(numero_parte, cantidad_salida)
                     if resultado:
-                        print(f"✅ BACKGROUND (MySQL): Inventario actualizado exitosamente: -{cantidad_salida} para {numero_parte}")
+                        print(f" BACKGROUND (MySQL): Inventario actualizado exitosamente: -{cantidad_salida} para {numero_parte}")
                     else:
                         print(f"❌ BACKGROUND (MySQL): Error al actualizar inventario para {numero_parte}")
             except Exception as e:
@@ -2732,7 +2732,7 @@ def procesar_salida_material():
             inventario_thread.start()
             print(f"🚀 OPTIMIZADO (MySQL): Salida registrada, inventario actualizándose en background")
         
-        # ✅ RESPUESTA INMEDIATA AL USUARIO
+        #  RESPUESTA INMEDIATA AL USUARIO
         return jsonify({
             'success': True,
             'message': f'Salida registrada exitosamente. Cantidad: {cantidad_salida}',
@@ -2754,7 +2754,7 @@ def forzar_actualizacion_inventario(numero_parte):
     Endpoint para forzar la actualización del inventario general para un número de parte específico
     """
     try:
-        print(f"🔄 FORZANDO actualización de inventario para: {numero_parte}")
+        print(f" FORZANDO actualización de inventario para: {numero_parte}")
         
         # Recalcular inventario para este número de parte específico
         conn = get_db_connection()
@@ -2792,7 +2792,7 @@ def forzar_actualizacion_inventario(numero_parte):
         conn.commit()
         conn.close()
         
-        print(f"✅ FORZADO: Inventario actualizado para {numero_parte}: {cantidad_total_actual}")
+        print(f" FORZADO: Inventario actualizado para {numero_parte}: {cantidad_total_actual}")
         
         return jsonify({
             'success': True,
@@ -3003,7 +3003,7 @@ def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
             
             # Conectar a la impresora
             sock.connect((ip_impresora, puerto_zebra))
-            print("✅ ZEBRA RED: Conexión establecida")
+            print(" ZEBRA RED: Conexión establecida")
             
             # Enviar comando ZPL
             comando_bytes = comando_zpl.encode('utf-8')
@@ -3016,7 +3016,7 @@ def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
             
             # Cerrar conexión
             sock.close()
-            print("✅ ZEBRA RED: Etiqueta enviada exitosamente")
+            print(" ZEBRA RED: Etiqueta enviada exitosamente")
             
             # Log del evento
             print(f"📊 ZEBRA LOG: {datetime.now()} - Usuario: {session.get('usuario')} - Código: {codigo} - IP: {ip_impresora}")
@@ -3095,7 +3095,7 @@ def imprimir_etiqueta_qr():
         metodo = data.get('metodo', 'usb')  # 'usb' o 'red'
         ip = data.get('ip', '192.168.1.100')
         
-        print(f"🎯 IMPRESIÓN DIRECTA: Código={codigo}, Método={metodo}")
+        print(f" IMPRESIÓN DIRECTA: Código={codigo}, Método={metodo}")
         
         if not codigo or not comando_zpl:
             return jsonify({
@@ -3162,7 +3162,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
             )
             
             if result.returncode == 0:
-                print("✅ Impresión exitosa vía LPT1")
+                print(" Impresión exitosa vía LPT1")
                 return jsonify({
                     'success': True,
                     'message': 'Etiqueta enviada directamente a impresora USB',
@@ -3172,7 +3172,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
                 })
                 
         except Exception as e1:
-            print(f"⚠️ LPT1 falló: {str(e1)}")
+            print(f" LPT1 falló: {str(e1)}")
         
         # MÉTODO 2: Usar comando de Windows para imprimir directamente
         try:
@@ -3186,7 +3186,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
             )
             
             if result.returncode == 0:
-                print("✅ Impresión exitosa vía print command")
+                print(" Impresión exitosa vía print command")
                 return jsonify({
                     'success': True,
                     'message': 'Etiqueta enviada directamente a impresora USB',
@@ -3196,7 +3196,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
                 })
                 
         except Exception as e2:
-            print(f"⚠️ Windows print falló: {str(e2)}")
+            print(f" Windows print falló: {str(e2)}")
         
         # MÉTODO 3: Usar PowerShell para imprimir
         try:
@@ -3210,7 +3210,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
             )
             
             if result.returncode == 0:
-                print("✅ Impresión exitosa vía PowerShell")
+                print(" Impresión exitosa vía PowerShell")
                 return jsonify({
                     'success': True,
                     'message': 'Etiqueta enviada directamente a impresora Zebra',
@@ -3220,7 +3220,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
                 })
                 
         except Exception as e3:
-            print(f"⚠️ PowerShell falló: {str(e3)}")
+            print(f" PowerShell falló: {str(e3)}")
         
         # MÉTODO 4: Fallback - crear archivo y abrir carpeta
         print("📁 Fallback: Creando archivo para impresión manual...")
@@ -3272,7 +3272,7 @@ def imprimir_directo_red(comando_zpl, codigo, ip):
         sock.send(comando_zpl.encode('utf-8'))
         sock.close()
         
-        print(f"✅ Etiqueta enviada exitosamente a {ip}")
+        print(f" Etiqueta enviada exitosamente a {ip}")
         
         return jsonify({
             'success': True,
@@ -3345,7 +3345,7 @@ def consultar_inventario_general():
                     'success': False,
                     'error': 'Tabla inventario_consolidado no encontrada en MySQL'
                 }), 500
-                print("✅ Tabla inventario_consolidado encontrada en MySQL")
+                print(" Tabla inventario_consolidado encontrada en MySQL")
         except Exception as table_error:
             print(f"❌ Error verificando tablas en MySQL: {table_error}")
             return jsonify({
@@ -3353,7 +3353,7 @@ def consultar_inventario_general():
                 'error': f'Error verificando tablas: {str(table_error)}'
             }), 500
         
-        print("✅ Tabla inventario_consolidado verificada en MySQL")
+        print(" Tabla inventario_consolidado verificada en MySQL")
         
         # Construir consulta optimizada para MySQL
         query = '''
@@ -3449,7 +3449,7 @@ def consultar_inventario_general():
                 print(f"❌ Datos de la fila: {row}")
                 continue
         
-        print(f"✅ Inventario consultado: {len(inventario)} números de parte encontrados")
+        print(f" Inventario consultado: {len(inventario)} números de parte encontrados")
         
         return jsonify({
             'success': True,
@@ -3648,7 +3648,7 @@ def obtener_historial_numero_parte():
         # Revertir orden para mostrar más recientes primero
         historial.reverse()
         
-        print(f"✅ Historial obtenido: {len(historial)} movimientos para {numero_parte}")
+        print(f" Historial obtenido: {len(historial)} movimientos para {numero_parte}")
         
         return jsonify({
             'success': True,
@@ -3843,7 +3843,7 @@ def obtener_historial_numero_parte_get(numero_parte):
             balance_acumulado += mov['cantidad']
             mov['balance_acumulado'] = balance_acumulado
         
-        print(f"✅ Historial obtenido: {len(historial)} movimientos, balance: {balance_acumulado}")
+        print(f" Historial obtenido: {len(historial)} movimientos, balance: {balance_acumulado}")
         
         return jsonify({
             'success': True,
@@ -3998,7 +3998,7 @@ def obtener_lotes_numero_parte():
                 print(f"❌ Error procesando lote: {row_error}")
                 continue
         
-        print(f"✅ Lotes disponibles: {len(lotes)} para {numero_parte}")
+        print(f" Lotes disponibles: {len(lotes)} para {numero_parte}")
         
         return jsonify({
             'success': True,
@@ -4149,7 +4149,7 @@ def obtener_lotes_numero_parte_get(numero_parte):
                 print(f"❌ Error procesando lote: {row_error}")
                 continue
         
-        print(f"✅ Lotes disponibles: {len(lotes)} para {numero_parte}")
+        print(f" Lotes disponibles: {len(lotes)} para {numero_parte}")
         
         return jsonify({
             'success': True,
@@ -4614,15 +4614,15 @@ def get_csv_stats():
                 # Intentar lectura simple primero
                 try:
                     df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip')
-                    print(f"✅ Lectura exitosa con pandas básico: {len(df)} filas")
+                    print(f" Lectura exitosa con pandas básico: {len(df)} filas")
                 except Exception as simple_error:
-                    print(f"⚠️ Error con lectura simple: {str(simple_error)}")
+                    print(f" Error con lectura simple: {str(simple_error)}")
                     
                     # Leer el archivo como texto primero para limpiar formato
                     with open(csv_file, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     
-                    print(f"📝 Contenido leído: {len(content)} caracteres")
+                    print(f" Contenido leído: {len(content)} caracteres")
                     
                     # Limpiar saltos de línea incorrectos en el contenido
                     lines = content.strip().split('\n')
@@ -4650,14 +4650,14 @@ def get_csv_stats():
                     df = pd.read_csv(StringIO(cleaned_content), encoding='utf-8', on_bad_lines='skip')
                 
                 print(f"📊 DataFrame creado: {len(df)} filas, {len(df.columns)} columnas")
-                print(f"📋 Columnas: {list(df.columns)}")
+                print(f" Columnas: {list(df.columns)}")
                 
                 # Verificar que el DataFrame tenga las columnas esperadas
                 expected_columns = ['ScanDate', 'ScanTime', 'SlotNo', 'Result', 'PartName']
                 missing_columns = [col for col in expected_columns if col not in df.columns]
                 
                 if missing_columns:
-                    print(f"⚠️ Columnas faltantes en {csv_file}: {missing_columns}")
+                    print(f" Columnas faltantes en {csv_file}: {missing_columns}")
                     # Intentar leer de forma más básica
                     df = pd.read_csv(csv_file, encoding='utf-8', on_bad_lines='skip', sep=',')
                 
@@ -4698,7 +4698,7 @@ def get_csv_stats():
                 'files_found': len(csv_files)
             }), 500
         
-        print(f"✅ Datos cargados: {len(all_data)} registros de {len(csv_files)} archivos")
+        print(f" Datos cargados: {len(all_data)} registros de {len(csv_files)} archivos")
         
         return jsonify({
             'success': True,
@@ -4837,7 +4837,7 @@ def filter_csv_data():
         cursor.close()
         conn.close()
         
-        print(f"✅ Datos filtrados desde MySQL: {len(filtered_data)} registros")
+        print(f" Datos filtrados desde MySQL: {len(filtered_data)} registros")
         
         return jsonify({
             'success': True,
@@ -5022,7 +5022,7 @@ def guardar_regla_trazabilidad():
         with open(rules_file, 'w', encoding='utf-8') as f:
             json.dump(reglas_existentes, f, indent=2, ensure_ascii=False)
         
-        print(f"✅ Nueva regla de trazabilidad guardada: {clave_final} - {nueva_regla['proveedor']} - {nueva_regla['numero_parte']}")
+        print(f" Nueva regla de trazabilidad guardada: {clave_final} - {nueva_regla['proveedor']} - {nueva_regla['numero_parte']}")
         
         return jsonify({
             'success': True,

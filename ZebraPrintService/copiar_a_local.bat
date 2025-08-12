@@ -27,7 +27,7 @@ copy "%~dp0*.bat" "%LOCAL_DIR%\" >nul
 copy "%~dp0*.txt" "%LOCAL_DIR%\" >nul 2>nul
 
 if exist "%LOCAL_DIR%\print_service.py" (
-    echo ✅ Archivos copiados correctamente
+    echo  Archivos copiados correctamente
     echo.
     echo SIGUIENTE PASO:
     echo 1. Abrir: %LOCAL_DIR%

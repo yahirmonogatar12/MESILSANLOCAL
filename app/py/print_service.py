@@ -96,20 +96,20 @@ def mostrar_info_logs():
         log_dir = os.path.dirname(log_file)
         log_files = [f for f in os.listdir(log_dir) if f.startswith('print_service.log')]
         
-        print(f"📝 Configuración de logs:")
+        print(f" Configuración de logs:")
         print(f"   📁 Directorio: {log_dir}")
-        print(f"   🔄 Rotación: Cada 1 hora")
+        print(f"    Rotación: Cada 1 hora")
         print(f"   💾 Historial: 24 horas (24 archivos)")
         print(f"   📊 Archivos actuales: {len(log_files)}")
-        print(f"   📝 Formato: print_service.log.YYYYMMDD_HH")
+        print(f"    Formato: print_service.log.YYYYMMDD_HH")
         
         if len(log_files) > 1:
-            print(f"   📋 Últimos logs:")
+            print(f"    Últimos logs:")
             for log_file_name in sorted(log_files)[-3:]:  # Mostrar últimos 3
                 print(f"      • {log_file_name}")
         
     except Exception as e:
-        print(f"⚠️  Error verificando logs: {e}")
+        print(f"  Error verificando logs: {e}")
 
 def get_available_printers():
     """Obtiene lista de impresoras disponibles en el sistema"""
@@ -345,7 +345,7 @@ if __name__ == "__main__":
     print(f"🕒 Iniciado: {datetime.now()}")
     print(f"💻 Máquina: {machine_info['hostname']}")
     print(f"🌐 IP Local: {machine_info['local_ip']}")
-    print("📋 IMPORTANTE: Este servicio imprime LOCALMENTE en esta máquina")
+    print(" IMPORTANTE: Este servicio imprime LOCALMENTE en esta máquina")
     
     # Mostrar información de logs
     mostrar_info_logs()
@@ -356,13 +356,13 @@ if __name__ == "__main__":
     
     print(f"\n🖨️  Impresoras disponibles: {len(available_printers)}")
     for i, printer in enumerate(available_printers, 1):
-        marker = "✅" if printer == zebra_printer else "  "
+        marker = "" if printer == zebra_printer else "  "
         print(f"   {marker} {i}. {printer}")
     
     if zebra_printer:
-        print(f"🎯 Impresora Zebra detectada: {zebra_printer}")
+        print(f" Impresora Zebra detectada: {zebra_printer}")
     else:
-        print("⚠️  No se detectó impresora Zebra ZT230")
+        print("  No se detectó impresora Zebra ZT230")
         print("💡 Verifique que la impresora esté conectada y configurada")
     
     print("="*60)
@@ -377,9 +377,9 @@ if __name__ == "__main__":
     print("   http://127.0.0.1:5003") 
     print(f"   http://{machine_info['local_ip']}:5003")
     print("="*60)
-    print("⚠️  CADA MÁQUINA DEBE EJECUTAR SU PROPIO SERVICIO")
-    print("✅ Este servicio imprime en la impresora LOCAL de esta máquina")
-    print("🔄 Los logs rotan automáticamente cada 1 hora")
+    print("  CADA MÁQUINA DEBE EJECUTAR SU PROPIO SERVICIO")
+    print(" Este servicio imprime en la impresora LOCAL de esta máquina")
+    print(" Los logs rotan automáticamente cada 1 hora")
     print("="*60)
     
     # Ejecutar el servicio Flask

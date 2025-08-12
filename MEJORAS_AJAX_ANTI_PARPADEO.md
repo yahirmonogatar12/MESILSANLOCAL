@@ -31,17 +31,17 @@ tempDiv.style.opacity = '1';
 
 ### 4. **Logs Detallados**
 ```
-🔄 Iniciando carga AJAX
-📋 CSS detectados: [lista de archivos]
+ Iniciando carga AJAX
+ CSS detectados: [lista de archivos]
 ⏳ Esperando carga completa de X archivos CSS
 🔍 Verificando CSS: archivo.css
-✅ CSS ya cargado / ✅ Nuevo CSS cargado
-✅ TODOS los CSS cargados y aplicados
+ CSS ya cargado /  Nuevo CSS cargado
+ TODOS los CSS cargados y aplicados
 📄 HTML insertado con estilos completamente aplicados
-🎉 Carga AJAX completada SIN parpadeos
+ Carga AJAX completada SIN parpadeos
 ```
 
-## 🎯 Secuencia de Carga (Sin Parpadeos)
+##  Secuencia de Carga (Sin Parpadeos)
 
 1. **Fetch del HTML** (no se muestra)
 2. **Detectar CSS** del contenido
@@ -50,12 +50,12 @@ tempDiv.style.opacity = '1';
 5. **Insertar HTML OCULTO** con estilos aplicados
 6. **Hacer visible** el contenido ya formateado
 
-## ✅ Garantías
+##  Garantías
 
 - ❌ **NUNCA** se muestra contenido sin CSS
-- ✅ **SIEMPRE** se cargan los estilos primero
-- ✅ **ELIMINA** completamente el FOUC (Flash of Unstyled Content)
-- ✅ **Transición suave** con fade-in de 0.2s
+-  **SIEMPRE** se cargan los estilos primero
+-  **ELIMINA** completamente el FOUC (Flash of Unstyled Content)
+-  **Transición suave** con fade-in de 0.2s
 
 ## 🧪 Testing
 
