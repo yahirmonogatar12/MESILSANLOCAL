@@ -935,6 +935,9 @@
             }, 200);
         }
 
+        // Make function globally accessible for inline onclick handlers
+        window.mostrarFormularioWO = mostrarFormularioWO;
+
         // Generar código de WO automáticamente
         function generarCodigoWO() {
             const hoy = new Date();
@@ -1098,11 +1101,18 @@
             }, 4000);
         }
 
-        // Función para filtrar modelos en el dropdown de WO
-        function filtrarModelosWO() {
+        // Función para filtrar modelos en el dropdown de WO con carga si es necesario
+        async function filtrarModelosWO() {
             const searchInput = document.getElementById('woModelo');
             const dropdownList = document.getElementById('woDropdownList');
             const searchTerm = searchInput.value.toLowerCase();
+            
+            // Si no hay modelos cargados, cargarlos primero
+            if (modelosBOM.length === 0) {
+                console.log('No hay modelos en memoria, cargando...');
+                await mostrarDropdownWO();
+                return;
+            }
             
             // Mostrar el dropdown
             dropdownList.style.display = 'block';
@@ -1126,8 +1136,8 @@
             }
         }
 
-        // Función para mostrar dropdown de WO
-        function mostrarDropdownWO() {
+        // Función para mostrar dropdown de WO con carga directa desde MySQL
+        async function mostrarDropdownWO() {
             console.log('=== mostrarDropdownWO() llamada ===');
             const dropdownList = document.getElementById('woDropdownList');
             const searchInput = document.getElementById('woModelo');
@@ -1143,32 +1153,67 @@
             }
             
             console.log('Elementos encontrados OK');
-            console.log('Modelos disponibles:', modelosBOM.length);
-            console.log('Dropdown actual display:', dropdownList.style.display);
-            console.log('Dropdown actual z-index:', dropdownList.style.zIndex);
+            console.log('Modelos disponibles en memoria:', modelosBOM.length);
             
-            // Forzar configuración del dropdown
-            dropdownList.style.display = 'block';
-            dropdownList.style.zIndex = '10000';
-            dropdownList.style.position = 'absolute';
-            
-            if (searchInput.value.trim() === '') {
-                // Si el input está vacío, mostrar todos los modelos
-                const items = dropdownList.querySelectorAll('.bom-dropdown-item');
-                console.log('Items en dropdown:', items.length);
-                items.forEach(item => {
-                    item.classList.remove('hidden');
+            // Hacer consulta directa a MySQL para obtener modelos frescos
+            try {
+                console.log('Cargando modelos directamente desde MySQL...');
+                const response = await fetch('/api/modelos_bom_dropdown', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
                 });
                 
-                // Si no hay items, llenar el dropdown
-                if (items.length === 0 && modelosBOM.length > 0) {
-                    console.log('Dropdown vacío, llenando con modelos...');
-                    llenarDropdownModelos();
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+                
+                const data = await response.json();
+                console.log('Respuesta de modelos:', data);
+                
+                if (data.success && Array.isArray(data.modelos) && data.modelos.length > 0) {
+                    // Actualizar array local
+                    modelosBOM = data.modelos.filter(modelo => modelo && modelo.trim() !== '');
+                    console.log('Modelos actualizados:', modelosBOM.length);
+                    
+                    // Llenar dropdown inmediatamente
+                    llenarDropdownModelosDirecto(dropdownList);
+                    
+                    // Mostrar dropdown
+                    dropdownList.style.display = 'block';
+                    dropdownList.style.zIndex = '10000';
+                    dropdownList.style.position = 'absolute';
+                    
+                    console.log('Dropdown llenado con', modelosBOM.length, 'modelos');
+                } else {
+                    console.warn('No se encontraron modelos o respuesta inválida');
+                    dropdownList.innerHTML = '<div class="bom-dropdown-item" style="color: #f39c12;">No hay modelos disponibles</div>';
+                    dropdownList.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error cargando modelos desde MySQL:', error);
+                dropdownList.innerHTML = '<div class="bom-dropdown-item" style="color: #e74c3c;">Error cargando modelos</div>';
+                dropdownList.style.display = 'block';
             }
             
-            console.log('Dropdown configurado - display:', dropdownList.style.display);
             console.log('=== fin mostrarDropdownWO() ===');
+        }
+
+        // Función auxiliar para llenar dropdown directamente
+        function llenarDropdownModelosDirecto(dropdownList) {
+            dropdownList.innerHTML = '';
+            
+            modelosBOM.forEach(modelo => {
+                const item = document.createElement('div');
+                item.className = 'bom-dropdown-item';
+                item.setAttribute('data-value', modelo);
+                item.textContent = modelo;
+                item.onclick = function() { seleccionarModeloWO(modelo); };
+                dropdownList.appendChild(item);
+            });
+            
+            console.log(`Dropdown llenado con ${modelosBOM.length} modelos`);
         }
 
         // Función para seleccionar un modelo del dropdown de WO
@@ -1425,6 +1470,15 @@
                 mostrarMensaje('Error de conexión al exportar Excel', 'error');
             }
         }
+
+        // Make all functions globally accessible for inline onclick handlers
+        window.consultarWOs = consultarWOs;
+        window.cancelarOperacion = cancelarOperacion;
+        window.exportarExcel = exportarExcel;
+        window.ocultarFormularioWO = ocultarFormularioWO;
+        window.filtrarModelosWO = filtrarModelosWO;
+        window.mostrarDropdownWO = mostrarDropdownWO;
+        window.crearNuevaWO = crearNuevaWO;
     </script>
 
 </body>
