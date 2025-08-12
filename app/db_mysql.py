@@ -22,6 +22,22 @@ except ImportError:
 
 print(f"Módulo db_mysql cargado - MySQL disponible: {MYSQL_AVAILABLE}")
 
+# Cache para saber si la tabla BOM contiene columna 'descripcion'
+_BOM_HAS_DESCRIPCION = None
+def _get_bom_columns():
+    """Obtener y cachear las columnas de la tabla BOM."""
+    global _BOM_COLUMNS
+    if _BOM_COLUMNS is None:
+        try:
+            result = execute_query("SHOW COLUMNS FROM bom", fetch='all') or []
+            _BOM_COLUMNS = {row['Field'] for row in result}
+        except Exception as e:
+            print(f"Error verificando columnas de BOM: {e}")
+            _BOM_COLUMNS = set()
+    return _BOM_COLUMNS
+
+
+
 def eliminar_foreign_keys_materiales():
     """Eliminar todas las foreign keys que referencian a la tabla materiales"""
     print("🗑️ Eliminando foreign keys hacia materiales...")
@@ -923,30 +939,44 @@ def obtener_bom_por_modelo(modelo):
 def guardar_bom_item(data):
     """Guardar item de BOM en MySQL"""
     try:
-        query = """
-            INSERT INTO bom (modelo, numero_parte, descripcion, cantidad, side, 
-                           ubicacion, categoria, proveedor)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                descripcion = VALUES(descripcion),
-                cantidad = VALUES(cantidad),
-                ubicacion = VALUES(ubicacion),
-                categoria = VALUES(categoria),
-                proveedor = VALUES(proveedor)
-        """
-        
-        params = (
-            data.get('modelo'),
-            data.get('numero_parte'),
-            data.get('descripcion'),
-            data.get('cantidad', 1),
+        cols = _get_bom_columns()
+
+        campos = ['modelo', 'numero_parte']
+        valores = [data.get('modelo'), data.get('numero_parte')]
+        updates = []
+
+        if 'descripcion' in cols:
+            campos.append('descripcion')
+            valores.append(data.get('descripcion'))
+            updates.append('descripcion = VALUES(descripcion)')
+
+        if 'cantidad' in cols:
+            campos.append('cantidad')
+            valores.append(data.get('cantidad', 1))
+            updates.append('cantidad = VALUES(cantidad)')
+
+        campos.extend(['side', 'ubicacion', 'categoria', 'proveedor'])
+        valores.extend([
             data.get('side'),
             data.get('ubicacion'),
             data.get('categoria'),
             data.get('proveedor')
-        )
-        
-        result = execute_query(query, params)
+])
+
+        updates.extend([
+            'ubicacion = VALUES(ubicacion)',
+            'categoria = VALUES(categoria)',
+            'proveedor = VALUES(proveedor)'
+        ])
+
+        placeholders = ', '.join(['%s'] * len(campos))
+        query = f"""
+            INSERT INTO bom ({', '.join(campos)})
+            VALUES ({placeholders})
+            ON DUPLICATE KEY UPDATE {', '.join(updates)}
+        """
+
+        result = execute_query(query, tuple(valores))
         return result > 0
     except Exception as e:
         print(f"Error guardando BOM item: {e}")
@@ -1005,6 +1035,8 @@ def listar_bom_por_modelo(modelo):
 def insertar_bom_desde_dataframe(df, registrador):
     """Insertar datos de BOM desde un DataFrame de pandas"""
     try:
+        cols = _get_bom_columns()
+        
         insertados = 0
         omitidos = 0
         
@@ -1021,14 +1053,15 @@ def insertar_bom_desde_dataframe(df, registrador):
             data = {
                 'modelo': modelo,
                 'numero_parte': numero_parte,
-                'descripcion': str(row.get('Descripcion', '') or row.get('Descripción', '')).strip(),
-                'cantidad': int(row.get('Cantidad', 1) or 1),
                 'side': str(row.get('Side', '') or row.get('Lado', '')).strip(),
                 'ubicacion': str(row.get('Ubicacion', '') or row.get('Ubicación', '')).strip(),
                 'categoria': str(row.get('Categoria', '') or row.get('Categoría', '')).strip(),
                 'proveedor': str(row.get('Proveedor', '')).strip()
             }
-            
+            if 'cantidad' in cols:
+                data['cantidad'] = int(row.get('Cantidad', 1) or 1)
+            if 'descripcion' in cols:
+                data['descripcion'] = str(row.get('Descripcion', '') or row.get('Descripción', '')).strip()
             # Insertar usando la función existente
             if guardar_bom_item(data):
                 insertados += 1

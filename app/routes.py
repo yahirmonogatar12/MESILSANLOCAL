@@ -73,6 +73,8 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
             
             try:
                 username = session['usuario']
+                print(f"🔐 Verificando permisos para usuario: {username}, página: {pagina}, sección: {seccion}, botón: {boton}")
+                
                 # Obtener roles del usuario
                 query_rol = '''
                     SELECT r.nombre
@@ -85,11 +87,19 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 '''
                 
                 usuario_rol = execute_query(query_rol, (username,), fetch='one')
+                print(f"🔍 Resultado query_rol: {usuario_rol}, tipo: {type(usuario_rol)}")
                 
                 if not usuario_rol:
+                    print("❌ Usuario sin roles asignados")
                     return jsonify({'error': 'Usuario sin roles asignados'}), 403
                 
-                rol_nombre = usuario_rol[0]
+                # Manejar tanto diccionarios como tuplas
+                if isinstance(usuario_rol, dict):
+                    rol_nombre = usuario_rol['nombre']
+                else:
+                    rol_nombre = usuario_rol[0]
+                    
+                print(f"👤 Rol del usuario: {rol_nombre}")
                 
                 # AHORA TODOS LOS ROLES (incluido superadmin) verifican permisos en base de datos
                 # Verificar permiso específico
@@ -103,9 +113,19 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 '''
                 
                 result = execute_query(query_permiso, (username, pagina, seccion, boton), fetch='one')
-                tiene_permiso = result[0] > 0 if result else False
+                print(f"🔍 Resultado query_permiso: {result}, tipo: {type(result)}")
+                
+                # Manejar tanto diccionarios como tuplas
+                if isinstance(result, dict):
+                    count_value = result.get('COUNT(*)', 0) or result.get('count', 0) or list(result.values())[0] if result else 0
+                else:
+                    count_value = result[0] if result else 0
+                    
+                tiene_permiso = count_value > 0
+                print(f"✅ Tiene permiso: {tiene_permiso} (count: {count_value})")
                 
                 if not tiene_permiso:
+                    print(f"❌ Sin permisos para: {pagina} > {seccion} > {boton}")
                     # Respuesta diferente para AJAX vs navegación directa
                     if request.headers.get('Content-Type') == 'application/json' or request.is_json:
                         return jsonify({
@@ -134,10 +154,13 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                         </div>
                         """, 403
                 
+                print(f"✅ Permisos verificados correctamente, ejecutando función...")
                 return f(*args, **kwargs)
                 
             except Exception as e:
-                print(f"Error verificando permisos: {e}")
+                print(f"❌ Error verificando permisos: {e}")
+                import traceback
+                traceback.print_exc()
                 return jsonify({'error': 'Error interno del servidor'}), 500
         
         return decorated_function
@@ -1831,6 +1854,22 @@ def control_operacion_linea_smt_ajax():
         return render_template('Control de proceso/Control de operacion de linea SMT.html')
     except Exception as e:
         print(f"Error al cargar template Control de operacion de linea SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control_proceso/inventario_imd_terminado')
+@login_requerido
+@requiere_permiso_dropdown('LISTA_CONTROL_DE_PROCESO', 'Inventario', 'IMD-SMD TERMINADO')
+def inventario_imd_terminado_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Inventario IMD Terminado"""
+    try:
+        print("🔍 Iniciando carga de Inventario IMD Terminado AJAX...")
+        result = render_template('Control de proceso/inventario_imd_terminado_ajax.html')
+        print(f"✅ Template Inventario IMD Terminado AJAX renderizado exitosamente, tamaño: {len(result)} caracteres")
+        return result
+    except Exception as e:
+        print(f"❌ Error al cargar template Inventario IMD Terminado AJAX: {e}")
+        import traceback
+        traceback.print_exc()
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route('/listas/control_proceso')
@@ -6690,4 +6729,192 @@ def exportar_wos_excel():
         return jsonify({
             'success': False,
             'error': f'Error exportando WOs: {str(e)}'
+        }), 500
+
+# ======== ENDPOINTS PARA INVENTARIO IMD TERMINADO ========
+
+@app.route('/api/inventario_general', methods=['GET'])
+def api_inventario_general():
+    """Endpoint para inventario general IMD desde tabla inv_resumen_modelo"""
+    try:
+        q = request.args.get("q", "", type=str).strip()
+        stock = request.args.get("stock", "", type=str).strip()  # "", ">0", "=0"
+
+        where_conditions = []
+        params = []
+        
+        if q:
+            where_conditions.append("(modelo LIKE %s OR nparte LIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%"])
+            
+        if stock == ">0":
+            where_conditions.append("stock_total > 0")
+        elif stock == "=0":
+            where_conditions.append("stock_total = 0")
+
+        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+        
+        sql = f"""
+            SELECT
+              modelo,
+              nparte,
+              stock_total,
+              ubicaciones,
+              DATE_FORMAT(ultima_entrada, '%Y-%m-%d %H:%i:%s') AS ultima_entrada,
+              DATE_FORMAT(ultima_salida,  '%Y-%m-%d %H:%i:%s') AS ultima_salida
+            FROM inv_resumen_modelo
+            {where_sql}
+            ORDER BY modelo, nparte
+            LIMIT 2000
+        """
+        
+        results = execute_query(sql, params, fetch='all')
+        
+        return jsonify({
+            'status': 'success',
+            'items': results or []
+        })
+        
+    except Exception as e:
+        print(f"Error en api_inventario_general: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'items': []
+        }), 500
+
+@app.route('/api/ubicacion', methods=['GET'])
+def api_ubicacion():
+    """Endpoint para ubicaciones IMD desde tabla ubicacionimdinv"""
+    try:
+        desde = request.args.get("desde", "", type=str).strip()
+        hasta = request.args.get("hasta", "", type=str).strip()
+        q = request.args.get("q", "", type=str).strip()
+        ubic = request.args.get("ubicacion", "", type=str).strip()
+        carro = request.args.get("carro", "", type=str).strip()
+
+        where_conditions = []
+        params = []
+
+        # Normalizamos fecha: usamos fecha_subida si existe, si no, parseamos 'fecha'
+        fecha_expr = "COALESCE(DATE(fecha), STR_TO_DATE(fecha, '%Y-%m-%d'))"
+
+        if desde:
+            where_conditions.append(f"{fecha_expr} >= %s")
+            params.append(desde)
+        if hasta:
+            where_conditions.append(f"{fecha_expr} <= %s")
+            params.append(hasta)
+        if q:
+            where_conditions.append("(modelo LIKE %s OR nparte LIKE %s OR ubicacion LIKE %s OR carro LIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+        if ubic:
+            where_conditions.append("ubicacion = %s")
+            params.append(ubic)
+        if carro:
+            where_conditions.append("carro = %s")
+            params.append(carro)
+
+        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+        
+        sql = f"""
+            SELECT
+              modelo,
+              nparte,
+              fecha,
+              ubicacion,
+              cantidad,
+              carro
+            FROM ubicacionimdinv
+            {where_sql}
+            ORDER BY {fecha_expr} DESC, modelo, nparte
+            LIMIT 5000
+        """
+        
+        results = execute_query(sql, params, fetch='all')
+        
+        return jsonify({
+            'status': 'success',
+            'items': results or []
+        })
+        
+    except Exception as e:
+        print(f"Error en api_ubicacion: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'items': []
+        }), 500
+
+@app.route('/api/movimientos', methods=['GET'])
+def api_movimientos():
+    """Endpoint para movimientos IMD desde tabla movimientosimd_smd"""
+    try:
+        desde = request.args.get("desde", "", type=str).strip()
+        hasta = request.args.get("hasta", "", type=str).strip()
+        q = request.args.get("q", "", type=str).strip()
+        tipo = request.args.get("tipo", "", type=str).strip()  # ENTRADA / SALIDA / AJUSTE / ""
+
+        print(f"DEBUG: desde={desde}, hasta={hasta}, q={q}, tipo={tipo}")
+
+        where_conditions = []
+        params = []
+        
+        # Filtros de fecha simplificados - usar directamente el campo fecha
+        if desde:
+            where_conditions.append("fecha >= %s")
+            params.append(desde)
+            print(f"DEBUG: Agregando filtro desde: {desde}")
+        if hasta:
+            where_conditions.append("fecha <= %s")
+            params.append(hasta + ' 23:59:59')
+            print(f"DEBUG: Agregando filtro hasta: {hasta}")
+        if tipo:
+            where_conditions.append("UPPER(tipo) = %s")
+            params.append(tipo.upper())
+        if q:
+            # El modelo no está en la tabla de movimientos; lo deducimos con un subquery
+            where_conditions.append("(nparte LIKE %s OR ubicacion LIKE %s OR carro LIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+
+        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+        
+        sql = f"""
+            SELECT
+              fecha AS fecha_hora,
+              UPPER(tipo) AS tipo,
+              nparte,
+              -- Deducimos el modelo de la última ubicación conocida para esa parte
+              (SELECT u.modelo
+                 FROM ubicacionimdinv u
+                WHERE u.nparte = m.nparte
+                ORDER BY u.fecha DESC
+                LIMIT 1) AS modelo,
+              cantidad,
+              ubicacion,
+              carro
+            FROM movimientosimd_smd m
+            {where_sql}
+            ORDER BY fecha DESC
+            LIMIT 5000
+        """
+        
+        print(f"DEBUG: SQL generado: {sql}")
+        print(f"DEBUG: Parámetros: {params}")
+        
+        results = execute_query(sql, params, fetch='all')
+        
+        print(f"DEBUG: Resultados obtenidos: {len(results or [])}")
+        
+        return jsonify({
+            'status': 'success',
+            'items': results or []
+        })
+        
+    except Exception as e:
+        print(f"Error en api_movimientos: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'items': []
         }), 500

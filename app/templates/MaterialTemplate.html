@@ -452,6 +452,9 @@
         <div id="control-operacion-linea-smt-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
+        <div id="inventario-imd-terminado-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
         <!-- Aquí se pueden agregar más contenedores específicos para Control de Proceso -->
         <!-- Por ejemplo: -->
         <!-- <div id="control-calidad-proceso-container" style="display: none;"> -->
@@ -1722,7 +1725,14 @@
                 container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
                 
                 // 3. CARGAR EL CONTENIDO DINÁMICAMENTE
-                return fetch(templatePath)
+                return fetch(templatePath, {
+                    method: 'GET',
+                    credentials: 'same-origin', // Incluir cookies de sesión
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Cache-Control': 'no-cache'
+                    }
+                })
                     .then(response => {
                         if (!response.ok) {
                             // Manejar específicamente errores de permisos
@@ -1760,6 +1770,32 @@
                         return response.text();
                     })
                     .then(html => {
+                        // Verificar si el HTML devuelto es la página de login (indica sesión expirada)
+                        if (html.includes('ILSAN LGMES - Inicio de Sesión') || html.includes('login-container')) {
+                            container.innerHTML = `
+                                <div style="
+                                    display: flex; 
+                                    flex-direction: column; 
+                                    align-items: center; 
+                                    justify-content: center; 
+                                    height: 400px; 
+                                    background: #2c2c2c; 
+                                    color: #e0e0e0; 
+                                    border-radius: 10px; 
+                                    margin: 20px;
+                                    text-align: center;
+                                ">
+                                    <i class="fas fa-user-lock" style="font-size: 3rem; color: #ffc107; margin-bottom: 20px;"></i>
+                                    <h3>Sesión Expirada</h3>
+                                    <p>Tu sesión ha expirado. Redirigiendo al login...</p>
+                                </div>
+                            `;
+                            setTimeout(() => {
+                                window.location.href = '/login';
+                            }, 2000);
+                            throw new Error('Sesión expirada - redirigiendo al login');
+                        }
+                        
                         container.innerHTML = html;
                         
                         // 4. ESPERAR UN POCO ANTES DE INICIALIZAR COMPONENTES
@@ -2452,6 +2488,133 @@
                 } catch (error) {
                     console.error('❌ Error crítico en mostrarControlembarque:', error);
                     alert('Error crítico al cargar el módulo Control de Embarque');
+                }
+            };
+            
+            // Función AJAX para Inventario IMD Terminado
+            window.mostrarInventarioIMDTerminado = function() {
+                console.log('🚀 Iniciando carga AJAX de Inventario IMD Terminado...');
+                
+                try {
+                    hideAllMaterialContainers();
+                    
+                    // Mostrar el área de control de proceso
+                    controlProcesoContentArea.style.display = 'block';
+                    
+                    // IMPORTANTE: Ocultar otras áreas
+                    materialContentArea.style.display = 'none';
+                    produccionContentArea.style.display = 'none';
+                    
+                    // Asegurar que el contenedor específico exista y esté disponible
+                    let imdContainer = document.getElementById('inventario-imd-terminado-unique-container');
+                    
+                    if (!imdContainer) {
+                        // Si no existe, crearlo dentro del área de control de proceso
+                        console.log('🔧 Creando contenedor inventario-imd-terminado-unique-container');
+                        imdContainer = document.createElement('div');
+                        imdContainer.id = 'inventario-imd-terminado-unique-container';
+                        imdContainer.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1001; width: 100%; min-height: 400px; padding: 5px;';
+                        controlProcesoContentArea.appendChild(imdContainer);
+                    } else {
+                        // Forzar estilos para override CSS
+                        imdContainer.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1001; width: 100%; min-height: 400px; padding: 5px;';
+                    }
+                    
+                    // Ocultar otros contenedores específicos
+                    const otherContainers = [
+                        'control-proceso-info-container',
+                        'Control de produccion SMT-unique-container',
+                        'control-operacion-linea-smt-unique-container'
+                    ];
+                    
+                    otherContainers.forEach(containerId => {
+                        const container = document.getElementById(containerId);
+                        if (container) {
+                            container.style.display = 'none';
+                        }
+                    });
+                    
+                    // Cargar contenido dinámicamente usando la versión AJAX
+                    cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_proceso/inventario_imd_terminado', () => {
+                        console.log('✅ Inventario IMD Terminado AJAX cargado exitosamente');
+                        
+                        // Verificar que el contenedor específico esté visible
+                        const inventarioContainer = document.querySelector('#inventario-imd-terminado-unique-container');
+                        if (inventarioContainer) {
+                            inventarioContainer.style.display = 'block';
+                            inventarioContainer.style.visibility = 'visible';
+                            inventarioContainer.style.opacity = '1';
+                            
+                            console.log('📋 Contenedor de Inventario IMD Terminado inicializado');
+                            console.log('🎯 Inventario IMD Terminado AJAX completamente funcional');
+                        } else {
+                            console.error('❌ No se encontró el contenedor inventario-imd-terminado-unique-container');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error cargando Inventario IMD Terminado AJAX:', error);
+                        
+                        // Manejo específico de errores
+                        let errorMessage = 'Error desconocido al cargar el módulo';
+                        let shouldRedirect = false;
+                        
+                        // Verificar tipo de error
+                        if (error.message && error.message.includes('Permisos insuficientes')) {
+                            errorMessage = 'No tienes permisos para acceder a este módulo';
+                        } else if (error.message && error.message.includes('Usuario no autenticado')) {
+                            errorMessage = 'Sesión expirada. Redirigiendo al login...';
+                            shouldRedirect = true;
+                        } else if (error.status === 404) {
+                            errorMessage = 'Módulo Inventario IMD Terminado no encontrado';
+                        } else if (error.status === 500) {
+                            errorMessage = 'Error interno del servidor';
+                        } else if (error.status === 401 || error.status === 403) {
+                            errorMessage = 'Error de autenticación. Redirigiendo al login...';
+                            shouldRedirect = true;
+                        } else if (error.status === 0 || !error.status) {
+                            errorMessage = 'Error de conexión al servidor';
+                        } else {
+                            errorMessage = `Error ${error.status}: ${error.message || 'Error del servidor'}`;
+                        }
+                        
+                        // Mostrar mensaje específico en consola para debugging
+                        console.error(`Error específico: ${errorMessage}`, error);
+                        
+                        // Redirigir si es necesario
+                        if (shouldRedirect) {
+                            setTimeout(() => {
+                                window.location.href = '/login';
+                            }, 2000);
+                        }
+                        
+                        // Mostrar contenedor con mensaje de error y botón de reintentar
+                        const errorContainer = document.getElementById('inventario-imd-terminado-unique-container');
+                        if (errorContainer) {
+                            errorContainer.innerHTML = `
+                                <div style="text-align: center; padding: 40px; background: #32323E; color: #ecf0f1; border-radius: 8px;">
+                                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #e74c3c; margin-bottom: 20px;"></i>
+                                    <h3>Error al cargar Inventario IMD Terminado</h3>
+                                    <p>${errorMessage}</p>
+                                    ${!shouldRedirect ? `
+                                    <button onclick="window.mostrarInventarioIMDTerminado()" style="
+                                        background: #3498db; 
+                                        color: white; 
+                                        border: none; 
+                                        padding: 10px 20px; 
+                                        border-radius: 5px; 
+                                        cursor: pointer; 
+                                        margin-top: 20px;
+                                        font-size: 14px;
+                                    ">Reintentar</button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error crítico en mostrarInventarioIMDTerminado:', error);
+                    alert('Error crítico al cargar el módulo Inventario IMD Terminado');
                 }
             };
             

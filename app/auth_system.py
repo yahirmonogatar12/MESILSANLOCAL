@@ -445,6 +445,9 @@ class AuthSystem:
             # LISTA CONTROL DE PROCESO - Control de material Scrap
             ('LISTA_CONTROL_DE_PROCESO', 'Control de material Scrap', 'Control de Scrap', 'Acceso al control de Scrap'),
             
+            # LISTA CONTROL DE PROCESO - Inventario IMD Terminado
+            ('LISTA_CONTROL_DE_PROCESO', 'Inventario', 'IMD-SMD TERMINADO', 'Acceso al inventario de productos IMD terminados'),
+            
             # LISTA CONTROL DE CALIDAD - Control de calidad  
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección de entrada', 'Acceso a inspección de entrada'),
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección en proceso', 'Acceso a inspección en proceso'),
@@ -472,7 +475,7 @@ class AuthSystem:
         for pagina, seccion, boton, descripcion in permisos_botones:
             cursor.execute('''
                 INSERT OR IGNORE INTO permisos_botones (pagina, seccion, boton, descripcion)
-                VALUES (%s, %s, %s, ?)
+                VALUES (%s, %s, %s, %s)
             ''', (pagina, seccion, boton, descripcion))
     
     def _asignar_permisos_botones_roles(self, cursor):

@@ -1,0 +1,1052 @@
+<!-- Inventario IMD Terminado - Versión AJAX -->
+<div id="inventario-imd-terminado-unique-container" class="inventario-imd-terminado-container">
+  <style>
+    /* CSS incrustado para Inventario IMD Terminado */
+    .inventario-imd-terminado-container * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    .inventario-imd-terminado-container {
+      font-family: 'LG regular', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #32323E;
+      color: lightgray;
+      min-height: 100vh;
+    }
+    
+    .inventario-imd-terminado-container .container-imd {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .inventario-imd-terminado-container .header-imd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #20688C;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    
+    .inventario-imd-terminado-container .header-imd h1 {
+      color: #ecf0f1;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    
+    .inventario-imd-terminado-container .tabs-imd {
+      display: flex;
+      gap: 8px;
+      margin: 10px 0 14px;
+    }
+    
+    .inventario-imd-terminado-container .tab-imd {
+      border: 1px solid #20688C;
+      background: #3C3940;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .inventario-imd-terminado-container .tab-imd.active {
+      background: #20688C;
+    }
+    
+    .inventario-imd-terminado-container .panel-imd {
+      display: none;
+    }
+    
+    .inventario-imd-terminado-container .panel-imd.active {
+      display: block;
+    }
+
+    /* Controles */
+    .inventario-imd-terminado-container .controls-imd {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: #34334E;
+      border: 1px solid #20688C;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .inventario-imd-terminado-container .group-imd {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .inventario-imd-terminado-container .label-imd {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #ecf0f1;
+      letter-spacing: .3px;
+    }
+    
+    .inventario-imd-terminado-container .input-imd,
+    .inventario-imd-terminado-container .select-imd {
+      background: #2c3e50;
+      color: lightgray;
+      border: 1px solid #34495e;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    
+    .inventario-imd-terminado-container .btn-imd {
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid #20688C;
+      background: #3C3940;
+      color: #fff;
+      cursor: pointer;
+      font-size: 11px;
+      min-width: auto;
+    }
+    
+    .inventario-imd-terminado-container .btn-imd:hover {
+      background: #2980b9;
+    }
+    
+    .inventario-imd-terminado-container .status-imd {
+      margin-left: auto;
+      background: #40424F;
+      border: 1px solid #5F6375;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+
+    /* Tabla */
+    .inventario-imd-terminado-container .table-container-imd {
+      overflow: auto;
+      max-height: 70vh;
+      border-radius: 6px;
+      border: 1px solid #5F6375;
+      background: #40424F;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #20688C #40424F;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar-track {
+      background: #40424F;
+      border-radius: 4px;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar-thumb {
+      background: #20688C;
+      border-radius: 4px;
+    }
+
+    .inventario-imd-terminado-container .table-container-imd::-webkit-scrollbar-thumb:hover {
+      background: #3498db;
+    }
+
+    .inventario-imd-terminado-container .table-imd {
+      width: 100%;
+      border-collapse: collapse;
+      background: #40424F;
+      font-size: 11px;
+      table-layout: fixed;
+    }
+    
+    .inventario-imd-terminado-container .table-imd th {
+      background: #172A46;
+      color: #ecf0f1;
+      padding: 7px;
+      border: 1px solid #20688C;
+      position: sticky;
+      top: 0;
+    }
+    
+    .inventario-imd-terminado-container .table-imd td {
+      padding: 6px;
+      border: 1px solid #5F6375;
+      color: lightgray;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .inventario-imd-terminado-container .table-imd tbody tr:hover td {
+      background: #485563;
+    }
+    
+    /* Loader */
+    .inventario-imd-terminado-container .loading-imd {
+      display: none;
+      text-align: center;
+      background: #40424F;
+      border-radius: 6px;
+      padding: 18px;
+      margin: 8px 0;
+    }
+    
+    .inventario-imd-terminado-container .spinner-imd {
+      border: 3px solid #555;
+      border-top: 3px solid #00D4FF;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 8px;
+      animation: spin-imd 1s linear infinite;
+    }
+    
+    @keyframes spin-imd {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Chips */
+    .inventario-imd-terminado-container .ok-imd {
+      color: #27ae60;
+      background: rgba(39, 174, 96, .1);
+      border: 1px solid rgba(39, 174, 96, .35);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    
+    .inventario-imd-terminado-container .ng-imd {
+      color: #e74c3c;
+      background: rgba(231, 76, 60, .1);
+      border: 1px solid rgba(231, 76, 60, .35);
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    
+    /* Scrollbar */
+    .inventario-imd-terminado-container ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    
+    .inventario-imd-terminado-container ::-webkit-scrollbar-thumb {
+      background: #20688C;
+      border-radius: 3px;
+    }
+    
+    .inventario-imd-terminado-container ::-webkit-scrollbar-track {
+      background: #40424F;
+    }
+    
+    /* Estilos para filtros de cabecera IMD */
+    .inventario-imd-terminado-container .filterable-header-imd {
+      position: relative;
+      vertical-align: top;
+      padding: 6px 8px !important;
+      min-width: 120px;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .header-content-imd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 32px;
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .header-content-imd span {
+      font-size: 11px;
+      font-weight: 600;
+      color: #ecf0f1;
+      text-align: left;
+      line-height: 1.2;
+      flex: 1;
+      min-width: 0;
+      word-wrap: break-word;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-btn-imd {
+      background: #2c3e50;
+      border: 1px solid #20688C;
+      color: #3498db;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      font-size: 11px;
+      padding: 0;
+      margin-left: auto;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-btn-imd:hover {
+      background: #20688C;
+      color: #ecf0f1;
+      transform: scale(1.1);
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-btn-imd.active {
+      background: #3498db;
+      color: #fff;
+      border-color: #2980b9;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .header-filter-imd {
+      position: absolute;
+      top: 0%;
+      left: 0;
+      right: 0;
+      background: #2c3e50;
+      border: 1px solid #20688C;
+      border-radius: 4px;
+      box-shadow: 0 -4px 8px rgba(0,0,0,0.3);
+      z-index: 9999 !important;
+      padding: 5px;
+      margin-bottom: 2px;
+      min-width: 150px;
+      display: none;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-select-imd {
+      width: 100%;
+      background: #34495e !important;
+      border: 1px solid #20688C !important;
+      color: lightgray !important;
+      padding: 5px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-input-imd {
+      width: 100%;
+      background: #34495e !important;
+      border: 1px solid #20688C !important;
+      color: lightgray !important;
+      padding: 5px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-select-imd:focus,
+    .inventario-imd-terminado-container .filterable-header-imd .filter-input-imd:focus {
+      border-color: #3498db !important;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd .filter-select-imd option {
+      background: #2c3e50;
+      color: lightgray;
+      padding: 3px;
+    }
+
+    .inventario-imd-terminado-container .clear-all-filters-imd {
+      background: #e74c3c !important;
+      border: 1px solid #c0392b !important;
+      color: #fff !important;
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      transition: all 0.2s ease;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+    }
+
+    .inventario-imd-terminado-container .clear-all-filters-imd:hover {
+      background: #c0392b !important;
+      transform: scale(1.05);
+    }
+
+    .inventario-imd-terminado-container .clear-all-filters-imd i {
+      font-size: 10px;
+    }
+
+    /* Override para evitar conflictos con overflow */
+    .inventario-imd-terminado-container .table-imd th:not(.filterable-header-imd) {
+      overflow: hidden;
+    }
+
+    .inventario-imd-terminado-container .filterable-header-imd {
+      overflow: visible !important;
+    }
+    
+    @media(max-width: 900px) {
+      .inventario-imd-terminado-container .status-imd {
+        width: 100%;
+        order: 99;
+      }
+    }
+  </style>
+    <div class="tabs-imd">
+      <button class="tab-imd active" data-panel="inventario">Inventario General</button>
+      <button class="tab-imd" data-panel="ubicacion">Ubicación</button>
+      <button class="tab-imd" data-panel="movimientos">Movimientos</button>
+    </div>
+
+    <!-- UBICACIÓN -->
+    <section id="INVIMDPCBID_panel-ubicacion" class="panel-imd">
+      <div class="controls-imd">
+        <button class="btn-imd" id="INVIMDPCBID_u-buscar">Consultar</button>
+        <button class="btn-imd" id="INVIMDPCBID_u-limpiar">Limpiar</button>
+        <div class="status-imd" id="INVIMDPCBID_u-status">—</div>
+      </div>
+
+      <div id="INVIMDPCBID_u-loading" class="loading-imd"><div class="spinner-imd"></div><p>Cargando ubicación…</p></div>
+      <div class="table-container-imd">
+        <table class="table-imd" id="INVIMDPCBID_u-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Modelo</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('u', 'modelo')">▼</button>
+                </div>
+                <div id="filtro-u-modelo" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar modelo..." oninput="aplicarFiltroTextoIMD('u', 'modelo', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>No. Parte</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('u', 'nparte')">▼</button>
+                </div>
+                <div id="filtro-u-nparte" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar parte..." oninput="aplicarFiltroTextoIMD('u', 'nparte', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Ubicación</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('u', 'ubicacion')">▼</button>
+                </div>
+                <div id="filtro-u-ubicacion" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar ubicación..." oninput="aplicarFiltroTextoIMD('u', 'ubicacion', this.value)">
+                </div>
+              </th>
+              <th>Cantidad</th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Carro</span>
+                  <button class="clear-all-filters-imd" onclick="limpiarTodosFiltrosIMD('u')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- MOVIMIENTOS -->
+    <section id="INVIMDPCBID_panel-movimientos" class="panel-imd">
+      <div class="controls-imd">
+        <div class="group-imd">
+          <label class="label-imd">Fecha desde</label>
+          <input type="date" id="INVIMDPCBID_m-desde" class="input-imd"/>
+        </div>
+        <div class="group-imd">
+          <label class="label-imd">Fecha hasta</label>
+          <input type="date" id="INVIMDPCBID_m-hasta" class="input-imd"/>
+        </div>
+        <button class="btn-imd" id="INVIMDPCBID_m-buscar">Consultar</button>
+        <button class="btn-imd" id="INVIMDPCBID_m-limpiar">Limpiar</button>
+        <div class="status-imd" id="INVIMDPCBID_m-status">—</div>
+      </div>
+
+      <div id="INVIMDPCBID_m-loading" class="loading-imd"><div class="spinner-imd"></div><p>Cargando movimientos…</p></div>
+      <div class="table-container-imd">
+        <table class="table-imd" id="INVIMDPCBID_m-table">
+          <thead>
+            <tr>
+              <th>Fecha/Hora</th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Tipo</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('m', 'tipo')">▼</button>
+                </div>
+                <div id="filtro-m-tipo" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar tipo..." oninput="aplicarFiltroTextoIMD('m', 'tipo', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>No. Parte</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('m', 'nparte')">▼</button>
+                </div>
+                <div id="filtro-m-nparte" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar parte..." oninput="aplicarFiltroTextoIMD('m', 'nparte', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Modelo</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('m', 'modelo')">▼</button>
+                </div>
+                <div id="filtro-m-modelo" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar modelo..." oninput="aplicarFiltroTextoIMD('m', 'modelo', this.value)">
+                </div>
+              </th>
+              <th>Cantidad</th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Ubicación</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('m', 'ubicacion')">▼</button>
+                </div>
+                <div id="filtro-m-ubicacion" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar ubicación..." oninput="aplicarFiltroTextoIMD('m', 'ubicacion', this.value)">
+                </div>
+              </th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Carro</span>
+                  <button class="clear-all-filters-imd" onclick="limpiarTodosFiltrosIMD('m')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- INVENTARIO GENERAL -->
+    <section id="INVIMDPCBID_panel-inventario" class="panel-imd active">
+      <div class="controls-imd">
+        <button class="btn-imd" id="INVIMDPCBID_g-buscar">Consultar</button>
+        <button class="btn-imd" id="INVIMDPCBID_g-limpiar">Limpiar</button>
+        <button class="btn-imd" id="INVIMDPCBID_g-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
+        <div class="status-imd" id="INVIMDPCBID_g-status">—</div>
+      </div>
+
+      <div id="INVIMDPCBID_g-loading" class="loading-imd"><div class="spinner-imd"></div><p>Cargando inventario general…</p></div>
+      <div class="table-container-imd">
+        <table class="table-imd" id="INVIMDPCBID_g-table">
+          <thead>
+            <tr>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Modelo</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('g', 'modelo')">▼</button>
+                </div>
+                <div id="filtro-g-modelo" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar modelo..." oninput="aplicarFiltroTextoIMD('g', 'modelo', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>No. Parte</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('g', 'nparte')">▼</button>
+                </div>
+                <div id="filtro-g-nparte" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar parte..." oninput="aplicarFiltroTextoIMD('g', 'nparte', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Stock Total</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('g', 'stock_total')">▼</button>
+                </div>
+                <div id="filtro-g-stock_total" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar stock..." oninput="aplicarFiltroTextoIMD('g', 'stock_total', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Ubicaciones</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('g', 'ubicaciones')">▼</button>
+                </div>
+                <div id="filtro-g-ubicaciones" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar ubicaciones..." oninput="aplicarFiltroTextoIMD('g', 'ubicaciones', this.value)">
+                </div>
+              </th>
+              <th>Última Entrada</th>
+              <th>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span>Última Salida</span>
+                  <button class="clear-all-filters-imd" onclick="limpiarTodosFiltrosIMD('g')" title="Limpiar todos los filtros">×</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+<script>
+/* Variables globales para filtros */
+let datosOriginalesIMD = {
+  'g': [], // Inventario general
+  'u': [], // Ubicación  
+  'm': []  // Movimientos
+};
+let filtrosIMD = {
+  'g': {},
+  'u': {},
+  'm': {}
+};
+
+/* Funciones para filtros IMD */
+function toggleFiltroIMD(tabla, columna) {
+  const filtroDiv = document.getElementById(`filtro-${tabla}-${columna}`);
+  const filterBtn = document.querySelector(`button[onclick="toggleFiltroIMD('${tabla}', '${columna}')"]`);
+  
+  // Cerrar otros filtros
+  document.querySelectorAll('.header-filter-imd').forEach(filter => {
+    if (filter.id !== `filtro-${tabla}-${columna}`) {
+      filter.style.display = 'none';
+    }
+  });
+  
+  // Quitar active de otros botones
+  document.querySelectorAll('.filter-btn-imd').forEach(btn => {
+    if (btn !== filterBtn) {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // Toggle del filtro actual
+  if (filtroDiv.style.display === 'none' || !filtroDiv.style.display) {
+    // Si tiene select, poblar opciones
+    const select = filtroDiv.querySelector('.filter-select-imd');
+    if (select) {
+      poblarOpcionesFiltroIMD(tabla, columna);
+    }
+    
+    filtroDiv.style.display = 'block';
+    filterBtn.classList.add('active');
+    
+    // Enfocar el input si existe
+    const input = filtroDiv.querySelector('.filter-input-imd');
+    if (input) {
+      setTimeout(() => input.focus(), 100);
+    }
+  } else {
+    filtroDiv.style.display = 'none';
+    filterBtn.classList.remove('active');
+  }
+}
+
+function poblarOpcionesFiltroIMD(tabla, columna) {
+  const select = document.querySelector(`#filtro-${tabla}-${columna} .filter-select-imd`);
+  if (!select || !datosOriginalesIMD[tabla].length) return;
+  
+  // Mantener opciones fijas y agregar dinámicas según la columna
+  const opcionesFijas = Array.from(select.querySelectorAll('option')).map(opt => opt.value);
+  const valoresUnicos = new Set();
+  
+  // Obtener valores únicos de la columna
+  datosOriginalesIMD[tabla].forEach(fila => {
+    const valor = fila[columna];
+    if (valor && valor !== '' && valor !== null && valor !== undefined) {
+      valoresUnicos.add(valor.toString());
+    }
+  });
+  
+  // Agregar opciones dinámicas (solo si no existen en las fijas)
+  const valoresOrdenados = Array.from(valoresUnicos).sort();
+  valoresOrdenados.forEach(valor => {
+    if (!opcionesFijas.includes(valor)) {
+      const option = document.createElement('option');
+      option.value = valor;
+      option.textContent = valor;
+      select.appendChild(option);
+    }
+  });
+}
+
+function aplicarFiltroIMD(tabla, columna, valor) {
+  if (valor === '') {
+    delete filtrosIMD[tabla][columna];
+  } else {
+    filtrosIMD[tabla][columna] = valor;
+  }
+  
+  aplicarTodosFiltrosIMD(tabla);
+  
+  // Cerrar el filtro después de aplicar
+  document.getElementById(`filtro-${tabla}-${columna}`).style.display = 'none';
+  document.querySelector(`button[onclick="toggleFiltroIMD('${tabla}', '${columna}')"]`).classList.remove('active');
+}
+
+function aplicarFiltroTextoIMD(tabla, columna, valor) {
+  if (valor.trim() === '') {
+    delete filtrosIMD[tabla][columna];
+  } else {
+    filtrosIMD[tabla][columna] = valor.trim();
+  }
+  
+  aplicarTodosFiltrosIMD(tabla);
+}
+
+function limpiarFiltroIMD(tabla, columna) {
+  delete filtrosIMD[tabla][columna];
+  
+  // Limpiar el input
+  const input = document.querySelector(`#filtro-${tabla}-${columna} .filter-input-imd`);
+  if (input) input.value = '';
+  
+  // Limpiar el select si existe
+  const select = document.querySelector(`#filtro-${tabla}-${columna} .filter-select-imd`);
+  if (select) select.selectedIndex = 0;
+  
+  aplicarTodosFiltrosIMD(tabla);
+  
+  // Cerrar el filtro
+  document.getElementById(`filtro-${tabla}-${columna}`).style.display = 'none';
+  document.querySelector(`button[onclick="toggleFiltroIMD('${tabla}', '${columna}')"]`).classList.remove('active');
+}
+
+function aplicarTodosFiltrosIMD(tabla) {
+  if (!datosOriginalesIMD[tabla].length) return;
+  
+  let datosFiltrados = [...datosOriginalesIMD[tabla]];
+  
+  // Aplicar cada filtro
+  Object.keys(filtrosIMD[tabla]).forEach(columna => {
+    const valorFiltro = filtrosIMD[tabla][columna];
+    
+    datosFiltrados = datosFiltrados.filter(fila => {
+      const valorCelda = fila[columna];
+      
+      // Filtros especiales para stock
+      if (columna === 'stock_total' && valorFiltro.startsWith('>')) {
+        const limite = parseInt(valorFiltro.substring(1));
+        return parseInt(valorCelda || 0) > limite;
+      } else if (columna === 'stock_total' && valorFiltro === '=0') {
+        return parseInt(valorCelda || 0) === 0;
+      } else {
+        // Filtro de texto - búsqueda que contiene (case-insensitive)
+        const valorTexto = (valorCelda || '').toString().toLowerCase();
+        const filtroTexto = valorFiltro.toLowerCase();
+        return valorTexto.includes(filtroTexto);
+      }
+    });
+  });
+  
+  // Actualizar tabla con datos filtrados
+  actualizarTablaIMD(tabla, datosFiltrados);
+}
+
+function actualizarTablaIMD(tabla, datos) {
+  const tbody = document.querySelector(`#INVIMDPCBID_${tabla}-table tbody`);
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  datos.forEach(fila => {
+    const tr = document.createElement('tr');
+    
+    if (tabla === 'g') {
+      // Inventario General
+      tr.innerHTML = `
+        <td title="${fmt(fila.modelo)}">${fmt(fila.modelo)}</td>
+        <td title="${fmt(fila.nparte)}">${fmt(fila.nparte)}</td>
+        <td>${fmt(fila.stock_total)}</td>
+        <td title="${fmt(fila.ubicaciones)}">${fmt(fila.ubicaciones)}</td>
+        <td>${fmt(fila.ultima_entrada)}</td>
+        <td>${fmt(fila.ultima_salida)}</td>`;
+    } else if (tabla === 'u') {
+      // Ubicación
+      tr.innerHTML = `
+        <td>${fmt(fila.fecha || fila.fecha_registro || '')}</td>
+        <td title="${fmt(fila.modelo)}">${fmt(fila.modelo)}</td>
+        <td title="${fmt(fila.nparte)}">${fmt(fila.nparte)}</td>
+        <td>${fmt(fila.ubicacion)}</td>
+        <td>${fmt(fila.cantidad)}</td>
+        <td>${fmt(fila.carro)}</td>`;
+    } else if (tabla === 'm') {
+      // Movimientos
+      const tipoChip = fila.tipo === 'SALIDA' ? 'ng-imd' : (fila.tipo === 'ENTRADA' ? 'ok-imd' : '');
+      tr.innerHTML = `
+        <td>${fmt(fila.fecha_hora || '')}</td>
+        <td><span class="${tipoChip}">${fmt(fila.tipo)}</span></td>
+        <td title="${fmt(fila.nparte)}">${fmt(fila.nparte)}</td>
+        <td title="${fmt(fila.modelo)}">${fmt(fila.modelo)}</td>
+        <td>${fmt(fila.cantidad)}</td>
+        <td>${fmt(fila.ubicacion)}</td>
+        <td>${fmt(fila.carro)}</td>`;
+    }
+    
+    tbody.appendChild(tr);
+  });
+  
+  // Actualizar contador
+  const statusElement = document.querySelector(`#INVIMDPCBID_${tabla}-status`);
+  if (statusElement) {
+    const total = datosOriginalesIMD[tabla].length;
+    const filtrados = datos.length;
+    statusElement.textContent = total === filtrados ? 
+      `${total} registros` : 
+      `${filtrados} de ${total} registros`;
+  }
+}
+
+function limpiarTodosFiltrosIMD(tabla) {
+  filtrosIMD[tabla] = {};
+  
+  // Resetear todos los selects de esta tabla
+  document.querySelectorAll(`#INVIMDPCBID_${tabla}-table .header-filter-imd select`).forEach(select => {
+    select.selectedIndex = 0;
+  });
+  
+  // Resetear todos los inputs de esta tabla
+  document.querySelectorAll(`#INVIMDPCBID_${tabla}-table .header-filter-imd input`).forEach(input => {
+    input.value = '';
+  });
+  
+  // Cerrar todos los filtros
+  document.querySelectorAll(`#INVIMDPCBID_${tabla}-table .header-filter-imd`).forEach(filter => {
+    filter.style.display = 'none';
+  });
+  
+  // Quitar active de todos los botones
+  document.querySelectorAll(`#INVIMDPCBID_${tabla}-table .filter-btn-imd`).forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  // Mostrar todos los datos
+  actualizarTablaIMD(tabla, datosOriginalesIMD[tabla]);
+}
+
+/* Utilitarios */
+function fmt(v){ return (v === undefined || v === null || v === "") ? "-" : v; }
+function coalesce(a,b){ return (a !== undefined && a !== null) ? a : b; }
+const qs = (sel)=> document.querySelector(sel);
+const qsa = (sel)=> Array.from(document.querySelectorAll(sel));
+const todayISO = ()=> new Date().toISOString().split('T')[0];
+
+function setDefaultDates(ids){
+  ids.forEach(id => { const el = qs('#'+id); if(el && !el.value) el.value = todayISO(); });
+}
+
+/* Tabs */
+qsa('.tab-imd').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    qsa('.tab-imd').forEach(t=>t.classList.remove('active'));
+    qsa('.panel-imd').forEach(p=>p.classList.remove('active'));
+    b.classList.add('active');
+    qs('#INVIMDPCBID_panel-'+b.dataset.panel).classList.add('active');
+  });
+});
+
+/* ============ UBICACIÓN ============ */
+const U = {
+  url: '/api/ubicacion',
+  load: async () => {
+    qs('#INVIMDPCBID_u-loading').style.display='block'; qs('#INVIMDPCBID_u-status').textContent='Cargando…';
+    try{
+      const r = await fetch(U.url); 
+      const data = await r.json();
+      const rows = data.items || data.data || [];
+      
+      // Guardar datos originales para filtros
+      datosOriginalesIMD['u'] = rows;
+      filtrosIMD['u'] = {}; // Resetear filtros
+      
+      // Usar función de actualización que soporta filtros
+      actualizarTablaIMD('u', rows);
+      
+      qs('#INVIMDPCBID_u-status').textContent = `${rows.length} registros`;
+    }catch(e){
+      qs('#INVIMDPCBID_u-status').textContent = 'Error de conexión';
+    }finally{ qs('#INVIMDPCBID_u-loading').style.display='none'; }
+  },
+  clear: ()=>{
+    qs('#INVIMDPCBID_u-table tbody').innerHTML='';
+    qs('#INVIMDPCBID_u-status').textContent='Limpio';
+    // Limpiar datos y filtros
+    datosOriginalesIMD['u'] = [];
+    limpiarTodosFiltrosIMD('u');
+  }
+};
+qs('#INVIMDPCBID_u-buscar').addEventListener('click', U.load);
+qs('#INVIMDPCBID_u-limpiar').addEventListener('click', U.clear);
+
+/* ============ MOVIMIENTOS ============ */
+setDefaultDates(['INVIMDPCBID_m-desde']);
+const M = {
+  url: '/api/movimientos',
+  load: async ()=>{
+    const desde = qs('#INVIMDPCBID_m-desde').value;
+    const hasta = qs('#INVIMDPCBID_m-hasta').value;
+    
+    const p = new URLSearchParams();
+    if(desde) p.append('desde', desde);
+    if(hasta) p.append('hasta', hasta);
+
+    qs('#INVIMDPCBID_m-loading').style.display='block'; qs('#INVIMDPCBID_m-status').textContent='Cargando…';
+    try{
+      const r = await fetch(M.url + (p.toString() ? `?${p.toString()}` : '')); 
+      const data = await r.json();
+      const rows = data.items || data.data || [];
+      
+      // Guardar datos originales para filtros
+      datosOriginalesIMD['m'] = rows;
+      filtrosIMD['m'] = {}; // Resetear filtros
+      
+      // Usar función de actualización que soporta filtros
+      actualizarTablaIMD('m', rows);
+      
+      qs('#INVIMDPCBID_m-status').textContent = `${rows.length} movimientos`;
+    }catch(e){
+      qs('#INVIMDPCBID_m-status').textContent = 'Error de conexión';
+    }finally{ qs('#INVIMDPCBID_m-loading').style.display='none'; }
+  },
+  clear: ()=>{
+    ['INVIMDPCBID_m-desde','INVIMDPCBID_m-hasta'].forEach(id=>{ const el=qs('#'+id); if(el) el.value=''; });
+    qs('#INVIMDPCBID_m-table tbody').innerHTML='';
+    qs('#INVIMDPCBID_m-status').textContent='Limpio';
+    // Limpiar datos y filtros
+    datosOriginalesIMD['m'] = [];
+    limpiarTodosFiltrosIMD('m');
+  }
+};
+qs('#INVIMDPCBID_m-buscar').addEventListener('click', M.load);
+qs('#INVIMDPCBID_m-limpiar').addEventListener('click', M.clear);
+
+/* ============ INVENTARIO GENERAL ============ */
+const G = {
+  url: '/api/inventario_general',
+  load: async ()=>{
+    qs('#INVIMDPCBID_g-loading').style.display='block'; qs('#INVIMDPCBID_g-status').textContent='Cargando…';
+    try{
+      const r = await fetch(G.url); 
+      const data = await r.json();
+      const rows = data.items || data.data || [];
+      
+      // Guardar datos originales para filtros
+      datosOriginalesIMD['g'] = rows;
+      filtrosIMD['g'] = {}; // Resetear filtros
+      
+      // Usar función de actualización que soporta filtros
+      actualizarTablaIMD('g', rows);
+      
+      qs('#INVIMDPCBID_g-status').textContent = `${rows.length} ítems`;
+    }catch(e){
+      qs('#INVIMDPCBID_g-status').textContent = 'Error de conexión';
+    }finally{ qs('#INVIMDPCBID_g-loading').style.display='none'; }
+  },
+  clear: ()=>{
+    qs('#INVIMDPCBID_g-table tbody').innerHTML='';
+    qs('#INVIMDPCBID_g-status').textContent='Limpio';
+    // Limpiar datos y filtros
+    datosOriginalesIMD['g'] = [];
+    limpiarTodosFiltrosIMD('g');
+  },
+  exportarExcel: () => {
+    if (!datosOriginalesIMD['g'] || datosOriginalesIMD['g'].length === 0) {
+      alert('No hay datos para exportar. Primero realiza una consulta.');
+      return;
+    }
+    
+    // Crear datos para Excel
+    const datos = datosOriginalesIMD['g'];
+    const headers = ['Modelo', 'No. Parte', 'Stock Total', 'Ubicaciones', 'Última Entrada', 'Última Salida'];
+    
+    // Crear CSV content
+    let csvContent = headers.join(',') + '\n';
+    
+    datos.forEach(row => {
+      const fila = [
+        `"${row.modelo || ''}"`,
+        `"${row.nparte || ''}"`,
+        `"${row.stock_total || 0}"`,
+        `"${row.ubicaciones || ''}"`,
+        `"${row.ultima_entrada || ''}"`,
+        `"${row.ultima_salida || ''}"`
+      ];
+      csvContent += fila.join(',') + '\n';
+    });
+    
+    // Crear y descargar archivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    
+    // Nombre del archivo con fecha
+    const fecha = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `inventario_imd_general_${fecha}.csv`);
+    
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    qs('#INVIMDPCBID_g-status').textContent = `Exportados ${datos.length} registros a Excel`;
+  }
+};
+qs('#INVIMDPCBID_g-buscar').addEventListener('click', G.load);
+qs('#INVIMDPCBID_g-limpiar').addEventListener('click', G.clear);
+qs('#INVIMDPCBID_g-exportar').addEventListener('click', G.exportarExcel);
+
+/* Test mode with mock data when ?test=1 */
+function isTestMode(){ return window.location.search.indexOf('test=1') >= 0; }
+if (isTestMode()){
+  (function(){
+    var mock = {
+      '/api/ubicacion': { items: [
+        {fecha:'2025-08-10', modelo:'ES1D', nparte:'0DR100009MA', ubicacion:'A1-01', cantidad:120, carro:'C1', usuario:'yahir'},
+        {fecha:'2025-08-10', modelo:'US1J', nparte:'0DR100009CC', ubicacion:'B2-03', cantidad:60, carro:'C2', usuario:'admin'}
+      ]},
+      '/api/movimientos': { items: [
+        {fecha_hora:'2025-08-10 08:15', tipo:'ENTRADA', nparte:'0DR100009MA', modelo:'ES1D', cantidad:120, ubicacion:'A1-01', carro:'C1', usuario:'yahir'},
+        {fecha_hora:'2025-08-10 09:10', tipo:'SALIDA', nparte:'0DR100009CC', modelo:'US1J', cantidad:20, ubicacion:'B2-03', carro:'C2', usuario:'admin'}
+      ]},
+      '/api/inventario_general': { items: [
+        {modelo:'ES1D', nparte:'0DR100009MA', stock_total:1000, ubicaciones:'A1-01,C1; B1-02,C3', ultima_entrada:'2025-08-09', ultima_salida:'2025-08-10'},
+        {modelo:'US1J', nparte:'0DR100009CC', stock_total:500, ubicaciones:'B2-03,C2', ultima_entrada:'2025-08-08', ultima_salida:'2025-08-10'}
+      ]}
+    };
+    var realFetch = window.fetch;
+    window.fetch = function(url){
+      var u = (typeof url === 'string') ? url.split('?')[0] : (url && url.url ? url.url.split('?')[0] : '');
+      if (mock[u]){
+        return Promise.resolve(new Response(JSON.stringify(mock[u]), {status:200, headers:{'Content-Type':'application/json'}}));
+      }
+      return realFetch.apply(window, arguments);
+    };
+  })();
+}
+
+/* Auto-cargar al abrir */
+window.addEventListener('DOMContentLoaded', ()=>{
+  // Carga inicial de todos los datos
+  G.load();        // Inventario general
+  U.load();        // Ubicaciones
+  M.load();        // Movimientos
+  
+  // Prepara estados
+  qs('#INVIMDPCBID_globalStatus').textContent = 'Inventario IMD Terminado';
+});
+
+/* Cerrar filtros IMD al hacer clic fuera */
+document.addEventListener('click', function(event) {
+  // Solo procesar si no es un click en elementos de filtro
+  if (!event.target.closest('.filterable-header-imd')) {
+    document.querySelectorAll('.header-filter-imd').forEach(filter => {
+      filter.style.display = 'none';
+    });
+    document.querySelectorAll('.filter-btn-imd').forEach(btn => {
+      btn.classList.remove('active');
+    });
+  }
+});
+</script>
+</body>
+</html>

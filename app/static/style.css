@@ -375,7 +375,7 @@ html, body {
   display: flex !important;
   flex-direction: row !important;
   height: calc(100vh - var(--header-height));
-  background-color: #4D505F;
+  background-color: #32323e;
   width: 100%;
   overflow: hidden; /* Prevenir desbordamiento base */
 }
