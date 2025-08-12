@@ -400,6 +400,7 @@
       <div class="controls-imd">
         <button class="btn-imd" id="INVIMDPCBID_u-buscar">Consultar</button>
         <button class="btn-imd" id="INVIMDPCBID_u-limpiar">Limpiar</button>
+        <button class="btn-imd" id="INVIMDPCBID_u-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
         <div class="status-imd" id="INVIMDPCBID_u-status">—</div>
       </div>
 
@@ -463,6 +464,7 @@
         </div>
         <button class="btn-imd" id="INVIMDPCBID_m-buscar">Consultar</button>
         <button class="btn-imd" id="INVIMDPCBID_m-limpiar">Limpiar</button>
+        <button class="btn-imd" id="INVIMDPCBID_m-exportar" style="background: #456636; border-color: #20688c;"> Exportar Excel</button>
         <div class="status-imd" id="INVIMDPCBID_m-status">—</div>
       </div>
 
@@ -834,6 +836,45 @@ function setDefaultDates(ids){
   ids.forEach(id => { const el = qs('#'+id); if(el && !el.value) el.value = todayISO(); });
 }
 
+/* Función para exportar datos a Excel */
+function exportarExcelIMD(datos, nombreArchivo, columnas) {
+  if (!datos || datos.length === 0) {
+    alert('No hay datos para exportar');
+    return;
+  }
+  
+  // Crear contenido CSV
+  let csvContent = "";
+  
+  // Agregar cabeceras
+  const headers = columnas.map(col => col.header);
+  csvContent += headers.join(",") + "\n";
+  
+  // Agregar datos
+  datos.forEach(row => {
+    const values = columnas.map(col => {
+      let value = row[col.key] || "";
+      // Escapar comillas y comas
+      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+        value = '"' + value.replace(/"/g, '""') + '"';
+      }
+      return value;
+    });
+    csvContent += values.join(",") + "\n";
+  });
+  
+  // Crear y descargar archivo
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", nombreArchivo + ".csv");
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 /* Tabs */
 qsa('.tab-imd').forEach(b=>{
   b.addEventListener('click', ()=>{
@@ -876,6 +917,19 @@ const U = {
 };
 qs('#INVIMDPCBID_u-buscar').addEventListener('click', U.load);
 qs('#INVIMDPCBID_u-limpiar').addEventListener('click', U.clear);
+qs('#INVIMDPCBID_u-exportar').addEventListener('click', () => {
+  const datos = datosOriginalesIMD['u'] || [];
+  const columnas = [
+    { key: 'fecha', header: 'Fecha' },
+    { key: 'modelo', header: 'Modelo' },
+    { key: 'nparte', header: 'N. Parte' },
+    { key: 'ubicacion', header: 'Ubicación' },
+    { key: 'cantidad', header: 'Cantidad' },
+    { key: 'carro', header: 'Carro' },
+    { key: 'usuario', header: 'Usuario' }
+  ];
+  exportarExcelIMD(datos, 'ubicaciones_imd', columnas);
+});
 
 /* ============ MOVIMIENTOS ============ */
 setDefaultDates(['INVIMDPCBID_m-desde']);
@@ -918,6 +972,19 @@ const M = {
 };
 qs('#INVIMDPCBID_m-buscar').addEventListener('click', M.load);
 qs('#INVIMDPCBID_m-limpiar').addEventListener('click', M.clear);
+qs('#INVIMDPCBID_m-exportar').addEventListener('click', () => {
+  const datos = datosOriginalesIMD['m'] || [];
+  const columnas = [
+    { key: 'fecha_hora', header: 'Fecha/Hora' },
+    { key: 'tipo', header: 'Tipo' },
+    { key: 'nparte', header: 'N. Parte' },
+    { key: 'modelo', header: 'Modelo' },
+    { key: 'cantidad', header: 'Cantidad' },
+    { key: 'ubicacion', header: 'Ubicación' },
+    { key: 'carro', header: 'Carro' }
+  ];
+  exportarExcelIMD(datos, 'movimientos_imd', columnas);
+});
 
 /* ============ INVENTARIO GENERAL ============ */
 const G = {

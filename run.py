@@ -7,4 +7,8 @@ register_smt_routes(app)
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 
+@app.get("/")
+def health():
+    return "ok", 200
+
 # waitress-serve --port=5002 app.routes:app

@@ -16,7 +16,7 @@ from .db import (get_db_connection, init_db, test_database_connection,
 from .db_mysql import (
     execute_query, obtener_materiales, guardar_material,
     obtener_inventario, actualizar_inventario,
-    obtener_bom_por_modelo, guardar_bom_item, obtener_modelos_bom,
+    obtener_bom_por_modelo, guardar_bom_item, obtener_modelos_bom as obtener_modelos_bom_db,
     listar_bom_por_modelo, insertar_bom_desde_dataframe,
     guardar_configuracion, cargar_configuracion, actualizar_material_completo
 )
@@ -1769,7 +1769,7 @@ def control_de_bom_ajax():
     """Ruta para cargar dinámicamente el contenido de Control de BOM"""
     try:
         # Obtener modelos para pasarlos al template
-        modelos = obtener_modelos_bom()
+        modelos = obtener_modelos_bom_db()
         return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', modelos=modelos)
     except Exception as e:
         print(f"Error al cargar template Control de BOM: {e}")
@@ -1851,7 +1851,7 @@ def control_produccion_smt_ajax():
 def control_operacion_linea_smt_ajax():
     """Ruta AJAX para cargar dinámicamente el contenido de Control de operacion de linea SMT"""
     try:
-        return render_template('Control de proceso/Control de operacion de linea SMT.html')
+        return render_template('Control de proceso/control_operacion_linea_smt_ajax.html')
     except Exception as e:
         print(f"Error al cargar template Control de operacion de linea SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -6487,7 +6487,7 @@ def listar_wos():
 
 @app.route('/api/bom/modelos', methods=['GET'])
 @login_requerido
-def obtener_modelos_bom():
+def obtener_modelos_bom_api():
     """Obtener lista de modelos únicos de la tabla BOM"""
     try:
         from .po_wo_models import obtener_modelos_unicos_bom

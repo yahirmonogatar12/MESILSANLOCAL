@@ -24,6 +24,8 @@ print(f"Módulo db_mysql cargado - MySQL disponible: {MYSQL_AVAILABLE}")
 
 # Cache para saber si la tabla BOM contiene columna 'descripcion'
 _BOM_HAS_DESCRIPCION = None
+_BOM_COLUMNS = None
+
 def _get_bom_columns():
     """Obtener y cachear las columnas de la tabla BOM."""
     global _BOM_COLUMNS
@@ -945,29 +947,30 @@ def guardar_bom_item(data):
         valores = [data.get('modelo'), data.get('numero_parte')]
         updates = []
 
-        if 'descripcion' in cols:
-            campos.append('descripcion')
-            valores.append(data.get('descripcion'))
-            updates.append('descripcion = VALUES(descripcion)')
+        # Agregar todas las columnas disponibles
+        campos_adicionales = {
+            'codigo_material': data.get('codigo_material', ''),
+            'side': data.get('side', ''),
+            'tipo_material': data.get('tipo_material', ''),
+            'ubicacion': data.get('ubicacion', ''),
+            'classification': data.get('categoria', ''),  # categoria -> classification
+            'vender': data.get('proveedor', ''),          # proveedor -> vender
+            'material_original': data.get('material_original', ''),
+            'material_sustituto': data.get('material_sustituto', ''),
+            'cantidad_total': data.get('cantidad_total', 1),
+            'cantidad_original': data.get('cantidad_original', 1)
+        }
+        
+        # Usar especificacion_material en lugar de descripcion
+        if 'especificacion_material' in cols:
+            campos_adicionales['especificacion_material'] = data.get('descripcion', '')
 
-        if 'cantidad' in cols:
-            campos.append('cantidad')
-            valores.append(data.get('cantidad', 1))
-            updates.append('cantidad = VALUES(cantidad)')
-
-        campos.extend(['side', 'ubicacion', 'categoria', 'proveedor'])
-        valores.extend([
-            data.get('side'),
-            data.get('ubicacion'),
-            data.get('categoria'),
-            data.get('proveedor')
-])
-
-        updates.extend([
-            'ubicacion = VALUES(ubicacion)',
-            'categoria = VALUES(categoria)',
-            'proveedor = VALUES(proveedor)'
-        ])
+        # Agregar solo las columnas que existen en la tabla
+        for campo, valor in campos_adicionales.items():
+            if campo in cols:
+                campos.append(campo)
+                valores.append(valor)
+                updates.append(f'{campo} = VALUES({campo})')
 
         placeholders = ', '.join(['%s'] * len(campos))
         query = f"""
@@ -977,9 +980,15 @@ def guardar_bom_item(data):
         """
 
         result = execute_query(query, tuple(valores))
-        return result > 0
+        
+        # Interpretar resultado correctamente
+        if result is not None and result >= 0:
+            return True
+        else:
+            return False
+            
     except Exception as e:
-        print(f"Error guardando BOM item: {e}")
+        print(f"DEBUG: ❌ ERROR en guardar_bom_item: {e}")
         return False
 
 def obtener_modelos_bom():
@@ -1033,48 +1042,180 @@ def listar_bom_por_modelo(modelo):
         return []
 
 def insertar_bom_desde_dataframe(df, registrador):
-    """Insertar datos de BOM desde un DataFrame de pandas"""
+    """Insertar datos de BOM desde un DataFrame de pandas con CARGA MASIVA OPTIMIZADA"""
+    import time
+    start_time = time.time()
+    
     try:
         cols = _get_bom_columns()
         
         insertados = 0
         omitidos = 0
         
+        # Crear un mapeo flexible de columnas
+        columnas_disponibles = df.columns.tolist()
+        print(f"DEBUG: Columnas en el DataFrame: {columnas_disponibles}")
+        
+        # Función auxiliar para buscar columna por variaciones
+        def buscar_columna(variaciones, columnas):
+            for var in variaciones:
+                for col in columnas:
+                    if var.lower() in col.lower():
+                        return col
+            return None
+        
+        # Mapear las columnas principales
+        col_modelo = buscar_columna(['modelo'], columnas_disponibles)
+        col_numero_parte = buscar_columna(['numero de parte', 'número de parte', 'numero_parte', 'n de parte', 'part number'], columnas_disponibles)
+        col_codigo_material = buscar_columna(['codigo de material', 'código de material', 'codigo_material', 'material code'], columnas_disponibles)
+        col_side = buscar_columna(['side', 'lado'], columnas_disponibles)
+        col_tipo_material = buscar_columna(['tipo de material', 'tipo_material', 'material type'], columnas_disponibles)
+        col_ubicacion = buscar_columna(['ubicacion', 'ubicación', 'location'], columnas_disponibles)
+        col_categoria = buscar_columna(['categoria', 'categoría', 'tipo', 'classification'], columnas_disponibles)
+        col_proveedor = buscar_columna(['proveedor', 'vendor', 'vender', 'supplier'], columnas_disponibles)
+        col_cantidad = buscar_columna(['cantidad', 'quantity', 'qty'], columnas_disponibles)
+        col_cantidad_total = buscar_columna(['cantidad total', 'cantidad_total', 'total quantity'], columnas_disponibles)
+        col_cantidad_original = buscar_columna(['cantidad original', 'cantidad_original', 'original quantity'], columnas_disponibles)
+        col_descripcion = buscar_columna(['descripcion', 'descripción', 'description', 'especificacion', 'especificación'], columnas_disponibles)
+        col_material_original = buscar_columna(['material original', 'material_original', 'original material'], columnas_disponibles)
+        col_material_sustituto = buscar_columna(['material sustituto', 'material_sustituto', 'substitute material'], columnas_disponibles)
+        
+        print(f"DEBUG: Preparando carga masiva para {len(df)} filas...")
+        print(f"DEBUG: Usuario registrador: {registrador}")
+        
+        # PREPARAR TODOS LOS DATOS EN MEMORIA PRIMERO
+        datos_para_insertar = []
+        
         for index, row in df.iterrows():
-            # Verificar que tenga al menos modelo y número de parte
-            modelo = str(row.get('Modelo', '')).strip()
-            numero_parte = str(row.get('Numero de parte', '') or row.get('Número de parte', '')).strip()
-            
-            if not modelo or not numero_parte:
+            try:
+                # Verificar que tenga al menos modelo y número de parte
+                modelo = str(row.get(col_modelo, '')).strip() if col_modelo else ''
+                numero_parte = str(row.get(col_numero_parte, '')).strip() if col_numero_parte else ''
+                
+                if not modelo or not numero_parte:
+                    omitidos += 1
+                    continue
+                
+                # Preparar cantidades
+                cantidad_total = 1.0
+                if col_cantidad_total:
+                    try:
+                        cantidad_total = float(row.get(col_cantidad_total, 1) or 1)
+                    except (ValueError, TypeError):
+                        cantidad_total = 1.0
+                elif col_cantidad:
+                    try:
+                        cantidad_total = float(row.get(col_cantidad, 1) or 1)
+                    except (ValueError, TypeError):
+                        cantidad_total = 1.0
+                        
+                cantidad_original = cantidad_total
+                if col_cantidad_original:
+                    try:
+                        cantidad_original = float(row.get(col_cantidad_original, cantidad_total) or cantidad_total)
+                    except (ValueError, TypeError):
+                        cantidad_original = cantidad_total
+                
+                # Preparar fila para inserción masiva
+                fila_datos = (
+                    modelo,
+                    numero_parte,
+                    str(row.get(col_codigo_material, '') if col_codigo_material else '').strip(),
+                    str(row.get(col_side, '') if col_side else '').strip(),
+                    str(row.get(col_tipo_material, '') if col_tipo_material else '').strip(),
+                    str(row.get(col_ubicacion, '') if col_ubicacion else '').strip(),
+                    str(row.get(col_categoria, '') if col_categoria else '').strip(),
+                    str(row.get(col_proveedor, '') if col_proveedor else '').strip(),
+                    str(row.get(col_material_original, '') if col_material_original else '').strip(),
+                    str(row.get(col_material_sustituto, '') if col_material_sustituto else '').strip(),
+                    cantidad_total,
+                    cantidad_original,
+                    str(row.get(col_descripcion, '') if col_descripcion else '').strip(),
+                    registrador  # Agregar el usuario que está importando
+                )
+                
+                datos_para_insertar.append(fila_datos)
+                insertados += 1
+                
+            except Exception as e:
+                print(f"DEBUG: Error procesando fila {index+1}: {e}")
                 omitidos += 1
                 continue
-            
-            # Preparar datos para insertar
-            data = {
-                'modelo': modelo,
-                'numero_parte': numero_parte,
-                'side': str(row.get('Side', '') or row.get('Lado', '')).strip(),
-                'ubicacion': str(row.get('Ubicacion', '') or row.get('Ubicación', '')).strip(),
-                'categoria': str(row.get('Categoria', '') or row.get('Categoría', '')).strip(),
-                'proveedor': str(row.get('Proveedor', '')).strip()
-            }
-            if 'cantidad' in cols:
-                data['cantidad'] = int(row.get('Cantidad', 1) or 1)
-            if 'descripcion' in cols:
-                data['descripcion'] = str(row.get('Descripcion', '') or row.get('Descripción', '')).strip()
-            # Insertar usando la función existente
-            if guardar_bom_item(data):
-                insertados += 1
-            else:
-                omitidos += 1
         
-        return {
-            'insertados': insertados,
-            'omitidos': omitidos
+        print(f"DEBUG: Datos preparados: {len(datos_para_insertar)} filas válidas")
+        
+        # INSERCIÓN MASIVA
+        if datos_para_insertar:
+            print(f"DEBUG: Ejecutando inserción masiva...")
+            
+            # Construir consulta para inserción masiva
+            campos_insert = [
+                'modelo', 'numero_parte', 'codigo_material', 'side', 'tipo_material',
+                'ubicacion', 'classification', 'vender', 'material_original', 
+                'material_sustituto', 'cantidad_total', 'cantidad_original', 'especificacion_material',
+                'registrador'
+            ]
+            
+            # Filtrar solo campos que existen en la tabla
+            campos_finales = [campo for campo in campos_insert if campo in cols]
+            
+            placeholders = ', '.join(['%s'] * len(campos_finales))
+            updates = ', '.join([f'{campo} = VALUES({campo})' for campo in campos_finales])
+            
+            query_masiva = f"""
+                INSERT INTO bom ({', '.join(campos_finales)})
+                VALUES ({placeholders})
+                ON DUPLICATE KEY UPDATE {updates}
+            """
+            
+            # Ejecutar en lotes para evitar problemas de memoria
+            batch_size = 100
+            total_insertados = 0
+            
+            for i in range(0, len(datos_para_insertar), batch_size):
+                batch = datos_para_insertar[i:i + batch_size]
+                print(f"DEBUG: Procesando lote {i//batch_size + 1} ({len(batch)} filas)...")
+                
+                try:
+                    # Ejecutar inserción del lote usando executemany
+                    connection = get_connection()
+                    cursor = connection.cursor()
+                    
+                    cursor.executemany(query_masiva, batch)
+                    connection.commit()
+                    
+                    filas_afectadas = cursor.rowcount
+                    total_insertados += filas_afectadas
+                    
+                    print(f"DEBUG: Lote completado - {filas_afectadas} filas afectadas")
+                    
+                    cursor.close()
+                    connection.close()
+                    
+                except Exception as e:
+                    print(f"DEBUG: Error en lote {i//batch_size + 1}: {e}")
+                    continue
+            
+            print(f"DEBUG: ✅ Inserción masiva completada - {total_insertados} filas procesadas")
+        
+        # Información detallada para el frontend
+        tiempo_total = time.time() - start_time
+        resultado_detallado = {
+            'insertados': len(datos_para_insertar),
+            'omitidos': omitidos,
+            'total_procesado': len(df),
+            'filas_bd_afectadas': total_insertados,
+            'tiempo_proceso': f"{tiempo_total:.2f}s"
         }
+        
+        print(f"DEBUG: Resultado detallado: {resultado_detallado}")
+        
+        return resultado_detallado
         
     except Exception as e:
         print(f"Error insertando BOM desde DataFrame: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             'insertados': 0,
             'omitidos': len(df) if df is not None else 0

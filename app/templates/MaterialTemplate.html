@@ -1967,22 +1967,33 @@
             }
             
             // Función para ocultar todos los contenedores de material
-            function hideAllMaterialContainers() {
-                materialInfoContainer.style.display = 'none';
-                controlAlmacenContainer.style.display = 'none';
-                controlSalidaContainer.style.display = 'none';
-                controlRetornoContainer.style.display = 'none';
-                reciboPagoContainer.style.display = 'none';
-                historialMaterialContainer.style.display = 'none';
-                estatusMaterialContainer.style.display = 'none';
-                materialSustitutoContainer.style.display = 'none';
-                consultarPepsContainer.style.display = 'none';
-                longtermInventoryContainer.style.display = 'none';
-                registroMaterialContainer.style.display = 'none';
-                historialInventarioContainer.style.display = 'none';
-                ajusteNumeroContainer.style.display = 'none';
-                historialCambioSmtContainer.style.display = 'none';
-            }
+function hideAllMaterialContainers() {
+    materialInfoContainer.style.display = 'none';
+    controlAlmacenContainer.style.display = 'none';
+    controlSalidaContainer.style.display = 'none';
+    controlRetornoContainer.style.display = 'none';
+    reciboPagoContainer.style.display = 'none';
+    historialMaterialContainer.style.display = 'none';
+    estatusMaterialContainer.style.display = 'none';
+    materialSustitutoContainer.style.display = 'none';
+    consultarPepsContainer.style.display = 'none';
+    longtermInventoryContainer.style.display = 'none';
+    registroMaterialContainer.style.display = 'none';
+    historialInventarioContainer.style.display = 'none';
+    ajusteNumeroContainer.style.display = 'none';
+    historialCambioSmtContainer.style.display = 'none';
+    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'none';
+    const controlProduccionSmtParent = document.getElementById('control-produccion-smt-container');
+    if (controlProduccionSmtParent) controlProduccionSmtParent.style.display = 'none';
+    const controlProduccionSmtContainer = document.getElementById('Control de produccion SMT-unique-container');
+    if (controlProduccionSmtContainer) controlProduccionSmtContainer.style.display = 'none';
+    const controlOperacionLineaContainer = document.getElementById('control-operacion-linea-smt-unique-container');
+    if (controlOperacionLineaContainer) controlOperacionLineaContainer.style.display = 'none';
+    const inventarioImdTerminadoContainer = document.getElementById('inventario-imd-terminado-unique-container');
+    if (inventarioImdTerminadoContainer) inventarioImdTerminadoContainer.style.display = 'none';
+}
+        
             
             function hideAllInformacionBasicaContainers() {
                 const containers = [

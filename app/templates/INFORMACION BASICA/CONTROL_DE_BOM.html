@@ -80,6 +80,22 @@
     </div>
 </div>
 
+<!-- Modal de carga con progreso -->
+<div id="loadingModal">
+    <div id="loadingDialog">
+        <div id="loadingTitle">Cargando BOM</div>
+        <div id="loadingMessage">Procesando archivo Excel...</div>
+        <div id="loadingProgressContainer">
+            <div id="loadingProgressText">0% completado</div>
+            <div id="loadingProgressBar">
+                <div id="loadingProgressFill"></div>
+            </div>
+            <div id="loadingTimeEstimate">Estimando tiempo...</div>
+        </div>
+        <div id="loadingSpinner"></div>
+    </div>
+</div>
+
 <script>
     function cargarDatosBOMEnTabla(datos) {
         // Si se pasa un string (modelo), cargar desde servidor
@@ -283,8 +299,78 @@
             return;
         }
         
+        // Mostrar modal de carga
+        showLoadingModal();
+        
         const formData = new FormData();
         formData.append('file', file);
+        
+        // Variables para tracking de progreso
+        let startTime = Date.now();
+        let progressInterval;
+        
+        // Simular progreso inicial
+        updateLoadingProgress(0, "Iniciando carga del archivo...", "Calculando tiempo estimado...");
+        
+        // Estimación basada en datos reales: ~67 filas por segundo (9525 filas en 141.7s)
+        // Aproximadamente 15ms por fila
+        let currentProgress = 0;
+        let estimatedRowsPerSecond = 67; // Basado en datos reales
+        
+        progressInterval = setInterval(() => {
+            if (currentProgress < 95) {
+                // Progreso más gradual y realista
+                if (currentProgress < 20) {
+                    currentProgress += Math.random() * 3; // Lento al inicio (lectura del archivo)
+                } else if (currentProgress < 40) {
+                    currentProgress += Math.random() * 5; // Procesamiento inicial
+                } else if (currentProgress < 80) {
+                    currentProgress += Math.random() * 2; // Inserción en BD (más lento)
+                } else {
+                    currentProgress += Math.random() * 1; // Finalización
+                }
+                
+                if (currentProgress > 95) currentProgress = 95;
+                
+                const elapsed = (Date.now() - startTime) / 1000;
+                let estimated = null;
+                let timeText = "Calculando tiempo...";
+                
+                // Estimación más precisa basada en el progreso real
+                if (currentProgress > 15) {
+                    estimated = (elapsed / currentProgress * 100) - elapsed;
+                    
+                    // Ajustar estimación basada en datos históricos
+                    if (currentProgress < 30) {
+                        // En las primeras etapas, usar estimación histórica
+                        estimated = estimated * 1.8; // Factor de corrección
+                    } else if (currentProgress < 60) {
+                        estimated = estimated * 1.4;
+                    } else {
+                        estimated = estimated * 1.1;
+                    }
+                    
+                    if (estimated > 60) {
+                        timeText = `Tiempo estimado: ${Math.ceil(estimated / 60)}m ${Math.ceil(estimated % 60)}s`;
+                    } else {
+                        timeText = `Tiempo estimado: ${Math.ceil(estimated)}s`;
+                    }
+                }
+                
+                let message = "Procesando archivo Excel...";
+                if (currentProgress < 20) {
+                    message = "Leyendo y analizando archivo Excel...";
+                } else if (currentProgress < 40) {
+                    message = "Validando y preparando datos...";
+                } else if (currentProgress < 80) {
+                    message = "Insertando registros en base de datos...";
+                } else {
+                    message = "Finalizando proceso de importación...";
+                }
+                
+                updateLoadingProgress(currentProgress, message, timeText);
+            }
+        }, 1000); // Actualizar cada segundo para ser más realista
         
         fetch('/importar_excel_bom', {
             method: 'POST',
@@ -292,17 +378,55 @@
         })
         .then(response => response.json())
         .then(data => {
+            clearInterval(progressInterval);
+            
             if (data.success) {
-                const now = new Date();
-                const fecha = now.toLocaleDateString();
-                const hora = now.toLocaleTimeString();
-                showCustomAlert(`Carga exitosa<br><span style='font-size:0.95em;color:#b0eaff;'>${fecha} ${hora}</span>`);
-                fileInput.value = '';
+                // Completar progreso
+                updateLoadingProgress(100, "¡Carga completada exitosamente!", "Finalizado");
+                
+                setTimeout(() => {
+                    hideLoadingModal();
+                    
+                    const now = new Date();
+                    const fecha = now.toLocaleDateString();
+                    const hora = now.toLocaleTimeString();
+                    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                    
+                    let summary = `Importación de BOM completada<br>`;
+                    summary += `<span style='font-size:0.9em;color:#b0eaff;'>${fecha} ${hora}</span><br><br>`;
+                    
+                    if (data.insertados !== undefined) {
+                        summary += `<span style='font-size:0.9em;color:#27ae60;'>✅ Registros procesados: ${data.insertados}</span><br>`;
+                    }
+                    if (data.omitidos !== undefined && data.omitidos > 0) {
+                        summary += `<span style='font-size:0.9em;color:#f39c12;'>⚠️ Filas omitidas: ${data.omitidos}</span><br>`;
+                    }
+                    if (data.total_procesado !== undefined) {
+                        summary += `<span style='font-size:0.85em;color:#3498db;'>📊 Total en archivo: ${data.total_procesado}</span><br>`;
+                    }
+                    if (data.filas_bd_afectadas !== undefined) {
+                        summary += `<span style='font-size:0.85em;color:#9b59b6;'>💾 Filas en BD: ${data.filas_bd_afectadas}</span><br>`;
+                    }
+                    summary += `<span style='font-size:0.8em;color:#95a5a6;'>⏱️ Tiempo total: ${totalTime}s</span><br>`;
+                    
+                    // Calcular velocidad de procesamiento
+                    if (data.insertados > 0) {
+                        const filasPerSegundo = Math.round(data.insertados / parseFloat(totalTime));
+                        summary += `<span style='font-size:0.8em;color:#95a5a6;'>⚡ Velocidad: ${filasPerSegundo} filas/seg</span>`;
+                    }
+                    
+                    showCustomAlert(summary);
+                    fileInput.value = '';
+                }, 1000);
+                
             } else {
+                hideLoadingModal();
                 showCustomAlert("Error al importar BOM: " + data.error);
             }
         })
         .catch(error => {
+            clearInterval(progressInterval);
+            hideLoadingModal();
             console.error('Error:', error);
             showCustomAlert("Error al importar el archivo de BOM");
         });
@@ -651,6 +775,54 @@
     }
     window.hideCustomAlert = function() {
         document.getElementById('customAlertModal').style.display = 'none';
+    }
+
+    // Modal de carga con progreso
+    window.showLoadingModal = function() {
+        const modal = document.getElementById('loadingModal');
+        modal.style.display = 'flex';
+        updateLoadingProgress(0, "Iniciando...", "");
+    }
+
+    window.hideLoadingModal = function() {
+        document.getElementById('loadingModal').style.display = 'none';
+    }
+
+    window.updateLoadingProgress = function(percentage, message, timeEstimate) {
+        const progressFill = document.getElementById('loadingProgressFill');
+        const progressText = document.getElementById('loadingProgressText');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const timeEstimateElement = document.getElementById('loadingTimeEstimate');
+
+        // Asegurar que el porcentaje esté entre 0 y 100
+        percentage = Math.max(0, Math.min(100, percentage));
+
+        if (progressFill) {
+            progressFill.style.width = percentage + '%';
+        }
+
+        if (progressText) {
+            progressText.textContent = Math.round(percentage) + '% completado';
+        }
+
+        if (loadingMessage && message) {
+            loadingMessage.textContent = message;
+        }
+
+        if (timeEstimateElement && timeEstimate) {
+            timeEstimateElement.textContent = timeEstimate;
+        }
+
+        // Cambiar color de la barra según progreso
+        if (progressFill) {
+            if (percentage < 50) {
+                progressFill.style.background = 'linear-gradient(90deg, #3498db, #2980b9)';
+            } else if (percentage < 90) {
+                progressFill.style.background = 'linear-gradient(90deg, #f39c12, #e67e22)';
+            } else {
+                progressFill.style.background = 'linear-gradient(90deg, #27ae60, #229954)';
+            }
+        }
     }
 </script>
 </body>
