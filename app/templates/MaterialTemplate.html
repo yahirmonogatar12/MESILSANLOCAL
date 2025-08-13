@@ -3703,8 +3703,8 @@ function hideAllMaterialContainers() {
                         modelo: modelo,
                         numero_lote: numeroLote,
                         fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
-                        especificacion_material: materialActual.especificacion_material || materialActual.especificacion || '',
-                        proceso_salida: 'SMT 1st SIDE',
+                        // NO enviar especificacion_material - el backend la obtendrá del original
+                        proceso_salida: 'AUTO',  // Cambiar de 'SMD' a 'AUTO' para determinación automática
                         codigo_verificacion: document.getElementById('salida_verificacion_codigo')?.value || ''
                     })
                 });
@@ -3713,7 +3713,12 @@ function hideAllMaterialContainers() {
 
                 if (salidaData.success) {
                     const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
-                    mostrarMensajeSimple(` Salida automática procesada: ${cantidadSalida}${modeloTexto}`, 'success');
+                    const procesoDestino = salidaData.proceso_destino || 'PRODUCCION';
+                    
+                    mostrarMensajeSimple(
+                        `✅ Salida automática procesada: ${cantidadSalida}${modeloTexto} → ${procesoDestino}`, 
+                        'success'
+                    );
                     
                     setTimeout(() => {
                         limpiarCamposMaterial();
@@ -3795,8 +3800,8 @@ function hideAllMaterialContainers() {
                         modelo: modelo,
                         numero_lote: numeroLote,
                         fecha_salida: document.getElementById('salida_fecha_salida_form')?.value || '',
-                        especificacion_material: materialActual.especificacion_material || materialActual.especificacion || '',
-                        proceso_salida: 'SMT 1st SIDE',
+                        // NO enviar especificacion_material - el backend la obtendrá del original
+                        proceso_salida: 'AUTO',  // Cambiar de 'SMD' a 'AUTO' para determinación automática
                         codigo_verificacion: 'AUTO' // SIEMPRE AUTO, SIN VERIFICACIÓN
                     })
                 });
@@ -3805,7 +3810,12 @@ function hideAllMaterialContainers() {
 
                 if (salidaData.success) {
                     const modeloTexto = modelo === 'SIN_MODELO' ? ' (sin modelo)' : ` (${modelo})`;
-                    mostrarMensajeSimple(` Salida procesada: ${cantidadSalida}${modeloTexto}`, 'success');
+                    const procesoDestino = salidaData.proceso_destino || 'PRODUCCION';
+                    
+                    mostrarMensajeSimple(
+                        `✅ Salida procesada: ${cantidadSalida}${modeloTexto} → ${procesoDestino}`, 
+                        'success'
+                    );
                     
                     // Limpiar y preparar para siguiente
                     setTimeout(() => {

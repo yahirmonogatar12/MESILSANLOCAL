@@ -2335,21 +2335,34 @@ def guardar_salida_lote():
         cursor.execute('UPDATE control_material SET cantidad_actual = %s WHERE codigo_material_recibido = %s', 
                       (nueva_cantidad, codigo_material_recibido))
         
-        # Registrar la salida en control_material_salida
+        # Obtener el numero_parte desde control_material_almacen
+        cursor.execute('''
+            SELECT numero_parte, especificacion 
+            FROM control_material_almacen 
+            WHERE codigo_material_recibido = %s
+            LIMIT 1
+        ''', (codigo_material_recibido,))
+        
+        resultado_almacen = cursor.fetchone()
+        numero_parte_real = resultado_almacen[0] if resultado_almacen else codigo_material_recibido
+        especificacion_real = resultado_almacen[1] if resultado_almacen else data.get('especificacion_material', '')
+        
+        # Registrar la salida en control_material_salida CON numero_parte
         cursor.execute('''
             INSERT INTO control_material_salida (
-                codigo_material_recibido, numero_lote, modelo, depto_salida, 
+                codigo_material_recibido, numero_parte, numero_lote, modelo, depto_salida, 
                 proceso_salida, cantidad_salida, fecha_salida, especificacion_material
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             codigo_material_recibido,
+            numero_parte_real,  # NUEVO: numero_parte desde almacen
             data.get('numero_lote', ''),
             data.get('modelo', ''),
             data.get('depto_salida', ''),
             data.get('proceso_salida', ''),
             cantidad_salida,
             data.get('fecha_salida', ''),
-            propiedad_material_real  # Usar la propiedad real en lugar de la del frontend
+            especificacion_real  # MEJORADO: especificacion desde almacen
         ))
         
         conn.commit()
@@ -2710,13 +2723,23 @@ def procesar_salida_material():
             'depto_salida': data.get('depto_salida', ''),
             'proceso_salida': data.get('proceso_salida', ''),
             'cantidad_salida': cantidad_salida,
-            'fecha_salida': data.get('fecha_salida', ''),
-            'especificacion_material': data.get('especificacion_material', '')
+            'fecha_salida': data.get('fecha_salida', '')
         }
         
+        # Solo incluir especificacion_material si se proporciona explícitamente
+        if 'especificacion_material' in data and data['especificacion_material']:
+            salida_data['especificacion_material'] = data['especificacion_material']
+        
         # Registrar la salida usando MySQL
-        if not registrar_salida_material_mysql(salida_data):
-            return jsonify({'success': False, 'error': 'Error al registrar la salida en la base de datos'}), 500
+        resultado_salida = registrar_salida_material_mysql(salida_data)
+        
+        if not resultado_salida.get('success', False):
+            error_msg = resultado_salida.get('error', 'Error al registrar la salida en la base de datos')
+            return jsonify({'success': False, 'error': error_msg}), 500
+        
+        # Obtener información del proceso determinado
+        proceso_destino = resultado_salida.get('proceso_destino', 'PRODUCCION')
+        especificacion_usada = resultado_salida.get('especificacion_usada', '')
         
         nueva_cantidad = stock_disponible - cantidad_salida
         
@@ -2746,6 +2769,8 @@ def procesar_salida_material():
             'success': True,
             'message': f'Salida registrada exitosamente. Cantidad: {cantidad_salida}',
             'nueva_cantidad_disponible': nueva_cantidad,
+            'proceso_destino': proceso_destino,  # Incluir proceso destino determinado
+            'especificacion_usada': especificacion_usada,  # Incluir especificación usada
             'optimized': True,  # Indicador de que se está usando optimización
             'numero_parte': numero_parte,  # Para debugging
             'inventario_actualizado_en_background': True,

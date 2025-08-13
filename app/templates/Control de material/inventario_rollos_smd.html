@@ -442,7 +442,7 @@ function mostrarDetalleRollo(rollo, historial) {
                 <table class="table table-sm">
                     <tr><th>ID:</th><td>${rollo.id}</td></tr>
                     <tr><th>Número de Parte:</th><td><strong>${rollo.numero_parte}</strong></td></tr>
-                    <tr><th>Código de Barras:</th><td><code>${rollo.codigo_barras || 'N/A'}</code></td></tr>
+                    <tr><th>Código de Barras (Escaneo SMounter):</th><td><code>${rollo.codigo_barras || 'N/A'}</code></td></tr>
                     <tr><th>Estado:</th><td><span class="estado-badge ${estadoClass}">${rollo.estado}</span></td></tr>
                     <tr><th>Cantidad Inicial:</th><td>${rollo.cantidad_inicial}</td></tr>
                     <tr><th>Cantidad Actual:</th><td>${rollo.cantidad_actual}</td></tr>

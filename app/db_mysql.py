@@ -1292,35 +1292,144 @@ def obtener_total_salidas_material(codigo_recibido):
         return 0.0
 
 def registrar_salida_material_mysql(data):
-    """Registrar salida de material usando MySQL"""
+    """
+    Registrar salida de material - VERSIÓN MEJORADA
+    Determina automáticamente el proceso destino basado en la especificación del material
+    """
     try:
         from datetime import datetime
         fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
+        # Extraer numero_parte del codigo_material_recibido (antes de la coma)
+        codigo_material = data['codigo_material_recibido']
+        numero_parte = codigo_material.split(',')[0] if ',' in codigo_material else codigo_material
+        
+        # PASO 1: Obtener especificación del material original desde control_material_almacen
+        query_especificacion = """
+            SELECT especificacion, propiedad_material
+            FROM control_material_almacen 
+            WHERE codigo_material_recibido = %s
+            ORDER BY id DESC LIMIT 1
+        """
+        
+        result_spec = execute_query(query_especificacion, (codigo_material,), fetch='one')
+        
+        especificacion_original = ""
+        propiedad_material = ""
+        
+        if result_spec:
+            especificacion_original = result_spec.get('especificacion', '')
+            propiedad_material = result_spec.get('propiedad_material', '')
+            print(f"📋 Material encontrado - Especificación: {especificacion_original}, Propiedad: {propiedad_material}")
+        else:
+            print(f"⚠️ No se encontró el material {codigo_material} en almacén")
+        
+        # PASO 2: Validar que se especifique un proceso destino
+        # VALIDACIÓN: No permitir salidas sin proceso específico
+        proceso_input = data.get('proceso_salida', '').strip()
+        if not proceso_input or proceso_input.upper() == 'AUTO':
+            print(f"❌ ERROR: No se puede procesar salida sin especificar proceso destino")
+            print(f"   - proceso_salida recibido: '{proceso_input}'")
+            print(f"   - Se requiere un proceso específico (PRODUCCION, SMD, IMD, etc.)")
+            return {
+                'success': False, 
+                'error': 'Debe especificar un proceso de salida específico. No se permite AUTO o vacío.'
+            }
+        
+        # Usar el proceso especificado directamente
+        if proceso_input == 'SMT 1st SIDE':
+            proceso_salida = 'SMD'
+        else:
+            proceso_salida = proceso_input
+        print(f"🎯 Proceso destino especificado: {proceso_salida}")
+        
+        # PASO 3: Insertar en control_material_salida
         query = """
             INSERT INTO control_material_salida (
-                codigo_material_recibido, numero_lote, modelo, depto_salida,
+                codigo_material_recibido, numero_parte, numero_lote, modelo, depto_salida,
                 proceso_salida, cantidad_salida, fecha_salida, fecha_registro, especificacion_material
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
+        
+        # Determinar especificación final
+        especificacion_final = especificacion_original or data.get('especificacion_material', '')
+        print(f"🔍 Debug especificación:")
+        print(f"   - especificacion_original: '{especificacion_original}'")
+        print(f"   - data.get('especificacion_material', ''): '{data.get('especificacion_material', '')}'")
+        print(f"   - especificacion_final: '{especificacion_final}'")
+        
+        # Manejar fecha de salida
+        fecha_salida = data.get('fecha_salida', '')
+        if not fecha_salida or fecha_salida.strip() == '':
+            fecha_salida = None
         
         params = (
             data['codigo_material_recibido'],
+            numero_parte,
             data.get('numero_lote', ''),
             data.get('modelo', ''),
             data.get('depto_salida', ''),
-            data.get('proceso_salida', ''),
+            proceso_salida,  # Proceso determinado automáticamente
             data['cantidad_salida'],
-            data.get('fecha_salida', ''),
+            fecha_salida,
             fecha_registro,
-            data.get('especificacion_material', '')
+            especificacion_final  # Usar especificación determinada
         )
         
+        print(f"🔍 Debug query completa:")
+        print(f"   - Query: {query}")
+        print(f"   - Params: {params}")
+        print(f"   - Tipo de cada parámetro:")
+        for i, param in enumerate(params):
+            print(f"     [{i}]: {type(param)} = {repr(param)}")
+        
         result = execute_query(query, params)
-        return result > 0
+        
+        # Verificar inmediatamente qué se insertó
+        if result > 0:
+            verify_query = """
+            SELECT especificacion_material 
+            FROM control_material_salida 
+            WHERE codigo_material_recibido = %s
+            ORDER BY fecha_registro DESC 
+            LIMIT 1
+            """
+            verify_result = execute_query(verify_query, (data['codigo_material_recibido'],), fetch='one')
+            if verify_result:
+                actual_spec = verify_result.get('especificacion_material', '')
+                print(f"🔍 Verificación inmediata - Especificación en BD: '{actual_spec}'")
+                if actual_spec != especificacion_final:
+                    print(f"⚠️ PROBLEMA: Se envió '{especificacion_final}' pero se guardó '{actual_spec}'")
+        
+        if result > 0:
+            print(f"✅ Salida registrada exitosamente - Proceso: {proceso_salida}")
+            
+            # PASO 4: Actualizar inventario general
+            try:
+                cantidad_salida = float(data.get('cantidad_salida', 0))
+                actualizar_inventario_general_salida_mysql(numero_parte, cantidad_salida)
+            except Exception as e:
+                print(f"⚠️ Error actualizando inventario general: {e}")
+            
+            # PASO 5: Actualizar inventario específico según proceso_salida
+            try:
+                actualizar_inventario_especifico_salida(numero_parte, codigo_material, cantidad_salida, proceso_salida)
+            except Exception as e:
+                print(f"⚠️ Error actualizando inventario específico: {e}")
+            
+            # Devolver información del proceso determinado
+            return {
+                'success': True,
+                'proceso_destino': proceso_salida,
+                'especificacion_usada': especificacion_original
+            }
+        else:
+            print(f"❌ Error al registrar salida")
+            return {'success': False, 'error': 'Error al insertar en base de datos'}
+            
     except Exception as e:
-        print(f"Error registrando salida de material: {e}")
-        return False
+        print(f"❌ Error en registrar_salida_material_mysql: {e}")
+        return {'success': False, 'error': str(e)}
 
 def buscar_material_por_numero_parte_mysql(numero_parte):
     """Buscar material por número de parte usando MySQL"""
@@ -1368,6 +1477,156 @@ def calcular_inventario_general_mysql(numero_parte):
         print(f"Error calculando inventario general: {e}")
         return None
 
+def actualizar_inventario_especifico_salida(numero_parte, codigo_material, cantidad_salida, proceso_salida):
+    """Actualizar inventario específico según el proceso de salida"""
+    try:
+        # Determinar tabla destino según proceso_salida
+        tabla_inventario = None
+        
+        # Mapear proceso_salida a tabla específica
+        if proceso_salida.upper() in ['SMD', 'PRODUCCION_SMD', 'SMT 1st SIDE']:
+            tabla_inventario = 'InventarioRollosSMD'
+        elif proceso_salida.upper() in ['IMD', 'PRODUCCION_IMD']:
+            tabla_inventario = 'InventarioRollosIMD'
+        elif proceso_salida.upper() in ['MAIN', 'PRODUCCION_MAIN', 'THROUGH_HOLE']:
+            tabla_inventario = 'InventarioRollosMAIN'
+        else:
+            # Para otros procesos como PRODUCCION general, no hay tabla específica
+            print(f"ℹ️ Proceso {proceso_salida} no requiere inventario específico")
+            return True
+        
+        print(f"🎯 Actualizando inventario específico en {tabla_inventario}")
+        
+        # Buscar rollo específico por código de barras (codigo_material)
+        query_buscar = f"""
+            SELECT id, cantidad_actual 
+            FROM {tabla_inventario} 
+            WHERE codigo_barras = %s AND estado IN ('DISPONIBLE', 'EN_USO', 'ASIGNADO')
+            ORDER BY fecha_entrada ASC
+            LIMIT 1
+        """
+        
+        rollo_encontrado = execute_query(query_buscar, (codigo_material,), fetch='one')
+        
+        if rollo_encontrado:
+            # Actualizar cantidad del rollo específico
+            nueva_cantidad = max(0, float(rollo_encontrado['cantidad_actual']) - cantidad_salida)
+            
+            # Determinar nuevo estado
+            nuevo_estado = 'AGOTADO' if nueva_cantidad <= 0 else rollo_encontrado.get('estado', 'EN_USO')
+            
+            query_actualizar = f"""
+                UPDATE {tabla_inventario} 
+                SET cantidad_actual = %s,
+                    estado = %s,
+                    fecha_ultimo_uso = NOW(),
+                    actualizado_en = NOW()
+                WHERE id = %s
+            """
+            
+            result = execute_query(query_actualizar, (nueva_cantidad, nuevo_estado, rollo_encontrado['id']))
+            
+            if result > 0:
+                print(f"✅ Inventario específico actualizado - {tabla_inventario}: {rollo_encontrado['cantidad_actual']} → {nueva_cantidad}")
+                
+                # Registrar movimiento en historial específico
+                registrar_movimiento_historico_especifico(tabla_inventario, rollo_encontrado['id'], 
+                                                        cantidad_salida, proceso_salida)
+                return True
+            else:
+                print(f"❌ Error actualizando inventario específico en {tabla_inventario}")
+                return False
+        else:
+            print(f"⚠️ No se encontró rollo activo con código {codigo_material} en {tabla_inventario}")
+            # Opcionalmente crear entrada nueva si no existe
+            return crear_entrada_inventario_especifico(tabla_inventario, numero_parte, codigo_material, cantidad_salida)
+            
+    except Exception as e:
+        print(f"❌ Error en actualizar_inventario_especifico_salida: {e}")
+        return False
+
+def registrar_movimiento_historico_especifico(tabla_inventario, rollo_id, cantidad, proceso_salida):
+    """Registrar movimiento en historial específico"""
+    try:
+        # Determinar tabla de historial
+        tabla_historial = tabla_inventario.replace('Inventario', 'HistorialMovimientos')
+        
+        query_historial = f"""
+            INSERT INTO {tabla_historial} (
+                rollo_id, tipo_movimiento, descripcion, cantidad_despues, 
+                usuario, fecha_movimiento
+            ) VALUES (%s, %s, %s, 
+                (SELECT cantidad_actual FROM {tabla_inventario} WHERE id = %s),
+                %s, NOW())
+        """
+        
+        execute_query(query_historial, (
+            rollo_id, 
+            'SALIDA_PRODUCCION', 
+            f'Salida a proceso {proceso_salida} - Cantidad: {cantidad}',
+            rollo_id,
+            'SISTEMA'
+        ))
+        
+        print(f"📝 Movimiento registrado en {tabla_historial}")
+        return True
+        
+    except Exception as e:
+        print(f"⚠️ Error registrando movimiento histórico: {e}")
+        return False
+
+def crear_entrada_inventario_especifico(tabla_inventario, numero_parte, codigo_material, cantidad_salida):
+    """Crear entrada en inventario específico si no existe"""
+    try:
+        print(f"🔄 Creando entrada faltante en {tabla_inventario}")
+        
+        # Obtener datos del material desde almacen
+        query_material = """
+            SELECT especificacion, propiedad_material, numero_lote_material 
+            FROM control_material_almacen 
+            WHERE codigo_material_recibido = %s 
+            LIMIT 1
+        """
+        material_info = execute_query(query_material, (codigo_material,), fetch='one')
+        
+        if material_info:
+            # Determinar área según tabla
+            area = 'smd' if 'SMD' in tabla_inventario else ('imd' if 'IMD' in tabla_inventario else 'main')
+            
+            query_crear = f"""
+                INSERT INTO {tabla_inventario} (
+                    numero_parte, codigo_barras, lote, area_{area}, fecha_entrada,
+                    origen_almacen, estado, cantidad_inicial, cantidad_actual,
+                    usuario_responsable, creado_en, actualizado_en
+                ) VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s, %s, %s, NOW(), NOW())
+            """
+            
+            # Cantidad inicial = cantidad_salida (porque sale de almacén)
+            cantidad_inicial = cantidad_salida
+            cantidad_restante = 0  # Se agota inmediatamente
+            
+            execute_query(query_crear, (
+                numero_parte,
+                codigo_material,
+                material_info.get('numero_lote_material', ''),
+                area.upper(),
+                'ALMACEN',
+                'AGOTADO',
+                cantidad_inicial,
+                cantidad_restante,
+                'SISTEMA'
+            ))
+            
+            print(f"✅ Entrada creada en {tabla_inventario}")
+            return True
+        else:
+            print(f"❌ No se pudo obtener información del material {codigo_material}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error creando entrada en inventario específico: {e}")
+        return False
+
 def actualizar_inventario_general_salida_mysql(numero_parte, cantidad_salida):
     """Actualizar inventario general después de una salida usando MySQL"""
     try:
@@ -1380,7 +1639,7 @@ def actualizar_inventario_general_salida_mysql(numero_parte, cantidad_salida):
                 INSERT INTO inventario_general (numero_parte, cantidad_total, fecha_actualizacion)
                 VALUES (%s, %s, NOW())
                 ON DUPLICATE KEY UPDATE
-                    cantidad_actual = %s,
+                    cantidad_total = %s,
                     fecha_actualizacion = NOW()
             """
             

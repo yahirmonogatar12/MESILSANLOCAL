@@ -518,7 +518,7 @@ async function procesarSalidasMasivas() {
                 numero_lote: materialData.numero_lote_material || '',
                 fecha_salida: fechaSalida,
                 depto_salida: 'Producción',
-                proceso_salida: 'SMT 1st SIDE',
+                proceso_salida: 'SMD',
                 codigo_verificacion: 'AUTO_MASIVO'
             };
             
