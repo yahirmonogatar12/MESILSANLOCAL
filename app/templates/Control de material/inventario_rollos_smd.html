@@ -1,0 +1,655 @@
+{% extends "layout.html" %}
+
+{% block title %}Inventario de Rollos SMD{% endblock %}
+
+{% block head %}
+<style>
+    .estado-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .estado-activo { background-color: #d4edda; color: #155724; }
+    .estado-en-uso { background-color: #d1ecf1; color: #0c5460; }
+    .estado-agotado { background-color: #f8d7da; color: #721c24; }
+    .estado-retirado { background-color: #e2e3e5; color: #383d41; }
+    
+    .rollo-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .rollo-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 10px;
+    }
+    .stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        display: block;
+    }
+    .stat-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+    }
+    
+    .filtros-panel {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .btn-accion {
+        padding: 2px 6px;
+        margin: 1px;
+        font-size: 0.8em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-tape me-2"></i>
+                    Inventario de Rollos SMD
+                </h2>
+                <div>
+                    <button class="btn btn-success me-2" onclick="sincronizarInventario()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Sincronizar
+                    </button>
+                    <button class="btn btn-primary" onclick="exportarInventario()">
+                        <i class="fas fa-download me-1"></i>
+                        Exportar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Estadísticas -->
+            <div class="stats-card">
+                <div class="row">
+                    <div class="col-md-2 stat-item">
+                        <span class="stat-number" id="stat-total">0</span>
+                        <span class="stat-label">Total Rollos</span>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <span class="stat-number" id="stat-activos">0</span>
+                        <span class="stat-label">Activos</span>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <span class="stat-number" id="stat-en-uso">0</span>
+                        <span class="stat-label">En Uso</span>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <span class="stat-number" id="stat-agotados">0</span>
+                        <span class="stat-label">Agotados</span>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <span class="stat-number" id="stat-asignados">0</span>
+                        <span class="stat-label">Asignados</span>
+                    </div>
+                    <div class="col-md-2 stat-item">
+                        <span class="stat-number" id="stat-disponible">0</span>
+                        <span class="stat-label">Cantidad Total</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panel de Filtros -->
+            <div class="filtros-panel">
+                <div class="row">
+                    <div class="col-md-2">
+                        <label class="form-label">Estado:</label>
+                        <select class="form-select form-select-sm" id="filtro-estado">
+                            <option value="">Todos los estados</option>
+                            <option value="ACTIVO">Activo</option>
+                            <option value="EN_USO">En Uso</option>
+                            <option value="AGOTADO">Agotado</option>
+                            <option value="RETIRADO">Retirado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Número de Parte:</label>
+                        <input type="text" class="form-control form-control-sm" id="filtro-numero-parte" 
+                               placeholder="Buscar parte...">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Línea:</label>
+                        <input type="text" class="form-control form-control-sm" id="filtro-linea" 
+                               placeholder="Línea...">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Máquina:</label>
+                        <input type="text" class="form-control form-control-sm" id="filtro-maquina" 
+                               placeholder="Máquina...">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Desde:</label>
+                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-desde">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Hasta:</label>
+                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-hasta">
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <button class="btn btn-primary btn-sm me-2" onclick="aplicarFiltros()">
+                            <i class="fas fa-search me-1"></i>
+                            Buscar
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="limpiarFiltros()">
+                            <i class="fas fa-times me-1"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading indicator -->
+            <div id="loading" class="text-center d-none">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando inventario...</p>
+            </div>
+            
+            <!-- Tabla de Inventario -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Lista de Rollos (<span id="contador-rollos">0</span>)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm mb-0" id="tabla-inventario">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Número de Parte</th>
+                                    <th>Código de Barras</th>
+                                    <th>Estado</th>
+                                    <th>Cantidad</th>
+                                    <th>Línea/Máquina</th>
+                                    <th>Slot</th>
+                                    <th>Fecha Entrada</th>
+                                    <th>Horas en SMD</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-inventario">
+                                <!-- Los datos se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle Rollo -->
+<div class="modal fade" id="modalDetalleRollo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-tape me-2"></i>
+                    Detalle del Rollo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalle-rollo-content">
+                <!-- El contenido se cargará dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Asignar Mounter -->
+<div class="modal fade" id="modalAsignarMounter" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cogs me-2"></i>
+                    Asignar a Mounter
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-asignar-mounter">
+                    <input type="hidden" id="rollo-id-asignar">
+                    <div class="mb-3">
+                        <label class="form-label">Línea:</label>
+                        <input type="text" class="form-control" id="input-linea" required 
+                               placeholder="Ej: 1line, 2line...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Máquina:</label>
+                        <input type="text" class="form-control" id="input-maquina" required 
+                               placeholder="Ej: L1 m1, L2 m2...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Slot:</label>
+                        <input type="text" class="form-control" id="input-slot" required 
+                               placeholder="Ej: 1, 2, 3...">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarAsignacion()">
+                    <i class="fas fa-check me-1"></i>
+                    Asignar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let datosInventario = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    cargarInventario();
+    
+    // Event listeners para filtros
+    ['filtro-estado', 'filtro-numero-parte', 'filtro-linea', 'filtro-maquina', 'filtro-fecha-desde', 'filtro-fecha-hasta'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', aplicarFiltros);
+            if (element.type === 'text') {
+                element.addEventListener('keyup', debounce(aplicarFiltros, 500));
+            }
+        }
+    });
+});
+
+function cargarInventario() {
+    document.getElementById('loading').classList.remove('d-none');
+    
+    const params = new URLSearchParams();
+    
+    // Añadir filtros activos
+    const filtros = {
+        'estado': 'filtro-estado',
+        'numero_parte': 'filtro-numero-parte',
+        'linea': 'filtro-linea',
+        'maquina': 'filtro-maquina',
+        'fecha_desde': 'filtro-fecha-desde',
+        'fecha_hasta': 'filtro-fecha-hasta'
+    };
+    
+    Object.entries(filtros).forEach(([param, elementId]) => {
+        const value = document.getElementById(elementId).value;
+        if (value) {
+            params.append(param, value);
+        }
+    });
+    
+    fetch(`/api/smd/inventario/rollos?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                datosInventario = data.data;
+                actualizarTabla(data.data);
+                actualizarEstadisticas(data.stats);
+            } else {
+                throw new Error(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarAlerta('Error al cargar inventario: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            document.getElementById('loading').classList.add('d-none');
+        });
+}
+
+function actualizarTabla(rollos) {
+    const tbody = document.getElementById('tbody-inventario');
+    tbody.innerHTML = '';
+    
+    document.getElementById('contador-rollos').textContent = rollos.length;
+    
+    rollos.forEach(rollo => {
+        const row = document.createElement('tr');
+        row.className = 'rollo-row';
+        row.onclick = () => verDetalleRollo(rollo.id);
+        
+        const estadoClass = `estado-${rollo.estado.toLowerCase().replace('_', '-')}`;
+        const ubicacion = rollo.linea_asignada && rollo.maquina_asignada 
+            ? `${rollo.linea_asignada}/${rollo.maquina_asignada}` 
+            : 'Sin asignar';
+        
+        row.innerHTML = `
+            <td>${rollo.id}</td>
+            <td><strong>${rollo.numero_parte}</strong></td>
+            <td><code>${rollo.codigo_barras || 'N/A'}</code></td>
+            <td><span class="estado-badge ${estadoClass}">${rollo.estado_detallado || rollo.estado}</span></td>
+            <td>${parseFloat(rollo.cantidad_actual || 0).toFixed(2)}</td>
+            <td>${ubicacion}</td>
+            <td>${rollo.slot_asignado || '-'}</td>
+            <td>${formatearFecha(rollo.fecha_entrada)}</td>
+            <td>${rollo.horas_en_smd || 0}h</td>
+            <td>
+                ${generarBotonesAccion(rollo)}
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+function generarBotonesAccion(rollo) {
+    let botones = `
+        <button class="btn btn-info btn-accion" onclick="event.stopPropagation(); verDetalleRollo(${rollo.id})" title="Ver detalle">
+            <i class="fas fa-eye"></i>
+        </button>
+    `;
+    
+    if (rollo.estado === 'ACTIVO') {
+        botones += `
+            <button class="btn btn-warning btn-accion" onclick="event.stopPropagation(); abrirModalAsignar(${rollo.id})" title="Asignar a mounter">
+                <i class="fas fa-cogs"></i>
+            </button>
+            <button class="btn btn-danger btn-accion" onclick="event.stopPropagation(); marcarAgotado(${rollo.id})" title="Marcar como agotado">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+    }
+    
+    return botones;
+}
+
+function actualizarEstadisticas(stats) {
+    if (stats) {
+        document.getElementById('stat-total').textContent = stats.total_rollos || 0;
+        document.getElementById('stat-activos').textContent = stats.activos || 0;
+        document.getElementById('stat-en-uso').textContent = stats.en_uso || 0;
+        document.getElementById('stat-agotados').textContent = stats.agotados || 0;
+        document.getElementById('stat-asignados').textContent = stats.asignados || 0;
+        document.getElementById('stat-disponible').textContent = parseFloat(stats.cantidad_total_disponible || 0).toFixed(1);
+    }
+}
+
+function aplicarFiltros() {
+    cargarInventario();
+}
+
+function limpiarFiltros() {
+    ['filtro-estado', 'filtro-numero-parte', 'filtro-linea', 'filtro-maquina', 'filtro-fecha-desde', 'filtro-fecha-hasta'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.value = '';
+        }
+    });
+    cargarInventario();
+}
+
+function verDetalleRollo(rolloId) {
+    fetch(`/api/smd/inventario/rollo/${rolloId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarDetalleRollo(data.rollo, data.historial);
+            } else {
+                throw new Error(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarAlerta('Error al cargar detalle: ' + error.message, 'danger');
+        });
+}
+
+function mostrarDetalleRollo(rollo, historial) {
+    const content = document.getElementById('detalle-rollo-content');
+    
+    const estadoClass = `estado-${rollo.estado.toLowerCase().replace('_', '-')}`;
+    
+    content.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Información General</h6>
+                <table class="table table-sm">
+                    <tr><th>ID:</th><td>${rollo.id}</td></tr>
+                    <tr><th>Número de Parte:</th><td><strong>${rollo.numero_parte}</strong></td></tr>
+                    <tr><th>Código de Barras:</th><td><code>${rollo.codigo_barras || 'N/A'}</code></td></tr>
+                    <tr><th>Estado:</th><td><span class="estado-badge ${estadoClass}">${rollo.estado}</span></td></tr>
+                    <tr><th>Cantidad Inicial:</th><td>${rollo.cantidad_inicial}</td></tr>
+                    <tr><th>Cantidad Actual:</th><td>${rollo.cantidad_actual}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Ubicación y Fechas</h6>
+                <table class="table table-sm">
+                    <tr><th>Área SMD:</th><td>${rollo.area_smd}</td></tr>
+                    <tr><th>Línea:</th><td>${rollo.linea_asignada || 'Sin asignar'}</td></tr>
+                    <tr><th>Máquina:</th><td>${rollo.maquina_asignada || 'Sin asignar'}</td></tr>
+                    <tr><th>Slot:</th><td>${rollo.slot_asignado || 'Sin asignar'}</td></tr>
+                    <tr><th>Fecha Entrada:</th><td>${formatearFecha(rollo.fecha_entrada)}</td></tr>
+                    <tr><th>Último Uso:</th><td>${formatearFecha(rollo.fecha_ultimo_uso)}</td></tr>
+                    <tr><th>Horas en SMD:</th><td>${rollo.horas_en_smd || 0}h</td></tr>
+                </table>
+            </div>
+        </div>
+        
+        ${rollo.observaciones ? `
+        <div class="mt-3">
+            <h6>Observaciones</h6>
+            <div class="alert alert-info">${rollo.observaciones}</div>
+        </div>
+        ` : ''}
+        
+        <div class="mt-3">
+            <h6>Historial de Movimientos</h6>
+            <div class="table-responsive" style="max-height: 300px;">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                            <th>Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${historial.map(h => `
+                            <tr>
+                                <td>${formatearFecha(h.fecha_movimiento)}</td>
+                                <td><span class="badge bg-primary">${h.tipo_movimiento}</span></td>
+                                <td>${h.descripcion}</td>
+                                <td>${h.usuario}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('modalDetalleRollo')).show();
+}
+
+function abrirModalAsignar(rolloId) {
+    document.getElementById('rollo-id-asignar').value = rolloId;
+    document.getElementById('input-linea').value = '';
+    document.getElementById('input-maquina').value = '';
+    document.getElementById('input-slot').value = '';
+    
+    new bootstrap.Modal(document.getElementById('modalAsignarMounter')).show();
+}
+
+function confirmarAsignacion() {
+    const rolloId = document.getElementById('rollo-id-asignar').value;
+    const linea = document.getElementById('input-linea').value;
+    const maquina = document.getElementById('input-maquina').value;
+    const slot = document.getElementById('input-slot').value;
+    
+    if (!linea || !maquina || !slot) {
+        mostrarAlerta('Todos los campos son requeridos', 'warning');
+        return;
+    }
+    
+    fetch(`/api/smd/inventario/rollo/${rolloId}/asignar_mounter`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            linea: linea,
+            maquina: maquina,
+            slot: slot,
+            usuario: 'USUARIO_WEB'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalAsignarMounter')).hide();
+            cargarInventario();
+        } else {
+            throw new Error(data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarAlerta('Error al asignar: ' + error.message, 'danger');
+    });
+}
+
+function marcarAgotado(rolloId) {
+    if (!confirm('¿Está seguro de marcar este rollo como agotado?')) {
+        return;
+    }
+    
+    const observaciones = prompt('Observaciones (opcional):') || 'Marcado como agotado desde interfaz web';
+    
+    fetch(`/api/smd/inventario/rollo/${rolloId}/marcar_agotado`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            observaciones: observaciones,
+            usuario: 'USUARIO_WEB'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'success');
+            cargarInventario();
+        } else {
+            throw new Error(data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarAlerta('Error al marcar como agotado: ' + error.message, 'danger');
+    });
+}
+
+function sincronizarInventario() {
+    if (!confirm('¿Desea sincronizar el inventario con los movimientos recientes del almacén?')) {
+        return;
+    }
+    
+    fetch('/api/smd/inventario/sincronizar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            horas_atras: 24
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, 'success');
+            cargarInventario();
+        } else {
+            throw new Error(data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarAlerta('Error en sincronización: ' + error.message, 'danger');
+    });
+}
+
+function exportarInventario() {
+    window.open('/api/smd/inventario/export', '_blank');
+}
+
+function formatearFecha(fecha) {
+    if (!fecha) return 'N/A';
+    try {
+        const date = new Date(fecha);
+        return date.toLocaleString('es-ES');
+    } catch (e) {
+        return fecha;
+    }
+}
+
+function mostrarAlerta(mensaje, tipo) {
+    // Implementar sistema de alertas
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+</script>
+{% endblock %}

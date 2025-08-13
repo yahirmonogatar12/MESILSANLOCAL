@@ -34,9 +34,13 @@ from .po_wo_models import (
     generar_codigo_po, generar_codigo_wo, verificar_po_existe, verificar_wo_existe,
     obtener_po_por_codigo, obtener_wo_por_codigo, listar_pos_por_estado, listar_wos_por_po
 )
+from .smd_inventory_api import register_smd_inventory_routes
 
 app = Flask(__name__)
 app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
+
+# Registrar rutas SMD Inventory después de crear la app
+register_smd_inventory_routes(app)
 
 # Inicializar base de datos original
 init_db()  # Esto crea la tabla si no existe
@@ -2307,14 +2311,19 @@ def guardar_salida_lote():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Consultar la fila original
-        cursor.execute('SELECT cantidad_actual FROM control_material_almacen WHERE codigo_material_recibido = %s', (codigo_material_recibido,))
+        # Consultar la fila original con propiedad de material
+        cursor.execute('''
+            SELECT cma.cantidad_actual, cma.propiedad_material 
+            FROM control_material_almacen cma
+            WHERE cma.codigo_material_recibido = %s
+        ''', (codigo_material_recibido,))
         row = cursor.fetchone()
         
         if not row:
             return jsonify({'success': False, 'error': 'Código no encontrado en almacén'})
         
         cantidad_actual = float(row[0]) if row[0] else 0
+        propiedad_material_real = row[1] if row[1] else data.get('especificacion_material', '')
         cantidad_salida = float(cantidad_salida)
         
         if cantidad_salida > cantidad_actual:
@@ -2340,7 +2349,7 @@ def guardar_salida_lote():
             data.get('proceso_salida', ''),
             cantidad_salida,
             data.get('fecha_salida', ''),
-            data.get('especificacion_material', '')
+            propiedad_material_real  # Usar la propiedad real en lugar de la del frontend
         ))
         
         conn.commit()
@@ -2762,7 +2771,7 @@ def forzar_actualizacion_inventario(numero_parte):
         
         # Obtener todas las entradas para este número de parte
         cursor.execute('''
-            SELECT SUM(cantidad_recibida) as total_entradas
+            SELECT SUM(cantidad_actual) as total_entradas
             FROM control_material_almacen 
             WHERE numero_parte = %s
         ''', (numero_parte,))
@@ -5393,7 +5402,7 @@ def importar_excel_almacen():
                 cursor.execute("""
                     INSERT OR REPLACE INTO control_almacen 
                     (codigo_material_recibido, codigo_material, numero_parte, numero_lote, 
-                     propiedad_material, fecha_recibo, cantidad_recibida, ubicacion)
+                     propiedad_material, fecha_recibo, cantidad_actual, ubicacion)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     str(row.get('Codigo Material Recibido', '')),
@@ -5883,7 +5892,7 @@ def importar_excel_estatus_recibido():
                 cursor.execute("""
                     INSERT OR REPLACE INTO material_recibido 
                     (codigo_material_recibido, codigo_material, numero_parte, fecha_recibo, 
-                     cantidad_recibida, proveedor, estado_recepcion)
+                     cantidad_actual, proveedor, estado_recepcion)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """, (
                     str(row.get('Codigo Material Recibido', '')),
@@ -6918,3 +6927,38 @@ def api_movimientos():
             'message': str(e),
             'items': []
         }), 500
+
+# Ruta temporal para asignar permisos de inventario SMD
+@app.route('/asignar_permisos_smd_temp')
+def asignar_permisos_smd_temp():
+    """Ruta temporal para asignar permisos de inventario SMD al usuario actual"""
+    try:
+        usuario_id = session.get('user_id')
+        if not usuario_id:
+            return "Usuario no autenticado", 401
+        
+        # Obtener el usuario actual
+        usuario = auth_system.obtener_usuario_por_id(usuario_id)
+        if not usuario:
+            return "Usuario no encontrado", 404
+        
+        # Asignar permisos de inventario SMD
+        permisos_smd = [
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Inventario de rollos SMD')
+        ]
+        
+        for pagina, seccion, boton in permisos_smd:
+            auth_system.asignar_permiso_usuario(usuario['username'], pagina, seccion, boton)
+        
+        return f"""
+        <h2>Permisos de Inventario SMD Asignados</h2>
+        <p>Se han asignado los permisos de inventario SMD al usuario: <strong>{usuario['username']}</strong></p>
+        <ul>
+            <li>✅ Inventario de rollos SMD</li>
+        </ul>
+        <p><a href="/">Volver al inicio</a></p>
+        <p><em>Puedes eliminar esta ruta después (/asignar_permisos_smd_temp)</em></p>
+        """
+        
+    except Exception as e:
+        return f"Error asignando permisos: {str(e)}", 500

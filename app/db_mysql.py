@@ -1339,7 +1339,7 @@ def calcular_inventario_general_mysql(numero_parte):
     try:
         # Obtener todas las entradas para este número de parte
         query_entradas = """
-            SELECT SUM(cantidad_recibida) as total_entradas
+            SELECT SUM(cantidad_actual) as total_entradas
             FROM control_material_almacen 
             WHERE numero_parte = %s
         """
@@ -1377,7 +1377,7 @@ def actualizar_inventario_general_salida_mysql(numero_parte, cantidad_salida):
         if inventario_info:
             # Actualizar o insertar en la tabla inventario_general
             query = """
-                INSERT INTO inventario_general (numero_parte, cantidad_actual, fecha_actualizacion)
+                INSERT INTO inventario_general (numero_parte, cantidad_total, fecha_actualizacion)
                 VALUES (%s, %s, NOW())
                 ON DUPLICATE KEY UPDATE
                     cantidad_actual = %s,

@@ -387,6 +387,7 @@ class AuthSystem:
             ('LISTA_DE_MATERIALES', 'Control de material', 'Control de Long-Term Inventory', 'Acceso a control de inventario de largo plazo'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Registro de material real', 'Acceso a registro de material real'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de inventario real', 'Acceso al historial de inventario real'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Inventario de rollos SMD', 'Acceso al inventario de rollos SMD'),
             ('LISTA_DE_MATERIALES', 'Control de material', 'Ajuste de número de parte', 'Acceso a ajuste de número de parte'),
             
             # LISTA DE MATERIALES - Control de material MSL
