@@ -1,13 +1,31 @@
-// Variables globales para el sistema PO → WO
-let posData = [];
-let wosData = [];
-let dataTablePOs = null;
-let dataTableWOs = null;
+// ===========================================
+// MÓDULO CONTROL DE EMBARQUE - ENCAPSULADO
+// ===========================================
+(function() {
+    'use strict';
+    
+    // Variables locales para el sistema PO → WO (ahora encapsuladas)
+    let posData = [];
+    let wosData = [];
+    let dataTablePOs = null;
+    let dataTableWOs = null;
 
-// Variables para control de peticiones AJAX
-let currentPORequest = null;
-let currentWORequest = null;
-let currentModelosRequest = null;
+    // Variables para control de peticiones AJAX
+    let currentPORequest = null;
+    let currentWORequest = null;
+    let currentModelosRequest = null;
+
+    // Variable local para almacenar modelos BOM (encapsulada)
+    let modelosBOM = [];
+
+    // Variable para tracking de última actualización
+    let lastRefresh = {
+        pos: 0,
+        wos: 0
+    };
+
+    // Variable para debounce de cambio de pestañas
+    let tabChangeTimeout = null;
 
 // ===========================================
 // FUNCIONES AUXILIARES PARA EL NUEVO ESTILO
@@ -86,12 +104,6 @@ function cargarDatosTab(tab) {
             console.log(`Pestaña ${tab} cargada sin datos específicos`);
     }
 }
-
-// Variable para tracking de última actualización
-let lastRefresh = {
-    pos: 0,
-    wos: 0
-};
 
 // Función para determinar si los datos necesitan actualización
 function shouldRefreshData(type) {
@@ -428,9 +440,6 @@ function configurarFechasPorDefecto() {
 // ===========================================
 // FUNCIONES DE MODELOS BOM (COPIADAS DE PLAN DE PRODUCCIÓN)
 // ===========================================
-
-// Variable global para almacenar modelos BOM
-let modelosBOM = [];
 
 // Cargar modelos únicos de BOM
 async function cargarModelosBOM() {
@@ -988,12 +997,12 @@ async function crearPO() {
             nombre_po: formData.get('nombre_po'),
             fecha_registro: formData.get('fecha_registro'),
             modelo: formData.get('modelo'),
-            proveedor: formData.get('proveedor'),
+            proveedor: formData.get('proveedor') || '',
             total_cantidad_entregada: parseInt(formData.get('total_cantidad_entregada')) || 0,
             fecha_entrega: formData.get('fecha_entrega'),
             cantidad_entregada: parseInt(formData.get('cantidad_entregada')) || 0,
-            codigo_entrega: formData.get('codigo_entrega'),
-            cliente: formData.get('cliente') || formData.get('proveedor'), // Usar cliente o proveedor
+            codigo_entrega: formData.get('codigo_entrega') || '',
+            cliente: formData.get('cliente') || formData.get('proveedor') || 'Cliente General',
             estado: 'PLAN'
         };
         
@@ -1010,6 +1019,12 @@ async function crearPO() {
 
         if (!data.modelo) {
             mostrarToast('Debe seleccionar un modelo', 'warning');
+            return;
+        }
+
+        // Validar que al menos cliente o proveedor esté lleno
+        if (!formData.get('cliente') && !formData.get('proveedor')) {
+            mostrarToast('Debe especificar al menos el cliente o el proveedor', 'warning');
             return;
         }
         
@@ -1188,22 +1203,13 @@ function exportarDatos() {
     }
 }
 
-// Event listener para cerrar dropdown cuando se hace clic fuera
-document.addEventListener('click', function(event) {
-    const embarqueSearchContainer = document.querySelector('.embarque-search-container');
-    const woDropdownList = document.getElementById('woDropdownList');
-    
-    if (embarqueSearchContainer && !embarqueSearchContainer.contains(event.target) && woDropdownList) {
-        woDropdownList.style.display = 'none';
-    }
-});
-
 // ===========================================
 // INICIALIZACIÓN
 // ===========================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Sistema PO → WO inicializado');
+// Función de inicialización explícita para carga dinámica
+function initControlEmbarque() {
+    console.log('🚀 Inicializando Control de Embarque...');
     
     // Configurar fechas por defecto
     configurarFechasPorDefecto();
@@ -1217,8 +1223,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cargar datos iniciales
     consultarPOs();
     
-    console.log(' Control de Embarque - Sistema PO → WO completamente funcional');
+    console.log('✅ Control de Embarque - Sistema PO → WO completamente funcional');
+}
+
+// Mantener compatibilidad con carga directa
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📥 DOMContentLoaded - Control de Embarque');
+    initControlEmbarque();
 });
+
+// Hacer la función disponible globalmente para carga dinámica
+window.initControlEmbarque = initControlEmbarque;
 
 // ===============================================
 // FUNCIONES DE MODALES LOADING MODERNOS
@@ -1369,23 +1384,163 @@ function mostrarToastModerno(mensaje, tipo = 'info', duracion = 3000) {
     return toast;
 }
 
-// Make functions globally accessible for inline onclick handlers
-window.mostrarDropdownWO = mostrarDropdownWO;
-window.filtrarModelosWO = filtrarModelosWO;
-window.seleccionarModeloWO = seleccionarModeloWO;
-window.mostrarDropdownPO = mostrarDropdownPO;
-window.filtrarModelosPO = filtrarModelosPO;
-window.seleccionarModeloPO = seleccionarModeloPO;
-window.abrirModalCrearPO = abrirModalCrearPO;
-window.abrirModalCrearWO = abrirModalCrearWO;
-window.mostrarTab = mostrarTab;
-window.toggleSelectAll = toggleSelectAll;
-window.toggleSelectAllWO = toggleSelectAllWO;
+// =============================================
+// FUNCIONES PARA DROPDOWN DE MODELOS EN PO
+// =============================================
 
-// Funciones de limpieza y optimización
-window.cancelarPeticionesAJAX = cancelarPeticionesAJAX;
-window.consultarPOs = consultarPOs;
-window.consultarWOs = consultarWOs;
+// Mostrar dropdown de modelos en formulario PO
+async function mostrarDropdownPO() {
+    console.log('=== mostrarDropdownPO() llamada ===');
+    const dropdownList = document.getElementById('poDropdownList');
+    const searchInput = document.getElementById('poModelo');
+    
+    if (!dropdownList) {
+        console.error('Element poDropdownList not found');
+        return;
+    }
+    
+    if (!searchInput) {
+        console.error('Element poModelo not found');
+        return;
+    }
+    
+    console.log('Elementos PO encontrados OK');
+    console.log('Modelos disponibles en memoria:', modelosBOM.length);
+    
+    // Si no hay modelos en memoria, cargarlos dinámicamente
+    if (modelosBOM.length === 0) {
+        console.log('No hay modelos en memoria, cargando dinámicamente...');
+        await cargarModelosBOM();
+    }
+    
+    // Llenar dropdown con modelos
+    llenarDropdownModelosPO();
+    
+    // Mostrar dropdown
+    dropdownList.style.display = 'block';
+    console.log('Dropdown PO mostrado');
+}
+
+// Llenar dropdown de modelos para PO
+function llenarDropdownModelosPO() {
+    const dropdownList = document.getElementById('poDropdownList');
+    
+    if (!dropdownList) {
+        console.error('Element poDropdownList not found');
+        return;
+    }
+    
+    dropdownList.innerHTML = '';
+    
+    modelosBOM.forEach(modelo => {
+        const item = document.createElement('div');
+        item.className = 'bom-dropdown-item';
+        item.textContent = modelo;
+        item.style.cssText = `
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #34495e;
+            color: #ecf0f1;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        `;
+        item.onmouseover = function() { this.style.backgroundColor = '#3498db'; };
+        item.onmouseout = function() { this.style.backgroundColor = 'transparent'; };
+        item.onclick = () => seleccionarModeloPO(modelo);
+        dropdownList.appendChild(item);
+    });
+    
+    console.log(`Dropdown PO llenado con ${modelosBOM.length} modelos`);
+    
+    // Aplicar estilos al dropdown
+    dropdownList.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: #2c3e50;
+        border: 1px solid #34495e;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+    `;
+}
+
+// Filtrar modelos en dropdown PO
+function filtrarModelosPO() {
+    const searchInput = document.getElementById('poModelo');
+    const dropdownList = document.getElementById('poDropdownList');
+    
+    if (!searchInput || !dropdownList) {
+        console.error('Elements for PO filtering not found');
+        return;
+    }
+    
+    const searchTerm = searchInput.value.toLowerCase();
+    const items = dropdownList.children;
+    
+    Array.from(items).forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    // Mostrar dropdown si está oculto
+    if (dropdownList.style.display === 'none') {
+        dropdownList.style.display = 'block';
+    }
+}
+
+// Seleccionar modelo en formulario PO
+function seleccionarModeloPO(modelo) {
+    const searchInput = document.getElementById('poModelo');
+    const dropdownList = document.getElementById('poDropdownList');
+    
+    if (searchInput) {
+        searchInput.value = modelo;
+    }
+    
+    if (dropdownList) {
+        dropdownList.style.display = 'none';
+    }
+    
+    console.log('Modelo seleccionado para PO:', modelo);
+}
+
+// Mejorar rendimiento: usar debounce para cambios rápidos de pestaña
+function debouncedTabChange(tab) {
+    if (tabChangeTimeout) {
+        clearTimeout(tabChangeTimeout);
+    }
+    
+    tabChangeTimeout = setTimeout(() => {
+        cargarDatosTab(tab);
+    }, 300); // Esperar 300ms antes de cargar datos
+}
+
+// Event listeners para cerrar dropdowns cuando se hace clic fuera
+document.addEventListener('click', function(event) {
+    const embarqueSearchContainer = document.querySelector('.embarque-search-container');
+    const woDropdownList = document.getElementById('woDropdownList');
+    
+    if (embarqueSearchContainer && !embarqueSearchContainer.contains(event.target) && woDropdownList) {
+        woDropdownList.style.display = 'none';
+    }
+    
+    const poDropdown = document.getElementById('poDropdownList');
+    const poInput = document.getElementById('poModelo');
+    
+    if (poDropdown && poInput) {
+        if (!poInput.contains(event.target) && !poDropdown.contains(event.target)) {
+            poDropdown.style.display = 'none';
+        }
+    }
+});
 
 // Limpiar peticiones AJAX al descargar la página
 window.addEventListener('beforeunload', function() {
@@ -1398,17 +1553,24 @@ window.addEventListener('pagehide', function() {
     cancelarPeticionesAJAX();
 });
 
-// Mejorar rendimiento: usar debounce para cambios rápidos de pestaña
-let tabChangeTimeout = null;
-
-function debouncedTabChange(tab) {
-    if (tabChangeTimeout) {
-        clearTimeout(tabChangeTimeout);
-    }
-    
-    tabChangeTimeout = setTimeout(() => {
-        cargarDatosTab(tab);
-    }, 300); // Esperar 300ms antes de cargar datos
-}
+// Hacer todas las funciones disponibles globalmente
+window.initControlEmbarque = initControlEmbarque;
+window.mostrarDropdownWO = mostrarDropdownWO;
+window.filtrarModelosWO = filtrarModelosWO;
+window.seleccionarModeloWO = seleccionarModeloWO;
+window.mostrarDropdownPO = mostrarDropdownPO;
+window.filtrarModelosPO = filtrarModelosPO;
+window.seleccionarModeloPO = seleccionarModeloPO;
+window.abrirModalCrearPO = abrirModalCrearPO;
+window.abrirModalCrearWO = abrirModalCrearWO;
+window.crearPO = crearPO;
+window.mostrarTab = mostrarTab;
+window.toggleSelectAll = toggleSelectAll;
+window.toggleSelectAllWO = toggleSelectAllWO;
+window.cancelarPeticionesAJAX = cancelarPeticionesAJAX;
+window.consultarPOs = consultarPOs;
+window.consultarWOs = consultarWOs;
 
 console.log('Control de embarque - Sistema de cancelación AJAX inicializado');
+
+})(); // Fin del IIFE - Cierre del módulo encapsulado

@@ -1,6 +1,12 @@
-   // Variables globales
-        let modelosBOM = [];
-        let woData = [];
+// ===========================================
+// MÓDULO CREAR PLAN DE PRODUCCIÓN - ENCAPSULADO
+// ===========================================
+(function() {
+    'use strict';
+    
+    // Variables locales (ahora encapsuladas)
+    let modelosBOM = [];
+    let woData = [];
 
         // ================================================
         // FUNCIONES NECESARIAS ANTES DE DOM READY
@@ -51,12 +57,24 @@
         // Asignaciones globales inmediatas para onclick handlers
         window.mostrarFormularioWO = mostrarFormularioWO;
 
-        document.addEventListener('DOMContentLoaded', function() {
+        // Función de inicialización explícita para carga dinámica
+        function initCrearPlanProduccion() {
+            console.log('🚀 Inicializando Crear Plan de Producción...');
             cargarModelosBOM();
             configurarEventos();
             establecerFechaActual();
             cargarWOs();
+            console.log('✅ Crear Plan de Producción inicializado correctamente');
+        }
+
+        // Mantener compatibilidad con carga directa
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📥 DOMContentLoaded - Crear Plan de Producción');
+            initCrearPlanProduccion();
         });
+
+        // Hacer la función disponible globalmente para carga dinámica
+        window.initCrearPlanProduccion = initCrearPlanProduccion;
 
         // Configurar eventos de botones
         function configurarEventos() {
@@ -474,7 +492,7 @@
             const woSearchContainer = document.querySelector('.bom-search-container');
             const woDropdownList = document.getElementById('woDropdownList');
             
-            if (woSearchContainer && !woSearchContainer.contains(event.target)) {
+            if (woSearchContainer && woDropdownList && !woSearchContainer.contains(event.target)) {
                 woDropdownList.style.display = 'none';
             }
         });
@@ -713,13 +731,18 @@
             }
         }
 
-        // Make all functions globally accessible for inline onclick handlers
-        window.consultarWOs = consultarWOs;
-        window.cancelarOperacion = cancelarOperacion;
-        window.exportarExcel = exportarExcel;
-        window.ocultarFormularioWO = ocultarFormularioWO;
-        window.filtrarModelosWO = filtrarModelosWO;
-        window.mostrarDropdownWO = mostrarDropdownWO;
-        window.crearNuevaWO = crearNuevaWO;
-        window.mostrarFormularioWO = mostrarFormularioWO;
-        window.seleccionarModeloWO = seleccionarModeloWO;
+// Hacer todas las funciones disponibles globalmente
+window.initCrearPlanProduccion = initCrearPlanProduccion;
+window.consultarWOs = consultarWOs;
+window.cancelarOperacion = cancelarOperacion;
+window.exportarExcel = exportarExcel;
+window.ocultarFormularioWO = ocultarFormularioWO;
+window.filtrarModelosWO = filtrarModelosWO;
+window.mostrarDropdownWO = mostrarDropdownWO;
+window.crearNuevaWO = crearNuevaWO;
+window.mostrarFormularioWO = mostrarFormularioWO;
+window.seleccionarModeloWO = seleccionarModeloWO;
+
+console.log('Crear Plan de Producción - Módulo inicializado');
+
+})(); // Fin del IIFE - Cierre del módulo encapsulado

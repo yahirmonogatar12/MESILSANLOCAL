@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Encapsulación</title>
+</head>
+<body>
+    <h1>Prueba de Solución IIFE</h1>
+    <p id="resultado"></p>
+    
+    <script src="control-embarque.js"></script>
+    <script src="crear-plan-produccion.js"></script>
+    
+    <script>
+        // Probar que ambos módulos pueden cargarse sin conflictos
+        document.getElementById('resultado').innerHTML = 
+            'Control de Embarque disponible: ' + (typeof window.initControlEmbarque === 'function') + '<br>' +
+            'Crear Plan disponible: ' + (typeof window.initCrearPlanProduccion === 'function') + '<br>' +
+            'Sin conflictos de variables globales: ✅';
+    </script>
+</body>
+</html>

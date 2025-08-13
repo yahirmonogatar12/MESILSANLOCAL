@@ -2324,6 +2324,14 @@ function hideAllMaterialContainers() {
                         embarqueContainer.style.opacity = '1';
                         console.log('Control de Embarque cargado y mostrado correctamente');
                     }
+                    
+                    // Inicializar el módulo de Control de Embarque
+                    if (typeof window.initControlEmbarque === 'function') {
+                        window.initControlEmbarque();
+                        console.log('Módulo Control de Embarque inicializado');
+                    } else {
+                        console.warn('Función initControlEmbarque no encontrada');
+                    }
                 })
                 .catch(error => {
                     console.error('Error cargando Control de Embarque:', error);
@@ -2348,6 +2356,14 @@ function hideAllMaterialContainers() {
                         planContainer.style.visibility = 'visible';
                         planContainer.style.opacity = '1';
                         console.log('Crear Plan de Producción cargado y mostrado correctamente');
+                    }
+                    
+                    // Inicializar el módulo de Crear Plan de Producción
+                    if (typeof window.initCrearPlanProduccion === 'function') {
+                        window.initCrearPlanProduccion();
+                        console.log('Módulo Crear Plan de Producción inicializado');
+                    } else {
+                        console.warn('Función initCrearPlanProduccion no encontrada');
                     }
                 })
                 .catch(error => {
