@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba API Flask para Android</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 3px; max-height: 400px; overflow-y: auto; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        textarea { width: 100%; height: 100px; margin: 10px 0; font-family: monospace; }
+        .endpoint { background: #e9ecef; padding: 10px; border-radius: 3px; margin: 10px 0; }
+        .url { font-family: monospace; color: #0056b3; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1> Prueba APIs Flask para Android - MES ILSAN</h1>
+    
+    <div class="endpoint">
+        <h4> Endpoints Disponibles:</h4>
+        <div class="url">POST/GET: http://127.0.0.1:5000/api/mysql-proxy</div>
+        <div class="url">GET: http://127.0.0.1:5000/api/android/materiales</div>
+        <div class="url">GET: http://127.0.0.1:5000/api/android/inventarios</div>
+    </div>
+
+    <div class="test-section">
+        <h3>1.  Prueba MySQL Proxy (POST)</h3>
+        <p>Emula el comportamiento de tu archivo PHP pero desde Flask</p>
+        <button onclick="testMySQLProxy()">Probar MySQL Proxy</button>
+        <div id="proxyResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2.  API Materiales Android</h3>
+        <p>API específica para obtener materiales desde Android</p>
+        <button onclick="testMaterialesAPI()">Obtener Materiales</button>
+        <button onclick="testMaterialesSearch()">Buscar Materiales</button>
+        <div id="materialesAPIResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3.  API Inventarios Android</h3>
+        <p>API específica para obtener inventarios desde Android</p>
+        <button onclick="testInventariosAll()">Resumen Inventarios</button>
+        <button onclick="testInventariosSMD()">Inventario SMD</button>
+        <button onclick="testInventariosIMD()">Inventario IMD</button>
+        <div id="inventariosAPIResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4.  Consulta Personalizada (MySQL Proxy)</h3>
+        <textarea id="customQuery" placeholder="Escribe tu consulta SQL aquí...">SELECT COUNT(*) as total_materiales FROM materiales</textarea>
+        <br>
+        <button onclick="testCustomQuery()">Ejecutar Consulta</button>
+        <div id="customResult" class="result"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://127.0.0.1:5000';
+
+        // Función helper para hacer peticiones
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return {
+                    success: false,
+                    data: { error: 'Error de conexión: ' + error.message },
+                    status: 0
+                };
+            }
+        }
+
+        // Función helper para mostrar resultados
+        function showResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            
+            if (result.success && result.data.success !== false) {
+                element.className = 'result success';
+                element.innerHTML = <h4> Éxito ():</h4><pre> + 
+                    JSON.stringify(result.data, null, 2) + '</pre>';
+            } else {
+                element.className = 'result error';
+                element.innerHTML = <h4> Error ():</h4><pre> + 
+                    JSON.stringify(result.data, null, 2) + '</pre>';
+            }
+        }
+
+        // 1. Prueba MySQL Proxy
+        async function testMySQLProxy() {
+            const result = document.getElementById('proxyResult');
+            result.innerHTML = 'Probando MySQL Proxy...';
+            
+            const response = await makeRequest({BASE_URL}/api/mysql-proxy, {
+                method: 'POST',
+                body: JSON.stringify({
+                    sql: 'SELECT COUNT(*) as total FROM materiales'
+                })
+            });
+            
+            showResult('proxyResult', response);
+        }
+
+        // 2. API Materiales
+        async function testMaterialesAPI() {
+            const result = document.getElementById('materialesAPIResult');
+            result.innerHTML = 'Obteniendo materiales...';
+            
+            const response = await makeRequest({BASE_URL}/api/android/materiales?limit=10);
+            showResult('materialesAPIResult', response);
+        }
+
+        async function testMaterialesSearch() {
+            const result = document.getElementById('materialesAPIResult');
+            result.innerHTML = 'Buscando materiales...';
+            
+            const response = await makeRequest({BASE_URL}/api/android/materiales?search=C&limit=5);
+            showResult('materialesAPIResult', response);
+        }
+
+        // 3. API Inventarios
+        async function testInventariosAll() {
+            const result = document.getElementById('inventariosAPIResult');
+            result.innerHTML = 'Obteniendo resumen de inventarios...';
+            
+            const response = await makeRequest({BASE_URL}/api/android/inventarios?tipo=all);
+            showResult('inventariosAPIResult', response);
+        }
+
+        async function testInventariosSMD() {
+            const result = document.getElementById('inventariosAPIResult');
+            result.innerHTML = 'Obteniendo inventario SMD...';
+            
+            const response = await makeRequest({BASE_URL}/api/android/inventarios?tipo=smd);
+            showResult('inventariosAPIResult', response);
+        }
+
+        async function testInventariosIMD() {
+            const result = document.getElementById('inventariosAPIResult');
+            result.innerHTML = 'Obteniendo inventario IMD...';
+            
+            const response = await makeRequest({BASE_URL}/api/android/inventarios?tipo=imd);
+            showResult('inventariosAPIResult', response);
+        }
+
+        // 4. Consulta personalizada
+        async function testCustomQuery() {
+            const sql = document.getElementById('customQuery').value;
+            const result = document.getElementById('customResult');
+            
+            if (!sql.trim()) {
+                result.className = 'result error';
+                result.innerHTML = ' Por favor ingresa una consulta SQL';
+                return;
+            }
+            
+            result.innerHTML = 'Ejecutando consulta personalizada...';
+            
+            const response = await makeRequest({BASE_URL}/api/mysql-proxy, {
+                method: 'POST',
+                body: JSON.stringify({
+                    sql: sql
+                })
+            });
+            
+            showResult('customResult', response);
+        }
+
+        // Cargar página con prueba automática
+        window.addEventListener('load', () => {
+            console.log(' Página de pruebas cargada');
+            console.log(' Base URL:', BASE_URL);
+        });
+    </script>
+</body>
+</html>

@@ -1501,7 +1501,7 @@ def actualizar_inventario_especifico_salida(numero_parte, codigo_material, canti
         query_buscar = f"""
             SELECT id, cantidad_actual 
             FROM {tabla_inventario} 
-            WHERE codigo_barras = %s AND estado IN ('DISPONIBLE', 'EN_USO', 'ASIGNADO')
+            WHERE codigo_barras = %s AND estado IN ('ACTIVO', 'EN_USO')
             ORDER BY fecha_entrada ASC
             LIMIT 1
         """
@@ -1509,43 +1509,24 @@ def actualizar_inventario_especifico_salida(numero_parte, codigo_material, canti
         rollo_encontrado = execute_query(query_buscar, (codigo_material,), fetch='one')
         
         if rollo_encontrado:
-            # Actualizar cantidad del rollo específico
-            nueva_cantidad = max(0, float(rollo_encontrado['cantidad_actual']) - cantidad_salida)
+            # Solo registrar el movimiento, NO descontar cantidad
+            # La cantidad se descontará después cuando se use en la máquina
+            print(f"✅ Rollo encontrado en {tabla_inventario} - No se descuenta cantidad aquí")
             
-            # Determinar nuevo estado
-            nuevo_estado = 'AGOTADO' if nueva_cantidad <= 0 else rollo_encontrado.get('estado', 'EN_USO')
-            
-            query_actualizar = f"""
-                UPDATE {tabla_inventario} 
-                SET cantidad_actual = %s,
-                    estado = %s,
-                    fecha_ultimo_uso = NOW(),
-                    actualizado_en = NOW()
-                WHERE id = %s
-            """
-            
-            result = execute_query(query_actualizar, (nueva_cantidad, nuevo_estado, rollo_encontrado['id']))
-            
-            if result > 0:
-                print(f"✅ Inventario específico actualizado - {tabla_inventario}: {rollo_encontrado['cantidad_actual']} → {nueva_cantidad}")
-                
-                # Registrar movimiento en historial específico
-                registrar_movimiento_historico_especifico(tabla_inventario, rollo_encontrado['id'], 
-                                                        cantidad_salida, proceso_salida)
-                return True
-            else:
-                print(f"❌ Error actualizando inventario específico en {tabla_inventario}")
-                return False
+            # Registrar movimiento de traslado a proceso específico
+            registrar_movimiento_historico_especifico(tabla_inventario, rollo_encontrado['id'], 
+                                                    cantidad_salida, proceso_salida, 'TRASLADO_A_PROCESO')
+            return True
         else:
             print(f"⚠️ No se encontró rollo activo con código {codigo_material} en {tabla_inventario}")
-            # Opcionalmente crear entrada nueva si no existe
+            # Crear entrada nueva con la cantidad completa disponible
             return crear_entrada_inventario_especifico(tabla_inventario, numero_parte, codigo_material, cantidad_salida)
             
     except Exception as e:
         print(f"❌ Error en actualizar_inventario_especifico_salida: {e}")
         return False
 
-def registrar_movimiento_historico_especifico(tabla_inventario, rollo_id, cantidad, proceso_salida):
+def registrar_movimiento_historico_especifico(tabla_inventario, rollo_id, cantidad, proceso_salida, tipo_movimiento='SALIDA_PRODUCCION'):
     """Registrar movimiento en historial específico"""
     try:
         # Determinar tabla de historial
@@ -1560,15 +1541,17 @@ def registrar_movimiento_historico_especifico(tabla_inventario, rollo_id, cantid
                 %s, NOW())
         """
         
+        descripcion = f'Traslado a proceso {proceso_salida} - Cantidad trasladada: {cantidad}' if tipo_movimiento == 'TRASLADO_A_PROCESO' else f'Salida a proceso {proceso_salida} - Cantidad: {cantidad}'
+        
         execute_query(query_historial, (
             rollo_id, 
-            'SALIDA_PRODUCCION', 
-            f'Salida a proceso {proceso_salida} - Cantidad: {cantidad}',
+            tipo_movimiento, 
+            descripcion,
             rollo_id,
             'SISTEMA'
         ))
         
-        print(f"📝 Movimiento registrado en {tabla_historial}")
+        print(f"📝 Movimiento registrado en {tabla_historial}: {tipo_movimiento}")
         return True
         
     except Exception as e:
@@ -1601,9 +1584,11 @@ def crear_entrada_inventario_especifico(tabla_inventario, numero_parte, codigo_m
                 ) VALUES (%s, %s, %s, %s, NOW(), %s, %s, %s, %s, %s, NOW(), NOW())
             """
             
-            # Cantidad inicial = cantidad_salida (porque sale de almacén)
+            # Cantidad inicial = cantidad que sale de almacén
+            # Cantidad actual = misma cantidad (NO se descuenta aquí)
             cantidad_inicial = cantidad_salida
-            cantidad_restante = 0  # Se agota inmediatamente
+            cantidad_actual = cantidad_salida  # Queda disponible para usar en máquina
+            estado_inicial = 'ACTIVO'  # Estado activo, listo para usar
             
             execute_query(query_crear, (
                 numero_parte,
@@ -1611,13 +1596,13 @@ def crear_entrada_inventario_especifico(tabla_inventario, numero_parte, codigo_m
                 material_info.get('numero_lote_material', ''),
                 area.upper(),
                 'ALMACEN',
-                'AGOTADO',
+                estado_inicial,
                 cantidad_inicial,
-                cantidad_restante,
+                cantidad_actual,
                 'SISTEMA'
             ))
             
-            print(f"✅ Entrada creada en {tabla_inventario}")
+            print(f"✅ Entrada creada en {tabla_inventario} - Cantidad disponible: {cantidad_actual}")
             return True
         else:
             print(f"❌ No se pudo obtener información del material {codigo_material}")
