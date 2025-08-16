@@ -1841,6 +1841,943 @@ def crear_plan_produccion():
         print(f"Error al cargar Crear Plan de Producción: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/control_produccion/plan_smt')
+@login_requerido
+def plan_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de PLAN SMT"""
+    try:
+        return render_template('Control de produccion/plan_smd_interfaz.html')
+    except Exception as e:
+        print(f"Error al cargar template PLAN SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+# ==========================================
+# AGENTE GENERADOR DE PLAN SMD
+# ==========================================
+
+def crear_tabla_plan_smd():
+    """Crear tabla plan_smd si no existe"""
+    try:
+        query = """
+        CREATE TABLE IF NOT EXISTS plan_smd (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            linea VARCHAR(32) NOT NULL,
+            lote VARCHAR(32) NOT NULL,
+            nparte VARCHAR(64) NOT NULL,
+            modelo VARCHAR(64) NOT NULL,
+            tipo VARCHAR(32) NOT NULL DEFAULT 'Main',
+            turno VARCHAR(32) NOT NULL,
+            ct VARCHAR(32) DEFAULT '',
+            uph VARCHAR(32) DEFAULT '',
+            qty INT NOT NULL DEFAULT 0,
+            fisico INT NOT NULL DEFAULT 0,
+            falta INT NOT NULL DEFAULT 0,
+            pct INT NOT NULL DEFAULT 0,
+            comentarios TEXT DEFAULT '',
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+            usuario_creacion VARCHAR(64) DEFAULT 'sistema',
+            INDEX idx_lote (lote),
+            INDEX idx_modelo (modelo),
+            INDEX idx_nparte (nparte)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+        execute_query(query)
+        print("✅ Tabla plan_smd creada/verificada")
+    except Exception as e:
+        print(f"❌ Error creando tabla plan_smd: {e}")
+
+# Crear tabla al inicializar
+crear_tabla_plan_smd()
+
+@app.route('/api/work-orders', methods=['GET'])
+@login_requerido
+def api_work_orders():
+    """API para obtener Work Orders con filtros"""
+    try:
+        # Parámetros de filtro
+        q = request.args.get('q', '').strip()
+        estados_param = request.args.get('estado', '')
+        desde = request.args.get('desde', '')
+        hasta = request.args.get('hasta', '')
+        
+        # Estados por defecto
+        if estados_param:
+            estados = [estado.strip() for estado in estados_param.split(',')]
+        else:
+            estados = ['CREADA', 'PLANIFICADA']
+        
+        # Construir query base
+        query = """
+        SELECT id, codigo_wo, codigo_po, modelo, nombre_modelo, codigo_modelo, 
+               cantidad_planeada, fecha_operacion, estado, usuario_creacion,
+               orden_proceso, modificador, fecha_modificacion
+        FROM work_orders 
+        WHERE 1=1
+        """
+        params = []
+        
+        # Filtros
+        if estados:
+            placeholders = ','.join(['%s'] * len(estados))
+            query += f" AND estado IN ({placeholders})"
+            params.extend(estados)
+        
+        if q:
+            query += " AND (codigo_wo LIKE %s OR codigo_po LIKE %s OR modelo LIKE %s OR codigo_modelo LIKE %s)"
+            q_param = f"%{q}%"
+            params.extend([q_param, q_param, q_param, q_param])
+        
+        if desde:
+            query += " AND fecha_operacion >= %s"
+            params.append(desde)
+        
+        if hasta:
+            query += " AND fecha_operacion <= %s"
+            params.append(hasta)
+        
+        query += " ORDER BY fecha_operacion ASC, codigo_modelo ASC"
+        
+        # Ejecutar query
+        work_orders = execute_query(query, params, fetch='all')
+        
+        # Formatear respuesta
+        resultado = []
+        for wo in work_orders:
+            resultado.append({
+                'id': wo['id'],
+                'codigo_wo': wo['codigo_wo'],
+                'codigo_po': wo['codigo_po'] or '',
+                'modelo': wo['modelo'] or '',
+                'nombre_modelo': wo['nombre_modelo'] or '',
+                'codigo_modelo': wo['codigo_modelo'] or '',
+                'cantidad_planeada': wo['cantidad_planeada'] or 0,
+                'fecha_operacion': wo['fecha_operacion'].strftime('%Y-%m-%d') if wo['fecha_operacion'] else '',
+                'estado': wo['estado'] or '',
+                'usuario_creacion': wo['usuario_creacion'] or '',
+                'orden_proceso': wo['orden_proceso'] or '',
+                'modificador': wo['modificador'] or '',
+                'fecha_modificacion': wo['fecha_modificacion'].strftime('%Y-%m-%d %H:%M:%S') if wo['fecha_modificacion'] else ''
+            })
+        
+        return jsonify(resultado)
+        
+    except Exception as e:
+        print(f"❌ Error en API work-orders: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inventario/modelo/<codigo_modelo>', methods=['GET'])
+@login_requerido
+def api_inventario_modelo(codigo_modelo):
+    """API para obtener inventario por código de modelo"""
+    try:
+        query = """
+        SELECT modelo, nparte, stock_total, ubicaciones,
+               ultima_entrada, ultima_salida, updated_at
+        FROM inv_resumen_modelo
+        WHERE nparte = %s
+        """
+
+        inventario = execute_query(query, (codigo_modelo,), fetch='all')
+        
+        # Formatear respuesta
+        resultado = []
+        for item in inventario:
+            resultado.append({
+                'modelo': item['modelo'],
+                'nparte': item['nparte'],
+                'stock_total': item['stock_total'] or 0,
+                'ubicaciones': item['ubicaciones'] or '',
+                'ultima_entrada': item['ultima_entrada'].strftime('%Y-%m-%d %H:%M:%S') if item['ultima_entrada'] else '',
+                'ultima_salida': item['ultima_salida'].strftime('%Y-%m-%d %H:%M:%S') if item['ultima_salida'] else '',
+                'updated_at': item['updated_at'].strftime('%Y-%m-%d %H:%M:%S') if item['updated_at'] else ''
+            })
+        
+        return jsonify(resultado)
+        
+    except Exception as e:
+        print(f"❌ Error en API inventario modelo {codigo_modelo}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan-smd', methods=['POST'])
+@login_requerido
+def api_plan_smd_guardar():
+    """API para guardar renglones del plan SMD"""
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, list):
+            return jsonify({'error': 'Se esperaba un arreglo de renglones'}), 400
+        
+        usuario = session.get('username', 'sistema')
+        renglones_guardados = 0
+        
+        for renglon in data:
+            # Validar campos requeridos
+            if not all(k in renglon for k in ['linea', 'lote', 'nparte', 'modelo', 'tipo', 'turno', 'qty']):
+                continue
+            
+            query = """
+            INSERT INTO plan_smd (linea, lote, nparte, modelo, tipo, turno, ct, uph, 
+                                 qty, fisico, falta, pct, comentarios, usuario_creacion)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            
+            params = (
+                renglon['linea'],
+                renglon['lote'],
+                renglon['nparte'],
+                renglon['modelo'],
+                renglon['tipo'],
+                renglon['turno'],
+                renglon.get('ct', ''),
+                renglon.get('uph', ''),
+                renglon['qty'],
+                renglon.get('fisico', 0),
+                renglon.get('falta', renglon['qty']),
+                renglon.get('pct', 0),
+                renglon.get('comentarios', ''),
+                usuario
+            )
+            
+            execute_query(query, params)
+            renglones_guardados += 1
+        
+        return jsonify({
+            'success': True,
+            'renglones_guardados': renglones_guardados,
+            'message': f'Se guardaron {renglones_guardados} renglones del plan SMD'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error guardando plan SMD: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generar-plan-smd', methods=['POST'])
+@login_requerido
+def api_generar_plan_smd():
+    """🤖 AGENTE GENERADOR DE PLAN SMD - Sólo faltantes por codigo_modelo"""
+    try:
+        # Parámetros de entrada
+        data = request.get_json() or {}
+        
+        # Parámetros con defaults
+        q = data.get('q', '')
+        estados = data.get('estados', ['CREADA', 'PLANIFICADA'])
+        desde = data.get('desde', '')
+        hasta = data.get('hasta', '')
+        linea_default = data.get('linea_default', 'SMT A')
+        turno_default = data.get('turno_default', 'DIA')
+        tipo_default = data.get('tipo_default', 'Main')
+        limite_wo = data.get('limite_wo', None)
+        dry_run = data.get('dry_run', False)
+        
+        print(f"🤖 AGENTE PLAN SMD iniciado - DRY_RUN: {dry_run}")
+        
+        # Variables de seguimiento
+        wo_procesadas = 0
+        renglones_generados = 0
+        qty_total_plan = 0
+        faltante_total_plan = 0
+        inventario_acumulado_considerado = 0
+        lotes = []
+        omitidas_sin_faltante = []
+        incidencias = []
+        renglones_plan = []
+        
+        # 1. TRAER WORK ORDERS
+        try:
+            from datetime import datetime
+            fecha_actual = datetime.now().strftime('%Y%m%d')
+            
+            # Construir filtros para work orders
+            filtros = {
+                'q': q,
+                'estado': ','.join(estados),
+                'desde': desde,
+                'hasta': hasta
+            }
+            
+            # Simular llamada a API interna
+            query_wo = """
+            SELECT id, codigo_wo, codigo_po, modelo, nombre_modelo, codigo_modelo, 
+                   cantidad_planeada, fecha_operacion, estado
+            FROM work_orders 
+            WHERE estado IN ({})
+            """.format(','.join(['%s'] * len(estados)))
+            
+            params_wo = estados[:]
+            
+            if q:
+                query_wo += " AND (codigo_wo LIKE %s OR codigo_po LIKE %s OR modelo LIKE %s OR codigo_modelo LIKE %s)"
+                q_param = f"%{q}%"
+                params_wo.extend([q_param, q_param, q_param, q_param])
+            
+            if desde:
+                query_wo += " AND fecha_operacion >= %s"
+                params_wo.append(desde)
+            
+            if hasta:
+                query_wo += " AND fecha_operacion <= %s"
+                params_wo.append(hasta)
+            
+            query_wo += " ORDER BY fecha_operacion ASC, codigo_modelo ASC"
+            
+            if limite_wo:
+                query_wo += f" LIMIT {int(limite_wo)}"
+            
+            work_orders = execute_query(query_wo, params_wo, fetch='all')
+            print(f"📋 Encontradas {len(work_orders)} work orders")
+            
+        except Exception as e:
+            incidencias.append({
+                "wo": "SISTEMA",
+                "tipo": "error_consulta_wo",
+                "detalle": f"Error consultando work orders: {str(e)}"
+            })
+            work_orders = []
+        
+        # 2. PROCESAR CADA WO
+        lote_counter = 1
+        
+        for wo in work_orders:
+            wo_procesadas += 1
+            codigo_wo = wo['codigo_wo']
+            codigo_modelo = wo['codigo_modelo']
+            cantidad_planeada = wo['cantidad_planeada']
+            
+            # Validaciones
+            if not codigo_modelo or not codigo_modelo.strip():
+                incidencias.append({
+                    "wo": codigo_wo,
+                    "tipo": "sin_codigo_modelo",
+                    "detalle": "La WO no tiene codigo_modelo"
+                })
+                continue
+            
+            if not cantidad_planeada or cantidad_planeada <= 0:
+                incidencias.append({
+                    "wo": codigo_wo,
+                    "tipo": "cantidad_invalida",
+                    "detalle": f"Cantidad planeada inválida: {cantidad_planeada}"
+                })
+                continue
+            
+            # 3. CONSULTAR INVENTARIO POR CODIGO_MODELO
+            try:
+                query_inv = """
+                SELECT SUM(stock_total) as inventario_total
+                FROM inv_resumen_modelo
+                WHERE nparte = %s
+                """
+
+                resultado_inv = execute_query(query_inv, (codigo_modelo,), fetch='one')
+                inventario_total = resultado_inv['inventario_total'] if resultado_inv and resultado_inv['inventario_total'] else 0
+                inventario_acumulado_considerado += inventario_total
+                
+                print(f"📦 WO {codigo_wo} | Modelo: {codigo_modelo} | Planeado: {cantidad_planeada} | Inventario: {inventario_total}")
+                
+            except Exception as e:
+                incidencias.append({
+                    "wo": codigo_wo,
+                    "tipo": "inventario_endpoint_error",
+                    "detalle": f"Error consultando inventario: {str(e)}"
+                })
+                inventario_total = 0
+            
+            # 4. CALCULAR FALTANTE
+            faltante = max(0, cantidad_planeada - inventario_total)
+            
+            if faltante <= 0:
+                omitidas_sin_faltante.append(codigo_wo)
+                print(f"⏭️ WO {codigo_wo} omitida - Sin faltante (inventario suficiente)")
+                continue
+            
+            # 5. GENERAR RENGLÓN DEL PLAN
+            lote = f"P{fecha_actual}-{lote_counter:03d}"
+            lotes.append(lote)
+            lote_counter += 1
+            
+            renglon = {
+                "linea": linea_default,
+                "lote": lote,
+                "nparte": codigo_modelo,  # ✅ Usamos codigo_modelo
+                "modelo": codigo_modelo,  # ✅ Usamos codigo_modelo
+                "tipo": tipo_default,
+                "turno": turno_default,
+                "ct": "",
+                "uph": "",
+                "qty": faltante,
+                "fisico": int(inventario_total),  # ✅ Usar el inventario real consultado
+                "falta": faltante,
+                "pct": int((inventario_total / cantidad_planeada) * 100) if cantidad_planeada > 0 else 0,  # ✅ Calcular porcentaje real
+                "comentarios": f"Inventario: {int(inventario_total)} | Requerido: {int(cantidad_planeada)} | Faltante: {faltante}"
+            }
+            
+            renglones_plan.append(renglon)
+            renglones_generados += 1
+            qty_total_plan += faltante
+            faltante_total_plan += faltante
+            
+            print(f"✅ Renglón generado - Lote: {lote} | Modelo: {codigo_modelo} | QTY: {faltante}")
+        
+        # 6. GUARDAR SI NO ES DRY_RUN
+        if not dry_run and renglones_plan:
+            try:
+                usuario = session.get('username', 'sistema')
+                renglones_guardados = 0
+                
+                for renglon in renglones_plan:
+                    query_insert = """
+                    INSERT INTO plan_smd (linea, lote, nparte, modelo, tipo, turno, ct, uph, 
+                                         qty, fisico, falta, pct, comentarios, usuario_creacion)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
+                    
+                    params_insert = (
+                        renglon['linea'], renglon['lote'], renglon['nparte'], renglon['modelo'],
+                        renglon['tipo'], renglon['turno'], renglon['ct'], renglon['uph'],
+                        renglon['qty'], renglon['fisico'], renglon['falta'], renglon['pct'],
+                        renglon['comentarios'], usuario
+                    )
+                    
+                    execute_query(query_insert, params_insert)
+                    renglones_guardados += 1
+                
+                print(f"💾 Plan guardado: {renglones_guardados} renglones")
+                
+            except Exception as e:
+                incidencias.append({
+                    "wo": "SISTEMA",
+                    "tipo": "error_guardado",
+                    "detalle": f"Error guardando plan: {str(e)}"
+                })
+        
+        # 7. RESUMEN FINAL
+        resumen = {
+            "wo_procesadas": wo_procesadas,
+            "renglones_generados": renglones_generados,
+            "qty_total_plan": qty_total_plan,
+            "faltante_total_plan": faltante_total_plan,
+            "inventario_acumulado_considerado": inventario_acumulado_considerado,
+            "lotes": lotes,
+            "omitidas_sin_faltante": omitidas_sin_faltante,
+            "incidencias": incidencias,
+            "dry_run": dry_run,
+            "plan_generado": renglones_plan if dry_run else f"{len(renglones_plan)} renglones guardados"
+        }
+        
+        print(f"🎯 AGENTE COMPLETADO - Generados: {renglones_generados} | Total QTY: {qty_total_plan}")
+        
+        return jsonify(resumen)
+        
+    except Exception as e:
+        print(f"❌ Error en Agente PLAN SMD: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ==================== AGENTE GENERADOR DE PLAN SMD ====================
+
+@app.route('/api/generar-plan-smd', methods=['POST'])
+@login_requerido
+def generar_plan_smd():
+    """
+    Agente Generador de PLAN SMD - Sólo cantidades faltantes por codigo_modelo
+    
+    Proceso:
+    1. Obtiene WO con filtros
+    2. Para cada WO, consulta inventario por codigo_modelo  
+    3. Calcula faltante = max(0, cantidad_planeada - inventario_total)
+    4. Genera renglón SOLO si faltante > 0
+    5. Guarda el plan o devuelve preview (dry_run)
+    """
+    try:
+        data = request.get_json() or {}
+        
+        # Parámetros de entrada con defaults
+        q = data.get('q', '')
+        estados = data.get('estados', ['CREADA', 'PLANIFICADA'])
+        desde = data.get('desde')
+        hasta = data.get('hasta')
+        linea_default = data.get('linea_default', 'SMT A')
+        turno_default = data.get('turno_default', 'DIA')
+        tipo_default = data.get('tipo_default', 'Main')
+        limite_wo = data.get('limite_wo')
+        dry_run = data.get('dry_run', False)
+        
+        print(f"🤖 AGENTE PLAN SMD - Iniciando con parámetros:")
+        print(f"   Estados: {estados}, Desde: {desde}, Hasta: {hasta}")
+        print(f"   Línea: {linea_default}, Turno: {turno_default}, Dry Run: {dry_run}")
+        
+        # Contadores y resultados
+        wo_procesadas = 0
+        renglones_generados = 0
+        qty_total_plan = 0
+        faltante_total_plan = 0
+        inventario_acumulado_considerado = 0
+        lotes = []
+        omitidas_sin_faltante = []
+        incidencias = []
+        plan_renglones = []
+        
+        # Generar fecha y contador de lote
+        from datetime import datetime
+        fecha_lote = datetime.now().strftime('%Y%m%d')
+        contador_lote = 1
+        
+        def generar_lote():
+            nonlocal contador_lote
+            lote = f"P{fecha_lote}-{contador_lote:03d}"
+            contador_lote += 1
+            if lote not in lotes:
+                lotes.append(lote)
+            return lote
+        
+        # PASO 1: Obtener Work Orders
+        print("📋 PASO 1: Obteniendo Work Orders...")
+        
+        # Construir query para WO
+        query_wo = """
+        SELECT id, codigo_wo, codigo_po, modelo, nombre_modelo, codigo_modelo, 
+               cantidad_planeada, fecha_operacion, estado
+        FROM work_orders 
+        WHERE 1=1
+        """
+        params_wo = []
+        
+        # Filtros de estado
+        if estados:
+            placeholders = ','.join(['%s'] * len(estados))
+            query_wo += f" AND estado IN ({placeholders})"
+            params_wo.extend(estados)
+        
+        # Filtro de búsqueda
+        if q:
+            query_wo += " AND (codigo_wo LIKE %s OR codigo_po LIKE %s OR modelo LIKE %s OR codigo_modelo LIKE %s)"
+            like_q = f"%{q}%"
+            params_wo.extend([like_q, like_q, like_q, like_q])
+        
+        # Filtros de fecha
+        if desde:
+            query_wo += " AND fecha_operacion >= %s"
+            params_wo.append(desde)
+        if hasta:
+            query_wo += " AND fecha_operacion <= %s"
+            params_wo.append(hasta)
+        
+        # Ordenar por fecha y código
+        query_wo += " ORDER BY fecha_operacion ASC, codigo_modelo ASC"
+        
+        # Límite opcional
+        if limite_wo and isinstance(limite_wo, int) and limite_wo > 0:
+            query_wo += f" LIMIT {limite_wo}"
+        
+        work_orders = execute_query(query_wo, params_wo, fetch='all')
+        
+        print(f"📊 Encontradas {len(work_orders) if work_orders else 0} Work Orders")
+        
+        if not work_orders:
+            return jsonify({
+                'wo_procesadas': 0,
+                'renglones_generados': 0,
+                'qty_total_plan': 0,
+                'faltante_total_plan': 0,
+                'inventario_acumulado_considerado': 0,
+                'lotes': [],
+                'omitidas_sin_faltante': [],
+                'incidencias': [{'tipo': 'sin_wo', 'detalle': 'No se encontraron Work Orders con los filtros especificados'}],
+                'dry_run': dry_run
+            })
+        
+        # PASO 2: Procesar cada WO
+        print("🔄 PASO 2: Procesando Work Orders...")
+        
+        for wo in work_orders:
+            wo_procesadas += 1
+            codigo_wo = wo.get('codigo_wo', '')
+            codigo_modelo = wo.get('codigo_modelo', '')
+            cantidad_planeada = wo.get('cantidad_planeada', 0)
+            
+            print(f"   🔍 Procesando WO: {codigo_wo} - Modelo: {codigo_modelo}")
+            
+            # Validar campos obligatorios
+            if not codigo_modelo:
+                incidencias.append({
+                    'wo': codigo_wo,
+                    'tipo': 'sin_codigo_modelo',
+                    'detalle': 'La WO no tiene codigo_modelo'
+                })
+                print(f"   ⚠️ Omitida por falta de codigo_modelo")
+                continue
+            
+            if not isinstance(cantidad_planeada, (int, float)) or cantidad_planeada <= 0:
+                incidencias.append({
+                    'wo': codigo_wo,
+                    'tipo': 'cantidad_invalida',
+                    'detalle': f'Cantidad planeada inválida: {cantidad_planeada}'
+                })
+                print(f"   ⚠️ Omitida por cantidad inválida: {cantidad_planeada}")
+                continue
+            
+            # PASO 3: Consultar inventario por codigo_modelo
+            try:
+                print(f"   📦 Consultando inventario para modelo: {codigo_modelo}")
+                
+                # Endpoint: GET /api/inventario/modelo/{codigo_modelo}
+                # Simular la consulta directa a la tabla inv_resumen_modelo
+                query_inv = """
+                SELECT COALESCE(SUM(stock_total), 0) as inventario_total
+                FROM inv_resumen_modelo 
+                WHERE nparte = %s
+                """
+                
+                result_inv = execute_query(query_inv, (codigo_modelo,), fetch='one')
+                inventario_total = float(result_inv.get('inventario_total', 0)) if result_inv else 0.0
+                
+                inventario_acumulado_considerado += inventario_total
+                
+                print(f"   📊 Inventario total para {codigo_modelo}: {inventario_total}")
+                print(f"   📐 Cantidad planeada: {cantidad_planeada}")
+                
+            except Exception as e:
+                incidencias.append({
+                    'wo': codigo_wo,
+                    'tipo': 'inventario_endpoint_error',
+                    'detalle': f'Error al consultar inventario: {str(e)}'
+                })
+                print(f"   ❌ Error consultando inventario: {e}")
+                continue
+            
+            # PASO 4: Calcular faltante
+            faltante = max(0, cantidad_planeada - inventario_total)
+            
+            print(f"   🧮 Faltante calculado: {faltante}")
+            
+            # PASO 5: Generar renglón SOLO si faltante > 0
+            if faltante <= 0:
+                omitidas_sin_faltante.append(codigo_wo)
+                print(f"   ✅ WO omitida - no hay faltantes (inventario suficiente)")
+                continue
+            
+            # Crear renglón del plan
+            lote = generar_lote()
+            
+            renglon = {
+                'linea': linea_default,
+                'lote': lote,
+                'nparte': codigo_modelo,  # ✅ codigo_modelo
+                'modelo': codigo_modelo,  # ✅ codigo_modelo como identificador visible
+                'tipo': tipo_default,     # Siempre "Main"
+                'turno': turno_default,
+                'ct': '',
+                'uph': '',
+                'qty': int(faltante),
+                'fisico': int(inventario_total),  # ✅ Usar el inventario real consultado
+                'falta': int(faltante),
+                'pct': int((inventario_total / cantidad_planeada) * 100) if cantidad_planeada > 0 else 0,  # ✅ Calcular porcentaje real
+                'comentarios': f'Inventario: {int(inventario_total)} | Requerido: {int(cantidad_planeada)} | Faltante: {int(faltante)}'
+            }
+            
+            plan_renglones.append(renglon)
+            renglones_generados += 1
+            qty_total_plan += int(faltante)
+            faltante_total_plan += int(faltante)
+            
+            print(f"   ✅ Renglón generado - Lote: {lote}, QTY: {int(faltante)}")
+        
+        # PASO 6: Guardar o devolver preview
+        print(f"📋 RESUMEN: {renglones_generados} renglones generados de {wo_procesadas} WO procesadas")
+        
+        if not dry_run and plan_renglones:
+            try:
+                print("💾 Guardando plan en base de datos...")
+                
+                # Insertar renglones en tabla plan_smd (ajustar según tu esquema)
+                query_insert = """
+                INSERT INTO plan_smd (linea, lote, nparte, modelo, tipo, turno, ct, uph, qty, fisico, falta, pct, comentarios, fecha_creacion, usuario_creacion)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                """
+                
+                usuario_actual = session.get('usuario', 'sistema')
+                
+                for renglon in plan_renglones:
+                    execute_query(query_insert, (
+                        renglon['linea'], renglon['lote'], renglon['nparte'], renglon['modelo'],
+                        renglon['tipo'], renglon['turno'], renglon['ct'], renglon['uph'],
+                        renglon['qty'], renglon['fisico'], renglon['falta'], renglon['pct'],
+                        renglon['comentarios'], usuario_actual
+                    ))
+                
+                print(f"✅ {len(plan_renglones)} renglones guardados exitosamente")
+                
+            except Exception as e:
+                print(f"❌ Error guardando plan: {e}")
+                return jsonify({
+                    'error': f'Error guardando plan: {str(e)}',
+                    'plan_generado': plan_renglones,
+                    'dry_run': True  # Forzar dry_run en caso de error
+                }), 500
+        
+        # Resumen final
+        resumen = {
+            'wo_procesadas': wo_procesadas,
+            'renglones_generados': renglones_generados,
+            'qty_total_plan': qty_total_plan,
+            'faltante_total_plan': faltante_total_plan,
+            'inventario_acumulado_considerado': int(inventario_acumulado_considerado),
+            'lotes': lotes,
+            'omitidas_sin_faltante': omitidas_sin_faltante,
+            'incidencias': incidencias,
+            'dry_run': dry_run
+        }
+        
+        if dry_run:
+            resumen['plan_preview'] = plan_renglones
+        
+        print(f"🎯 AGENTE COMPLETADO - Resultado: {resumen}")
+        
+        return jsonify(resumen)
+        
+    except Exception as e:
+        print(f"❌ Error en agente PLAN SMD: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': f'Error interno del agente: {str(e)}',
+            'wo_procesadas': 0,
+            'renglones_generados': 0,
+            'dry_run': True
+        }), 500
+
+@app.route('/api/inventario/modelo/<codigo_modelo>', methods=['GET'])
+@login_requerido  
+def obtener_inventario_por_modelo(codigo_modelo):
+    """
+    Endpoint para obtener inventario por código de modelo
+    Usado por el agente PLAN SMD para calcular faltantes
+    """
+    try:
+        print(f"📦 Consultando inventario para modelo: {codigo_modelo}")
+        
+        # Consulta a la tabla inv_resumen_modelo
+        query = """
+        SELECT modelo, nparte, stock_total, ubicaciones, ultima_entrada, ultima_salida, updated_at
+        FROM inv_resumen_modelo 
+        WHERE nparte = %s
+        ORDER BY nparte
+        """
+        
+        resultados = execute_query(query, (codigo_modelo,), fetch='all')
+        
+        if not resultados:
+            print(f"📦 No se encontró inventario para modelo: {codigo_modelo}")
+            return jsonify([])
+        
+        inventario_data = []
+        stock_total_acumulado = 0
+        
+        for row in resultados:
+            stock_total = float(row.get('stock_total', 0))
+            stock_total_acumulado += stock_total
+            
+            inventario_data.append({
+                'modelo': row.get('modelo'),
+                'nparte': row.get('nparte'),
+                'stock_total': stock_total,
+                'ubicaciones': row.get('ubicaciones', ''),
+                'ultima_entrada': row.get('ultima_entrada'),
+                'ultima_salida': row.get('ultima_salida'),
+                'updated_at': row.get('updated_at')
+            })
+        
+        print(f"📊 Inventario encontrado: {len(inventario_data)} items, total: {stock_total_acumulado}")
+        
+        return jsonify(inventario_data)
+        
+    except Exception as e:
+        print(f"❌ Error consultando inventario para modelo {codigo_modelo}: {e}")
+        return jsonify({
+            'error': f'Error consultando inventario: {str(e)}'
+        }), 500
+
+@app.route('/api/plan-smd', methods=['POST'])
+@login_requerido
+def guardar_plan_smd():
+    """
+    Endpoint para guardar renglones del plan SMD
+    Recibe arreglo de renglones y los inserta en la base de datos
+    """
+    try:
+        data = request.get_json()
+        
+        if not isinstance(data, list):
+            return jsonify({
+                'error': 'Se esperaba un arreglo de renglones del plan'
+            }), 400
+        
+        if not data:
+            return jsonify({
+                'error': 'No se proporcionaron renglones para guardar'
+            }), 400
+        
+        print(f"💾 Guardando {len(data)} renglones del plan SMD...")
+        
+        # Validar estructura de renglones
+        campos_requeridos = ['linea', 'lote', 'nparte', 'modelo', 'tipo', 'turno', 'qty']
+        
+        for i, renglon in enumerate(data):
+            for campo in campos_requeridos:
+                if campo not in renglon:
+                    return jsonify({
+                        'error': f'Renglón {i+1}: Falta campo requerido "{campo}"'
+                    }), 400
+        
+        # Insertar renglones en base de datos
+        query_insert = """
+        INSERT INTO plan_smd (
+            linea, lote, nparte, modelo, tipo, turno, ct, uph, qty, fisico, falta, pct, 
+            comentarios, fecha_creacion, usuario_creacion
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+        """
+        
+        usuario_actual = session.get('usuario', 'sistema')
+        renglones_insertados = 0
+        
+        for renglon in data:
+            try:
+                execute_query(query_insert, (
+                    renglon.get('linea', ''),
+                    renglon.get('lote', ''),
+                    renglon.get('nparte', ''),
+                    renglon.get('modelo', ''),
+                    renglon.get('tipo', 'Main'),
+                    renglon.get('turno', 'DIA'),
+                    renglon.get('ct', ''),
+                    renglon.get('uph', ''),
+                    int(renglon.get('qty', 0)),
+                    int(renglon.get('fisico', 0)),
+                    int(renglon.get('falta', 0)),
+                    float(renglon.get('pct', 0)),
+                    renglon.get('comentarios', ''),
+                    usuario_actual
+                ))
+                renglones_insertados += 1
+                
+            except Exception as e:
+                print(f"❌ Error insertando renglón {renglon}: {e}")
+                continue
+        
+        print(f"✅ {renglones_insertados} renglones guardados exitosamente")
+        
+        return jsonify({
+            'success': True,
+            'renglones_insertados': renglones_insertados,
+            'total_renglones': len(data),
+            'message': f'Plan SMD guardado: {renglones_insertados} renglones'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error guardando plan SMD: {e}")
+        return jsonify({
+            'error': f'Error guardando plan: {str(e)}'
+        }), 500
+
+@app.route('/api/work-orders', methods=['GET'])
+@login_requerido
+def obtener_work_orders():
+    """
+    Endpoint para obtener Work Orders con filtros
+    Usado por el agente PLAN SMD y la interfaz PLAN SMT
+    
+    Parámetros:
+    - q: texto de búsqueda
+    - estado: filtro por estado (puede ser múltiple)
+    - desde: fecha desde (YYYY-MM-DD)
+    - hasta: fecha hasta (YYYY-MM-DD)
+    """
+    try:
+        # Obtener parámetros de consulta
+        q = request.args.get('q', '').strip()
+        estado = request.args.get('estado', '')
+        desde = request.args.get('desde', '')
+        hasta = request.args.get('hasta', '')
+        
+        print(f"📋 Consultando Work Orders - q: '{q}', estado: '{estado}', desde: '{desde}', hasta: '{hasta}'")
+        
+        # Construir query base
+        query = """
+        SELECT id, codigo_wo, codigo_po, modelo, nombre_modelo, codigo_modelo, 
+               cantidad_planeada, fecha_operacion, estado, usuario_creacion, 
+               orden_proceso, modificador, fecha_modificacion
+        FROM work_orders 
+        WHERE 1=1
+        """
+        params = []
+        
+        # Filtro de búsqueda
+        if q:
+            query += """ AND (
+                codigo_wo LIKE %s OR 
+                codigo_po LIKE %s OR 
+                modelo LIKE %s OR 
+                codigo_modelo LIKE %s OR
+                nombre_modelo LIKE %s
+            )"""
+            like_q = f"%{q}%"
+            params.extend([like_q, like_q, like_q, like_q, like_q])
+        
+        # Filtro por estado
+        if estado:
+            # Permitir múltiples estados separados por coma
+            estados = [e.strip().upper() for e in estado.split(',') if e.strip()]
+            if estados:
+                placeholders = ','.join(['%s'] * len(estados))
+                query += f" AND estado IN ({placeholders})"
+                params.extend(estados)
+        
+        # Filtros de fecha
+        if desde:
+            query += " AND fecha_operacion >= %s"
+            params.append(desde)
+        if hasta:
+            query += " AND fecha_operacion <= %s"
+            params.append(hasta)
+        
+        # Ordenar por fecha y código
+        query += " ORDER BY fecha_operacion DESC, codigo_wo DESC"
+        
+        work_orders = execute_query(query, params, fetch='all')
+        
+        if not work_orders:
+            print("📋 No se encontraron Work Orders con los filtros especificados")
+            return jsonify([])
+        
+        # Formatear resultados
+        wo_data = []
+        for wo in work_orders:
+            wo_data.append({
+                'id': wo.get('id'),
+                'codigo_wo': wo.get('codigo_wo'),
+                'codigo_po': wo.get('codigo_po'),
+                'modelo': wo.get('modelo'),
+                'nombre_modelo': wo.get('nombre_modelo'),
+                'codigo_modelo': wo.get('codigo_modelo'),
+                'cantidad_planeada': wo.get('cantidad_planeada'),
+                'fecha_operacion': wo.get('fecha_operacion').strftime('%Y-%m-%d') if wo.get('fecha_operacion') else '',
+                'estado': wo.get('estado'),
+                'usuario_creacion': wo.get('usuario_creacion'),
+                'orden_proceso': wo.get('orden_proceso'),
+                'modificador': wo.get('modificador'),
+                'fecha_modificacion': wo.get('fecha_modificacion').strftime('%Y-%m-%d %H:%M:%S') if wo.get('fecha_modificacion') else ''
+            })
+        
+        print(f"📊 Encontradas {len(wo_data)} Work Orders")
+        
+        return jsonify(wo_data)
+        
+    except Exception as e:
+        print(f"❌ Error consultando Work Orders: {e}")
+        return jsonify({
+            'error': f'Error consultando Work Orders: {str(e)}'
+        }), 500
+
 @app.route('/control_proceso/control_produccion_smt')
 @login_requerido
 def control_produccion_smt_ajax():
@@ -6343,12 +7280,22 @@ def listar_pos():
 @app.route('/api/wo/crear', methods=['POST'])
 @login_requerido
 def crear_wo():
-    """Crear nueva Work Order (WO)"""
+    """Crear nueva Work Order (WO) - MODIFICADO: Ya no requiere PO obligatorio"""
     try:
+        # PRIMERO: Intentar eliminar foreign key si existe (solo una vez)
+        try:
+            execute_query("ALTER TABLE work_orders DROP FOREIGN KEY work_orders_ibfk_1")
+            print("✅ Foreign key work_orders_ibfk_1 eliminada exitosamente")
+        except Exception as fk_error:
+            if "doesn't exist" in str(fk_error).lower() or "constraint" not in str(fk_error).lower():
+                print("ℹ️ Foreign key ya estaba eliminada o no existe")
+            else:
+                print(f"⚠️ Error eliminando foreign key: {fk_error}")
+        
         data = request.get_json()
         
-        # Validar campos obligatorios
-        campos_requeridos = ['codigo_po', 'modelo', 'cantidad_planeada', 'fecha_operacion']
+        # Validar campos obligatorios (removido codigo_po para WO independientes)
+        campos_requeridos = ['modelo', 'cantidad_planeada', 'fecha_operacion']
         for campo in campos_requeridos:
             if not data.get(campo):
                 return jsonify({
@@ -6362,8 +7309,8 @@ def crear_wo():
             # Generar código WO único si no se proporciona
             codigo_wo = generar_codigo_wo()
         
-        # Obtener otros campos
-        codigo_po = data['codigo_po']
+        # Obtener otros campos - codigo_po ahora es opcional
+        codigo_po = data.get('codigo_po', 'SIN-PO')  # Valor por defecto si no se proporciona
         orden_proceso = data.get('orden_proceso', 'NORMAL')
         
         # Validar cantidad
@@ -6396,19 +7343,27 @@ def crear_wo():
                 'error': 'El código WO ya existe'
             }), 409
         
-        # Insertar nueva WO
+        # Insertar nueva WO - Sin dependencia de PO
         usuario = session.get('username', 'sistema')
+        
+        # Obtener nombre_modelo y codigo_modelo del campo modelo (es el número de parte)
+        modelo = data['modelo']
+        nombre_modelo = modelo  # El nombre del modelo es el mismo valor
+        codigo_modelo = modelo  # El código del modelo es el número de parte
+        
         query = """
         INSERT INTO work_orders (codigo_wo, codigo_po, modelo, orden_proceso, cantidad_planeada, 
-                               fecha_operacion, modificador, estado, usuario_creacion)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                               fecha_operacion, modificador, estado, usuario_creacion,
+                               nombre_modelo, codigo_modelo)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         estado = data.get('estado', 'CREADA')
         
         execute_query(query, (
-            codigo_wo, codigo_po, data['modelo'], orden_proceso, cantidad,
-            data['fecha_operacion'], usuario, estado, usuario
+            codigo_wo, codigo_po, modelo, orden_proceso, cantidad,
+            data['fecha_operacion'], usuario, estado, usuario,
+            nombre_modelo, codigo_modelo
         ))
         
         # Obtener WO creada
@@ -6416,7 +7371,7 @@ def crear_wo():
         
         return jsonify({
             'success': True,
-            'message': 'WO creada exitosamente',
+            'message': 'WO creada exitosamente (sin dependencia de PO)',
             'data': wo_creada
         }), 201
         
@@ -7115,7 +8070,46 @@ def mysql_proxy_api():
         return add_cors_headers(response), 500
 
 # ===============================
-# 🚀 RUTA SIMPLE PARA ANDROID - mysql-proxy.php
+# � RUTA TEMPORAL PARA MIGRACIÓN DE WO
+# ===============================
+
+@app.route('/admin/eliminar_fk_wo', methods=['GET'])
+@login_requerido
+def eliminar_fk_wo_manual():
+    """Ruta temporal para eliminar foreign key de work_orders manualmente"""
+    try:
+        # Ejecutar comando SQL directamente
+        queries = [
+            "ALTER TABLE work_orders DROP FOREIGN KEY work_orders_ibfk_1",
+            "ALTER TABLE work_orders MODIFY COLUMN codigo_po VARCHAR(32) DEFAULT 'SIN-PO'",
+            "UPDATE work_orders SET codigo_po = 'SIN-PO' WHERE codigo_po IS NULL OR codigo_po = ''"
+        ]
+        
+        resultados = []
+        for query in queries:
+            try:
+                execute_query(query)
+                resultados.append(f"✅ Ejecutado: {query}")
+            except Exception as e:
+                if "doesn't exist" in str(e).lower():
+                    resultados.append(f"ℹ️ FK ya eliminada: {query}")
+                else:
+                    resultados.append(f"⚠️ Error: {query} - {str(e)}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Proceso de eliminación de FK completado',
+            'resultados': resultados
+        })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error eliminando FK: {str(e)}'
+        }), 500
+
+# ===============================
+# �🚀 RUTA SIMPLE PARA ANDROID - mysql-proxy.php
 # ===============================
 
 @app.route('/mysql-proxy.php', methods=['POST', 'GET', 'OPTIONS'])

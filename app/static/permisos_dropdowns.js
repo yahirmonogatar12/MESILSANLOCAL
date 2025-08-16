@@ -11,6 +11,11 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_CONTROLDEPRODUCCION",
+        "seccion": "Control de plan de produccion",
+        "boton": "PLAN SMT"
+    },
+    {
+        "pagina": "LISTA_CONTROLDEPRODUCCION",
         "seccion": "Control de SMT",
         "boton": "Control de mask de metal"
     },

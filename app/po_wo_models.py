@@ -1,6 +1,10 @@
 """
 Modelos de base de datos para el sistema PO → WO
-Basado en la especificación del agente de IA
+Basado        execute_query(query_work_orders)
+        print("✅ Tabla work_orders creada/verificada")
+        
+        # Migrar tabla existente para WO independientes
+        migrar_work_orders_independientes()n la especificación del agente de IA
 """
 
 from .db_mysql import execute_query
@@ -39,7 +43,7 @@ def crear_tablas_po_wo():
         CREATE TABLE IF NOT EXISTS work_orders (
             id INT AUTO_INCREMENT PRIMARY KEY,
             codigo_wo VARCHAR(32) UNIQUE NOT NULL,
-            codigo_po VARCHAR(32) NOT NULL,
+            codigo_po VARCHAR(32) DEFAULT 'SIN-PO',
             modelo VARCHAR(64),
             cantidad_planeada INT CHECK (cantidad_planeada > 0),
             fecha_operacion DATE,
@@ -50,8 +54,7 @@ def crear_tablas_po_wo():
             INDEX idx_codigo_wo (codigo_wo),
             INDEX idx_codigo_po (codigo_po),
             INDEX idx_estado (estado),
-            INDEX idx_fecha_operacion (fecha_operacion),
-            FOREIGN KEY (codigo_po) REFERENCES embarques(codigo_po) ON DELETE CASCADE ON UPDATE CASCADE
+            INDEX idx_fecha_operacion (fecha_operacion)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
         
@@ -66,6 +69,43 @@ def crear_tablas_po_wo():
         
     except Exception as e:
         print(f"❌ Error creando tablas PO → WO: {e}")
+        return False
+
+
+def migrar_work_orders_independientes():
+    """Migrar tabla work_orders existente para permitir WO independientes"""
+    try:
+        print("🔄 Migrando tabla work_orders para WO independientes...")
+        
+        # 1. Intentar eliminar foreign key si existe
+        try:
+            execute_query("ALTER TABLE work_orders DROP FOREIGN KEY work_orders_ibfk_1")
+            print("✅ Foreign key eliminada: work_orders_ibfk_1")
+        except Exception as e:
+            if "doesn't exist" in str(e).lower() or "constraint" not in str(e).lower():
+                print("ℹ️ Foreign key no existe o ya fue eliminada")
+            else:
+                print(f"⚠️ Error eliminando foreign key: {e}")
+        
+        # 2. Modificar columna codigo_po para permitir valores por defecto
+        try:
+            execute_query("ALTER TABLE work_orders MODIFY COLUMN codigo_po VARCHAR(32) DEFAULT 'SIN-PO'")
+            print("✅ Columna codigo_po modificada: ahora permite WO independientes")
+        except Exception as e:
+            print(f"⚠️ Error modificando columna codigo_po: {e}")
+        
+        # 3. Actualizar registros existentes que puedan tener problemas
+        try:
+            execute_query("UPDATE work_orders SET codigo_po = 'SIN-PO' WHERE codigo_po IS NULL OR codigo_po = ''")
+            print("✅ Registros existentes actualizados")
+        except Exception as e:
+            print(f"⚠️ Error actualizando registros: {e}")
+            
+        print("✅ Migración de work_orders completada")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error en migración de work_orders: {e}")
         return False
 
 def validar_codigo_po(codigo_po):
@@ -216,7 +256,8 @@ def obtener_wo_por_codigo(codigo_wo):
     try:
         query = """
         SELECT id, codigo_wo, codigo_po, modelo, cantidad_planeada, 
-               fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion
+               fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion,
+               nombre_modelo, codigo_modelo, orden_proceso
         FROM work_orders 
         WHERE codigo_wo = %s
         """
@@ -233,7 +274,10 @@ def obtener_wo_por_codigo(codigo_wo):
                 'modificador': resultado['modificador'],
                 'fecha_modificacion': resultado['fecha_modificacion'].isoformat() if resultado['fecha_modificacion'] else None,
                 'estado': resultado['estado'],
-                'usuario_creacion': resultado['usuario_creacion']
+                'usuario_creacion': resultado['usuario_creacion'],
+                'nombre_modelo': resultado.get('nombre_modelo'),
+                'codigo_modelo': resultado.get('codigo_modelo'),
+                'orden_proceso': resultado.get('orden_proceso', 'NORMAL')
             }
         return None
         
@@ -294,7 +338,8 @@ def listar_wos_por_po(codigo_po=None):
         if codigo_po:
             query = """
             SELECT codigo_wo, codigo_po, modelo, cantidad_planeada, 
-                   fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion
+                   fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion,
+                   nombre_modelo, codigo_modelo, orden_proceso
             FROM work_orders 
             WHERE codigo_po = %s
             ORDER BY fecha_operacion DESC, fecha_modificacion DESC
@@ -303,7 +348,8 @@ def listar_wos_por_po(codigo_po=None):
         else:
             query = """
             SELECT codigo_wo, codigo_po, modelo, cantidad_planeada, 
-                   fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion
+                   fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion,
+                   nombre_modelo, codigo_modelo, orden_proceso
             FROM work_orders 
             ORDER BY fecha_operacion DESC, fecha_modificacion DESC
             """
@@ -320,7 +366,10 @@ def listar_wos_por_po(codigo_po=None):
                 'modificador': row['modificador'],
                 'fecha_modificacion': row['fecha_modificacion'].isoformat() if row['fecha_modificacion'] else None,
                 'estado': row['estado'],
-                'usuario_creacion': row['usuario_creacion']
+                'usuario_creacion': row['usuario_creacion'],
+                'nombre_modelo': row.get('nombre_modelo'),
+                'codigo_modelo': row.get('codigo_modelo'),
+                'orden_proceso': row.get('orden_proceso', 'NORMAL')
             })
         
         return wos

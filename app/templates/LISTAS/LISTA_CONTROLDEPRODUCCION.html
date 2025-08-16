@@ -18,6 +18,11 @@
                             data-permiso-seccion="Control de plan de produccion" 
                             data-permiso-boton="Crear Plan de produccion"
                             onclick="window.parent.mostrarCrearPlanProduccion ? window.parent.mostrarCrearPlanProduccion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control_produccion/crear_plan') : window.location.href='/control_produccion/crear_plan')">Crear Plan de produccion</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de plan de produccion" 
+                            data-permiso-boton="PLAN SMT"
+                            onclick="window.parent.mostrarPlanSMT ? window.parent.mostrarPlanSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control_produccion/plan_smt') : window.location.href='/control_produccion/plan_smt')">PLAN SMT</li>
                 </ul>
             </li>
             <li class="sidebar-section">

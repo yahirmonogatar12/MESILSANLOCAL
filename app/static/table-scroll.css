@@ -1,0 +1,210 @@
+/* CSS para solucionar tablas apiladas - Hacer tablas deslizables */
+
+/* Contenedor principal para evitar apilamiento */
+.dashboard-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    padding: 15px;
+    gap: 15px;
+    overflow: hidden;
+}
+
+/* Sección superior para tabla de WO */
+.wo-section {
+    flex: 1;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* Sección inferior para Plan SMD */
+.plan-section {
+    flex: 1;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* Contenedor de tabla con scroll */
+.scrollable-table {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    max-height: 100%;
+}
+
+/* Tabla dentro del contenedor scrollable */
+.scrollable-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+/* Headers fijos */
+.scrollable-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 10;
+    padding: 12px 8px;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: bold;
+    text-align: left;
+    color: #495057;
+}
+
+/* Celdas de la tabla */
+.scrollable-table td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+/* Filas alternadas */
+.scrollable-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+/* Hover en filas */
+.scrollable-table tbody tr:hover {
+    background-color: #e3f2fd;
+    cursor: pointer;
+}
+
+/* Scrollbar personalizado */
+.scrollable-table::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.scrollable-table::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.scrollable-table::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.scrollable-table::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Título de secciones */
+.section-title {
+    margin: 0;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 1.1em;
+    border-bottom: 1px solid #0056b3;
+}
+
+/* Contenedor de botones sobre la tabla */
+.table-actions {
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Botones dentro de las acciones */
+.table-actions button {
+    padding: 6px 12px;
+    border: 1px solid #007bff;
+    background: #007bff;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s;
+}
+
+.table-actions button:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+}
+
+.table-actions button.secondary {
+    background: transparent;
+    color: #007bff;
+}
+
+.table-actions button.secondary:hover {
+    background: #007bff;
+    color: white;
+}
+
+/* Responsive para pantallas pequeñas */
+@media (max-width: 768px) {
+    .dashboard-container {
+        height: auto;
+        min-height: calc(100vh - 100px);
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .wo-section, .plan-section {
+        min-height: 250px;
+    }
+    
+    .section-title {
+        padding: 10px 12px;
+        font-size: 1em;
+    }
+    
+    .table-actions {
+        padding: 8px 12px;
+    }
+    
+    .table-actions button {
+        padding: 5px 10px;
+        font-size: 0.8em;
+    }
+}
+
+/* Altura específica para las tablas cuando están en el mismo contenedor */
+.wo-table-container,
+.plan-smd-table-container {
+    height: 45vh;
+    min-height: 300px;
+    margin-bottom: 20px;
+}
+
+/* Para asegurar que el scroll funcione en cualquier contenedor */
+.table-scroll-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+.table-scroll-wrapper table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.table-scroll-wrapper thead th {
+    position: sticky;
+    top: 0;
+    background: #ffffff;
+    z-index: 5;
+    border-bottom: 2px solid #dee2e6;
+}

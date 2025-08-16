@@ -221,7 +221,8 @@
         // Crear nueva WO
         async function crearNuevaWO() {
             const codigoWO = document.getElementById('woCodigoWO').value.trim();
-            const codigoPO = document.getElementById('woCodigoPO').value.trim();
+            // codigoPO ahora es opcional para WO independientes
+            const codigoPO = document.getElementById('woCodigoPO').value.trim() || 'SIN-PO';
             const modelo = document.getElementById('woModelo').value;
             const ordenProceso = document.getElementById('woOrdenProceso').value;
             const cantidad = parseInt(document.getElementById('woCantidad').value);
@@ -232,10 +233,11 @@
                 mostrarMensaje('Por favor genere un código de WO', 'error');
                 return;
             }
-            if (!codigoPO) {
-                mostrarMensaje('Por favor ingrese el código PO', 'error');
-                return;
-            }
+            // REMOVIDO: PO ya no es obligatorio para WO independientes
+            // if (!codigoPO) {
+            //     mostrarMensaje('Por favor ingrese el código PO', 'error');
+            //     return;
+            // }
             if (!modelo) {
                 mostrarMensaje('Por favor seleccione un modelo', 'error');
                 return;
@@ -253,10 +255,10 @@
                 return;
             }
 
-            // Preparar datos
+            // Preparar datos - codigo_po es opcional para WO independientes
             const data = {
                 codigo_wo: codigoWO,
-                codigo_po: codigoPO,
+                codigo_po: codigoPO, // Si está vacío, se usará 'SIN-PO' por defecto
                 modelo: modelo,
                 orden_proceso: ordenProceso,
                 cantidad_planeada: cantidad,
@@ -622,7 +624,6 @@
                     <td>${wo.codigo_wo || ''}</td>
                     <td>${formatearFecha(wo.fecha_operacion) || ''}</td>
                     <td>${wo.codigo_modelo || ''}</td>
-                    <td>${wo.nombre_modelo || ''}</td>
                     <td>${wo.orden_proceso || 'NORMAL'}</td>
                     <td>${wo.cantidad_planeada || 0}</td>
                     <td>${wo.codigo_po || ''}</td>

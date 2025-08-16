@@ -436,6 +436,39 @@ html, body {
     background-color: #32323E;
 }
 
+/* Área de contenido específica para Control de Producción */
+.produccion-content-area {
+    flex: 1;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: #32323E;
+    min-height: calc(100vh - var(--header-height));
+    max-height: calc(100vh - var(--header-height));
+}
+
+/* Área de contenido específica para Control de Proceso */
+.control-proceso-content-area {
+    flex: 1;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: #32323E;
+    min-height: calc(100vh - var(--header-height));
+    max-height: calc(100vh - var(--header-height));
+}
+
+/* Área de contenido específica para Control de Calidad */
+.control-calidad-content-area {
+    flex: 1;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: #32323E;
+    min-height: calc(100vh - var(--header-height));
+    max-height: calc(100vh - var(--header-height));
+}
+
 /* Contenedores individuales de Información Básica */
 .informacion-basica-content-area > div {
     background-color: #32323E;
@@ -446,6 +479,93 @@ html, body {
     margin-bottom: 0;
     min-height: 300px;
     border: none;
+}
+
+/* Contenedores individuales de Control de Producción */
+.produccion-content-area > div {
+    background-color: #32323E;
+    color: lightgray;
+    padding: 5px;
+    border-radius: 0;
+    box-shadow: none;
+    margin-bottom: 0;
+    min-height: 300px;
+    border: none;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Estilos específicos para PLAN SMD dentro de MaterialTemplate */
+.produccion-content-area .smd-container {
+    height: calc(100vh - 150px) !important;
+    min-height: 600px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 8px !important;
+}
+
+.produccion-content-area .smd-grid {
+    height: auto !important;
+    min-height: calc(100vh - 200px) !important;
+    overflow: visible !important;
+}
+
+.produccion-content-area .smd-card {
+    height: 210px;
+    margin-bottom: 15px;
+}
+
+.produccion-content-area .smd-table-container {
+    height: calc(100% - 80px) !important;
+    max-height: 300px !important;
+    overflow-y: auto !important;
+}
+
+/* Forzar que el contenedor principal de producción permita scroll */
+#produccion-info-container {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    max-height: calc(100vh - 120px) !important;
+    padding: 5px !important;
+}
+
+/* Asegurar scroll en body cuando se carga PLAN SMD */
+body:has(.produccion-content-area[style*="display: block"]) {
+    overflow-y: auto !important;
+}
+
+/* Permitir scroll en el contenido principal */
+.main-content-wrapper {
+    overflow-y: auto !important;
+    max-height: 100vh !important;
+}
+
+/* Contenedores individuales de Control de Proceso */
+.control-proceso-content-area > div {
+    background-color: #32323E;
+    color: lightgray;
+    padding: 5px;
+    border-radius: 0;
+    box-shadow: none;
+    margin-bottom: 0;
+    min-height: 300px;
+    border: none;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Contenedores individuales de Control de Calidad */
+.control-calidad-content-area > div {
+    background-color: #32323E;
+    color: lightgray;
+    padding: 5px;
+    border-radius: 0;
+    box-shadow: none;
+    margin-bottom: 0;
+    min-height: 300px;
+    border: none;
+    overflow-y: auto;
+    max-height: 100%;
 }
 
 /* Forzar visibilidad del contenedor de control de material en info básica */
@@ -781,4 +901,688 @@ select {
 .sidebar-content .sidebar-link {
   z-index: 9998 !important;
   position: relative !important;
+}
+
+/* ============================================= */
+/* ESTILOS PARA TABLAS SMD - CELDAS MAS DELGADAS */
+/* ============================================= */
+
+/* Ancho específico para cada columna de las tablas SMD */
+.produccion-content-area .smd-table,
+.material-content-area .smd-table,
+.control-proceso-content-area .smd-table,
+.informacion-basica-content-area .smd-table,
+.main-content-container .smd-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+/* Columnas específicas con anchos optimizados */
+.produccion-content-area .smd-table th:nth-child(1), /* Añadir/Quitar */
+.produccion-content-area .smd-table td:nth-child(1),
+.material-content-area .smd-table th:nth-child(1),
+.material-content-area .smd-table td:nth-child(1),
+.control-proceso-content-area .smd-table th:nth-child(1),
+.control-proceso-content-area .smd-table td:nth-child(1),
+.informacion-basica-content-area .smd-table th:nth-child(1),
+.informacion-basica-content-area .smd-table td:nth-child(1),
+.main-content-container .smd-table th:nth-child(1),
+.main-content-container .smd-table td:nth-child(1) {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    padding: 4px 2px !important;
+    text-align: center !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(2), /* WO */
+.produccion-content-area .smd-table td:nth-child(2),
+.material-content-area .smd-table th:nth-child(2),
+.material-content-area .smd-table td:nth-child(2),
+.control-proceso-content-area .smd-table th:nth-child(2),
+.control-proceso-content-area .smd-table td:nth-child(2),
+.informacion-basica-content-area .smd-table th:nth-child(2),
+.informacion-basica-content-area .smd-table td:nth-child(2),
+.main-content-container .smd-table th:nth-child(2),
+.main-content-container .smd-table td:nth-child(2) {
+    width: 110px !important;
+    min-width: 110px !important;
+    max-width: 110px !important;
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(3), /* PO/Modelo */
+.produccion-content-area .smd-table td:nth-child(3) {
+    width: 100px !important;
+    min-width: 100px !important;
+    max-width: 100px !important;
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(4), /* Modelo/Cod.Modelo */
+.produccion-content-area .smd-table td:nth-child(4) {
+    width: 90px !important;
+    min-width: 90px !important;
+    max-width: 90px !important;
+    padding: 4px 4px !important;
+    font-size: 10px !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(5), /* Cod.Modelo/Plan */
+.produccion-content-area .smd-table td:nth-child(5) {
+    width: 80px !important;
+    min-width: 80px !important;
+    max-width: 80px !important;
+    padding: 4px 4px !important;
+    font-size: 10px !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(6), /* Cant.Plan/Fecha */
+.produccion-content-area .smd-table td:nth-child(6) {
+    width: 70px !important;
+    min-width: 70px !important;
+    max-width: 70px !important;
+    padding: 4px 4px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(7), /* Fecha Op. */
+.produccion-content-area .smd-table td:nth-child(7) {
+    width: 80px !important;
+    min-width: 80px !important;
+    max-width: 80px !important;
+    padding: 4px 4px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(8), /* Estado */
+.produccion-content-area .smd-table td:nth-child(8) {
+    width: 70px !important;
+    min-width: 70px !important;
+    max-width: 70px !important;
+    padding: 4px 4px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+}
+
+/* Para tabla del Plan SMD con más columnas */
+.produccion-content-area .smd-table th:nth-child(9), /* QTY */
+.produccion-content-area .smd-table td:nth-child(9) {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    padding: 4px 2px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(10), /* Físico */
+.produccion-content-area .smd-table td:nth-child(10) {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    padding: 4px 2px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(11), /* Falta */
+.produccion-content-area .smd-table td:nth-child(11) {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    padding: 4px 2px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(12), /* % */
+.produccion-content-area .smd-table td:nth-child(12) {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    padding: 4px 2px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+}
+
+.produccion-content-area .smd-table th:nth-child(13), /* Comentarios */
+.produccion-content-area .smd-table td:nth-child(13) {
+    width: 120px !important;
+    min-width: 120px !important;
+    max-width: 120px !important;
+    padding: 4px 4px !important;
+    font-size: 9px !important;
+}
+
+/* Estilos generales para hacer las celdas más compactas pero permitir scroll */
+.produccion-content-area .smd-table th,
+.produccion-content-area .smd-table td,
+.material-content-area .smd-table th,
+.material-content-area .smd-table td,
+.control-proceso-content-area .smd-table th,
+.control-proceso-content-area .smd-table td,
+.informacion-basica-content-area .smd-table th,
+.informacion-basica-content-area .smd-table td,
+.main-content-container .smd-table th,
+.main-content-container .smd-table td {
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    border: 1px solid #34495e !important;
+}
+
+/* Filas más compactas pero sin altura fija restrictiva */
+.produccion-content-area .smd-table td,
+.material-content-area .smd-table td,
+.control-proceso-content-area .smd-table td,
+.informacion-basica-content-area .smd-table td,
+.main-content-container .smd-table td {
+    min-height: 24px !important;
+    height: auto !important;
+    vertical-align: middle !important;
+}
+
+/* ESTILOS UNIVERSALES PARA TODAS LAS AREAS - ANCHOS DE COLUMNA */
+/* Aplicar a todas las áreas de contenido */
+.produccion-content-area .smd-table th:nth-child(n),
+.produccion-content-area .smd-table td:nth-child(n),
+.material-content-area .smd-table th:nth-child(n),
+.material-content-area .smd-table td:nth-child(n),
+.control-proceso-content-area .smd-table th:nth-child(n),
+.control-proceso-content-area .smd-table td:nth-child(n),
+.informacion-basica-content-area .smd-table th:nth-child(n),
+.informacion-basica-content-area .smd-table td:nth-child(n),
+.main-content-container .smd-table th:nth-child(n),
+.main-content-container .smd-table td:nth-child(n) {
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+}
+
+/* Columna 1: Botones */
+.produccion-content-area .smd-table th:nth-child(1),
+.produccion-content-area .smd-table td:nth-child(1),
+.material-content-area .smd-table th:nth-child(1),
+.material-content-area .smd-table td:nth-child(1),
+.control-proceso-content-area .smd-table th:nth-child(1),
+.control-proceso-content-area .smd-table td:nth-child(1),
+.informacion-basica-content-area .smd-table th:nth-child(1),
+.informacion-basica-content-area .smd-table td:nth-child(1),
+.main-content-container .smd-table th:nth-child(1),
+.main-content-container .smd-table td:nth-child(1) {
+    width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center !important;
+}
+
+/* Columna 2: WO */
+.produccion-content-area .smd-table th:nth-child(2),
+.produccion-content-area .smd-table td:nth-child(2),
+.material-content-area .smd-table th:nth-child(2),
+.material-content-area .smd-table td:nth-child(2),
+.control-proceso-content-area .smd-table th:nth-child(2),
+.control-proceso-content-area .smd-table td:nth-child(2),
+.informacion-basica-content-area .smd-table th:nth-child(2),
+.informacion-basica-content-area .smd-table td:nth-child(2),
+.main-content-container .smd-table th:nth-child(2),
+.main-content-container .smd-table td:nth-child(2) {
+    width: 110px !important; min-width: 110px !important; max-width: 110px !important;
+}
+
+/* Columnas 3-13: Anchos optimizados para todas las áreas */
+.produccion-content-area .smd-table th:nth-child(3), .produccion-content-area .smd-table td:nth-child(3),
+.material-content-area .smd-table th:nth-child(3), .material-content-area .smd-table td:nth-child(3),
+.control-proceso-content-area .smd-table th:nth-child(3), .control-proceso-content-area .smd-table td:nth-child(3),
+.informacion-basica-content-area .smd-table th:nth-child(3), .informacion-basica-content-area .smd-table td:nth-child(3),
+.main-content-container .smd-table th:nth-child(3), .main-content-container .smd-table td:nth-child(3) { width: 100px !important; min-width: 100px !important; max-width: 100px !important; }
+
+.produccion-content-area .smd-table th:nth-child(4), .produccion-content-area .smd-table td:nth-child(4),
+.material-content-area .smd-table th:nth-child(4), .material-content-area .smd-table td:nth-child(4),
+.control-proceso-content-area .smd-table th:nth-child(4), .control-proceso-content-area .smd-table td:nth-child(4),
+.informacion-basica-content-area .smd-table th:nth-child(4), .informacion-basica-content-area .smd-table td:nth-child(4),
+.main-content-container .smd-table th:nth-child(4), .main-content-container .smd-table td:nth-child(4) { width: 90px !important; min-width: 90px !important; max-width: 90px !important; }
+
+.produccion-content-area .smd-table th:nth-child(5), .produccion-content-area .smd-table td:nth-child(5),
+.material-content-area .smd-table th:nth-child(5), .material-content-area .smd-table td:nth-child(5),
+.control-proceso-content-area .smd-table th:nth-child(5), .control-proceso-content-area .smd-table td:nth-child(5),
+.informacion-basica-content-area .smd-table th:nth-child(5), .informacion-basica-content-area .smd-table td:nth-child(5),
+.main-content-container .smd-table th:nth-child(5), .main-content-container .smd-table td:nth-child(5) { width: 80px !important; min-width: 80px !important; max-width: 80px !important; }
+
+.produccion-content-area .smd-table th:nth-child(6), .produccion-content-area .smd-table td:nth-child(6),
+.material-content-area .smd-table th:nth-child(6), .material-content-area .smd-table td:nth-child(6),
+.control-proceso-content-area .smd-table th:nth-child(6), .control-proceso-content-area .smd-table td:nth-child(6),
+.informacion-basica-content-area .smd-table th:nth-child(6), .informacion-basica-content-area .smd-table td:nth-child(6),
+.main-content-container .smd-table th:nth-child(6), .main-content-container .smd-table td:nth-child(6) { width: 70px !important; min-width: 70px !important; max-width: 70px !important; text-align: center !important; }
+
+.produccion-content-area .smd-table th:nth-child(7), .produccion-content-area .smd-table td:nth-child(7),
+.material-content-area .smd-table th:nth-child(7), .material-content-area .smd-table td:nth-child(7),
+.control-proceso-content-area .smd-table th:nth-child(7), .control-proceso-content-area .smd-table td:nth-child(7),
+.informacion-basica-content-area .smd-table th:nth-child(7), .informacion-basica-content-area .smd-table td:nth-child(7),
+.main-content-container .smd-table th:nth-child(7), .main-content-container .smd-table td:nth-child(7) { width: 80px !important; min-width: 80px !important; max-width: 80px !important; text-align: center !important; }
+
+.produccion-content-area .smd-table th:nth-child(8), .produccion-content-area .smd-table td:nth-child(8),
+.material-content-area .smd-table th:nth-child(8), .material-content-area .smd-table td:nth-child(8),
+.control-proceso-content-area .smd-table th:nth-child(8), .control-proceso-content-area .smd-table td:nth-child(8),
+.informacion-basica-content-area .smd-table th:nth-child(8), .informacion-basica-content-area .smd-table td:nth-child(8),
+.main-content-container .smd-table th:nth-child(8), .main-content-container .smd-table td:nth-child(8) { width: 70px !important; min-width: 70px !important; max-width: 70px !important; text-align: center !important; }
+
+.produccion-content-area .smd-table th:nth-child(9), .produccion-content-area .smd-table td:nth-child(9),
+.material-content-area .smd-table th:nth-child(9), .material-content-area .smd-table td:nth-child(9),
+.control-proceso-content-area .smd-table th:nth-child(9), .control-proceso-content-area .smd-table td:nth-child(9),
+.informacion-basica-content-area .smd-table th:nth-child(9), .informacion-basica-content-area .smd-table td:nth-child(9),
+.main-content-container .smd-table th:nth-child(9), .main-content-container .smd-table td:nth-child(9) { width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important; }
+
+.produccion-content-area .smd-table th:nth-child(10), .produccion-content-area .smd-table td:nth-child(10),
+.material-content-area .smd-table th:nth-child(10), .material-content-area .smd-table td:nth-child(10),
+.control-proceso-content-area .smd-table th:nth-child(10), .control-proceso-content-area .smd-table td:nth-child(10),
+.informacion-basica-content-area .smd-table th:nth-child(10), .informacion-basica-content-area .smd-table td:nth-child(10),
+.main-content-container .smd-table th:nth-child(10), .main-content-container .smd-table td:nth-child(10) { width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important; }
+
+.produccion-content-area .smd-table th:nth-child(11), .produccion-content-area .smd-table td:nth-child(11),
+.material-content-area .smd-table th:nth-child(11), .material-content-area .smd-table td:nth-child(11),
+.control-proceso-content-area .smd-table th:nth-child(11), .control-proceso-content-area .smd-table td:nth-child(11),
+.informacion-basica-content-area .smd-table th:nth-child(11), .informacion-basica-content-area .smd-table td:nth-child(11),
+.main-content-container .smd-table th:nth-child(11), .main-content-container .smd-table td:nth-child(11) { width: 60px !important; min-width: 60px !important; max-width: 60px !important; text-align: center !important; }
+
+.produccion-content-area .smd-table th:nth-child(12), .produccion-content-area .smd-table td:nth-child(12),
+.material-content-area .smd-table th:nth-child(12), .material-content-area .smd-table td:nth-child(12),
+.control-proceso-content-area .smd-table th:nth-child(12), .control-proceso-content-area .smd-table td:nth-child(12),
+.informacion-basica-content-area .smd-table th:nth-child(12), .informacion-basica-content-area .smd-table td:nth-child(12),
+.main-content-container .smd-table th:nth-child(12), .main-content-container .smd-table td:nth-child(12) { width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center !important; }
+
+.produccion-content-area .smd-table th:nth-child(13), .produccion-content-area .smd-table td:nth-child(13),
+.material-content-area .smd-table th:nth-child(13), .material-content-area .smd-table td:nth-child(13),
+.control-proceso-content-area .smd-table th:nth-child(13), .control-proceso-content-area .smd-table td:nth-child(13),
+.informacion-basica-content-area .smd-table th:nth-child(13), .informacion-basica-content-area .smd-table td:nth-child(13),
+.main-content-container .smd-table th:nth-child(13), .main-content-container .smd-table td:nth-child(13) { width: 120px !important; min-width: 120px !important; max-width: 120px !important; }
+
+/* Botones más pequeños en las celdas */
+.produccion-content-area .smd-table .smd-btn {
+    padding: 2px 4px !important;
+    font-size: 9px !important;
+    min-width: 20px !important;
+    height: 18px !important;
+    line-height: 1 !important;
+}
+
+/* Inputs más pequeños en el plan */
+.produccion-content-area .smd-inline-input,
+.produccion-content-area .smd-inline-select {
+    width: 50px !important;
+    height: 20px !important;
+    padding: 2px 4px !important;
+    font-size: 9px !important;
+}
+
+/* Badges más compactos */
+.produccion-content-area .smd-badge {
+    padding: 1px 4px !important;
+    font-size: 8px !important;
+}
+
+/* Contenedor de tabla con scroll horizontal si es necesario */
+.produccion-content-area .smd-table-container,
+.material-content-area .smd-table-container,
+.control-proceso-content-area .smd-table-container,
+.informacion-basica-content-area .smd-table-container,
+.main-content-container .smd-table-container {
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    max-height: 400px !important;
+    height: auto !important;
+    display: block !important;
+}
+
+/* Permitir scroll en las tablas */
+.produccion-content-area .smd-table,
+.material-content-area .smd-table,
+.control-proceso-content-area .smd-table,
+.informacion-basica-content-area .smd-table,
+.main-content-container .smd-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    height: auto !important;
+    display: table !important;
+}
+
+/* Quitar restricciones de altura en filas para permitir scroll */
+.produccion-content-area .smd-table td,
+.material-content-area .smd-table td,
+.control-proceso-content-area .smd-table td,
+.informacion-basica-content-area .smd-table td,
+.main-content-container .smd-table td {
+    height: auto !important;
+    min-height: 24px !important;
+    vertical-align: middle !important;
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    border: 1px solid #34495e !important;
+}
+
+/* Headers más compactos pero sin altura fija restrictiva */
+.produccion-content-area .smd-table th,
+.material-content-area .smd-table th,
+.control-proceso-content-area .smd-table th,
+.informacion-basica-content-area .smd-table th,
+.main-content-container .smd-table th {
+    font-size: 9px !important;
+    font-weight: bold !important;
+    padding: 6px 4px !important;
+    height: auto !important;
+    min-height: 28px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Asegurar que el contenedor padre permita scroll */
+.produccion-content-area,
+.material-content-area,
+.control-proceso-content-area,
+.informacion-basica-content-area,
+.main-content-container {
+    overflow: visible !important;
+    height: auto !important;
+}
+
+/* Responsive: En pantallas pequeñas permitir scroll horizontal */
+@media (max-width: 1024px) {
+    .produccion-content-area .smd-table,
+    .material-content-area .smd-table,
+    .control-proceso-content-area .smd-table,
+    .informacion-basica-content-area .smd-table,
+    .main-content-container .smd-table {
+        min-width: 900px !important;
+    }
+    
+    .produccion-content-area .smd-table-container,
+    .material-content-area .smd-table-container,
+    .control-proceso-content-area .smd-table-container,
+    .informacion-basica-content-area .smd-table-container,
+    .main-content-container .smd-table-container {
+        max-height: 300px !important;
+    }
+}
+
+/* ESTILOS ADICIONALES PARA MATERIALTEMPLATE - SCROLL FORZADO */
+/* Forzar scroll en todos los contenedores de MaterialTemplate */
+.material-content-area,
+.control-proceso-content-area,
+.informacion-basica-content-area,
+.main-content-container {
+    position: relative !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+/* Contenedores de tabla específicos para MaterialTemplate */
+.material-content-area .smd-table-container,
+.control-proceso-content-area .smd-table-container,
+.informacion-basica-content-area .smd-table-container,
+.main-content-container .smd-table-container {
+    overflow: auto !important;
+    max-height: 400px !important;
+    border: 1px solid #34495e !important;
+    border-radius: 4px !important;
+    background: var(--color-background) !important;
+}
+
+/* Scroll visible siempre en MaterialTemplate */
+.material-content-area .smd-table-container::-webkit-scrollbar,
+.control-proceso-content-area .smd-table-container::-webkit-scrollbar,
+.informacion-basica-content-area .smd-table-container::-webkit-scrollbar,
+.main-content-container .smd-table-container::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+}
+
+.material-content-area .smd-table-container::-webkit-scrollbar-track,
+.control-proceso-content-area .smd-table-container::-webkit-scrollbar-track,
+.informacion-basica-content-area .smd-table-container::-webkit-scrollbar-track,
+.main-content-container .smd-table-container::-webkit-scrollbar-track {
+    background: #2c3e50 !important;
+}
+
+.material-content-area .smd-table-container::-webkit-scrollbar-thumb,
+.control-proceso-content-area .smd-table-container::-webkit-scrollbar-thumb,
+.informacion-basica-content-area .smd-table-container::-webkit-scrollbar-thumb,
+.main-content-container .smd-table-container::-webkit-scrollbar-thumb {
+    background: #34495e !important;
+    border-radius: 4px !important;
+}
+
+.material-content-area .smd-table-container::-webkit-scrollbar-thumb:hover,
+.control-proceso-content-area .smd-table-container::-webkit-scrollbar-thumb:hover,
+.informacion-basica-content-area .smd-table-container::-webkit-scrollbar-thumb:hover,
+.main-content-container .smd-table-container::-webkit-scrollbar-thumb:hover {
+    background: #3498db !important;
+}
+
+/* ===================================================================== */
+/* SOLUCION LIMPIA PARA SCROLL SIN !IMPORTANT - ALTA ESPECIFICIDAD     */
+/* ===================================================================== */
+
+/* Contenedores principales con scroll FORZADO para cualquier zoom */
+div.produccion-content-area div.smd-table-container,
+div.material-content-area div.smd-table-container,
+div.control-proceso-content-area div.smd-table-container,
+div.informacion-basica-content-area div.smd-table-container,
+div.main-content-container div.smd-table-container,
+.smd-table-container {
+    overflow: auto;
+    overflow-x: auto;
+    overflow-y: scroll; /* Forzar scroll vertical siempre */
+    max-height: 300px; /* Altura más pequeña para forzar scroll */
+    min-height: 200px; /* Altura mínima */
+    height: 300px; /* Altura fija para asegurar scroll */
+    display: block;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    background: var(--color-background, #2c3e50);
+    position: relative;
+}
+
+/* Tablas con layout fijo */
+div.smd-table-container table.smd-table,
+div.smd-table-container .smd-table,
+.smd-table-container table,
+table.smd-table {
+    table-layout: fixed;
+    width: 100%;
+    height: auto;
+    display: table;
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Filas y celdas sin restricciones de altura */
+div.smd-table-container table tr,
+div.smd-table-container .smd-table tr,
+.smd-table-container tr,
+table.smd-table tr {
+    height: auto;
+    min-height: 0;
+}
+
+div.smd-table-container table td,
+div.smd-table-container table th,
+div.smd-table-container .smd-table td,
+div.smd-table-container .smd-table th,
+.smd-table-container td,
+.smd-table-container th,
+table.smd-table td,
+table.smd-table th {
+    height: auto;
+    min-height: 24px;
+    max-height: none;
+    overflow: visible;
+    padding: 4px 6px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    border: 1px solid #34495e;
+    vertical-align: middle;
+    position: relative;
+}
+
+/* Headers sticky */
+div.smd-table-container table th,
+div.smd-table-container .smd-table th,
+.smd-table-container th,
+table.smd-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #2c3e50;
+    color: #ecf0f1;
+    font-weight: bold;
+    font-size: 9px;
+}
+
+/* Contenedores padre sin restricciones */
+body.app-body,
+html.app-html,
+div.main-content-container,
+div.material-content-area,
+div.produccion-content-area,
+div.control-proceso-content-area,
+div.informacion-basica-content-area {
+    overflow: visible;
+    height: auto;
+    min-height: 0;
+}
+
+/* Scrollbars estilizados */
+div.smd-table-container::-webkit-scrollbar,
+.smd-table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+div.smd-table-container::-webkit-scrollbar-track,
+.smd-table-container::-webkit-scrollbar-track {
+    background: #34495e;
+    border-radius: 4px;
+}
+
+div.smd-table-container::-webkit-scrollbar-thumb,
+.smd-table-container::-webkit-scrollbar-thumb {
+    background: #3498db;
+    border-radius: 4px;
+}
+
+div.smd-table-container::-webkit-scrollbar-thumb:hover,
+.smd-table-container::-webkit-scrollbar-thumb:hover {
+    background: #2980b9;
+}
+
+/* Para Firefox */
+div.smd-table-container,
+.smd-table-container {
+    scrollbar-width: thin;
+    scrollbar-color: #3498db #34495e;
+}
+
+/* ESPECIFICIDAD ULTRA-ALTA PARA SOBRESCRIBIR ESTILOS INTERNOS */
+/* Selectores con máxima especificidad sin !important */
+html body div.main-content-container div.smd-table-container,
+html body div.material-content-area div.smd-table-container,
+html body div.produccion-content-area div.smd-table-container,
+html body div.control-proceso-content-area div.smd-table-container,
+html body div.informacion-basica-content-area div.smd-table-container,
+html body .smd-table-container {
+    overflow: scroll; /* Forzar scroll siempre */
+    overflow-x: auto;
+    overflow-y: scroll;
+    max-height: 300px; /* Altura más restrictiva */
+    min-height: 200px;
+    height: 300px; /* Altura fija */
+    display: block;
+    position: relative;
+}
+
+/* Para sobrescribir cualquier overflow: hidden interno */
+html body div div.smd-table-container,
+html body div .smd-table-container,
+html[lang] body div.smd-table-container {
+    overflow: scroll; /* Forzar scroll */
+    overflow-y: scroll;
+    max-height: 300px;
+    height: 300px;
+}
+
+/* Asegurar que no hay height fijos en las filas */
+html body div.smd-table-container table tr,
+html body div.smd-table-container .smd-table tr,
+html body .smd-table-container tr {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+}
+
+html body div.smd-table-container table td,
+html body div.smd-table-container table th,
+html body div.smd-table-container .smd-table td,
+html body div.smd-table-container .smd-table th,
+html body .smd-table-container td,
+html body .smd-table-container th {
+    height: auto;
+    min-height: 24px;
+    max-height: none;
+    overflow: visible;
+}
+
+/* Responsive - Ajustes por zoom/resolución */
+@media (max-width: 1024px) {
+    div.smd-table-container table.smd-table,
+    div.smd-table-container .smd-table,
+    .smd-table-container table,
+    table.smd-table {
+        min-width: 900px;
+    }
+    
+    div.smd-table-container,
+    .smd-table-container {
+        max-height: 250px;
+        height: 250px;
+    }
+}
+
+/* Para zoom 100% - Forzar scroll siempre */
+@media screen and (min-resolution: 96dpi) {
+    div.smd-table-container,
+    .smd-table-container {
+        max-height: 280px;
+        height: 280px;
+        overflow-y: scroll;
+    }
+}
+
+/* Para zoom 110% y superiores */
+@media screen and (min-resolution: 105dpi) {
+    div.smd-table-container,
+    .smd-table-container {
+        max-height: 300px;
+        height: 300px;
+        overflow-y: scroll;
+    }
+}
+
+/* Forzar scroll en cualquier resolución */
+div.smd-table-container,
+.smd-table-container {
+    overflow: scroll;
+    overflow-y: scroll;
 }

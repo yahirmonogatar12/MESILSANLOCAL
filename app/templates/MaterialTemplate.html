@@ -2376,6 +2376,39 @@ function hideAllMaterialContainers() {
                 });
             };
             
+            // Función global para mostrar PLAN SMT
+            window.mostrarPlanSMT = function() {
+                hideAllMaterialContainers();
+                produccionContentArea.style.display = 'block';
+                produccionInfoContainer.style.display = 'block';
+                
+                // IMPORTANTE: Ocultar contenedor de material
+                materialContentArea.style.display = 'none';
+                
+                // Cargar contenido dinámicamente de PLAN SMT en el contenedor de producción
+                cargarContenidoDinamico('produccion-info-container', '/control_produccion/plan_smt', () => {
+                    // Después de cargar, asegurar que el contenedor esté visible
+                    const planSMTContainer = document.querySelector('#plan-smt-main-container-unique');
+                    if (planSMTContainer) {
+                        planSMTContainer.style.display = 'block';
+                        planSMTContainer.style.visibility = 'visible';
+                        planSMTContainer.style.opacity = '1';
+                        console.log('PLAN SMT cargado y mostrado correctamente');
+                    }
+                    
+                    // Inicializar el módulo de PLAN SMT
+                    if (typeof window.initPlanSMT === 'function') {
+                        window.initPlanSMT();
+                        console.log('Módulo PLAN SMT inicializado');
+                    } else {
+                        console.warn('Función initPlanSMT no encontrada');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cargando PLAN SMT:', error);
+                });
+            };
+            
             // Función AJAX para Control de producción SMT
             window.mostrarControldeproduccionSMT = function() {
                 console.log('🚀 Iniciando carga AJAX de Control de producción SMT...');
