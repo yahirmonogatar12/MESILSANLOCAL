@@ -62,8 +62,14 @@
             console.log('🚀 Inicializando Crear Plan de Producción...');
             cargarModelosBOM();
             configurarEventos();
-            establecerFechaActual();
-            cargarWOs();
+            
+            // Asegurar que las fechas se configuren después de que los elementos estén disponibles
+            setTimeout(() => {
+                establecerFechaActual();
+                // Consultar WOs del día actual después de establecer las fechas
+                setTimeout(consultarWOs, 200);
+            }, 50);
+            
             console.log('✅ Crear Plan de Producción inicializado correctamente');
         }
 
@@ -103,16 +109,12 @@
                 fechaInput.value = hoy;
             }
             
-            // Establecer fechas en filtros
+            // Establecer fechas en filtros (ambas al día actual)
             const fechaDesde = document.getElementById('fechaDesde');
             const fechaHasta = document.getElementById('fechaHasta');
             
             if (fechaDesde && fechaHasta) {
-                // Fecha desde: primer día del mes actual
-                const primerDiaDelMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-                fechaDesde.value = primerDiaDelMes.toISOString().split('T')[0];
-                
-                // Fecha hasta: hoy
+                fechaDesde.value = hoy;
                 fechaHasta.value = hoy;
             }
         }
@@ -224,7 +226,6 @@
             // codigoPO ahora es opcional para WO independientes
             const codigoPO = document.getElementById('woCodigoPO').value.trim() || 'SIN-PO';
             const modelo = document.getElementById('woModelo').value;
-            const ordenProceso = document.getElementById('woOrdenProceso').value;
             const cantidad = parseInt(document.getElementById('woCantidad').value);
             const fechaOperacion = document.getElementById('woFechaOperacion').value;
 
@@ -233,17 +234,8 @@
                 mostrarMensaje('Por favor genere un código de WO', 'error');
                 return;
             }
-            // REMOVIDO: PO ya no es obligatorio para WO independientes
-            // if (!codigoPO) {
-            //     mostrarMensaje('Por favor ingrese el código PO', 'error');
-            //     return;
-            // }
             if (!modelo) {
                 mostrarMensaje('Por favor seleccione un modelo', 'error');
-                return;
-            }
-            if (!ordenProceso) {
-                mostrarMensaje('Por favor seleccione una orden de proceso', 'error');
                 return;
             }
             if (!cantidad || cantidad <= 0) {
@@ -260,7 +252,6 @@
                 codigo_wo: codigoWO,
                 codigo_po: codigoPO, // Si está vacío, se usará 'SIN-PO' por defecto
                 modelo: modelo,
-                orden_proceso: ordenProceso,
                 cantidad_planeada: cantidad,
                 fecha_operacion: fechaOperacion
             };
@@ -563,7 +554,6 @@
                     woData = result.data;
                     renderizarTablaWOs(woData);
                     actualizarContador(woData.length);
-                    mostrarMensaje(`Se encontraron ${woData.length} WOs`, 'success');
                 } else {
                     console.error('Error consultando WOs:', result.error);
                     mostrarMensaje('Error consultando WOs: ' + result.error, 'error');
@@ -624,10 +614,17 @@
                     <td>${wo.codigo_wo || ''}</td>
                     <td>${formatearFecha(wo.fecha_operacion) || ''}</td>
                     <td>${wo.codigo_modelo || ''}</td>
-                    <td>${wo.orden_proceso || 'NORMAL'}</td>
+                    <td>${wo.nombre_modelo || wo.modelo || ''}</td>
                     <td>${wo.cantidad_planeada || 0}</td>
-                    <td>${wo.codigo_po || ''}</td>
-                    <td>${wo.registrado ? '✓' : '✗'}</td>
+                    <td class="po-cell">
+                        <span class="po-display">${wo.codigo_po || 'SIN-PO'}</span>
+                        <input type="text" class="po-edit" value="${wo.codigo_po || ''}" style="display: none;">
+                    </td>
+                    <td class="acciones-cell">
+                        <button class="btn-edit-po" onclick="editarPO('${wo.codigo_wo}', this)" title="Editar PO">EDIT</button>
+                        <button class="btn-save-po" onclick="guardarPO('${wo.codigo_wo}', this)" style="display: none;" title="Guardar PO">SAVE</button>
+                        <button class="btn-cancel-po" onclick="cancelarEditarPO(this)" style="display: none;" title="Cancelar">CANCEL</button>
+                    </td>
                     <td>${wo.modificador || ''}</td>
                     <td>${formatearFechaCompleta(wo.fecha_modificacion) || ''}</td>
                     <td>${index === 0 ? '▲' : ''}</td>
@@ -741,8 +738,108 @@ window.ocultarFormularioWO = ocultarFormularioWO;
 window.filtrarModelosWO = filtrarModelosWO;
 window.mostrarDropdownWO = mostrarDropdownWO;
 window.crearNuevaWO = crearNuevaWO;
+        // ================================================
+        // FUNCIONES PARA EDICIÓN DE PO
+        // ================================================
+        
+        // Función para iniciar edición de PO
+        function editarPO(codigoWO, button) {
+            const row = button.closest('tr');
+            const poCell = row.querySelector('.po-cell');
+            const display = poCell.querySelector('.po-display');
+            const input = poCell.querySelector('.po-edit');
+            const btnEdit = row.querySelector('.btn-edit-po');
+            const btnSave = row.querySelector('.btn-save-po');
+            const btnCancel = row.querySelector('.btn-cancel-po');
+            
+            // Mostrar input y ocultar display
+            display.style.display = 'none';
+            input.style.display = 'inline-block';
+            input.focus();
+            
+            // Cambiar botones
+            btnEdit.style.display = 'none';
+            btnSave.style.display = 'inline-block';
+            btnCancel.style.display = 'inline-block';
+        }
+        
+        // Función para guardar PO editado
+        async function guardarPO(codigoWO, button) {
+            const row = button.closest('tr');
+            const poCell = row.querySelector('.po-cell');
+            const display = poCell.querySelector('.po-display');
+            const input = poCell.querySelector('.po-edit');
+            const nuevoPO = input.value.trim() || 'SIN-PO';
+            
+            try {
+                // Enviar actualización al servidor
+                const response = await fetch('/api/wo/actualizar-po', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        codigo_wo: codigoWO,
+                        codigo_po: nuevoPO
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Actualizar display
+                    display.textContent = nuevoPO;
+                    display.style.display = 'inline-block';
+                    input.style.display = 'none';
+                    
+                    // Restaurar botones
+                    const btnEdit = row.querySelector('.btn-edit-po');
+                    const btnSave = row.querySelector('.btn-save-po');
+                    const btnCancel = row.querySelector('.btn-cancel-po');
+                    
+                    btnEdit.style.display = 'inline-block';
+                    btnSave.style.display = 'none';
+                    btnCancel.style.display = 'none';
+                    
+                    mostrarMensaje(`PO actualizado exitosamente: ${nuevoPO}`, 'success');
+                } else {
+                    mostrarMensaje('Error actualizando PO: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error guardando PO:', error);
+                mostrarMensaje('Error guardando PO: ' + error.message, 'error');
+            }
+        }
+        
+        // Función para cancelar edición de PO
+        function cancelarEditarPO(button) {
+            const row = button.closest('tr');
+            const poCell = row.querySelector('.po-cell');
+            const display = poCell.querySelector('.po-display');
+            const input = poCell.querySelector('.po-edit');
+            
+            // Restaurar valor original
+            input.value = display.textContent === 'SIN-PO' ? '' : display.textContent;
+            
+            // Mostrar display y ocultar input
+            display.style.display = 'inline-block';
+            input.style.display = 'none';
+            
+            // Restaurar botones
+            const btnEdit = row.querySelector('.btn-edit-po');
+            const btnSave = row.querySelector('.btn-save-po');
+            const btnCancel = row.querySelector('.btn-cancel-po');
+            
+            btnEdit.style.display = 'inline-block';
+            btnSave.style.display = 'none';
+            btnCancel.style.display = 'none';
+        }
+
 window.mostrarFormularioWO = mostrarFormularioWO;
 window.seleccionarModeloWO = seleccionarModeloWO;
+window.editarPO = editarPO;
+window.guardarPO = guardarPO;
+window.cancelarEditarPO = cancelarEditarPO;
 
 console.log('Crear Plan de Producción - Módulo inicializado');
 

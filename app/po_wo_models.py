@@ -332,6 +332,68 @@ def listar_pos_por_estado(estado=None):
         print(f"❌ Error listando POs: {e}")
         return []
 
+def listar_pos_con_filtros(estado=None, fecha_desde=None, fecha_hasta=None, cliente=None):
+    """Listar POs con filtros múltiples"""
+    try:
+        # Construir consulta base
+        query = """
+        SELECT codigo_po, cliente, fecha_registro, estado, modificado, usuario_creacion,
+               nombre_po, modelo, proveedor, total_cantidad_entregada, 
+               codigo_entrega, fecha_entrega, cantidad_entregada
+        FROM embarques 
+        WHERE 1=1
+        """
+        
+        params = []
+        
+        # Agregar filtros dinámicamente
+        if estado:
+            query += " AND estado = %s"
+            params.append(estado)
+            
+        if fecha_desde:
+            query += " AND DATE(fecha_registro) >= %s"
+            params.append(fecha_desde)
+            
+        if fecha_hasta:
+            query += " AND DATE(fecha_registro) <= %s"
+            params.append(fecha_hasta)
+            
+        if cliente:
+            query += " AND cliente LIKE %s"
+            params.append(f'%{cliente}%')
+        
+        query += " ORDER BY fecha_registro DESC, modificado DESC"
+        
+        # Ejecutar consulta
+        if params:
+            resultados = execute_query(query, tuple(params), fetch='all')
+        else:
+            resultados = execute_query(query, fetch='all')
+        
+        pos = []
+        for row in resultados:
+            pos.append({
+                'codigo_po': row['codigo_po'],
+                'cliente': row['cliente'],
+                'fecha_registro': row['fecha_registro'].isoformat() if row['fecha_registro'] else None,
+                'estado': row['estado'],
+                'modificado': row['modificado'].isoformat() if row['modificado'] else None,
+                'usuario_creacion': row['usuario_creacion'],
+                'nombre_po': row['nombre_po'],
+                'modelo': row['modelo'],
+                'proveedor': row['proveedor'],
+                'total_cantidad_entregada': row['total_cantidad_entregada'],
+                'codigo_entrega': row['codigo_entrega'],
+                'fecha_entrega': row['fecha_entrega'].isoformat() if row['fecha_entrega'] else None,
+                'cantidad_entregada': row['cantidad_entregada']
+            })
+        
+        return pos
+        
+    except Exception as e:
+        return []
+
 def listar_wos_por_po(codigo_po=None):
     """Listar WOs filtradas por PO"""
     try:
@@ -376,6 +438,63 @@ def listar_wos_por_po(codigo_po=None):
         
     except Exception as e:
         print(f"❌ Error listando WOs: {e}")
+        return []
+
+def listar_wos_con_filtros(codigo_po=None, fecha_desde=None, fecha_hasta=None):
+    """Listar WOs con filtros múltiples (PO y fechas)"""
+    try:
+        # Construir consulta base
+        query = """
+        SELECT codigo_wo, codigo_po, modelo, cantidad_planeada, 
+               fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion,
+               nombre_modelo, codigo_modelo, orden_proceso
+        FROM work_orders 
+        WHERE 1=1
+        """
+        
+        params = []
+        
+        # Agregar filtros dinámicamente
+        if codigo_po:
+            query += " AND codigo_po = %s"
+            params.append(codigo_po)
+            
+        if fecha_desde:
+            query += " AND DATE(fecha_operacion) >= %s"
+            params.append(fecha_desde)
+            
+        if fecha_hasta:
+            query += " AND DATE(fecha_operacion) <= %s"
+            params.append(fecha_hasta)
+        
+        query += " ORDER BY fecha_operacion DESC, fecha_modificacion DESC"
+        
+        # Ejecutar consulta
+        if params:
+            resultados = execute_query(query, tuple(params), fetch='all')
+        else:
+            resultados = execute_query(query, fetch='all')
+        
+        wos = []
+        for row in resultados:
+            wos.append({
+                'codigo_wo': row['codigo_wo'],
+                'codigo_po': row['codigo_po'],
+                'modelo': row['modelo'],
+                'cantidad_planeada': row['cantidad_planeada'],
+                'fecha_operacion': row['fecha_operacion'].isoformat() if row['fecha_operacion'] else None,
+                'modificador': row['modificador'],
+                'fecha_modificacion': row['fecha_modificacion'].isoformat() if row['fecha_modificacion'] else None,
+                'estado': row['estado'],
+                'usuario_creacion': row['usuario_creacion'],
+                'nombre_modelo': row['nombre_modelo'],
+                'codigo_modelo': row['codigo_modelo'],
+                'orden_proceso': row.get('orden_proceso', 'NORMAL')
+            })
+        
+        return wos
+        
+    except Exception as e:
         return []
 
 def listar_wos(fecha_desde=None, fecha_hasta=None):

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Embarque - Sistema PO → WO</title>
+    <title>Control de Embarque - Sistema PO a WO</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -155,16 +155,6 @@
             background-color: #8e44ad;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
-        }
-
-        #btnVerWOs {
-            background-color: #0984A8;
-        }
-
-        #btnVerWOs:hover {
-            background-color: #0b98b8;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(11, 152, 184, 0.3);
         }
 
         #btnExportar {
@@ -733,6 +723,39 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Modales estilo SMD */
+        .smd-modal-backdrop { 
+            display: none; 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,.55); 
+            z-index: 9999; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .smd-modal { 
+            background: #2c3e50; 
+            border: 2px solid #3498db; 
+            border-radius: 12px; 
+            padding: 20px; 
+            min-width: 320px; 
+            max-width: 90vw; 
+            box-shadow: 0 8px 32px rgba(0,0,0,.35); 
+            text-align: center; 
+        }
+        .smd-spinner { 
+            width: 40px; 
+            height: 40px; 
+            border: 4px solid #34495e; 
+            border-top: 4px solid #3498db; 
+            border-radius: 50%; 
+            animation: smd-spin 1s linear infinite; 
+            margin: 12px auto; 
+        }
+        @keyframes smd-spin { 
+            to { transform: rotate(360deg); } 
+        }
+
         /* Estilos para el dropdown de modelos - compatibilidad */
         .embarque-modal {
             position: fixed;
@@ -933,23 +956,14 @@
         
         <!-- Botones de acción -->
         <button class="embarque-btn" id="btnConsultar" onclick="consultarPOs()">
-             Consultar POs
+            Consultar POs
         </button>
         <button class="embarque-btn" id="btnRegistrar" onclick="abrirModalCrearPO()">
-            ➕ Nueva PO
-        </button>
-        <button class="embarque-btn" id="btnVerWOs" onclick="consultarWOs()">
-            🔧 Ver WOs
+            Nueva PO
         </button>
         <button class="embarque-btn" id="btnExportar" onclick="exportarDatos()">
-            📊 Exportar
+            Exportar
         </button>
-    </div>
-
-    <!-- Pestañas -->
-    <div class="embarque-tabs">
-        <button class="embarque-tab active" onclick="mostrarTab('pos')">🛒 Purchase Orders (PO)</button>
-        <button class="embarque-tab" onclick="mostrarTab('wos')">🔧 Work Orders (WO)</button>
     </div>
 
     <!-- Contenido de Purchase Orders -->
@@ -981,34 +995,6 @@
                 <tbody>
                     <tr>
                         <td colspan="16" class="no-data">No hay Purchase Orders registradas</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Contenido de Work Orders -->
-    <div id="tab-wos" class="embarque-tab-content">
-        <div id="embarqueTableContainer">
-            <table id="woTable">
-                <thead>
-                    <tr>
-                        <th style="width: 40px;">
-                            <input type="checkbox" id="selectAllWO" class="checkbox-custom" onchange="toggleSelectAllWO()">
-                        </th>
-                        <th style="width: 100px;" title="Código de Work Order">Código de WO</th>
-                        <th style="width: 100px;" title="Código de Purchase Order">Código de PO</th>
-                        <th style="width: 120px;" title="Modelo">Modelo</th>
-                        <th style="width: 80px;" title="Cantidad">Cantidad</th>
-                        <th style="width: 120px;" title="Fecha de operación">Fecha de operación</th>
-                        <th style="width: 80px;" title="Estado">Estado</th>
-                        <th style="width: 100px;" title="Modificador">Modificador</th>
-                        <th style="width: 100px;" title="Acciones">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td colspan="9" class="no-data">No hay Work Orders registradas</td>
                     </tr>
                 </tbody>
             </table>
@@ -1294,7 +1280,7 @@
         <div class="yahir-modal">
             <div class="yahir-modal-header">
                 <h3 class="yahir-modal-title">
-                    <i class="fas fa-exchange-alt"></i>Convertir PO → WO
+                    <i class="fas fa-exchange-alt"></i>Convertir PO a WO
                 </h3>
                 <button type="button" class="yahir-modal-close" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i>
@@ -1382,4 +1368,14 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de carga estilo SMD -->
+<div class="smd-modal-backdrop" id="smdLoadingModal" aria-hidden="true">
+    <div class="smd-modal" role="dialog" aria-labelledby="smdLoadingTitle">
+        <h3 id="smdLoadingTitle" style="color: #3498db; margin: 0 0 6px 0;">Consultando Purchase Orders...</h3>
+        <p id="smdLoadingText" style="margin: 0; color: #ecf0f1;">Procesando datos</p>
+        <div class="smd-spinner" aria-hidden="true"></div>
+    </div>
+</div>
+
 <script src="{{ url_for('static', filename='js/control-embarque.js') }}"></script>

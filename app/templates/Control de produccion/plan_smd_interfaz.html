@@ -112,9 +112,61 @@
     .smd-badge.EN_PRODUCCION { background: #5a3b17; color: #ffe1b7; border-color: #d27a1b; }
     .smd-badge.CERRADA { background: #103d25; color: #bff3d1; border-color: #27ae60; }
 
-    /* Inputs inline de plan */
-    .smd-inline-input { width: 80px; background:#2c3e50; color:var(--txt-1); border:1px solid #34495e; border-radius:4px; padding:4px 6px; font-size:11px; text-align:center; }
-    .smd-inline-select { width: 90px; background:#2c3e50; color:var(--txt-1); border:1px solid #34495e; border-radius:4px; padding:4px 6px; font-size:11px; }
+    /* Inputs inline de plan - ALTA ESPECIFICIDAD */
+    .smd-container .smd-card .smd-table .smd-inline-input,
+    #planSmdApp .smd-inline-input,
+    .smd-table .smd-inline-input { 
+      width: 80px !important; 
+      background: #34495e !important; 
+      color: #ecf0f1 !important; 
+      border: 1px solid #2c3e50 !important; 
+      border-radius: 3px !important; 
+      padding: 1px 8px !important; 
+      font-size: 11px !important; 
+      transition: all 0.2s ease !important;
+      font-family: inherit !important;
+    }
+    .smd-container .smd-card .smd-table .smd-inline-input:hover,
+    #planSmdApp .smd-inline-input:hover,
+    .smd-table .smd-inline-input:hover { 
+      background: #3c5670 !important; 
+      border-color: #4a6b8a !important; 
+    }
+    .smd-container .smd-card .smd-table .smd-inline-input:focus,
+    #planSmdApp .smd-inline-input:focus,
+    .smd-table .smd-inline-input:focus { 
+      background: #455a75 !important; 
+      border-color: #3498db !important; 
+      outline: none !important; 
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2) !important;
+    }
+    .smd-container .smd-card .smd-table .smd-inline-select,
+    #planSmdApp .smd-inline-select,
+    .smd-table .smd-inline-select { 
+      width: 90px !important; 
+      background: #34495e !important; 
+      color: #ecf0f1 !important; 
+      border: 1px solid #2c3e50 !important; 
+      border-radius: 3px !important; 
+      padding: 1px 8px !important; 
+      font-size: 11px !important; 
+      transition: all 0.2s ease !important;
+      font-family: inherit !important;
+    }
+    .smd-container .smd-card .smd-table .smd-inline-select:hover,
+    #planSmdApp .smd-inline-select:hover,
+    .smd-table .smd-inline-select:hover { 
+      background: #3c5670 !important; 
+      border-color: #4a6b8a !important; 
+    }
+    .smd-container .smd-card .smd-table .smd-inline-select:focus,
+    #planSmdApp .smd-inline-select:focus,
+    .smd-table .smd-inline-select:focus { 
+      background: #455a75 !important; 
+      border-color: #3498db !important; 
+      outline: none !important; 
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2) !important;
+    }
     .smd-inline-wide { width: 180px; }
 
     .smd-tag-yellow { background: #4c4310; border:1px solid #7a6d14; color:#ffec99; border-radius: 8px; padding:2px 6px; font-size:10px; }
@@ -265,7 +317,7 @@
               <thead>
                 <tr>
                   <th>Línea</th>
-                  <th>Lote</th>
+                  <th>WO</th>
                   <th>N° Parte</th>
                   <th>Modelo</th>
                   <th>Tipo</th>
@@ -274,8 +326,8 @@
                   <th>UPH</th>
                   <th>QTY</th>
                   <th>Físico</th>
-                  <th>Falta</th>
                   <th>Dif.</th>
+                  <th>Falta</th>
                   <th>%</th>
                   <th>Comentarios</th>
                 </tr>
@@ -308,434 +360,7 @@
 
   </div>
 
-  <script>
-    // ===============================
-    // ENDPOINTS (ajusta a tu backend)
-    // ===============================
-    const PLAN_SMD_API = {
-      workOrders: "/api/work-orders", // GET: q, estado, desde, hasta
-      inventarioPorModelo: (modelo) => `/api/inventario/modelo/${encodeURIComponent(modelo)}` , // GET
-      guardarPlan: "/api/plan-smd" // POST [{...renglón...}]
-    };
-
-    // ===============================
-    // STATE & HELPERS
-    // ===============================
-    const $ = (id) => document.getElementById(id);
-    let queue = [];     // WO seleccionadas para plan
-    let plan = [];      // renglones del plan generado
-
-    const fmtDate = (s) => {
-      if (!s) return "—";
-      try {
-        const d = new Date(s);
-        if (Number.isNaN(d.getTime())) return s;
-        const pad = (n) => String(n).padStart(2, "0");
-        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-      } catch { return s; }
-    };
-    const num = (v) => typeof v === 'number' ? v : (v ? Number(v) : 0);
-
-    const showLoading = (msg = "Procesando…") => { $("smdLoadingText").textContent = msg; $("smdLoadingModal").style.display = "flex"; };
-    const hideLoading = () => { $("smdLoadingModal").style.display = "none"; };
-    const alertMsg = (m) => { $("smdAlertMsg").textContent = m; $("smdAlertModal").style.display = "flex"; };
-    $("smdAlertOk").addEventListener("click", () => $("smdAlertModal").style.display = "none");
-
-    async function fetchJSON(url) {
-      const res = await fetch(url, { headers: { "Accept": "application/json" } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }
-
-    // ===============================
-    // WORK ORDERS – carga y render
-    // ===============================
-    function renderWorkOrders(rows) {
-      const tbody = $("smdWoTbody");
-      tbody.innerHTML = "";
-      if (!rows || rows.length === 0) {
-        tbody.innerHTML = `<tr><td class="smd-no-data" colspan="8">Sin resultados</td></tr>`;
-        $("smdWoCounter").textContent = `0 resultados`;
-        return;
-      }
-      $("smdWoCounter").textContent = `${rows.length} resultado${rows.length!==1? 's':''}`;
-
-      for (const r of rows) {
-        const tr = document.createElement("tr");
-        tr.dataset.woId = r.id;
-        tr.innerHTML = `
-          <td><button class="smd-btn" type="button" aria-label="Agregar a cola">➕</button></td>
-          <td>${r.codigo_wo||'—'}</td>
-          <td>${r.codigo_po||'—'}</td>
-          <td>${(r.nombre_modelo? r.nombre_modelo+" · ":"")+(r.modelo||'')}</td>
-          <td>${r.codigo_modelo||'—'}</td>
-          <td>${num(r.cantidad_planeada||0).toLocaleString()}</td>
-          <td>${fmtDate(r.fecha_operacion)}</td>
-          <td><span class="smd-badge ${r.estado||''}">${r.estado||'—'}</span></td>
-        `;
-        tr.querySelector("button").addEventListener("click", () => addToQueue(r));
-        tbody.appendChild(tr);
-      }
-    }
-
-    async function loadWorkOrders() {
-      const q = encodeURIComponent($("smdQuery").value.trim());
-      const estado = encodeURIComponent($("smdEstado").value);
-      const desde = $("smdFechaDesde").value;
-      const hasta = $("smdFechaHasta").value;
-
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      if (estado) params.set("estado", estado);
-      if (desde) params.set("desde", desde);
-      if (hasta) params.set("hasta", hasta);
-
-      showLoading("Consultando WO…");
-      try {
-        const url = `${PLAN_SMD_API.workOrders}?${params.toString()}`;
-        const data = await fetchJSON(url);
-        renderWorkOrders(Array.isArray(data) ? data : (data.rows||[]));
-      } catch (e) { console.error(e); alertMsg("No fue posible cargar las WO."); }
-      finally { hideLoading(); }
-    }
-
-    // ===============================
-    // COLA de pendientes
-    // ===============================
-    function addToQueue(wo) {
-      if (queue.find(x => x.id === wo.id)) { alertMsg("Esta WO ya está en la cola."); return; }
-      queue.push(wo);
-      renderQueue();
-    }
-    function removeFromQueue(id) {
-      queue = queue.filter(x => x.id !== id);
-      renderQueue();
-    }
-    function renderQueue() {
-      const tbody = $("smdQueueTbody");
-      tbody.innerHTML = "";
-      if (!queue.length) {
-        tbody.innerHTML = `<tr><td class="smd-no-data" colspan="6">Agrega WO con el botón ➕ de la tabla superior.</td></tr>`;
-      }
-      queue.forEach(wo => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><button class="smd-btn warn" type="button">✖</button></td>
-          <td>${wo.codigo_wo||'—'}</td>
-          <td>${(wo.nombre_modelo? wo.nombre_modelo+" · ":"")+(wo.modelo||'')}</td>
-          <td>${wo.codigo_modelo||'—'}</td>
-          <td>${num(wo.cantidad_planeada||0)}</td>
-          <td>${fmtDate(wo.fecha_operacion)}</td>
-        `;
-        tr.querySelector("button").addEventListener("click", () => removeFromQueue(wo.id));
-        tbody.appendChild(tr);
-      });
-      $("smdQueueCounter").textContent = `${queue.length} WO en cola`;
-    }
-
-    // ===============================
-    // GENERADOR DE PLAN (usa inventario por modelo)
-    // ===============================
-    function newLote(prefix = "L") {
-      const d = new Date();
-      const pad = (n) => String(n).padStart(2,'0');
-      const base = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-      newLote.seq = (newLote.seq||0)+1; // Secuencia simple en memoria
-      return `${prefix}${base}-${String(newLote.seq).padStart(3,'0')}`;
-    }
-
-    function planRowFrom(wo, invRow) {
-      const qty = num(wo.cantidad);
-      const fisico = num(invRow.stock_total);
-      const diferencia = 0; // diferencia inicial = 0 (VACÍA para que el usuario escriba)
-      const falta = Math.max(0, qty - (fisico + diferencia)); // falta = qty - (fisico + diferencia)
-      const pct = qty ? Math.min(100, Math.round((Math.min(qty, fisico + diferencia) / qty) * 100)) : 0;
-      
-      return {
-        wo: wo.wo,
-        ct: wo.ct || '',
-        uph: wo.uph || '',
-        nparte: invRow.nparte || '',
-        descripcion: invRow.descripcion || '',
-        zona: invRow.zona || '',
-        clasificacion: invRow.clasificacion || '',
-        qty,
-        fisico, // físico original desde DB (NO se modifica nunca)
-        falta,
-        diferencia, // diferencia manual que el usuario escribirá
-        pct
-      };
-    }
-
-    // Nueva: renglón agregado SOLO por faltantes (agrega 1 por WO)
-    function planRowFromFaltante(wo, faltante, totalFisico) {
-      const qty = num(faltante);
-      const fisico = num(totalFisico || 0);
-      const diferencia = fisico - num(wo.cantidad_planeada || 0); // diferencia basada en cantidad original de WO
-      return {
-        linea: 'SMT A',
-        lote: newLote('P'),
-        nparte: wo.codigo_modelo || wo.modelo || '-',
-        modelo: wo.modelo || '-',
-        tipo: 'Main',
-        turno: 'DIA',
-        ct: '',
-        uph: '',
-        qty,            // lo que falta por producir
-        fisico,         // inventario real disponible
-        falta: qty,     // falta = qty
-        diferencia,     // diferencia entre inventario disponible y cantidad original de WO
-        pct: qty ? 0 : 100,
-        comentarios: 'Generado por faltantes'
-      };
-    }
-
-    // Calcula faltante por WO sumando todo el inventario del modelo
-    function computeShortage(wo, invRows) {
-      const planQty = num(wo.cantidad_planeada || 0);
-      const totalFisico = (invRows||[]).reduce((acc, r) => acc + num(r.stock_total||0), 0);
-      const faltante = Math.max(0, planQty - totalFisico);
-      return { planQty, totalFisico, faltante };
-    }
-
-    function renderPlan() {
-      const tbody = $("smdPlanTbody");
-      tbody.innerHTML = "";
-      if (!plan.length) {
-        tbody.innerHTML = `<tr><td class=\"smd-no-data\" colspan=\"14\">Genera el plan desde la lista de pendientes (izquierda).</td></tr>`;
-      }
-
-      let totalQty = 0, totalFalta = 0;
-      plan.forEach((r, idx) => {
-        totalQty += num(r.qty); totalFalta += num(r.falta);
-        const tr = document.createElement('tr');
-        const diferencia = num(r.diferencia || 0);
-        const diferenciaValue = diferencia === 0 ? '' : diferencia; // Si es 0, campo vacío
-        const diferenciaStyle = diferencia > 0 ? 'color: #27ae60; font-weight: bold;' : (diferencia < 0 ? 'color: #e74c3c; font-weight: bold;' : '');
-        
-        tr.innerHTML = `
-          <td>
-            <select class="smd-inline-select" data-field="linea" data-idx="${idx}">
-              <option>SMT A</option><option>SMT B</option><option>SMT C</option><option>SMT D</option>
-            </select>
-          </td>
-          <td><input class="smd-inline-input" data-field="lote" data-idx="${idx}" value="${r.lote}"></td>
-          <td>${r.nparte}</td>
-          <td>${r.modelo}</td>
-          <td>
-            <select class="smd-inline-select" data-field="tipo" data-idx="${idx}">
-              <option ${r.tipo==='Main'?'selected':''}>Main</option>
-              <option ${r.tipo==='Display'?'selected':''}>Display</option>
-            </select>
-          </td>
-          <td>
-            <select class="smd-inline-select" data-field="turno" data-idx="${idx}">
-              <option ${r.turno==='DIA'?'selected':''}>DIA</option>
-              <option ${r.turno==='NOCHE'?'selected':''}>NOCHE</option>
-            </select>
-          </td>
-          <td><input class="smd-inline-input" data-field="ct" data-idx="${idx}" value="${r.ct}"></td>
-          <td><input class="smd-inline-input" data-field="uph" data-idx="${idx}" value="${r.uph}"></td>
-          <td><input class="smd-inline-input" data-field="qty" data-idx="${idx}" value="${r.qty}"></td>
-          <td>${r.fisico.toLocaleString()}</td>
-          <td>${r.falta.toLocaleString()}</td>
-          <td><input class="smd-inline-input" data-field="diferencia" data-idx="${idx}" value="${diferenciaValue}" style="${diferenciaStyle}" placeholder="±0"></td>
-          <td>${r.pct}%</td>
-          <td><input class="smd-inline-input smd-inline-wide" data-field="comentarios" data-idx="${idx}" value="${r.comentarios}"></td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      $("smdPlanCounter").textContent = `${plan.length} renglone${plan.length===1?'':'s'}`;
-      $("smdChipPlanes").textContent = `WO en plan: ${queue.length}`;
-      $("smdChipTotalQty").textContent = `Qty total a producir: ${totalQty.toLocaleString()}`;
-      $("smdChipTotalFaltante").textContent = `Faltante total: ${totalFalta.toLocaleString()}`;
-
-      // listeners inline
-      tbody.querySelectorAll('input, select').forEach(el => {
-        el.addEventListener('change', onPlanCellChange);
-      });
-    }
-
-    function onPlanCellChange(ev) {
-      const el = ev.currentTarget; const idx = Number(el.dataset.idx); const field = el.dataset.field; if (Number.isNaN(idx) || !field) return;
-      const val = (el.tagName === 'SELECT') ? el.value : (el.type === 'number' ? Number(el.value) : el.value);
-      plan[idx][field] = (field==='qty' || field==='diferencia') ? num(val) : val;
-      
-      if (field==='qty') { 
-        // Recalcula falta y % cuando cambia qty (físico y diferencia se mantienen)
-        const qty = num(plan[idx].qty), fisico = num(plan[idx].fisico), diferencia = num(plan[idx].diferencia) || 0;
-        const fisicoAjustado = fisico + diferencia; // físico real = físico original + diferencia
-        plan[idx].falta = Math.max(0, qty - fisicoAjustado);
-        plan[idx].pct = qty ? Math.min(100, Math.round((Math.min(qty, fisicoAjustado)/qty)*100)) : 0;
-      } else if (field==='diferencia') {
-        // Recalcula falta y % cuando cambia diferencia (físico NO se modifica)
-        const qty = num(plan[idx].qty), fisico = num(plan[idx].fisico), diferencia = num(plan[idx].diferencia) || 0;
-        const fisicoAjustado = fisico + diferencia; // físico real = físico original + diferencia
-        plan[idx].falta = Math.max(0, qty - fisicoAjustado);
-        plan[idx].pct = qty ? Math.min(100, Math.round((Math.min(qty, fisicoAjustado)/qty)*100)) : 0;
-      }
-      renderPlan();
-    }
-
-    async function generatePlanFromQueue() {
-      if (!queue.length) { alertMsg('Agrega WO a la cola primero.'); return; }
-      showLoading('Generando plan con inventario…');
-      try {
-        const rows = [];
-        const onlyShortage = document.getElementById('smdOnlyShortage').checked;
-        for (const wo of queue) {
-          const inv = await fetchJSON(PLAN_SMD_API.inventarioPorModelo(wo.codigo_modelo||wo.modelo||''));
-          const invRows = Array.isArray(inv) ? inv : (inv.rows||[]);
-
-          if (onlyShortage) {
-            const { faltante, totalFisico } = computeShortage(wo, invRows);
-            if (faltante > 0) rows.push(planRowFromFaltante(wo, faltante, totalFisico));
-          } else {
-            if (!invRows.length) {
-              rows.push(planRowFrom(wo, { nparte: wo.codigo_modelo || (wo.modelo||'') , stock_total: 0 }));
-            } else {
-              invRows.forEach(ir => rows.push(planRowFrom(wo, ir)));
-            }
-          }
-        }
-        plan = rows;
-        renderPlan();
-      } catch (e) { console.error(e); alertMsg('No fue posible generar el plan.'); }
-      finally { hideLoading(); }
-    }
-
-    // ===============================
-    // CSV & PERSISTENCIA
-    // ===============================
-    function toCSVCell(value) {
-      const s = String(value ?? '');
-      // Duplicar comillas y envolver cuando sea necesario
-      const needsQuotes = /[",\n\r]/.test(s);
-      const escaped = s.replace(/"/g, '""');
-      return needsQuotes ? `"${escaped}"` : escaped;
-    }
-
-    function planToCSV() {
-      if (!plan.length) { alertMsg('No hay renglones para exportar.'); return; }
-      const headers = ["linea","lote","nparte","modelo","tipo","turno","ct","uph","qty","fisico","falta","diferencia","pct","comentarios"];
-      const lines = [headers.join(',')];
-      plan.forEach(r => {
-        const row = headers.map(h => toCSVCell(r[h]));
-        lines.push(row.join(','));
-      });
-      const blob = new Blob([lines.join('\r\n')], {type:'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'plan_smd.csv'; a.click(); URL.revokeObjectURL(url);
-    }
-
-    async function savePlan() {
-      if (!plan.length) { alertMsg('No hay renglones para guardar.'); return; }
-      showLoading('Guardando plan…');
-      try {
-        const res = await fetch(PLAN_SMD_API.guardarPlan, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(plan)});
-        if (!res.ok) throw new Error('HTTP '+res.status);
-        alertMsg('Plan guardado correctamente.');
-      } catch (e) { console.error(e); alertMsg('Error guardando el plan.'); }
-      finally { hideLoading(); }
-    }
-
-    // ===============================
-    // EVENTOS
-    // ===============================
-    $("smdBtnConsultar").addEventListener("click", loadWorkOrders);
-    $("smdBtnLimpiar").addEventListener("click", () => {
-      $("smdQuery").value = ""; $("smdEstado").value = ""; $("smdFechaDesde").value = ""; $("smdFechaHasta").value = "";
-      $("smdWoTbody").innerHTML = `<tr><td class=\"smd-no-data\" colspan=\"8\">Usa los filtros y pulsa <b>Consultar WO</b>.</td></tr>`;
-      $("smdWoCounter").textContent = `0 resultados`;
-      queue = []; renderQueue(); plan = []; renderPlan();
-    });
-    $("smdQuery").addEventListener("keydown", (ev) => { if (ev.key === "Enter") loadWorkOrders(); });
-    $("smdBtnGenerarPlan").addEventListener("click", generatePlanFromQueue);
-    $("smdBtnExportarCSV").addEventListener("click", planToCSV);
-    $("smdBtnGuardarPlan").addEventListener("click", savePlan);
-
-    // ===============================
-    // TESTS (unitarios ligeros; no modifican la UI ni llaman red)
-    (function runUnitTests(){
-      const results = [];
-      function expect(name, cond){ if(!cond){ console.error('❌', name); results.push(false);} else { console.log('✅', name);} }
-
-      // toCSVCell
-      expect('CSV: sin comillas', toCSVCell('ABC') === 'ABC');
-      expect('CSV: duplica comillas', toCSVCell('A"B') === '"A""B"');
-      expect('CSV: envuelve con coma', toCSVCell('A,B') === '"A,B"');
-
-      // newLote formato
-      const l1 = newLote('T'); const l2 = newLote('T');
-      expect('Lote prefijo', l1.startsWith('T'));
-      expect('Lote secuencia', l1 !== l2);
-
-      // planRowFrom cálculo (modo por nparte)
-      const wo = {cantidad_planeada: 100, modelo:'M1', codigo_modelo:'C1'};
-      const inv = {nparte:'N1', stock_total: 60};
-      const pr = planRowFrom(wo, inv);
-      expect('planRowFrom.qty', pr.qty === 100);
-      expect('planRowFrom.fisico', pr.fisico === 60);
-      expect('planRowFrom.falta', pr.falta === 40);
-      expect('planRowFrom.diferencia', pr.diferencia === -40); // 60 - 100 = -40 (déficit)
-      expect('planRowFrom.pct', pr.pct === 60);
-
-      // planRowFromFaltante (solo faltantes)
-      const prF = planRowFromFaltante(wo, 40, 60);
-      expect('planRowFromFaltante.qty=faltante', prF.qty === 40 && prF.falta === 40 && prF.fisico === 60 && prF.diferencia === -40 && prF.pct === 0);
-
-      // computeShortage tests (escenarios reales)
-      // Caso: nos piden 800 de 9301 y tenemos 200 => hay que hacer 600
-      const wo9301 = { cantidad_planeada: 800, modelo: '9301', codigo_modelo: '9301' };
-      const inv9301 = [{ nparte: '9301-A', stock_total: 120 }, { nparte: '9301-B', stock_total: 80 }]; // total 200
-      const cs1 = computeShortage(wo9301, inv9301);
-      expect('computeShortage 9301 => 600', cs1.faltante === 600);
-
-      // Caso: inventario >= plan => faltante 0
-      const cs2 = computeShortage({ cantidad_planeada: 100, modelo: 'X' }, [{stock_total: 50},{stock_total:60}]);
-      expect('computeShortage sin faltante', cs2.faltante === 0);
-
-      if(results.length){ console.warn('Algunas pruebas fallaron'); }
-    })();
-
-    // ===============================
-    // BACKEND DE REFERENCIA (Flask) – resumido
-    // ===============================
-    /*
-    from flask import Flask, request, jsonify
-    import pymysql
-    app = Flask(__name__)
-    def db():
-      return pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor)
-
-    @app.get('/api/work-orders')
-    def api_work_orders():
-      q = request.args.get('q','').strip(); estado=request.args.get('estado','').strip(); desde=request.args.get('desde'); hasta=request.args.get('hasta')
-      sql=[ 'SELECT id,codigo_wo,codigo_po,modelo,cantidad_planeada,fecha_operacion,estado,nombre_modelo,codigo_modelo FROM work_orders WHERE 1=1' ]; params=[]
-      if q: sql.append('AND (codigo_wo LIKE %s OR codigo_po LIKE %s OR modelo LIKE %s OR nombre_modelo LIKE %s OR codigo_modelo LIKE %s)'); like=f'%{q}%'; params+=[like,like,like,like,like]
-      if estado: sql.append('AND estado=%s'); params.append(estado)
-      if desde: sql.append('AND fecha_operacion >= %s'); params.append(desde)
-      if hasta: sql.append('AND fecha_operacion <= %s'); params.append(hasta)
-      sql.append('ORDER BY fecha_operacion DESC, id DESC LIMIT 500')
-      with db().cursor() as c: c.execute(' '.join(sql), params); rows=c.fetchall(); return jsonify(rows)
-
-    @app.get('/api/inventario/modelo/<modelo>')
-    def api_inv_modelo(modelo):
-      with db().cursor() as c:
-        c.execute('''
-          SELECT modelo, nparte, stock_total, ubicaciones, ultima_entrada, ultima_salida, updated_at
-          FROM inv_resumen_modelo WHERE modelo=%s ORDER BY stock_total DESC, nparte ASC
-        ''', (modelo,))
-        rows=c.fetchall(); return jsonify(rows)
-
-    @app.post('/api/plan-smd')
-    def api_plan_guardar():
-      # Guarda el array de renglones (usa tu propia tabla plan_smd)
-      rows = request.get_json(force=True)
-      # TODO: validación + INSERT masivo
-      return jsonify({'ok': True, 'rows': len(rows)})
-    */
-  </script>
+  <!-- Plan SMD JavaScript Module -->
+  <script src="{{ url_for('static', filename='js/plan-smd-module.js') }}"></script>
 </body>
 </html>

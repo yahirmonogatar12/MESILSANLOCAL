@@ -1,23 +1,14 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consultar el numero de lote</title>
+<!-- TEMPLATE AJAX: Control de operacion de linea SMT -->
+<!-- SUFIJO ÚNICO: -Control de operacion de linea SMT -->
+<!-- CONTENEDOR: control-operacion-linea-smt-unique-container -->
+
+<div id="control-operacion-linea-smt-unique-container" class="control-operacion-linea-smt-container">
     <style>
         /* Reset y estilos base */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #2B2D3E;
-            color: #E0E0E0;
-            font-size: 12px;
-            overflow-x: hidden;
         }
 
         /* Estilos de scrollbar minimalista */
@@ -41,11 +32,21 @@
             background: #6B6D7C;
         }
 
+        /* Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #5A5C6B #2B2D3E;
+        }
+
         /* Contenedor principal */
-        .main-container {
+        .control-operacion-linea-smt-container {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #2B2D3E;
+            color: #E0E0E0;
+            font-size: 12px;
+            overflow-x: hidden;
             width: 100%;
             min-height: 100vh;
-            background-color: #2B2D3E;
             padding: 5px;
         }
 
@@ -415,218 +416,259 @@
             }
         }
     </style>
-</head>
-<body>
-    <div class="main-container">
-        <!-- Barra de título -->
-        <div class="title-bar">Consultar el numero de lote</div>
-        
-        <!-- Formulario superior -->
-        <div class="form-container">
-            <label class="form-label">Numero de lote</label>
-            <input type="text" id="numeroLote" class="form-input" style="flex: 1;">
-            <label class="form-label">Informacion de numero de lote</label>
-            <input type="text" id="infoNumeroLote" class="form-input" style="flex: 2;" readonly>
-            <button id="btnIniciar" class="btn-primary btn-iniciar">Iniciar(reiniciar)</button>
-            <button id="btnFin" class="btn-primary btn-fin">Fin</button>
-            <button id="btnPausa" class="btn-primary btn-pausa">Pausa</button>
+
+    <!-- Barra de título -->
+    <div class="title-bar">Consultar el numero de lote</div>
+    
+    <!-- Formulario superior -->
+    <div class="form-container">
+        <label class="form-label">Numero de lote</label>
+        <input type="text" id="numeroLote-Control de operacion de linea SMT" class="form-input" style="flex: 1;">
+        <label class="form-label">Informacion de numero de lote</label>
+        <input type="text" id="infoNumeroLote-Control de operacion de linea SMT" class="form-input" style="flex: 2;" readonly>
+        <button id="btnIniciar-Control de operacion de linea SMT" class="btn-primary btn-iniciar">Iniciar(reiniciar)</button>
+        <button id="btnFin-Control de operacion de linea SMT" class="btn-primary btn-fin">Fin</button>
+        <button id="btnPausa-Control de operacion de linea SMT" class="btn-primary btn-pausa">Pausa</button>
+    </div>
+
+    <!-- Barra de herramientas de consulta -->
+    <div class="query-toolbar">
+        <label class="form-label">Fecha de prod.</label>
+        <select id="fechaDesde-Control de operacion de linea SMT" class="dropdown">
+            <option>28/07/2025</option>
+        </select>
+        <span class="separator">~</span>
+        <select id="fechaHasta-Control de operacion de linea SMT" class="dropdown">
+            <option>04/08/2025</option>
+        </select>
+        <label class="form-label">Linea</label>
+        <select id="linea-Control de operacion de linea SMT" class="dropdown">
+            <option>Todos</option>
+        </select>
+        <button id="btnCloseLine-Control de operacion de linea SMT" class="btn-close-line" title="Cerrar">×</button>
+        <div style="margin-left: auto; display: flex; gap: 10px;">
+            <button id="btnConsultar-Control de operacion de linea SMT" class="btn-primary btn-consultar">Consultar</button>
+            <button id="btnExportarMain-Control de operacion de linea SMT" class="btn-primary btn-exportar">Exportar el excel</button>
+        </div>
+    </div>
+
+    <!-- Tabla principal -->
+    <div class="main-table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 30px;"></th>
+                    <th>Línea</th>
+                    <th>Fecha de producci...</th>
+                    <th>Numero de lote</th>
+                    <th>Estado</th>
+                    <th>Modelo</th>
+                    <th>Proceso</th>
+                    <th>Side</th>
+                    <th>Xout</th>
+                    <th>Cantidad planeada</th>
+                    <th>Cantidad de prod...</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="11">No hay dato registrado</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Grid de secciones -->
+    <div class="sections-grid">
+        <!-- Lista de BOM -->
+        <div class="section-panel">
+            <div class="section-header">Lista de BOM</div>
+            <div class="section-toolbar">
+                <button id="btnExportarBOM-Control de operacion de linea SMT" class="btn-primary btn-exportar">Exportar el excel</button>
+                <button id="btnVerifPass-Control de operacion de linea SMT" class="btn-primary btn-verif">Verif. Pass</button>
+                <button id="btnRegistroMat-Control de operacion de linea SMT" class="btn-primary btn-registro">Registro de mat. sustituto</button>
+                <button id="btnActivarComb-Control de operacion de linea SMT" class="btn-primary btn-activar">Activar la combinacion</button>
+            </div>
+            <div class="section-table-container">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"><input type="checkbox" class="table-checkbox"></th>
+                            <th>Numer...</th>
+                            <th>Numer...</th>
+                            <th>Codigo...</th>
+                            <th>Numer...</th>
+                            <th>Resulta...</th>
+                            <th>Resulta...</th>
+                            <th>Verifica...</th>
+                            <th>Activar...</th>
+                            <th>Uso de...</th>
+                            <th>Tiempo...</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="11">No hay dato registrado</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="section-footer">Total Rows : 0</div>
         </div>
 
-        <!-- Barra de herramientas de consulta -->
-        <div class="query-toolbar">
-            <label class="form-label">Fecha de prod.</label>
-            <select id="fechaDesde" class="dropdown">
-                <option>28/07/2025</option>
-            </select>
-            <span class="separator">~</span>
-            <select id="fechaHasta" class="dropdown">
-                <option>04/08/2025</option>
-            </select>
-            <label class="form-label">Linea</label>
-            <select id="linea" class="dropdown">
-                <option>Todos</option>
-            </select>
-            <button id="btnCloseLine" class="btn-close-line" title="Cerrar">×</button>
-            <div style="margin-left: auto; display: flex; gap: 10px;">
-                <button id="btnConsultar" class="btn-primary btn-consultar">Consultar</button>
-                <button id="btnExportarMain" class="btn-primary btn-exportar">Exportar el excel</button>
+        <!-- Historial de cambio de material -->
+        <div class="section-panel">
+            <div class="section-header">Historial de cambio de material</div>
+            <div class="section-toolbar">
+                <button id="btnExportarHistorial-Control de operacion de linea SMT" class="btn-primary btn-exportar" style="margin-left: auto;">Exportar el excel</button>
+            </div>
+            <div class="section-table-container">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th>Numero de...</th>
+                            <th>Numero de...</th>
+                            <th>Fecha de re...</th>
+                            <th>Codigo de...</th>
+                            <th>Cantidad re...</th>
+                            <th>Cantidad ac...</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6">No hay dato registrado</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="section-footer">Total Rows : 0</div>
+        </div>
+    </div>
+
+    <!-- Grid de secciones inferiores -->
+    <div class="bottom-sections-grid">
+        <!-- Historial de soldadura -->
+        <div class="section-panel">
+            <div class="section-header">Historial de soldadura</div>
+            <div class="section-toolbar">
+                <button id="btnRegistrarSold-Control de operacion de linea SMT" class="btn-primary btn-registrar">Registrar</button>
+                <button id="btnExportarSold-Control de operacion de linea SMT" class="btn-primary btn-exportar">Exportar el excel</button>
+            </div>
+            <div class="section-table-container">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th>fecha y...</th>
+                            <th>S/N de s...</th>
+                            <th>Tiempo...</th>
+                            <th>Fecha de...</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5">No hay dato registrado</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Tabla principal -->
-        <div class="main-table-container">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th style="width: 30px;"></th>
-                        <th>Línea</th>
-                        <th>Fecha de producci...</th>
-                        <th>Numero de lote</th>
-                        <th>Estado</th>
-                        <th>Modelo</th>
-                        <th>Proceso</th>
-                        <th>Side</th>
-                        <th>Xout</th>
-                        <th>Cantidad planeada</th>
-                        <th>Cantidad de prod...</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td colspan="11">No hay dato registrado</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Grid de secciones -->
-        <div class="sections-grid">
-            <!-- Lista de BOM -->
-            <div class="section-panel">
-                <div class="section-header">Lista de BOM</div>
-                <div class="section-toolbar">
-                    <button id="btnExportarBOM" class="btn-primary btn-exportar">Exportar el excel</button>
-                    <button id="btnVerifPass" class="btn-primary btn-verif">Verif. Pass</button>
-                    <button id="btnRegistroMat" class="btn-primary btn-registro">Registro de mat. sustituto</button>
-                    <button id="btnActivarComb" class="btn-primary btn-activar">Activar la combinacion</button>
-                </div>
-                <div class="section-table-container">
-                    <table class="section-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 30px;"><input type="checkbox" class="table-checkbox"></th>
-                                <th>Numer...</th>
-                                <th>Numer...</th>
-                                <th>Codigo...</th>
-                                <th>Numer...</th>
-                                <th>Resulta...</th>
-                                <th>Resulta...</th>
-                                <th>Verifica...</th>
-                                <th>Activar...</th>
-                                <th>Uso de...</th>
-                                <th>Tiempo...</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="11">No hay dato registrado</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="section-footer">Total Rows : 0</div>
+        <!-- Historial de metal mask -->
+        <div class="section-panel">
+            <div class="section-header">Historial de metal mask</div>
+            <div class="section-toolbar">
+                <button id="btnRegistrarMask-Control de operacion de linea SMT" class="btn-primary btn-registrar">Registrar</button>
+                <button id="btnExportarMask-Control de operacion de linea SMT" class="btn-primary btn-exportar">Exportar el excel</button>
             </div>
-
-            <!-- Historial de cambio de material -->
-            <div class="section-panel">
-                <div class="section-header">Historial de cambio de material</div>
-                <div class="section-toolbar">
-                    <button id="btnExportarHistorial" class="btn-primary btn-exportar" style="margin-left: auto;">Exportar el excel</button>
-                </div>
-                <div class="section-table-container">
-                    <table class="section-table">
-                        <thead>
-                            <tr>
-                                <th>Numero de...</th>
-                                <th>Numero de...</th>
-                                <th>Fecha de re...</th>
-                                <th>Codigo de...</th>
-                                <th>Cantidad re...</th>
-                                <th>Cantidad ac...</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="6">No hay dato registrado</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="section-footer">Total Rows : 0</div>
+            <div class="section-table-container">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th>fecha y hor...</th>
+                            <th>Numero de...</th>
+                            <th>Cantidad di...</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="3">No hay dato registrado</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Grid de secciones inferiores -->
-        <div class="bottom-sections-grid">
-            <!-- Historial de soldadura -->
-            <div class="section-panel">
-                <div class="section-header">Historial de soldadura</div>
-                <div class="section-toolbar">
-                    <button id="btnRegistrarSold" class="btn-primary btn-registrar">Registrar</button>
-                    <button id="btnExportarSold" class="btn-primary btn-exportar">Exportar el excel</button>
-                </div>
-                <div class="section-table-container">
-                    <table class="section-table">
-                        <thead>
-                            <tr>
-                                <th>fecha y...</th>
-                                <th>S/N de s...</th>
-                                <th>Tiempo...</th>
-                                <th>Fecha de...</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="5">No hay dato registrado</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+        <!-- Historial de squeegee -->
+        <div class="section-panel">
+            <div class="section-header">Historial de squeegee</div>
+            <div class="section-toolbar">
+                <button id="btnRegistrarSqueegee-Control de operacion de linea SMT" class="btn-primary btn-registrar">Registrar</button>
+                <button id="btnExportarSqueegee-Control de operacion de linea SMT" class="btn-primary btn-exportar">Exportar el excel</button>
             </div>
-
-            <!-- Historial de metal mask -->
-            <div class="section-panel">
-                <div class="section-header">Historial de metal mask</div>
-                <div class="section-toolbar">
-                    <button id="btnRegistrarMask" class="btn-primary btn-registrar">Registrar</button>
-                    <button id="btnExportarMask" class="btn-primary btn-exportar">Exportar el excel</button>
-                </div>
-                <div class="section-table-container">
-                    <table class="section-table">
-                        <thead>
-                            <tr>
-                                <th>fecha y hor...</th>
-                                <th>Numero de...</th>
-                                <th>Cantidad di...</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="3">No hay dato registrado</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Historial de squeegee -->
-            <div class="section-panel">
-                <div class="section-header">Historial de squeegee</div>
-                <div class="section-toolbar">
-                    <button id="btnRegistrarSqueegee" class="btn-primary btn-registrar">Registrar</button>
-                    <button id="btnExportarSqueegee" class="btn-primary btn-exportar">Exportar el excel</button>
-                </div>
-                <div class="section-table-container">
-                    <table class="section-table">
-                        <thead>
-                            <tr>
-                                <th>fecha y hora d...</th>
-                                <th>Numero de co...</th>
-                                <th>Cantidad disp...</th>
-                                <th>Numero de co...</th>
-                                <th>Cantidad disp...</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colspan="5">No hay dato registrado</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="section-table-container">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th>fecha y hora d...</th>
+                            <th>Numero de co...</th>
+                            <th>Cantidad disp...</th>
+                            <th>Numero de co...</th>
+                            <th>Cantidad disp...</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5">No hay dato registrado</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-</body>
-</html>
+
+    <script>
+        // Auto-inicialización del módulo Control de operacion de linea SMT
+        (function() {
+            console.log('🚀 Inicializando módulo Control de operacion de linea SMT...');
+            
+            // Función de inicialización específica del módulo
+            window.inicializarControlOperacionLineaSMT = function() {
+                console.log('✅ Control de operacion de linea SMT módulo inicializado');
+                
+                // Aquí irá la lógica específica del módulo
+                // Por ejemplo: event listeners, configuración inicial, etc.
+                
+                // Event listeners para botones específicos
+                const btnIniciar = document.getElementById('btnIniciar-Control de operacion de linea SMT');
+                const btnFin = document.getElementById('btnFin-Control de operacion de linea SMT');
+                const btnPausa = document.getElementById('btnPausa-Control de operacion de linea SMT');
+                
+                if (btnIniciar) {
+                    btnIniciar.addEventListener('click', function() {
+                        console.log('Iniciar/Reiniciar clicked');
+                    });
+                }
+                
+                if (btnFin) {
+                    btnFin.addEventListener('click', function() {
+                        console.log('Fin clicked');
+                    });
+                }
+                
+                if (btnPausa) {
+                    btnPausa.addEventListener('click', function() {
+                        console.log('Pausa clicked');
+                    });
+                }
+            };
+            
+            // Auto-ejecutar la inicialización
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', window.inicializarControlOperacionLineaSMT);
+            } else {
+                window.inicializarControlOperacionLineaSMT();
+            }
+        })();
+    </script>
+</div>

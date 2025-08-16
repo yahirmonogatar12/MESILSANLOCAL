@@ -33,7 +33,7 @@ from .admin_api import admin_bp
 from .po_wo_models import (
     crear_tablas_po_wo, validar_codigo_po, validar_codigo_wo,
     generar_codigo_po, generar_codigo_wo, verificar_po_existe, verificar_wo_existe,
-    obtener_po_por_codigo, obtener_wo_por_codigo, listar_pos_por_estado, listar_wos_por_po
+    obtener_po_por_codigo, obtener_wo_por_codigo, listar_pos_por_estado, listar_pos_con_filtros, listar_wos_por_po, listar_wos_con_filtros
 )
 from .smd_inventory_api import register_smd_inventory_routes
 
@@ -1836,7 +1836,9 @@ def control_embarque_ajax():
 def crear_plan_produccion():
     """Cargar la página de Crear Plan de Producción"""
     try:
-        return render_template('Control de produccion/Crear plan de produccion.html')
+        from datetime import datetime
+        fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+        return render_template('Control de produccion/Crear plan de produccion.html', fecha_hoy=fecha_hoy)
     except Exception as e:
         print(f"Error al cargar Crear Plan de Producción: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -1862,7 +1864,7 @@ def crear_tabla_plan_smd():
         CREATE TABLE IF NOT EXISTS plan_smd (
             id INT AUTO_INCREMENT PRIMARY KEY,
             linea VARCHAR(32) NOT NULL,
-            lote VARCHAR(32) NOT NULL,
+            lote VARCHAR(32) NOT NULL COMMENT 'Código WO para trazabilidad',
             nparte VARCHAR(64) NOT NULL,
             modelo VARCHAR(64) NOT NULL,
             tipo VARCHAR(32) NOT NULL DEFAULT 'Main',
@@ -2007,7 +2009,7 @@ def api_plan_smd_guardar():
         if not data or not isinstance(data, list):
             return jsonify({'error': 'Se esperaba un arreglo de renglones'}), 400
         
-        usuario = session.get('username', 'sistema')
+        usuario = session.get('usuario', 'sistema')
         renglones_guardados = 0
         
         for renglon in data:
@@ -2222,7 +2224,7 @@ def api_generar_plan_smd():
         # 6. GUARDAR SI NO ES DRY_RUN
         if not dry_run and renglones_plan:
             try:
-                usuario = session.get('username', 'sistema')
+                usuario = session.get('usuario', 'sistema')
                 renglones_guardados = 0
                 
                 for renglon in renglones_plan:
@@ -6172,7 +6174,7 @@ def control_salida_validar_stock():
                 'especificacion': material['especificacion'],
                 'stock_actual': cantidad_actual,
                 'cantidad_requerida': cantidad_requerida,
-                'diferencia': cantidad_actual - cantidad_requerida,
+                'diferencia': 0,  # diferencia inicial = 0 (campo vacío para entrada manual)
                 'lote': material['numero_lote_material']
             }
         })
@@ -7134,7 +7136,7 @@ def crear_po():
         codigo_entrega = f"{codigo_po}-01"
         
         # Insertar nueva PO con todos los campos
-        usuario = session.get('username', 'sistema')
+        usuario = session.get('usuario', 'sistema')
         query = """
         INSERT INTO embarques (
             codigo_po, cliente, fecha_registro, estado, usuario_creacion,
@@ -7344,7 +7346,7 @@ def crear_wo():
             }), 409
         
         # Insertar nueva WO - Sin dependencia de PO
-        usuario = session.get('username', 'sistema')
+        usuario = session.get('usuario', 'sistema')
         
         # Obtener nombre_modelo y codigo_modelo del campo modelo (es el número de parte)
         modelo = data['modelo']
@@ -7436,7 +7438,7 @@ def actualizar_estado_wo(codigo_wo):
             }), 404
         
         # Actualizar estado
-        usuario = session.get('username', 'sistema')
+        usuario = session.get('usuario', 'sistema')
         query = "UPDATE work_orders SET estado = %s, modificador = %s WHERE codigo_wo = %s"
         execute_query(query, (nuevo_estado, usuario, codigo_wo))
         
@@ -7455,13 +7457,75 @@ def actualizar_estado_wo(codigo_wo):
             'error': f'Error actualizando estado de WO: {str(e)}'
         }), 500
 
+@app.route('/api/wo/actualizar-po', methods=['POST'])
+@login_requerido
+def actualizar_po_wo():
+    """Actualizar código PO de una WO"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+        
+        codigo_wo = data.get('codigo_wo', '').strip()
+        codigo_po = data.get('codigo_po', '').strip()
+        
+        if not codigo_wo:
+            return jsonify({
+                'success': False,
+                'error': 'Código de WO requerido'
+            }), 400
+        
+        # Si el código PO está vacío, usar 'SIN-PO'
+        if not codigo_po:
+            codigo_po = 'SIN-PO'
+        
+        # Verificar que la WO existe
+        query_check = "SELECT id FROM work_orders WHERE codigo_wo = %s"
+        wo_exists = execute_query(query_check, (codigo_wo,), fetch='one')
+        
+        if not wo_exists:
+            return jsonify({
+                'success': False,
+                'error': f'WO {codigo_wo} no encontrada'
+            }), 404
+        
+        # Actualizar PO
+        usuario = session.get('usuario', 'sistema')
+        query = "UPDATE work_orders SET codigo_po = %s, modificador = %s WHERE codigo_wo = %s"
+        execute_query(query, (codigo_po, usuario, codigo_wo))
+        
+        print(f"✅ PO actualizado: WO {codigo_wo} → PO {codigo_po}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'PO actualizado exitosamente',
+            'data': {
+                'codigo_wo': codigo_wo,
+                'codigo_po': codigo_po
+            }
+        })
+    
+    except Exception as e:
+        print(f"❌ Error actualizando PO WO: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/wo/listar', methods=['GET'])
 @login_requerido
 def listar_wos():
     """Listar todas las WOs con filtros opcionales"""
     try:
         codigo_po = request.args.get('codigo_po')
-        wos = listar_wos_por_po(codigo_po)
+        fecha_desde = request.args.get('fecha_desde')
+        fecha_hasta = request.args.get('fecha_hasta')
+        
+        wos = listar_wos_con_filtros(codigo_po, fecha_desde, fecha_hasta)
         
         return jsonify({
             'success': True,
@@ -7546,7 +7610,7 @@ def convertir_po_a_wo(codigo_po):
             }), 500
         
         # Insertar WO
-        usuario = session.get('username', 'sistema')
+        usuario = session.get('usuario', 'sistema')
         query = """
         INSERT INTO work_orders (codigo_wo, codigo_po, modelo, cantidad_planeada, 
                                fecha_operacion, modificador, estado, usuario_creacion)

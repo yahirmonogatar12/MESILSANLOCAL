@@ -4,65 +4,19 @@
 (function() {
     'use strict';
     
-    // Variables locales para el sistema PO → WO (ahora encapsuladas)
+    // Variables locales para el sistema PO (ahora encapsuladas)
     let posData = [];
-    let wosData = [];
-    let dataTablePOs = null;
-    let dataTableWOs = null;
 
     // Variables para control de peticiones AJAX
     let currentPORequest = null;
-    let currentWORequest = null;
     let currentModelosRequest = null;
 
     // Variable local para almacenar modelos BOM (encapsulada)
     let modelosBOM = [];
 
-    // Variable para tracking de última actualización
-    let lastRefresh = {
-        pos: 0,
-        wos: 0
-    };
-
-    // Variable para debounce de cambio de pestañas
-    let tabChangeTimeout = null;
-
 // ===========================================
 // FUNCIONES AUXILIARES PARA EL NUEVO ESTILO
 // ===========================================
-
-// Mostrar/ocultar pestañas
-function mostrarTab(tab) {
-    // Cancelar todas las peticiones AJAX pendientes
-    cancelarPeticionesAJAX();
-    
-    // Cancelar timeout de cambio anterior
-    if (tabChangeTimeout) {
-        clearTimeout(tabChangeTimeout);
-    }
-    
-    // Ocultar todas las pestañas
-    document.querySelectorAll('.embarque-tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    
-    // Remover clase active de todos los botones
-    document.querySelectorAll('.embarque-tab').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Mostrar la pestaña seleccionada
-    document.getElementById(`tab-${tab}`).classList.add('active');
-    
-    // Activar el botón correspondiente
-    event.target.classList.add('active');
-    
-    // Actualizar contador
-    actualizarContador();
-    
-    // Cargar datos con debounce para evitar múltiples peticiones
-    debouncedTabChange(tab);
-}
 
 // Función para cancelar peticiones AJAX pendientes
 function cancelarPeticionesAJAX() {
@@ -72,46 +26,11 @@ function cancelarPeticionesAJAX() {
         console.log('Petición PO cancelada');
     }
     
-    if (currentWORequest) {
-        currentWORequest.abort();
-        currentWORequest = null;
-        console.log('Petición WO cancelada');
-    }
-    
     if (currentModelosRequest) {
         currentModelosRequest.abort();
         currentModelosRequest = null;
         console.log('Petición modelos cancelada');
     }
-}
-
-// Función para cargar datos específicos de cada pestaña
-function cargarDatosTab(tab) {
-    switch(tab) {
-        case 'pos':
-            // Solo cargar POs si no hay datos o si han pasado más de 30 segundos
-            if (posData.length === 0 || shouldRefreshData('pos')) {
-                consultarPOs();
-            }
-            break;
-        case 'wos':
-            // Solo cargar WOs si no hay datos o si han pasado más de 30 segundos
-            if (wosData.length === 0 || shouldRefreshData('wos')) {
-                consultarWOs();
-            }
-            break;
-        default:
-            console.log(`Pestaña ${tab} cargada sin datos específicos`);
-    }
-}
-
-// Función para determinar si los datos necesitan actualización
-function shouldRefreshData(type) {
-    const now = Date.now();
-    const lastUpdate = lastRefresh[type] || 0;
-    const refreshInterval = 30000; // 30 segundos
-    
-    return (now - lastUpdate) > refreshInterval;
 }
 
 // Toggle para checkbox de seleccionar todo en POs
@@ -124,43 +43,33 @@ function toggleSelectAll() {
     });
 }
 
-// Toggle para checkbox de seleccionar todo en WOs
-function toggleSelectAllWO() {
-    const selectAll = document.getElementById('selectAllWO');
-    const checkboxes = document.querySelectorAll('#woTable tbody input[type="checkbox"]');
-    
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = selectAll.checked;
-    });
-}
-
 // Actualizar contador de resultados
 function actualizarContador() {
-    const tabActiva = document.querySelector('.embarque-tab.active').textContent;
-    let total = 0;
-    
-    if (tabActiva.includes('Purchase Orders')) {
-        total = posData.length;
-    } else if (tabActiva.includes('Work Orders')) {
-        total = wosData.length;
-    }
-    
+    // Como solo manejamos POs ahora, simplemente usamos posData.length
+    const total = posData.length;
     document.getElementById('embarqueResultCounter').textContent = `Total registros: ${total}`;
 }
 
 // Funciones de utilidad necesarias para consultarPOs
-function mostrarCargando(mensaje = 'Cargando...') {
-    Swal.fire({
-        title: mensaje,
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+function mostrarCargando(mensaje = 'Consultando Purchase Orders...') {
+    const modal = document.getElementById('smdLoadingModal');
+    const title = document.getElementById('smdLoadingTitle');
+    const text = document.getElementById('smdLoadingText');
+    
+    if (title) title.textContent = mensaje;
+    if (text) text.textContent = 'Procesando datos';
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+    }
 }
 
 function ocultarCargando() {
-    Swal.close();
+    const modal = document.getElementById('smdLoadingModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+    }
 }
 
 function mostrarToast(mensaje, tipo = 'info') {
@@ -189,9 +98,9 @@ function mostrarToast(mensaje, tipo = 'info') {
 // Configurar fechas por defecto
 function configurarFechasPorDefecto() {
     const hoy = new Date();
-    const fechaInicio = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 días atrás
     
-    document.getElementById('fechaDesde').value = fechaInicio.toISOString().split('T')[0];
+    // Configurar para consultar solo el día actual
+    document.getElementById('fechaDesde').value = hoy.toISOString().split('T')[0];
     document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
 }
 
@@ -208,8 +117,11 @@ async function consultarPOs() {
         
         mostrarCargando('Consultando Purchase Orders...');
         
+        // Temporalmente simplificar para debugging
         const estado = document.getElementById('estadoFilter')?.value || '';
         const url = `/api/po/listar${estado ? `?estado=${estado}` : ''}`;
+        
+        console.log('🔍 Consultando URL:', url);
         
         const response = await fetch(url, {
             method: 'GET',
@@ -228,10 +140,6 @@ async function consultarPOs() {
         if (result.success) {
             posData = result.data || [];
             actualizarTablaPOs();
-            mostrarToast(`${posData.length} Purchase Orders encontradas`, 'success');
-            
-            // Actualizar timestamp de última actualización
-            lastRefresh.pos = Date.now();
         } else {
             throw new Error(result.error || 'Error desconocido');
         }
@@ -249,61 +157,6 @@ async function consultarPOs() {
         actualizarTablaPOs();
     } finally {
         currentPORequest = null;
-        ocultarCargando();
-    }
-}
-
-// Consultar Work Orders
-async function consultarWOs() {
-    try {
-        // Cancelar petición anterior si existe
-        if (currentWORequest) {
-            currentWORequest.abort();
-        }
-        
-        // Crear nuevo AbortController
-        currentWORequest = new AbortController();
-        
-        mostrarCargando('Consultando Work Orders...');
-        
-        const response = await fetch('/api/wo/listar', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            signal: currentWORequest.signal  // Agregar señal de cancelación
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            wosData = result.data || [];
-            actualizarTablaWOs();
-            mostrarToast(`${wosData.length} Work Orders encontradas`, 'success');
-            
-            // Actualizar timestamp de última actualización
-            lastRefresh.wos = Date.now();
-        } else {
-            throw new Error(result.error || 'Error desconocido');
-        }
-        
-    } catch (error) {
-        // No mostrar error si la petición fue cancelada
-        if (error.name === 'AbortError') {
-            console.log('Petición WO cancelada por el usuario');
-            return;
-        }
-        
-        console.error('Error consultando WOs:', error);
-        mostrarToast('Error consultando Work Orders: ' + error.message, 'error');
-        wosData = [];
-        actualizarTablaWOs();
-    } finally {
-        currentWORequest = null;
         ocultarCargando();
     }
 }
@@ -342,45 +195,6 @@ function actualizarTablaPOs() {
             <td>${po.cantidad_entregada || 0}</td>
             <td>${po.usuario_creacion || 'Sistema'}</td>
             <td>${po.modificado ? formatearFecha(po.modificado) : 'N/A'}</td>
-        `;
-        tbody.appendChild(row);
-    });
-    
-    // Actualizar contador
-    actualizarContador();
-}
-
-// Actualizar tabla de WOs
-function actualizarTablaWOs() {
-    const tbody = document.querySelector('#woTable tbody');
-    if (!tbody) {
-        console.error('Elemento #woTable tbody no encontrado');
-        return;
-    }
-    
-    tbody.innerHTML = '';
-    
-    if (wosData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="no-data">No hay Work Orders registradas</td></tr>';
-        return;
-    }
-    
-    wosData.forEach(wo => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><input type="checkbox" class="checkbox-custom row-select" data-wo="${wo.codigo_wo}"></td>
-            <td>${wo.codigo_wo}</td>
-            <td>${wo.codigo_po}</td>
-            <td>${wo.modelo}</td>
-            <td>${wo.cantidad_planeada || wo.cantidad}</td>
-            <td>${formatearFecha(wo.fecha_operacion)}</td>
-            <td>${obtenerBadgeEstado(wo.estado, 'WO')}</td>
-            <td>${wo.modificador || wo.usuario_creacion}</td>
-            <td>
-                <button onclick="abrirModalCambiarEstado('${wo.codigo_wo}', 'WO')" class="embarque-btn" style="padding: 2px 4px; font-size: 8px;">
-                    ✏️ Estado
-                </button>
-            </td>
         `;
         tbody.appendChild(row);
     });
@@ -1512,17 +1326,6 @@ function seleccionarModeloPO(modelo) {
     console.log('Modelo seleccionado para PO:', modelo);
 }
 
-// Mejorar rendimiento: usar debounce para cambios rápidos de pestaña
-function debouncedTabChange(tab) {
-    if (tabChangeTimeout) {
-        clearTimeout(tabChangeTimeout);
-    }
-    
-    tabChangeTimeout = setTimeout(() => {
-        cargarDatosTab(tab);
-    }, 300); // Esperar 300ms antes de cargar datos
-}
-
 // Event listeners para cerrar dropdowns cuando se hace clic fuera
 document.addEventListener('click', function(event) {
     const embarqueSearchContainer = document.querySelector('.embarque-search-container');
@@ -1553,24 +1356,18 @@ window.addEventListener('pagehide', function() {
     cancelarPeticionesAJAX();
 });
 
-// Hacer todas las funciones disponibles globalmente
-window.initControlEmbarque = initControlEmbarque;
-window.mostrarDropdownWO = mostrarDropdownWO;
-window.filtrarModelosWO = filtrarModelosWO;
-window.seleccionarModeloWO = seleccionarModeloWO;
-window.mostrarDropdownPO = mostrarDropdownPO;
-window.filtrarModelosPO = filtrarModelosPO;
-window.seleccionarModeloPO = seleccionarModeloPO;
-window.abrirModalCrearPO = abrirModalCrearPO;
-window.abrirModalCrearWO = abrirModalCrearWO;
-window.crearPO = crearPO;
-window.mostrarTab = mostrarTab;
+// Hacer todas las funciones disponibles globalmente (solo las necesarias)
 window.toggleSelectAll = toggleSelectAll;
-window.toggleSelectAllWO = toggleSelectAllWO;
-window.cancelarPeticionesAJAX = cancelarPeticionesAJAX;
 window.consultarPOs = consultarPOs;
-window.consultarWOs = consultarWOs;
+window.exportarDatos = exportarDatos;
+window.abrirModalCrearPO = abrirModalCrearPO;
+window.filtrarModelosPO = filtrarModelosPO;
+window.mostrarDropdownPO = mostrarDropdownPO;
+window.seleccionarModeloPO = seleccionarModeloPO;
+window.crearPO = crearPO;
+window.convertirPOaWO = convertirPOaWO;
+window.actualizarEstado = actualizarEstado;
 
-console.log('Control de embarque - Sistema de cancelación AJAX inicializado');
+console.log('Control de embarque - Sistema PO inicializado');
 
 })(); // Fin del IIFE - Cierre del módulo encapsulado

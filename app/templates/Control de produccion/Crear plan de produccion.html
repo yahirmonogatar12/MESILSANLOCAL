@@ -538,6 +538,76 @@
             transform: scale(1.1);
         }
 
+        /* Estilos para edición de PO */
+        .po-cell {
+            position: relative;
+        }
+
+        .po-edit {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            border: 1px solid #3498db;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-size: 11px;
+            width: 100px;
+        }
+
+        .acciones-cell {
+            white-space: nowrap;
+        }
+
+        .btn-edit-po,
+        .btn-save-po,
+        .btn-cancel-po {
+            background-color: #34495e;
+            border: 1px solid #2c3e50;
+            color: #ecf0f1;
+            cursor: pointer;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin: 0 2px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            min-width: 45px;
+        }
+
+        .btn-edit-po {
+            background-color: #283a56;
+            border-color: #20678a;
+        }
+
+        .btn-edit-po:hover {
+            background-color: #2980b9;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-save-po {
+            background-color: #27ae60;
+            border-color: #229954;
+        }
+
+        .btn-save-po:hover {
+            background-color: #229954;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-cancel-po {
+            background-color: #e74c3c;
+            border-color: #c0392b;
+        }
+
+        .btn-cancel-po:hover {
+            background-color: #c0392b;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .wo-form-grid {
@@ -643,6 +713,16 @@
                 padding: 10px;
             }
 
+            /* Botones de acciones en móvil */
+            .btn-edit-po,
+            .btn-save-po,
+            .btn-cancel-po {
+                font-size: 8px;
+                padding: 3px 6px;
+                min-width: 40px;
+                margin: 1px;
+            }
+
             /* Contador de resultados en móvil */
             #bomResultCounter {
                 font-size: 11px;
@@ -700,14 +780,13 @@
         <!-- Barra de herramientas -->
         <div id="bomToolbar">
             <label style="color: lightgray; font-size: 11px;">Fecha de operación</label>
-            <input type="date" id="fechaDesde" class="bom-dropdown" style="max-width: 150px;">
+            <input type="date" id="fechaDesde" class="bom-dropdown" style="max-width: 150px;" value="{{ fecha_hoy }}">
             <span style="color: lightgray; font-size: 11px;">~</span>
-            <input type="date" id="fechaHasta" class="bom-dropdown" style="max-width: 150px;">
+            <input type="date" id="fechaHasta" class="bom-dropdown" style="max-width: 150px;" value="{{ fecha_hoy }}">
             <button id="btnConsultar" class="bom-btn" onclick="consultarWOs()">Consultar</button>
             <button id="btnRegistrar" class="bom-btn" onclick="mostrarFormularioWO()">Registrar</button>
             <button id="btnCancelar" class="bom-btn" onclick="cancelarOperacion()">Cancelar</button>
             <button id="btnExportar" class="bom-btn" onclick="exportarExcel()">Exportar el excel</button>
-            <button id="btnCrearWO" class="bom-btn" style="background-color: #27ae60;" onclick="mostrarFormularioWO()">Crear Nueva WO</button>
         </div>
 
         <!-- Formulario para crear WO -->
@@ -734,18 +813,9 @@
                 </div>
                 <div class="wo-form-field">
                     <label>Fecha de operación</label>
-                    <input type="date" id="woFechaOperacion" required>
+                    <input type="date" id="woFechaOperacion" value="{{ fecha_hoy }}" required>
                 </div>
-                <div class="wo-form-field">
-                    <label>Orden de proceso</label>
-                    <select id="woOrdenProceso" required>
-                        <option value="">Seleccionar</option>
-                        <option value="NORMAL">NORMAL</option>
-                        <option value="KEY NORMAL">KEY NORMAL</option>
-                        <option value="KNOB NORMAL">KNOB NORMAL</option>
-                        <option value="MAIN NORMAL">MAIN NORMAL</option>
-                    </select>
-                </div>
+
                 <div class="wo-form-field">
                     <label>Cantidad planeada</label>
                     <input type="number" id="woCantidad" placeholder="0" min="1" required>
@@ -768,15 +838,14 @@
                             <input type="checkbox" id="checkAll2">
                         </th>
                         <th id="thCodigoWO" style="width: 120px;">Código de WO</th>
-                        <th id="thFechaOperacion" style="width: 100px;">Fecha de operaci...</th>
-                        <th id="thCodigoModelo" style="width: 130px;">Código de modelo</th>
-                        <th id="thNombreModelo" style="width: 120px;">Nombre de mode...</th>
-                        <th id="thOrdenProceso" style="width: 120px;">Orden de proce...</th>
-                        <th id="thCantidadPlaneada" style="width: 100px;">Cantidad planea...</th>
-                        <th id="thCodigoPO" style="width: 120px;">Código de PO</th>
-                        <th id="thRegistrar" style="width: 80px;">Registrar</th>
-                        <th id="thModificador" style="width: 150px;">Modificador</th>
-                        <th id="thFechaModificacion" style="width: 150px;">Fecha de modificación</th>
+                        <th id="thFechaOperacion" style="width: 110px;">Fecha de operación</th>
+                        <th id="thCodigoModelo" style="width: 140px;">Código de modelo</th>
+                        <th id="thNombreModelo" style="width: 130px;">Nombre de modelo</th>
+                        <th id="thCantidadPlaneada" style="width: 110px;">Cantidad planeada</th>
+                        <th id="thCodigoPO" style="width: 130px;">Código de PO</th>
+                        <th id="thAcciones" style="width: 120px;">Acciones</th>
+                        <th id="thModificador" style="width: 120px;">Modificador</th>
+                        <th id="thFechaModificacion" style="width: 140px;">Fecha de modificación</th>
                         <th id="thExpand" style="width: 40px;">▼</th>
                     </tr>
                 </thead>
@@ -792,5 +861,23 @@
         </div>
     </div>
 
+<script>
+// Configurar fechas inmediatamente al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    const fechaDesde = document.getElementById('fechaDesde');
+    const fechaHasta = document.getElementById('fechaHasta');
+    
+    if (fechaDesde) {
+        fechaDesde.value = hoy;
+    }
+    if (fechaHasta) {
+        fechaHasta.value = hoy;
+    }
+    
+    console.log('✅ Fechas configuradas al día actual:', hoy);
+});
+</script>
 <script src="{{ url_for('static', filename='js/crear-plan-produccion.js') }}"></script>
 

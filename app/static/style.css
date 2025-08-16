@@ -17,6 +17,7 @@ html, body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 0;
+  padding-top: 95px;
   min-height: 100vh;
   overflow-x: hidden;
   color: lightgray;
@@ -165,6 +166,8 @@ html, body {
   opacity: 1 !important;
   min-height: 300px;
   padding: 5px;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 #informacion-basica-content .app-container {
@@ -383,12 +386,16 @@ html, body {
 .sidebar-content {
   width: var(--sidebar-width) !important;
   min-width: var(--sidebar-width) !important;
+  min-height: calc(100vh - 95px);
+  height: calc(100vh - 95px);
   background-color: #40424F;
   overflow-y: auto;
   overflow-x: hidden;
   flex-shrink: 0;
   position: relative;
   z-index: 200;
+  margin-top: 0;
+  padding-top: 5px;
 }
 
 .material-content-area {
@@ -432,6 +439,8 @@ html, body {
 .informacion-basica-content-area {
     flex: 1;
     padding: 0;
+    padding-top: 5px;
+    margin-top: 0;
     overflow-y: auto;
     background-color: #32323E;
 }
