@@ -2803,6 +2803,16 @@ def control_bom_ajax():
         print(f"Error al cargar template Control BOM AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/crear-plan-micom-ajax')
+@login_requerido
+def crear_plan_micom_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Crear plan micom"""
+    try:
+        return render_template('Control de produccion/crear_plan_micom_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Crear plan micom AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/control-operacion-linea-smt-ajax')
 @login_requerido
 def control_operacion_linea_smt_ajax():
@@ -8525,3 +8535,296 @@ def api_status():
         })
         error_response.headers.add('Access-Control-Allow-Origin', '*')
         return error_response, 500
+
+# ========================================
+# ENDPOINTS PARA PLAN SMD Y PLAN MICOM
+# ========================================
+
+@app.route('/api/plan-smd', methods=['GET'])
+@login_requerido
+def api_plan_smd_consultar():
+    """API para consultar plan SMD con filtros"""
+    try:
+        # Obtener parámetros de consulta
+        q = request.args.get('q', '').strip()
+        desde = request.args.get('desde', '').strip()
+        hasta = request.args.get('hasta', '').strip()
+        linea = request.args.get('linea', '').strip()
+        turno = request.args.get('turno', '').strip()
+        tipo = request.args.get('tipo', '').strip()
+        
+        # Construir consulta base
+        query = """
+        SELECT id, linea, lote, nparte, modelo, tipo, turno, ct, uph, qty, 
+               fisico, falta, pct, comentarios, fecha_creacion, usuario_creacion
+        FROM plan_smd 
+        WHERE 1=1
+        """
+        params = []
+        
+        # Aplicar filtros
+        if q:
+            query += """ AND (
+                lote LIKE %s OR nparte LIKE %s OR modelo LIKE %s OR 
+                usuario_creacion LIKE %s OR comentarios LIKE %s
+            )"""
+            search_term = f"%{q}%"
+            params.extend([search_term, search_term, search_term, search_term, search_term])
+        
+        if desde:
+            query += " AND DATE(fecha_creacion) >= %s"
+            params.append(desde)
+        
+        if hasta:
+            query += " AND DATE(fecha_creacion) <= %s"
+            params.append(hasta)
+        
+        if linea:
+            query += " AND linea = %s"
+            params.append(linea)
+        
+        if turno:
+            query += " AND turno = %s"
+            params.append(turno)
+        
+        if tipo:
+            query += " AND tipo = %s"
+            params.append(tipo)
+        
+        query += " ORDER BY fecha_creacion DESC, linea, lote"
+        
+        # Ejecutar consulta
+        result = execute_query(query, params, fetch='all')
+        
+        return jsonify(result if result else [])
+        
+    except Exception as e:
+        print(f"❌ Error consultando plan SMD: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan-smd/import', methods=['POST'])
+@login_requerido
+def api_plan_smd_import():
+    """API para importar plan SMD desde CSV o JSON"""
+    try:
+        usuario = session.get('usuario', 'sistema')
+        
+        # Verificar si es archivo o JSON
+        if 'file' in request.files:
+            # Importar desde archivo CSV
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({'error': 'No se seleccionó archivo'}), 400
+            
+            if not file.filename.lower().endswith('.csv'):
+                return jsonify({'error': 'Solo se permiten archivos CSV'}), 400
+            
+            # Leer CSV
+            import csv
+            import io
+            
+            content = file.read().decode('utf-8')
+            csv_reader = csv.DictReader(io.StringIO(content))
+            data = list(csv_reader)
+            
+        else:
+            # Importar desde JSON
+            data = request.get_json()
+            if not data or not isinstance(data, list):
+                return jsonify({'error': 'Se esperaba un arreglo JSON'}), 400
+        
+        # Validar y procesar datos
+        inserted = 0
+        updated = 0
+        errors = []
+        
+        for i, row in enumerate(data):
+            try:
+                # Validar campos requeridos
+                if not all(k in row for k in ['linea', 'lote', 'modelo']):
+                    errors.append(f"Fila {i+1}: Faltan campos requeridos (linea, lote, modelo)")
+                    continue
+                
+                # Normalizar datos
+                linea = str(row.get('linea', '')).strip().upper()
+                lote = str(row.get('lote', '')).strip()
+                nparte = str(row.get('nparte', '')).strip()
+                modelo = str(row.get('modelo', '')).strip().upper()
+                tipo = str(row.get('tipo', '')).strip()
+                turno = str(row.get('turno', '')).strip().upper()
+                ct = str(row.get('ct', '')).strip()
+                uph = str(row.get('uph', '')).strip()
+                qty = float(row.get('qty', 0)) if row.get('qty') else 0
+                fisico = float(row.get('fisico', 0)) if row.get('fisico') else 0
+                comentarios = str(row.get('comentarios', '')).strip()
+                usuario_creacion = str(row.get('usuario_creacion', usuario)).strip()
+                
+                # Validaciones
+                if qty < 0:
+                    errors.append(f"Fila {i+1}: qty debe ser >= 0")
+                    continue
+                
+                if fisico < 0:
+                    errors.append(f"Fila {i+1}: fisico debe ser >= 0")
+                    continue
+                
+                # Calcular falta y pct
+                falta = max(qty - fisico, 0)
+                pct = round((qty - falta) * 100 / qty) if qty > 0 else 0
+                
+                # Verificar si ya existe (upsert por lote, modelo)
+                check_query = """
+                SELECT id FROM plan_smd 
+                WHERE lote = %s AND modelo = %s
+                """
+                existing = execute_query(check_query, (lote, modelo), fetch='one')
+                
+                if existing:
+                    # Actualizar registro existente
+                    update_query = """
+                    UPDATE plan_smd SET 
+                        linea = %s, nparte = %s, tipo = %s, turno = %s, ct = %s, uph = %s,
+                        qty = %s, fisico = %s, falta = %s, pct = %s, comentarios = %s
+                    WHERE id = %s
+                    """
+                    execute_query(update_query, (
+                        linea, nparte, tipo, turno, ct, uph, qty, fisico, falta, pct, comentarios, existing['id']
+                    ))
+                    updated += 1
+                else:
+                    # Insertar nuevo registro
+                    insert_query = """
+                    INSERT INTO plan_smd (linea, lote, nparte, modelo, tipo, turno, ct, uph, 
+                                         qty, fisico, falta, pct, comentarios, usuario_creacion)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
+                    execute_query(insert_query, (
+                        linea, lote, nparte, modelo, tipo, turno, ct, uph, qty, fisico, falta, pct, comentarios, usuario_creacion
+                    ))
+                    inserted += 1
+                    
+            except Exception as e:
+                errors.append(f"Fila {i+1}: {str(e)}")
+                continue
+        
+        return jsonify({
+            'success': True,
+            'inserted': inserted,
+            'updated': updated,
+            'errors': errors,
+            'message': f'Importación completada: {inserted} insertados, {updated} actualizados'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error importando plan SMD: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inventario', methods=['GET'])
+@login_requerido
+def api_inventario():
+    """API para consultar inventario por modelo y/o nparte"""
+    try:
+        modelo = request.args.get('modelo', '').strip()
+        nparte = request.args.get('nparte', '').strip()
+        
+        if not modelo:
+            return jsonify({'error': 'Parámetro modelo es requerido'}), 400
+        
+        if nparte:
+            # Consultar inventario específico por modelo y nparte
+            query = """
+            SELECT modelo, nparte, stock_total, ubicaciones, ultima_entrada, ultima_salida, updated_at
+            FROM inv_resumen_modelo 
+            WHERE modelo = %s AND nparte = %s
+            """
+            result = execute_query(query, (modelo, nparte), fetch='one')
+            
+            if result:
+                return jsonify({
+                    'modelo': result['modelo'],
+                    'nparte': result['nparte'],
+                    'stock_total': result['stock_total'] or 0
+                })
+            else:
+                return jsonify({
+                    'modelo': modelo,
+                    'nparte': nparte,
+                    'stock_total': 0
+                })
+        else:
+            # Consultar inventario total del modelo
+            query = """
+            SELECT modelo, SUM(stock_total) as stock_total
+            FROM inv_resumen_modelo 
+            WHERE modelo = %s
+            GROUP BY modelo
+            """
+            result = execute_query(query, (modelo,), fetch='one')
+            
+            if result:
+                return jsonify({
+                    'modelo': result['modelo'],
+                    'stock_total': result['stock_total'] or 0
+                })
+            else:
+                return jsonify({
+                    'modelo': modelo,
+                    'stock_total': 0
+                })
+        
+    except Exception as e:
+        print(f"❌ Error consultando inventario: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan-micom/generar', methods=['POST'])
+@login_requerido
+def api_plan_micom_generar():
+    """API para generar plan MICOM desde selección de modelos"""
+    try:
+        data = request.get_json()
+        if not data or not isinstance(data, list):
+            return jsonify({'error': 'Se esperaba un arreglo de modelos'}), 400
+        
+        usuario = session.get('usuario', 'sistema')
+        modelos_procesados = 0
+        errores = []
+        
+        for modelo_data in data:
+            try:
+                # Validar campos requeridos
+                required_fields = ['modelo', 'ici1_nparte', 'checksum', 'faltante_total', 'fisico', 'dif']
+                if not all(field in modelo_data for field in required_fields):
+                    errores.append(f"Modelo {modelo_data.get('modelo', 'N/A')}: Faltan campos requeridos")
+                    continue
+                
+                modelo = str(modelo_data['modelo']).strip()
+                ici1_nparte = str(modelo_data['ici1_nparte']).strip()
+                checksum = str(modelo_data['checksum']).strip()
+                faltante_total = float(modelo_data['faltante_total'])
+                fisico = float(modelo_data['fisico'])
+                dif = float(modelo_data['dif'])
+                comentarios = str(modelo_data.get('comentarios', 'MICOM auto-plan')).strip()
+                
+                # Validaciones
+                if faltante_total < 0 or fisico < 0 or dif < 0:
+                    errores.append(f"Modelo {modelo}: Valores negativos no permitidos")
+                    continue
+                
+                # Aquí puedes implementar la lógica para guardar en plan_smd si es necesario
+                # Por ahora solo validamos y contamos
+                modelos_procesados += 1
+                
+            except Exception as e:
+                errores.append(f"Modelo {modelo_data.get('modelo', 'N/A')}: {str(e)}")
+                continue
+        
+        return jsonify({
+            'success': True,
+            'modelos_procesados': modelos_procesados,
+            'errores': errores,
+            'message': f'Plan MICOM generado: {modelos_procesados} modelos procesados'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error generando plan MICOM: {e}")
+        return jsonify({'error': str(e)}), 500

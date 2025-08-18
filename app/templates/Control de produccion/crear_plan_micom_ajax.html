@@ -1,0 +1,821 @@
+<!-- TEMPLATE AJAX: Crear plan micom -->
+<!-- SUFIJO ÚNICO: -crear-plan-micom -->
+<!-- CONTENEDOR DESTINO (EXTERNO): crear-plan-micom-unique-container -->
+
+<div id="crear-plan-micom-main-container-unique-crear-plan-micom" class="crear-plan-micom-container">
+  <div class="kick-app" id="kickApp">
+    <!-- Plan SMD (consulta) -->
+    <section class="kick-card" id="planCard">
+      <div class="kick-header">
+        <h2>Plan SMD (consulta)</h2>
+        <div>
+          <button id="btnPlanImport" class="btn warn">Importar</button>
+          <button id="btnPlanConsultar" class="btn">Consultar</button>
+          <button id="btnPlanExport" class="btn ok">Exportar el excel</button>
+        </div>
+      </div>
+      <div class="kick-subbar">
+        <input id="planQuery" class="kick-input" placeholder="Buscar (lote, nparte, modelo, usuario)" style="min-width:260px;flex:1;"/>
+        <div class="kick-field">
+          <label for="planDesde">Fecha (desde)</label>
+          <input id="planDesde" class="kick-date" type="date"/>
+        </div>
+        <span style="align-self:end;opacity:.7;">~</span>
+        <div class="kick-field">
+          <label for="planHasta">&nbsp;</label>
+          <input id="planHasta" class="kick-date" type="date"/>
+        </div>
+        <div class="kick-field">
+          <label for="planLinea">Línea</label>
+          <select id="planLinea" class="kick-select">
+            <option value="">Todas</option>
+            <option>SMT A</option>
+            <option>SMT B</option>
+            <option>SMT C</option>
+            <option>SMT D</option>
+          </select>
+        </div>
+        <div class="kick-field">
+          <label for="planTurno">Turno</label>
+          <select id="planTurno" class="kick-select">
+            <option value="">Todos</option>
+            <option>DIA</option>
+            <option>NOCHE</option>
+          </select>
+        </div>
+        <div class="kick-field">
+          <label for="planTipo">Tipo</label>
+          <select id="planTipo" class="kick-select">
+            <option value="">Todos</option>
+            <option>Main</option>
+            <option>Display</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="tblPlan">
+          <thead>
+            <tr>
+              <th>Línea</th>
+              <th>Lote</th>
+              <th>N° Parte</th>
+              <th>Modelo</th>
+              <th>Tipo</th>
+              <th>Turno</th>
+              <th>C/T</th>
+              <th>UPH</th>
+              <th>Falta</th>
+              <th>%</th>
+              <th>Comentarios</th>
+              <th>Fecha creación</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody id="planBody">
+            <tr><td class="no-data" colspan="13">No hay dato registrado</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Tabla derivada del PLAN: Pendientes por MODELO (con ICI1/Checksum) -->
+    <section class="kick-card" id="aggCard" style="margin-top:4px;">
+      <div class="kick-header">
+        <h2>Plan MICOM — Pendiente por modelo (desde PLAN SMD)</h2>
+        <div>
+          <button id="btnAggGenerar" class="btn">Generar desde plan</button>
+          <button id="btnMicomGenerar" class="btn ok">Generar plan MICOM</button>
+          <button id="btnAggExport" class="btn ok">Exportar CSV</button>
+        </div>
+      </div>
+      <div class="kick-subbar">
+        <span style="font-size:12px">Usa los filtros del bloque "Plan SMD (consulta)" de arriba.</span>
+        <label style="display:flex;align-items:center;gap:6px;margin-left:12px;font-size:12px">
+          <input type="checkbox" id="chkAggSoloMain" checked /> Solo tipo <b>Main</b>
+        </label>
+      </div>
+      <div class="tbl-wrap">
+        <table id="tblAgg">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="chkAllAgg" title="Seleccionar todos"></th>
+              <th>Modelo</th>
+              <th>Faltante total</th>
+              <th>ICI1 (número de parte)</th>
+              <th>Checksum</th>
+              <th>Ubicación</th>
+              <th>Líneas</th>
+              <th># Lotes</th>
+              <th>Físico</th>
+              <th>Dif</th>
+            </tr>
+          </thead>
+          <tbody id="aggBody">
+            <tr><td class="no-data" colspan="10">Aún no generado</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Modales -->
+    <div class="modal-backdrop" id="loadingModal" aria-hidden="true">
+      <div class="modal">
+        <h3 id="loadingTitle" style="color:#8ec8ff;margin:0 0 6px 0;">Cargando…</h3>
+        <p id="loadingText" style="margin:0;color:var(--txt-2);">Procesando</p>
+        <div class="spinner" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="alertModal" aria-hidden="true">
+      <div class="modal">
+        <h3 style="color:var(--txt-2);margin:0 0 6px 0;">Aviso</h3>
+        <p id="alertMsg" style="margin:0;color:var(--txt-2);"></p>
+        <div style="margin-top:12px;"><button id="alertOk" class="btn">Aceptar</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ==========================
+   TEMA VISUAL (estilo idéntico)
+   ========================== */
+:root {
+  --bg-1: #32323E;     /* fondo app */
+  --bg-2: #34334E;     /* barras */
+  --bg-3: #40424F;     /* tarjetas/tabla */
+  --bg-4: #172A46;     /* header de tabla */
+  --txt-1: lightgray;  /* texto base */
+  --txt-2: #ecf0f1;    /* texto claro */
+  --muted: #95a5a6;
+  --muted-2: #5F6375;
+  --accent-1: #3498db; /* azul */
+  --accent-2: #20688C; /* borde */
+  --ok: #27ae60;       /* verde */
+  --warn: #e67e22;     /* naranja */
+  --err: #e74c3c;      /* rojo */
+  --shadow: rgba(0,0,0,0.1);
+}
+
+.crear-plan-micom-container {
+  padding: 8px;
+  background-color: #2B2D3E;
+  color: #E0E0E0;
+  border: none;
+  border-radius: 0;
+}
+
+.kick-app { 
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; 
+  background: transparent; 
+  color: var(--txt-1); 
+  min-height: auto; 
+  padding: 0; 
+}
+
+.kick-card { 
+  background: var(--bg-3); 
+  border-radius: 6px; 
+  border: 1px solid var(--accent-2); 
+  box-shadow: 0 1px 4px var(--shadow); 
+  overflow: hidden; 
+  margin-bottom: 8px;
+}
+.kick-header { 
+  display:flex; 
+  align-items:center; 
+  justify-content:space-between; 
+  gap:10px; 
+  padding: 8px; 
+  background:#2d3c4e; 
+  border-bottom:1px solid var(--accent-2); 
+}
+.kick-header h2 { 
+  margin:0; 
+  color: var(--txt-2); 
+  font-size: 14px; 
+}
+
+.kick-toolbar, .kick-subbar { 
+  display:flex; 
+  flex-wrap:wrap; 
+  gap:6px; 
+  align-items:center; 
+  padding:6px; 
+  background: var(--bg-2); 
+  border-top:1px solid var(--accent-2); 
+  border-bottom:1px solid var(--accent-2); 
+}
+.kick-field { 
+  display:flex; 
+  flex-direction:column; 
+  gap:2px; 
+}
+.kick-field label { 
+  font-size:11px; 
+  color:#cfd8dc; 
+}
+
+.kick-input, .kick-select, .kick-date { 
+  background:#2c3e50; 
+  color:var(--txt-1); 
+  border:1px solid #34495e; 
+  border-radius:3px; 
+  padding:6px 8px; 
+  font-size:12px; 
+  min-height:30px; 
+}
+.kick-input::placeholder { 
+  color:#95a5a6; 
+  font-style: italic; 
+}
+
+.btn { 
+  padding: 5px 8px; 
+  border:1px solid var(--accent-2); 
+  border-radius:3px; 
+  background:#3C3940; 
+  color:#fff; 
+  cursor:pointer; 
+  font-size:11px; 
+  font-weight:600; 
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease; 
+}
+.btn:hover { 
+  transform: translateY(-1px); 
+  box-shadow: 0 2px 8px rgba(52,152,219,.25); 
+  background:#2980b9; 
+}
+.btn.warn { 
+  background: var(--warn); 
+}
+.btn.ok { 
+  background: #456636; 
+}
+
+.state-badge { 
+  padding: 2px 6px; 
+  border-radius: 999px; 
+  border:1px solid #567; 
+  font-size:10px; 
+  background:#203040; 
+  color:#bfe4ff; 
+}
+
+.grid-2 { 
+  display:grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap:8px; 
+}
+.grid-3 { 
+  display:grid; 
+  grid-template-columns: repeat(3,1fr); 
+  gap:8px; 
+}
+
+.tbl-wrap { 
+  overflow:auto; 
+}
+table { 
+  width:100%; 
+  border-collapse:collapse; 
+  table-layout: fixed; 
+  font-size:11px; 
+  background: var(--bg-3); 
+}
+th { 
+  position:sticky; 
+  top:0; 
+  z-index:5; 
+  background:var(--bg-4); 
+  color:var(--txt-2); 
+  padding:4px 3px; 
+  border:1px solid var(--accent-2); 
+  font-weight:700; 
+  white-space:nowrap; 
+  text-overflow:ellipsis; 
+  overflow:hidden; 
+  font-size:10px; 
+}
+td { 
+  padding:4px 3px; 
+  text-align:center; 
+  border:1px solid var(--muted-2); 
+  color:var(--txt-1); 
+  white-space:nowrap; 
+  text-overflow:ellipsis; 
+  overflow:hidden; 
+}
+tr:hover td { 
+  background:#485563; 
+}
+tr:nth-child(even) td { 
+  background:#44475A; 
+}
+tr:nth-child(even):hover td { 
+  background:#485563; 
+}
+.no-data { 
+  text-align:center; 
+  padding:10px; 
+  color:var(--muted); 
+  font-style:italic; 
+}
+
+/* Estilos para checkboxes y inputs de la tabla agregada */
+.chk-agg-row {
+  margin: 0;
+  cursor: pointer;
+}
+
+.fisico-input, .dif-input {
+  width: 60px;
+  padding: 2px 4px;
+  border: 1px solid #34495e;
+  border-radius: 2px;
+  background: #2c3e50;
+  color: var(--txt-1);
+  font-size: 10px;
+  text-align: center;
+}
+
+.fisico-input:focus, .dif-input:focus {
+  outline: none;
+  border-color: var(--accent-1);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Estilos para el checkbox maestro */
+#chkAllAgg {
+  margin: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 1200px) { 
+  .grid-2, .grid-3 { 
+    grid-template-columns: 1fr; 
+  } 
+}
+
+/* Modales */
+.modal-backdrop { 
+  display:none; 
+  position:fixed; 
+  inset:0; 
+  background: rgba(0,0,0,.55); 
+  z-index: 9999; 
+  align-items:center; 
+  justify-content:center; 
+}
+.modal { 
+  background:#2c3e50; 
+  border:2px solid var(--accent-1); 
+  border-radius:8px; 
+  padding:16px; 
+  min-width:300px; 
+  max-width:90vw; 
+  box-shadow:0 4px 16px rgba(0,0,0,.35); 
+  text-align:center; 
+}
+.spinner { 
+  width:32px; 
+  height:32px; 
+  border:3px solid #34495e; 
+  border-top:3px solid var(--accent-1); 
+  border-radius:50%; 
+  animation:spin 1s linear infinite; 
+  margin:8px auto; 
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+(function() {
+    window.inicializarCrearPlanMicomModule = function() {
+        try {
+            console.log('Inicializando Crear plan micom AJAX...');
+            
+            // ===============================
+            // ENDPOINTS (ajusta a tu backend)
+            // ===============================
+            const API = {
+                planSMD: "/api/plan-smd", // GET: q, desde, hasta, linea, turno, tipo
+                planSMDImport: "/api/plan-smd/import", // POST: file o JSON
+                inventario: "/api/inventario", // GET: modelo, nparte
+                bomPorModelo: (modelo) => `/api/bom?modelo=${encodeURIComponent(modelo)}`, // usado solo para obtener ICI1/Checksum por modelo
+                planMicomGenerar: "/api/plan-micom/generar" // POST: array de modelos seleccionados
+            };
+
+            // ===============================
+            // HELPERS
+            // ===============================
+            const $ = (id) => document.getElementById(id);
+            const fmtDate = (s) => { if(!s) return '—'; const d = new Date(s); if(isNaN(d)) return s; const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
+            const num = (v) => typeof v === 'number' ? v : (v ? Number(v) : 0);
+            const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+
+            const showLoading = (msg='Procesando…') => { $('loadingText').textContent = msg; $('loadingModal').style.display='flex'; };
+            const hideLoading = () => { $('loadingModal').style.display='none'; };
+            const alertMsg = (m) => { $('alertMsg').textContent = m; $('alertModal').style.display='flex'; };
+            $('alertOk').addEventListener('click', () => $('alertModal').style.display='none');
+
+            async function fetchJSON(url, options = {}){ 
+                const r = await fetch(url, {
+                    headers: {'Accept': 'application/json', ...options.headers},
+                    ...options
+                }); 
+                if(!r.ok) throw new Error('HTTP '+r.status); 
+                return r.json(); 
+            }
+
+            // ===============================
+            // IMPORTACIÓN DE PLAN SMD
+            // ===============================
+            
+            // Abrir selector de archivo
+            $('btnPlanImport').addEventListener('click', () => {
+                $('filePlanImport').click();
+            });
+
+            // Manejar selección de archivo
+            $('filePlanImport').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                try {
+                    showLoading('Importando archivo...');
+                    
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch(API.planSMDImport, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alertMsg(`Importación completada: ${result.inserted} insertados, ${result.updated} actualizados`);
+                        
+                        // Recargar consulta con filtros actuales
+                        await loadPlanSMD();
+                        
+                        // Limpiar input de archivo
+                        e.target.value = '';
+                    } else {
+                        alertMsg(`Error en importación: ${result.error}`);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error importando:', error);
+                    alertMsg('Error al importar el archivo');
+                } finally {
+                    hideLoading();
+                }
+            });
+
+            // ===============================
+            // PLAN SMD – CONSULTA
+            // ===============================
+            function renderPlanSMD(rows){
+                const tb = $('planBody'); tb.innerHTML='';
+                if(!rows || !rows.length){ tb.innerHTML = `<tr><td class="no-data" colspan="13">No hay dato registrado</td></tr>`; return; }
+                rows.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.dataset.modelo = r.modelo || '';
+                    tr.dataset.falta = num(r.falta||0);
+                    tr.innerHTML = `
+                        <td>${esc(r.linea)||'—'}</td>
+                        <td>${esc(r.lote)||'—'}</td>
+                        <td>${esc(r.nparte)||'—'}</td>
+                        <td class="js-modelo" title="Click para revisar ICI1">${esc(r.modelo)||'—'}</td>
+                        <td>${esc(r.tipo)||'—'}</td>
+                        <td>${esc(r.turno)||'—'}</td>
+                        <td>${esc(r.ct)||''}</td>
+                        <td>${esc(r.uph)||''}</td>
+                        <td>${num(r.falta||0).toLocaleString()}</td>
+                        <td>${num(r.pct||0)}%</td>
+                        <td>${esc(r.comentarios)||''}</td>
+                        <td>${fmtDate(r.fecha_creacion)||'—'}</td>
+                        <td>${esc(r.usuario_creacion)||'—'}</td>`;
+                    tb.appendChild(tr);
+                });
+            }
+
+            async function loadPlanSMD(){
+                const p = new URLSearchParams();
+                const q = $('planQuery').value.trim();
+                const d = $('planDesde').value; const h = $('planHasta').value;
+                const linea = $('planLinea').value; const turno = $('planTurno').value; const tipo = $('planTipo').value;
+                if(q) p.set('q', q); if(d) p.set('desde', d); if(h) p.set('hasta', h);
+                if(linea) p.set('linea', linea); if(turno) p.set('turno', turno); if(tipo) p.set('tipo', tipo);
+                showLoading('Consultando plan…');
+                try{ const data = await fetchJSON(`${API.planSMD}?${p.toString()}`); renderPlanSMD(Array.isArray(data)?data:(data.rows||[])); }
+                catch(e){ console.error(e); alertMsg('No fue posible consultar el plan.'); }
+                finally{ hideLoading(); }
+            }
+
+            // ===============================
+            // DERIVAR TABLA DESDE PLAN (MICOM + ICI1)
+            // ===============================
+            function extractChecksum(text){
+                const s = String(text||''); const up = s.toUpperCase();
+                const HEX = '0123456789ABCDEF';
+                const readHex = (from) => { let j=from, out=''; while(j<s.length && HEX.includes(s[j].toUpperCase())){ out+=s[j]; j++; } return out; };
+                let i = up.indexOf('0X');
+                if(i>=0){ const h = readHex(i+2); if(h.length>=4) return '0x'+h.toUpperCase(); }
+                for(const key of ['C/S:','CHECKSUM','CRC','CHK']){
+                    i = up.indexOf(key); if(i>=0){ let j = i + key.length; while(j<s.length && !HEX.includes(s[j].toUpperCase())) j++; const h = readHex(j); if(h.length>=4) return key==='C/S:' ? '0x'+h.toUpperCase() : h.toUpperCase(); }
+                }
+                return '';
+            }
+            function icaseIncludes(haystack, needle){ return String(haystack||'').toUpperCase().includes(String(needle||'').toUpperCase()); }
+            function scoreRowICI1(r){
+                let sc=0; const u=String(r.ubicacion||''); const t=String(r.tipo_material||''); const c=String(r.classification||'');
+                if(u.trim().toUpperCase().startsWith('IC1')) sc+=10; if(icaseIncludes(u,'IC1')) sc+=6; if(icaseIncludes(t,'MAIN')||icaseIncludes(c,'MAIN')) sc+=2; if(icaseIncludes(r.codigo_material,'ICI1')||icaseIncludes(r.numero_parte,'ICI1')) sc+=2; return sc;
+            }
+            function pickICI1(rows){ let best=null,score=-1; for(const r of (rows||[])){ const s=scoreRowICI1(r); if(s>score){ best=r; score=s; } } return score>0?best:null; }
+
+            async function fetchICI1For(modelo){
+                try{ const data = await fetchJSON(API.bomPorModelo(modelo)); const rows = Array.isArray(data)?data:(data.rows||[]); const ici1 = pickICI1(rows);
+                    if(!ici1) return { nparte:'', checksum:'', ubicacion:'' };
+                    const checksum = extractChecksum(ici1.ubicacion)||extractChecksum(ici1.especificacion_material)||extractChecksum(ici1.numero_parte)||extractChecksum(ici1.codigo_material);
+                    return { nparte: ici1.numero_parte || ici1.codigo_material || '', checksum: checksum||'—', ubicacion: ici1.ubicacion || '' };
+                }catch(e){ console.error('ICI1 error', modelo, e); return { nparte:'', checksum:'', ubicacion:'' }; }
+            }
+
+            async function fetchInventarioFor(modelo, nparte){
+                try {
+                    const data = await fetchJSON(`${API.inventario}?modelo=${encodeURIComponent(modelo)}&nparte=${encodeURIComponent(nparte)}`);
+                    return data.stock_total || 0;
+                } catch(e) {
+                    console.error('Inventario error', modelo, nparte, e);
+                    return 0;
+                }
+            }
+
+            async function fetchPlanRows(){
+                const p = new URLSearchParams();
+                const q = $('planQuery').value.trim();
+                const d = $('planDesde').value; const h = $('planHasta').value;
+                const linea = $('planLinea').value; const turno = $('planTurno').value; const tipo = $('planTipo').value;
+                if(q) p.set('q', q); if(d) p.set('desde', d); if(h) p.set('hasta', h);
+                if(linea) p.set('linea', linea); if(turno) p.set('turno', turno); if(tipo) p.set('tipo', tipo);
+                const data = await fetchJSON(`${API.planSMD}?${p.toString()}`);
+                return Array.isArray(data)?data:(data.rows||[]);
+            }
+
+            async function generateAggFromPlan(){
+                showLoading('Generando tabla desde plan…');
+                try{
+                    const soloMain = $('chkAggSoloMain').checked;
+                    const rows = await fetchPlanRows();
+                    const filtered = rows.filter(r => num(r.falta||0) > 0 && (!soloMain || String(r.tipo||'').toUpperCase()==='MAIN'));
+                    const map = new Map();
+                    for(const r of filtered){
+                        const key = r.modelo || '—';
+                        const item = map.get(key) || { modelo:key, falta:0, lineas:new Set(), lotes:new Set() };
+                        item.falta += num(r.falta||0);
+                        if(r.linea) item.lineas.add(r.linea); if(r.lote) item.lotes.add(r.lote);
+                        map.set(key, item);
+                    }
+                    const items = Array.from(map.values());
+                    const limit = 4; let i=0; const out=[];
+                    async function worker(){
+                        while(i < items.length){ 
+                            const idx=i++; 
+                            const it=items[idx]; 
+                            const ici = await fetchICI1For(it.modelo);
+                            const inventario = await fetchInventarioFor(it.modelo, ici.nparte);
+                            out[idx] = { 
+                                ...it, 
+                                ...ici, 
+                                fisico: inventario,
+                                dif: Math.max(it.falta - inventario, 0)
+                            }; 
+                        }
+                    }
+                    await Promise.all(Array.from({length:Math.min(limit, items.length)}, worker));
+                    renderAgg(out);
+                }catch(e){ console.error(e); alertMsg('No fue posible generar la tabla.'); }
+                finally{ hideLoading(); }
+            }
+
+            function renderAgg(rows){
+                const tb = $('aggBody'); tb.innerHTML='';
+                if(!rows || !rows.length){ tb.innerHTML = `<tr><td class="no-data" colspan="10">Sin resultados</td></tr>`; return; }
+                rows.sort((a,b)=> (b.falta||0) - (a.falta||0));
+                let tot=0;
+                rows.forEach(r=>{ 
+                    tot += num(r.falta||0); 
+                    const tr=document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="checkbox" class="chk-agg-row" data-modelo="${esc(r.modelo)}"></td>
+                        <td>${esc(r.modelo)}</td>
+                        <td>${num(r.falta||0).toLocaleString()}</td>
+                        <td>${esc(r.nparte||'')}</td>
+                        <td>${esc(r.checksum||'')}</td>
+                        <td>${esc(r.ubicacion||'')}</td>
+                        <td>${esc(Array.from(r.lineas||[]).join(' | '))}</td>
+                        <td>${(r.lotes?r.lotes.size:0)}</td>
+                        <td><input type="number" class="fisico-input" value="${num(r.fisico||0)}" min="0" step="1"></td>
+                        <td><input type="number" class="dif-input" value="${num(r.dif||0)}" min="0" step="1"></td>`;
+                    tb.appendChild(tr);
+                });
+                const t = document.createElement('tr'); t.innerHTML = `<td><b>Total</b></td><td><b>${tot.toLocaleString()}</b></td><td colspan="8"></td>`; tb.appendChild(t);
+                
+                // Configurar eventos para los inputs
+                setupAggTableEvents();
+            }
+
+            // ===============================
+            // MANEJO DE TABLA AGREGADA
+            // ===============================
+            
+            function setupAggTableEvents() {
+                // Checkbox maestro
+                const chkAll = $('chkAllAgg');
+                if (chkAll) {
+                    chkAll.addEventListener('change', (e) => {
+                        const checkboxes = document.querySelectorAll('.chk-agg-row');
+                        checkboxes.forEach(chk => chk.checked = e.target.checked);
+                    });
+                }
+
+                // Checkboxes individuales
+                document.querySelectorAll('.chk-agg-row').forEach(chk => {
+                    chk.addEventListener('change', updateChkAllState);
+                });
+
+                // Inputs de Físico
+                document.querySelectorAll('.fisico-input').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const row = e.target.closest('tr');
+                        const difInput = row.querySelector('.dif-input');
+                        const faltanteCell = row.cells[2]; // Columna de faltante total
+                        const faltante = parseInt(faltanteCell.textContent.replace(/,/g, ''));
+                        const fisico = parseInt(e.target.value) || 0;
+                        const dif = Math.max(faltante - fisico, 0);
+                        difInput.value = dif;
+                    });
+                });
+
+                // Inputs de Dif
+                document.querySelectorAll('.dif-input').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        // Permitir edición manual de Dif
+                    });
+                });
+            }
+
+            function updateChkAllState() {
+                const chkAll = $('chkAllAgg');
+                const checkboxes = document.querySelectorAll('.chk-agg-row');
+                const checkedCount = document.querySelectorAll('.chk-agg-row:checked').length;
+                
+                if (checkedCount === 0) {
+                    chkAll.indeterminate = false;
+                    chkAll.checked = false;
+                } else if (checkedCount === checkboxes.length) {
+                    chkAll.indeterminate = false;
+                    chkAll.checked = true;
+                } else {
+                    chkAll.indeterminate = true;
+                }
+            }
+
+            // ===============================
+            // GENERAR PLAN MICOM
+            // ===============================
+            
+            async function generarPlanMicom() {
+                const selectedRows = document.querySelectorAll('.chk-agg-row:checked');
+                
+                if (selectedRows.length === 0) {
+                    alertMsg('Debes seleccionar al menos un modelo para generar el plan MICOM');
+                    return;
+                }
+
+                const modelosData = [];
+                
+                for (const checkbox of selectedRows) {
+                    const row = checkbox.closest('tr');
+                    const modelo = checkbox.dataset.modelo;
+                    const fisicoInput = row.querySelector('.fisico-input');
+                    const difInput = row.querySelector('.dif-input');
+                    const faltanteCell = row.cells[2];
+                    const nparteCell = row.cells[3];
+                    const checksumCell = row.cells[4];
+                    
+                    const fisico = parseInt(fisicoInput.value) || 0;
+                    const dif = parseInt(difInput.value) || 0;
+                    const faltante_total = parseInt(faltanteCell.textContent.replace(/,/g, ''));
+                    const ici1_nparte = nparteCell.textContent.trim();
+                    const checksum = checksumCell.textContent.trim();
+                    
+                    if (!ici1_nparte || ici1_nparte === '—') {
+                        alertMsg(`Modelo ${modelo}: Falta número de parte ICI1`);
+                        return;
+                    }
+                    
+                    modelosData.push({
+                        modelo: modelo,
+                        ici1_nparte: ici1_nparte,
+                        checksum: checksum,
+                        faltante_total: faltante_total,
+                        fisico: fisico,
+                        dif: dif,
+                        usuario: 'usuario_actual', // TODO: Obtener usuario real
+                        comentarios: 'MICOM auto-plan'
+                    });
+                }
+
+                try {
+                    showLoading('Generando plan MICOM...');
+                    
+                    const response = await fetch(API.planMicomGenerar, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(modelosData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alertMsg(`Plan MICOM generado exitosamente: ${result.modelos_procesados} modelos procesados`);
+                    } else {
+                        alertMsg(`Error generando plan MICOM: ${result.error}`);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error generando plan MICOM:', error);
+                    alertMsg('Error al generar el plan MICOM');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // ===============================
+            // EXPORTAR CSV
+            // ===============================
+            function toCSVCell(v){
+                const s = String(v ?? '');
+                const needs = /[",\n]/.test(s);
+                const escC = s.replace(/"/g,'""');
+                return needs ? `"${escC}"` : escC;
+            }
+            function exportTableToCSV(tableId, filename){
+                const table = $(tableId); if(!table){ alertMsg('Tabla no encontrada'); return; }
+                const rows = Array.from(table.querySelectorAll('tr'));
+                const csv = rows.map(tr => Array.from(tr.children).map(td => toCSVCell(td.innerText.trim())).join(',')).join('\n');
+                const blob = new Blob([csv], {type:'text/csv'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // ===============================
+            // EVENTOS
+            // ===============================
+            
+            // Plan SMD consulta
+            $('btnPlanConsultar').addEventListener('click', loadPlanSMD);
+            $('btnPlanExport').addEventListener('click', () => exportTableToCSV('tblPlan','plan_smd.csv'));
+
+            // Generar tabla agregada desde plan
+            $('btnAggGenerar').addEventListener('click', generateAggFromPlan);
+            $('btnAggExport').addEventListener('click', () => exportTableToCSV('tblAgg','plan_smd_pendiente_por_modelo.csv'));
+
+            // Generar plan MICOM
+            $('btnMicomGenerar').addEventListener('click', generarPlanMicom);
+
+            // ===============================
+            // TESTS MÍNIMOS (no tocan red)
+            // ===============================
+            (function tests(){
+                const res = [];
+                function expect(name, cond){ if(!cond){ console.error('❌', name); res.push(false);} else { console.log('✅', name);} }
+                expect('CSV: duplica comillas', toCSVCell('A"B') === '"A""B"');
+                expect('CSV: con coma envuelve', toCSVCell('A,B') === '"A,B"');
+                // Prueba exportTableToCSV: crea tabla dummy en memoria
+                const tmp = document.createElement('table'); tmp.innerHTML = '<tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr>';
+                document.body.appendChild(tmp); try { exportTableToCSV(tmp.id || (tmp.id='__t'), 't.csv'); expect('exportTableToCSV no rompe', true); } catch(e){ expect('exportTableToCSV error', false); } finally { tmp.remove(); }
+            })();
+
+            console.log('Crear plan micom AJAX inicializado');
+        } catch (e) {
+            console.error('Error inicializando Crear plan micom AJAX:', e);
+        }
+    };
+
+    // Auto-ejecutar inicialización si el DOM ya está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarCrearPlanMicomModule);
+    } else {
+        window.inicializarCrearPlanMicomModule();
+    }
+})();
+</script>

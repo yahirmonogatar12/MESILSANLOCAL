@@ -95,6 +95,12 @@
                     controlProduccionSMTContainer.style.display = 'none';
                 }
                 
+                // Ocultar contenedor de Crear plan micom
+                const crearPlanMicomContainer = document.getElementById('crear-plan-micom-unique-container');
+                if (crearPlanMicomContainer) {
+                    crearPlanMicomContainer.style.display = 'none';
+                }
+                
                 // Ocultar contenedores específicos de Control de Proceso que pueden quedar visibles
                 const controlProcesoSpecificContainers = [
                     'control-proceso-info-container',
@@ -1991,8 +1997,143 @@
             console.log('Función mostrarControldeproduccionSMT registrada globalmente');
 
             // ========================================
-            // FUNCIÓN PARA CONTROL BOM
-            // ========================================
+// FUNCIÓN PARA CREAR PLAN MICOM
+// ========================================
+
+// Crear plan micom - SIGUIENDO EL PATRÓN EXITOSO
+window.mostrarCrearPlanMicom = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarCrearPlanMicom EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Crear plan micom... 🔥🔥🔥');
+        console.log('📍 Ubicación de la función:', window.location.href);
+        console.log('🔍 Función disponible:', typeof window.mostrarCrearPlanMicom);
+
+        // IMPORTANTE: Asegurar que estamos en la sección correcta
+        // Activar el botón "Control de produccion" para que scriptMain.js no interfiera
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            // Remover active de otros botones
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion (esto es lo que scriptMain.js maneja)
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        console.log('🔍 Verificando contenedores padre en mostrarCrearPlanMicom:');
+        console.log('materialContainer:', materialContainer);
+        console.log('produccionContent:', produccionContent);
+        console.log('produccionContentArea:', produccionContentArea);
+
+        if (materialContainer) {
+            materialContainer.style.display = 'block';
+            console.log('✅ materialContainer mostrado');
+        }
+        if (produccionContent) {
+            produccionContent.style.display = 'block';
+            console.log('✅ produccionContent mostrado');
+        }
+        if (produccionContentArea) {
+            produccionContentArea.style.display = 'block';
+            console.log('✅ produccionContentArea mostrado');
+        }
+
+        // Obtener el contenedor específico
+        const crearPlanMicomContainer = document.getElementById('crear-plan-micom-unique-container');
+        if (!crearPlanMicomContainer) {
+            console.error('El contenedor crear-plan-micom-unique-container no existe en el HTML');
+            return;
+        }
+
+        console.log('Contenedor encontrado:', crearPlanMicomContainer);
+        console.log('Estado inicial - Display:', crearPlanMicomContainer.style.display);
+
+        // Mostrar el contenedor específico
+        crearPlanMicomContainer.style.display = 'block';
+        crearPlanMicomContainer.style.opacity = '1';
+
+        console.log('Estado después de mostrar - Display:', crearPlanMicomContainer.style.display);
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        console.log('Iniciando carga AJAX...');
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('crear-plan-micom-unique-container', '/crear-plan-micom-ajax', () => {
+                console.log('Crear plan micom cargado exitosamente');
+                console.log('Verificando contenedor después de carga...');
+
+                // Verificar que el contenedor esté visible
+                const containerAfterLoad = document.getElementById('crear-plan-micom-unique-container');
+                if (containerAfterLoad) {
+                    console.log('Contenedor encontrado después de carga:', containerAfterLoad);
+                    console.log('Display:', containerAfterLoad.style.display);
+                    console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
+
+                    // Verificar que el contenedor esté realmente visible
+                    console.log('🔍 Verificando visibilidad del contenedor:');
+                    console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
+                    console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
+                    console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
+                    console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
+                    console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
+
+                    // Verificar que los contenedores padre también estén visibles
+                    const materialContainerAfter = document.getElementById('material-container');
+                    const produccionContentAfter = document.getElementById('produccion-content');
+                    const produccionContentAreaAfter = document.getElementById('produccion-content-area');
+
+                    console.log('🔍 Verificando contenedores padre después de carga:');
+                    console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
+                    console.log('produccionContent display:', produccionContentAfter ? window.getComputedStyle(produccionContentAfter).display : 'NO ENCONTRADO');
+                    console.log('produccionContentArea display:', produccionContentAreaAfter ? window.getComputedStyle(produccionContentAreaAfter).display : 'NO ENCONTRADO');
+                }
+
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarCrearPlanMicomModule === 'function') {
+                    window.inicializarCrearPlanMicomModule();
+                    console.log('Módulo inicializado correctamente');
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Crear plan micom:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarCrearPlanMicom:', error);
+    }
+};
+
+// ========================================
+// FUNCIÓN PARA CONTROL BOM
+// ========================================
 
             // Control BOM - SIGUIENDO EL PATRÓN EXITOSO
             window.mostrarControlBOM = function() {
