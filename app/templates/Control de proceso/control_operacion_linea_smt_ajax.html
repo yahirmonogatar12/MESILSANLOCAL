@@ -1,491 +1,77 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PLAN SMD – Inicio de Plan</title>
+<!-- TEMPLATE AJAX: Control de operacion de linea SMT -->
+<!-- SUFIJO ÚNICO: -operacion-linea-smt -->
+<!-- CONTENEDOR: operacion-linea-smt-unique-container -->
+
+<div id="operacion-linea-smt-main-container-unique-operacion-linea-smt" class="operacion-linea-smt-container">
   <style>
-    /* ==========================
-       TEMA VISUAL (estilo idéntico)
-       ========================== */
-    :root {
-      --bg-1: #32323E;     /* fondo app */
-      --bg-2: #34334E;     /* barras */
-      --bg-3: #40424F;     /* tarjetas/tabla */
-      --bg-4: #172A46;     /* header de tabla */
-      --txt-1: lightgray;  /* texto base */
-      --txt-2: #ecf0f1;    /* texto claro */
-      --muted: #95a5a6;
-      --muted-2: #5F6375;
-      --accent-1: #3498db; /* azul */
-      --accent-2: #20688C; /* borde */
-      --ok: #27ae60;       /* verde */
-      --warn: #e67e22;     /* naranja */
-      --err: #e74c3c;      /* rojo */
-      --shadow: rgba(0,0,0,0.1);
-    }
-
-    body { margin: 0; }
-    .kick-app { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg-1); color: var(--txt-1); min-height: 100vh; padding: 8px; }
-
-    .kick-card { background: var(--bg-3); border-radius: 8px; border: 1px solid var(--accent-2); box-shadow: 0 2px 10px var(--shadow); overflow: hidden; }
-    .kick-header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 10px; background:#2d3c4e; border-bottom:1px solid var(--accent-2); }
-    .kick-header h2 { margin:0; color: var(--txt-2); font-size: 14px; }
-
-    .kick-toolbar, .kick-subbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px; background: var(--bg-2); border-top:1px solid var(--accent-2); border-bottom:1px solid var(--accent-2); }
-    .kick-field { display:flex; flex-direction:column; gap:4px; }
-    .kick-field label { font-size:11px; color:#cfd8dc; }
-
-    .kick-input, .kick-select, .kick-date { background:#2c3e50; color:var(--txt-1); border:1px solid #34495e; border-radius:4px; padding:8px 10px; font-size:12px; min-height:34px; }
-    .kick-input::placeholder { color:#95a5a6; font-style: italic; }
-
-    .btn { padding: 6px 10px; border:1px solid var(--accent-2); border-radius:4px; background:#3C3940; color:#fff; cursor:pointer; font-size:11px; font-weight:600; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(52,152,219,.25); background:#2980b9; }
-    .btn.warn { background: var(--warn); }
-    .btn.ok { background: #456636; }
-
-    .state-badge { padding: 3px 8px; border-radius: 999px; border:1px solid #567; font-size:10px; background:#203040; color:#bfe4ff; }
-
-    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-    .grid-3 { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; }
-
-    .tbl-wrap { overflow:auto; }
-    table { width:100%; border-collapse:collapse; table-layout: fixed; font-size:11px; background: var(--bg-3); }
-    th { position:sticky; top:0; z-index:5; background:var(--bg-4); color:var(--txt-2); padding:6px 4px; border:1px solid var(--accent-2); font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; font-size:10px; }
-    td { padding:6px 4px; text-align:center; border:1px solid var(--muted-2); color:var(--txt-1); white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
-    tr:hover td { background:#485563; }
-    tr:nth-child(even) td { background:#44475A; }
-    tr:nth-child(even):hover td { background:#485563; }
-    .no-data { text-align:center; padding:14px; color:var(--muted); font-style:italic; }
-
-    @media (max-width: 1200px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
-
-    /* Modales */
-    .modal-backdrop { display:none; position:fixed; inset:0; background: rgba(0,0,0,.55); z-index: 9999; align-items:center; justify-content:center; }
-    .modal { background:#2c3e50; border:2px solid var(--accent-1); border-radius:12px; padding:20px; min-width:320px; max-width:90vw; box-shadow:0 8px 32px rgba(0,0,0,.35); text-align:center; }
-    .spinner { width:40px; height:40px; border:4px solid #34495e; border-top:4px solid var(--accent-1); border-radius:50%; animation:spin 1s linear infinite; margin:12px auto; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+        .operacion-linea-smt-container {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #2B2D3E;
+            color: #E0E0E0;
+            font-size: 12px;
+            width: 100%;
+            min-height: calc(100vh - 120px);
+            padding: 10px;
+        }
+        .operacion-linea-smt-container * { margin: 0; padding: 0; box-sizing: border-box; }
+        .operacion-linea-smt-container .title-bar-operacion-linea-smt {
+            background-color: #3C3F52;
+            padding: 12px 15px;
+            border: 1px solid #20688C;
+            border-radius: 4px 4px 0 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #E0E0E0;
+        }
+        .operacion-linea-smt-container .btn-primary-operacion-linea-smt {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            color: white;
+        }
+        .operacion-linea-smt-container .btn-iniciar-operacion-linea-smt { background-color: #3498DB; }
+        .operacion-linea-smt-container .btn-fin-operacion-linea-smt { background-color: #E74C3C; }
+        .operacion-linea-smt-container .btn-pausa-operacion-linea-smt { background-color: #95A5A6; }
   </style>
-</head>
-<body>
-  <div class="kick-app" id="kickApp">
-    <section class="kick-card" id="kickCard">
-      <div class="kick-header">
-        <h2>Consultar el número de lote / Iniciar plan</h2>
-        <div>
-          <button id="btnStart" class="btn">Iniciar(reiniciar)</button>
-          <button id="btnStop" class="btn warn">Fin</button>
-          <button id="btnPause" class="btn">Pausa</button>
-        </div>
+
+    <div class="title-bar-operacion-linea-smt">Control de operación de línea SMT</div>
+    
+    <div style="background-color: #40424F; border: 1px solid #20688C; padding: 15px; display: flex; gap: 15px; flex-wrap: wrap;">
+        <label>Numero de lote</label>
+        <input type="text" id="numeroLote-operacion-linea-smt" style="background-color: #2C3E50; color: #E0E0E0; border: 1px solid #34495E; border-radius: 4px; padding: 8px 12px; flex: 1;">
+        <button id="btnIniciar-operacion-linea-smt" class="btn-primary-operacion-linea-smt btn-iniciar-operacion-linea-smt">Iniciar</button>
+        <button id="btnFin-operacion-linea-smt" class="btn-primary-operacion-linea-smt btn-fin-operacion-linea-smt">Fin</button>
+        <button id="btnPausa-operacion-linea-smt" class="btn-primary-operacion-linea-smt btn-pausa-operacion-linea-smt">Pausa</button>
       </div>
 
-      <!-- Barra 1: Número de lote -->
-      <div class="kick-toolbar">
-        <div class="kick-field" style="min-width:260px; flex:1;">
-          <label for="lotInput">Número de lote</label>
-          <input id="lotInput" class="kick-input" placeholder="Ej. P20250815-001" />
-        </div>
-        <div class="kick-field" style="min-width:260px; flex:1;">
-          <label for="lotInfo">Información de número de lote</label>
-          <input id="lotInfo" class="kick-input" placeholder="—" readonly />
-        </div>
-        <div class="kick-field" style="min-width:140px;">
-          <label>Estado</label>
-          <span id="lotState" class="state-badge">—</span>
-        </div>
-      </div>
-
-      <!-- Barra 2: Filtros de lotes -->
-      <div class="kick-subbar">
-        <div class="kick-field">
-          <label for="prodDesde">Fecha de prod.</label>
-          <input id="prodDesde" class="kick-date" type="date" />
-        </div>
-        <span style="align-self:end; opacity:.7;">~</span>
-        <div class="kick-field">
-          <label for="prodHasta">&nbsp;</label>
-          <input id="prodHasta" class="kick-date" type="date" />
-        </div>
-        <div class="kick-field">
-          <label for="lineaFiltro">Línea</label>
-          <select id="lineaFiltro" class="kick-select">
-            <option value="">Todos</option>
-            <option>SMT A</option>
-            <option>SMT B</option>
-            <option>SMT C</option>
-            <option>SMT D</option>
-          </select>
-        </div>
-        <button id="btnConsultar" class="btn">Consultar</button>
-        <button id="btnExportLotes" class="btn ok">Exportar el excel</button>
-      </div>
-
-      <!-- Tabla de lotes -->
-      <div class="tbl-wrap">
-        <table id="tblLotes">
-          <thead>
-            <tr>
-              <th>Línea</th>
-              <th>Fecha de producción</th>
-              <th>Número de lote</th>
-              <th>Estado</th>
-              <th>Modelo</th>
-              <th>Proceso</th>
-              <th>Side</th>
-              <th>Xout</th>
-              <th>Cantidad planeada</th>
-              <th>Cantidad de producción</th>
-            </tr>
-          </thead>
-          <tbody id="lotesBody">
-            <tr><td class="no-data" colspan="10">No hay dato registrado</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Grid BOM + Cambios de material -->
-      <div class="grid-2" style="padding:8px;">
-        <article class="kick-card">
-          <div class="kick-header">
-            <h2>Lista de BOM</h2>
-            <div>
-              <button id="btnExportBOM" class="btn ok">Exportar el excel</button>
-              <button id="btnVerifPass" class="btn">Verif. Pass</button>
-              <button id="btnSustituto" class="btn">Registro de mat. sustituto</button>
-              <button id="btnComb" class="btn">Activar la combinación</button>
-            </div>
-          </div>
-          <div class="tbl-wrap">
-            <table id="tblBOM">
-              <thead>
-                <tr>
-                  <th>Número</th>
-                  <th>N° Parte</th>
-                  <th>Código modelo</th>
-                  <th>Número BOM</th>
-                  <th>Resultado verif.</th>
-                  <th>Activación</th>
-                  <th>Uso de…</th>
-                  <th>Tiempo…</th>
-                </tr>
-              </thead>
-              <tbody id="bomBody">
-                <tr><td class="no-data" colspan="8">No hay dato registrado</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </article>
-
-        <article class="kick-card">
-          <div class="kick-header">
-            <h2>Historial de cambio de material</h2>
-            <div>
-              <button id="btnExportMat" class="btn ok">Exportar el excel</button>
-            </div>
-          </div>
-          <div class="tbl-wrap">
-            <table id="tblMat">
-              <thead>
-                <tr>
-                  <th>Número de registro</th>
-                  <th>Número de parte</th>
-                  <th>Fecha de reemplazo</th>
-                  <th>Código de modelo</th>
-                  <th>Cantidad reemplazada</th>
-                  <th>Cantidad actual</th>
-                </tr>
-              </thead>
-              <tbody id="matBody">
-                <tr><td class="no-data" colspan="6">No hay dato registrado</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- Plan SMD (consulta) -->
-    <section class="kick-card" id="planCard">
-      <div class="kick-header">
-        <h2>Plan SMD (consulta)</h2>
-        <div>
-          <button id="btnPlanConsultar" class="btn">Consultar</button>
-          <button id="btnPlanExport" class="btn ok">Exportar el excel</button>
-        </div>
-      </div>
-      <div class="kick-subbar">
-        <input id="planQuery" class="kick-input" placeholder="Buscar (lote, nparte, modelo, usuario)" style="min-width:260px;flex:1;"/>
-        <div class="kick-field">
-          <label for="planDesde">Fecha (desde)</label>
-          <input id="planDesde" class="kick-date" type="date"/>
-        </div>
-        <span style="align-self:end;opacity:.7;">~</span>
-        <div class="kick-field">
-          <label for="planHasta">&nbsp;</label>
-          <input id="planHasta" class="kick-date" type="date"/>
-        </div>
-        <div class="kick-field">
-          <label for="planLinea">Línea</label>
-          <select id="planLinea" class="kick-select">
-            <option value="">Todas</option>
-            <option>SMT A</option>
-            <option>SMT B</option>
-            <option>SMT C</option>
-            <option>SMT D</option>
-          </select>
-        </div>
-        <div class="kick-field">
-          <label for="planTurno">Turno</label>
-          <select id="planTurno" class="kick-select">
-            <option value="">Todos</option>
-            <option>DIA</option>
-            <option>NOCHE</option>
-          </select>
-        </div>
-        <div class="kick-field">
-          <label for="planTipo">Tipo</label>
-          <select id="planTipo" class="kick-select">
-            <option value="">Todos</option>
-            <option>Main</option>
-            <option>Display</option>
-          </select>
-        </div>
-      </div>
-      <div class="tbl-wrap">
-        <table id="tblPlan">
-          <thead>
-            <tr>
-              <th>Línea</th>
-              <th>Lote</th>
-              <th>N° Parte</th>
-              <th>Modelo</th>
-              <th>Tipo</th>
-              <th>Turno</th>
-              <th>C/T</th>
-              <th>UPH</th>
-              <th>QTY</th>
-              <th>Físico</th>
-              <th>Falta</th>
-              <th>%</th>
-              <th>Comentarios</th>
-              <th>Fecha creación</th>
-              <th>Usuario</th>
-            </tr>
-          </thead>
-          <tbody id="planBody">
-            <tr><td class="no-data" colspan="15">No hay dato registrado</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Modales -->
-    <div class="modal-backdrop" id="loadingModal" aria-hidden="true">
-      <div class="modal">
-        <h3 id="loadingTitle" style="color:#8ec8ff;margin:0 0 6px 0;">Cargando…</h3>
-        <p id="loadingText" style="margin:0;color:var(--txt-2);">Procesando</p>
-        <div class="spinner" aria-hidden="true"></div>
-      </div>
-    </div>
-
-    <div class="modal-backdrop" id="alertModal" aria-hidden="true">
-      <div class="modal">
-        <h3 style="color:var(--txt-2);margin:0 0 6px 0;">Aviso</h3>
-        <p id="alertMsg" style="margin:0;color:var(--txt-2);"></p>
-        <div style="margin-top:12px;"><button id="alertOk" class="btn">Aceptar</button></div>
-      </div>
-    </div>
+    <div style="background-color: #40424F; border: 1px solid #20688C; margin-top: 10px; padding: 15px; text-align: center; color: #95A5A6;">
+        Módulo Control de operación de línea SMT cargado correctamente
   </div>
 
   <script>
-    // ===============================
-    // ENDPOINTS (ajusta a tu backend)
-    // ===============================
-    const API = {
-      kickoffLotes: "/api/plan/lotes", // GET: fecha_desde, fecha_hasta, linea
-      kickoffLoteInfo: (lote) => `/api/plan/lotes/${encodeURIComponent(lote)}`, // GET
-      kickoffBom: (lote) => `/api/plan/lotes/${encodeURIComponent(lote)}/bom`, // GET
-      kickoffHist: (lote, tipo) => `/api/plan/lotes/${encodeURIComponent(lote)}/historial?tipo=${encodeURIComponent(tipo)}`, // GET
-      planSMD: "/api/plan-smd" // GET: q, desde, hasta, linea, turno, tipo
-    };
-
-    // ===============================
-    // HELPERS
-    // ===============================
-    const $ = (id) => document.getElementById(id);
-    const fmtDate = (s) => { if(!s) return '—'; const d = new Date(s); if(isNaN(d)) return s; const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
-    const num = (v) => typeof v === 'number' ? v : (v ? Number(v) : 0);
-    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
-
-    const showLoading = (msg='Procesando…') => { $('loadingText').textContent = msg; $('loadingModal').style.display='flex'; };
-    const hideLoading = () => { $('loadingModal').style.display='none'; };
-    const alertMsg = (m) => { $('alertMsg').textContent = m; $('alertModal').style.display='flex'; };
-    $('alertOk').addEventListener('click', () => $('alertModal').style.display='none');
-
-    async function fetchJSON(url){ const r = await fetch(url, {headers:{'Accept':'application/json'}}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
-
-    // ===============================
-    // RENDER LOTES
-    // ===============================
-    function renderLotes(rows){
-      const tb = $('lotesBody'); tb.innerHTML='';
-      if(!rows || !rows.length){ tb.innerHTML = `<tr><td class="no-data" colspan="10">No hay dato registrado</td></tr>`; return; }
-      rows.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.linea||'—'}</td>
-          <td>${fmtDate(r.fecha_produccion)}</td>
-          <td>${r.lote||'—'}</td>
-          <td>${r.estado||'—'}</td>
-          <td>${r.modelo||'—'}</td>
-          <td>${r.proceso||'—'}</td>
-          <td>${r.side||'—'}</td>
-          <td>${r.xout ?? '—'}</td>
-          <td>${num(r.cantidad_planeada||0).toLocaleString()}</td>
-          <td>${num(r.cantidad_producida||0).toLocaleString()}</td>`;
-        tb.appendChild(tr);
-      });
-    }
-
-    async function loadLotes(){
-      const p = new URLSearchParams();
-      const d = $('prodDesde').value; const h = $('prodHasta').value; const linea = $('lineaFiltro').value;
-      if(d) p.set('fecha_desde', d); if(h) p.set('fecha_hasta', h); if(linea) p.set('linea', linea);
-      showLoading('Consultando lotes…');
-      try{ const data = await fetchJSON(`${API.kickoffLotes}?${p.toString()}`); renderLotes(Array.isArray(data)?data:(data.rows||[])); }
-      catch(e){ console.error(e); alertMsg('No fue posible consultar los lotes.'); }
-      finally{ hideLoading(); }
-    }
-
-    async function loadLoteInfo(){
-      const lote = $('lotInput').value.trim(); if(!lote){ alertMsg('Escribe un número de lote.'); return; }
-      showLoading('Cargando información de lote…');
-      try{
-        const info = await fetchJSON(API.kickoffLoteInfo(lote));
-        $('lotInfo').value = (info && (info.info||info.descripcion||info.modelo||'')) || '—';
-        $('lotState').textContent = (info && (info.estado||'—'));
-        await Promise.all([ loadBOM(lote), loadHist(lote,'material') ]);
-      }catch(e){ console.error(e); alertMsg('No fue posible cargar el lote.'); }
-      finally{ hideLoading(); }
-    }
-
-    async function loadBOM(lote){
-      const tb = $('bomBody'); tb.innerHTML='';
-      try{ const data = await fetchJSON(API.kickoffBom(lote)); const rows = Array.isArray(data)?data:(data.rows||[]);
-        if(!rows.length){ tb.innerHTML = `<tr><td class=\"no-data\" colspan=\"8\">No hay dato registrado</td></tr>`; return; }
-        rows.forEach((r,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `
-          <td>${i+1}</td><td>${r.nparte||'—'}</td><td>${r.codigo_modelo||r.modelo||'—'}</td><td>${r.bom_num||'—'}</td><td>${r.verificacion||'—'}</td><td>${r.activacion||'—'}</td><td>${r.uso||'—'}</td><td>${r.tiempo||'—'}</td>`; tb.appendChild(tr);
-        });
-      }catch(e){ console.error(e); tb.innerHTML = `<tr><td class=\"no-data\" colspan=\"8\">No hay dato registrado</td></tr>`; }
-    }
-
-    async function loadHist(lote, tipo){
-      // Solo 'material' (se eliminaron otros historiales)
-      const tb = $('matBody'); tb.innerHTML='';
-      try{
-        const data = await fetchJSON(API.kickoffHist(lote, 'material'));
-        const rows = Array.isArray(data)?data:(data.rows||[]);
-        if(!rows.length){ tb.innerHTML = `<tr><td class="no-data" colspan="6">No hay dato registrado</td></tr>`; return; }
-        rows.forEach(r=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${esc(r.id)||'—'}</td><td>${esc(r.nparte)||'—'}</td><td>${fmtDate(r.fecha)||'—'}</td><td>${esc(r.codigo_modelo)||'—'}</td><td>${num(r.cantidad_reemplazada||0)}</td><td>${num(r.cantidad_actual||0)}</td>`;
-          tb.appendChild(tr);
-        });
-      }catch(e){ console.error(e); tb.innerHTML = `<tr><td class=\"no-data\" colspan=\"6\">No hay dato registrado</td></tr>`; }
-    }
-
-    async function changeLotState(async function changeLotState(action){
-      const lote = $('lotInput').value.trim(); if(!lote){ alertMsg('Escribe un número de lote.'); return; }
-      showLoading(action==='start'?'Iniciando…':(action==='pause'?'Pausando…':'Finalizando…'));
-      try{ const url = API.kickoffLoteInfo(lote) + '/' + action; const r = await fetch(url, {method:'POST'}); if(!r.ok) throw new Error('HTTP '+r.status); await loadLoteInfo(); }
-      catch(e){ console.error(e); alertMsg('No fue posible actualizar el estado.'); }
-      finally{ hideLoading(); }
-    }
-
-    // ===============================
-    // EXPORTAR CSV
-    // ===============================
-    function toCSVCell(v){ const s = String(v ?? ''); const needs = /[",
-
-]/.test(s); const escC = s.replace(/"/g,'""'); return needs ? `"${escC}"` : escC; }
-    function exportTableToCSV(tableId, filename){
-      const table = $(tableId); if(!table){ alertMsg('Tabla no encontrada'); return; }
-      const rows = Array.from(table.querySelectorAll('tr'));
-      const csv = rows.map(tr => Array.from(tr.children).map(td => toCSVCell(td.innerText.trim())).join(',')).join('
-');
-      const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
-    }
-
-    // ===============================
-    // PLAN SMD – CONSULTA
-    // ===============================
-    function renderPlanSMD(rows){
-      const tb = $('planBody'); tb.innerHTML='';
-      if(!rows || !rows.length){ tb.innerHTML = `<tr><td class="no-data" colspan="15">No hay dato registrado</td></tr>`; return; }
-      rows.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${esc(r.linea)||'—'}</td>
-          <td>${esc(r.lote)||'—'}</td>
-          <td>${esc(r.nparte)||'—'}</td>
-          <td>${esc(r.modelo)||'—'}</td>
-          <td>${esc(r.tipo)||'—'}</td>
-          <td>${esc(r.turno)||'—'}</td>
-          <td>${esc(r.ct)||''}</td>
-          <td>${esc(r.uph)||''}</td>
-          <td>${num(r.qty||0).toLocaleString()}</td>
-          <td>${num(r.fisico||0).toLocaleString()}</td>
-          <td>${num(r.falta||0).toLocaleString()}</td>
-          <td>${num(r.pct||0)}%</td>
-          <td>${esc(r.comentarios)||''}</td>
-          <td>${fmtDate(r.fecha_creacion)||'—'}</td>
-          <td>${esc(r.usuario_creacion)||'—'}</td>`;
-        tb.appendChild(tr);
-      });
-    }
-
-    async function loadPlanSMD(){
-      const p = new URLSearchParams();
-      const q = $('planQuery').value.trim();
-      const d = $('planDesde').value; const h = $('planHasta').value;
-      const linea = $('planLinea').value; const turno = $('planTurno').value; const tipo = $('planTipo').value;
-      if(q) p.set('q', q); if(d) p.set('desde', d); if(h) p.set('hasta', h);
-      if(linea) p.set('linea', linea); if(turno) p.set('turno', turno); if(tipo) p.set('tipo', tipo);
-      showLoading('Consultando plan…');
-      try{ const data = await fetchJSON(`${API.planSMD}?${p.toString()}`); renderPlanSMD(Array.isArray(data)?data:(data.rows||[])); }
-      catch(e){ console.error(e); alertMsg('No fue posible consultar el plan.'); }
-      finally{ hideLoading(); }
-    }
-
-    // ===============================
-    // EVENTOS
-    // ===============================
-    $('btnConsultar').addEventListener('click', loadLotes);
-    $('btnExportLotes').addEventListener('click', () => exportTableToCSV('tblLotes','lotes.csv'));
-    $('btnExportBOM').addEventListener('click', () => exportTableToCSV('tblBOM','bom.csv'));
-    $('btnExportMat').addEventListener('click', () => exportTableToCSV('tblMat','hist_material.csv'));
-
-    // Plan SMD consulta
-    $('btnPlanConsultar').addEventListener('click', loadPlanSMD);
-    $('btnPlanExport').addEventListener('click', () => exportTableToCSV('tblPlan','plan_smd.csv'));
-
-    $('lotInput'.addEventListener('change', loadLoteInfo);
-    $('btnStart').addEventListener('click', () => changeLotState('start'));
-    $('btnPause').addEventListener('click', () => changeLotState('pause'));
-    $('btnStop').addEventListener('click', () => changeLotState('finish'));
-
-    // ===============================
-    // TESTS MÍNIMOS (no tocan red)
-    // ===============================
-    (function tests(){
-      const res = [];
-      function expect(name, cond){ if(!cond){ console.error('❌', name); res.push(false);} else { console.log('✅', name);} }
-      expect('CSV: duplica comillas', toCSVCell('A"B') === '"A""B"');
-      expect('CSV: con coma envuelve', toCSVCell('A,B') === '"A,B"');
-      // Prueba exportTableToCSV: crea tabla dummy en memoria
-      const tmp = document.createElement('table'); tmp.innerHTML = '<tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr>';
-      document.body.appendChild(tmp); try { exportTableToCSV(tmp.id || (tmp.id='__t'), 't.csv'); expect('exportTableToCSV no rompe', true); } catch(e){ expect('exportTableToCSV error', false); } finally { tmp.remove(); }
+        (function() {
+            console.log('🚀 Inicializando Control de operación de línea SMT AJAX...');
+            
+            window.inicializarControlOperacionLineaSMTAjax = function() {
+                console.log('✅ Control de operación de línea SMT AJAX inicializado');
+                
+                const btnIniciar = document.getElementById('btnIniciar-operacion-linea-smt');
+                const btnFin = document.getElementById('btnFin-operacion-linea-smt');
+                const btnPausa = document.getElementById('btnPausa-operacion-linea-smt');
+                
+                if (btnIniciar) btnIniciar.addEventListener('click', () => console.log('🚀 Iniciar clicked'));
+                if (btnFin) btnFin.addEventListener('click', () => console.log('🛑 Fin clicked'));
+                if (btnPausa) btnPausa.addEventListener('click', () => console.log('⏸️ Pausa clicked'));
+            };
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', window.inicializarControlOperacionLineaSMTAjax);
+            } else {
+                setTimeout(window.inicializarControlOperacionLineaSMTAjax, 100);
+            }
     })();
   </script>
-</body>
-</html>
+</div>

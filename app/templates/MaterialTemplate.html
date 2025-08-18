@@ -452,7 +452,7 @@
         <div id="Control de produccion SMT-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
-        <div id="control-operacion-linea-smt-unique-container" style="display: none;">
+        <div id="operacion-linea-smt-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
         <div id="inventario-imd-terminado-unique-container" style="display: none;">
@@ -766,71 +766,18 @@
                                 setTimeout(setupSimpleFallback, 100);
                             });
                         };
-            
-            // Función AJAX para Control de operación de línea SMT
-            window.mostrarControlOperacionLineaSMT = function() {
-                try {
-                    hideAllMaterialContainers();
-                    
-                    // Mostrar el contenedor de material y el contenido de control de proceso
-                    const materialContainer = document.getElementById('material-container');
-                    const controlProcesoContent = document.getElementById('control-proceso-content');
-                    
-                    if (materialContainer) materialContainer.style.display = 'block';
-                    if (controlProcesoContent) {
-                        controlProcesoContent.style.display = 'block';
-                        controlProcesoContent.style.visibility = 'visible';
-                        controlProcesoContent.style.opacity = '1';
-                        controlProcesoContent.style.position = 'relative';
-                        controlProcesoContent.style.zIndex = '1000';
                     }
                     
-                    // Obtener el contenedor específico que ya existe en el HTML
-                    const operacionLineaContainer = document.getElementById('control-operacion-linea-smt-unique-container');
-                    if (!operacionLineaContainer) {
-                        console.error('❌ El contenedor control-operacion-linea-smt-unique-container no existe en el HTML');
-                        return;
-                    }
-                    
-                    // Mostrar el contenedor específico
-                    operacionLineaContainer.style.display = 'block';
-                    operacionLineaContainer.style.visibility = 'visible';
-                    operacionLineaContainer.style.opacity = '1';
-                    
-                    // IMPORTANTE: Ocultar contenedor de material
-                    const materialContentArea = document.getElementById('material-content-area');
-                    if (materialContentArea) materialContentArea.style.display = 'none';
-                    
-                    // Cargar contenido dinámicamente usando la ruta AJAX
-                    cargarContenidoDinamico('control-operacion-linea-smt-unique-container', '/control_proceso/control_operacion_linea_smt', () => {
-                        // Ejecutar inicialización específica del módulo si existe
-                        if (typeof window.inicializarControlOperacionLineaSMT === 'function') {
-                            window.inicializarControlOperacionLineaSMT();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('❌ Error cargando Control de operación de línea SMT AJAX:', error);
-                        
-                        // Mostrar mensaje de error al usuario
-                        const errorContainer = document.querySelector('#control-operacion-linea-smt-unique-container');
-                        if (errorContainer) {
-                            errorContainer.innerHTML = `
-                                <div class="error-message" style="padding: 20px; text-align: center; color: #dc3545;">
-                                    <h3>❌ Error al cargar Control de operación de línea SMT</h3>
-                                    <p>No se pudo cargar el módulo. Por favor, intente nuevamente.</p>
-                                    <button onclick="window.mostrarControlOperacionLineaSMT()" class="btn btn-primary">Reintentar</button>
-                                </div>
-                            `;
-                        }
-                    });
-                    
-                } catch (error) {
-                    console.error('❌ Error crítico en mostrarControlOperacionLineaSMT:', error);
-                    alert('Error crítico al cargar Control de operación de línea SMT. Consulte la consola para más detalles.');
-                }
-            };
+                    // Función AJAX para Control de operación de línea SMT - ELIMINADA (MOVIDA A SCOPE GLOBAL)
+                });
             }
         }, 1000);
+        
+        // ============================================= 
+        // FUNCIONES AJAX GLOBALES - FUERA DEL IIFE
+        // ============================================= 
+        
+        // NOTA: mostrarControlOperacionLineaSMT está ahora definida en scriptMain.js
     </script>
     
     <!-- PWA Service Worker Registration -->
@@ -1993,7 +1940,7 @@ function hideAllMaterialContainers() {
     if (controlProduccionSmtParent) controlProduccionSmtParent.style.display = 'none';
     const controlProduccionSmtContainer = document.getElementById('Control de produccion SMT-unique-container');
     if (controlProduccionSmtContainer) controlProduccionSmtContainer.style.display = 'none';
-    const controlOperacionLineaContainer = document.getElementById('control-operacion-linea-smt-unique-container');
+    const controlOperacionLineaContainer = document.getElementById('operacion-linea-smt-unique-container');
     if (controlOperacionLineaContainer) controlOperacionLineaContainer.style.display = 'none';
     const inventarioImdTerminadoContainer = document.getElementById('inventario-imd-terminado-unique-container');
     if (inventarioImdTerminadoContainer) inventarioImdTerminadoContainer.style.display = 'none';
@@ -2589,7 +2536,7 @@ function hideAllMaterialContainers() {
                     const otherContainers = [
                         'control-proceso-info-container',
                         'Control de produccion SMT-unique-container',
-                        'control-operacion-linea-smt-unique-container'
+                        'operacion-linea-smt-unique-container'
                     ];
                     
                     otherContainers.forEach(containerId => {

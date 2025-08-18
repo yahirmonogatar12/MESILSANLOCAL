@@ -2790,14 +2790,18 @@ def control_produccion_smt_ajax():
         print(f"Error al cargar template Control de produccion SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
-@app.route('/control_proceso/control_operacion_linea_smt')
+# Ruta eliminada - Control de operacion de linea SMT será reemplazado por Control BOM
+
+@app.route('/control-operacion-linea-smt-ajax')
 @login_requerido
 def control_operacion_linea_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de operacion de linea SMT"""
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de operación de línea SMT"""
     try:
-        return render_template('Control de proceso/control_operacion_linea_smt_ajax.html')
+        from datetime import datetime
+        fecha_hoy = datetime.now().strftime('%d/%m/%Y')
+        return render_template('Control de proceso/control_operacion_linea_smt_ajax.html', fecha_hoy=fecha_hoy)
     except Exception as e:
-        print(f"Error al cargar template Control de operacion de linea SMT AJAX: {e}")
+        print(f"Error al cargar template Control de operación de línea SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route('/control_proceso/inventario_imd_terminado')
