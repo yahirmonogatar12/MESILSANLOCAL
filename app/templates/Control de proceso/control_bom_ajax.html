@@ -1,0 +1,41 @@
+<!-- TEMPLATE AJAX: Control BOM -->
+<!-- SUFIJO ÚNICO: -bom -->
+<!-- CONTENEDOR DESTINO (EXTERNO): bom-unique-container -->
+
+<div id="control-bom-main-container-unique-bom" class="control-bom-container">
+	<h2 style="margin: 0 0 12px 0; color: #E0E0E0;">Control BOM</h2>
+	<div class="contenido-placeholder" style="color: #B0B3B8; font-size: 13px;">
+		Este es el fragmento AJAX para Control BOM. Sustituye este contenido con el módulo real.
+	</div>
+</div>
+
+<style>
+.control-bom-container {
+	padding: 16px;
+	background-color: #2B2D3E;
+	color: #E0E0E0;
+	border: 1px solid #3C3F51;
+	border-radius: 4px;
+}
+</style>
+
+<script>
+(function() {
+	window.inicializarControlBOMModule = function() {
+		try {
+			// Inicialización mínima del módulo (sin emojis)
+			console.log('Inicializando Control BOM AJAX...');
+			console.log('Control BOM AJAX inicializado');
+		} catch (e) {
+			console.error('Error inicializando Control BOM AJAX:', e);
+		}
+	};
+
+	// Auto-ejecutar inicialización si el DOM ya está listo
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', window.inicializarControlBOMModule);
+	} else {
+		window.inicializarControlBOMModule();
+	}
+})();
+</script>

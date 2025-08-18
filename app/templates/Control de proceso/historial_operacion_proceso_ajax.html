@@ -1,0 +1,280 @@
+<!-- TEMPLATE AJAX: Historial de operacion por proceso -->
+<!-- SUFIJO ÚNICO: -historial-operacion-proceso -->
+<!-- CONTENEDOR: historial-operacion-proceso-unique-container -->
+
+<div id="historial-operacion-proceso-main-container-unique-historial-operacion-proceso" class="historial-operacion-proceso-container">
+    <div class="module-header">
+        <h2>Historial de operación por proceso</h2>
+        <p>Fecha: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="search-section">
+            <h3>Búsqueda de Historial</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Proceso:</label>
+                    <select id="proceso-historial-operacion" class="form-control">
+                        <option value="">Todos los procesos</option>
+                        <option value="SMT">SMT</option>
+                        <option value="DIP">DIP</option>
+                        <option value="TEST">TEST</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
+                        <option value="PACKING">PACKING</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Orden de Trabajo:</label>
+                    <input type="text" id="wo-historial-operacion" class="form-control" placeholder="WO-XXXXX">
+                </div>
+                <div class="col-md-3">
+                    <label>Desde:</label>
+                    <input type="date" id="fecha-desde-historial" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label>Hasta:</label>
+                    <input type="date" id="fecha-hasta-historial" class="form-control">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label>Modelo:</label>
+                    <input type="text" id="modelo-historial-operacion" class="form-control" placeholder="Buscar modelo">
+                </div>
+                <div class="col-md-3">
+                    <label>Estado:</label>
+                    <select id="estado-historial-operacion" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="completado">Completado</option>
+                        <option value="en_proceso">En Proceso</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Operador:</label>
+                    <input type="text" id="operador-historial" class="form-control" placeholder="Buscar operador">
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="window.buscarHistorial()">Buscar</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-section mt-4">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h4>Total Operaciones</h4>
+                        <p class="stat-number" id="total-operaciones">0</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h4>Completadas</h4>
+                        <p class="stat-number text-success" id="operaciones-completadas">0</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h4>En Proceso</h4>
+                        <p class="stat-number text-warning" id="operaciones-proceso">0</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h4>Eficiencia</h4>
+                        <p class="stat-number text-info" id="eficiencia-proceso">0%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-section mt-4">
+            <h3>Historial de Operaciones</h3>
+            <table id="tabla-historial-operacion-proceso" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha/Hora</th>
+                        <th>Proceso</th>
+                        <th>WO</th>
+                        <th>Modelo</th>
+                        <th>Operación</th>
+                        <th>Cantidad</th>
+                        <th>Duración</th>
+                        <th>Operador</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Datos dinámicos -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-actions">
+            <button class="btn btn-success" onclick="window.exportarHistorial()">Exportar a Excel</button>
+            <button class="btn btn-info" onclick="window.verGraficos()">Ver Gráficos</button>
+            <button class="btn btn-warning" onclick="window.generarReporte()">Generar Reporte</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.historial-operacion-proceso-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.historial-operacion-proceso-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.historial-operacion-proceso-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.historial-operacion-proceso-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.historial-operacion-proceso-container .search-section,
+.historial-operacion-proceso-container .table-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.historial-operacion-proceso-container .stats-section {
+    margin-bottom: 20px;
+}
+
+.historial-operacion-proceso-container .stat-card {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.historial-operacion-proceso-container .stat-card h4 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #B0B0B0;
+}
+
+.historial-operacion-proceso-container .stat-number {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.historial-operacion-proceso-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.historial-operacion-proceso-container .form-control:focus {
+    background-color: #252531;
+    border-color: #3498db;
+    color: #E0E0E0;
+}
+
+.historial-operacion-proceso-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.historial-operacion-proceso-container .table thead {
+    background-color: #1E1E2E;
+}
+
+.historial-operacion-proceso-container .table-striped tbody tr:nth-of-type(odd) {
+    background-color: #252531;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Historial de operación por proceso AJAX...');
+    
+    // Función de inicialización global
+    window.inicializarHistorialOperacionProcesoAjax = function() {
+        console.log('Historial de operación por proceso AJAX inicializado');
+        establecerFechasPorDefecto();
+        cargarHistorialInicial();
+        actualizarEstadisticas();
+    };
+    
+    // Funciones específicas del módulo
+    function establecerFechasPorDefecto() {
+        const hoy = new Date();
+        const hace7Dias = new Date();
+        hace7Dias.setDate(hoy.getDate() - 7);
+        
+        document.getElementById('fecha-desde-historial').value = hace7Dias.toISOString().split('T')[0];
+        document.getElementById('fecha-hasta-historial').value = hoy.toISOString().split('T')[0];
+    }
+    
+    function cargarHistorialInicial() {
+        console.log('Cargando historial inicial...');
+        // Simular carga de datos
+    }
+    
+    function actualizarEstadisticas() {
+        // Simular actualización de estadísticas
+        document.getElementById('total-operaciones').textContent = '245';
+        document.getElementById('operaciones-completadas').textContent = '198';
+        document.getElementById('operaciones-proceso').textContent = '32';
+        document.getElementById('eficiencia-proceso').textContent = '81%';
+    }
+    
+    // Funciones globales para botones
+    window.buscarHistorial = function() {
+        console.log('Buscando historial con filtros aplicados');
+        const proceso = document.getElementById('proceso-historial-operacion').value;
+        const wo = document.getElementById('wo-historial-operacion').value;
+        const fechaDesde = document.getElementById('fecha-desde-historial').value;
+        const fechaHasta = document.getElementById('fecha-hasta-historial').value;
+        
+        console.log('Filtros:', { proceso, wo, fechaDesde, fechaHasta });
+        // Lógica de búsqueda
+    };
+    
+    window.exportarHistorial = function() {
+        console.log('Exportando historial a Excel');
+        // Lógica de exportación
+    };
+    
+    window.verGraficos = function() {
+        console.log('Mostrando gráficos del historial');
+        // Lógica para mostrar gráficos
+    };
+    
+    window.generarReporte = function() {
+        console.log('Generando reporte de operaciones');
+        // Lógica para generar reporte
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarHistorialOperacionProcesoAjax);
+    } else {
+        window.inicializarHistorialOperacionProcesoAjax();
+    }
+})();
+</script>

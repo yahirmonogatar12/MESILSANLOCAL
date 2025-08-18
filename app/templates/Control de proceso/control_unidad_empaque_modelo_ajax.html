@@ -1,0 +1,386 @@
+<!-- TEMPLATE AJAX: Control de unidad de empaque por modelo -->
+<!-- SUFIJO ÚNICO: -control-unidad-empaque-modelo -->
+<!-- CONTENEDOR: control-unidad-empaque-modelo-unique-container -->
+
+<div id="control-unidad-empaque-modelo-main-container-unique-control-unidad-empaque-modelo" class="control-unidad-empaque-modelo-container">
+    <div class="module-header">
+        <h2>Control de unidad de empaque por modelo</h2>
+        <p>Fecha: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="model-search-section">
+            <h3>Configuración de Empaque</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Modelo:</label>
+                    <input type="text" id="modelo-unidad-empaque" class="form-control" placeholder="Buscar modelo">
+                    <div id="modelo-sugerencias-empaque" class="suggestions-box"></div>
+                </div>
+                <div class="col-md-4">
+                    <label>Cliente:</label>
+                    <select id="cliente-unidad-empaque" class="form-control">
+                        <option value="">Seleccionar cliente</option>
+                        <!-- Clientes dinámicos -->
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="window.buscarConfiguracionEmpaque()">Buscar</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="current-config-section mt-4" id="current-config-section" style="display: none;">
+            <h3>Configuración Actual</h3>
+            <div class="config-info">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label>Modelo:</label>
+                        <p class="config-value" id="config-modelo">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Cliente:</label>
+                        <p class="config-value" id="config-cliente">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Última Actualización:</label>
+                        <p class="config-value" id="config-fecha">-</p>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Usuario:</label>
+                        <p class="config-value" id="config-usuario">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="packaging-levels mt-3">
+                <h4>Niveles de Empaque</h4>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="level-card">
+                            <h5>Nivel 1 - Unitario</h5>
+                            <input type="number" id="nivel1-cantidad" class="form-control" placeholder="Cantidad">
+                            <input type="text" id="nivel1-tipo" class="form-control mt-2" placeholder="Tipo (Bolsa, Caja, etc.)">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="level-card">
+                            <h5>Nivel 2 - Caja Interna</h5>
+                            <input type="number" id="nivel2-cantidad" class="form-control" placeholder="Cantidad">
+                            <input type="text" id="nivel2-tipo" class="form-control mt-2" placeholder="Tipo de caja">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="level-card">
+                            <h5>Nivel 3 - Caja Master</h5>
+                            <input type="number" id="nivel3-cantidad" class="form-control" placeholder="Cantidad">
+                            <input type="text" id="nivel3-tipo" class="form-control mt-2" placeholder="Tipo de caja">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="level-card">
+                            <h5>Nivel 4 - Pallet</h5>
+                            <input type="number" id="nivel4-cantidad" class="form-control" placeholder="Cantidad">
+                            <input type="text" id="nivel4-tipo" class="form-control mt-2" placeholder="Tipo de pallet">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="additional-config mt-3">
+                <h4>Configuración Adicional</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <label>Etiqueta Requerida:</label>
+                        <select id="etiqueta-requerida" class="form-control">
+                            <option value="si">Sí</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Código de Barras:</label>
+                        <select id="codigo-barras-tipo" class="form-control">
+                            <option value="EAN13">EAN-13</option>
+                            <option value="CODE128">Code 128</option>
+                            <option value="QR">QR Code</option>
+                            <option value="DATAMATRIX">Data Matrix</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Documentación:</label>
+                        <input type="text" id="documentacion-requerida" class="form-control" placeholder="Documentos requeridos">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <label>Instrucciones Especiales:</label>
+                        <textarea id="instrucciones-especiales" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="config-actions mt-3">
+                <button class="btn btn-success" onclick="window.guardarConfiguracion()">Guardar Configuración</button>
+                <button class="btn btn-warning" onclick="window.copiarConfiguracion()">Copiar de Otro Modelo</button>
+                <button class="btn btn-info" onclick="window.verHistorialCambios()">Ver Historial</button>
+            </div>
+        </div>
+        
+        <div class="models-list-section mt-4">
+            <h3>Modelos Configurados</h3>
+            <div class="filter-bar mb-3">
+                <input type="text" id="filtro-modelos-empaque" class="form-control d-inline-block" style="width: 300px;" placeholder="Filtrar modelos...">
+                <button class="btn btn-sm btn-primary ml-2" onclick="window.filtrarModelos()">Filtrar</button>
+                <button class="btn btn-sm btn-success ml-2" onclick="window.exportarConfiguraciones()">Exportar Todo</button>
+            </div>
+            <table id="tabla-control-unidad-empaque" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Modelo</th>
+                        <th>Cliente</th>
+                        <th>Nivel 1</th>
+                        <th>Nivel 2</th>
+                        <th>Nivel 3</th>
+                        <th>Nivel 4</th>
+                        <th>Etiqueta</th>
+                        <th>Última Actualización</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Datos dinámicos -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.control-unidad-empaque-modelo-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.control-unidad-empaque-modelo-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.control-unidad-empaque-modelo-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.control-unidad-empaque-modelo-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.control-unidad-empaque-modelo-container .model-search-section,
+.control-unidad-empaque-modelo-container .current-config-section,
+.control-unidad-empaque-modelo-container .models-list-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.control-unidad-empaque-modelo-container .config-info {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.control-unidad-empaque-modelo-container .config-value {
+    font-weight: bold;
+    color: #3498db;
+}
+
+.control-unidad-empaque-modelo-container .level-card {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 5px;
+    height: 100%;
+}
+
+.control-unidad-empaque-modelo-container .level-card h5 {
+    font-size: 14px;
+    color: #3498db;
+    margin-bottom: 10px;
+}
+
+.control-unidad-empaque-modelo-container .suggestions-box {
+    position: absolute;
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 1000;
+    width: 100%;
+}
+
+.control-unidad-empaque-modelo-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.control-unidad-empaque-modelo-container .form-control:focus {
+    background-color: #252531;
+    border-color: #3498db;
+    color: #E0E0E0;
+}
+
+.control-unidad-empaque-modelo-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.control-unidad-empaque-modelo-container .table thead {
+    background-color: #1E1E2E;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Control de unidad de empaque por modelo AJAX...');
+    
+    // Función de inicialización global
+    window.inicializarControlUnidadEmpaqueModeloAjax = function() {
+        console.log('Control de unidad de empaque por modelo AJAX inicializado');
+        configurarAutocompletado();
+        cargarModelosConfigurados();
+    };
+    
+    function configurarAutocompletado() {
+        const modeloInput = document.getElementById('modelo-unidad-empaque');
+        const suggestionsBox = document.getElementById('modelo-sugerencias-empaque');
+        
+        modeloInput.addEventListener('input', function() {
+            const valor = this.value;
+            if (valor.length > 2) {
+                // Simular búsqueda de modelos
+                mostrarSugerencias(['MODEL-A001', 'MODEL-A002', 'MODEL-B001']);
+            } else {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+    }
+    
+    function mostrarSugerencias(sugerencias) {
+        const suggestionsBox = document.getElementById('modelo-sugerencias-empaque');
+        suggestionsBox.innerHTML = '';
+        
+        sugerencias.forEach(sugerencia => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            item.textContent = sugerencia;
+            item.style.padding = '8px';
+            item.style.cursor = 'pointer';
+            item.onmouseover = function() { this.style.backgroundColor = '#3498db'; };
+            item.onmouseout = function() { this.style.backgroundColor = 'transparent'; };
+            item.onclick = function() {
+                document.getElementById('modelo-unidad-empaque').value = sugerencia;
+                suggestionsBox.style.display = 'none';
+            };
+            suggestionsBox.appendChild(item);
+        });
+        
+        suggestionsBox.style.display = 'block';
+    }
+    
+    function cargarModelosConfigurados() {
+        console.log('Cargando modelos configurados');
+        // Simular carga de datos
+    }
+    
+    // Funciones globales
+    window.buscarConfiguracionEmpaque = function() {
+        const modelo = document.getElementById('modelo-unidad-empaque').value;
+        const cliente = document.getElementById('cliente-unidad-empaque').value;
+        
+        if (!modelo) {
+            alert('Por favor ingrese un modelo');
+            return;
+        }
+        
+        console.log('Buscando configuración:', { modelo, cliente });
+        
+        // Mostrar sección de configuración
+        document.getElementById('current-config-section').style.display = 'block';
+        
+        // Simular carga de datos
+        document.getElementById('config-modelo').textContent = modelo;
+        document.getElementById('config-cliente').textContent = cliente || 'General';
+        document.getElementById('config-fecha').textContent = '15/08/2024 14:30';
+        document.getElementById('config-usuario').textContent = 'admin';
+    };
+    
+    window.guardarConfiguracion = function() {
+        console.log('Guardando configuración de empaque');
+        // Recopilar datos de todos los campos
+        const configuracion = {
+            nivel1: {
+                cantidad: document.getElementById('nivel1-cantidad').value,
+                tipo: document.getElementById('nivel1-tipo').value
+            },
+            nivel2: {
+                cantidad: document.getElementById('nivel2-cantidad').value,
+                tipo: document.getElementById('nivel2-tipo').value
+            },
+            nivel3: {
+                cantidad: document.getElementById('nivel3-cantidad').value,
+                tipo: document.getElementById('nivel3-tipo').value
+            },
+            nivel4: {
+                cantidad: document.getElementById('nivel4-cantidad').value,
+                tipo: document.getElementById('nivel4-tipo').value
+            }
+        };
+        
+        console.log('Configuración:', configuracion);
+        alert('Configuración guardada exitosamente');
+    };
+    
+    window.copiarConfiguracion = function() {
+        const modeloOrigen = prompt('Ingrese el modelo del cual desea copiar la configuración:');
+        if (modeloOrigen) {
+            console.log('Copiando configuración de:', modeloOrigen);
+            // Lógica para copiar configuración
+        }
+    };
+    
+    window.verHistorialCambios = function() {
+        console.log('Mostrando historial de cambios');
+        // Lógica para mostrar historial
+    };
+    
+    window.filtrarModelos = function() {
+        const filtro = document.getElementById('filtro-modelos-empaque').value;
+        console.log('Filtrando modelos:', filtro);
+        // Lógica de filtrado
+    };
+    
+    window.exportarConfiguraciones = function() {
+        console.log('Exportando todas las configuraciones');
+        // Lógica de exportación
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlUnidadEmpaqueModeloAjax);
+    } else {
+        window.inicializarControlUnidadEmpaqueModeloAjax();
+    }
+})();
+</script>

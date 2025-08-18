@@ -1,0 +1,369 @@
+<!-- TEMPLATE AJAX: Search Packaging History -->
+<!-- SUFIJO ÚNICO: -search-packaging-history -->
+<!-- CONTENEDOR: search-packaging-history-unique-container -->
+
+<div id="search-packaging-history-main-container-unique-search-packaging-history" class="search-packaging-history-container">
+    <div class="module-header">
+        <h2>Search Packaging History</h2>
+        <p>Date: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="search-filters-section">
+            <h3>Search Filters</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Serial Number:</label>
+                    <input type="text" id="serial-search-packaging" class="form-control" placeholder="Scan or enter serial">
+                </div>
+                <div class="col-md-3">
+                    <label>Box Number:</label>
+                    <input type="text" id="box-search-packaging" class="form-control" placeholder="BOX-XXXXX">
+                </div>
+                <div class="col-md-3">
+                    <label>Work Order:</label>
+                    <input type="text" id="wo-search-packaging" class="form-control" placeholder="WO-XXXXX">
+                </div>
+                <div class="col-md-3">
+                    <label>Model:</label>
+                    <input type="text" id="model-search-packaging" class="form-control" placeholder="Model number">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label>Date From:</label>
+                    <input type="date" id="date-from-packaging" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label>Date To:</label>
+                    <input type="date" id="date-to-packaging" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label>Customer:</label>
+                    <select id="customer-search-packaging" class="form-control">
+                        <option value="">All customers</option>
+                        <!-- Dynamic customers -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="window.searchPackagingHistory()">Search</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="search-results-section mt-4">
+            <h3>Search Results</h3>
+            <div class="results-summary mb-3">
+                <span>Found: <strong id="results-count">0</strong> records</span>
+                <div class="export-options float-right">
+                    <button class="btn btn-sm btn-success" onclick="window.exportResults()">Export Excel</button>
+                    <button class="btn btn-sm btn-info" onclick="window.printResults()">Print</button>
+                </div>
+            </div>
+            
+            <div class="results-table-container">
+                <table id="tabla-search-packaging-history" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date/Time</th>
+                            <th>Serial Number</th>
+                            <th>Model</th>
+                            <th>WO</th>
+                            <th>Box Number</th>
+                            <th>Pallet</th>
+                            <th>Customer</th>
+                            <th>Packed By</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamic data -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="detail-modal" id="packaging-detail-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4>Packaging Details</h4>
+                    <button class="close-btn" onclick="window.closeDetailModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="detail-info">
+                        <h5>Product Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Serial Number:</strong> <span id="detail-serial">-</span></p>
+                                <p><strong>Model:</strong> <span id="detail-model">-</span></p>
+                                <p><strong>Work Order:</strong> <span id="detail-wo">-</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Customer:</strong> <span id="detail-customer">-</span></p>
+                                <p><strong>Pack Date:</strong> <span id="detail-date">-</span></p>
+                                <p><strong>Packed By:</strong> <span id="detail-user">-</span></p>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mt-3">Packaging Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Box Number:</strong> <span id="detail-box">-</span></p>
+                                <p><strong>Box Type:</strong> <span id="detail-box-type">-</span></p>
+                                <p><strong>Items in Box:</strong> <span id="detail-box-items">-</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Pallet Number:</strong> <span id="detail-pallet">-</span></p>
+                                <p><strong>Pallet Location:</strong> <span id="detail-location">-</span></p>
+                                <p><strong>Shipping Status:</strong> <span id="detail-shipping">-</span></p>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mt-3">Box Contents</h5>
+                        <div class="box-contents-list" id="detail-box-contents">
+                            <!-- Dynamic serial list -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Module specific styles */
+.search-packaging-history-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.search-packaging-history-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.search-packaging-history-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.search-packaging-history-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.search-packaging-history-container .search-filters-section,
+.search-packaging-history-container .search-results-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.search-packaging-history-container .results-summary {
+    background-color: #1E1E2E;
+    padding: 10px 15px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-packaging-history-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.search-packaging-history-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.search-packaging-history-container .table thead {
+    background-color: #1E1E2E;
+}
+
+/* Modal styles */
+.search-packaging-history-container .detail-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.search-packaging-history-container .modal-content {
+    background-color: #2B2D3E;
+    width: 80%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 8px;
+}
+
+.search-packaging-history-container .modal-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-packaging-history-container .close-btn {
+    background: none;
+    border: none;
+    color: #E0E0E0;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.search-packaging-history-container .modal-body {
+    padding: 20px;
+}
+
+.search-packaging-history-container .box-contents-list {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.search-packaging-history-container .serial-item {
+    padding: 5px;
+    border-bottom: 1px solid #444;
+}
+</style>
+
+<script>
+// Module auto-initialization
+(function() {
+    console.log('Initializing Search Packaging History AJAX...');
+    
+    // Global initialization function
+    window.inicializarSearchPackagingHistoryAjax = function() {
+        console.log('Search Packaging History AJAX initialized');
+        setDefaultDates();
+        setupEnterKeySearch();
+    };
+    
+    function setDefaultDates() {
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7);
+        
+        document.getElementById('date-from-packaging').value = lastWeek.toISOString().split('T')[0];
+        document.getElementById('date-to-packaging').value = today.toISOString().split('T')[0];
+    }
+    
+    function setupEnterKeySearch() {
+        const searchFields = [
+            'serial-search-packaging',
+            'box-search-packaging',
+            'wo-search-packaging',
+            'model-search-packaging'
+        ];
+        
+        searchFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        window.searchPackagingHistory();
+                    }
+                });
+            }
+        });
+    }
+    
+    // Global functions
+    window.searchPackagingHistory = function() {
+        const filters = {
+            serial: document.getElementById('serial-search-packaging').value,
+            box: document.getElementById('box-search-packaging').value,
+            wo: document.getElementById('wo-search-packaging').value,
+            model: document.getElementById('model-search-packaging').value,
+            dateFrom: document.getElementById('date-from-packaging').value,
+            dateTo: document.getElementById('date-to-packaging').value,
+            customer: document.getElementById('customer-search-packaging').value
+        };
+        
+        console.log('Searching packaging history with filters:', filters);
+        
+        // Simulate search results
+        updateResultsCount(15);
+        populateSampleResults();
+    };
+    
+    function updateResultsCount(count) {
+        document.getElementById('results-count').textContent = count;
+    }
+    
+    function populateSampleResults() {
+        // Simulate populating results
+        console.log('Populating search results');
+    }
+    
+    window.viewPackagingDetail = function(serialNumber) {
+        console.log('Viewing details for:', serialNumber);
+        
+        // Show modal
+        document.getElementById('packaging-detail-modal').style.display = 'flex';
+        
+        // Populate sample data
+        document.getElementById('detail-serial').textContent = serialNumber;
+        document.getElementById('detail-model').textContent = 'MODEL-A001';
+        document.getElementById('detail-wo').textContent = 'WO-12345';
+        document.getElementById('detail-customer').textContent = 'Customer ABC';
+        document.getElementById('detail-date').textContent = '18/08/2024 14:30';
+        document.getElementById('detail-user').textContent = 'operator01';
+        document.getElementById('detail-box').textContent = 'BOX-98765';
+        document.getElementById('detail-box-type').textContent = 'Medium Box';
+        document.getElementById('detail-box-items').textContent = '50';
+        document.getElementById('detail-pallet').textContent = 'PLT-11111';
+        document.getElementById('detail-location').textContent = 'A-12-3';
+        document.getElementById('detail-shipping').textContent = 'Ready to Ship';
+        
+        // Populate box contents
+        const boxContents = document.getElementById('detail-box-contents');
+        boxContents.innerHTML = '';
+        for (let i = 1; i <= 5; i++) {
+            boxContents.innerHTML += `<div class="serial-item">SN-${Date.now()}-${i}</div>`;
+        }
+    };
+    
+    window.closeDetailModal = function() {
+        document.getElementById('packaging-detail-modal').style.display = 'none';
+    };
+    
+    window.exportResults = function() {
+        console.log('Exporting search results to Excel');
+        // Export logic
+    };
+    
+    window.printResults = function() {
+        console.log('Printing search results');
+        window.print();
+    };
+    
+    // Execute immediately if DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarSearchPackagingHistoryAjax);
+    } else {
+        window.inicializarSearchPackagingHistoryAjax();
+    }
+})();
+</script>

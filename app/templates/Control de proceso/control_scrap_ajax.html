@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Control Scrap -->
+<!-- SUFIJO ÚNICO: -control-scrap -->
+<!-- CONTENEDOR: control-scrap-unique-container -->
+
+<div id="control-scrap-main-container-unique-control-scrap" class="control-scrap-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Control Scrap</h2>
+    
+    <div class="control-scrap-content">
+        <p>Contenido del módulo Control Scrap</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.control-scrap-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.control-scrap-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Control Scrap AJAX...');
+    
+    window.inicializarControlScrapAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Control Scrap AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlScrapAjax);
+    } else {
+        window.inicializarControlScrapAjax();
+    }
+})();
+</script>

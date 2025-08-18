@@ -26,11 +26,13 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="Control de impresion de identificacion de SMT">Control de impresion de identificacion de SMT</li>
+                            data-permiso-boton="Control de impresion de identificacion de SMT"
+                            onclick="window.parent.mostrarControlImpresionIdentificacionSMT ? window.parent.mostrarControlImpresionIdentificacionSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-impresion-identificacion-smt-unique-container', '/control-impresion-identificacion-smt-ajax') : window.location.href='/control_proceso/control_impresion_identificacion_smt')">Control de impresion de identificacion de SMT</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="Control de registro de identificacion de SMT">Control de registro de identificacion de SMT</li>
+                            data-permiso-boton="Control de registro de identificacion de SMT"
+                            onclick="window.parent.mostrarControlRegistroIdentificacionSMT ? window.parent.mostrarControlRegistroIdentificacionSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-registro-identificacion-smt-unique-container', '/control-registro-identificacion-smt-ajax') : window.location.href='/control_proceso/control_registro_identificacion_smt')">Control de registro de identificacion de SMT</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -43,11 +45,18 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="Historial de operacion por proceso">Historial de operacion por proceso</li>
+                            data-permiso-boton="Historial de operacion por proceso"
+                            onclick="window.parent.mostrarHistorialOperacionProceso ? window.parent.mostrarHistorialOperacionProceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-operacion-proceso-unique-container', '/historial-operacion-proceso-ajax') : window.location.href='/control_proceso/historial_operacion_proceso')">Historial de operacion por proceso</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="BOM Management By Process">BOM Management By Process</li> 
+                            data-permiso-boton="BOM Management By Process"
+                            onclick="window.parent.mostrarBOMManagementProcess ? window.parent.mostrarBOMManagementProcess() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('bom-management-process-unique-container', '/bom-management-process-ajax') : window.location.href='/control_proceso/bom_management_process')">BOM Management By Process</li> 
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
+                            data-permiso-seccion="Control de produccion" 
+                            data-permiso-boton="Control BOM"
+                            onclick="window.parent.mostrarControlBOM ? window.parent.mostrarControlBOM() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('bom-unique-container', '/control-bom-ajax') : window.location.href='/control_proceso/control_bom')">Control BOM</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -60,19 +69,23 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Reporte diario de inspeccion" 
-                            data-permiso-boton="Reporte diario de inspeccion de SMT">Reporte diario de inspeccion de SMT</li>
+                            data-permiso-boton="Reporte diario de inspeccion de SMT"
+                            onclick="window.parent.mostrarReporteDiarioInspeccionSMT ? window.parent.mostrarReporteDiarioInspeccionSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('reporte-diario-inspeccion-smt-unique-container', '/reporte-diario-inspeccion-smt-ajax') : window.location.href='/control_proceso/reporte_diario_inspeccion_smt')">Reporte diario de inspeccion de SMT</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Reporte diario de inspeccion" 
-                            data-permiso-boton="Control diario de inspeccion de SMT">Control diario de inspeccion de SMT</li>
+                            data-permiso-boton="Control diario de inspeccion de SMT"
+                            onclick="window.parent.mostrarControlDiarioInspeccionSMT ? window.parent.mostrarControlDiarioInspeccionSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-diario-inspeccion-smt-unique-container', '/control-diario-inspeccion-smt-ajax') : window.location.href='/control_proceso/control_diario_inspeccion_smt')">Control diario de inspeccion de SMT</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Reporte diario de inspeccion" 
-                            data-permiso-boton="Reporte diario de inspeccion por proceso">Reporte diario de inspeccion por proceso</li>
+                            data-permiso-boton="Reporte diario de inspeccion por proceso"
+                            onclick="window.parent.mostrarReporteDiarioInspeccionProceso ? window.parent.mostrarReporteDiarioInspeccionProceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('reporte-diario-inspeccion-proceso-unique-container', '/reporte-diario-inspeccion-proceso-ajax') : window.location.href='/control_proceso/reporte_diario_inspeccion_proceso')">Reporte diario de inspeccion por proceso</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Reporte diario de inspeccion" 
-                            data-permiso-boton="Reporte diario de inspeccion por proceso">Reporte diario de inspeccion por proceso</li>
+                            data-permiso-boton="Reporte diario de inspeccion por proceso"
+                            onclick="window.parent.mostrarReporteDiarioInspeccionProceso ? window.parent.mostrarReporteDiarioInspeccionProceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('reporte-diario-inspeccion-proceso-unique-container', '/reporte-diario-inspeccion-proceso-ajax') : window.location.href='/control_proceso/reporte_diario_inspeccion_proceso')">Reporte diario de inspeccion por proceso</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -85,23 +98,28 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de empaque" 
-                            data-permiso-boton="Control de unidad de empaque por modelo">Control de unidad de empaque por modelo</li>
+                            data-permiso-boton="Control de unidad de empaque por modelo"
+                            onclick="window.parent.mostrarControlUnidadEmpaqueModelo ? window.parent.mostrarControlUnidadEmpaqueModelo() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-unidad-empaque-modelo-unique-container', '/control-unidad-empaque-modelo-ajax') : window.location.href='/control_proceso/control_unidad_empaque_modelo')">Control de unidad de empaque por modelo</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de empaque" 
-                            data-permiso-boton="Packaging Register Management">Packaging Register Management</li>
+                            data-permiso-boton="Packaging Register Management"
+                            onclick="window.parent.mostrarPackagingRegisterManagement ? window.parent.mostrarPackagingRegisterManagement() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('packaging-register-management-unique-container', '/packaging-register-management-ajax') : window.location.href='/control_proceso/packaging_register_management')">Packaging Register Management</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de empaque" 
-                            data-permiso-boton="Search Packaging History">Search Packaging History</li>
+                            data-permiso-boton="Search Packaging History"
+                            onclick="window.parent.mostrarSearchPackagingHistory ? window.parent.mostrarSearchPackagingHistory() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('search-packaging-history-unique-container', '/search-packaging-history-ajax') : window.location.href='/control_proceso/search_packaging_history')">Search Packaging History</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de empaque" 
-                            data-permiso-boton="Shipping Register Management">Shipping Register Management</li>
+                            data-permiso-boton="Shipping Register Management"
+                            onclick="window.parent.mostrarShippingRegisterManagement ? window.parent.mostrarShippingRegisterManagement() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('shipping-register-management-unique-container', '/shipping-register-management-ajax') : window.location.href='/control_proceso/shipping_register_management')">Shipping Register Management</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de empaque" 
-                            data-permiso-boton="Search Shipping History">Search Shipping History</li>
+                            data-permiso-boton="Search Shipping History"
+                            onclick="window.parent.mostrarSearchShippingHistory ? window.parent.mostrarSearchShippingHistory() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('search-shipping-history-unique-container', '/search-shipping-history-ajax') : window.location.href='/control_proceso/search_shipping_history')">Search Shipping History</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -114,11 +132,13 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Return Warehousing" 
-                            data-permiso-boton="Return Warehousing Register">Return Warehousing Register</li>
+                            data-permiso-boton="Return Warehousing Register"
+                            onclick="window.parent.mostrarReturnWarehousingRegister ? window.parent.mostrarReturnWarehousingRegister() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('return-warehousing-register-unique-container', '/return-warehousing-register-ajax') : window.location.href='/control_proceso/return_warehousing_register')">Return Warehousing Register</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Return Warehousing" 
-                            data-permiso-boton="Return Warehousing History">Return Warehousing History</li>
+                            data-permiso-boton="Return Warehousing History"
+                            onclick="window.parent.mostrarReturnWarehousingHistory ? window.parent.mostrarReturnWarehousingHistory() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('return-warehousing-history-unique-container', '/return-warehousing-history-ajax') : window.location.href='/control_proceso/return_warehousing_history')">Return Warehousing History</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -131,11 +151,13 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de otras identificaciones" 
-                            data-permiso-boton="Registro de movimiento de identificacion">Registro de movimiento de identificacion</li>
+                            data-permiso-boton="Registro de movimiento de identificacion"
+                            onclick="window.parent.mostrarRegistroMovimientoIdentificacion ? window.parent.mostrarRegistroMovimientoIdentificacion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('registro-movimiento-identificacion-unique-container', '/registro-movimiento-identificacion-ajax') : window.location.href='/control_proceso/registro_movimiento_identificacion')">Registro de movimiento de identificacion</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de otras identificaciones" 
-                            data-permiso-boton="Control de otras identificaciones">Control de otras identificaciones</li>
+                            data-permiso-boton="Control de otras identificaciones"
+                            onclick="window.parent.mostrarControlOtrasIdentificaciones ? window.parent.mostrarControlOtrasIdentificaciones() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-otras-identificaciones-unique-container', '/control-otras-identificaciones-ajax') : window.location.href='/control_proceso/control_otras_identificaciones')">Control de otras identificaciones</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -148,11 +170,13 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de N/S" 
-                            data-permiso-boton="Control de movimiento de N/S de producto">Control de movimiento de N/S de producto</li>
+                            data-permiso-boton="Control de movimiento de N/S de producto"
+                            onclick="window.parent.mostrarControlMovimientoNSProducto ? window.parent.mostrarControlMovimientoNSProducto() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-movimiento-ns-producto-unique-container', '/control-movimiento-ns-producto-ajax') : window.location.href='/control_proceso/control_movimiento_ns_producto')">Control de movimiento de N/S de producto</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de N/S" 
-                            data-permiso-boton="Model S/N Management">Model S/N Management</li>
+                            data-permiso-boton="Model S/N Management"
+                            onclick="window.parent.mostrarModelSNManagement ? window.parent.mostrarModelSNManagement() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('model-sn-management-unique-container', '/model-sn-management-ajax') : window.location.href='/control_proceso/model_sn_management')">Model S/N Management</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -165,7 +189,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de material Scrap" 
-                            data-permiso-boton="Control de Scrap">Control de Scrap</li>
+                            data-permiso-boton="Control de Scrap"
+                            onclick="window.parent.mostrarControlScrap ? window.parent.mostrarControlScrap() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-scrap-unique-container', '/control-scrap-ajax') : window.location.href='/control_proceso/control_scrap')">Control de Scrap</li>
                 </ul>
             </li>
         </ul>

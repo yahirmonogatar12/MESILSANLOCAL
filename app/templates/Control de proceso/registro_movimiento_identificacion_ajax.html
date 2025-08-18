@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Registro Movimiento Identificacion -->
+<!-- SUFIJO ÚNICO: -registro-movimiento -->
+<!-- CONTENEDOR: registro-movimiento-identificacion-unique-container -->
+
+<div id="registro-movimiento-main-container-unique-registro-movimiento" class="registro-movimiento-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Registro Movimiento Identificacion</h2>
+    
+    <div class="registro-movimiento-content">
+        <p>Contenido del módulo Registro Movimiento Identificacion</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.registro-movimiento-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.registro-movimiento-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Registro Movimiento Identificacion AJAX...');
+    
+    window.inicializarRegistroMovimientoIdentificacionAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Registro Movimiento Identificacion AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarRegistroMovimientoIdentificacionAjax);
+    } else {
+        window.inicializarRegistroMovimientoIdentificacionAjax();
+    }
+})();
+</script>

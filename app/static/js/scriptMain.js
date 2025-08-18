@@ -88,6 +88,56 @@
                 if (operacionLineaSMTContainer) {
                     operacionLineaSMTContainer.style.display = 'none';
                 }
+                
+                // Ocultar contenedor de Control de producción SMT
+                const controlProduccionSMTContainer = document.getElementById('Control de produccion SMT-unique-container');
+                if (controlProduccionSMTContainer) {
+                    controlProduccionSMTContainer.style.display = 'none';
+                }
+                
+                // Ocultar contenedores específicos de Control de Proceso que pueden quedar visibles
+                const controlProcesoSpecificContainers = [
+                    'control-proceso-info-container',
+                    'control-produccion-smt-container',
+                    'inventario-imd-terminado-unique-container'
+                ];
+                
+                controlProcesoSpecificContainers.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                });
+                
+                // Ocultar todos los contenedores AJAX de Control de Proceso
+                const controlProcesoAjaxContainers = [
+                    'control-impresion-identificacion-smt-unique-container',
+                    'control-registro-identificacion-smt-unique-container',
+                    'historial-operacion-proceso-unique-container',
+                    'bom-management-process-unique-container',
+                    'reporte-diario-inspeccion-smt-unique-container',
+                    'control-diario-inspeccion-smt-unique-container',
+                    'reporte-diario-inspeccion-proceso-unique-container',
+                    'control-unidad-empaque-modelo-unique-container',
+                    'packaging-register-management-unique-container',
+                    'search-packaging-history-unique-container',
+                    'shipping-register-management-unique-container',
+                    'search-shipping-history-unique-container',
+                    'return-warehousing-register-unique-container',
+                    'return-warehousing-history-unique-container',
+                    'registro-movimiento-identificacion-unique-container',
+                    'control-otras-identificaciones-unique-container',
+                    'control-movimiento-ns-producto-unique-container',
+                    'model-sn-management-unique-container',
+                    'control-scrap-unique-container'
+                ];
+                
+                controlProcesoAjaxContainers.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                });
             }
             
             function hideAllInformacionBasicaContainers() {
@@ -733,7 +783,8 @@
                         'control-proceso-info-container',
                         'control-produccion-smt-container',
                         'Control de produccion SMT-unique-container',
-                        'inventario-imd-terminado-unique-container'
+                        'inventario-imd-terminado-unique-container',
+                        'bom-unique-container'
                     ];
                     
                     controlProcesoContainers.forEach(containerId => {
@@ -815,4 +866,1278 @@
             };
 
             console.log('Función mostrarControlOperacionLineaSMT registrada globalmente');
+
+            // ========================================
+            // FUNCIONES AJAX PARA CONTROL DE PROCESO
+            // ========================================
+
+            // Control de impresión de identificación SMT
+            window.mostrarControlImpresionIdentificacionSMT = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Control de impresión de identificación SMT...');
+
+                    // Activar el botón correcto en la navegación
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    // Ocultar todos los contenedores primero
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    // Mostrar áreas necesarias
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    // Obtener y mostrar el contenedor específico
+                    const container = document.getElementById('control-impresion-identificacion-smt-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    // Cargar contenido dinámicamente
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('control-impresion-identificacion-smt-unique-container', '/control-impresion-identificacion-smt-ajax', () => {
+                            console.log('Control de impresión de identificación SMT cargado exitosamente');
+                            
+                            if (typeof window.inicializarControlImpresionIdentificacionSMTAjax === 'function') {
+                                window.inicializarControlImpresionIdentificacionSMTAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Control de registro de identificación SMT
+            window.mostrarControlRegistroIdentificacionSMT = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Control de registro de identificación SMT...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('control-registro-identificacion-smt-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('control-registro-identificacion-smt-unique-container', '/control-registro-identificacion-smt-ajax', () => {
+                            console.log('Control de registro de identificación SMT cargado exitosamente');
+                            
+                            if (typeof window.inicializarControlRegistroIdentificacionSMTAjax === 'function') {
+                                window.inicializarControlRegistroIdentificacionSMTAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Historial de operación de proceso
+            window.mostrarHistorialOperacionProceso = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Historial de operación de proceso...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('historial-operacion-proceso-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('historial-operacion-proceso-unique-container', '/historial-operacion-proceso-ajax', () => {
+                            console.log('Historial de operación de proceso cargado exitosamente');
+                            
+                            if (typeof window.inicializarHistorialOperacionProcesoAjax === 'function') {
+                                window.inicializarHistorialOperacionProcesoAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // BOM Management Process
+            window.mostrarBomManagementProcess = function() {
+                try {
+                    console.log('Iniciando carga AJAX de BOM Management Process...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('bom-management-process-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('bom-management-process-unique-container', '/bom-management-process-ajax', () => {
+                            console.log('BOM Management Process cargado exitosamente');
+                            
+                            if (typeof window.inicializarBomManagementProcessAjax === 'function') {
+                                window.inicializarBomManagementProcessAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Reporte diario de inspección SMT
+            window.mostrarReporteDiarioInspeccionSMT = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Reporte diario de inspección SMT...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('reporte-diario-inspeccion-smt-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('reporte-diario-inspeccion-smt-unique-container', '/reporte-diario-inspeccion-smt-ajax', () => {
+                            console.log('Reporte diario de inspección SMT cargado exitosamente');
+                            
+                            if (typeof window.inicializarReporteDiarioInspeccionSMTAjax === 'function') {
+                                window.inicializarReporteDiarioInspeccionSMTAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Control diario de inspección SMT
+            window.mostrarControlDiarioInspeccionSMT = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Control diario de inspección SMT...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('control-diario-inspeccion-smt-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('control-diario-inspeccion-smt-unique-container', '/control-diario-inspeccion-smt-ajax', () => {
+                            console.log('Control diario de inspección SMT cargado exitosamente');
+                            
+                            if (typeof window.inicializarControlDiarioInspeccionSMTAjax === 'function') {
+                                window.inicializarControlDiarioInspeccionSMTAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Reporte diario de inspección de proceso
+            window.mostrarReporteDiarioInspeccionProceso = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Reporte diario de inspección de proceso...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('reporte-diario-inspeccion-proceso-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('reporte-diario-inspeccion-proceso-unique-container', '/reporte-diario-inspeccion-proceso-ajax', () => {
+                            console.log('Reporte diario de inspección de proceso cargado exitosamente');
+                            
+                            if (typeof window.inicializarReporteDiarioInspeccionProcesoAjax === 'function') {
+                                window.inicializarReporteDiarioInspeccionProcesoAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Control de unidad de empaque por modelo
+            window.mostrarControlUnidadEmpaqueModelo = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Control de unidad de empaque por modelo...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('control-unidad-empaque-modelo-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('control-unidad-empaque-modelo-unique-container', '/control-unidad-empaque-modelo-ajax', () => {
+                            console.log('Control de unidad de empaque por modelo cargado exitosamente');
+                            
+                            if (typeof window.inicializarControlUnidadEmpaqueModeloAjax === 'function') {
+                                window.inicializarControlUnidadEmpaqueModeloAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Packaging Register Management
+            window.mostrarPackagingRegisterManagement = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Packaging Register Management...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('packaging-register-management-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('packaging-register-management-unique-container', '/packaging-register-management-ajax', () => {
+                            console.log('Packaging Register Management cargado exitosamente');
+                            
+                            if (typeof window.inicializarPackagingRegisterManagementAjax === 'function') {
+                                window.inicializarPackagingRegisterManagementAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Search Packaging History
+            window.mostrarSearchPackagingHistory = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Search Packaging History...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('search-packaging-history-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('search-packaging-history-unique-container', '/search-packaging-history-ajax', () => {
+                            console.log('Search Packaging History cargado exitosamente');
+                            
+                            if (typeof window.inicializarSearchPackagingHistoryAjax === 'function') {
+                                window.inicializarSearchPackagingHistoryAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Shipping Register Management
+            window.mostrarShippingRegisterManagement = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Shipping Register Management...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('shipping-register-management-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('shipping-register-management-unique-container', '/shipping-register-management-ajax', () => {
+                            console.log('Shipping Register Management cargado exitosamente');
+                            
+                            if (typeof window.inicializarShippingRegisterManagementAjax === 'function') {
+                                window.inicializarShippingRegisterManagementAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Search Shipping History
+            window.mostrarSearchShippingHistory = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Search Shipping History...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('search-shipping-history-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('search-shipping-history-unique-container', '/search-shipping-history-ajax', () => {
+                            console.log('Search Shipping History cargado exitosamente');
+                            
+                            if (typeof window.inicializarSearchShippingHistoryAjax === 'function') {
+                                window.inicializarSearchShippingHistoryAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Return Warehousing Register
+            window.mostrarReturnWarehousingRegister = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Return Warehousing Register...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('return-warehousing-register-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('return-warehousing-register-unique-container', '/return-warehousing-register-ajax', () => {
+                            console.log('Return Warehousing Register cargado exitosamente');
+                            
+                            if (typeof window.inicializarReturnWarehousingRegisterAjax === 'function') {
+                                window.inicializarReturnWarehousingRegisterAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Return Warehousing History
+            window.mostrarReturnWarehousingHistory = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Return Warehousing History...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('return-warehousing-history-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('return-warehousing-history-unique-container', '/return-warehousing-history-ajax', () => {
+                            console.log('Return Warehousing History cargado exitosamente');
+                            
+                            if (typeof window.inicializarReturnWarehousingHistoryAjax === 'function') {
+                                window.inicializarReturnWarehousingHistoryAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Registro de movimiento de identificación
+            window.mostrarRegistroMovimientoIdentificacion = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Registro de movimiento de identificación...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('registro-movimiento-identificacion-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('registro-movimiento-identificacion-unique-container', '/registro-movimiento-identificacion-ajax', () => {
+                            console.log('Registro de movimiento de identificación cargado exitosamente');
+                            
+                            if (typeof window.inicializarRegistroMovimientoIdentificacionAjax === 'function') {
+                                window.inicializarRegistroMovimientoIdentificacionAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Control de otras identificaciones
+            window.mostrarControlOtrasIdentificaciones = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Control de otras identificaciones...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('control-otras-identificaciones-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('control-otras-identificaciones-unique-container', '/control-otras-identificaciones-ajax', () => {
+                            console.log('Control de otras identificaciones cargado exitosamente');
+                            
+                            if (typeof window.inicializarControlOtrasIdentificacionesAjax === 'function') {
+                                window.inicializarControlOtrasIdentificacionesAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Control de movimiento NS producto
+            window.mostrarControlMovimientoNSProducto = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Control de movimiento NS producto...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('control-movimiento-ns-producto-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('control-movimiento-ns-producto-unique-container', '/control-movimiento-ns-producto-ajax', () => {
+                            console.log('Control de movimiento NS producto cargado exitosamente');
+                            
+                            if (typeof window.inicializarControlMovimientoNSProductoAjax === 'function') {
+                                window.inicializarControlMovimientoNSProductoAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Model SN Management
+            window.mostrarModelSNManagement = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Model SN Management...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('model-sn-management-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('model-sn-management-unique-container', '/model-sn-management-ajax', () => {
+                            console.log('Model SN Management cargado exitosamente');
+                            
+                            if (typeof window.inicializarModelSNManagementAjax === 'function') {
+                                window.inicializarModelSNManagementAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            // Control Scrap
+            window.mostrarControlScrap = function() {
+                try {
+                    console.log('Iniciando carga AJAX de Control Scrap...');
+
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    const container = document.getElementById('control-scrap-unique-container');
+                    if (!container) {
+                        console.error('Contenedor no encontrado');
+                        return;
+                    }
+
+                    container.style.display = 'block';
+                    container.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('control-scrap-unique-container', '/control-scrap-ajax', () => {
+                            console.log('Control Scrap cargado exitosamente');
+                            
+                            if (typeof window.inicializarControlScrapAjax === 'function') {
+                                window.inicializarControlScrapAjax();
+                            }
+                        });
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico:', error);
+                }
+            };
+
+            console.log('Todas las funciones AJAX de Control de Proceso registradas globalmente');
+
+            // ========================================
+            // FUNCIÓN PARA CONTROL DE PRODUCCIÓN SMT
+            // ========================================
+            
+            // Control de producción SMT - SIGUIENDO EL PATRÓN EXITOSO
+            window.mostrarControldeproduccionSMT = function() {
+                try {
+                    console.log('🚀🚀🚀 FUNCIÓN mostrarControldeproduccionSMT EJECUTÁNDOSE... 🚀🚀🚀');
+                    console.log('🔥🔥🔥 Iniciando carga de Control de producción SMT... 🔥🔥🔥');
+                    console.log('📍 Ubicación de la función:', window.location.href);
+                    console.log('🔍 Función disponible:', typeof window.mostrarControldeproduccionSMT);
+
+                    // IMPORTANTE: Asegurar que estamos en la sección correcta
+                    // Activar el botón "Control de proceso" para que scriptMain.js no interfiera
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        // Remover active de otros botones
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    // Ocultar todos los contenedores primero
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+                    
+                    // Ocultar otros contenedores dentro del área de control de proceso
+                    const controlProcesoContainers = [
+                        'control-proceso-info-container',
+                        'control-produccion-smt-container',
+                        'operacion-linea-smt-unique-container',
+                        'inventario-imd-terminado-unique-container'
+                    ];
+                    
+                    controlProcesoContainers.forEach(containerId => {
+                        const container = document.getElementById(containerId);
+                        if (container) {
+                            container.style.display = 'none';
+                        }
+                    });
+
+                    // Mostrar el área de control de proceso (esto es lo que scriptMain.js maneja)
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+
+                    console.log('🔍 Verificando contenedores padre en mostrarControldeproduccionSMT:');
+                    console.log('materialContainer:', materialContainer);
+                    console.log('controlProcesoContent:', controlProcesoContent);
+                    console.log('controlProcesoContentArea:', controlProcesoContentArea);
+                    console.log('✅ Todos los contenedores padre mostrados');
+
+                    // Obtener el contenedor específico
+                    const controlProduccionSMTContainer = document.getElementById('Control de produccion SMT-unique-container');
+                    if (!controlProduccionSMTContainer) {
+                        console.error('El contenedor Control de produccion SMT-unique-container no existe en el HTML');
+                        return;
+                    }
+
+                    console.log('Contenedor encontrado:', controlProduccionSMTContainer);
+                    console.log('Estado inicial - Display:', controlProduccionSMTContainer.style.display);
+
+                    // Mostrar el contenedor específico
+                    controlProduccionSMTContainer.style.display = 'block';
+                    controlProduccionSMTContainer.style.opacity = '1';
+
+                    console.log('Estado después de mostrar - Display:', controlProduccionSMTContainer.style.display);
+
+                    // Cargar contenido dinámicamente usando la ruta completa
+                    console.log('Iniciando carga AJAX...');
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('Control de produccion SMT-unique-container', '/control_proceso/control_produccion_smt', () => {
+                            console.log('Control de producción SMT cargado exitosamente');
+                            console.log('Verificando contenedor después de carga...');
+
+                            // Verificar que el contenedor esté visible
+                            const containerAfterLoad = document.getElementById('Control de produccion SMT-unique-container');
+                            if (containerAfterLoad) {
+                                console.log('Contenedor encontrado después de carga:', containerAfterLoad);
+                                console.log('Display:', containerAfterLoad.style.display);
+                                console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
+                                
+                                // Verificar que el contenedor esté realmente visible
+                                console.log('🔍 Verificando visibilidad del contenedor:');
+                                console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
+                                console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
+                                console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
+                                console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
+                                console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
+                                
+                                // Verificar que los contenedores padre también estén visibles
+                                const materialContainerAfter = document.getElementById('material-container');
+                                const controlProcesoContentAfter = document.getElementById('control-proceso-content');
+                                const controlProcesoContentAreaAfter = document.getElementById('control-proceso-content-area');
+                                
+                                console.log('🔍 Verificando contenedores padre después de carga:');
+                                console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
+                                console.log('controlProcesoContent display:', controlProcesoContentAfter ? window.getComputedStyle(controlProcesoContentAfter).display : 'NO ENCONTRADO');
+                                console.log('controlProcesoContentArea display:', controlProcesoContentAreaAfter ? window.getComputedStyle(controlProcesoContentAreaAfter).display : 'NO ENCONTRADO');
+                            }
+
+                            // Ejecutar inicialización específica del módulo si existe
+                            if (typeof window.inicializarControlProduccionSMTModule === 'function') {
+                                window.inicializarControlProduccionSMTModule();
+                                console.log('Módulo inicializado correctamente');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error cargando Control de producción SMT:', error);
+
+                            // Mostrar mensaje de error al usuario
+                            const errorContainer = document.querySelector('#Control de produccion SMT-unique-container');
+                            if (errorContainer) {
+                                errorContainer.innerHTML = `
+                                    <div class="error-message" style="padding: 20px; text-align: center; color: #dc3545; background-color: #2B2D3E; border: 1px solid #dc3545; border-radius: 4px;">
+                                        <h3>Error al cargar Control de producción SMT</h3>
+                                        <p>No se pudo cargar el módulo. Por favor, intente nuevamente.</p>
+                                        <button onclick="window.mostrarControldeproduccionSMT()" style="background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px;">Reintentar</button>
+                                    </div>
+                                `;
+                            }
+                        });
+                    } else {
+                        console.error('Función cargarContenidoDinamico no está disponible');
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico en mostrarControldeproduccionSMT:', error);
+                    alert('Error crítico al cargar Control de producción SMT. Consulte la consola para más detalles.');
+                }
+            };
+
+            console.log('Función mostrarControldeproduccionSMT registrada globalmente');
+
+            // ========================================
+            // FUNCIÓN PARA CONTROL BOM
+            // ========================================
+
+            // Control BOM - SIGUIENDO EL PATRÓN EXITOSO
+            window.mostrarControlBOM = function() {
+                try {
+                    console.log('🚀🚀🚀 FUNCIÓN mostrarControlBOM EJECUTÁNDOSE... 🚀🚀🚀');
+                    console.log('🔥🔥🔥 Iniciando carga de Control BOM... 🔥🔥🔥');
+                    console.log('📍 Ubicación de la función:', window.location.href);
+                    console.log('🔍 Función disponible:', typeof window.mostrarControlBOM);
+
+                    // IMPORTANTE: Asegurar que estamos en la sección correcta
+                    // Activar el botón "Control de proceso" para que scriptMain.js no interfiera
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        // Remover active de otros botones
+                        document.querySelectorAll('.nav-button').forEach(btn => {
+                            if (btn.id !== 'Control de proceso') {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    }
+
+                    // Ocultar todos los contenedores primero
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+                    
+                    // Ocultar otros contenedores dentro del área de control de proceso
+                    const controlProcesoContainers = [
+                        'control-proceso-info-container',
+                        'control-produccion-smt-container',
+                        'operacion-linea-smt-unique-container',
+                        'inventario-imd-terminado-unique-container',
+                        'Control de produccion SMT-unique-container'
+                    ];
+                    
+                    controlProcesoContainers.forEach(containerId => {
+                        const container = document.getElementById(containerId);
+                        if (container) {
+                            container.style.display = 'none';
+                        }
+                    });
+
+                    // Mostrar el área de control de proceso (esto es lo que scriptMain.js maneja)
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+
+                    console.log('🔍 Verificando contenedores padre en mostrarControlBOM:');
+                    console.log('materialContainer:', materialContainer);
+                    console.log('controlProcesoContent:', controlProcesoContent);
+                    console.log('controlProcesoContentArea:', controlProcesoContentArea);
+
+                    if (materialContainer) {
+                        materialContainer.style.display = 'block';
+                        console.log('✅ materialContainer mostrado');
+                    }
+                    if (controlProcesoContent) {
+                        controlProcesoContent.style.display = 'block';
+                        console.log('✅ controlProcesoContent mostrado');
+                    }
+                    if (controlProcesoContentArea) {
+                        controlProcesoContentArea.style.display = 'block';
+                        console.log('✅ controlProcesoContentArea mostrado');
+                    }
+
+                    // Obtener el contenedor específico
+                    const bomContainer = document.getElementById('bom-unique-container');
+                    if (!bomContainer) {
+                        console.error('El contenedor bom-unique-container no existe en el HTML');
+                        return;
+                    }
+
+                    console.log('Contenedor encontrado:', bomContainer);
+                    console.log('Estado inicial - Display:', bomContainer.style.display);
+
+                    // Mostrar el contenedor específico
+                    bomContainer.style.display = 'block';
+                    bomContainer.style.opacity = '1';
+
+                    console.log('Estado después de mostrar - Display:', bomContainer.style.display);
+
+                    // Cargar contenido dinámicamente usando la ruta AJAX
+                    console.log('Iniciando carga AJAX...');
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico('bom-unique-container', '/control-bom-ajax', () => {
+                            console.log('Control BOM cargado exitosamente');
+                            console.log('Verificando contenedor después de carga...');
+
+                            // Verificar que el contenedor esté visible
+                            const containerAfterLoad = document.getElementById('bom-unique-container');
+                            if (containerAfterLoad) {
+                                console.log('Contenedor encontrado después de carga:', containerAfterLoad);
+                                console.log('Display:', containerAfterLoad.style.display);
+                                console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
+                                
+                                // Verificar que el contenedor esté realmente visible
+                                console.log('🔍 Verificando visibilidad del contenedor:');
+                                console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
+                                console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
+                                console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
+                                console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
+                                console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
+                                
+                                // Verificar que los contenedores padre también estén visibles
+                                const materialContainerAfter = document.getElementById('material-container');
+                                const controlProcesoContentAfter = document.getElementById('control-proceso-content');
+                                const controlProcesoContentAreaAfter = document.getElementById('control-proceso-content-area');
+                                
+                                console.log('🔍 Verificando contenedores padre después de carga:');
+                                console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
+                                console.log('controlProcesoContent display:', controlProcesoContentAfter ? window.getComputedStyle(controlProcesoContentAfter).display : 'NO ENCONTRADO');
+                                console.log('controlProcesoContentArea display:', controlProcesoContentAreaAfter ? window.getComputedStyle(controlProcesoContentAreaAfter).display : 'NO ENCONTRADO');
+                            }
+
+                            // Ejecutar inicialización específica del módulo si existe
+                            if (typeof window.inicializarControlBOMModule === 'function') {
+                                window.inicializarControlBOMModule();
+                                console.log('Módulo inicializado correctamente');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error cargando Control BOM:', error);
+
+                            // Mostrar mensaje de error al usuario
+                            const errorContainer = document.querySelector('#bom-unique-container');
+                            if (errorContainer) {
+                                errorContainer.innerHTML = `
+                                    <div class="error-message" style="padding: 20px; text-align: center; color: #dc3545; background-color: #2B2D3E; border: 1px solid #dc3545; border-radius: 4px;">
+                                        <h3>Error al cargar Control BOM</h3>
+                                        <p>No se pudo cargar el módulo. Por favor, intente nuevamente.</p>
+                                        <button onclick="window.mostrarControlBOM()" style="background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px;">Reintentar</button>
+                                    </div>
+                                `;
+                            }
+                        });
+                    } else {
+                        console.error('Función cargarContenidoDinamico no está disponible');
+                    }
+
+                } catch (error) {
+                    console.error('Error crítico en mostrarControlBOM:', error);
+                    alert('Error crítico al cargar Control BOM. Consulte la consola para más detalles.');
+                }
+            };
+
+            console.log('Función mostrarControlBOM registrada globalmente');
         });

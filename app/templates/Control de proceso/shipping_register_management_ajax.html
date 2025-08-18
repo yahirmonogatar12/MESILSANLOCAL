@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Shipping Register Management -->
+<!-- SUFIJO ÚNICO: -shipping-register -->
+<!-- CONTENEDOR: shipping-register-management-unique-container -->
+
+<div id="shipping-register-main-container-unique-shipping-register" class="shipping-register-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Shipping Register Management</h2>
+    
+    <div class="shipping-register-content">
+        <p>Contenido del módulo Shipping Register Management</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.shipping-register-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.shipping-register-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Shipping Register Management AJAX...');
+    
+    window.inicializarShippingRegisterManagementAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Shipping Register Management AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarShippingRegisterManagementAjax);
+    } else {
+        window.inicializarShippingRegisterManagementAjax();
+    }
+})();
+</script>

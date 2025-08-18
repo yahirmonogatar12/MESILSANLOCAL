@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Control Otras Identificaciones -->
+<!-- SUFIJO ÚNICO: -control-otras -->
+<!-- CONTENEDOR: control-otras-identificaciones-unique-container -->
+
+<div id="control-otras-main-container-unique-control-otras" class="control-otras-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Control Otras Identificaciones</h2>
+    
+    <div class="control-otras-content">
+        <p>Contenido del módulo Control Otras Identificaciones</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.control-otras-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.control-otras-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Control Otras Identificaciones AJAX...');
+    
+    window.inicializarControlOtrasIdentificacionesAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Control Otras Identificaciones AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlOtrasIdentificacionesAjax);
+    } else {
+        window.inicializarControlOtrasIdentificacionesAjax();
+    }
+})();
+</script>

@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Model SN Management -->
+<!-- SUFIJO ÚNICO: -model-sn -->
+<!-- CONTENEDOR: model-sn-management-unique-container -->
+
+<div id="model-sn-main-container-unique-model-sn" class="model-sn-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Model SN Management</h2>
+    
+    <div class="model-sn-content">
+        <p>Contenido del módulo Model SN Management</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.model-sn-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.model-sn-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Model SN Management AJAX...');
+    
+    window.inicializarModelSNManagementAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Model SN Management AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarModelSNManagementAjax);
+    } else {
+        window.inicializarModelSNManagementAjax();
+    }
+})();
+</script>

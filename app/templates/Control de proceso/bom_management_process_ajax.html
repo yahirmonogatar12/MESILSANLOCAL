@@ -1,0 +1,334 @@
+<!-- TEMPLATE AJAX: BOM Management By Process -->
+<!-- SUFIJO ÚNICO: -bom-management-process -->
+<!-- CONTENEDOR: bom-management-process-unique-container -->
+
+<div id="bom-management-process-main-container-unique-bom-management-process" class="bom-management-process-container">
+    <div class="module-header">
+        <h2>BOM Management By Process</h2>
+        <p>Fecha: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="bom-selector-section">
+            <h3>Seleccionar BOM</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Modelo:</label>
+                    <input type="text" id="modelo-bom-process" class="form-control" placeholder="Buscar modelo">
+                    <div id="modelo-sugerencias-bom" class="suggestions-box"></div>
+                </div>
+                <div class="col-md-4">
+                    <label>Proceso:</label>
+                    <select id="proceso-bom-management" class="form-control">
+                        <option value="">Seleccionar proceso</option>
+                        <option value="SMT">SMT</option>
+                        <option value="DIP">DIP</option>
+                        <option value="TEST">TEST</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
+                        <option value="PACKING">PACKING</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Versión BOM:</label>
+                    <select id="version-bom-process" class="form-control">
+                        <option value="">Seleccionar versión</option>
+                        <!-- Versiones dinámicas -->
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button class="btn btn-primary" onclick="window.cargarBOMProceso()">Cargar BOM</button>
+                    <button class="btn btn-success" onclick="window.crearNuevoBOM()">Crear Nuevo BOM</button>
+                    <button class="btn btn-info" onclick="window.importarBOM()">Importar BOM</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bom-info-section mt-4" id="bom-info-section" style="display: none;">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="bom-header-info">
+                        <h4>Información del BOM</h4>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Modelo:</strong> <span id="info-modelo-bom">-</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Proceso:</strong> <span id="info-proceso-bom">-</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Versión:</strong> <span id="info-version-bom">-</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Total Componentes:</strong> <span id="info-total-componentes">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-section mt-4" id="bom-table-section" style="display: none;">
+            <h3>Lista de Componentes</h3>
+            <div class="table-controls mb-3">
+                <button class="btn btn-sm btn-success" onclick="window.agregarComponente()">Agregar Componente</button>
+                <button class="btn btn-sm btn-warning" onclick="window.editarMultiple()">Editar Múltiple</button>
+                <button class="btn btn-sm btn-danger" onclick="window.eliminarSeleccionados()">Eliminar Seleccionados</button>
+            </div>
+            <table id="tabla-bom-management-process" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="select-all-bom"></th>
+                        <th>Item</th>
+                        <th>Número de Parte</th>
+                        <th>Descripción</th>
+                        <th>Ubicación</th>
+                        <th>Cantidad</th>
+                        <th>Unidad</th>
+                        <th>Proceso</th>
+                        <th>Crítico</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Datos dinámicos -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-actions" id="bom-actions" style="display: none;">
+            <button class="btn btn-success" onclick="window.guardarCambiosBOM()">Guardar Cambios</button>
+            <button class="btn btn-info" onclick="window.exportarBOM()">Exportar BOM</button>
+            <button class="btn btn-warning" onclick="window.compararVersiones()">Comparar Versiones</button>
+            <button class="btn btn-primary" onclick="window.copiarBOM()">Copiar BOM</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.bom-management-process-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.bom-management-process-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.bom-management-process-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.bom-management-process-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.bom-management-process-container .bom-selector-section,
+.bom-management-process-container .bom-info-section,
+.bom-management-process-container .table-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.bom-management-process-container .bom-header-info {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.bom-management-process-container .suggestions-box {
+    position: absolute;
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 1000;
+    width: 100%;
+}
+
+.bom-management-process-container .suggestions-box .suggestion-item {
+    padding: 8px;
+    cursor: pointer;
+}
+
+.bom-management-process-container .suggestions-box .suggestion-item:hover {
+    background-color: #3498db;
+}
+
+.bom-management-process-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.bom-management-process-container .form-control:focus {
+    background-color: #252531;
+    border-color: #3498db;
+    color: #E0E0E0;
+}
+
+.bom-management-process-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.bom-management-process-container .table thead {
+    background-color: #1E1E2E;
+}
+
+.bom-management-process-container .table-striped tbody tr:nth-of-type(odd) {
+    background-color: #252531;
+}
+
+.bom-management-process-container .table-controls {
+    display: flex;
+    gap: 10px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando BOM Management By Process AJAX...');
+    
+    let bomActual = null;
+    let componentesSeleccionados = [];
+    
+    // Función de inicialización global
+    window.inicializarBOMManagementProcessAjax = function() {
+        console.log('BOM Management By Process AJAX inicializado');
+        configurarAutocompletado();
+        configurarEventListeners();
+    };
+    
+    // Configurar autocompletado
+    function configurarAutocompletado() {
+        const modeloInput = document.getElementById('modelo-bom-process');
+        const suggestionsBox = document.getElementById('modelo-sugerencias-bom');
+        
+        modeloInput.addEventListener('input', function() {
+            const valor = this.value;
+            if (valor.length > 2) {
+                // Simular búsqueda de modelos
+                mostrarSugerencias(['Modelo-001', 'Modelo-002', 'Modelo-003']);
+            } else {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+    }
+    
+    function mostrarSugerencias(sugerencias) {
+        const suggestionsBox = document.getElementById('modelo-sugerencias-bom');
+        suggestionsBox.innerHTML = '';
+        
+        sugerencias.forEach(sugerencia => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            item.textContent = sugerencia;
+            item.onclick = function() {
+                document.getElementById('modelo-bom-process').value = sugerencia;
+                suggestionsBox.style.display = 'none';
+            };
+            suggestionsBox.appendChild(item);
+        });
+        
+        suggestionsBox.style.display = 'block';
+    }
+    
+    function configurarEventListeners() {
+        document.getElementById('select-all-bom').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('#tabla-bom-management-process tbody input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+        });
+    }
+    
+    // Funciones globales
+    window.cargarBOMProceso = function() {
+        const modelo = document.getElementById('modelo-bom-process').value;
+        const proceso = document.getElementById('proceso-bom-management').value;
+        
+        if (!modelo || !proceso) {
+            alert('Por favor seleccione modelo y proceso');
+            return;
+        }
+        
+        console.log('Cargando BOM:', { modelo, proceso });
+        
+        // Simular carga de BOM
+        document.getElementById('bom-info-section').style.display = 'block';
+        document.getElementById('bom-table-section').style.display = 'block';
+        document.getElementById('bom-actions').style.display = 'block';
+        
+        document.getElementById('info-modelo-bom').textContent = modelo;
+        document.getElementById('info-proceso-bom').textContent = proceso;
+        document.getElementById('info-version-bom').textContent = 'v1.0';
+        document.getElementById('info-total-componentes').textContent = '25';
+    };
+    
+    window.crearNuevoBOM = function() {
+        console.log('Creando nuevo BOM');
+        // Lógica para crear nuevo BOM
+    };
+    
+    window.importarBOM = function() {
+        console.log('Importando BOM');
+        // Lógica para importar BOM
+    };
+    
+    window.agregarComponente = function() {
+        console.log('Agregando componente');
+        // Lógica para agregar componente
+    };
+    
+    window.editarMultiple = function() {
+        console.log('Editando múltiples componentes');
+        // Lógica para editar múltiple
+    };
+    
+    window.eliminarSeleccionados = function() {
+        console.log('Eliminando componentes seleccionados');
+        // Lógica para eliminar seleccionados
+    };
+    
+    window.guardarCambiosBOM = function() {
+        console.log('Guardando cambios en BOM');
+        // Lógica para guardar cambios
+    };
+    
+    window.exportarBOM = function() {
+        console.log('Exportando BOM');
+        // Lógica para exportar
+    };
+    
+    window.compararVersiones = function() {
+        console.log('Comparando versiones de BOM');
+        // Lógica para comparar versiones
+    };
+    
+    window.copiarBOM = function() {
+        console.log('Copiando BOM');
+        // Lógica para copiar BOM
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarBOMManagementProcessAjax);
+    } else {
+        window.inicializarBOMManagementProcessAjax();
+    }
+})();
+</script>

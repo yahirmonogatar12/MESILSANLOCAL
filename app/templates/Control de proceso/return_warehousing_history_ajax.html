@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Return Warehousing History -->
+<!-- SUFIJO ÚNICO: -return-warehousing-history -->
+<!-- CONTENEDOR: return-warehousing-history-unique-container -->
+
+<div id="return-warehousing-history-main-container-unique-return-warehousing-history" class="return-warehousing-history-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Return Warehousing History</h2>
+    
+    <div class="return-warehousing-history-content">
+        <p>Contenido del módulo Return Warehousing History</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.return-warehousing-history-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.return-warehousing-history-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Return Warehousing History AJAX...');
+    
+    window.inicializarReturnWarehousingHistoryAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Return Warehousing History AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarReturnWarehousingHistoryAjax);
+    } else {
+        window.inicializarReturnWarehousingHistoryAjax();
+    }
+})();
+</script>

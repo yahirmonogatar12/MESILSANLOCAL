@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Search Shipping History -->
+<!-- SUFIJO ÚNICO: -search-shipping -->
+<!-- CONTENEDOR: search-shipping-history-unique-container -->
+
+<div id="search-shipping-main-container-unique-search-shipping" class="search-shipping-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Search Shipping History</h2>
+    
+    <div class="search-shipping-content">
+        <p>Contenido del módulo Search Shipping History</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.search-shipping-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.search-shipping-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Search Shipping History AJAX...');
+    
+    window.inicializarSearchShippingHistoryAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Search Shipping History AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarSearchShippingHistoryAjax);
+    } else {
+        window.inicializarSearchShippingHistoryAjax();
+    }
+})();
+</script>

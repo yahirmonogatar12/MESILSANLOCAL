@@ -1,0 +1,43 @@
+<!-- TEMPLATE AJAX: Control de producción SMT -->
+<!-- SUFIJO ÚNICO: -control-produccion-smt -->
+<!-- CONTENEDOR DESTINO (EXTERNO): Control de produccion SMT-unique-container -->
+
+<div id="control-produccion-smt-main-container-unique-control-produccion-smt" class="control-produccion-smt-container">
+	<h2 style="margin: 0 0 12px 0; color: #E0E0E0;">Control de producción SMT</h2>
+	<div class="contenido-placeholder" style="color: #B0B3B8; font-size: 13px;">
+		Este es el fragmento AJAX para Control de producción SMT. Sustituye este contenido con el módulo real.
+	</div>
+</div>
+
+<style>
+.control-produccion-smt-container {
+	padding: 16px;
+	background-color: #2B2D3E;
+	color: #E0E0E0;
+	border: 1px solid #3C3F51;
+	border-radius: 4px;
+}
+</style>
+
+<script>
+(function() {
+	window.inicializarControlProduccionSMTModule = function() {
+		try {
+			// Inicialización mínima del módulo (sin emojis)
+			console.log('Inicializando Control de producción SMT AJAX...');
+			console.log('Control de producción SMT AJAX inicializado');
+		} catch (e) {
+			console.error('Error inicializando Control de producción SMT AJAX:', e);
+		}
+	};
+
+	// Auto-ejecutar inicialización si el DOM ya está listo
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', window.inicializarControlProduccionSMTModule);
+	} else {
+		window.inicializarControlProduccionSMTModule();
+	}
+})();
+</script>
+
+

@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Return Warehousing Register -->
+<!-- SUFIJO ÚNICO: -return-warehousing -->
+<!-- CONTENEDOR: return-warehousing-register-unique-container -->
+
+<div id="return-warehousing-main-container-unique-return-warehousing" class="return-warehousing-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Return Warehousing Register</h2>
+    
+    <div class="return-warehousing-content">
+        <p>Contenido del módulo Return Warehousing Register</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.return-warehousing-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.return-warehousing-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Return Warehousing Register AJAX...');
+    
+    window.inicializarReturnWarehousingRegisterAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Return Warehousing Register AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarReturnWarehousingRegisterAjax);
+    } else {
+        window.inicializarReturnWarehousingRegisterAjax();
+    }
+})();
+</script>

@@ -2785,12 +2785,23 @@ def obtener_work_orders():
 def control_produccion_smt_ajax():
     """Ruta AJAX para cargar dinámicamente el contenido de Control de produccion SMT"""
     try:
-        return render_template('Control de proceso/Control de produccion SMT.html')
+        # Devolver fragmento AJAX dedicado para evitar cargar una página completa dentro de un contenedor
+        return render_template('Control de proceso/control_produccion_smt_ajax.html')
     except Exception as e:
         print(f"Error al cargar template Control de produccion SMT AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 # Ruta eliminada - Control de operacion de linea SMT será reemplazado por Control BOM
+
+@app.route('/control-bom-ajax')
+@login_requerido
+def control_bom_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control BOM"""
+    try:
+        return render_template('Control de proceso/control_bom_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control BOM AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route('/control-operacion-linea-smt-ajax')
 @login_requerido
@@ -2802,6 +2813,197 @@ def control_operacion_linea_smt_ajax():
         return render_template('Control de proceso/control_operacion_linea_smt_ajax.html', fecha_hoy=fecha_hoy)
     except Exception as e:
         print(f"Error al cargar template Control de operación de línea SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+# Rutas AJAX para todos los módulos de Control de Proceso
+@app.route('/control-impresion-identificacion-smt-ajax')
+@login_requerido
+def control_impresion_identificacion_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de impresión de identificación SMT"""
+    try:
+        return render_template('Control de proceso/control_impresion_identificacion_smt_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de impresión de identificación SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-registro-identificacion-smt-ajax')
+@login_requerido
+def control_registro_identificacion_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de registro de identificación SMT"""
+    try:
+        return render_template('Control de proceso/control_registro_identificacion_smt_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de registro de identificación SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/historial-operacion-proceso-ajax')
+@login_requerido
+def historial_operacion_proceso_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Historial de operación de proceso"""
+    try:
+        return render_template('Control de proceso/historial_operacion_proceso_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Historial de operación de proceso AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/bom-management-process-ajax')
+@login_requerido
+def bom_management_process_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de BOM Management Process"""
+    try:
+        return render_template('Control de proceso/bom_management_process_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template BOM Management Process AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/reporte-diario-inspeccion-smt-ajax')
+@login_requerido
+def reporte_diario_inspeccion_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Reporte diario de inspección SMT"""
+    try:
+        return render_template('Control de proceso/reporte_diario_inspeccion_smt_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Reporte diario de inspección SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-diario-inspeccion-smt-ajax')
+@login_requerido
+def control_diario_inspeccion_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control diario de inspección SMT"""
+    try:
+        return render_template('Control de proceso/control_diario_inspeccion_smt_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control diario de inspección SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/reporte-diario-inspeccion-proceso-ajax')
+@login_requerido
+def reporte_diario_inspeccion_proceso_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Reporte diario de inspección de proceso"""
+    try:
+        return render_template('Control de proceso/reporte_diario_inspeccion_proceso_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Reporte diario de inspección de proceso AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-unidad-empaque-modelo-ajax')
+@login_requerido
+def control_unidad_empaque_modelo_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de unidad de empaque modelo"""
+    try:
+        return render_template('Control de proceso/control_unidad_empaque_modelo_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de unidad de empaque modelo AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/packaging-register-management-ajax')
+@login_requerido
+def packaging_register_management_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Packaging Register Management"""
+    try:
+        return render_template('Control de proceso/packaging_register_management_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Packaging Register Management AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/search-packaging-history-ajax')
+@login_requerido
+def search_packaging_history_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Search Packaging History"""
+    try:
+        return render_template('Control de proceso/search_packaging_history_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Search Packaging History AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/shipping-register-management-ajax')
+@login_requerido
+def shipping_register_management_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Shipping Register Management"""
+    try:
+        return render_template('Control de proceso/shipping_register_management_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Shipping Register Management AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/search-shipping-history-ajax')
+@login_requerido
+def search_shipping_history_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Search Shipping History"""
+    try:
+        return render_template('Control de proceso/search_shipping_history_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Search Shipping History AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/return-warehousing-register-ajax')
+@login_requerido
+def return_warehousing_register_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Return Warehousing Register"""
+    try:
+        return render_template('Control de proceso/return_warehousing_register_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Return Warehousing Register AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/return-warehousing-history-ajax')
+@login_requerido
+def return_warehousing_history_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Return Warehousing History"""
+    try:
+        return render_template('Control de proceso/return_warehousing_history_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Return Warehousing History AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/registro-movimiento-identificacion-ajax')
+@login_requerido
+def registro_movimiento_identificacion_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Registro Movimiento Identificación"""
+    try:
+        return render_template('Control de proceso/registro_movimiento_identificacion_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Registro Movimiento Identificación AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-otras-identificaciones-ajax')
+@login_requerido
+def control_otras_identificaciones_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control Otras Identificaciones"""
+    try:
+        return render_template('Control de proceso/control_otras_identificaciones_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control Otras Identificaciones AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-movimiento-ns-producto-ajax')
+@login_requerido
+def control_movimiento_ns_producto_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control Movimiento NS Producto"""
+    try:
+        return render_template('Control de proceso/control_movimiento_ns_producto_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control Movimiento NS Producto AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/model-sn-management-ajax')
+@login_requerido
+def model_sn_management_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Model SN Management"""
+    try:
+        return render_template('Control de proceso/model_sn_management_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Model SN Management AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-scrap-ajax')
+@login_requerido
+def control_scrap_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control Scrap"""
+    try:
+        return render_template('Control de proceso/control_scrap_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control Scrap AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route('/control_proceso/inventario_imd_terminado')

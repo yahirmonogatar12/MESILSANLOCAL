@@ -1,0 +1,45 @@
+<!-- TEMPLATE AJAX: Control Movimiento NS Producto -->
+<!-- SUFIJO ÚNICO: -control-movimiento-ns -->
+<!-- CONTENEDOR: control-movimiento-ns-producto-unique-container -->
+
+<div id="control-movimiento-ns-main-container-unique-control-movimiento-ns" class="control-movimiento-ns-container">
+    <!-- Contenido del módulo con IDs únicos usando sufijo -->
+    <h2>Control Movimiento NS Producto</h2>
+    
+    <div class="control-movimiento-ns-content">
+        <p>Contenido del módulo Control Movimiento NS Producto</p>
+        <!-- Aquí irá el contenido específico del módulo -->
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.control-movimiento-ns-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.control-movimiento-ns-content {
+    margin-top: 20px;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Control Movimiento NS Producto AJAX...');
+    
+    window.inicializarControlMovimientoNSProductoAjax = function() {
+        // Lógica de inicialización del módulo
+        console.log('Control Movimiento NS Producto AJAX inicializado');
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlMovimientoNSProductoAjax);
+    } else {
+        window.inicializarControlMovimientoNSProductoAjax();
+    }
+})();
+</script>

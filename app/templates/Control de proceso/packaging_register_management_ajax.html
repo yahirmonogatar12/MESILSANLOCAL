@@ -1,0 +1,396 @@
+<!-- TEMPLATE AJAX: Packaging Register Management -->
+<!-- SUFIJO ÚNICO: -packaging-register-management -->
+<!-- CONTENEDOR: packaging-register-management-unique-container -->
+
+<div id="packaging-register-management-main-container-unique-packaging-register-management" class="packaging-register-management-container">
+    <div class="module-header">
+        <h2>Packaging Register Management</h2>
+        <p>Date: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="register-form-section">
+            <h3>New Packaging Register</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Work Order (WO):</label>
+                    <input type="text" id="wo-packaging-register" class="form-control" placeholder="WO-XXXXX">
+                </div>
+                <div class="col-md-3">
+                    <label>Model:</label>
+                    <input type="text" id="model-packaging-register" class="form-control" placeholder="Model number">
+                </div>
+                <div class="col-md-3">
+                    <label>Customer:</label>
+                    <select id="customer-packaging-register" class="form-control">
+                        <option value="">Select customer</option>
+                        <!-- Dynamic customers -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Packaging Date:</label>
+                    <input type="date" id="date-packaging-register" class="form-control">
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label>Quantity to Pack:</label>
+                    <input type="number" id="quantity-to-pack" class="form-control" min="1">
+                </div>
+                <div class="col-md-3">
+                    <label>Box Type:</label>
+                    <select id="box-type-packaging" class="form-control">
+                        <option value="">Select type</option>
+                        <option value="small">Small Box</option>
+                        <option value="medium">Medium Box</option>
+                        <option value="large">Large Box</option>
+                        <option value="master">Master Carton</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Box Number:</label>
+                    <input type="text" id="box-number-packaging" class="form-control" placeholder="BOX-XXXXX">
+                </div>
+                <div class="col-md-3">
+                    <label>Pallet Number:</label>
+                    <input type="text" id="pallet-number-packaging" class="form-control" placeholder="PLT-XXXXX">
+                </div>
+            </div>
+            
+            <div class="serial-numbers-section mt-3">
+                <h4>Serial Numbers</h4>
+                <div class="row">
+                    <div class="col-md-9">
+                        <input type="text" id="serial-input-packaging" class="form-control" placeholder="Scan serial number">
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary btn-block" onclick="window.addSerialNumber()">Add Serial</button>
+                    </div>
+                </div>
+                <div class="serial-list mt-2" id="serial-list-packaging">
+                    <!-- Dynamic serial numbers -->
+                </div>
+            </div>
+            
+            <div class="packaging-summary mt-3">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="summary-item">
+                            <label>Total Packed:</label>
+                            <span id="total-packed">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="summary-item">
+                            <label>Remaining:</label>
+                            <span id="remaining-to-pack">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="summary-item">
+                            <label>Current Box:</label>
+                            <span id="current-box-count">0</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="summary-item">
+                            <label>Total Boxes:</label>
+                            <span id="total-boxes">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="register-actions mt-3">
+                <button class="btn btn-success" onclick="window.savePackagingRegister()">Save Register</button>
+                <button class="btn btn-warning" onclick="window.printLabel()">Print Label</button>
+                <button class="btn btn-info" onclick="window.closeBox()">Close Box</button>
+                <button class="btn btn-secondary" onclick="window.clearForm()">Clear Form</button>
+            </div>
+        </div>
+        
+        <div class="active-registers-section mt-4">
+            <h3>Active Packaging Registers</h3>
+            <table id="tabla-packaging-register" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>WO</th>
+                        <th>Model</th>
+                        <th>Customer</th>
+                        <th>Total Qty</th>
+                        <th>Packed</th>
+                        <th>Progress</th>
+                        <th>Boxes</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic data -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Module specific styles */
+.packaging-register-management-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.packaging-register-management-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.packaging-register-management-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.packaging-register-management-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.packaging-register-management-container .register-form-section,
+.packaging-register-management-container .active-registers-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.packaging-register-management-container .serial-numbers-section {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.packaging-register-management-container .serial-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #252531;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.packaging-register-management-container .serial-item {
+    background-color: #1E1E2E;
+    padding: 5px 10px;
+    margin: 2px 0;
+    border-radius: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.packaging-register-management-container .packaging-summary {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.packaging-register-management-container .summary-item {
+    text-align: center;
+}
+
+.packaging-register-management-container .summary-item label {
+    display: block;
+    font-size: 12px;
+    color: #B0B0B0;
+}
+
+.packaging-register-management-container .summary-item span {
+    font-size: 24px;
+    font-weight: bold;
+    color: #3498db;
+}
+
+.packaging-register-management-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.packaging-register-management-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.packaging-register-management-container .table thead {
+    background-color: #1E1E2E;
+}
+
+.packaging-register-management-container .progress {
+    background-color: #1E1E2E;
+    height: 20px;
+}
+
+.packaging-register-management-container .progress-bar {
+    background-color: #3498db;
+}
+</style>
+
+<script>
+// Module auto-initialization
+(function() {
+    console.log('Initializing Packaging Register Management AJAX...');
+    
+    let serialNumbers = [];
+    let currentBoxSerials = [];
+    
+    // Global initialization function
+    window.inicializarPackagingRegisterManagementAjax = function() {
+        console.log('Packaging Register Management AJAX initialized');
+        setDefaultValues();
+        loadActiveRegisters();
+        setupSerialScanner();
+    };
+    
+    function setDefaultValues() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('date-packaging-register').value = today;
+    }
+    
+    function loadActiveRegisters() {
+        console.log('Loading active packaging registers');
+        // Simulate data loading
+    }
+    
+    function setupSerialScanner() {
+        const serialInput = document.getElementById('serial-input-packaging');
+        serialInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                window.addSerialNumber();
+            }
+        });
+    }
+    
+    // Global functions
+    window.addSerialNumber = function() {
+        const serialInput = document.getElementById('serial-input-packaging');
+        const serial = serialInput.value.trim();
+        
+        if (!serial) return;
+        
+        if (serialNumbers.includes(serial)) {
+            alert('Serial number already scanned!');
+            serialInput.value = '';
+            return;
+        }
+        
+        serialNumbers.push(serial);
+        currentBoxSerials.push(serial);
+        
+        // Add to visual list
+        const serialList = document.getElementById('serial-list-packaging');
+        const serialItem = document.createElement('div');
+        serialItem.className = 'serial-item';
+        serialItem.innerHTML = `
+            <span>${serial}</span>
+            <button class="btn btn-sm btn-danger" onclick="window.removeSerial('${serial}')">Remove</button>
+        `;
+        serialList.appendChild(serialItem);
+        
+        // Update counters
+        updatePackingCounters();
+        
+        // Clear input
+        serialInput.value = '';
+        serialInput.focus();
+    };
+    
+    window.removeSerial = function(serial) {
+        serialNumbers = serialNumbers.filter(s => s !== serial);
+        currentBoxSerials = currentBoxSerials.filter(s => s !== serial);
+        
+        // Remove from visual list
+        const serialList = document.getElementById('serial-list-packaging');
+        const items = serialList.querySelectorAll('.serial-item');
+        items.forEach(item => {
+            if (item.textContent.includes(serial)) {
+                item.remove();
+            }
+        });
+        
+        updatePackingCounters();
+    };
+    
+    function updatePackingCounters() {
+        const quantityToPack = parseInt(document.getElementById('quantity-to-pack').value) || 0;
+        const packed = serialNumbers.length;
+        const remaining = Math.max(0, quantityToPack - packed);
+        
+        document.getElementById('total-packed').textContent = packed;
+        document.getElementById('remaining-to-pack').textContent = remaining;
+        document.getElementById('current-box-count').textContent = currentBoxSerials.length;
+    }
+    
+    window.savePackagingRegister = function() {
+        const wo = document.getElementById('wo-packaging-register').value;
+        const model = document.getElementById('model-packaging-register').value;
+        
+        if (!wo || !model) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        console.log('Saving packaging register');
+        // Save logic
+    };
+    
+    window.printLabel = function() {
+        console.log('Printing box label');
+        // Print logic
+    };
+    
+    window.closeBox = function() {
+        if (currentBoxSerials.length === 0) {
+            alert('No items in current box');
+            return;
+        }
+        
+        console.log('Closing current box with', currentBoxSerials.length, 'items');
+        
+        // Clear current box
+        currentBoxSerials = [];
+        document.getElementById('current-box-count').textContent = '0';
+        
+        // Increment box counter
+        const totalBoxes = parseInt(document.getElementById('total-boxes').textContent) || 0;
+        document.getElementById('total-boxes').textContent = totalBoxes + 1;
+        
+        // Generate new box number
+        const boxNumber = 'BOX-' + Date.now();
+        document.getElementById('box-number-packaging').value = boxNumber;
+    };
+    
+    window.clearForm = function() {
+        if (confirm('Are you sure you want to clear all data?')) {
+            serialNumbers = [];
+            currentBoxSerials = [];
+            document.getElementById('serial-list-packaging').innerHTML = '';
+            document.getElementById('wo-packaging-register').value = '';
+            document.getElementById('model-packaging-register').value = '';
+            document.getElementById('quantity-to-pack').value = '';
+            updatePackingCounters();
+        }
+    };
+    
+    // Execute immediately if DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarPackagingRegisterManagementAjax);
+    } else {
+        window.inicializarPackagingRegisterManagementAjax();
+    }
+})();
+</script>

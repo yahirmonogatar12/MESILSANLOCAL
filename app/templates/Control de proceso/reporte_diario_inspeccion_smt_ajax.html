@@ -1,0 +1,298 @@
+<!-- TEMPLATE AJAX: Reporte diario de inspeccion de SMT -->
+<!-- SUFIJO ÚNICO: -reporte-diario-inspeccion-smt -->
+<!-- CONTENEDOR: reporte-diario-inspeccion-smt-unique-container -->
+
+<div id="reporte-diario-inspeccion-smt-main-container-unique-reporte-diario-inspeccion-smt" class="reporte-diario-inspeccion-smt-container">
+    <div class="module-header">
+        <h2>Reporte diario de inspección de SMT</h2>
+        <p>Fecha: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="filter-section">
+            <h3>Filtros del Reporte</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Fecha del Reporte:</label>
+                    <input type="date" id="fecha-reporte-inspeccion-smt" class="form-control" value="{{ fecha_hoy|replace('/', '-') }}">
+                </div>
+                <div class="col-md-3">
+                    <label>Línea SMT:</label>
+                    <select id="linea-reporte-inspeccion-smt" class="form-control">
+                        <option value="">Todas las líneas</option>
+                        <option value="SMT-01">SMT-01</option>
+                        <option value="SMT-02">SMT-02</option>
+                        <option value="SMT-03">SMT-03</option>
+                        <option value="SMT-04">SMT-04</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Turno:</label>
+                    <select id="turno-reporte-inspeccion-smt" class="form-control">
+                        <option value="">Todos los turnos</option>
+                        <option value="mañana">Mañana</option>
+                        <option value="tarde">Tarde</option>
+                        <option value="noche">Noche</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="window.generarReporteInspeccion()">Generar Reporte</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary-section mt-4">
+            <h3>Resumen de Inspección</h3>
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="summary-card">
+                        <h5>Total Inspeccionados</h5>
+                        <p class="summary-number" id="total-inspeccionados">0</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="summary-card success">
+                        <h5>Aprobados</h5>
+                        <p class="summary-number" id="total-aprobados">0</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="summary-card danger">
+                        <h5>Rechazados</h5>
+                        <p class="summary-number" id="total-rechazados">0</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="summary-card warning">
+                        <h5>Retrabajos</h5>
+                        <p class="summary-number" id="total-retrabajos">0</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="summary-card info">
+                        <h5>% Aprobación</h5>
+                        <p class="summary-number" id="porcentaje-aprobacion">0%</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="summary-card">
+                        <h5>PPM</h5>
+                        <p class="summary-number" id="ppm-actual">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="defects-section mt-4">
+            <h3>Top 5 Defectos</h3>
+            <div class="defects-chart" id="defects-chart-container">
+                <!-- Aquí iría un gráfico de barras -->
+                <div class="chart-placeholder">
+                    <p>Gráfico de defectos</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-section mt-4">
+            <h3>Detalle de Inspecciones</h3>
+            <table id="tabla-reporte-inspeccion-smt" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Línea</th>
+                        <th>Modelo</th>
+                        <th>WO</th>
+                        <th>Cantidad</th>
+                        <th>Aprobados</th>
+                        <th>Rechazados</th>
+                        <th>Defectos</th>
+                        <th>Inspector</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Datos dinámicos -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-actions">
+            <button class="btn btn-success" onclick="window.exportarReporteExcel()">Exportar a Excel</button>
+            <button class="btn btn-info" onclick="window.exportarReportePDF()">Exportar a PDF</button>
+            <button class="btn btn-primary" onclick="window.enviarReporteEmail()">Enviar por Email</button>
+            <button class="btn btn-warning" onclick="window.imprimirReporte()">Imprimir</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.reporte-diario-inspeccion-smt-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.reporte-diario-inspeccion-smt-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.reporte-diario-inspeccion-smt-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.reporte-diario-inspeccion-smt-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.reporte-diario-inspeccion-smt-container .filter-section,
+.reporte-diario-inspeccion-smt-container .summary-section,
+.reporte-diario-inspeccion-smt-container .defects-section,
+.reporte-diario-inspeccion-smt-container .table-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.reporte-diario-inspeccion-smt-container .summary-card {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border: 2px solid #444;
+}
+
+.reporte-diario-inspeccion-smt-container .summary-card.success {
+    border-color: #27ae60;
+}
+
+.reporte-diario-inspeccion-smt-container .summary-card.danger {
+    border-color: #e74c3c;
+}
+
+.reporte-diario-inspeccion-smt-container .summary-card.warning {
+    border-color: #f39c12;
+}
+
+.reporte-diario-inspeccion-smt-container .summary-card.info {
+    border-color: #3498db;
+}
+
+.reporte-diario-inspeccion-smt-container .summary-card h5 {
+    font-size: 12px;
+    margin-bottom: 10px;
+    color: #B0B0B0;
+}
+
+.reporte-diario-inspeccion-smt-container .summary-number {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.reporte-diario-inspeccion-smt-container .chart-placeholder {
+    background-color: #1E1E2E;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.reporte-diario-inspeccion-smt-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.reporte-diario-inspeccion-smt-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.reporte-diario-inspeccion-smt-container .table thead {
+    background-color: #1E1E2E;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Reporte diario de inspección de SMT AJAX...');
+    
+    // Función de inicialización global
+    window.inicializarReporteDiarioInspeccionSMTAjax = function() {
+        console.log('Reporte diario de inspección de SMT AJAX inicializado');
+        establecerFechaHoy();
+        cargarReporteInicial();
+    };
+    
+    // Establecer fecha de hoy por defecto
+    function establecerFechaHoy() {
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('fecha-reporte-inspeccion-smt').value = hoy;
+    }
+    
+    function cargarReporteInicial() {
+        // Simular carga de reporte del día
+        actualizarResumen();
+    }
+    
+    function actualizarResumen() {
+        // Simular actualización de resumen
+        document.getElementById('total-inspeccionados').textContent = '1,250';
+        document.getElementById('total-aprobados').textContent = '1,180';
+        document.getElementById('total-rechazados').textContent = '45';
+        document.getElementById('total-retrabajos').textContent = '25';
+        document.getElementById('porcentaje-aprobacion').textContent = '94.4%';
+        document.getElementById('ppm-actual').textContent = '36,000';
+    }
+    
+    // Funciones globales
+    window.generarReporteInspeccion = function() {
+        const fecha = document.getElementById('fecha-reporte-inspeccion-smt').value;
+        const linea = document.getElementById('linea-reporte-inspeccion-smt').value;
+        const turno = document.getElementById('turno-reporte-inspeccion-smt').value;
+        
+        console.log('Generando reporte:', { fecha, linea, turno });
+        // Lógica para generar reporte
+        actualizarResumen();
+    };
+    
+    window.exportarReporteExcel = function() {
+        console.log('Exportando reporte a Excel');
+        // Lógica de exportación a Excel
+    };
+    
+    window.exportarReportePDF = function() {
+        console.log('Exportando reporte a PDF');
+        // Lógica de exportación a PDF
+    };
+    
+    window.enviarReporteEmail = function() {
+        console.log('Enviando reporte por email');
+        // Lógica para enviar por email
+    };
+    
+    window.imprimirReporte = function() {
+        console.log('Imprimiendo reporte');
+        window.print();
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarReporteDiarioInspeccionSMTAjax);
+    } else {
+        window.inicializarReporteDiarioInspeccionSMTAjax();
+    }
+})();
+</script>

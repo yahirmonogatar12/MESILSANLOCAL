@@ -1,0 +1,323 @@
+<!-- TEMPLATE AJAX: Reporte diario de inspeccion por proceso -->
+<!-- SUFIJO ÚNICO: -reporte-diario-inspeccion-proceso -->
+<!-- CONTENEDOR: reporte-diario-inspeccion-proceso-unique-container -->
+
+<div id="reporte-diario-inspeccion-proceso-main-container-unique-reporte-diario-inspeccion-proceso" class="reporte-diario-inspeccion-proceso-container">
+    <div class="module-header">
+        <h2>Reporte diario de inspección por proceso</h2>
+        <p>Fecha: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="filter-section">
+            <h3>Parámetros del Reporte</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Fecha:</label>
+                    <input type="date" id="fecha-reporte-proceso" class="form-control" value="{{ fecha_hoy|replace('/', '-') }}">
+                </div>
+                <div class="col-md-3">
+                    <label>Proceso:</label>
+                    <select id="proceso-reporte-inspeccion" class="form-control">
+                        <option value="">Todos los procesos</option>
+                        <option value="SMT">SMT</option>
+                        <option value="DIP">DIP</option>
+                        <option value="TEST">TEST</option>
+                        <option value="ASSEMBLY">ASSEMBLY</option>
+                        <option value="PACKING">PACKING</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Área:</label>
+                    <select id="area-reporte-proceso" class="form-control">
+                        <option value="">Todas las áreas</option>
+                        <option value="produccion">Producción</option>
+                        <option value="calidad">Calidad</option>
+                        <option value="ingenieria">Ingeniería</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="window.generarReporteProceso()">Generar Reporte</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="process-summary mt-4">
+            <h3>Resumen por Proceso</h3>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="process-cards-container">
+                        <div class="process-card" data-process="SMT">
+                            <h4>SMT</h4>
+                            <div class="process-stats">
+                                <p>Inspeccionados: <span class="stat-value">850</span></p>
+                                <p>Aprobados: <span class="stat-value text-success">820</span></p>
+                                <p>Rechazados: <span class="stat-value text-danger">30</span></p>
+                                <p>Eficiencia: <span class="stat-value text-info">96.5%</span></p>
+                            </div>
+                        </div>
+                        <div class="process-card" data-process="DIP">
+                            <h4>DIP</h4>
+                            <div class="process-stats">
+                                <p>Inspeccionados: <span class="stat-value">420</span></p>
+                                <p>Aprobados: <span class="stat-value text-success">410</span></p>
+                                <p>Rechazados: <span class="stat-value text-danger">10</span></p>
+                                <p>Eficiencia: <span class="stat-value text-info">97.6%</span></p>
+                            </div>
+                        </div>
+                        <div class="process-card" data-process="TEST">
+                            <h4>TEST</h4>
+                            <div class="process-stats">
+                                <p>Inspeccionados: <span class="stat-value">380</span></p>
+                                <p>Aprobados: <span class="stat-value text-success">375</span></p>
+                                <p>Rechazados: <span class="stat-value text-danger">5</span></p>
+                                <p>Eficiencia: <span class="stat-value text-info">98.7%</span></p>
+                            </div>
+                        </div>
+                        <div class="process-card" data-process="ASSEMBLY">
+                            <h4>ASSEMBLY</h4>
+                            <div class="process-stats">
+                                <p>Inspeccionados: <span class="stat-value">290</span></p>
+                                <p>Aprobados: <span class="stat-value text-success">285</span></p>
+                                <p>Rechazados: <span class="stat-value text-danger">5</span></p>
+                                <p>Eficiencia: <span class="stat-value text-info">98.3%</span></p>
+                            </div>
+                        </div>
+                        <div class="process-card" data-process="PACKING">
+                            <h4>PACKING</h4>
+                            <div class="process-stats">
+                                <p>Inspeccionados: <span class="stat-value">250</span></p>
+                                <p>Aprobados: <span class="stat-value text-success">250</span></p>
+                                <p>Rechazados: <span class="stat-value text-danger">0</span></p>
+                                <p>Eficiencia: <span class="stat-value text-info">100%</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="trends-section mt-4">
+            <h3>Tendencias de Calidad</h3>
+            <div class="trends-chart">
+                <!-- Aquí iría un gráfico de tendencias -->
+                <div class="chart-placeholder">
+                    <p>Gráfico de tendencias de calidad por proceso</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="detail-section mt-4">
+            <h3>Detalle de Inspecciones</h3>
+            <table id="tabla-reporte-proceso" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Proceso</th>
+                        <th>Modelo</th>
+                        <th>WO</th>
+                        <th>Total</th>
+                        <th>Aprobados</th>
+                        <th>Rechazados</th>
+                        <th>% Aprobación</th>
+                        <th>PPM</th>
+                        <th>Defectos Top</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Datos dinámicos -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-actions">
+            <button class="btn btn-success" onclick="window.exportarReporteProceso()">Exportar Excel</button>
+            <button class="btn btn-info" onclick="window.generarGraficos()">Ver Gráficos Detallados</button>
+            <button class="btn btn-warning" onclick="window.compararPeriodos()">Comparar Períodos</button>
+            <button class="btn btn-primary" onclick="window.enviarReporteProceso()">Enviar Reporte</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.reporte-diario-inspeccion-proceso-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.reporte-diario-inspeccion-proceso-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.reporte-diario-inspeccion-proceso-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.reporte-diario-inspeccion-proceso-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.reporte-diario-inspeccion-proceso-container .filter-section,
+.reporte-diario-inspeccion-proceso-container .process-summary,
+.reporte-diario-inspeccion-proceso-container .trends-section,
+.reporte-diario-inspeccion-proceso-container .detail-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.reporte-diario-inspeccion-proceso-container .process-cards-container {
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.reporte-diario-inspeccion-proceso-container .process-card {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 180px;
+    border: 2px solid #444;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.reporte-diario-inspeccion-proceso-container .process-card:hover {
+    border-color: #3498db;
+    transform: translateY(-2px);
+}
+
+.reporte-diario-inspeccion-proceso-container .process-card h4 {
+    color: #3498db;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.reporte-diario-inspeccion-proceso-container .process-stats p {
+    margin: 5px 0;
+    font-size: 12px;
+}
+
+.reporte-diario-inspeccion-proceso-container .stat-value {
+    font-weight: bold;
+    float: right;
+}
+
+.reporte-diario-inspeccion-proceso-container .chart-placeholder {
+    background-color: #1E1E2E;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.reporte-diario-inspeccion-proceso-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.reporte-diario-inspeccion-proceso-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.reporte-diario-inspeccion-proceso-container .table thead {
+    background-color: #1E1E2E;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Reporte diario de inspección por proceso AJAX...');
+    
+    // Función de inicialización global
+    window.inicializarReporteDiarioInspeccionProcesoAjax = function() {
+        console.log('Reporte diario de inspección por proceso AJAX inicializado');
+        establecerFechaHoy();
+        cargarReporteProceso();
+        configurarEventListeners();
+    };
+    
+    function establecerFechaHoy() {
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('fecha-reporte-proceso').value = hoy;
+    }
+    
+    function cargarReporteProceso() {
+        // Simular carga inicial del reporte
+        console.log('Cargando reporte inicial por proceso');
+    }
+    
+    function configurarEventListeners() {
+        // Agregar click listeners a las tarjetas de proceso
+        document.querySelectorAll('.process-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const proceso = this.dataset.process;
+                document.getElementById('proceso-reporte-inspeccion').value = proceso;
+                window.generarReporteProceso();
+            });
+        });
+    }
+    
+    // Funciones globales
+    window.generarReporteProceso = function() {
+        const fecha = document.getElementById('fecha-reporte-proceso').value;
+        const proceso = document.getElementById('proceso-reporte-inspeccion').value;
+        const area = document.getElementById('area-reporte-proceso').value;
+        
+        console.log('Generando reporte:', { fecha, proceso, area });
+        // Lógica para generar reporte
+        
+        // Actualizar tarjetas de proceso
+        actualizarTarjetasProceso();
+    };
+    
+    function actualizarTarjetasProceso() {
+        // Simular actualización de datos
+        console.log('Actualizando tarjetas de proceso');
+    }
+    
+    window.exportarReporteProceso = function() {
+        console.log('Exportando reporte de proceso a Excel');
+        // Lógica de exportación
+    };
+    
+    window.generarGraficos = function() {
+        console.log('Generando gráficos detallados');
+        // Lógica para mostrar gráficos
+    };
+    
+    window.compararPeriodos = function() {
+        console.log('Comparando períodos');
+        // Lógica para comparar períodos
+    };
+    
+    window.enviarReporteProceso = function() {
+        console.log('Enviando reporte por email');
+        // Lógica para enviar reporte
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarReporteDiarioInspeccionProcesoAjax);
+    } else {
+        window.inicializarReporteDiarioInspeccionProcesoAjax();
+    }
+})();
+</script>

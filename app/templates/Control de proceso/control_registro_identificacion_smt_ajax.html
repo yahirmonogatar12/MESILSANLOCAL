@@ -1,0 +1,242 @@
+<!-- TEMPLATE AJAX: Control de registro de identificacion de SMT -->
+<!-- SUFIJO ÚNICO: -registro-identificacion-smt -->
+<!-- CONTENEDOR: control-registro-identificacion-smt-unique-container -->
+
+<div id="control-registro-identificacion-smt-main-container-unique-registro-identificacion-smt" class="control-registro-identificacion-smt-container">
+    <div class="module-header">
+        <h2>Control de registro de identificación de SMT</h2>
+        <p>Fecha: {{ fecha_hoy }}</p>
+    </div>
+    
+    <div class="module-content">
+        <div class="registro-section">
+            <h3>Registrar Nueva Identificación</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Código de Identificación:</label>
+                    <input type="text" id="codigo-registro-identificacion-smt" class="form-control" placeholder="ID-SMT-XXXX">
+                </div>
+                <div class="col-md-3">
+                    <label>Modelo:</label>
+                    <select id="modelo-registro-identificacion-smt" class="form-control">
+                        <option value="">Seleccionar modelo</option>
+                        <!-- Opciones dinámicas -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Línea de Producción:</label>
+                    <select id="linea-registro-identificacion-smt" class="form-control">
+                        <option value="">Seleccionar línea</option>
+                        <option value="SMT-01">SMT-01</option>
+                        <option value="SMT-02">SMT-02</option>
+                        <option value="SMT-03">SMT-03</option>
+                        <option value="SMT-04">SMT-04</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Cantidad:</label>
+                    <input type="number" id="cantidad-registro-identificacion-smt" class="form-control" min="1" value="1">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label>Orden de Trabajo (WO):</label>
+                    <input type="text" id="wo-registro-identificacion-smt" class="form-control" placeholder="WO-XXXXX">
+                </div>
+                <div class="col-md-6">
+                    <label>Observaciones:</label>
+                    <textarea id="observaciones-registro-identificacion-smt" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button class="btn btn-success" onclick="window.registrarIdentificacion()">Registrar</button>
+                    <button class="btn btn-secondary" onclick="window.limpiarFormularioRegistro()">Limpiar</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-section mt-4">
+            <h3>Registros Recientes</h3>
+            <div class="filter-controls mb-3">
+                <label>Filtrar por fecha:</label>
+                <input type="date" id="fecha-inicio-registro" class="form-control d-inline-block" style="width: 200px;">
+                <label class="ml-2">hasta</label>
+                <input type="date" id="fecha-fin-registro" class="form-control d-inline-block ml-2" style="width: 200px;">
+                <button class="btn btn-sm btn-primary ml-2" onclick="window.filtrarRegistros()">Filtrar</button>
+            </div>
+            <table id="tabla-registro-identificacion-smt" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID Registro</th>
+                        <th>Código</th>
+                        <th>Modelo</th>
+                        <th>Línea</th>
+                        <th>WO</th>
+                        <th>Cantidad</th>
+                        <th>Usuario</th>
+                        <th>Fecha Registro</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Datos dinámicos -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="module-actions">
+            <button class="btn btn-info" onclick="window.exportarRegistros()">Exportar a Excel</button>
+            <button class="btn btn-warning" onclick="window.verEstadisticas()">Ver Estadísticas</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo */
+.control-registro-identificacion-smt-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: calc(100vh - 100px);
+}
+
+.control-registro-identificacion-smt-container .module-header {
+    background-color: #1E1E2E;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.control-registro-identificacion-smt-container h2 {
+    color: #3498db;
+    margin: 0;
+}
+
+.control-registro-identificacion-smt-container .module-content {
+    background-color: #32323E;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.control-registro-identificacion-smt-container .registro-section,
+.control-registro-identificacion-smt-container .table-section {
+    background-color: #2B2D3E;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.control-registro-identificacion-smt-container .form-control {
+    background-color: #1E1E2E;
+    border: 1px solid #444;
+    color: #E0E0E0;
+}
+
+.control-registro-identificacion-smt-container .form-control:focus {
+    background-color: #252531;
+    border-color: #3498db;
+    color: #E0E0E0;
+}
+
+.control-registro-identificacion-smt-container .table {
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+}
+
+.control-registro-identificacion-smt-container .table thead {
+    background-color: #1E1E2E;
+}
+
+.control-registro-identificacion-smt-container .table-striped tbody tr:nth-of-type(odd) {
+    background-color: #252531;
+}
+
+.control-registro-identificacion-smt-container .filter-controls {
+    display: flex;
+    align-items: center;
+}
+
+.control-registro-identificacion-smt-container .filter-controls label {
+    margin-right: 10px;
+    margin-bottom: 0;
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Control de registro de identificación de SMT AJAX...');
+    
+    // Función de inicialización global
+    window.inicializarControlRegistroIdentificacionSMTAjax = function() {
+        console.log('Control de registro de identificación de SMT AJAX inicializado');
+        cargarModelos();
+        cargarRegistrosRecientes();
+        establecerFechasPorDefecto();
+    };
+    
+    // Funciones específicas del módulo
+    function cargarModelos() {
+        // Simular carga de modelos
+        console.log('Cargando modelos disponibles...');
+    }
+    
+    function cargarRegistrosRecientes() {
+        // Simular carga de registros
+        console.log('Cargando registros recientes...');
+    }
+    
+    function establecerFechasPorDefecto() {
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('fecha-inicio-registro').value = hoy;
+        document.getElementById('fecha-fin-registro').value = hoy;
+    }
+    
+    // Funciones globales para botones
+    window.registrarIdentificacion = function() {
+        const codigo = document.getElementById('codigo-registro-identificacion-smt').value;
+        const modelo = document.getElementById('modelo-registro-identificacion-smt').value;
+        const linea = document.getElementById('linea-registro-identificacion-smt').value;
+        
+        if (!codigo || !modelo || !linea) {
+            alert('Por favor complete todos los campos requeridos');
+            return;
+        }
+        
+        console.log('Registrando nueva identificación:', { codigo, modelo, linea });
+        // Lógica de registro
+    };
+    
+    window.limpiarFormularioRegistro = function() {
+        document.getElementById('codigo-registro-identificacion-smt').value = '';
+        document.getElementById('modelo-registro-identificacion-smt').value = '';
+        document.getElementById('linea-registro-identificacion-smt').value = '';
+        document.getElementById('cantidad-registro-identificacion-smt').value = '1';
+        document.getElementById('wo-registro-identificacion-smt').value = '';
+        document.getElementById('observaciones-registro-identificacion-smt').value = '';
+    };
+    
+    window.filtrarRegistros = function() {
+        console.log('Filtrando registros por fecha');
+        // Lógica de filtrado
+    };
+    
+    window.exportarRegistros = function() {
+        console.log('Exportando registros a Excel');
+        // Lógica de exportación
+    };
+    
+    window.verEstadisticas = function() {
+        console.log('Mostrando estadísticas de registros');
+        // Lógica para mostrar estadísticas
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlRegistroIdentificacionSMTAjax);
+    } else {
+        window.inicializarControlRegistroIdentificacionSMTAjax();
+    }
+})();
+</script>
