@@ -3,39 +3,718 @@
 <!-- CONTENEDOR DESTINO (EXTERNO): bom-unique-container -->
 
 <div id="control-bom-main-container-unique-bom" class="control-bom-container">
-	<h2 style="margin: 0 0 12px 0; color: #E0E0E0;">Control BOM</h2>
-	<div class="contenido-placeholder" style="color: #B0B3B8; font-size: 13px;">
-		Este es el fragmento AJAX para Control BOM. Sustituye este contenido con el módulo real.
-	</div>
+    <h2 style="margin: 0 0 20px 0; color: #E0E0E0; text-align: center;">Control BOM</h2>
+    
+    <!-- Barra de herramientas -->
+    <div class="toolbar">
+        <div class="search-section">
+            <input type="text" id="searchBOM" placeholder="Buscar por modelo, número de parte..." class="search-input">
+            <button id="btnConsultar" class="btn btn-primary">Consultar</button>
+        </div>
+        
+        <div class="action-section">
+            <button id="btnRegistrar" class="btn btn-success">Registrar</button>
+            <button id="btnEliminar" class="btn btn-danger">Eliminar</button>
+            <button id="btnRegistroSustituto" class="btn btn-warning">Registro de mat. sustituto</button>
+            <button id="btnExportar" class="btn btn-info">Exportar al excel</button>
+            <button id="btnImportar" class="btn btn-secondary">Importar al excel</button>
+        </div>
+    </div>
+
+    <!-- Input de archivo oculto para importación -->
+    <input type="file" id="fileImportBOM" accept=".xlsx,.xls,.csv" style="display: none;">
+
+    <!-- Tabla de resultados -->
+    <div class="table-container">
+        <table id="bomTable" class="bom-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAllBOM"></th>
+                    <th>Modelo</th>
+                    <th>Side</th>
+                    <th>Tipo de material</th>
+                    <th>Classification</th>
+                    <th>Especificación</th>
+                    <th>Vendor</th>
+                    <th>Cantidad total</th>
+                    <th>Cantidad original</th>
+                    <th>Ubicación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="bomTableBody">
+                <tr>
+                    <td colspan="11" class="no-data">No hay datos para mostrar</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal para registro/edición -->
+    <div id="bomModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modalTitle">Registrar BOM</h3>
+            <form id="bomForm">
+                <div class="form-group">
+                    <label for="modelo">Modelo:</label>
+                    <input type="text" id="modelo" name="modelo" required>
+                </div>
+                <div class="form-group">
+                    <label for="codigo_material">Código de material:</label>
+                    <input type="text" id="codigo_material" name="codigo_material" required>
+                </div>
+                <div class="form-group">
+                    <label for="numero_parte">Número de parte:</label>
+                    <input type="text" id="numero_parte" name="numero_parte" required>
+                </div>
+                <div class="form-group">
+                    <label for="side">Side:</label>
+                    <select id="side" name="side">
+                        <option value="TOP">TOP</option>
+                        <option value="BOTTOM">BOTTOM</option>
+                        <option value="BOTH">BOTH</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tipo_material">Tipo de material:</label>
+                    <input type="text" id="tipo_material" name="tipo_material">
+                </div>
+                <div class="form-group">
+                    <label for="classification">Classification:</label>
+                    <input type="text" id="classification" name="classification">
+                </div>
+                <div class="form-group">
+                    <label for="especificacion_material">Especificación:</label>
+                    <textarea id="especificacion_material" name="especificacion_material" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="vender">Vendor:</label>
+                    <input type="text" id="vender" name="vender">
+                </div>
+                <div class="form-group">
+                    <label for="cantidad_total">Cantidad total:</label>
+                    <input type="number" id="cantidad_total" name="cantidad_total" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="cantidad_original">Cantidad original:</label>
+                    <input type="number" id="cantidad_original" name="cantidad_original" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="ubicacion">Ubicación:</label>
+                    <input type="text" id="ubicacion" name="ubicacion">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div id="confirmModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Confirmar acción</h3>
+            <p id="confirmMessage">¿Estás seguro de que quieres realizar esta acción?</p>
+            <div class="form-actions">
+                <button id="confirmYes" class="btn btn-danger">Sí</button>
+                <button id="confirmNo" class="btn btn-secondary">No</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
 .control-bom-container {
-	padding: 16px;
-	background-color: #2B2D3E;
-	color: #E0E0E0;
-	border: 1px solid #3C3F51;
-	border-radius: 4px;
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    border: 1px solid #3C3F51;
+    border-radius: 8px;
+    min-height: 600px;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #34334E;
+    border-radius: 6px;
+    border: 1px solid #3C3F51;
+}
+
+.search-section {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.search-input {
+    padding: 8px 12px;
+    border: 1px solid #3C3F51;
+    border-radius: 4px;
+    background-color: #2C3E50;
+    color: #E0E0E0;
+    min-width: 300px;
+}
+
+.search-input::placeholder {
+    color: #95A5A6;
+}
+
+.action-section {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.btn-primary { background-color: #3498DB; color: white; }
+.btn-success { background-color: #27AE60; color: white; }
+.btn-danger { background-color: #E74C3C; color: white; }
+.btn-warning { background-color: #F39C12; color: white; }
+.btn-info { background-color: #17A2B8; color: white; }
+.btn-secondary { background-color: #6C757D; color: white; }
+
+.table-container {
+    background-color: #34334E;
+    border-radius: 6px;
+    border: 1px solid #3C3F51;
+    overflow: hidden;
+}
+
+.bom-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.bom-table th,
+.bom-table td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid #3C3F51;
+}
+
+.bom-table th {
+    background-color: #172A46;
+    color: #E0E0E0;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.bom-table tbody tr:hover {
+    background-color: #40424F;
+}
+
+.no-data {
+    text-align: center;
+    color: #95A5A6;
+    font-style: italic;
+    padding: 40px;
+}
+
+/* Modal styles */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: #2B2D3E;
+    border: 1px solid #3C3F51;
+    border-radius: 8px;
+    padding: 25px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close:hover {
+    color: #E0E0E0;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #E0E0E0;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #3C3F51;
+    border-radius: 4px;
+    background-color: #2C3E50;
+    color: #E0E0E0;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #3C3F51;
+}
+
+/* Checkbox styles */
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .toolbar {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .search-section,
+    .action-section {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .search-input {
+        min-width: 200px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
 }
 </style>
 
 <script>
 (function() {
-	window.inicializarControlBOMModule = function() {
-		try {
-			// Inicialización mínima del módulo (sin emojis)
-			console.log('Inicializando Control BOM AJAX...');
-			console.log('Control BOM AJAX inicializado');
-		} catch (e) {
-			console.error('Error inicializando Control BOM AJAX:', e);
-		}
-	};
+    let currentBOMData = [];
+    let editingBOMId = null;
 
-	// Auto-ejecutar inicialización si el DOM ya está listo
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', window.inicializarControlBOMModule);
-	} else {
-		window.inicializarControlBOMModule();
-	}
+    window.inicializarControlBOMModule = function() {
+        try {
+            console.log('Inicializando Control BOM AJAX...');
+            
+            // Inicializar eventos
+            initializeEvents();
+            
+            // Cargar datos iniciales
+            loadBOMData();
+            
+            console.log('Control BOM AJAX inicializado');
+        } catch (e) {
+            console.error('Error inicializando Control BOM AJAX:', e);
+        }
+    };
+
+    function initializeEvents() {
+        // Botón consultar
+        document.getElementById('btnConsultar').addEventListener('click', loadBOMData);
+        
+        // Botón registrar
+        document.getElementById('btnRegistrar').addEventListener('click', () => openModal());
+        
+        // Botón eliminar
+        document.getElementById('btnEliminar').addEventListener('click', deleteSelectedBOM);
+        
+        // Botón exportar
+        document.getElementById('btnExportar').addEventListener('click', exportBOMToExcel);
+        
+        // Botón importar
+        document.getElementById('btnImportar').addEventListener('click', () => {
+            document.getElementById('fileImportBOM').click();
+        });
+        
+        // Input de archivo
+        document.getElementById('fileImportBOM').addEventListener('change', handleFileImport);
+        
+        // Checkbox select all
+        document.getElementById('selectAllBOM').addEventListener('change', toggleSelectAll);
+        
+        // Form submit
+        document.getElementById('bomForm').addEventListener('submit', handleFormSubmit);
+        
+        // Modal close
+        document.querySelector('.close').addEventListener('click', closeModal);
+        
+        // Confirm modal
+        document.getElementById('confirmYes').addEventListener('click', confirmAction);
+        document.getElementById('confirmNo').addEventListener('click', closeConfirmModal);
+    }
+
+    async function loadBOMData() {
+        try {
+            const searchTerm = document.getElementById('searchBOM').value.trim();
+            
+            // Simular carga de datos (reemplazar con llamada real a la API)
+            const response = await fetch('/api/bom/listar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    q: searchTerm
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                currentBOMData = data.rows || [];
+                renderBOMTable();
+            } else {
+                throw new Error('Error al cargar datos');
+            }
+        } catch (error) {
+            console.error('Error cargando datos BOM:', error);
+            // Mostrar datos de ejemplo para desarrollo
+            currentBOMData = getSampleData();
+            renderBOMTable();
+        }
+    }
+
+    function getSampleData() {
+        return [
+            {
+                id: 1,
+                modelo: '9301',
+                codigo_material: 'IC001',
+                numero_parte: 'SAA41880501',
+                side: 'TOP',
+                tipo_material: 'IC',
+                classification: 'MAIN',
+                especificacion_material: 'Microcontrolador ARM Cortex-M4',
+                vender: 'STMicroelectronics',
+                cantidad_total: 1,
+                cantidad_original: 1,
+                ubicacion: 'IC1-01'
+            },
+            {
+                id: 2,
+                modelo: '9301',
+                codigo_material: 'R001',
+                numero_parte: 'RC0603JR-0710KL',
+                side: 'TOP',
+                tipo_material: 'RESISTOR',
+                classification: 'PASSIVE',
+                especificacion_material: 'Resistor 10K ohm 1% 1/10W',
+                vender: 'Yageo',
+                cantidad_total: 5,
+                cantidad_original: 5,
+                ubicacion: 'R1-05'
+            }
+        ];
+    }
+
+    function renderBOMTable() {
+        const tbody = document.getElementById('bomTableBody');
+        tbody.innerHTML = '';
+        
+        if (currentBOMData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" class="no-data">No hay datos para mostrar</td></tr>';
+            return;
+        }
+        
+        currentBOMData.forEach(bom => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><input type="checkbox" class="bom-checkbox" value="${bom.id}"></td>
+                <td>${escapeHtml(bom.modelo)}</td>
+                <td>${escapeHtml(bom.side)}</td>
+                <td>${escapeHtml(bom.tipo_material)}</td>
+                <td>${escapeHtml(bom.classification)}</td>
+                <td>${escapeHtml(bom.especificacion_material)}</td>
+                <td>${escapeHtml(bom.vender)}</td>
+                <td>${bom.cantidad_total}</td>
+                <td>${bom.cantidad_original}</td>
+                <td>${escapeHtml(bom.ubicacion)}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="editBOM(${bom.id})">Editar</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteBOM(${bom.id})">Eliminar</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // Configurar eventos de checkboxes
+        document.querySelectorAll('.bom-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectAllState);
+        });
+    }
+
+    function openModal(bomData = null) {
+        const modal = document.getElementById('bomModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const form = document.getElementById('bomForm');
+        
+        if (bomData) {
+            // Modo edición
+            modalTitle.textContent = 'Editar BOM';
+            editingBOMId = bomData.id;
+            fillFormWithData(bomData);
+        } else {
+            // Modo registro
+            modalTitle.textContent = 'Registrar BOM';
+            editingBOMId = null;
+            form.reset();
+        }
+        
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('bomModal').style.display = 'none';
+        editingBOMId = null;
+    }
+
+    function fillFormWithData(bomData) {
+        Object.keys(bomData).forEach(key => {
+            const element = document.getElementById(key);
+            if (element) {
+                element.value = bomData[key] || '';
+            }
+        });
+    }
+
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const bomData = Object.fromEntries(formData.entries());
+        
+        try {
+            if (editingBOMId) {
+                // Actualizar BOM existente
+                await updateBOM(editingBOMId, bomData);
+            } else {
+                // Crear nuevo BOM
+                await createBOM(bomData);
+            }
+            
+            closeModal();
+            loadBOMData();
+        } catch (error) {
+            console.error('Error guardando BOM:', error);
+            alert('Error al guardar el BOM');
+        }
+    }
+
+    async function createBOM(bomData) {
+        // Implementar llamada a API para crear BOM
+        console.log('Creando BOM:', bomData);
+    }
+
+    async function updateBOM(id, bomData) {
+        // Implementar llamada a API para actualizar BOM
+        console.log('Actualizando BOM:', id, bomData);
+    }
+
+    function editBOM(id) {
+        const bom = currentBOMData.find(b => b.id === id);
+        if (bom) {
+            openModal(bom);
+        }
+    }
+
+    function deleteBOM(id) {
+        showConfirmModal(`¿Estás seguro de que quieres eliminar el BOM con ID ${id}?`, () => {
+            // Implementar eliminación
+            console.log('Eliminando BOM:', id);
+            loadBOMData();
+        });
+    }
+
+    function deleteSelectedBOM() {
+        const selectedCheckboxes = document.querySelectorAll('.bom-checkbox:checked');
+        if (selectedCheckboxes.length === 0) {
+            alert('Por favor selecciona al menos un BOM para eliminar');
+            return;
+        }
+        
+        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        showConfirmModal(`¿Estás seguro de que quieres eliminar ${selectedIds.length} BOM(s)?`, () => {
+            // Implementar eliminación múltiple
+            console.log('Eliminando BOMs:', selectedIds);
+            loadBOMData();
+        });
+    }
+
+    function exportBOMToExcel() {
+        try {
+            if (currentBOMData.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+            
+            // Crear CSV
+            const headers = ['Modelo', 'Código Material', 'Número Parte', 'Side', 'Tipo Material', 'Classification', 'Especificación', 'Vendor', 'Cantidad Total', 'Cantidad Original', 'Ubicación'];
+            const csvContent = [
+                headers.join(','),
+                ...currentBOMData.map(bom => [
+                    bom.modelo,
+                    bom.codigo_material,
+                    bom.numero_parte,
+                    bom.side,
+                    bom.tipo_material,
+                    bom.classification,
+                    `"${bom.especificacion_material}"`,
+                    bom.vender,
+                    bom.cantidad_total,
+                    bom.cantidad_original,
+                    bom.ubicacion
+                ].join(','))
+            ].join('\n');
+            
+            // Descargar archivo
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `bom_export_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            console.log('Exportación completada');
+        } catch (error) {
+            console.error('Error en exportación:', error);
+            alert('Error al exportar el archivo');
+        }
+    }
+
+    async function handleFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        try {
+            // Implementar lógica de importación
+            console.log('Importando archivo:', file.name);
+            alert('Funcionalidad de importación en desarrollo');
+        } catch (error) {
+            console.error('Error importando archivo:', error);
+            alert('Error al importar el archivo');
+        } finally {
+            event.target.value = '';
+        }
+    }
+
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAllBOM');
+        const checkboxes = document.querySelectorAll('.bom-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAll.checked;
+        });
+    }
+
+    function updateSelectAllState() {
+        const selectAll = document.getElementById('selectAllBOM');
+        const checkboxes = document.querySelectorAll('.bom-checkbox');
+        const checkedCount = document.querySelectorAll('.bom-checkbox:checked').length;
+        
+        if (checkedCount === 0) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+        } else if (checkedCount === checkboxes.length) {
+            selectAll.checked = true;
+            selectAll.indeterminate = false;
+        } else {
+            selectAll.checked = false;
+            selectAll.indeterminate = true;
+        }
+    }
+
+    function showConfirmModal(message, onConfirm) {
+        document.getElementById('confirmMessage').textContent = message;
+        document.getElementById('confirmModal').style.display = 'flex';
+        
+        // Guardar callback de confirmación
+        window.confirmAction = onConfirm;
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+    }
+
+    function confirmAction() {
+        if (window.confirmAction) {
+            window.confirmAction();
+        }
+        closeConfirmModal();
+    }
+
+    function escapeHtml(text) {
+        if (text == null) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Hacer funciones disponibles globalmente
+    window.editBOM = editBOM;
+    window.deleteBOM = deleteBOM;
+    window.closeModal = closeModal;
+
+    // Auto-ejecutar inicialización si el DOM ya está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlBOMModule);
+    } else {
+        window.inicializarControlBOMModule();
+    }
 })();
 </script>

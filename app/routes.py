@@ -582,6 +582,105 @@ def buscar_material_por_numero_parte():
         print(f"❌ ERROR en buscar_material_por_numero_parte (MySQL): {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+def exportar_bom_a_excel(modelo=None):
+    """
+    Función auxiliar para exportar datos de BOM a Excel
+    """
+    try:
+        import tempfile
+        import os
+        
+        # Construir la consulta SQL
+        if modelo:
+            query = """
+            SELECT modelo, codigo_material, numero_parte, side, tipo_material, 
+                   classification, especificacion_material, vender, cantidad_total, 
+                   cantidad_original, ubicacion, material_sustituto, material_original, 
+                   registrador, fecha_registro
+            FROM bom 
+            WHERE modelo = %s
+            ORDER BY modelo, codigo_material
+            """
+            params = (modelo,)
+        else:
+            query = """
+            SELECT modelo, codigo_material, numero_parte, side, tipo_material, 
+                   classification, especificacion_material, vender, cantidad_total, 
+                   cantidad_original, ubicacion, material_sustituto, material_original, 
+                   registrador, fecha_registro
+            FROM bom 
+            ORDER BY modelo, codigo_material
+            """
+            params = ()
+        
+        # Ejecutar la consulta
+        result = execute_query(query, params, fetch='all')
+        
+        if not result:
+            print(f"No se encontraron datos de BOM para exportar")
+            return None
+        
+        # Crear DataFrame
+        df = pd.DataFrame(result)
+        
+        # Renombrar columnas para mejor legibilidad
+        column_mapping = {
+            'modelo': 'Modelo',
+            'codigo_material': 'Código de Material',
+            'numero_parte': 'Número de Parte',
+            'side': 'Side',
+            'tipo_material': 'Tipo de Material',
+            'classification': 'Classification',
+            'especificacion_material': 'Especificación de Material',
+            'vender': 'Vendor',
+            'cantidad_total': 'Cantidad Total',
+            'cantidad_original': 'Cantidad Original',
+            'ubicacion': 'Ubicación',
+            'material_sustituto': 'Material Sustituto',
+            'material_original': 'Material Original',
+            'registrador': 'Registrador',
+            'fecha_registro': 'Fecha de Registro'
+        }
+        
+        df = df.rename(columns=column_mapping)
+        
+        # Crear archivo temporal
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix='.xlsx', 
+            delete=False, 
+            mode='wb'
+        )
+        
+        # Escribir a Excel
+        with pd.ExcelWriter(temp_file.name, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='BOM_Data', index=False)
+            
+            # Obtener el workbook y worksheet para formateo
+            workbook = writer.book
+            worksheet = writer.sheets['BOM_Data']
+            
+            # Ajustar ancho de columnas automáticamente
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)  # Máximo 50 caracteres
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        temp_file.close()
+        return temp_file.name
+        
+    except Exception as e:
+        print(f"Error en exportar_bom_a_excel: {e}")
+        return None
+
 @app.route('/exportar_excel_bom', methods=['GET'])
 @login_requerido
 def exportar_excel_bom():
@@ -597,7 +696,7 @@ def exportar_excel_bom():
             archivo_temp = exportar_bom_a_excel(modelo)
             download_name = f'bom_export_{modelo}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         else:
-            # Exportar todos los datos (comportamiento anterior)
+            # Exportar solo el modelo específico
             archivo_temp = exportar_bom_a_excel()
             download_name = f'bom_export_todos_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         
