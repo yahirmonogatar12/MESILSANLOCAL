@@ -1,0 +1,383 @@
+<!-- TEMPLATE AJAX: Control de mask de metal -->
+<!-- SUFIJO ÚNICO: -mask-metal -->
+<!-- CONTENEDOR: mask-metal-unique-container -->
+
+<div id="mask-metal-main-container-unique-mask-metal" class="mask-metal-container">
+    <div class="mask-metal-header">
+        <h2>Control de Mask de Metal</h2>
+        <p class="subtitle">Gestión y control de máscaras de metal para SMT</p>
+    </div>
+
+    <div class="mask-metal-content">
+        <!-- Filtros -->
+        <div class="filtros-mask-metal">
+            <div class="filtro-grupo">
+                <label for="fecha-inicio-mask-metal">Fecha Inicio:</label>
+                <input type="date" id="fecha-inicio-mask-metal" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="fecha-fin-mask-metal">Fecha Fin:</label>
+                <input type="date" id="fecha-fin-mask-metal" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="estado-mask-metal">Estado:</label>
+                <select id="estado-mask-metal" class="filtro-select">
+                    <option value="">Todos</option>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                    <option value="Mantenimiento">Mantenimiento</option>
+                </select>
+            </div>
+            <button id="consultar-mask-metal" class="btn-consultar">Consultar</button>
+        </div>
+
+        <!-- Contador -->
+        <div class="contador-mask-metal">
+            <span class="contador-label">Total de Máscaras:</span>
+            <span id="total-mask-metal" class="contador-valor">0</span>
+        </div>
+
+        <!-- Tabla de máscaras -->
+        <div class="tabla-container">
+            <table id="tabla-mask-metal" class="tabla-mask-metal">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Último Uso</th>
+                        <th>Vida Útil</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla-mask-metal">
+                    <!-- Los datos se cargarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal de carga -->
+        <div id="modal-carga-mask-metal" class="modal-carga" style="display: none;">
+            <div class="modal-carga-contenido">
+                <div class="spinner"></div>
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo Control de mask de metal */
+.mask-metal-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: 100%;
+}
+
+.mask-metal-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.mask-metal-header h2 {
+    color: #FF9800;
+    margin-bottom: 10px;
+    font-size: 2.2em;
+}
+
+.subtitle {
+    color: #B0B0B0;
+    font-size: 1.1em;
+    margin: 0;
+}
+
+.filtros-mask-metal {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filtro-grupo label {
+    font-weight: 600;
+    color: #FF9800;
+    font-size: 0.9em;
+}
+
+.filtro-fecha, .filtro-select {
+    padding: 8px 12px;
+    border: 2px solid #FF9800;
+    border-radius: 6px;
+    background-color: #1E1E2E;
+    color: #E0E0E0;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.filtro-fecha:focus, .filtro-select:focus {
+    outline: none;
+    border-color: #FFB74D;
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+}
+
+.btn-consultar {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    min-height: 40px;
+    align-self: end;
+}
+
+.btn-consultar:hover {
+    background: linear-gradient(135deg, #F57C00, #E65100);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.contador-mask-metal {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.2);
+}
+
+.contador-label {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.contador-valor {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.tabla-container {
+    background-color: #1E1E2E;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tabla-mask-metal {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1E1E2E;
+}
+
+.tabla-mask-metal th {
+    background: linear-gradient(135deg, #FF9800, #F57C00);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.tabla-mask-metal td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #3A3A4A;
+    color: #E0E0E0;
+    font-size: 14px;
+}
+
+.tabla-mask-metal tbody tr:hover {
+    background-color: #2A2A3A;
+    transition: background-color 0.2s ease;
+}
+
+.tabla-mask-metal tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.modal-carga {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-carga-contenido {
+    background-color: #2B2D3E;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    color: #E0E0E0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #3A3A4A;
+    border-top: 4px solid #FF9800;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filtros-mask-metal {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filtro-fecha, .filtro-select {
+        min-width: auto;
+    }
+    
+    .btn-consultar {
+        align-self: stretch;
+    }
+    
+    .tabla-container {
+        overflow-x: auto;
+    }
+    
+    .tabla-mask-metal {
+        min-width: 600px;
+    }
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo Control de mask de metal
+(function() {
+    console.log('Inicializando Control de mask de metal AJAX...');
+    
+    window.inicializarControlMaskMetalAjax = function() {
+        console.log('Control de mask de metal AJAX inicializado');
+        
+        // Configurar fechas por defecto
+        const hoy = new Date();
+        const fechaInicio = document.getElementById('fecha-inicio-mask-metal');
+        const fechaFin = document.getElementById('fecha-fin-mask-metal');
+        
+        if (fechaInicio && fechaFin) {
+            fechaInicio.value = hoy.toISOString().split('T')[0];
+            fechaFin.value = hoy.toISOString().split('T')[0];
+        }
+        
+        // Configurar eventos
+        const btnConsultar = document.getElementById('consultar-mask-metal');
+        if (btnConsultar) {
+            btnConsultar.addEventListener('click', function() {
+                consultarMaskMetal();
+            });
+        }
+        
+        // Consultar al cargar
+        setTimeout(() => {
+            consultarMaskMetal();
+        }, 100);
+    };
+    
+    function consultarMaskMetal() {
+        const fechaInicio = document.getElementById('fecha-inicio-mask-metal').value;
+        const fechaFin = document.getElementById('fecha-fin-mask-metal').value;
+        const estado = document.getElementById('estado-mask-metal').value;
+        
+        if (!fechaInicio || !fechaFin) {
+            alert('Por favor selecciona ambas fechas');
+            return;
+        }
+        
+        mostrarCargando();
+        
+        // Simular consulta (aquí iría la llamada AJAX real)
+        setTimeout(() => {
+            // Datos de ejemplo
+            const maskMetalEjemplo = [
+                { codigo: 'MM-001', tipo: 'Stencil', estado: 'Activo', ultimoUso: '2024-01-15', vidaUtil: '85%' },
+                { codigo: 'MM-002', tipo: 'Stencil', estado: 'Mantenimiento', ultimoUso: '2024-01-10', vidaUtil: '45%' },
+                { codigo: 'MM-003', tipo: 'Stencil', estado: 'Activo', ultimoUso: '2024-01-17', vidaUtil: '92%' }
+            ];
+            
+            renderizarTablaMaskMetal(maskMetalEjemplo);
+            actualizarContador(maskMetalEjemplo.length);
+            ocultarCargando();
+        }, 1500);
+    }
+    
+    function renderizarTablaMaskMetal(maskMetals) {
+        const tbody = document.getElementById('cuerpo-tabla-mask-metal');
+        if (!tbody) return;
+        
+        tbody.innerHTML = maskMetals.map(mask => `
+            <tr>
+                <td>${mask.codigo}</td>
+                <td>${mask.tipo}</td>
+                <td><span class="estado-${mask.estado.toLowerCase().replace(' ', '-')}">${mask.estado}</span></td>
+                <td>${mask.ultimoUso}</td>
+                <td>${mask.vidaUtil}</td>
+                <td>
+                    <button class="btn-accion" onclick="verDetalleMaskMetal('${mask.codigo}')">Ver</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    function actualizarContador(total) {
+        const contador = document.getElementById('total-mask-metal');
+        if (contador) {
+            contador.textContent = total;
+        }
+    }
+    
+    function mostrarCargando() {
+        const modal = document.getElementById('modal-carga-mask-metal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+    
+    function ocultarCargando() {
+        const modal = document.getElementById('modal-carga-mask-metal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Función global para ver detalle
+    window.verDetalleMaskMetal = function(codigo) {
+        alert(`Ver detalle de máscara: ${codigo}`);
+        // Aquí iría la lógica para mostrar el detalle
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlMaskMetalAjax);
+    } else {
+        window.inicializarControlMaskMetalAjax();
+    }
+})();
+</script>

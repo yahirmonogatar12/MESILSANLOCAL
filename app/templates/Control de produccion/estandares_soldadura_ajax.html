@@ -1,0 +1,387 @@
+<!-- TEMPLATE AJAX: Estandares sobre control de soldadura -->
+<!-- SUFIJO ÚNICO: -estandares-soldadura -->
+<!-- CONTENEDOR: estandares-soldadura-unique-container -->
+
+<div id="estandares-soldadura-main-container-unique-estandares-soldadura" class="estandares-soldadura-container">
+    <div class="estandares-soldadura-header">
+        <h2>Estándares sobre Control de Soldadura</h2>
+        <p class="subtitle">Gestión de estándares y parámetros de soldadura SMT</p>
+    </div>
+
+    <div class="estandares-soldadura-content">
+        <!-- Filtros -->
+        <div class="filtros-estandares-soldadura">
+            <div class="filtro-grupo">
+                <label for="fecha-inicio-estandares-soldadura">Fecha Inicio:</label>
+                <input type="date" id="fecha-inicio-estandares-soldadura" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="fecha-fin-estandares-soldadura">Fecha Fin:</label>
+                <input type="date" id="fecha-fin-estandares-soldadura" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="tipo-soldadura-estandares">Tipo de Soldadura:</label>
+                <select id="tipo-soldadura-estandares" class="filtro-select">
+                    <option value="">Todos</option>
+                    <option value="Reflow">Reflow</option>
+                    <option value="Wave">Wave</option>
+                    <option value="Selective">Selectiva</option>
+                </select>
+            </div>
+            <button id="consultar-estandares-soldadura" class="btn-consultar">Consultar</button>
+        </div>
+
+        <!-- Contador -->
+        <div class="contador-estandares-soldadura">
+            <span class="contador-label">Total de Estándares:</span>
+            <span id="total-estandares-soldadura" class="contador-valor">0</span>
+        </div>
+
+        <!-- Tabla de estándares -->
+        <div class="tabla-container">
+            <table id="tabla-estandares-soldadura" class="tabla-estandares-soldadura">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Tipo Soldadura</th>
+                        <th>Temperatura (°C)</th>
+                        <th>Tiempo (seg)</th>
+                        <th>Perfil</th>
+                        <th>Estado</th>
+                        <th>Última Actualización</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla-estandares-soldadura">
+                    <!-- Los datos se cargarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal de carga -->
+        <div id="modal-carga-estandares-soldadura" class="modal-carga" style="display: none;">
+            <div class="modal-carga-contenido">
+                <div class="spinner"></div>
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo Estandares sobre control de soldadura */
+.estandares-soldadura-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: 100%;
+}
+
+.estandares-soldadura-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.estandares-soldadura-header h2 {
+    color: #00BCD4;
+    margin-bottom: 10px;
+    font-size: 2.2em;
+}
+
+.subtitle {
+    color: #B0B0B0;
+    font-size: 1.1em;
+    margin: 0;
+}
+
+.filtros-estandares-soldadura {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filtro-grupo label {
+    font-weight: 600;
+    color: #00BCD4;
+    font-size: 0.9em;
+}
+
+.filtro-fecha, .filtro-select {
+    padding: 8px 12px;
+    border: 2px solid #00BCD4;
+    border-radius: 6px;
+    background-color: #1E1E2E;
+    color: #E0E0E0;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.filtro-fecha:focus, .filtro-select:focus {
+    outline: none;
+    border-color: #4DD0E1;
+    box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+.btn-consultar {
+    background: linear-gradient(135deg, #00BCD4, #0097A7);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    min-height: 40px;
+    align-self: end;
+}
+
+.btn-consultar:hover {
+    background: linear-gradient(135deg, #0097A7, #006064);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+}
+
+.contador-estandares-soldadura {
+    background: linear-gradient(135deg, #00BCD4, #0097A7);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 188, 212, 0.2);
+}
+
+.contador-label {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.contador-valor {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.tabla-container {
+    background-color: #1E1E2E;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tabla-estandares-soldadura {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1E1E2E;
+}
+
+.tabla-estandares-soldadura th {
+    background: linear-gradient(135deg, #00BCD4, #0097A7);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.tabla-estandares-soldadura td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #3A3A4A;
+    color: #E0E0E0;
+    font-size: 14px;
+}
+
+.tabla-estandares-soldadura tbody tr:hover {
+    background-color: #2A2A3A;
+    transition: background-color 0.2s ease;
+}
+
+.tabla-estandares-soldadura tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.modal-carga {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-carga-contenido {
+    background-color: #2B2D3E;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    color: #E0E0E0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #3A3A4A;
+    border-top: 4px solid #00BCD4;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filtros-estandares-soldadura {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filtro-fecha, .filtro-select {
+        min-width: auto;
+    }
+    
+    .btn-consultar {
+        align-self: stretch;
+    }
+    
+    .tabla-container {
+        overflow-x: auto;
+    }
+    
+    .tabla-estandares-soldadura {
+        min-width: 900px;
+    }
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo Estandares sobre control de soldadura
+(function() {
+    console.log('Inicializando Estandares sobre control de soldadura AJAX...');
+    
+    window.inicializarEstandaresSoldaduraAjax = function() {
+        console.log('Estandares sobre control de soldadura AJAX inicializado');
+        
+        // Configurar fechas por defecto
+        const hoy = new Date();
+        const fechaInicio = document.getElementById('fecha-inicio-estandares-soldadura');
+        const fechaFin = document.getElementById('fecha-fin-estandares-soldadura');
+        
+        if (fechaInicio && fechaFin) {
+            fechaInicio.value = hoy.toISOString().split('T')[0];
+            fechaFin.value = hoy.toISOString().split('T')[0];
+        }
+        
+        // Configurar eventos
+        const btnConsultar = document.getElementById('consultar-estandares-soldadura');
+        if (btnConsultar) {
+            btnConsultar.addEventListener('click', function() {
+                consultarEstandaresSoldadura();
+            });
+        }
+        
+        // Consultar al cargar
+        setTimeout(() => {
+            consultarEstandaresSoldadura();
+        }, 100);
+    };
+    
+    function consultarEstandaresSoldadura() {
+        const fechaInicio = document.getElementById('fecha-inicio-estandares-soldadura').value;
+        const fechaFin = document.getElementById('fecha-fin-estandares-soldadura').value;
+        const tipoSoldadura = document.getElementById('tipo-soldadura-estandares').value;
+        
+        if (!fechaInicio || !fechaFin) {
+            alert('Por favor selecciona ambas fechas');
+            return;
+        }
+        
+        mostrarCargando();
+        
+        // Simular consulta (aquí iría la llamada AJAX real)
+        setTimeout(() => {
+            // Datos de ejemplo
+            const estandaresEjemplo = [
+                { codigo: 'ES-001', tipoSoldadura: 'Reflow', temperatura: '245', tiempo: '60', perfil: 'Estándar', estado: 'Activo', ultimaActualizacion: '2024-01-15' },
+                { codigo: 'ES-002', tipoSoldadura: 'Wave', temperatura: '260', tiempo: '45', perfil: 'Rápido', estado: 'Activo', ultimaActualizacion: '2024-01-16' },
+                { codigo: 'ES-003', tipoSoldadura: 'Selective', temperatura: '250', tiempo: '30', perfil: 'Preciso', estado: 'Revisión', ultimaActualizacion: '2024-01-10' }
+            ];
+            
+            renderizarTablaEstandaresSoldadura(estandaresEjemplo);
+            actualizarContador(estandaresEjemplo.length);
+            ocultarCargando();
+        }, 1500);
+    }
+    
+    function renderizarTablaEstandaresSoldadura(estandares) {
+        const tbody = document.getElementById('cuerpo-tabla-estandares-soldadura');
+        if (!tbody) return;
+        
+        tbody.innerHTML = estandares.map(est => `
+            <tr>
+                <td>${est.codigo}</td>
+                <td>${est.tipoSoldadura}</td>
+                <td>${est.temperatura}°C</td>
+                <td>${est.tiempo}s</td>
+                <td>${est.perfil}</td>
+                <td><span class="estado-${est.estado.toLowerCase().replace(' ', '-')}">${est.estado}</span></td>
+                <td>${est.ultimaActualizacion}</td>
+                <td>
+                    <button class="btn-accion" onclick="verDetalleEstandarSoldadura('${est.codigo}')">Ver</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    function actualizarContador(total) {
+        const contador = document.getElementById('total-estandares-soldadura');
+        if (contador) {
+            contador.textContent = total;
+        }
+    }
+    
+    function mostrarCargando() {
+        const modal = document.getElementById('modal-carga-estandares-soldadura');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+    
+    function ocultarCargando() {
+        const modal = document.getElementById('modal-carga-estandares-soldadura');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Función global para ver detalle
+    window.verDetalleEstandarSoldadura = function(codigo) {
+        alert(`Ver detalle de estándar: ${codigo}`);
+        // Aquí iría la lógica para mostrar el detalle
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarEstandaresSoldaduraAjax);
+    } else {
+        window.inicializarEstandaresSoldaduraAjax();
+    }
+})();
+</script>

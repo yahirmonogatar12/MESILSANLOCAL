@@ -3115,6 +3115,87 @@ def control_scrap_ajax():
         print(f"Error al cargar template Control Scrap AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+# Rutas AJAX para módulos de Control de Producción
+@app.route('/line-material-status-ajax')
+@login_requerido
+def line_material_status_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Line Material Status_es"""
+    try:
+        return render_template('Control de produccion/line_material_status_es_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Line Material Status_es AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-mask-metal-ajax')
+@login_requerido
+def control_mask_metal_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de mask de metal"""
+    try:
+        return render_template('Control de produccion/control_mask_metal_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de mask de metal AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-squeegee-ajax')
+@login_requerido
+def control_squeegee_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de squeegee"""
+    try:
+        return render_template('Control de produccion/control_squeegee_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de squeegee AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-caja-mask-metal-ajax')
+@login_requerido
+def control_caja_mask_metal_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de caja de mask de metal"""
+    try:
+        return render_template('Control de produccion/control_caja_mask_metal_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de caja de mask de metal AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/estandares-soldadura-ajax')
+@login_requerido
+def estandares_soldadura_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Estandares sobre control de soldadura"""
+    try:
+        return render_template('Control de produccion/estandares_soldadura_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Estandares sobre control de soldadura AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/registro-recibo-soldadura-ajax')
+@login_requerido
+def registro_recibo_soldadura_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Registro de recibo de soldadura"""
+    try:
+        return render_template('Control de produccion/registro_recibo_soldadura_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Registro de recibo de soldadura AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-salida-soldadura-ajax')
+@login_requerido
+def control_salida_soldadura_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de salida de soldadura"""
+    try:
+        return render_template('Control de produccion/control_salida_soldadura_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Control de salida de soldadura AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/historial-tension-mask-metal-ajax')
+@login_requerido
+def historial_tension_mask_metal_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Historial de tension de mask de metal"""
+    try:
+        return render_template('Control de produccion/historial_tension_mask_metal_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar template Historial de tension de mask de metal AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/control_proceso/inventario_imd_terminado')
 @login_requerido
 @requiere_permiso_dropdown('LISTA_CONTROL_DE_PROCESO', 'Inventario', 'IMD-SMD TERMINADO')

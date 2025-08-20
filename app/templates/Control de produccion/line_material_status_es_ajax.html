@@ -1,0 +1,458 @@
+<!-- TEMPLATE AJAX: Line Material Status_es -->
+<!-- SUFIJO ÚNICO: -line-material-status -->
+<!-- CONTENEDOR: line-material-status-unique-container -->
+<div id="line-material-status-main-container-unique-line-material-status" class="line-material-status-container">
+    <div class="line-material-status-header">
+        <h2>Line Material Status</h2>
+        <div class="line-material-status-toolbar">
+            <div class="line-material-status-filters">
+                <input type="text" id="line-material-status-search-unique-line-material-status" placeholder="Buscar material..." class="form-control">
+                <select id="line-material-status-status-filter-unique-line-material-status" class="form-control">
+                    <option value="">Todos los estados</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="pendiente">Pendiente</option>
+                </select>
+                <button id="line-material-status-filter-btn-unique-line-material-status" class="btn btn-primary">Filtrar</button>
+            </div>
+            <div class="line-material-status-actions">
+                <button id="line-material-status-refresh-btn-unique-line-material-status" class="btn btn-secondary">Actualizar</button>
+                <button id="line-material-status-export-btn-unique-line-material-status" class="btn btn-success">Exportar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="line-material-status-content">
+        <div class="line-material-status-counter">
+            <span id="line-material-status-count-unique-line-material-status">0</span> materiales encontrados
+        </div>
+        
+        <div class="line-material-status-table-container">
+            <table id="line-material-status-table-unique-line-material-status" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Material</th>
+                        <th>Descripción</th>
+                        <th>Estado</th>
+                        <th>Línea</th>
+                        <th>Última Actualización</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="line-material-status-tbody-unique-line-material-status">
+                    <!-- Los datos se cargarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal para editar material -->
+    <div id="line-material-status-edit-modal-unique-line-material-status" class="modal fade" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Material</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="line-material-status-edit-form-unique-line-material-status">
+                        <div class="mb-3">
+                            <label for="line-material-status-edit-material-unique-line-material-status" class="form-label">Material</label>
+                            <input type="text" id="line-material-status-edit-material-unique-line-material-status" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="line-material-status-edit-descripcion-unique-line-material-status" class="form-label">Descripción</label>
+                            <textarea id="line-material-status-edit-descripcion-unique-line-material-status" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="line-material-status-edit-estado-unique-line-material-status" class="form-label">Estado</label>
+                            <select id="line-material-status-edit-estado-unique-line-material-status" class="form-control" required>
+                                <option value="activo">Activo</option>
+                                <option value="inactivo">Inactivo</option>
+                                <option value="pendiente">Pendiente</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="line-material-status-edit-linea-unique-line-material-status" class="form-label">Línea</label>
+                            <input type="text" id="line-material-status-edit-linea-unique-line-material-status" class="form-control">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="line-material-status-save-btn-unique-line-material-status" class="btn btn-primary">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de carga -->
+    <div id="line-material-status-loading-modal-unique-line-material-status" class="loading-modal">
+        <div class="loading-content">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p>Cargando datos...</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.line-material-status-container {
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.line-material-status-header {
+    margin-bottom: 20px;
+}
+
+.line-material-status-header h2 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.line-material-status-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.line-material-status-filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.line-material-status-filters input,
+.line-material-status-filters select {
+    min-width: 150px;
+}
+
+.line-material-status-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.line-material-status-counter {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.line-material-status-table-container {
+    overflow-x: auto;
+}
+
+.line-material-status-table-container table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.line-material-status-table-container th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+.line-material-status-table-container td {
+    vertical-align: middle;
+}
+
+.line-material-status-table-container .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.loading-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.loading-content p {
+    margin-top: 15px;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .line-material-status-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .line-material-status-filters {
+        justify-content: center;
+    }
+    
+    .line-material-status-actions {
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+(function() {
+    'use strict';
+    
+    // Variables del módulo
+    let lineMaterialStatusData = [];
+    let currentEditId = null;
+    
+    // Elementos del DOM
+    const elements = {
+        search: document.getElementById('line-material-status-search-unique-line-material-status'),
+        statusFilter: document.getElementById('line-material-status-status-filter-unique-line-material-status'),
+        filterBtn: document.getElementById('line-material-status-filter-btn-unique-line-material-status'),
+        refreshBtn: document.getElementById('line-material-status-refresh-btn-unique-line-material-status'),
+        exportBtn: document.getElementById('line-material-status-export-btn-unique-line-material-status'),
+        table: document.getElementById('line-material-status-table-unique-line-material-status'),
+        tbody: document.getElementById('line-material-status-tbody-unique-line-material-status'),
+        count: document.getElementById('line-material-status-count-unique-line-material-status'),
+        editModal: document.getElementById('line-material-status-edit-modal-unique-line-material-status'),
+        editForm: document.getElementById('line-material-status-edit-form-unique-line-material-status'),
+        editMaterial: document.getElementById('line-material-status-edit-material-unique-line-material-status'),
+        editDescripcion: document.getElementById('line-material-status-edit-descripcion-unique-line-material-status'),
+        editEstado: document.getElementById('line-material-status-edit-estado-unique-line-material-status'),
+        editLinea: document.getElementById('line-material-status-edit-linea-unique-line-material-status'),
+        saveBtn: document.getElementById('line-material-status-save-btn-unique-line-material-status'),
+        loadingModal: document.getElementById('line-material-status-loading-modal-unique-line-material-status')
+    };
+    
+    // Funciones del módulo
+    function mostrarCargando() {
+        elements.loadingModal.style.display = 'flex';
+    }
+    
+    function ocultarCargando() {
+        elements.loadingModal.style.display = 'none';
+    }
+    
+    function cargarDatos() {
+        mostrarCargando();
+        
+        // Simular carga de datos (reemplazar con llamada AJAX real)
+        setTimeout(() => {
+            lineMaterialStatusData = [
+                { id: 1, material: 'MASK001', descripcion: 'Máscara de metal tipo A', estado: 'activo', linea: 'Línea 1', ultimaActualizacion: '2024-01-15 10:30:00' },
+                { id: 2, material: 'SQUEEGEE001', descripcion: 'Squeegee de alta calidad', estado: 'activo', linea: 'Línea 2', ultimaActualizacion: '2024-01-15 09:15:00' },
+                { id: 3, material: 'CAJA001', descripcion: 'Caja para máscara de metal', estado: 'pendiente', linea: 'Línea 1', ultimaActualizacion: '2024-01-14 16:45:00' }
+            ];
+            
+            renderizarTabla();
+            actualizarContador();
+            ocultarCargando();
+        }, 1000);
+    }
+    
+    function renderizarTabla() {
+        if (!elements.tbody) return;
+        
+        elements.tbody.innerHTML = '';
+        
+        lineMaterialStatusData.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.id}</td>
+                <td>${item.material}</td>
+                <td>${item.descripcion}</td>
+                <td><span class="badge bg-${getEstadoColor(item.estado)}">${item.estado}</span></td>
+                <td>${item.linea}</td>
+                <td>${item.ultimaActualizacion}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="editarMaterial(${item.id})">
+                        Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarMaterial(${item.id})">
+                        Eliminar
+                    </button>
+                </td>
+            `;
+            elements.tbody.appendChild(row);
+        });
+    }
+    
+    function getEstadoColor(estado) {
+        switch(estado) {
+            case 'activo': return 'success';
+            case 'inactivo': return 'secondary';
+            case 'pendiente': return 'warning';
+            default: return 'secondary';
+        }
+    }
+    
+    function actualizarContador() {
+        if (elements.count) {
+            elements.count.textContent = lineMaterialStatusData.length;
+        }
+    }
+    
+    function filtrarDatos() {
+        const searchTerm = elements.search.value.toLowerCase();
+        const statusFilter = elements.statusFilter.value;
+        
+        const filteredData = lineMaterialStatusData.filter(item => {
+            const matchesSearch = !searchTerm || 
+                item.material.toLowerCase().includes(searchTerm) ||
+                item.descripcion.toLowerCase().includes(searchTerm) ||
+                item.linea.toLowerCase().includes(searchTerm);
+            
+            const matchesStatus = !statusFilter || item.estado === statusFilter;
+            
+            return matchesSearch && matchesStatus;
+        });
+        
+        // Renderizar datos filtrados
+        if (elements.tbody) {
+            elements.tbody.innerHTML = '';
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.id}</td>
+                    <td>${item.material}</td>
+                    <td>${item.descripcion}</td>
+                    <td><span class="badge bg-${getEstadoColor(item.estado)}">${item.estado}</span></td>
+                    <td>${item.linea}</td>
+                    <td>${item.ultimaActualizacion}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editarMaterial(${item.id})">
+                            Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarMaterial(${item.id})">
+                            Eliminar
+                        </button>
+                    </td>
+                `;
+                elements.tbody.appendChild(row);
+            });
+        }
+        
+        // Actualizar contador
+        if (elements.count) {
+            elements.count.textContent = filteredData.length;
+        }
+    }
+    
+    function editarMaterial(id) {
+        const item = lineMaterialStatusData.find(item => item.id === id);
+        if (!item) return;
+        
+        currentEditId = id;
+        elements.editMaterial.value = item.material;
+        elements.editDescripcion.value = item.descripcion;
+        elements.editEstado.value = item.estado;
+        elements.editLinea.value = item.linea;
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(elements.editModal);
+        modal.show();
+    }
+    
+    function guardarMaterial() {
+        if (!currentEditId) return;
+        
+        const itemIndex = lineMaterialStatusData.findIndex(item => item.id === currentEditId);
+        if (itemIndex === -1) return;
+        
+        // Actualizar datos
+        lineMaterialStatusData[itemIndex] = {
+            ...lineMaterialStatusData[itemIndex],
+            material: elements.editMaterial.value,
+            descripcion: elements.editDescripcion.value,
+            estado: elements.editEstado.value,
+            linea: elements.editLinea.value,
+            ultimaActualizacion: new Date().toISOString().slice(0, 19).replace('T', ' ')
+        };
+        
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(elements.editModal);
+        modal.hide();
+        
+        // Actualizar tabla
+        renderizarTabla();
+        actualizarContador();
+        
+        currentEditId = null;
+    }
+    
+    function eliminarMaterial(id) {
+        if (confirm('¿Estás seguro de que quieres eliminar este material?')) {
+            lineMaterialStatusData = lineMaterialStatusData.filter(item => item.id !== id);
+            renderizarTabla();
+            actualizarContador();
+        }
+    }
+    
+    function exportarDatos() {
+        // Implementar exportación a Excel
+        alert('Función de exportación en desarrollo');
+    }
+    
+    // Event listeners
+    function configurarEventListeners() {
+        if (elements.filterBtn) {
+            elements.filterBtn.addEventListener('click', filtrarDatos);
+        }
+        
+        if (elements.refreshBtn) {
+            elements.refreshBtn.addEventListener('click', cargarDatos);
+        }
+        
+        if (elements.exportBtn) {
+            elements.exportBtn.addEventListener('click', exportarDatos);
+        }
+        
+        if (elements.search) {
+            elements.search.addEventListener('input', filtrarDatos);
+        }
+        
+        if (elements.statusFilter) {
+            elements.statusFilter.addEventListener('change', filtrarDatos);
+        }
+        
+        if (elements.saveBtn) {
+            elements.saveBtn.addEventListener('click', guardarMaterial);
+        }
+    }
+    
+    // Función de inicialización
+    function inicializarLineMaterialStatus() {
+        configurarEventListeners();
+        cargarDatos();
+    }
+    
+    // Exponer funciones globalmente
+    window.editarMaterial = editarMaterial;
+    window.eliminarMaterial = eliminarMaterial;
+    
+    // Auto-inicialización
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializarLineMaterialStatus);
+    } else {
+        inicializarLineMaterialStatus();
+    }
+    
+})();
+</script>

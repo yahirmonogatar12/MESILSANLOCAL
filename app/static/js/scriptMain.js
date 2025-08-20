@@ -95,11 +95,29 @@
                     controlProduccionSMTContainer.style.display = 'none';
                 }
                 
-                // Ocultar contenedor de Crear plan micom
-                const crearPlanMicomContainer = document.getElementById('crear-plan-micom-unique-container');
-                if (crearPlanMicomContainer) {
-                    crearPlanMicomContainer.style.display = 'none';
+                // Ocultar contenedor de Line Material Status_es
+                const lineMaterialStatusContainer = document.getElementById('line-material-status-unique-container');
+                if (lineMaterialStatusContainer) {
+                    lineMaterialStatusContainer.style.display = 'none';
                 }
+                
+                // Ocultar contenedores específicos de Control de Producción que pueden quedar visibles
+                const controlProduccionSpecificContainers = [
+                    'control-mask-metal-unique-container',
+                    'control-squeegee-unique-container',
+                    'control-caja-mask-metal-unique-container',
+                    'estandares-soldadura-unique-container',
+                    'registro-recibo-soldadura-unique-container',
+                    'control-salida-soldadura-unique-container',
+                    'historial-tension-mask-metal-unique-container'
+                ];
+                
+                controlProduccionSpecificContainers.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                });
                 
                 // Ocultar contenedores específicos de Control de Proceso que pueden quedar visibles
                 const controlProcesoSpecificContainers = [
@@ -2065,9 +2083,9 @@ window.mostrarCrearPlanMicom = function() {
         }
 
         // Obtener el contenedor específico
-        const crearPlanMicomContainer = document.getElementById('crear-plan-micom-unique-container');
+        const crearPlanMicomContainer = document.getElementById('produccion-info-container');
         if (!crearPlanMicomContainer) {
-            console.error('El contenedor crear-plan-micom-unique-container no existe en el HTML');
+            console.error('El contenedor produccion-info-container no existe en el HTML');
             return;
         }
 
@@ -2083,12 +2101,12 @@ window.mostrarCrearPlanMicom = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         console.log('Iniciando carga AJAX...');
         if (typeof window.cargarContenidoDinamico === 'function') {
-            window.cargarContenidoDinamico('crear-plan-micom-unique-container', '/crear-plan-micom-ajax', () => {
+            window.cargarContenidoDinamico('produccion-info-container', '/crear-plan-micom-ajax', () => {
                 console.log('Crear plan micom cargado exitosamente');
                 console.log('Verificando contenedor después de carga...');
 
-                // Verificar que el contenedor esté visible
-                const containerAfterLoad = document.getElementById('crear-plan-micom-unique-container');
+                                 // Verificar que el contenedor esté visible
+                 const containerAfterLoad = document.getElementById('produccion-info-container');
                 if (containerAfterLoad) {
                     console.log('Contenedor encontrado después de carga:', containerAfterLoad);
                     console.log('Display:', containerAfterLoad.style.display);
@@ -2282,3 +2300,692 @@ window.mostrarCrearPlanMicom = function() {
 
             console.log('Función mostrarControlBOM registrada globalmente');
         });
+
+// ========================================
+// FUNCIÓN PARA LINE MATERIAL STATUS_ES
+// ========================================
+
+window.mostrarLineMaterialStatus = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarLineMaterialStatus EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Line Material Status_es... 🔥🔥🔥');
+        console.log('📍 Ubicación de la función:', window.location.href);
+        console.log('🔍 Función disponible:', typeof window.mostrarLineMaterialStatus);
+
+        // IMPORTANTE: Asegurar que estamos en la sección correcta
+        // Activar el botón "Control de produccion" para que scriptMain.js no interfiera
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            // Remover active de otros botones
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion (esto es lo que scriptMain.js maneja)
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        console.log('🔍 Verificando contenedores padre en mostrarLineMaterialStatus:');
+        console.log('materialContainer:', materialContainer);
+        console.log('produccionContent:', produccionContent);
+        console.log('produccionContentArea:', produccionContentArea);
+
+        if (materialContainer) {
+            materialContainer.style.display = 'block';
+            console.log('✅ materialContainer mostrado');
+        }
+        if (produccionContent) {
+            produccionContent.style.display = 'block';
+            console.log('✅ produccionContent mostrado');
+        }
+        if (produccionContentArea) {
+            produccionContentArea.style.display = 'block';
+            console.log('✅ produccionContentArea mostrado');
+        }
+
+        // Obtener el contenedor específico
+        const lineMaterialStatusContainer = document.getElementById('produccion-info-container');
+        if (!lineMaterialStatusContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        console.log('Contenedor encontrado:', lineMaterialStatusContainer);
+        console.log('Estado inicial - Display:', lineMaterialStatusContainer.style.display);
+
+        // Mostrar el contenedor específico
+        lineMaterialStatusContainer.style.display = 'block';
+        lineMaterialStatusContainer.style.opacity = '1';
+
+        console.log('Estado después de mostrar - Display:', lineMaterialStatusContainer.style.display);
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        console.log('Iniciando carga AJAX...');
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/line-material-status-ajax', () => {
+                console.log('Line Material Status_es cargado exitosamente');
+                console.log('Verificando contenedor después de carga...');
+
+                // Verificar que el contenedor esté visible
+                const containerAfterLoad = document.getElementById('produccion-info-container');
+                if (containerAfterLoad) {
+                    console.log('Contenedor encontrado después de carga:', containerAfterLoad);
+                    console.log('Display:', containerAfterLoad.style.display);
+                    console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
+
+                    // Verificar que el contenedor esté realmente visible
+                    console.log('🔍 Verificando visibilidad del contenedor:');
+                    console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
+                    console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
+                    console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
+                    console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
+                    console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
+
+                    // Verificar que los contenedores padre también estén visibles
+                    const materialContainerAfter = document.getElementById('material-container');
+                    const produccionContentAfter = document.getElementById('produccion-content');
+                    const produccionContentAreaAfter = document.getElementById('produccion-content-area');
+
+                    console.log('🔍 Verificando contenedores padre después de carga:');
+                    console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
+                    console.log('produccionContent display:', produccionContentAfter ? window.getComputedStyle(produccionContentAfter).display : 'NO ENCONTRADO');
+                    console.log('produccionContentArea display:', produccionContentAreaAfter ? window.getComputedStyle(produccionContentAreaAfter).display : 'NO ENCONTRADO');
+                }
+
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarLineMaterialStatusModule === 'function') {
+                    window.inicializarLineMaterialStatusModule();
+                    console.log('Módulo inicializado correctamente');
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Line Material Status_es:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarLineMaterialStatus:', error);
+    }
+};
+
+console.log('Función mostrarLineMaterialStatus registrada globalmente');
+
+// ========================================
+// FUNCIONES AJAX PARA MÓDULOS DE CONTROL DE PRODUCCIÓN
+// ========================================
+
+window.mostrarControlMaskMetal = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarControlMaskMetal EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Control de mask de metal... 🔥🔥🔥');
+
+        // Activar el botón "Control de produccion"
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (produccionContent) produccionContent.style.display = 'block';
+        if (produccionContentArea) produccionContentArea.style.display = 'block';
+
+        // Obtener el contenedor específico
+        const controlMaskMetalContainer = document.getElementById('produccion-info-container');
+        if (!controlMaskMetalContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        // Mostrar el contenedor específico
+        controlMaskMetalContainer.style.display = 'block';
+        controlMaskMetalContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/control-mask-metal-ajax', () => {
+                console.log('Control de mask de metal cargado exitosamente');
+                
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarControlMaskMetalModule === 'function') {
+                    window.inicializarControlMaskMetalModule();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Control de mask de metal:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlMaskMetal:', error);
+    }
+};
+
+window.mostrarControlSqueegee = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarControlSqueegee EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Control de squeegee... 🔥🔥🔥');
+
+        // Activar el botón "Control de produccion"
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (produccionContent) produccionContent.style.display = 'block';
+        if (produccionContentArea) produccionContentArea.style.display = 'block';
+
+        // Obtener el contenedor específico
+        const controlSqueegeeContainer = document.getElementById('produccion-info-container');
+        if (!controlSqueegeeContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        // Mostrar el contenedor específico
+        controlSqueegeeContainer.style.display = 'block';
+        controlSqueegeeContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/control-squeegee-ajax', () => {
+                console.log('Control de squeegee cargado exitosamente');
+                
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarControlSqueegeeModule === 'function') {
+                    window.inicializarControlSqueegeeModule();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Control de squeegee:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlSqueegee:', error);
+    }
+};
+
+window.mostrarControlCajaMaskMetal = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarControlCajaMaskMetal EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Control de caja de mask de metal... 🔥🔥🔥');
+
+        // Activar el botón "Control de produccion"
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (produccionContent) produccionContent.style.display = 'block';
+        if (produccionContentArea) produccionContentArea.style.display = 'block';
+
+        // Obtener el contenedor específico
+        const controlCajaMaskMetalContainer = document.getElementById('produccion-info-container');
+        if (!controlCajaMaskMetalContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        // Mostrar el contenedor específico
+        controlCajaMaskMetalContainer.style.display = 'block';
+        controlCajaMaskMetalContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/control-caja-mask-metal-ajax', () => {
+                console.log('Control de caja de mask de metal cargado exitosamente');
+                
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarControlCajaMaskMetalModule === 'function') {
+                    window.inicializarControlCajaMaskMetalModule();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Control de caja de mask de metal:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlCajaMaskMetal:', error);
+    }
+};
+
+window.mostrarEstandaresSoldadura = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarEstandaresSoldadura EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Estandares sobre control de soldadura... 🔥🔥🔥');
+
+        // Activar el botón "Control de produccion"
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (produccionContent) produccionContent.style.display = 'block';
+        if (produccionContentArea) produccionContentArea.style.display = 'block';
+
+        // Obtener el contenedor específico
+        const estandaresSoldaduraContainer = document.getElementById('produccion-info-container');
+        if (!estandaresSoldaduraContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        // Mostrar el contenedor específico
+        estandaresSoldaduraContainer.style.display = 'block';
+        estandaresSoldaduraContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/estandares-soldadura-ajax', () => {
+                console.log('Estandares sobre control de soldadura cargado exitosamente');
+                
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarEstandaresSoldaduraModule === 'function') {
+                    window.inicializarEstandaresSoldaduraModule();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Estandares sobre control de soldadura:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarEstandaresSoldadura:', error);
+    }
+};
+
+window.mostrarRegistroReciboSoldadura = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarRegistroReciboSoldadura EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Registro de recibo de soldadura... 🔥🔥🔥');
+
+        // Activar el botón "Control de produccion"
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (produccionContent) produccionContent.style.display = 'block';
+        if (produccionContentArea) produccionContentArea.style.display = 'block';
+
+        // Obtener el contenedor específico
+        const registroReciboSoldaduraContainer = document.getElementById('produccion-info-container');
+        if (!registroReciboSoldaduraContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        // Mostrar el contenedor específico
+        registroReciboSoldaduraContainer.style.display = 'block';
+        registroReciboSoldaduraContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/registro-recibo-soldadura-ajax', () => {
+                console.log('Registro de recibo de soldadura cargado exitosamente');
+                
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarRegistroReciboSoldaduraModule === 'function') {
+                    window.inicializarRegistroReciboSoldaduraModule();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Registro de recibo de soldadura:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarRegistroReciboSoldadura:', error);
+    }
+};
+
+window.mostrarControlSalidaSoldadura = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarControlSalidaSoldadura EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Control de salida de soldadura... 🔥🔥🔥');
+
+        // Activar el botón "Control de produccion"
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (produccionContent) produccionContent.style.display = 'block';
+        if (produccionContentArea) produccionContentArea.style.display = 'block';
+
+        // Obtener el contenedor específico
+        const controlSalidaSoldaduraContainer = document.getElementById('produccion-info-container');
+        if (!controlSalidaSoldaduraContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        // Mostrar el contenedor específico
+        controlSalidaSoldaduraContainer.style.display = 'block';
+        controlSalidaSoldaduraContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/control-salida-soldadura-ajax', () => {
+                console.log('Control de salida de soldadura cargado exitosamente');
+                
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarControlSalidaSoldaduraModule === 'function') {
+                    window.inicializarControlSalidaSoldaduraModule();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Control de salida de soldadura:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlSalidaSoldadura:', error);
+    }
+};
+
+window.mostrarHistorialTensionMaskMetal = function() {
+    try {
+        console.log('🚀🚀🚀 FUNCIÓN mostrarHistorialTensionMaskMetal EJECUTÁNDOSE... 🚀🚀🚀');
+        console.log('🔥🔥🔥 Iniciando carga de Historial de tension de mask de metal... 🔥🔥🔥');
+
+        // Activar el botón "Control de produccion"
+        const controlProduccionButton = document.getElementById('Control de produccion');
+        if (controlProduccionButton) {
+            controlProduccionButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de produccion') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Ocultar otros contenedores dentro del área de produccion
+        const produccionContainers = [
+            'produccion-info-container',
+            'crear-plan-produccion-unique-container',
+            'plan-smt-unique-container',
+            'control-embarque-unique-container'
+        ];
+
+        produccionContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar el área de produccion
+        const materialContainer = document.getElementById('material-container');
+        const produccionContent = document.getElementById('produccion-content');
+        const produccionContentArea = document.getElementById('produccion-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (produccionContent) produccionContent.style.display = 'block';
+        if (produccionContentArea) produccionContentArea.style.display = 'block';
+
+        // Obtener el contenedor específico
+        const historialTensionMaskMetalContainer = document.getElementById('produccion-info-container');
+        if (!historialTensionMaskMetalContainer) {
+            console.error('El contenedor produccion-info-container no existe en el HTML');
+            return;
+        }
+
+        // Mostrar el contenedor específico
+        historialTensionMaskMetalContainer.style.display = 'block';
+        historialTensionMaskMetalContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente usando la ruta AJAX
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('produccion-info-container', '/historial-tension-mask-metal-ajax', () => {
+                console.log('Historial de tension de mask de metal cargado exitosamente');
+                
+                // Ejecutar inicialización específica del módulo si existe
+                if (typeof window.inicializarHistorialTensionMaskMetalModule === 'function') {
+                    window.inicializarHistorialTensionMaskMetalModule();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando Historial de tension de mask de metal:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarHistorialTensionMaskMetal:', error);
+    }
+};
+
+console.log('Todas las funciones AJAX para módulos de Control de Producción registradas globalmente');

@@ -1,0 +1,382 @@
+<!-- TEMPLATE AJAX: Historial de tension de mask de metal -->
+<!-- SUFIJO ÚNICO: -historial-tension-mask-metal -->
+<!-- CONTENEDOR: historial-tension-mask-metal-unique-container -->
+
+<div id="historial-tension-mask-metal-main-container-unique-historial-tension-mask-metal" class="historial-tension-mask-metal-container">
+    <div class="historial-tension-mask-metal-header">
+        <h2>Historial de Tensión de Mask de Metal</h2>
+        <p class="subtitle">Seguimiento y control de tensiones en máscaras de metal</p>
+    </div>
+
+    <div class="historial-tension-mask-metal-content">
+        <!-- Filtros -->
+        <div class="filtros-historial-tension-mask-metal">
+            <div class="filtro-grupo">
+                <label for="fecha-inicio-historial-tension-mask-metal">Fecha Inicio:</label>
+                <input type="date" id="fecha-inicio-historial-tension-mask-metal" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="fecha-fin-historial-tension-mask-metal">Fecha Fin:</label>
+                <input type="date" id="fecha-fin-historial-tension-mask-metal" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="codigo-mask-historial-tension">Código Máscara:</label>
+                <input type="text" id="codigo-mask-historial-tension" class="filtro-texto" placeholder="Ej: MM-001">
+            </div>
+            <button id="consultar-historial-tension-mask-metal" class="btn-consultar">Consultar</button>
+        </div>
+
+        <!-- Contador -->
+        <div class="contador-historial-tension-mask-metal">
+            <span class="contador-label">Total de Mediciones:</span>
+            <span id="total-historial-tension-mask-metal" class="contador-valor">0</span>
+        </div>
+
+        <!-- Tabla de historial -->
+        <div class="tabla-container">
+            <table id="tabla-historial-tension-mask-metal" class="tabla-historial-tension-mask-metal">
+                <thead>
+                    <tr>
+                        <th>Fecha Medición</th>
+                        <th>Código Máscara</th>
+                        <th>Tensión (N/m)</th>
+                        <th>Operador</th>
+                        <th>Línea</th>
+                        <th>Estado</th>
+                        <th>Observaciones</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla-historial-tension-mask-metal">
+                    <!-- Los datos se cargarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal de carga -->
+        <div id="modal-carga-historial-tension-mask-metal" class="modal-carga" style="display: none;">
+            <div class="modal-carga-contenido">
+                <div class="spinner"></div>
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo Historial de tension de mask de metal */
+.historial-tension-mask-metal-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: 100%;
+}
+
+.historial-tension-mask-metal-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.historial-tension-mask-metal-header h2 {
+    color: #673AB7;
+    margin-bottom: 10px;
+    font-size: 2.2em;
+}
+
+.subtitle {
+    color: #B0B0B0;
+    font-size: 1.1em;
+    margin: 0;
+}
+
+.filtros-historial-tension-mask-metal {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filtro-grupo label {
+    font-weight: 600;
+    color: #673AB7;
+    font-size: 0.9em;
+}
+
+.filtro-fecha, .filtro-texto {
+    padding: 8px 12px;
+    border: 2px solid #673AB7;
+    border-radius: 6px;
+    background-color: #1E1E2E;
+    color: #E0E0E0;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.filtro-fecha:focus, .filtro-texto:focus {
+    outline: none;
+    border-color: #9575CD;
+    box-shadow: 0 0 0 3px rgba(103, 58, 183, 0.1);
+}
+
+.btn-consultar {
+    background: linear-gradient(135deg, #673AB7, #5E35B1);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    min-height: 40px;
+    align-self: end;
+}
+
+.btn-consultar:hover {
+    background: linear-gradient(135deg, #5E35B1, #512DA8);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(103, 58, 183, 0.3);
+}
+
+.contador-historial-tension-mask-metal {
+    background: linear-gradient(135deg, #673AB7, #5E35B1);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(103, 58, 183, 0.2);
+}
+
+.contador-label {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.contador-valor {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.tabla-container {
+    background-color: #1E1E2E;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tabla-historial-tension-mask-metal {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1E1E2E;
+}
+
+.tabla-historial-tension-mask-metal th {
+    background: linear-gradient(135deg, #673AB7, #5E35B1);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.tabla-historial-tension-mask-metal td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #3A3A4A;
+    color: #E0E0E0;
+    font-size: 14px;
+}
+
+.tabla-historial-tension-mask-metal tbody tr:hover {
+    background-color: #2A2A3A;
+    transition: background-color 0.2s ease;
+}
+
+.tabla-historial-tension-mask-metal tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.modal-carga {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-carga-contenido {
+    background-color: #2B2D3E;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    color: #E0E0E0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #3A3A4A;
+    border-top: 4px solid #673AB7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filtros-historial-tension-mask-metal {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filtro-fecha, .filtro-texto {
+        min-width: auto;
+    }
+    
+    .btn-consultar {
+        align-self: stretch;
+    }
+    
+    .tabla-container {
+        overflow-x: auto;
+    }
+    
+    .tabla-historial-tension-mask-metal {
+        min-width: 1000px;
+    }
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo Historial de tension de mask de metal
+(function() {
+    console.log('Inicializando Historial de tension de mask de metal AJAX...');
+    
+    window.inicializarHistorialTensionMaskMetalAjax = function() {
+        console.log('Historial de tension de mask de metal AJAX inicializado');
+        
+        // Configurar fechas por defecto
+        const hoy = new Date();
+        const fechaInicio = document.getElementById('fecha-inicio-historial-tension-mask-metal');
+        const fechaFin = document.getElementById('fecha-fin-historial-tension-mask-metal');
+        
+        if (fechaInicio && fechaFin) {
+            fechaInicio.value = hoy.toISOString().split('T')[0];
+            fechaFin.value = hoy.toISOString().split('T')[0];
+        }
+        
+        // Configurar eventos
+        const btnConsultar = document.getElementById('consultar-historial-tension-mask-metal');
+        if (btnConsultar) {
+            btnConsultar.addEventListener('click', function() {
+                consultarHistorialTensionMaskMetal();
+            });
+        }
+        
+        // Consultar al cargar
+        setTimeout(() => {
+            consultarHistorialTensionMaskMetal();
+        }, 100);
+    };
+    
+    function consultarHistorialTensionMaskMetal() {
+        const fechaInicio = document.getElementById('fecha-inicio-historial-tension-mask-metal').value;
+        const fechaFin = document.getElementById('fecha-fin-historial-tension-mask-metal').value;
+        const codigoMask = document.getElementById('codigo-mask-historial-tension').value;
+        
+        if (!fechaInicio || !fechaFin) {
+            alert('Por favor selecciona ambas fechas');
+            return;
+        }
+        
+        mostrarCargando();
+        
+        // Simular consulta (aquí iría la llamada AJAX real)
+        setTimeout(() => {
+            // Datos de ejemplo
+            const historialEjemplo = [
+                { fechaMedicion: '2024-01-15', codigoMask: 'MM-001', tension: '45.2', operador: 'Operador A', linea: 'Línea 1', estado: 'Normal', observaciones: 'Tensión dentro de rango' },
+                { fechaMedicion: '2024-01-16', codigoMask: 'MM-001', tension: '46.8', operador: 'Operador A', linea: 'Línea 1', estado: 'Normal', observaciones: 'Ligero incremento' },
+                { fechaMedicion: '2024-01-17', codigoMask: 'MM-002', tension: '52.1', operador: 'Operador B', linea: 'Línea 2', estado: 'Alto', observaciones: 'Requiere ajuste' }
+            ];
+            
+            renderizarTablaHistorialTensionMaskMetal(historialEjemplo);
+            actualizarContador(historialEjemplo.length);
+            ocultarCargando();
+        }, 1500);
+    }
+    
+    function renderizarTablaHistorialTensionMaskMetal(historial) {
+        const tbody = document.getElementById('cuerpo-tabla-historial-tension-mask-metal');
+        if (!tbody) return;
+        
+        tbody.innerHTML = historial.map(hist => `
+            <tr>
+                <td>${hist.fechaMedicion}</td>
+                <td>${hist.codigoMask}</td>
+                <td>${hist.tension} N/m</td>
+                <td>${hist.operador}</td>
+                <td>${hist.linea}</td>
+                <td><span class="estado-${hist.estado.toLowerCase().replace(' ', '-')}">${hist.estado}</span></td>
+                <td>${hist.observaciones}</td>
+                <td>
+                    <button class="btn-accion" onclick="verDetalleHistorialTension('${hist.fechaMedicion}', '${hist.codigoMask}')">Ver</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    function actualizarContador(total) {
+        const contador = document.getElementById('total-historial-tension-mask-metal');
+        if (contador) {
+            contador.textContent = total;
+        }
+    }
+    
+    function mostrarCargando() {
+        const modal = document.getElementById('modal-carga-historial-tension-mask-metal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+    
+    function ocultarCargando() {
+        const modal = document.getElementById('modal-carga-historial-tension-mask-metal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Función global para ver detalle
+    window.verDetalleHistorialTension = function(fecha, codigo) {
+        alert(`Ver detalle de medición: ${fecha} - ${codigo}`);
+        // Aquí iría la lógica para mostrar el detalle
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarHistorialTensionMaskMetalAjax);
+    } else {
+        window.inicializarHistorialTensionMaskMetalAjax();
+    }
+})();
+</script>

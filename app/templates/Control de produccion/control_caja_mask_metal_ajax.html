@@ -1,0 +1,386 @@
+<!-- TEMPLATE AJAX: Control de caja de mask de metal -->
+<!-- SUFIJO ÚNICO: -caja-mask-metal -->
+<!-- CONTENEDOR: caja-mask-metal-unique-container -->
+
+<div id="caja-mask-metal-main-container-unique-caja-mask-metal" class="caja-mask-metal-container">
+    <div class="caja-mask-metal-header">
+        <h2>Control de Caja de Mask de Metal</h2>
+        <p class="subtitle">Gestión y control de cajas para almacenamiento de máscaras</p>
+    </div>
+
+    <div class="caja-mask-metal-content">
+        <!-- Filtros -->
+        <div class="filtros-caja-mask-metal">
+            <div class="filtro-grupo">
+                <label for="fecha-inicio-caja-mask-metal">Fecha Inicio:</label>
+                <input type="date" id="fecha-inicio-caja-mask-metal" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="fecha-fin-caja-mask-metal">Fecha Fin:</label>
+                <input type="date" id="fecha-fin-caja-mask-metal" class="filtro-fecha">
+            </div>
+            <div class="filtro-grupo">
+                <label for="ubicacion-caja-mask-metal">Ubicación:</label>
+                <select id="ubicacion-caja-mask-metal" class="filtro-select">
+                    <option value="">Todas</option>
+                    <option value="Almacen A">Almacén A</option>
+                    <option value="Almacen B">Almacén B</option>
+                    <option value="Linea 1">Línea 1</option>
+                    <option value="Linea 2">Línea 2</option>
+                </select>
+            </div>
+            <button id="consultar-caja-mask-metal" class="btn-consultar">Consultar</button>
+        </div>
+
+        <!-- Contador -->
+        <div class="contador-caja-mask-metal">
+            <span class="contador-label">Total de Cajas:</span>
+            <span id="total-caja-mask-metal" class="contador-valor">0</span>
+        </div>
+
+        <!-- Tabla de cajas -->
+        <div class="tabla-container">
+            <table id="tabla-caja-mask-metal" class="tabla-caja-mask-metal">
+                <thead>
+                    <tr>
+                        <th>Código Caja</th>
+                        <th>Capacidad</th>
+                        <th>Máscaras Almacenadas</th>
+                        <th>Ubicación</th>
+                        <th>Estado</th>
+                        <th>Última Actualización</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla-caja-mask-metal">
+                    <!-- Los datos se cargarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal de carga -->
+        <div id="modal-carga-caja-mask-metal" class="modal-carga" style="display: none;">
+            <div class="modal-carga-contenido">
+                <div class="spinner"></div>
+                <p>Cargando datos...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos del módulo Control de caja de mask de metal */
+.caja-mask-metal-container {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: 100%;
+}
+
+.caja-mask-metal-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.caja-mask-metal-header h2 {
+    color: #E91E63;
+    margin-bottom: 10px;
+    font-size: 2.2em;
+}
+
+.subtitle {
+    color: #B0B0B0;
+    font-size: 1.1em;
+    margin: 0;
+}
+
+.filtros-caja-mask-metal {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filtro-grupo label {
+    font-weight: 600;
+    color: #E91E63;
+    font-size: 0.9em;
+}
+
+.filtro-fecha, .filtro-select {
+    padding: 8px 12px;
+    border: 2px solid #E91E63;
+    border-radius: 6px;
+    background-color: #1E1E2E;
+    color: #E0E0E0;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.filtro-fecha:focus, .filtro-select:focus {
+    outline: none;
+    border-color: #F06292;
+    box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+}
+
+.btn-consultar {
+    background: linear-gradient(135deg, #E91E63, #C2185B);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    min-height: 40px;
+    align-self: end;
+}
+
+.btn-consultar:hover {
+    background: linear-gradient(135deg, #C2185B, #AD1457);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+}
+
+.contador-caja-mask-metal {
+    background: linear-gradient(135deg, #E91E63, #C2185B);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(233, 30, 99, 0.2);
+}
+
+.contador-label {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.contador-valor {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.tabla-container {
+    background-color: #1E1E2E;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tabla-caja-mask-metal {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1E1E2E;
+}
+
+.tabla-caja-mask-metal th {
+    background: linear-gradient(135deg, #E91E63, #C2185B);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.tabla-caja-mask-metal td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #3A3A4A;
+    color: #E0E0E0;
+    font-size: 14px;
+}
+
+.tabla-caja-mask-metal tbody tr:hover {
+    background-color: #2A2A3A;
+    transition: background-color 0.2s ease;
+}
+
+.tabla-caja-mask-metal tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.modal-carga {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-carga-contenido {
+    background-color: #2B2D3E;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    color: #E0E0E0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #3A3A4A;
+    border-top: 4px solid #E91E63;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filtros-caja-mask-metal {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filtro-fecha, .filtro-select {
+        min-width: auto;
+    }
+    
+    .btn-consultar {
+        align-self: stretch;
+    }
+    
+    .tabla-container {
+        overflow-x: auto;
+    }
+    
+    .tabla-caja-mask-metal {
+        min-width: 800px;
+    }
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo Control de caja de mask de metal
+(function() {
+    console.log('Inicializando Control de caja de mask de metal AJAX...');
+    
+    window.inicializarControlCajaMaskMetalAjax = function() {
+        console.log('Control de caja de mask de metal AJAX inicializado');
+        
+        // Configurar fechas por defecto
+        const hoy = new Date();
+        const fechaInicio = document.getElementById('fecha-inicio-caja-mask-metal');
+        const fechaFin = document.getElementById('fecha-fin-caja-mask-metal');
+        
+        if (fechaInicio && fechaFin) {
+            fechaInicio.value = hoy.toISOString().split('T')[0];
+            fechaFin.value = hoy.toISOString().split('T')[0];
+        }
+        
+        // Configurar eventos
+        const btnConsultar = document.getElementById('consultar-caja-mask-metal');
+        if (btnConsultar) {
+            btnConsultar.addEventListener('click', function() {
+                consultarCajaMaskMetal();
+            });
+        }
+        
+        // Consultar al cargar
+        setTimeout(() => {
+            consultarCajaMaskMetal();
+        }, 100);
+    };
+    
+    function consultarCajaMaskMetal() {
+        const fechaInicio = document.getElementById('fecha-inicio-caja-mask-metal').value;
+        const fechaFin = document.getElementById('fecha-fin-caja-mask-metal').value;
+        const ubicacion = document.getElementById('ubicacion-caja-mask-metal').value;
+        
+        if (!fechaInicio || !fechaFin) {
+            alert('Por favor selecciona ambas fechas');
+            return;
+        }
+        
+        mostrarCargando();
+        
+        // Simular consulta (aquí iría la llamada AJAX real)
+        setTimeout(() => {
+            // Datos de ejemplo
+            const cajaMaskMetalEjemplo = [
+                { codigo: 'CMM-001', capacidad: '20 máscaras', mascarasAlmacenadas: '15', ubicacion: 'Almacén A', estado: 'Activo', ultimaActualizacion: '2024-01-15' },
+                { codigo: 'CMM-002', capacidad: '15 máscaras', mascarasAlmacenadas: '8', ubicacion: 'Línea 1', estado: 'Activo', ultimaActualizacion: '2024-01-16' },
+                { codigo: 'CMM-003', capacidad: '25 máscaras', mascarasAlmacenadas: '0', ubicacion: 'Almacén B', estado: 'Vacío', ultimaActualizacion: '2024-01-10' }
+            ];
+            
+            renderizarTablaCajaMaskMetal(cajaMaskMetalEjemplo);
+            actualizarContador(cajaMaskMetalEjemplo.length);
+            ocultarCargando();
+        }, 1500);
+    }
+    
+    function renderizarTablaCajaMaskMetal(cajas) {
+        const tbody = document.getElementById('cuerpo-tabla-caja-mask-metal');
+        if (!tbody) return;
+        
+        tbody.innerHTML = cajas.map(caja => `
+            <tr>
+                <td>${caja.codigo}</td>
+                <td>${caja.capacidad}</td>
+                <td>${caja.mascarasAlmacenadas}</td>
+                <td>${caja.ubicacion}</td>
+                <td><span class="estado-${caja.estado.toLowerCase().replace(' ', '-')}">${caja.estado}</span></td>
+                <td>${caja.ultimaActualizacion}</td>
+                <td>
+                    <button class="btn-accion" onclick="verDetalleCajaMaskMetal('${caja.codigo}')">Ver</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    function actualizarContador(total) {
+        const contador = document.getElementById('total-caja-mask-metal');
+        if (contador) {
+            contador.textContent = total;
+        }
+    }
+    
+    function mostrarCargando() {
+        const modal = document.getElementById('modal-carga-caja-mask-metal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+    
+    function ocultarCargando() {
+        const modal = document.getElementById('modal-carga-caja-mask-metal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Función global para ver detalle
+    window.verDetalleCajaMaskMetal = function(codigo) {
+        alert(`Ver detalle de caja: ${codigo}`);
+        // Aquí iría la lógica para mostrar el detalle
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlCajaMaskMetalAjax);
+    } else {
+        window.inicializarControlCajaMaskMetalAjax();
+    }
+})();
+</script>

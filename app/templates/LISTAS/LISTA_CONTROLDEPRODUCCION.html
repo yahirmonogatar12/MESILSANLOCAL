@@ -22,7 +22,7 @@
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de plan de produccion" 
                             data-permiso-boton="Crear plan micom"
-                            onclick="window.parent.mostrarCrearPlanMicom ? window.parent.mostrarCrearPlanMicom() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('crear-plan-micom-unique-container', '/crear-plan-micom-ajax') : window.location.href='/control_produccion/crear_plan_micom')">Crear plan micom</li>
+                            onclick="window.parent.mostrarCrearPlanMicom ? window.parent.mostrarCrearPlanMicom() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/crear-plan-micom-ajax') : window.location.href='/control_produccion/crear_plan_micom')">Crear plan micom</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de plan de produccion" 
@@ -40,15 +40,18 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de SMT" 
-                            data-permiso-boton="Control de mask de metal">Control de mask de metal</li>
+                            data-permiso-boton="Control de mask de metal"
+                            onclick="window.parent.mostrarControlMaskMetal ? window.parent.mostrarControlMaskMetal() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control-mask-metal-ajax') : window.location.href='/control-mask-metal-ajax')">Control de mask de metal</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de SMT" 
-                            data-permiso-boton="Control de squeegee">Control de squeegee</li>
+                            data-permiso-boton="Control de squeegee"
+                            onclick="window.parent.mostrarControlSqueegee ? window.parent.mostrarControlSqueegee() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control-squeegee-ajax') : window.location.href='/control-squeegee-ajax')">Control de squeegee</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de SMT" 
-                            data-permiso-boton="Control de caja de mask de metal">Control de caja de mask de metal</li>
+                            data-permiso-boton="Control de caja de mask de metal"
+                            onclick="window.parent.mostrarControlCajaMaskMetal ? window.parent.mostrarControlCajaMaskMetal() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control-caja-mask-metal-ajax') : window.location.href='/control-caja-mask-metal-ajax')">Control de caja de mask de metal</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -61,19 +64,23 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de sub Material" 
-                            data-permiso-boton="Estandares sobre control de soldadura">Estandares sobre control de soldadura</li>
+                            data-permiso-boton="Estandares sobre control de soldadura"
+                            onclick="window.parent.mostrarEstandaresSoldadura ? window.parent.mostrarEstandaresSoldadura() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/estandares-soldadura-ajax') : window.location.href='/estandares-soldadura-ajax')">Estandares sobre control de soldadura</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de sub Material" 
-                            data-permiso-boton="Registro de recibo de soldadura">Registro de recibo de soldadura</li>
+                            data-permiso-boton="Registro de recibo de soldadura"
+                            onclick="window.parent.mostrarRegistroReciboSoldadura ? window.parent.mostrarRegistroReciboSoldadura() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/registro-recibo-soldadura-ajax') : window.location.href='/registro-recibo-soldadura-ajax')">Registro de recibo de soldadura</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de sub Material" 
-                            data-permiso-boton="Control de salida de soldadura">Control de salida de soldadura</li>
+                            data-permiso-boton="Control de salida de soldadura"
+                            onclick="window.parent.mostrarControlSalidaSoldadura ? window.parent.mostrarControlSalidaSoldadura() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/control-salida-soldadura-ajax') : window.location.href='/control-salida-soldadura-ajax')">Control de salida de soldadura</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Control de sub Material" 
-                            data-permiso-boton="Historial de tension de mask de metal">Historial de tension de mask de metal</li>
+                            data-permiso-boton="Historial de tension de mask de metal"
+                            onclick="window.parent.mostrarHistorialTensionMaskMetal ? window.parent.mostrarHistorialTensionMaskMetal() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/historial-tension-mask-metal-ajax') : window.location.href='/historial-tension-mask-metal-ajax')">Historial de tension de mask de metal</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -86,7 +93,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
                             data-permiso-seccion="Line Material Management" 
-                            data-permiso-boton="Line Material Status_es">Line Material Status_es</li>
+                            data-permiso-boton="Line Material Status_es"
+                            onclick="window.parent.mostrarLineMaterialStatus ? window.parent.mostrarLineMaterialStatus() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('produccion-info-container', '/line-material-status-ajax') : window.location.href='/line-material-status-ajax')">Line Material Status_es</li>
                 </ul>
             </li>
         </ul>
