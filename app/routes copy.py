@@ -35,7 +35,6 @@ from .po_wo_models import (
     generar_codigo_po, generar_codigo_wo, verificar_po_existe, verificar_wo_existe,
     obtener_po_por_codigo, obtener_wo_por_codigo, listar_pos_por_estado, listar_pos_con_filtros, listar_wos_por_po, listar_wos_con_filtros
 )
-from .api_po_wo import registrar_rutas_po_wo
 from .smd_inventory_api import register_smd_inventory_routes
 
 app = Flask(__name__)
@@ -43,9 +42,6 @@ app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
 
 # Registrar rutas SMD Inventory después de crear la app
 register_smd_inventory_routes(app)
-
-# Registrar rutas API PO → WO
-# registrar_rutas_po_wo(app)  # Comentado para evitar conflicto con run.py
 
 # Inicializar base de datos original
 init_db()  # Esto crea la tabla si no existe
@@ -1941,10 +1937,7 @@ def crear_plan_produccion():
     try:
         from datetime import datetime
         fecha_hoy = datetime.now().strftime('%Y-%m-%d')
-        usuario_logueado = session.get('usuario', '')
-        return render_template('Control de produccion/Crear plan de produccion.html', 
-                             fecha_hoy=fecha_hoy, 
-                             usuario_logueado=usuario_logueado)
+        return render_template('Control de produccion/Crear plan de produccion.html', fecha_hoy=fecha_hoy)
     except Exception as e:
         print(f"Error al cargar Crear Plan de Producción: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -3247,26 +3240,6 @@ def lista_control_resultados():
         return render_template('LISTAS/LISTA_DE_CONTROL_DE_RESULTADOS.html')
     except Exception as e:
         print(f"Error al cargar LISTA_DE_CONTROL_DE_RESULTADOS: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-@app.route('/historial-aoi')
-@login_requerido
-def historial_aoi():
-    """Servir la página de Historial AOI"""
-    try:
-        return render_template('Control de resultados/Historial AOI.html')
-    except Exception as e:
-        print(f"Error al cargar Historial AOI: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-@app.route('/historial-aoi-ajax')
-@login_requerido
-def historial_aoi_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Historial AOI"""
-    try:
-        return render_template('Control de resultados/Historial AOI.html')
-    except Exception as e:
-        print(f"Error al cargar template de Historial AOI: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route('/listas/control_reporte')
@@ -5448,7 +5421,7 @@ def obtener_lotes_numero_parte_get(numero_parte):
         # Query optimizada para obtener lotes con balance disponible
         if using_mysql:
             query = '''
-            SELECT
+                SELECT 
                     cma.numero_lote_material,
                     cma.cantidad_actual,
                     cma.fecha_recibo,
@@ -5835,7 +5808,7 @@ def get_csv_data():
         
         # Query para obtener datos de la tabla MySQL
         query = """
-            SELECT
+        SELECT 
             ScanDate,
             ScanTime,
             SlotNo,
@@ -5943,7 +5916,7 @@ def get_csv_stats():
         
         # Query para obtener estadísticas de la tabla MySQL
         query = """
-            SELECT
+        SELECT 
             COUNT(*) as total_records,
             COUNT(DISTINCT archivo) as total_files,
             COUNT(DISTINCT ScanDate) as total_days,
@@ -5998,7 +5971,7 @@ def get_csv_stats():
             'success': False, 
             'error': f'Error al consultar estadísticas MySQL: {str(e)}'
         }), 500
-
+        
         print(f"📁 Encontrados {len(csv_files)} archivos CSV")
         
         # Leer y combinar todos los archivos CSV
@@ -6169,7 +6142,7 @@ def filter_csv_data():
         where_clause = " AND ".join(where_conditions)
         
         query = f"""
-            SELECT
+        SELECT 
             scan_date,
             scan_time,
             slot_no,
@@ -6188,7 +6161,7 @@ def filter_csv_data():
         FROM historial_cambio_material_smt
         WHERE {where_clause}
         ORDER BY ScanDate DESC, ScanTime DESC
-            LIMIT 5000
+        LIMIT 5000
         """
         
         cursor.execute(query, params)
@@ -6563,7 +6536,7 @@ def control_salida_validar_stock():
         
         # Buscar material por código
         cursor.execute('''
-            SELECT
+            SELECT 
                 codigo_material_recibido,
                 numero_parte,
                 especificacion,
@@ -7397,9 +7370,733 @@ def importar_excel_historial():
         if conn:
             conn.close()
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+            os.remove(temp_path)@app.route('/api/historial_smt_data')
+def api_historial_smt_data():
+    """
+    API endpoint para obtener datos del historial de cambio de material SMT
+    Consulta la tabla historial_cambio_material_smt en MySQL
+    """
+    try:
+        # Obtener parámetros de filtro opcionales
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin') 
+        carpeta = request.args.get('carpeta')
+        barcode = request.args.get('barcode')
+        part_name = request.args.get('part_name')
+        
+        # Importar la conexión MySQL directamente
+        import mysql.connector
+        
+        # Configuración de conexión MySQL (misma que en SMTMonitorService)
+        mysql_config = {
+            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
+            'port': 11550,
+            'user': 'db_rrpq0erbdujn',
+            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
+            'database': 'db_rrpq0erbdujn',
+            'charset': 'utf8mb4',
+            'collation': 'utf8mb4_unicode_ci'
+        }
+        
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Construir query base
+        query = """
+        SELECT 
+            scan_date,
+            scan_time,
+            slot_no,
+            result,
+            previous_barcode,
+            product_date,
+            part_name,
+            quantity,
+            seq,
+            vendor,
+            lot_no,
+            barcode,
+            feeder_base,
+            source_file,
+            created_at
+        FROM historial_cambio_material_smt
+        WHERE 1=1
+        """
+        
+        params = []
+        
+        # Agregar filtros si se proporcionan
+        if fecha_inicio:
+            query += " AND ScanDate >= %s"
+            params.append(fecha_inicio)
+            
+        if fecha_fin:
+            query += " AND ScanDate <= %s"
+            params.append(fecha_fin)
+            
+        if carpeta:
+            query += " AND source_file LIKE %s"
+            params.append(f"%{carpeta}%")
+            
+        if barcode:
+            query += " AND barcode LIKE %s"
+            params.append(f"%{barcode}%")
+            
+        if part_name:
+            query += " AND part_name LIKE %s"
+            params.append(f"%{part_name}%")
+        
+        # Ordenar por fecha más reciente primero
+        query += " ORDER BY ScanDate DESC, ScanTime DESC LIMIT 1000"
+        
+        cursor.execute(query, params)
+        resultados = cursor.fetchall()
+        
+        # Convertir datos para JSON (manejar fechas y decimales)
+        for resultado in resultados:
+            for key, value in resultado.items():
+                if hasattr(value, 'isoformat'):  # Es una fecha/datetime
+                    resultado[key] = value.isoformat()
+                elif isinstance(value, (int, float)):
+                    resultado[key] = value
+                elif value is None:
+                    resultado[key] = ''
+                else:
+                    resultado[key] = str(value)
+        
+        return jsonify({
+            'success': True,
+            'data': resultados,
+            'total': len(resultados)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error al consultar datos SMT: {str(e)}'
+        }), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
-# ... (rest of the code remains unchanged)
+# =====================================================
+# SISTEMA PO → WO - RUTAS DE API REST
+# =====================================================
+
+from .db_mysql import execute_query
+from datetime import datetime, date
+
+# --- PURCHASE ORDERS (PO) ---
+
+@app.route('/api/po/crear', methods=['POST'])
+@login_requerido
+def crear_po():
+    """Crear nueva Purchase Order (PO)"""
+    try:
+        data = request.get_json()
+        
+        # Validar campos obligatorios
+        if not data.get('cliente') and not data.get('proveedor'):
+            return jsonify({
+                'success': False,
+                'error': 'El campo cliente o proveedor es obligatorio'
+            }), 400
+        
+        # Generar código PO único
+        codigo_po = generar_codigo_po()
+        if not codigo_po:
+            return jsonify({
+                'success': False,
+                'error': 'Error generando código PO'
+            }), 500
+        
+        # Validar código generado
+        valido, mensaje = validar_codigo_po(codigo_po)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código PO inválido: {mensaje}'
+            }), 400
+        
+        # Verificar que no exista duplicado (doble verificación)
+        if verificar_po_existe(codigo_po):
+            return jsonify({
+                'success': False,
+                'error': 'El código PO ya existe'
+            }), 409
+        
+        # Generar código de entrega automáticamente
+        codigo_entrega = f"{codigo_po}-01"
+        
+        # Insertar nueva PO con todos los campos
+        usuario = session.get('usuario', 'sistema')
+        query = """
+        INSERT INTO embarques (
+            codigo_po, cliente, fecha_registro, estado, usuario_creacion,
+            nombre_po, modelo, proveedor, total_cantidad_entregada, 
+            codigo_entrega, fecha_entrega, cantidad_entregada
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        # Preparar datos
+        cliente = data.get('cliente') or data.get('proveedor')  # Usar proveedor como cliente si no hay cliente
+        fecha_registro = data.get('fecha_registro') or date.today()
+        estado = data.get('estado', 'PLAN')
+        nombre_po = data.get('nombre_po', '')
+        modelo = data.get('modelo', '')
+        proveedor = data.get('proveedor', '')
+        total_cantidad_entregada = data.get('total_cantidad_entregada', 0)
+        fecha_entrega = data.get('fecha_entrega')
+        cantidad_entregada = data.get('cantidad_entregada', 0)
+        
+        # Convertir fecha_entrega a objeto date si es string
+        if isinstance(fecha_entrega, str):
+            try:
+                fecha_entrega = datetime.strptime(fecha_entrega, '%Y-%m-%d').date()
+            except:
+                fecha_entrega = None
+        
+        execute_query(query, (
+            codigo_po, cliente, fecha_registro, estado, usuario,
+            nombre_po, modelo, proveedor, total_cantidad_entregada,
+            codigo_entrega, fecha_entrega, cantidad_entregada
+        ))
+        
+        # Obtener PO creada
+        po_creada = obtener_po_por_codigo(codigo_po)
+        
+        return jsonify({
+            'success': True,
+            'message': 'PO creada exitosamente',
+            'data': po_creada
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error creando PO: {str(e)}'
+        }), 500
+
+@app.route('/api/po/<codigo_po>', methods=['GET'])
+@login_requerido
+def obtener_po(codigo_po):
+    """Obtener información de una PO específica"""
+    try:
+        # Validar formato del código
+        valido, mensaje = validar_codigo_po(codigo_po)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código PO inválido: {mensaje}'
+            }), 400
+        
+        po = obtener_po_por_codigo(codigo_po)
+        if not po:
+            return jsonify({
+                'success': False,
+                'error': 'PO no encontrada'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': po
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error obteniendo PO: {str(e)}'
+        }), 500
+
+@app.route('/api/po/<codigo_po>/estado', methods=['PUT'])
+@login_requerido
+def actualizar_estado_po(codigo_po):
+    """Actualizar estado de una PO"""
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        
+        # Validar estado
+        estados_validos = ['PLAN', 'PREPARACION', 'EMBARCADO', 'EN_TRANSITO', 'ENTREGADO']
+        if nuevo_estado not in estados_validos:
+            return jsonify({
+                'success': False,
+                'error': f'Estado inválido. Debe ser uno de: {", ".join(estados_validos)}'
+            }), 400
+        
+        # Verificar que la PO existe
+        if not verificar_po_existe(codigo_po):
+            return jsonify({
+                'success': False,
+                'error': 'PO no encontrada'
+            }), 404
+        
+        # Actualizar estado
+        query = "UPDATE embarques SET estado = %s WHERE codigo_po = %s"
+        execute_query(query, (nuevo_estado, codigo_po))
+        
+        # Obtener PO actualizada
+        po_actualizada = obtener_po_por_codigo(codigo_po)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Estado de PO actualizado exitosamente',
+            'data': po_actualizada
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error actualizando estado de PO: {str(e)}'
+        }), 500
+
+@app.route('/api/po/listar', methods=['GET'])
+@login_requerido
+def listar_pos():
+    """Listar todas las POs con filtros opcionales"""
+    try:
+        estado = request.args.get('estado')
+        pos = listar_pos_por_estado(estado)
+        
+        return jsonify({
+            'success': True,
+            'data': pos,
+            'total': len(pos)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error listando POs: {str(e)}'
+        }), 500
+
+# --- WORK ORDERS (WO) ---
+
+@app.route('/api/wo/crear', methods=['POST'])
+@login_requerido
+def crear_wo():
+    """Crear nueva Work Order (WO) - MODIFICADO: Ya no requiere PO obligatorio"""
+    try:
+        # PRIMERO: Intentar eliminar foreign key si existe (solo una vez)
+        try:
+            execute_query("ALTER TABLE work_orders DROP FOREIGN KEY work_orders_ibfk_1")
+            print("✅ Foreign key work_orders_ibfk_1 eliminada exitosamente")
+        except Exception as fk_error:
+            if "doesn't exist" in str(fk_error).lower() or "constraint" not in str(fk_error).lower():
+                print("ℹ️ Foreign key ya estaba eliminada o no existe")
+            else:
+                print(f"⚠️ Error eliminando foreign key: {fk_error}")
+        
+        data = request.get_json()
+        
+        # Validar campos obligatorios (removido codigo_po para WO independientes)
+        campos_requeridos = ['modelo', 'cantidad_planeada', 'fecha_operacion']
+        for campo in campos_requeridos:
+            if not data.get(campo):
+                return jsonify({
+                    'success': False,
+                    'error': f'El campo {campo} es obligatorio'
+                }), 400
+        
+        # Usar código WO proporcionado o generar uno nuevo
+        codigo_wo = data.get('codigo_wo')
+        if not codigo_wo:
+            # Generar código WO único si no se proporciona
+            codigo_wo = generar_codigo_wo()
+        
+        # Obtener otros campos - codigo_po ahora es opcional
+        codigo_po = data.get('codigo_po', 'SIN-PO')  # Valor por defecto si no se proporciona
+        orden_proceso = data.get('orden_proceso', 'NORMAL')
+        
+        # Validar cantidad
+        cantidad = data['cantidad_planeada']
+        if not isinstance(cantidad, int) or cantidad <= 0:
+            return jsonify({
+                'success': False,
+                'error': 'La cantidad planeada debe ser un número entero positivo'
+            }), 400
+        
+        # Validar código
+        if not codigo_wo:
+            return jsonify({
+                'success': False,
+                'error': 'Error generando código WO'
+            }), 500
+        
+        # Validar código generado
+        valido, mensaje = validar_codigo_wo(codigo_wo)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código WO inválido: {mensaje}'
+            }), 400
+        
+        # Verificar que no exista duplicado
+        if verificar_wo_existe(codigo_wo):
+            return jsonify({
+                'success': False,
+                'error': 'El código WO ya existe'
+            }), 409
+        
+        # Insertar nueva WO - Sin dependencia de PO
+        usuario = session.get('usuario', 'sistema')
+        
+        # Obtener nombre_modelo y codigo_modelo del campo modelo (es el número de parte)
+        modelo = data['modelo']
+        nombre_modelo = modelo  # El nombre del modelo es el mismo valor
+        codigo_modelo = modelo  # El código del modelo es el número de parte
+        
+        query = """
+        INSERT INTO work_orders (codigo_wo, codigo_po, modelo, orden_proceso, cantidad_planeada, 
+                               fecha_operacion, modificador, estado, usuario_creacion,
+                               nombre_modelo, codigo_modelo)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        estado = data.get('estado', 'CREADA')
+        
+        execute_query(query, (
+            codigo_wo, codigo_po, modelo, orden_proceso, cantidad,
+            data['fecha_operacion'], usuario, estado, usuario,
+            nombre_modelo, codigo_modelo
+        ))
+        
+        # Obtener WO creada
+        wo_creada = obtener_wo_por_codigo(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'message': 'WO creada exitosamente (sin dependencia de PO)',
+            'data': wo_creada
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error creando WO: {str(e)}'
+        }), 500
+
+@app.route('/api/wo/<codigo_wo>', methods=['GET'])
+@login_requerido
+def obtener_wo(codigo_wo):
+    """Obtener información de una WO específica"""
+    try:
+        # Validar formato del código
+        valido, mensaje = validar_codigo_wo(codigo_wo)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'error': f'Código WO inválido: {mensaje}'
+            }), 400
+        
+        wo = obtener_wo_por_codigo(codigo_wo)
+        if not wo:
+            return jsonify({
+                'success': False,
+                'error': 'WO no encontrada'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': wo
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error obteniendo WO: {str(e)}'
+        }), 500
+
+@app.route('/api/wo/<codigo_wo>/estado', methods=['PUT'])
+@login_requerido
+def actualizar_estado_wo(codigo_wo):
+    """Actualizar estado de una WO"""
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        
+        # Validar estado
+        estados_validos = ['CREADA', 'PLANIFICADA', 'EN_PRODUCCION', 'CERRADA']
+        if nuevo_estado not in estados_validos:
+            return jsonify({
+                'success': False,
+                'error': f'Estado inválido. Debe ser uno de: {", ".join(estados_validos)}'
+            }), 400
+        
+        # Verificar que la WO existe
+        if not verificar_wo_existe(codigo_wo):
+            return jsonify({
+                'success': False,
+                'error': 'WO no encontrada'
+            }), 404
+        
+        # Actualizar estado
+        usuario = session.get('usuario', 'sistema')
+        query = "UPDATE work_orders SET estado = %s, modificador = %s WHERE codigo_wo = %s"
+        execute_query(query, (nuevo_estado, usuario, codigo_wo))
+        
+        # Obtener WO actualizada
+        wo_actualizada = obtener_wo_por_codigo(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Estado de WO actualizado exitosamente',
+            'data': wo_actualizada
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error actualizando estado de WO: {str(e)}'
+        }), 500
+
+@app.route('/api/wo/actualizar-po', methods=['POST'])
+@login_requerido
+def actualizar_po_wo():
+    """Actualizar código PO de una WO"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No se proporcionaron datos'
+            }), 400
+        
+        codigo_wo = data.get('codigo_wo', '').strip()
+        codigo_po = data.get('codigo_po', '').strip()
+        
+        if not codigo_wo:
+            return jsonify({
+                'success': False,
+                'error': 'Código de WO requerido'
+            }), 400
+        
+        # Si el código PO está vacío, usar 'SIN-PO'
+        if not codigo_po:
+            codigo_po = 'SIN-PO'
+        
+        # Verificar que la WO existe
+        query_check = "SELECT id FROM work_orders WHERE codigo_wo = %s"
+        wo_exists = execute_query(query_check, (codigo_wo,), fetch='one')
+        
+        if not wo_exists:
+            return jsonify({
+                'success': False,
+                'error': f'WO {codigo_wo} no encontrada'
+            }), 404
+        
+        # Actualizar PO
+        usuario = session.get('usuario', 'sistema')
+        query = "UPDATE work_orders SET codigo_po = %s, modificador = %s WHERE codigo_wo = %s"
+        execute_query(query, (codigo_po, usuario, codigo_wo))
+        
+        print(f"✅ PO actualizado: WO {codigo_wo} → PO {codigo_po}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'PO actualizado exitosamente',
+            'data': {
+                'codigo_wo': codigo_wo,
+                'codigo_po': codigo_po
+            }
+        })
+    
+    except Exception as e:
+        print(f"❌ Error actualizando PO WO: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/wo/listar', methods=['GET'])
+@login_requerido
+def listar_wos():
+    """Listar todas las WOs con filtros opcionales"""
+    try:
+        codigo_po = request.args.get('codigo_po')
+        fecha_desde = request.args.get('fecha_desde')
+        fecha_hasta = request.args.get('fecha_hasta')
+        
+        wos = listar_wos_con_filtros(codigo_po, fecha_desde, fecha_hasta)
+        
+        return jsonify({
+            'success': True,
+            'data': wos,
+            'total': len(wos)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error listando WOs: {str(e)}'
+        }), 500
+
+@app.route('/api/bom/modelos', methods=['GET'])
+@login_requerido
+def obtener_modelos_bom_api():
+    """Obtener lista de modelos únicos de la tabla BOM"""
+    try:
+        from .po_wo_models import obtener_modelos_unicos_bom
+        modelos = obtener_modelos_unicos_bom()
+        
+        return jsonify({
+            'success': True,
+            'data': modelos,
+            'total': len(modelos)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error obteniendo modelos BOM: {str(e)}'
+        }), 500
+
+# --- RUTAS DE CONVERSIÓN PO → WO ---
+
+@app.route('/api/po/<codigo_po>/convertir-wo', methods=['POST'])
+@login_requerido
+def convertir_po_a_wo(codigo_po):
+    """Convertir una PO en WO automáticamente"""
+    try:
+        data = request.get_json() or {}
+        
+        # Verificar que la PO existe
+        po = obtener_po_por_codigo(codigo_po)
+        if not po:
+            return jsonify({
+                'success': False,
+                'error': 'PO no encontrada'
+            }), 404
+        
+        # Validar campos requeridos para WO
+        if not data.get('modelo'):
+            return jsonify({
+                'success': False,
+                'error': 'El campo modelo es obligatorio para crear WO'
+            }), 400
+        
+        if not data.get('cantidad_planeada'):
+            return jsonify({
+                'success': False,
+                'error': 'El campo cantidad_planeada es obligatorio para crear WO'
+            }), 400
+        
+        # Usar fecha actual si no se especifica
+        fecha_operacion = data.get('fecha_operacion', date.today().isoformat())
+        
+        # Crear WO usando el endpoint interno
+        wo_data = {
+            'codigo_po': codigo_po,
+            'modelo': data['modelo'],
+            'cantidad_planeada': data['cantidad_planeada'],
+            'fecha_operacion': fecha_operacion,
+            'estado': data.get('estado', 'CREADA')
+        }
+        
+        # Generar código WO
+        codigo_wo = generar_codigo_wo()
+        if not codigo_wo:
+            return jsonify({
+                'success': False,
+                'error': 'Error generando código WO'
+            }), 500
+        
+        # Insertar WO
+        usuario = session.get('usuario', 'sistema')
+        query = """
+        INSERT INTO work_orders (codigo_wo, codigo_po, modelo, cantidad_planeada, 
+                               fecha_operacion, modificador, estado, usuario_creacion)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        execute_query(query, (
+            codigo_wo, codigo_po, wo_data['modelo'], wo_data['cantidad_planeada'],
+            wo_data['fecha_operacion'], usuario, wo_data['estado'], usuario
+        ))
+        
+        # Obtener WO creada
+        wo_creada = obtener_wo_por_codigo(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'message': f'PO {codigo_po} convertida exitosamente a WO {codigo_wo}',
+            'data': {
+                'po': po,
+                'wo': wo_creada
+            }
+        }), 201
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error convirtiendo PO a WO: {str(e)}'
+        }), 500
+
+# --- RUTAS DE VALIDACIÓN Y VERIFICACIÓN ---
+
+@app.route('/api/validar/codigo-po/<codigo_po>', methods=['GET'])
+@login_requerido
+def validar_codigo_po_endpoint(codigo_po):
+    """Validar formato y existencia de código PO"""
+    try:
+        # Validar formato
+        valido, mensaje = validar_codigo_po(codigo_po)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'valido': False,
+                'mensaje': mensaje
+            })
+        
+        # Verificar existencia
+        existe = verificar_po_existe(codigo_po)
+        
+        return jsonify({
+            'success': True,
+            'valido': True,
+            'existe': existe,
+            'mensaje': 'Código válido' if not existe else 'Código válido pero ya existe'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error validando código PO: {str(e)}'
+        }), 500
+
+@app.route('/api/validar/codigo-wo/<codigo_wo>', methods=['GET'])
+@login_requerido
+def validar_codigo_wo_endpoint(codigo_wo):
+    """Validar formato y existencia de código WO"""
+    try:
+        # Validar formato
+        valido, mensaje = validar_codigo_wo(codigo_wo)
+        if not valido:
+            return jsonify({
+                'success': False,
+                'valido': False,
+                'mensaje': mensaje
+            })
+        
+        # Verificar existencia
+        existe = verificar_wo_existe(codigo_wo)
+        
+        return jsonify({
+            'success': True,
+            'valido': True,
+            'existe': existe,
+            'mensaje': 'Código válido' if not existe else 'Código válido pero ya existe'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error validando código WO: {str(e)}'
+        }), 500
 
 @app.route('/api/wo/exportar', methods=['GET'])
 @login_requerido
@@ -7483,6 +8180,607 @@ def exportar_wos_excel():
             'success': False,
             'error': f'Error exportando WOs: {str(e)}'
         }), 500
+
+# ======== ENDPOINTS PARA INVENTARIO IMD TERMINADO ========
+
+@app.route('/api/inventario_general', methods=['GET'])
+def api_inventario_general():
+    """Endpoint para inventario general IMD desde tabla inv_resumen_modelo"""
+    try:
+        q = request.args.get("q", "", type=str).strip()
+        stock = request.args.get("stock", "", type=str).strip()  # "", ">0", "=0"
+
+        where_conditions = []
+        params = []
+        
+        if q:
+            where_conditions.append("(modelo LIKE %s OR nparte LIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%"])
+            
+        if stock == ">0":
+            where_conditions.append("stock_total > 0")
+        elif stock == "=0":
+            where_conditions.append("stock_total = 0")
+
+        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+        
+        sql = f"""
+            SELECT
+              modelo,
+              nparte,
+              stock_total,
+              ubicaciones,
+              DATE_FORMAT(ultima_entrada, '%Y-%m-%d %H:%i:%s') AS ultima_entrada,
+              DATE_FORMAT(ultima_salida,  '%Y-%m-%d %H:%i:%s') AS ultima_salida
+            FROM inv_resumen_modelo
+            {where_sql}
+            ORDER BY modelo, nparte
+            LIMIT 2000
+        """
+        
+        results = execute_query(sql, params, fetch='all')
+        
+        return jsonify({
+            'status': 'success',
+            'items': results or []
+        })
+        
+    except Exception as e:
+        print(f"Error en api_inventario_general: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'items': []
+        }), 500
+
+@app.route('/api/ubicacion', methods=['GET'])
+def api_ubicacion():
+    """Endpoint para ubicaciones IMD desde tabla ubicacionimdinv"""
+    try:
+        desde = request.args.get("desde", "", type=str).strip()
+        hasta = request.args.get("hasta", "", type=str).strip()
+        q = request.args.get("q", "", type=str).strip()
+        ubic = request.args.get("ubicacion", "", type=str).strip()
+        carro = request.args.get("carro", "", type=str).strip()
+
+        where_conditions = []
+        params = []
+
+        # Normalizamos fecha: usamos fecha_subida si existe, si no, parseamos 'fecha'
+        fecha_expr = "COALESCE(DATE(fecha), STR_TO_DATE(fecha, '%Y-%m-%d'))"
+
+        if desde:
+            where_conditions.append(f"{fecha_expr} >= %s")
+            params.append(desde)
+        if hasta:
+            where_conditions.append(f"{fecha_expr} <= %s")
+            params.append(hasta)
+        if q:
+            where_conditions.append("(modelo LIKE %s OR nparte LIKE %s OR ubicacion LIKE %s OR carro LIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+        if ubic:
+            where_conditions.append("ubicacion = %s")
+            params.append(ubic)
+        if carro:
+            where_conditions.append("carro = %s")
+            params.append(carro)
+
+        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+        
+        sql = f"""
+            SELECT
+              modelo,
+              nparte,
+              fecha,
+              ubicacion,
+              cantidad,
+              carro
+            FROM ubicacionimdinv
+            {where_sql}
+            ORDER BY {fecha_expr} DESC, modelo, nparte
+            LIMIT 5000
+        """
+        
+        results = execute_query(sql, params, fetch='all')
+        
+        return jsonify({
+            'status': 'success',
+            'items': results or []
+        })
+        
+    except Exception as e:
+        print(f"Error en api_ubicacion: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'items': []
+        }), 500
+
+@app.route('/api/movimientos', methods=['GET'])
+def api_movimientos():
+    """Endpoint para movimientos IMD desde tabla movimientosimd_smd"""
+    try:
+        desde = request.args.get("desde", "", type=str).strip()
+        hasta = request.args.get("hasta", "", type=str).strip()
+        q = request.args.get("q", "", type=str).strip()
+        tipo = request.args.get("tipo", "", type=str).strip()  # ENTRADA / SALIDA / AJUSTE / ""
+
+        print(f"DEBUG: desde={desde}, hasta={hasta}, q={q}, tipo={tipo}")
+
+        where_conditions = []
+        params = []
+        
+        # Filtros de fecha simplificados - usar directamente el campo fecha
+        if desde:
+            where_conditions.append("fecha >= %s")
+            params.append(desde)
+            print(f"DEBUG: Agregando filtro desde: {desde}")
+        if hasta:
+            where_conditions.append("fecha <= %s")
+            params.append(hasta + ' 23:59:59')
+            print(f"DEBUG: Agregando filtro hasta: {hasta}")
+        if tipo:
+            where_conditions.append("UPPER(tipo) = %s")
+            params.append(tipo.upper())
+        if q:
+            # El modelo no está en la tabla de movimientos; lo deducimos con un subquery
+            where_conditions.append("(nparte LIKE %s OR ubicacion LIKE %s OR carro LIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+
+        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+        
+        sql = f"""
+            SELECT
+              fecha AS fecha_hora,
+              UPPER(tipo) AS tipo,
+              nparte,
+              -- Deducimos el modelo de la última ubicación conocida para esa parte
+              (SELECT u.modelo
+                 FROM ubicacionimdinv u
+                WHERE u.nparte = m.nparte
+                ORDER BY u.fecha DESC
+                LIMIT 1) AS modelo,
+              cantidad,
+              ubicacion,
+              carro
+            FROM movimientosimd_smd m
+            {where_sql}
+            ORDER BY fecha DESC
+            LIMIT 5000
+        """
+        
+        print(f"DEBUG: SQL generado: {sql}")
+        print(f"DEBUG: Parámetros: {params}")
+        
+        results = execute_query(sql, params, fetch='all')
+        
+        print(f"DEBUG: Resultados obtenidos: {len(results or [])}")
+        
+        return jsonify({
+            'status': 'success',
+            'items': results or []
+        })
+        
+    except Exception as e:
+        print(f"Error en api_movimientos: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'items': []
+        }), 500
+
+# Ruta temporal para asignar permisos de inventario SMD
+@app.route('/asignar_permisos_smd_temp')
+def asignar_permisos_smd_temp():
+    """Ruta temporal para asignar permisos de inventario SMD al usuario actual"""
+    try:
+        usuario_id = session.get('user_id')
+        if not usuario_id:
+            return "Usuario no autenticado", 401
+        
+        # Obtener el usuario actual
+        usuario = auth_system.obtener_usuario_por_id(usuario_id)
+        if not usuario:
+            return "Usuario no encontrado", 404
+        
+        # Asignar permisos de inventario SMD
+        permisos_smd = [
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Inventario de rollos SMD')
+        ]
+        
+        for pagina, seccion, boton in permisos_smd:
+            auth_system.asignar_permiso_usuario(usuario['username'], pagina, seccion, boton)
+        
+        return f"""
+        <h2>Permisos de Inventario SMD Asignados</h2>
+        <p>Se han asignado los permisos de inventario SMD al usuario: <strong>{usuario['username']}</strong></p>
+        <ul>
+            <li>✅ Inventario de rollos SMD</li>
+        </ul>
+        <p><a href="/">Volver al inicio</a></p>
+        <p><em>Puedes eliminar esta ruta después (/asignar_permisos_smd_temp)</em></p>
+        """
+        
+    except Exception as e:
+        return f"Error asignando permisos: {str(e)}", 500
+
+# ======== API PÚBLICA PARA ANDROID (SIN LOGIN) ========
+
+@app.route('/api/mysql-proxy', methods=['POST', 'GET', 'OPTIONS'])
+def mysql_proxy_api():
+    """
+    API pública para aplicaciones Android - No requiere login
+    Expone funcionalidad similar al mysql-proxy.php
+    """
+    # Manejar preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        return response
+
+    # Headers CORS
+    def add_cors_headers(response):
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        return response
+
+    try:
+        # Obtener datos de la petición
+        if request.method == 'POST':
+            data = request.get_json()
+            if not data or 'sql' not in data:
+                response = jsonify({
+                    'success': False,
+                    'error': 'SQL query is required'
+                })
+                return add_cors_headers(response), 400
+            
+            sql = data.get('sql')
+            params = data.get('params', [])
+        else:
+            # GET request para consultas simples
+            sql = request.args.get('sql')
+            if not sql:
+                response = jsonify({
+                    'success': False,
+                    'error': 'SQL query parameter is required'
+                })
+                return add_cors_headers(response), 400
+            params = []
+
+        # Validación de seguridad: tablas permitidas
+        allowed_tables = [
+            'materiales', 'inventario', 'movimientos_inventario', 'bom',
+            'control_material_almacen', 'control_material_produccion', 
+            'control_calidad', 'usuarios', 'work_orders', 'embarques',
+            'InventarioRollosSMD', 'InventarioRollosIMD', 'InventarioRollosMAIN',
+            'HistorialMovimientosRollosSMD', 'HistorialMovimientosRollosIMD', 
+            'HistorialMovimientosRollosMAIN'
+        ]
+        
+        # Convertir a minúsculas para validación
+        sql_lower = sql.lower()
+        
+        # Prohibir operaciones peligrosas
+        dangerous_operations = ['drop', 'delete', 'truncate', 'alter', 'create']
+        for op in dangerous_operations:
+            if op in sql_lower:
+                response = jsonify({
+                    'success': False,
+                    'error': f'Operación no permitida: {op}'
+                })
+                return add_cors_headers(response), 400
+        
+        # Validar que solo se acceda a tablas permitidas
+        table_found = False
+        for table in allowed_tables:
+            if table.lower() in sql_lower:
+                table_found = True
+                break
+        
+        if not table_found:
+            response = jsonify({
+                'success': False,
+                'error': 'Acceso a tabla no permitido'
+            })
+            return add_cors_headers(response), 400
+
+        # Limitar resultados para SELECT
+        if sql_lower.startswith('select') and 'limit' not in sql_lower:
+            sql += ' LIMIT 1000'
+
+        # Ejecutar consulta usando el sistema existente
+        if sql_lower.startswith('select') or sql_lower.startswith('show'):
+            # Consulta de lectura
+            if params:
+                result = execute_query(sql, params, fetch='all')
+            else:
+                result = execute_query(sql, fetch='all')
+            
+            response_data = {
+                'success': True,
+                'data': result if result else [],
+                'count': len(result) if result else 0
+            }
+        else:
+            # Consulta de escritura (INSERT, UPDATE)
+            if params:
+                affected = execute_query(sql, params)
+            else:
+                affected = execute_query(sql)
+            
+            response_data = {
+                'success': True,
+                'affected_rows': affected if affected else 0,
+                'data': []
+            }
+
+        response = jsonify(response_data)
+        return add_cors_headers(response)
+
+    except Exception as e:
+        print(f" Error en API MySQL Proxy: {e}")
+        response = jsonify({
+            'success': False,
+            'error': f'Error del servidor: {str(e)}'
+        })
+        return add_cors_headers(response), 500
+
+# ===============================
+# � RUTA TEMPORAL PARA MIGRACIÓN DE WO
+# ===============================
+
+@app.route('/admin/eliminar_fk_wo', methods=['GET'])
+@login_requerido
+def eliminar_fk_wo_manual():
+    """Ruta temporal para eliminar foreign key de work_orders manualmente"""
+    try:
+        # Ejecutar comando SQL directamente
+        queries = [
+            "ALTER TABLE work_orders DROP FOREIGN KEY work_orders_ibfk_1",
+            "ALTER TABLE work_orders MODIFY COLUMN codigo_po VARCHAR(32) DEFAULT 'SIN-PO'",
+            "UPDATE work_orders SET codigo_po = 'SIN-PO' WHERE codigo_po IS NULL OR codigo_po = ''"
+        ]
+        
+        resultados = []
+        for query in queries:
+            try:
+                execute_query(query)
+                resultados.append(f"✅ Ejecutado: {query}")
+            except Exception as e:
+                if "doesn't exist" in str(e).lower():
+                    resultados.append(f"ℹ️ FK ya eliminada: {query}")
+                else:
+                    resultados.append(f"⚠️ Error: {query} - {str(e)}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Proceso de eliminación de FK completado',
+            'resultados': resultados
+        })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error eliminando FK: {str(e)}'
+        }), 500
+
+# ===============================
+# �🚀 RUTA SIMPLE PARA ANDROID - mysql-proxy.php
+# ===============================
+
+@app.route('/mysql-proxy.php', methods=['POST', 'GET', 'OPTIONS'])
+def mysql_proxy_php():
+    """
+    Ruta simple para acceder al archivo PHP sin login requerido
+    Compatible con tu aplicación Android existente
+    """
+    try:
+        from flask import send_from_directory
+        import os
+        
+        # Manejar preflight CORS
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'ok'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+            return response
+        
+        # Ruta al archivo PHP
+        php_dir = os.path.join(os.path.dirname(__file__), 'php')
+        php_file = 'mysql-proxy.php'
+        
+        # Verificar que el archivo existe
+        php_path = os.path.join(php_dir, php_file)
+        if not os.path.exists(php_path):
+            return jsonify({
+                'success': False,
+                'error': 'Archivo mysql-proxy.php no encontrado'
+            }), 404
+        
+        print(f"📍 Redirigiendo a: {php_path}")
+        
+        # Servir el archivo PHP directamente
+        return send_from_directory(php_dir, php_file)
+        
+    except Exception as e:
+        print(f"❌ Error sirviendo mysql-proxy.php: {e}")
+        response = jsonify({
+            'success': False,
+            'error': f'Error del servidor: {str(e)}'
+        })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+@app.route('/api/mysql', methods=['POST', 'GET', 'OPTIONS'])
+def api_mysql_simple():
+    """
+    Ruta API simple para consultas MySQL desde Android
+    Sin autenticación requerida - equivalente a tu PHP
+    """
+    try:
+        # Manejar preflight CORS
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'ok'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+            return response
+        
+        # Obtener consulta SQL
+        if request.method == 'POST':
+            data = request.get_json()
+            if not data:
+                return jsonify({
+                    'success': False,
+                    'error': 'No se recibió JSON'
+                }), 400
+            sql_query = data.get('sql', '').strip()
+        else:  # GET
+            sql_query = request.args.get('sql', '').strip()
+        
+        # Si no hay consulta SQL, usar una consulta por defecto para test
+        if not sql_query:
+            sql_query = 'SELECT COUNT(*) as total_materiales FROM materiales'
+            print(f"⚠️ No se proporcionó SQL, usando consulta por defecto: {sql_query}")
+        
+        print(f"🔍 Ejecutando consulta API simple: {sql_query}")
+        
+        # Validaciones básicas de seguridad
+        sql_upper = sql_query.upper()
+        if not sql_upper.startswith('SELECT') and not sql_upper.startswith('SHOW'):
+            return jsonify({
+                'success': False,
+                'error': 'Solo se permiten consultas SELECT y SHOW'
+            }), 403
+        
+        # Ejecutar consulta usando la función existente
+        result = execute_query(sql_query, fetch='all')
+        
+        # Preparar respuesta
+        response_data = {
+            'success': True,
+            'data': result if result else [],
+            'count': len(result) if result else 0
+        }
+        
+        response = jsonify(response_data)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        
+        print(f"✅ API Simple - Consulta exitosa: {len(result) if result else 0} registros")
+        return response
+        
+    except Exception as e:
+        print(f"❌ Error en API MySQL Simple: {e}")
+        
+        error_response = jsonify({
+            'success': False,
+            'error': str(e)
+        })
+        error_response.headers.add('Access-Control-Allow-Origin', '*')
+        return error_response, 500
+
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """
+    Endpoint simple para verificar el estado de la API
+    """
+    try:
+        response_data = {
+            'success': True,
+            'status': 'API funcionando correctamente',
+            'endpoints': [
+                '/api/mysql - Consultas SQL directas',
+                '/api/mysql-proxy - Proxy MySQL compatible',
+                '/mysql-proxy.php - Archivo PHP original'
+            ],
+            'database': 'MySQL conectado',
+            'timestamp': str(datetime.now())
+        }
+        
+        response = jsonify(response_data)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+        
+    except Exception as e:
+        error_response = jsonify({
+            'success': False,
+            'error': str(e)
+        })
+        error_response.headers.add('Access-Control-Allow-Origin', '*')
+        return error_response, 500
+
+# ========================================
+# ENDPOINTS PARA PLAN SMD Y PLAN MICOM
+# ========================================
+
+@app.route('/api/plan-smd', methods=['GET'])
+@login_requerido
+def api_plan_smd_consultar():
+    """API para consultar plan SMD con filtros"""
+    try:
+        # Obtener parámetros de consulta
+        q = request.args.get('q', '').strip()
+        desde = request.args.get('desde', '').strip()
+        hasta = request.args.get('hasta', '').strip()
+        linea = request.args.get('linea', '').strip()
+        turno = request.args.get('turno', '').strip()
+        tipo = request.args.get('tipo', '').strip()
+        
+        # Construir consulta base
+        query = """
+        SELECT id, linea, lote, nparte, modelo, tipo, turno, ct, uph, qty, 
+               fisico, falta, pct, comentarios, fecha_creacion, usuario_creacion
+        FROM plan_smd 
+        WHERE 1=1
+        """
+        params = []
+        
+        # Aplicar filtros
+        if q:
+            query += """ AND (
+                lote LIKE %s OR nparte LIKE %s OR modelo LIKE %s OR 
+                usuario_creacion LIKE %s OR comentarios LIKE %s
+            )"""
+            search_term = f"%{q}%"
+            params.extend([search_term, search_term, search_term, search_term, search_term])
+        
+        if desde:
+            query += " AND DATE(fecha_creacion) >= %s"
+            params.append(desde)
+        
+        if hasta:
+            query += " AND DATE(fecha_creacion) <= %s"
+            params.append(hasta)
+        
+        if linea:
+            query += " AND linea = %s"
+            params.append(linea)
+        
+        if turno:
+            query += " AND turno = %s"
+            params.append(turno)
+        
+        if tipo:
+            query += " AND tipo = %s"
+            params.append(tipo)
+        
+        query += " ORDER BY fecha_creacion DESC, linea, lote"
+        
+        # Ejecutar consulta
+        result = execute_query(query, params, fetch='all')
+        
+        return jsonify(result if result else [])
+        
+    except Exception as e:
+        print(f"❌ Error consultando plan SMD: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plan-smd/import', methods=['POST'])
 @login_requerido
@@ -7710,370 +9008,3 @@ def api_plan_micom_generar():
     except Exception as e:
         print(f"❌ Error generando plan MICOM: {e}")
         return jsonify({'error': str(e)}), 500
-
-# ============================================================================
-# RUTAS PARA CONTROL DE CALIDAD
-# ============================================================================
-
-@app.route('/control-resultado-reparacion-ajax')
-@login_requerido
-def control_resultado_reparacion_ajax():
-    """Template para Control de resultado de reparación"""
-    return render_template('Control de calidad/control_resultado_reparacion_ajax.html')
-
-@app.route('/control-item-reparado-ajax')
-@login_requerido
-def control_item_reparado_ajax():
-    """Template para Control de item reparado"""
-    return render_template('Control de calidad/control_item_reparado_ajax.html')
-
-@app.route('/historial-cambio-material-maquina-ajax')
-@login_requerido
-def historial_cambio_material_maquina_ajax():
-    """Template para Historial de cambio de material por máquina"""
-    return render_template('Control de calidad/historial_cambio_material_maquina_ajax.html')
-
-@app.route('/historial-uso-pegamento-soldadura-ajax')
-@login_requerido
-def historial_uso_pegamento_soldadura_ajax():
-    """Template para Historial de uso de pegamento de soldadura"""
-    return render_template('Control de calidad/historial_uso_pegamento_soldadura_ajax.html')
-
-@app.route('/historial-uso-mask-metal-ajax')
-@login_requerido
-def historial_uso_mask_metal_ajax():
-    """Template para Historial de uso de mask de metal"""
-    return render_template('Control de calidad/historial_uso_mask_metal_ajax.html')
-
-@app.route('/historial-uso-squeegee-ajax')
-@login_requerido
-def historial_uso_squeegee_ajax():
-    """Template para Historial de uso de squeegee"""
-    return render_template('Control de calidad/historial_uso_squeegee_ajax.html')
-
-@app.route('/process-interlock-history-ajax')
-@login_requerido
-def process_interlock_history_ajax():
-    """Template para Process interlock History"""
-    return render_template('Control de calidad/process_interlock_history_ajax.html')
-
-@app.route('/control-master-sample-smt-ajax')
-@login_requerido
-def control_master_sample_smt_ajax():
-    """Template para Control de Master Sample de SMT"""
-    return render_template('Control de calidad/control_master_sample_smt_ajax.html')
-
-@app.route('/historial-inspeccion-master-sample-smt-ajax')
-@login_requerido
-def historial_inspeccion_master_sample_smt_ajax():
-    """Template para Historial de inspección de Master Sample de SMT"""
-    return render_template('Control de calidad/historial_inspeccion_master_sample_smt_ajax.html')
-
-@app.route('/control-inspeccion-oqc-ajax')
-@login_requerido
-def control_inspeccion_oqc_ajax():
-    """Template para Control de inspección de OQC"""
-    return render_template('Control de calidad/control_inspeccion_oqc_ajax.html')
-
-# ============================================================================
-# CONTROL DE MATERIAL - RUTAS AJAX
-# ============================================================================
-
-@app.route('/ajuste-numero-parte-ajax')
-@login_requerido
-def ajuste_numero_parte_ajax():
-    """Template para Ajuste de número de parte"""
-    return render_template('Control de material/ajuste_numero_parte_ajax.html')
-
-@app.route('/consultar-peps-ajax')
-@login_requerido
-def consultar_peps_ajax():
-    """Template para Consultar PEPS"""
-    return render_template('Control de material/consultar_peps_ajax.html')
-
-@app.route('/control-almacen-ajax')
-@login_requerido
-def control_almacen_ajax():
-    """Template para Control de almacén"""
-    return render_template('Control de material/control_almacen_ajax.html')
-
-@app.route('/control-entrada-salida-material-ajax')
-@login_requerido
-def control_entrada_salida_material_ajax():
-    """Template para Control de entrada y salida de material"""
-    return render_template('Control de material/control_entrada_salida_material_ajax.html')
-
-@app.route('/control-recibo-refacciones-ajax')
-@login_requerido
-def control_recibo_refacciones_ajax():
-    """Template para Control de recibo de refacciones"""
-    return render_template('Control de material/control_recibo_refacciones_ajax.html')
-
-@app.route('/control-retorno-ajax')
-@login_requerido
-def control_retorno_ajax():
-    """Template para Control de retorno"""
-    return render_template('Control de material/control_retorno_ajax.html')
-
-@app.route('/control-salida-ajax')
-@login_requerido
-def control_salida_ajax():
-    """Template para Control de salida"""
-    return render_template('Control de material/control_salida_ajax.html')
-
-@app.route('/control-salida-refacciones-ajax')
-@login_requerido
-def control_salida_refacciones_ajax():
-    """Template para Control de salida de refacciones"""
-    return render_template('Control de material/control_salida_refacciones_ajax.html')
-
-@app.route('/control-total-material-ajax')
-@login_requerido
-def control_total_material_ajax():
-    """Template para Control total de material"""
-    return render_template('Control de material/control_total_material_ajax.html')
-
-@app.route('/estandares-refacciones-ajax')
-@login_requerido
-def estandares_refacciones_ajax():
-    """Template para Estándares de refacciones"""
-    return render_template('Control de material/estandares_refacciones_ajax.html')
-
-@app.route('/estatus-inventario-refacciones-ajax')
-@login_requerido
-def estatus_inventario_refacciones_ajax():
-    """Template para Estatus de inventario de refacciones"""
-    return render_template('Control de material/estatus_inventario_refacciones_ajax.html')
-
-@app.route('/estatus-material-ajax')
-@login_requerido
-def estatus_material_ajax():
-    """Template para Estatus de material"""
-    return render_template('Control de material/estatus_material_ajax.html')
-
-@app.route('/estatus-material-msl-ajax')
-@login_requerido
-def estatus_material_msl_ajax():
-    """Template para Estatus de material MSL"""
-    return render_template('Control de material/estatus_material_msl_ajax.html')
-
-@app.route('/historial-inventario-real-ajax')
-@login_requerido
-def historial_inventario_real_ajax():
-    """Template para Historial de inventario real"""
-    return render_template('Control de material/historial_inventario_real_ajax.html')
-
-@app.route('/historial-material-ajax')
-@login_requerido
-def historial_material_ajax():
-    """Template para Historial de material"""
-    return render_template('Control de material/historial_material_ajax.html')
-
-@app.route('/inventario-rollos-smd-ajax')
-@login_requerido
-def inventario_rollos_smd_ajax():
-    """Template para Inventario de rollos SMD"""
-    return render_template('Control de material/inventario_rollos_smd_ajax.html')
-
-@app.route('/longterm-inventory-ajax')
-@login_requerido
-def longterm_inventory_ajax():
-    """Template para Inventario a largo plazo"""
-    return render_template('Control de material/longterm_inventory_ajax.html')
-
-@app.route('/material-sustituto-ajax')
-@login_requerido
-def material_sustituto_ajax():
-    """Template para Material sustituto"""
-    return render_template('Control de material/material_sustituto_ajax.html')
-
-@app.route('/recibo-pago-material-ajax')
-@login_requerido
-def recibo_pago_material_ajax():
-    """Template para Recibo y pago de material"""
-    return render_template('Control de material/recibo_pago_material_ajax.html')
-
-@app.route('/registro-material-real-ajax')
-@login_requerido
-def registro_material_real_ajax():
-    """Template para Registro de material real"""
-    return render_template('Control de material/registro_material_real_ajax.html')
-
-# ======== ENDPOINTS PARA INVENTARIO IMD TERMINADO ========
-
-@app.route('/api/inventario_general', methods=['GET'])
-def api_inventario_general():
-    """Endpoint para inventario general IMD desde tabla inv_resumen_modelo"""
-    try:
-        q = request.args.get("q", "", type=str).strip()
-        stock = request.args.get("stock", "", type=str).strip()  # "", ">0", "=0"
-
-        where_conditions = []
-        params = []
-        
-        if q:
-            where_conditions.append("(modelo LIKE %s OR nparte LIKE %s)")
-            params.extend([f"%{q}%", f"%{q}%"])
-            
-        if stock == ">0":
-            where_conditions.append("stock_total > 0")
-        elif stock == "=0":
-            where_conditions.append("stock_total = 0")
-
-        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
-        
-        sql = f"""
-            SELECT
-              modelo,
-              nparte,
-              stock_total,
-              ubicaciones,
-              DATE_FORMAT(ultima_entrada, '%Y-%m-%d %H:%i:%s') AS ultima_entrada,
-              DATE_FORMAT(ultima_salida,  '%Y-%m-%d %H:%i:%s') AS ultima_salida
-            FROM inv_resumen_modelo
-            {where_sql}
-            ORDER BY modelo, nparte
-            LIMIT 2000
-        """
-        
-        results = execute_query(sql, params, fetch='all')
-        
-        return jsonify({
-            'status': 'success',
-            'items': results or []
-        })
-        
-    except Exception as e:
-        print(f"Error en api_inventario_general: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'items': []
-        }), 500
-
-@app.route('/api/ubicacion', methods=['GET'])
-def api_ubicacion():
-    """Endpoint para ubicaciones IMD desde tabla ubicacionimdinv"""
-    try:
-        desde = request.args.get("desde", "", type=str).strip()
-        hasta = request.args.get("hasta", "", type=str).strip()
-        q = request.args.get("q", "", type=str).strip()
-        ubic = request.args.get("ubicacion", "", type=str).strip()
-        carro = request.args.get("carro", "", type=str).strip()
-
-        where_conditions = []
-        params = []
-
-        # Normalizamos fecha: usamos fecha_subida si existe, si no, parseamos 'fecha'
-        fecha_expr = "COALESCE(DATE(fecha), STR_TO_DATE(fecha, '%Y-%m-%d'))"
-
-        if desde:
-            where_conditions.append(f"{fecha_expr} >= %s")
-            params.append(desde)
-        if hasta:
-            where_conditions.append(f"{fecha_expr} <= %s")
-            params.append(hasta)
-        if q:
-            where_conditions.append("(modelo LIKE %s OR nparte LIKE %s OR ubicacion LIKE %s OR carro LIKE %s)")
-            params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
-        if ubic:
-            where_conditions.append("ubicacion = %s")
-            params.append(ubic)
-        if carro:
-            where_conditions.append("carro = %s")
-            params.append(carro)
-
-        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
-        
-        sql = f"""
-            SELECT
-              modelo,
-              nparte,
-              fecha,
-              ubicacion,
-              cantidad,
-              carro
-            FROM ubicacionimdinv
-            {where_sql}
-            ORDER BY {fecha_expr} DESC, modelo, nparte
-            LIMIT 5000
-        """
-        
-        results = execute_query(sql, params, fetch='all')
-        
-        return jsonify({
-            'status': 'success',
-            'items': results or []
-        })
-        
-    except Exception as e:
-        print(f"Error en api_ubicacion: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'items': []
-        }), 500
-
-@app.route('/api/movimientos', methods=['GET'])
-def api_movimientos():
-    """Endpoint para movimientos IMD desde tabla movimientosimd_smd"""
-    try:
-        desde = request.args.get("desde", "", type=str).strip()
-        hasta = request.args.get("hasta", "", type=str).strip()
-        q = request.args.get("q", "", type=str).strip()
-        tipo = request.args.get("tipo", "", type=str).strip()  # ENTRADA / SALIDA / AJUSTE / ""
-
-        where_conditions = []
-        params = []
-        
-        # Filtros de fecha simplificados - usar directamente el campo fecha
-        if desde:
-            where_conditions.append("fecha >= %s")
-            params.append(desde)
-        if hasta:
-            where_conditions.append("fecha <= %s")
-            params.append(hasta + ' 23:59:59')
-        if tipo:
-            where_conditions.append("UPPER(tipo) = %s")
-            params.append(tipo.upper())
-        if q:
-            # El modelo no está en la tabla de movimientos; lo deducimos con un subquery
-            where_conditions.append("(nparte LIKE %s OR ubicacion LIKE %s OR carro LIKE %s)")
-            params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
-
-        where_sql = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
-        
-        sql = f"""
-            SELECT
-              fecha AS fecha_hora,
-              UPPER(tipo) AS tipo,
-              nparte,
-              -- Deducimos el modelo de la última ubicación conocida para esa parte
-              (SELECT u.modelo
-                 FROM ubicacionimdinv u
-                WHERE u.nparte = m.nparte
-                ORDER BY u.fecha DESC
-                LIMIT 1) AS modelo,
-              cantidad,
-              ubicacion,
-              carro
-            FROM movimientosimd_smd m
-            {where_sql}
-            ORDER BY fecha DESC
-            LIMIT 5000
-        """
-        
-        results = execute_query(sql, params, fetch='all')
-        
-        return jsonify({
-            'status': 'success',
-            'items': results or []
-        })
-        
-    except Exception as e:
-        print(f"Error en api_movimientos: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'items': []
-        }), 500
