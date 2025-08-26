@@ -1845,13 +1845,9 @@ body {
 [id*="-UniqueContainer"],
 [class*="-unique-container"],
 [class*="-UniqueContainer"] {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
     max-height: calc(100vh - var(--header-height) - 20px) !important;
-    padding: 10px !important;
     background-color: #2B2D3E !important;
     border-radius: 4px !important;
-    border: 1px solid #3C3F51 !important;
     margin-top: 5px !important;
 }
 
