@@ -11,11 +11,13 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de item de reparacion" 
-                            data-permiso-boton="Control de resultado de reparacion">Control de resultado de reparacion</li>
+                            data-permiso-boton="Control de resultado de reparacion"
+                            onclick="window.parent.mostrarControlResultadoReparacion ? window.parent.mostrarControlResultadoReparacion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-resultado-reparacion-ajax') : window.location.href='/control-resultado-reparacion-ajax')">Control de resultado de reparacion</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de item de reparacion" 
-                            data-permiso-boton="Control de item reparado">Control de item reparado</li>
+                            data-permiso-boton="Control de item reparado"
+                            onclick="window.parent.mostrarControlItemReparado ? window.parent.mostrarControlItemReparado() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-item-reparado-ajax') : window.location.href='/control-item-reparado-ajax')">Control de item reparado</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -33,7 +35,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de material" 
-                            data-permiso-boton="Historial de cambio de material por maquina">Historial de cambio de material por maquina</li> 
+                            data-permiso-boton="Historial de cambio de material por maquina"
+                            onclick="window.parent.mostrarHistorialCambioMaterialMaquina ? window.parent.mostrarHistorialCambioMaterialMaquina() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-cambio-material-maquina-ajax') : window.location.href='/historial-cambio-material-maquina-ajax')">Historial de cambio de material por maquina</li> 
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -46,15 +49,18 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de Sub Material" 
-                            data-permiso-boton="Historial de uso de pegamento de soldadura">Historial de uso de pegamento de soldadura</li>
+                            data-permiso-boton="Historial de uso de pegamento de soldadura"
+                            onclick="window.parent.mostrarHistorialUsoPegamentoSoldadura ? window.parent.mostrarHistorialUsoPegamentoSoldadura() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-uso-pegamento-soldadura-ajax') : window.location.href='/historial-uso-pegamento-soldadura-ajax')">Historial de uso de pegamento de soldadura</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de Sub Material" 
-                            data-permiso-boton="Historial de uso de mask de metal">Historial de uso de mask de metal</li>
+                            data-permiso-boton="Historial de uso de mask de metal"
+                            onclick="window.parent.mostrarHistorialUsoMaskMetal ? window.parent.mostrarHistorialUsoMaskMetal() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-uso-mask-metal-ajax') : window.location.href='/historial-uso-mask-metal-ajax')">Historial de uso de mask de metal</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Historial de Sub Material" 
-                            data-permiso-boton="Historial de uso de squeeguee">Historial de uso de squeeguee</li>
+                            data-permiso-boton="Historial de uso de squeegee"
+                            onclick="window.parent.mostrarHistorialUsoSqueegee ? window.parent.mostrarHistorialUsoSqueegee() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-uso-squeegee-ajax') : window.location.href='/historial-uso-squeegee-ajax')">Historial de uso de squeegee</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -67,7 +73,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Interlock History" 
-                            data-permiso-boton="Process interlock History">Process interlock History</li>
+                            data-permiso-boton="Process interlock History"
+                            onclick="window.parent.mostrarProcessInterlockHistory ? window.parent.mostrarProcessInterlockHistory() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/process-interlock-history-ajax') : window.location.href='/process-interlock-history-ajax')">Process interlock History</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -80,11 +87,13 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de Master Sample de SMT" 
-                            data-permiso-boton="Control de Master Sample de SMT">Control de Master Sample de SMT</li>
+                            data-permiso-boton="Control de Master Sample de SMT"
+                            onclick="window.parent.mostrarControlMasterSampleSMT ? window.parent.mostrarControlMasterSampleSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-master-sample-smt-ajax') : window.location.href='/control-master-sample-smt-ajax')">Control de Master Sample de SMT</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Control de Master Sample de SMT" 
-                            data-permiso-boton="Historial de inspeccion de Master Sample de SMT">Historial de inspeccion de Master Sample de SMT</li>
+                            data-permiso-boton="Historial de inspeccion de Master Sample de SMT"
+                            onclick="window.parent.mostrarHistorialInspeccionMasterSampleSMT ? window.parent.mostrarHistorialInspeccionMasterSampleSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-inspeccion-master-sample-smt-ajax') : window.location.href='/historial-inspeccion-master-sample-smt-ajax')">Historial de inspeccion de Master Sample de SMT</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -97,7 +106,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
                             data-permiso-seccion="Inspeccion de calidad" 
-                            data-permiso-boton="Control de inspeccion de OQC">Control de inspeccion de OQC</li>
+                            data-permiso-boton="Control de inspeccion de OQC"
+                            onclick="window.parent.mostrarControlInspeccionOQC ? window.parent.mostrarControlInspeccionOQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-inspeccion-oqc-ajax') : window.location.href='/control-inspeccion-oqc-ajax')">Control de inspeccion de OQC</li>
                 </ul>
             </li>
         </ul>

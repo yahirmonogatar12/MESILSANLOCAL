@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>AOI · Reporte por Turno</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* ====== Estilos AOI inspirados en control_bom.css con IDs únicos ====== */
+#aoi-root {
+    font-family: 'LG regular', sans-serif;
+    background-color: #32323E;
+    color: lightgray;
+    min-height: 100vh;
+    margin: 0;
+    padding: 12px;
+}
+
+#aoi-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #34334E;
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+#aoi-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ecf0f1;
+}
+
+#aoi-now {
+    font-size: 12px;
+    color: #3498db;
+    margin-left: auto;
+}
+
+/* Toolbars */
+#aoi-toolbar-rt, #aoi-toolbar-day {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #34334E;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+#aoi-shift-badge {
+    margin-left: auto;
+    background-color: #20688C;
+    color: #fff;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+}
+
+/* Botones */
+#aoi-btn-refresh, #aoi-btn-query {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #3C3940;
+    border: 1px solid #20688C;
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+#aoi-btn-refresh:hover, #aoi-btn-query:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+#aoi-date {
+    background-color: #2c3e50;
+    color: lightgray;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+    transition: border-color 0.3s;
+}
+
+#aoi-date:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Layout */
+#aoi-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* Cards */
+#aoi-card-rt, #aoi-card-day {
+    flex: 1 1 520px;
+    background-color: #40424F;
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    min-width: 320px;
+}
+
+#aoi-card-rt h3, #aoi-card-day h3 {
+    margin: 0;
+    padding: 12px 15px;
+    background-color: #172A46;
+    border-bottom: 1px solid #20688C;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ecf0f1;
+}
+
+#aoi-wrap-rt, #aoi-wrap-day {
+    overflow: auto;
+    max-height: 400px;
+}
+
+/* Tablas */
+#aoi-table-rt, #aoi-table-day {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 11px;
+    background-color: #40424F;
+    table-layout: fixed;
+}
+
+#aoi-table-rt thead th, #aoi-table-day thead th {
+    background-color: #172A46;
+    color: #ecf0f1;
+    padding: 10px 8px;
+    text-align: center;
+    border: 1px solid #20688C;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 10px;
+    line-height: 1.1;
+}
+
+#aoi-table-rt tbody td, #aoi-table-day tbody td {
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid #5F6375;
+    background-color: #40424F;
+    color: lightgray;
+    transition: background-color 0.3s;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+#aoi-table-rt tbody tr:hover td, #aoi-table-day tbody tr:hover td {
+    background-color: #485563;
+}
+
+#aoi-table-rt tbody tr:nth-child(even) td, #aoi-table-day tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+#aoi-table-rt tbody tr:nth-child(even):hover td, #aoi-table-day tbody tr:nth-child(even):hover td {
+    background-color: #485563;
+}
+
+/* Totales */
+#aoi-rt-total, #aoi-day-total {
+    padding: 10px 15px;
+    text-align: right;
+    color: #3498db;
+    font-size: 12px;
+    font-weight: 600;
+    background-color: #34334E;
+    border-top: 1px solid #20688C;
+}
+
+/* Mensajes vacíos */
+#aoi-empty {
+    text-align: center;
+    padding: 20px;
+    color: #95a5a6;
+    font-style: italic;
+    background-color: #40424F;
+    font-size: 11px;
+}
+
+.aoi-no-data {
+    text-align: center;
+    padding: 20px;
+    color: #95a5a6;
+    font-style: italic;
+    background-color: #40424F;
+    font-size: 11px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #aoi-root {
+        padding: 8px;
+    }
+
+    #aoi-header {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+
+    #aoi-title {
+        font-size: 16px;
+    }
+
+    #aoi-now {
+        margin-left: 0;
+        font-size: 11px;
+    }
+
+    #aoi-toolbar-rt, #aoi-toolbar-day {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    #aoi-shift-badge {
+        margin-left: 0;
+        align-self: flex-start;
+    }
+
+    #aoi-btn-refresh, #aoi-btn-query {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+
+    #aoi-date {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    #aoi-layout {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    #aoi-card-rt, #aoi-card-day {
+        min-width: 100%;
+    }
+
+    #aoi-wrap-rt, #aoi-wrap-day {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #aoi-table-rt, #aoi-table-day {
+        min-width: 600px;
+        font-size: 10px;
+    }
+
+    #aoi-table-rt thead th, #aoi-table-day thead th {
+        font-size: 9px;
+        padding: 8px 4px;
+    }
+
+    #aoi-table-rt tbody td, #aoi-table-day tbody td {
+        font-size: 9px;
+        padding: 6px 4px;
+    }
+
+    #aoi-rt-total, #aoi-day-total {
+        font-size: 11px;
+        text-align: center;
+    }
+
+    #aoi-shift-badge {
+        display: none;
+    }
+}
+
+/* Para pantallas muy pequeñas */
+@media (max-width: 480px) {
+    #aoi-root {
+        padding: 5px;
+    }
+
+    #aoi-header {
+        padding: 10px;
+    }
+
+    #aoi-title {
+        font-size: 14px;
+    }
+
+    #aoi-toolbar-rt, #aoi-toolbar-day {
+        padding: 10px;
+    }
+
+    #aoi-btn-refresh, #aoi-btn-query {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    #aoi-table-rt, #aoi-table-day {
+        font-size: 9px;
+    }
+
+    #aoi-table-rt thead th, #aoi-table-day thead th {
+        font-size: 8px;
+        padding: 6px 2px;
+    }
+
+    #aoi-table-rt tbody td, #aoi-table-day tbody td {
+        font-size: 8px;
+        padding: 5px 2px;
+    }
+
+    #aoi-rt-total, #aoi-day-total {
+        font-size: 10px;
+        padding: 8px;
+    }
+}
+</style>
+</head>
+<body id="aoi-root">
+  <div id="aoi-header">
+    <div id="aoi-title">AOI · Producción por Turno</div>
+    <div id="aoi-now">—</div>
+  </div>
+
+  <div id="aoi-toolbar-rt">
+    <button id="aoi-btn-refresh">Actualizar</button>
+    <span>Tabla 1: Turno en tiempo real</span>
+    <span id="aoi-shift-badge">—</span>
+  </div>
+
+  <div id="aoi-layout">
+    <div id="aoi-card-rt">
+      <h3>Turno actual — <span id="aoi-shift-title">—</span></h3>
+      <div id="aoi-wrap-rt">
+        <table id="aoi-table-rt">
+          <thead><tr>
+            <th>LÍNEA</th><th>MODELO</th><th>LADO</th><th>CANTIDAD</th>
+          </tr></thead>
+          <tbody id="aoi-rt-body"><tr><td colspan="4" id="aoi-empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="aoi-rt-total">—</div>
+    </div>
+  </div>
+
+  <div id="aoi-toolbar-day">
+    <input type="date" id="aoi-date">
+    <button id="aoi-btn-query">Consultar día</button>
+    <span>Tabla 2: Resumen por día (día lógico de turno)</span>
+  </div>
+
+  <div id="aoi-card-day">
+    <h3>Día — <span id="aoi-day-title">—</span></h3>
+    <div id="aoi-wrap-day">
+      <table id="aoi-table-day">
+        <thead><tr>
+          <th>FECHA</th><th>LÍNEA</th><th>TURNO</th><th>MODELO</th><th>LADO</th><th>CANTIDAD</th>
+        </tr></thead>
+        <tbody id="aoi-day-body"><tr><td colspan="6" id="aoi-empty">Selecciona una fecha</td></tr></tbody>
+      </table>
+    </div>
+    <div id="aoi-day-total">—</div>
+  </div>
+
+<script>
+const fmt = n => new Intl.NumberFormat('es-MX').format(n);
+
+function paintTableByOrder(tbodyId, rows, order){
+  const tb = document.getElementById(tbodyId);
+  tb.innerHTML='';
+  if(!rows || rows.length===0){
+    tb.innerHTML = `<tr><td colspan="${order.length}" id="aoi-empty">Sin registros</td></tr>`;
+    return;
+  }
+  for(const r of rows){
+    const tr=document.createElement('tr');
+    for(const k of order){
+      const td=document.createElement('td');
+      const v=r[k];
+      td.textContent = (k==='cantidad') ? fmt(v) : v;
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  }
+}
+
+async function j(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+function todayISO(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;}
+
+async function loadRealtime(){
+  const meta = await j('/api/shift-now');
+  document.getElementById('aoi-now').textContent = new Date(meta.now).toLocaleString();
+  document.getElementById('aoi-shift-badge').textContent = `${meta.shift} • ${meta.shift_date}`;
+  document.getElementById('aoi-shift-title').textContent = `${meta.shift} | ${meta.shift_date}`;
+
+  const data = await j('/api/realtime');
+  paintTableByOrder('aoi-rt-body', data.rows, ['linea','modelo','lado','cantidad']);
+  const total = data.rows.reduce((s,r)=>s+(+r.cantidad||0),0);
+  document.getElementById('aoi-rt-total').textContent = 'Total turno: ' + fmt(total);
+}
+
+async function loadDay(d){
+  document.getElementById('aoi-day-title').textContent = d;
+  const data = await j('/api/day?date='+encodeURIComponent(d));
+  paintTableByOrder('aoi-day-body', data.rows, ['fecha','linea','turno','modelo','lado','cantidad']);
+  const total = data.rows.reduce((s,r)=>s+(+r.cantidad||0),0);
+  document.getElementById('aoi-day-total').textContent = 'Total día: ' + fmt(total);
+}
+
+document.getElementById('aoi-btn-refresh').addEventListener('click', loadRealtime);
+document.getElementById('aoi-btn-query').addEventListener('click', ()=> {
+  const d = document.getElementById('aoi-date').value;
+  if(d) loadDay(d);
+});
+
+document.getElementById('aoi-date').value = todayISO();
+loadRealtime();
+setInterval(loadRealtime, 15000);
+
+// Auto-inicialización del módulo
+(function() {
+    console.log('Inicializando Historial AOI AJAX...');
+    
+    window.inicializarHistorialAOI = function() {
+        // Lógica de inicialización del módulo
+        console.log('Historial AOI AJAX inicializado');
+        
+        // Cargar datos iniciales
+        loadRealtime();
+    };
+    
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarHistorialAOI);
+    } else {
+        window.inicializarHistorialAOI();
+    }
+})();
+</script>
+</body>
+</html>

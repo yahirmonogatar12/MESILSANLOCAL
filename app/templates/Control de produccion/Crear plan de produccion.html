@@ -4,8 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Work Orders (WO)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/plan_produccion.css') }}">
     <style>
         /* Estilos específicos para Control de BOM */
+
+        /* Estilos para badges de estado */
+        .estado-badge {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: bold;
+            text-align: center;
+            display: inline-block;
+            min-width: 50px;
+        }
+        
+        .estado-creada {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .estado-planificada {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .estado-en_produccion {
+            background-color: #27ae60;
+            color: white;
+        }
+        
+        .estado-cerrada {
+            background-color: #95a5a6;
+            color: white;
+        }
 
         /* Contenedor principal */
         #bomMainContainer {
@@ -190,7 +222,7 @@
         #bomTable th {
             background-color: #172A46;
             color: #ecf0f1;
-            padding: 4px 3px;
+            padding: 4px 6px;
             text-align: center;
             border: 1px solid #20688C;
             font-weight: 600;
@@ -258,7 +290,7 @@
         }
 
         #bomTable td {
-            padding: 3px 2px;
+            padding: 4px 6px;
             text-align: center;
             border: 1px solid #5F6375;
             background-color: #40424F;
@@ -439,9 +471,9 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             position: fixed;
             right: 20px;
-            top: 50px;
+            top: 120px;
             width: 350px;
-            z-index: 1000;
+            z-index: 10001;
         }
 
         #woFormContainer h3 {
@@ -801,7 +833,7 @@
                 <div class="wo-form-field">
                     <label>Modelo</label>
                     <div class="bom-search-container">
-                        <input type="text" class="bom-search-dropdown" id="woModelo" placeholder="Seleccione un modelo" onkeyup="filtrarModelosWO()" onclick="mostrarDropdownWO()" required />
+                        <input type="text" class="bom-search-dropdown" id="woModelo" placeholder="Seleccione un modelo" onkeyup="filtrarModelosWO()" onfocus="mostrarDropdownWO()" required />
                         <div class="bom-dropdown-list" id="woDropdownList" style="display: none;">
                             <!-- Los modelos se cargarán dinámicamente -->
                         </div>
@@ -837,15 +869,16 @@
                         <th id="thCheckAll2" style="width: 40px;">
                             <input type="checkbox" id="checkAll2">
                         </th>
-                        <th id="thCodigoWO" style="width: 120px;">Código de WO</th>
-                        <th id="thFechaOperacion" style="width: 110px;">Fecha de operación</th>
-                        <th id="thCodigoModelo" style="width: 140px;">Código de modelo</th>
-                        <th id="thNombreModelo" style="width: 130px;">Nombre de modelo</th>
-                        <th id="thCantidadPlaneada" style="width: 110px;">Cantidad planeada</th>
-                        <th id="thCodigoPO" style="width: 130px;">Código de PO</th>
-                        <th id="thAcciones" style="width: 120px;">Acciones</th>
-                        <th id="thModificador" style="width: 120px;">Modificador</th>
-                        <th id="thFechaModificacion" style="width: 140px;">Fecha de modificación</th>
+                        <th id="thCodigoWO" style="width: 90px;">Código de WO</th>
+                        <th id="thEstado" style="width: 80px;">Estado</th>
+                        <th id="thFechaOperacion" style="width: 100px;">Fecha de operación</th>
+                        <th id="thCodigoModelo" style="width: 80px;">Nombre de Modelo</th>
+                        <th id="thNombreModelo" style="width: 100px;">Numero de parte</th>
+                        <th id="thCantidadPlaneada" style="width: 80px;">Cantidad planeada</th>
+                        <th id="thCodigoPO" style="width: 80px;">Código de PO</th>
+                        <th id="thAcciones" style="width: 104px;">Acciones</th>
+                        <th id="thModificador" style="width: 80px;">Modificador</th>
+                        <th id="thFechaModificacion" style="width: 100px;">Fecha de modificación</th>
                         <th id="thExpand" style="width: 40px;">▼</th>
                     </tr>
                 </thead>
@@ -878,6 +911,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('✅ Fechas configuradas al día actual:', hoy);
 });
+
+// Variable global para el usuario logueado
+window.usuarioLogueado = '{{ usuario_logueado }}';
 </script>
 <script src="{{ url_for('static', filename='js/crear-plan-produccion.js') }}"></script>
 

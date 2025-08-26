@@ -15,13 +15,30 @@
         // Mostrar formulario de WO - FUNCIÓN CRÍTICA
         async function mostrarFormularioWO() {
             console.log('mostrarFormularioWO llamada');
-            document.getElementById('woFormContainer').style.display = 'block';
-            document.getElementById('btnCrearWO').style.display = 'none';
-            generarCodigoWO();
+            
+            const woFormContainer = document.getElementById('woFormContainer');
+            const btnCrearWO = document.getElementById('btnCrearWO');
+            
+            if (woFormContainer) {
+                woFormContainer.style.display = 'block';
+            } else {
+                console.error('❌ Elemento woFormContainer no encontrado');
+            }
+            
+            if (btnCrearWO) {
+                btnCrearWO.style.display = 'none';
+            } else {
+                console.warn('⚠️ Elemento btnCrearWO no encontrado (puede ser normal)');
+            }
+            
+            // Generar código WO con un pequeño delay para asegurar que el DOM esté listo
+            setTimeout(() => {
+                generarCodigoWO();
+            }, 100);
             
             // Siempre cargar modelos para asegurar que estén disponibles
             console.log('Cargando modelos BOM...');
-            await cargarModelosBOM();
+            // await cargarModelosBOM(); // Función no utilizada - comentada para evitar error 404
             
             // Verificar que el dropdown esté inicializado correctamente
             setTimeout(() => {
@@ -41,17 +58,30 @@
         }
 
         // Generar código de WO automáticamente
-        function generarCodigoWO() {
-            const hoy = new Date();
-            const year = hoy.getFullYear().toString().slice(-2);
-            const month = (hoy.getMonth() + 1).toString().padStart(2, '0');
-            const day = hoy.getDate().toString().padStart(2, '0');
+        async function generarCodigoWO() {
+            console.log('🔧 Generando código WO...');
+            const elemento = document.getElementById('woCodigoWO');
             
-            // Generar número secuencial (simplificado, en producción se obtendría del servidor)
-            const secuencial = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-            const codigoWO = `WO-${year}${month}${day}-${secuencial}`;
+            if (!elemento) {
+                console.error('❌ Elemento woCodigoWO no encontrado');
+                return;
+            }
             
-            document.getElementById('woCodigoWO').value = codigoWO;
+            try {
+                // Obtener código secuencial real del servidor
+                const response = await fetch('/api/generar_codigo_wo');
+                const data = await response.json();
+                
+                if (data.ok && data.codigo_wo) {
+                    elemento.value = data.codigo_wo;
+                    console.log('✅ Código WO generado desde servidor:', data.codigo_wo);
+                } else {
+                    throw new Error('Error en respuesta del servidor');
+                }
+            } catch (error) {
+                console.error('❌ Error al generar código WO:', error);
+                alert('Error al generar código WO. Por favor, intente nuevamente.');
+            }
         }
 
         // Asignaciones globales inmediatas para onclick handlers
@@ -60,7 +90,7 @@
         // Función de inicialización explícita para carga dinámica
         function initCrearPlanProduccion() {
             console.log('🚀 Inicializando Crear Plan de Producción...');
-            cargarModelosBOM();
+            // cargarModelosBOM(); // Función no utilizada - comentada para evitar error 404
             configurarEventos();
             
             // Asegurar que las fechas se configuren después de que los elementos estén disponibles
@@ -120,6 +150,8 @@
         }
 
         // Cargar modelos únicos de BOM
+        // Función cargarModelosBOM comentada - no se utiliza y causaba error 404
+        /*
         async function cargarModelosBOM() {
             try {
                 console.log('Cargando modelos desde /api/bom/modelos...');
@@ -156,6 +188,7 @@
                 llenarDropdownModelos();
             }
         }
+        */
 
         // Llenar dropdown de modelos
         function llenarDropdownModelos() {
@@ -182,18 +215,38 @@
 
         // Ocultar formulario de WO
         function ocultarFormularioWO() {
-            document.getElementById('woFormContainer').style.display = 'none';
-            document.getElementById('btnCrearWO').style.display = 'inline-block';
+            const woFormContainer = document.getElementById('woFormContainer');
+            const btnCrearWO = document.getElementById('btnCrearWO');
+            
+            if (woFormContainer) {
+                woFormContainer.style.display = 'none';
+            } else {
+                console.warn('⚠️ Elemento woFormContainer no encontrado en ocultarFormularioWO');
+            }
+            
+            if (btnCrearWO) {
+                btnCrearWO.style.display = 'inline-block';
+            } else {
+                console.warn('⚠️ Elemento btnCrearWO no encontrado en ocultarFormularioWO');
+            }
+            
             limpiarFormularioWO();
         }
 
         // Limpiar formulario
         function limpiarFormularioWO() {
-            document.getElementById('woCodigoWO').value = '';
-            document.getElementById('woCodigoPO').value = '';
-            document.getElementById('woModelo').value = '';
-            document.getElementById('woOrdenProceso').value = '';
-            document.getElementById('woCantidad').value = '';
+            const elementos = [
+                'woCodigoWO', 'woCodigoPO', 'woModelo', 'woOrdenProceso', 'woCantidad'
+            ];
+            
+            elementos.forEach(id => {
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.value = '';
+                } else {
+                    console.warn(`⚠️ Elemento ${id} no encontrado en limpiarFormularioWO`);
+                }
+            });
             
             // Ocultar dropdown de modelos
             const dropdownList = document.getElementById('woDropdownList');
@@ -206,14 +259,24 @@
 
         // Función para el botón Cancelar de la barra de herramientas
         function cancelarOperacion() {
-            const formularioVisible = document.getElementById('woFormContainer').style.display !== 'none';
+            const woFormContainer = document.getElementById('woFormContainer');
             
-            if (formularioVisible) {
-                // Si hay un formulario abierto, ocultarlo
-                ocultarFormularioWO();
-                mostrarMensaje('Operación cancelada', 'success');
+            if (woFormContainer) {
+                const formularioVisible = woFormContainer.style.display !== 'none';
+                
+                if (formularioVisible) {
+                    // Si hay un formulario abierto, ocultarlo
+                    ocultarFormularioWO();
+                    mostrarMensaje('Operación cancelada', 'success');
+                } else {
+                    // Si no hay formulario abierto, limpiar filtros y recargar datos
+                    establecerFechaActual();
+                    cargarWOs();
+                    mostrarMensaje('Filtros restablecidos', 'success');
+                }
             } else {
-                // Si no hay formulario abierto, limpiar filtros y recargar datos
+                console.warn('⚠️ Elemento woFormContainer no encontrado en cancelarOperacion');
+                // Fallback: limpiar filtros y recargar datos
                 establecerFechaActual();
                 cargarWOs();
                 mostrarMensaje('Filtros restablecidos', 'success');
@@ -222,7 +285,20 @@
 
         // Crear nueva WO
         async function crearNuevaWO() {
-            const codigoWO = document.getElementById('woCodigoWO').value.trim();
+            console.log('🚀 Iniciando creación de nueva WO...');
+            
+            const elementoCodigoWO = document.getElementById('woCodigoWO');
+            console.log('Elemento woCodigoWO:', elementoCodigoWO);
+            
+            if (!elementoCodigoWO) {
+                console.error('❌ Elemento woCodigoWO no encontrado en crearNuevaWO');
+                mostrarMensaje('Error: Elemento de código WO no encontrado', 'error');
+                return;
+            }
+            
+            const codigoWO = elementoCodigoWO.value.trim();
+            console.log('Código WO obtenido:', codigoWO);
+            
             // codigoPO ahora es opcional para WO independientes
             const codigoPO = document.getElementById('woCodigoPO').value.trim() || 'SIN-PO';
             const modelo = document.getElementById('woModelo').value;
@@ -231,6 +307,7 @@
 
             // Validaciones
             if (!codigoWO) {
+                console.error('❌ Código WO está vacío');
                 mostrarMensaje('Por favor genere un código de WO', 'error');
                 return;
             }
@@ -253,7 +330,8 @@
                 codigo_po: codigoPO, // Si está vacío, se usará 'SIN-PO' por defecto
                 modelo: modelo,
                 cantidad_planeada: cantidad,
-                fecha_operacion: fechaOperacion
+                fecha_operacion: fechaOperacion,
+                usuario_creador: window.usuarioLogueado || 'Usuario no identificado'
             };
 
             try {
@@ -262,7 +340,7 @@
                 btnGuardar.disabled = true;
                 btnGuardar.textContent = 'Registrando...';
 
-                const response = await fetch('/api/wo/crear', {
+                const response = await fetch('/api/work_orders', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -272,13 +350,13 @@
 
                 const result = await response.json();
 
-                if (result.success) {
-                    mostrarMensaje(`WO creada exitosamente: ${result.data.codigo_wo}`, 'success');
+                if (result.ok) {
+                    mostrarMensaje(`WO creada exitosamente: ${data.codigo_wo}`, 'success');
                     ocultarFormularioWO();
                     // Recargar la tabla dinámicamente
                     await cargarWOs();
                 } else {
-                    mostrarMensaje('Error creando WO: ' + result.error, 'error');
+                    mostrarMensaje('Error creando WO: ' + (result.message || 'Error desconocido'), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -320,16 +398,15 @@
             }, 4000);
         }
 
-        // Función para filtrar modelos en el dropdown de WO con carga si es necesario
-        async function filtrarModelosWO() {
+        // Función para filtrar modelos en el dropdown de WO
+        function filtrarModelosWO() {
             const searchInput = document.getElementById('woModelo');
             const dropdownList = document.getElementById('woDropdownList');
             const searchTerm = searchInput.value.toLowerCase();
             
-            // Si no hay modelos cargados, cargarlos primero
+            // Si no hay modelos cargados, no hacer nada (evitar bucle infinito)
             if (modelosBOM.length === 0) {
-                console.log('No hay modelos en memoria, cargando...');
-                await mostrarDropdownWO();
+                console.log('No hay modelos en memoria para filtrar');
                 return;
             }
             
@@ -374,81 +451,47 @@
             console.log('Elementos encontrados OK');
             console.log('Modelos disponibles en memoria:', modelosBOM.length);
             
-            // Hacer consulta directa a MySQL para obtener modelos frescos
-            try {
-                console.log('Cargando modelos directamente desde MySQL...');
-                const response = await fetch('/api/bom/modelos', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                console.log('Respuesta de modelos:', data);
-                
-                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-                    // Actualizar array local
-                    modelosBOM = data.data.filter(modelo => modelo && modelo.trim() !== '');
-                    console.log('Modelos actualizados:', modelosBOM.length);
-                    
-                    // Llenar dropdown inmediatamente
-                    llenarDropdownModelosDirecto(dropdownList);
-                    
-                    // Mostrar dropdown
-                    dropdownList.style.display = 'block';
-                    dropdownList.style.zIndex = '10000';
-                    dropdownList.style.position = 'absolute';
-                    
-                    console.log('Dropdown llenado con', modelosBOM.length, 'modelos');
-                } else {
-                    console.warn('No se encontraron modelos o respuesta inválida');
-                    dropdownList.innerHTML = '<div class="bom-dropdown-item" style="color: #f39c12;">No hay modelos disponibles</div>';
-                    dropdownList.style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error cargando modelos desde MySQL:', error);
-                console.error('Detalles del error:', {
-                    message: error.message,
-                    stack: error.stack
-                });
-                
-                // Fallback: intentar con endpoint anterior si el nuevo falla
+            // Solo cargar modelos si no están en memoria
+            if (!modelosBOM || modelosBOM.length === 0) {
                 try {
-                    console.log('Intentando con endpoint alternativo /listar_modelos_bom...');
-                    const fallbackResponse = await fetch('/listar_modelos_bom', {
+                    console.log('Cargando modelos desde BOM...');
+                    const response = await fetch('/listar_modelos_bom', {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
                         }
                     });
                     
-                    if (fallbackResponse.ok) {
-                        const fallbackData = await fallbackResponse.json();
-                        console.log('Respuesta de endpoint alternativo:', fallbackData);
-                        
-                        if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-                            modelosBOM = fallbackData.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
-                            llenarDropdownModelosDirecto(dropdownList);
-                            dropdownList.style.display = 'block';
-                            dropdownList.style.zIndex = '10000';
-                            dropdownList.style.position = 'absolute';
-                            console.log('Fallback exitoso con', modelosBOM.length, 'modelos');
-                            return; // Exit successfully
-                        }
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
-                } catch (fallbackError) {
-                    console.error('Error en fallback:', fallbackError);
+                    
+                    const data = await response.json();
+                    
+                    if (Array.isArray(data) && data.length > 0) {
+                        // Actualizar array local
+                        modelosBOM = data.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
+                        console.log('Modelos cargados exitosamente:', modelosBOM.length);
+                        
+                        // Llenar dropdown
+                        llenarDropdownModelosDirecto(dropdownList);
+                        
+                    } else {
+                        console.warn('No se encontraron modelos');
+                        dropdownList.innerHTML = '<div class="bom-dropdown-item" style="color: #f39c12;">No hay modelos disponibles</div>';
+                    }
+                } catch (error) {
+                    console.error('Error cargando modelos:', error);
+                    
+                    // Mostrar error en dropdown
+                    dropdownList.innerHTML = '<div class="bom-dropdown-item" style="color: #e74c3c;">Error cargando modelos</div>';
                 }
-                
-                // Si todo falla, mostrar error
-                dropdownList.innerHTML = '<div class="bom-dropdown-item" style="color: #e74c3c;">Error cargando modelos</div>';
-                dropdownList.style.display = 'block';
             }
+            
+            // Mostrar dropdown
+            dropdownList.style.display = 'block';
+            dropdownList.style.zIndex = '10000';
+            dropdownList.style.position = 'absolute';
             
             console.log('=== fin mostrarDropdownWO() ===');
         }
@@ -502,7 +545,7 @@
             
             if (modelosBOM.length === 0) {
                 console.log('Recargando modelos...');
-                cargarModelosBOM();
+                // cargarModelosBOM(); // Función no utilizada - comentada para evitar error 404
             } else {
                 console.log('Forzando mostrar dropdown...');
                 mostrarDropdownWO();
@@ -515,7 +558,8 @@
         async function cargarWOs() {
             try {
                 mostrarCargando(true);
-                const response = await fetch('/api/wo/listar');
+                // Cargar todas las WO sin filtro de estado
+                const response = await fetch('/api/wo/listar?incluir_planificadas=true');
                 const result = await response.json();
                 
                 if (result.success) {
@@ -538,16 +582,35 @@
 
         // Consultar WOs por fechas
         async function consultarWOs() {
-            const fechaDesde = document.getElementById('fechaDesde').value;
-            const fechaHasta = document.getElementById('fechaHasta').value;
+            const fechaDesdeEl = document.getElementById('fechaDesde');
+            const fechaHastaEl = document.getElementById('fechaHasta');
+            
+            const fechaDesde = fechaDesdeEl ? fechaDesdeEl.value : '';
+            const fechaHasta = fechaHastaEl ? fechaHastaEl.value : '';
 
             try {
                 mostrarCargando(true);
                 const params = new URLSearchParams();
                 if (fechaDesde) params.append('fecha_desde', fechaDesde);
                 if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+                // Incluir todas las WO sin filtro de estado
+                params.append('incluir_planificadas', 'true');
 
                 const response = await fetch(`/api/wo/listar?${params.toString()}`);
+                
+                // Verificar si la respuesta es válida
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Verificar que el contenido sea JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Respuesta no es JSON:', text.substring(0, 200));
+                    throw new Error('El servidor no devolvió una respuesta JSON válida');
+                }
+                
                 const result = await response.json();
                 
                 if (result.success) {
@@ -560,8 +623,8 @@
                     mostrarSinDatos();
                 }
             } catch (error) {
-                console.error('Error:', error);
-                mostrarMensaje('Error de conexión al consultar WOs', 'error');
+                console.error('Error al consultar WOs:', error);
+                mostrarMensaje('Error de conexión al consultar WOs: ' + error.message, 'error');
                 mostrarSinDatos();
             } finally {
                 mostrarCargando(false);
@@ -574,6 +637,20 @@
                 mostrarCargando(true);
                 
                 const response = await fetch('/api/po/listar');
+                
+                // Verificar si la respuesta es válida
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Verificar que el contenido sea JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Respuesta no es JSON:', text.substring(0, 200));
+                    throw new Error('El servidor no devolvió una respuesta JSON válida');
+                }
+                
                 const result = await response.json();
                 
                 if (result.success) {
@@ -586,8 +663,8 @@
                     mostrarMensaje('Error cargando POs: ' + result.error, 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                mostrarMensaje('Error de conexión al consultar POs', 'error');
+                console.error('Error al consultar POs:', error);
+                mostrarMensaje('Error de conexión al consultar POs: ' + error.message, 'error');
             } finally {
                 mostrarCargando(false);
             }
@@ -612,18 +689,26 @@
                     <td>${index === 0 ? '▶' : ''}</td>
                     <td><input type="checkbox" id="check${index + 1}"></td>
                     <td>${wo.codigo_wo || ''}</td>
+                    <td><span class="estado-badge estado-${(wo.estado || 'CREADA').toLowerCase()}">${wo.estado || 'CREADA'}</span></td>
                     <td>${formatearFecha(wo.fecha_operacion) || ''}</td>
                     <td>${wo.codigo_modelo || ''}</td>
-                    <td>${wo.nombre_modelo || wo.modelo || ''}</td>
-                    <td>${wo.cantidad_planeada || 0}</td>
+                    <td class="modelo-cell">
+                        <span class="modelo-display">${wo.nombre_modelo || wo.modelo || ''}</span>
+                        <input type="text" class="modelo-edit" value="${wo.nombre_modelo || wo.modelo || ''}" style="display: none;">
+                    </td>
+                    <td class="cantidad-cell">
+                        <span class="cantidad-display">${wo.cantidad_planeada || 0}</span>
+                        <input type="number" class="cantidad-edit" value="${wo.cantidad_planeada || 0}" min="1" style="display: none;">
+                    </td>
                     <td class="po-cell">
                         <span class="po-display">${wo.codigo_po || 'SIN-PO'}</span>
                         <input type="text" class="po-edit" value="${wo.codigo_po || ''}" style="display: none;">
                     </td>
                     <td class="acciones-cell">
-                        <button class="btn-edit-po" onclick="editarPO('${wo.codigo_wo}', this)" title="Editar PO">EDIT</button>
-                        <button class="btn-save-po" onclick="guardarPO('${wo.codigo_wo}', this)" style="display: none;" title="Guardar PO">SAVE</button>
-                        <button class="btn-cancel-po" onclick="cancelarEditarPO(this)" style="display: none;" title="Cancelar">CANCEL</button>
+                        <button class="btn-edit-wo ${(wo.estado || 'CREADA') !== 'CREADA' ? 'disabled' : ''}" onclick="editarWO('${wo.codigo_wo}', this)" title="${(wo.estado || 'CREADA') !== 'CREADA' ? 'Solo se pueden editar WOs con estado CREADA' : 'Editar WO'}">EDIT</button>
+                        <button class="btn-save-wo" onclick="guardarWO('${wo.codigo_wo}', this)" style="display: none;" title="Guardar WO">SAVE</button>
+                        <button class="btn-cancel-wo" onclick="cancelarEditarWO(this)" style="display: none;" title="Cancelar">CANCEL</button>
+                        <button class="btn-delete-wo ${(wo.estado || 'CREADA') !== 'CREADA' ? 'disabled' : ''}" onclick="eliminarWO('${wo.codigo_wo}', this)" title="${(wo.estado || 'CREADA') !== 'CREADA' ? 'Solo se pueden eliminar WOs con estado CREADA' : 'Eliminar WO'}" style="margin-left: 5px;">DEL</button>
                     </td>
                     <td>${wo.modificador || ''}</td>
                     <td>${formatearFechaCompleta(wo.fecha_modificacion) || ''}</td>
@@ -639,7 +724,7 @@
             const tbody = document.querySelector('#bomTable tbody');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="13" class="no-data">No se encontraron Work Orders</td>
+                    <td colspan="14" class="no-data">No se encontraron Work Orders</td>
                 </tr>
             `;
         }
@@ -739,47 +824,99 @@ window.filtrarModelosWO = filtrarModelosWO;
 window.mostrarDropdownWO = mostrarDropdownWO;
 window.crearNuevaWO = crearNuevaWO;
         // ================================================
-        // FUNCIONES PARA EDICIÓN DE PO
+        // FUNCIONES PARA EDICIÓN DE WO
         // ================================================
         
-        // Función para iniciar edición de PO
-        function editarPO(codigoWO, button) {
+        // Función para iniciar edición de WO
+        function editarWO(codigoWO, button) {
             const row = button.closest('tr');
-            const poCell = row.querySelector('.po-cell');
-            const display = poCell.querySelector('.po-display');
-            const input = poCell.querySelector('.po-edit');
-            const btnEdit = row.querySelector('.btn-edit-po');
-            const btnSave = row.querySelector('.btn-save-po');
-            const btnCancel = row.querySelector('.btn-cancel-po');
             
-            // Mostrar input y ocultar display
-            display.style.display = 'none';
-            input.style.display = 'inline-block';
-            input.focus();
+            // Verificar el estado de la WO
+            const estadoBadge = row.querySelector('.estado-badge');
+            const estado = estadoBadge ? estadoBadge.textContent.trim() : '';
+            
+            // Solo permitir edición si el estado es 'CREADA'
+            if (estado !== 'CREADA') {
+                alert('Solo se pueden editar órdenes de trabajo con estado CREADA');
+                return;
+            }
+            
+            // Elementos de modelo
+            const modeloCell = row.querySelector('.modelo-cell');
+            const modeloDisplay = modeloCell.querySelector('.modelo-display');
+            const modeloInput = modeloCell.querySelector('.modelo-edit');
+            
+            // Elementos de cantidad
+            const cantidadCell = row.querySelector('.cantidad-cell');
+            const cantidadDisplay = cantidadCell.querySelector('.cantidad-display');
+            const cantidadInput = cantidadCell.querySelector('.cantidad-edit');
+            
+            // Elementos de PO
+            const poCell = row.querySelector('.po-cell');
+            const poDisplay = poCell.querySelector('.po-display');
+            const poInput = poCell.querySelector('.po-edit');
+            
+            // Botones
+            const btnEdit = row.querySelector('.btn-edit-wo');
+            const btnSave = row.querySelector('.btn-save-wo');
+            const btnCancel = row.querySelector('.btn-cancel-wo');
+            const btnDelete = row.querySelector('.btn-delete-wo');
+            
+            // Mostrar inputs y ocultar displays
+            modeloDisplay.style.display = 'none';
+            modeloInput.style.display = 'inline-block';
+            cantidadDisplay.style.display = 'none';
+            cantidadInput.style.display = 'inline-block';
+            poDisplay.style.display = 'none';
+            poInput.style.display = 'inline-block';
+            
+            // Enfocar primer campo
+            modeloInput.focus();
             
             // Cambiar botones
             btnEdit.style.display = 'none';
             btnSave.style.display = 'inline-block';
             btnCancel.style.display = 'inline-block';
+            btnDelete.style.display = 'none';
         }
         
-        // Función para guardar PO editado
-        async function guardarPO(codigoWO, button) {
+        // Función para guardar WO editado
+        async function guardarWO(codigoWO, button) {
             const row = button.closest('tr');
-            const poCell = row.querySelector('.po-cell');
-            const display = poCell.querySelector('.po-display');
-            const input = poCell.querySelector('.po-edit');
-            const nuevoPO = input.value.trim() || 'SIN-PO';
+            
+            // Obtener valores de los campos
+            const modeloInput = row.querySelector('.modelo-edit');
+            const cantidadInput = row.querySelector('.cantidad-edit');
+            const poInput = row.querySelector('.po-edit');
+            
+            const nuevoModelo = modeloInput.value.trim();
+            const nuevaCantidad = parseInt(cantidadInput.value) || 1;
+            const nuevoPO = poInput.value.trim() || 'SIN-PO';
+            
+            // Validaciones
+            if (!nuevoModelo) {
+                mostrarMensaje('El modelo es requerido', 'error');
+                modeloInput.focus();
+                return;
+            }
+            
+            if (nuevaCantidad < 1) {
+                mostrarMensaje('La cantidad debe ser mayor a 0', 'error');
+                cantidadInput.focus();
+                return;
+            }
             
             try {
                 // Enviar actualización al servidor
-                const response = await fetch('/api/wo/actualizar-po', {
+                const response = await fetch('/api/wo/actualizar', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         codigo_wo: codigoWO,
+                        modelo: nuevoModelo,
+                        cantidad_planeada: nuevaCantidad,
                         codigo_po: nuevoPO
                     })
                 });
@@ -787,59 +924,147 @@ window.crearNuevaWO = crearNuevaWO;
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Actualizar display
-                    display.textContent = nuevoPO;
-                    display.style.display = 'inline-block';
-                    input.style.display = 'none';
+                    // Actualizar displays
+                    const modeloDisplay = row.querySelector('.modelo-display');
+                    const cantidadDisplay = row.querySelector('.cantidad-display');
+                    const poDisplay = row.querySelector('.po-display');
+                    
+                    modeloDisplay.textContent = nuevoModelo;
+                    cantidadDisplay.textContent = nuevaCantidad;
+                    poDisplay.textContent = nuevoPO;
+                    
+                    // Ocultar inputs y mostrar displays
+                    modeloDisplay.style.display = 'inline-block';
+                    modeloInput.style.display = 'none';
+                    cantidadDisplay.style.display = 'inline-block';
+                    cantidadInput.style.display = 'none';
+                    poDisplay.style.display = 'inline-block';
+                    poInput.style.display = 'none';
                     
                     // Restaurar botones
-                    const btnEdit = row.querySelector('.btn-edit-po');
-                    const btnSave = row.querySelector('.btn-save-po');
-                    const btnCancel = row.querySelector('.btn-cancel-po');
+                    const btnEdit = row.querySelector('.btn-edit-wo');
+                    const btnSave = row.querySelector('.btn-save-wo');
+                    const btnCancel = row.querySelector('.btn-cancel-wo');
+                    const btnDelete = row.querySelector('.btn-delete-wo');
                     
                     btnEdit.style.display = 'inline-block';
                     btnSave.style.display = 'none';
                     btnCancel.style.display = 'none';
+                    btnDelete.style.display = 'inline-block';
                     
-                    mostrarMensaje(`PO actualizado exitosamente: ${nuevoPO}`, 'success');
+                    mostrarMensaje('WO actualizada exitosamente', 'success');
                 } else {
-                    mostrarMensaje('Error actualizando PO: ' + result.error, 'error');
+                    mostrarMensaje('Error guardando WO: ' + result.error, 'error');
                 }
+                
             } catch (error) {
-                console.error('Error guardando PO:', error);
-                mostrarMensaje('Error guardando PO: ' + error.message, 'error');
+                console.error('Error guardando WO:', error);
+                mostrarMensaje('Error guardando WO: ' + error.message, 'error');
             }
         }
         
-        // Función para cancelar edición de PO
-        function cancelarEditarPO(button) {
+        // Función para cancelar edición de WO
+        function cancelarEditarWO(button) {
             const row = button.closest('tr');
+            
+            // Elementos de modelo
+            const modeloCell = row.querySelector('.modelo-cell');
+            const modeloDisplay = modeloCell.querySelector('.modelo-display');
+            const modeloInput = modeloCell.querySelector('.modelo-edit');
+            
+            // Elementos de cantidad
+            const cantidadCell = row.querySelector('.cantidad-cell');
+            const cantidadDisplay = cantidadCell.querySelector('.cantidad-display');
+            const cantidadInput = cantidadCell.querySelector('.cantidad-edit');
+            
+            // Elementos de PO
             const poCell = row.querySelector('.po-cell');
-            const display = poCell.querySelector('.po-display');
-            const input = poCell.querySelector('.po-edit');
+            const poDisplay = poCell.querySelector('.po-display');
+            const poInput = poCell.querySelector('.po-edit');
             
-            // Restaurar valor original
-            input.value = display.textContent === 'SIN-PO' ? '' : display.textContent;
+            // Restaurar valores originales
+            modeloInput.value = modeloDisplay.textContent;
+            cantidadInput.value = cantidadDisplay.textContent;
+            poInput.value = poDisplay.textContent === 'SIN-PO' ? '' : poDisplay.textContent;
             
-            // Mostrar display y ocultar input
-            display.style.display = 'inline-block';
-            input.style.display = 'none';
+            // Mostrar displays y ocultar inputs
+            modeloDisplay.style.display = 'inline-block';
+            modeloInput.style.display = 'none';
+            cantidadDisplay.style.display = 'inline-block';
+            cantidadInput.style.display = 'none';
+            poDisplay.style.display = 'inline-block';
+            poInput.style.display = 'none';
             
             // Restaurar botones
-            const btnEdit = row.querySelector('.btn-edit-po');
-            const btnSave = row.querySelector('.btn-save-po');
-            const btnCancel = row.querySelector('.btn-cancel-po');
+            const btnEdit = row.querySelector('.btn-edit-wo');
+            const btnSave = row.querySelector('.btn-save-wo');
+            const btnCancel = row.querySelector('.btn-cancel-wo');
+            const btnDelete = row.querySelector('.btn-delete-wo');
             
             btnEdit.style.display = 'inline-block';
             btnSave.style.display = 'none';
             btnCancel.style.display = 'none';
+            btnDelete.style.display = 'inline-block';
+        }
+        
+        // Función para eliminar WO
+        async function eliminarWO(codigoWO, button) {
+            const row = button.closest('tr');
+            
+            // Verificar el estado de la WO
+            const estadoBadge = row.querySelector('.estado-badge');
+            const estado = estadoBadge ? estadoBadge.textContent.trim() : '';
+            
+            // Solo permitir eliminación si el estado es 'CREADA'
+            if (estado !== 'CREADA') {
+                alert('Solo se pueden eliminar órdenes de trabajo con estado CREADA');
+                return;
+            }
+            
+            if (!confirm(`¿Está seguro de eliminar la WO ${codigoWO}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/wo/eliminar', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        codigo_wo: codigoWO
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Remover fila de la tabla
+                    const row = button.closest('tr');
+                    row.remove();
+                    
+                    // Actualizar contador
+                    const tbody = document.querySelector('#bomTable tbody');
+                    const filas = tbody.querySelectorAll('tr').length;
+                    actualizarContador(filas);
+                    
+                    mostrarMensaje(`WO ${codigoWO} eliminada exitosamente`, 'success');
+                } else {
+                    mostrarMensaje('Error eliminando WO: ' + result.error, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error eliminando WO:', error);
+                mostrarMensaje('Error eliminando WO: ' + error.message, 'error');
+            }
         }
 
 window.mostrarFormularioWO = mostrarFormularioWO;
 window.seleccionarModeloWO = seleccionarModeloWO;
-window.editarPO = editarPO;
-window.guardarPO = guardarPO;
-window.cancelarEditarPO = cancelarEditarPO;
+window.editarWO = editarWO;
+window.guardarWO = guardarWO;
+window.cancelarEditarWO = cancelarEditarWO;
+window.eliminarWO = eliminarWO;
 
 console.log('Crear Plan de Producción - Módulo inicializado');
 

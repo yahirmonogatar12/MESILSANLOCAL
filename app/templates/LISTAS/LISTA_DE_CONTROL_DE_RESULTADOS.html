@@ -45,7 +45,8 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
                             data-permiso-seccion="Historial de maquinas SMT" 
-                            data-permiso-boton="Historial de maquina AOI">Historial de maquina AOI</li>
+                            data-permiso-boton="Historial de maquina AOI"
+                            onclick="window.parent.mostrarHistorialAOI ? window.parent.mostrarHistorialAOI() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-aoi-unique-container', '/historial-aoi-ajax') : window.location.href='/historial-aoi')">Historial de maquina AOI</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
                             data-permiso-seccion="Historial de maquinas SMT" 

@@ -220,11 +220,11 @@
     <section class="smd-toolbar" id="smdToolbar">
       <input id="smdQuery" class="smd-input" type="text" placeholder="Buscar por WO / PO / Modelo / Código de modelo" aria-label="Buscar" />
       <select id="smdEstado" class="smd-select" aria-label="Filtro por estado">
-        <option value="">Todos los estados</option>
-        <option value="CREADA">CREADA</option>
+        <option value="CREADA" selected>CREADA (por defecto)</option>
         <option value="PLANIFICADA">PLANIFICADA</option>
         <option value="EN_PRODUCCION">EN_PRODUCCION</option>
         <option value="CERRADA">CERRADA</option>
+        <option value="TODOS">Todos los estados</option>
       </select>
       <input id="smdFechaDesde" class="smd-date" type="date" aria-label="Fecha desde" />
       <input id="smdFechaHasta" class="smd-date" type="date" aria-label="Fecha hasta" />

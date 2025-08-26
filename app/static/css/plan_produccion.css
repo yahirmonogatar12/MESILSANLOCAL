@@ -256,7 +256,7 @@ body, html {
 }
 
 .plan-data-table td {
-    padding: 10px 8px;
+    padding: 14px 8px;
     border-bottom: 1px solid var(--plan-table-border);
     border-right: 1px solid var(--plan-table-border);
     color: var(--plan-text);
@@ -427,6 +427,120 @@ body, html {
 .plan-action-btn.delete {
     background-color: var(--plan-danger);
     color: white;
+}
+
+/* Botones específicos para edición de Work Orders */
+.btn-edit-wo, .btn-save-wo, .btn-cancel-wo, .btn-delete-wo {
+    padding: 2px 4px;
+    border: 1px solid;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    transition: all 0.2s ease;
+    margin: 1px;
+    min-width: 28px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit-wo {
+    background-color: var(--plan-info);
+    border-color: #3498db;
+    color: white;
+}
+
+.btn-edit-wo:hover {
+    background-color: #3498db;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+}
+
+.btn-save-wo {
+    background-color: var(--plan-success);
+    border-color: #27ae60;
+    color: white;
+}
+
+.btn-save-wo:hover {
+    background-color: #27ae60;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
+}
+
+.btn-cancel-wo {
+    background-color: var(--plan-bg-secondary);
+    border-color: var(--plan-border);
+    color: var(--plan-text);
+}
+
+.btn-cancel-wo:hover {
+    background-color: var(--plan-button-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.btn-delete-wo {
+    background-color: var(--plan-danger);
+    border-color: #c0392b;
+    color: white;
+}
+
+.btn-delete-wo:hover {
+    background-color: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+/* Botones deshabilitados */
+.btn-edit-wo.disabled, .btn-delete-wo.disabled {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #adb5bd !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.btn-edit-wo.disabled:hover, .btn-delete-wo.disabled:hover {
+    background-color: #6c757d !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Campos de edición en tabla */
+.modelo-edit, .cantidad-edit, .po-edit {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid var(--plan-border);
+    border-radius: 3px;
+    background-color: var(--plan-bg-secondary);
+    color: var(--plan-text);
+    font-size: 12px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.modelo-edit:focus, .cantidad-edit:focus, .po-edit:focus {
+    outline: none;
+    border-color: var(--plan-info);
+    background-color: var(--plan-bg-primary);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.modelo-cell, .cantidad-cell, .po-cell {
+    min-width: 120px;
+    position: relative;
+}
+
+.modelo-display, .cantidad-display, .po-display {
+    display: inline-block;
+    padding: 4px 6px;
+    min-height: 16px;
+    line-height: 1.2;
 }
 
 /* Checkboxes */

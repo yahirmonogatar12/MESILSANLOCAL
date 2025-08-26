@@ -87,13 +87,25 @@
 
     async function loadWorkOrders() {
         const q = encodeURIComponent($("smdQuery").value.trim());
-        const estado = encodeURIComponent($("smdEstado").value);
+        const estado = $("smdEstado").value;
         const desde = $("smdFechaDesde").value;
         const hasta = $("smdFechaHasta").value;
 
         const params = new URLSearchParams();
         if (q) params.set("q", q);
-        if (estado) params.set("estado", estado);
+        
+        // Manejar filtro de estado
+        if (estado === "TODOS") {
+            // No agregar filtro de estado para mostrar todos
+            params.set("incluir_planificadas", "true");
+        } else if (estado) {
+            // Filtrar por estado específico
+            params.set("estado", estado);
+        } else {
+            // Por defecto, solo mostrar WO con estado CREADA
+            params.set("estado", "CREADA");
+        }
+        
         if (desde) params.set("desde", desde);
         if (hasta) params.set("hasta", hasta);
 
@@ -179,6 +191,7 @@
             uph: wo.uph || '',
             qty,
             fisico,
+            diferencia,
             falta,
             pct: pct,
             comentarios: ''
@@ -255,8 +268,8 @@
                 <td><input class="smd-inline-input" data-field="qty" data-idx="${idx}" value="${r.qty}"></td>
                 <td>${r.fisico.toLocaleString()}</td>
                 <td><input class="smd-inline-input" data-field="diferencia" data-idx="${idx}" value="${diferenciaValue}" style="${diferenciaStyle}" placeholder="±0"></td>
-                <td>${r.falta.toLocaleString()}</td>
-                <td>${r.pct}%</td>
+                <td data-field="falta" data-idx="${idx}">${r.falta.toLocaleString()}</td>
+                <td data-field="pct" data-idx="${idx}">${r.pct}%</td>
                 <td><input class="smd-inline-input smd-inline-wide" data-field="comentarios" data-idx="${idx}" value="${r.comentarios}"></td>
             `;
             tbody.appendChild(tr);
@@ -271,6 +284,39 @@
         tbody.querySelectorAll('input, select').forEach(el => {
             el.addEventListener('change', onPlanCellChange);
         });
+        
+        // Recalcular automáticamente todos los valores después de renderizar
+        recalculateAllRows();
+    }
+
+    function recalculateAllRows() {
+        plan.forEach((row, idx) => {
+            const qty = num(row.qty);
+            const fisico = num(row.fisico);
+            const diferencia = num(row.diferencia) || 0;
+            const fisicoAjustado = fisico + diferencia;
+            plan[idx].falta = Math.max(0, qty - fisicoAjustado);
+            plan[idx].pct = qty ? Math.min(100, Math.round((Math.min(qty, fisicoAjustado)/qty)*100)) : 0;
+        });
+        updateDisplayValues();
+    }
+    
+    function updateDisplayValues() {
+        plan.forEach((row, idx) => {
+            const faltaCell = document.querySelector(`[data-idx="${idx}"][data-field="falta"]`);
+            const pctCell = document.querySelector(`[data-idx="${idx}"][data-field="pct"]`);
+            if (faltaCell) faltaCell.textContent = row.falta.toLocaleString();
+            if (pctCell) pctCell.textContent = `${row.pct}%`;
+        });
+        
+        // Actualizar totales
+        let totalQty = 0, totalFalta = 0;
+        plan.forEach(r => {
+            totalQty += num(r.qty);
+            totalFalta += num(r.falta);
+        });
+        $("smdChipTotalQty").textContent = `Qty total a producir: ${totalQty.toLocaleString()}`;
+        $("smdChipTotalFaltante").textContent = `Faltante total: ${totalFalta.toLocaleString()}`;
     }
 
     function onPlanCellChange(ev) {
@@ -282,18 +328,15 @@
         const val = (el.tagName === 'SELECT') ? el.value : (el.type === 'number' ? Number(el.value) : el.value);
         plan[idx][field] = (field==='qty' || field==='diferencia') ? num(val) : val;
         
-        if (field==='qty') { 
+        if (field==='qty' || field==='diferencia') { 
             const qty = num(plan[idx].qty), fisico = num(plan[idx].fisico), diferencia = num(plan[idx].diferencia) || 0;
             const fisicoAjustado = fisico + diferencia;
             plan[idx].falta = Math.max(0, qty - fisicoAjustado);
             plan[idx].pct = qty ? Math.min(100, Math.round((Math.min(qty, fisicoAjustado)/qty)*100)) : 0;
-        } else if (field==='diferencia') {
-            const qty = num(plan[idx].qty), fisico = num(plan[idx].fisico), diferencia = num(plan[idx].diferencia) || 0;
-            const fisicoAjustado = fisico + diferencia;
-            plan[idx].falta = Math.max(0, qty - fisicoAjustado);
-            plan[idx].pct = qty ? Math.min(100, Math.round((Math.min(qty, fisicoAjustado)/qty)*100)) : 0;
+            updateDisplayValues();
+        } else {
+            renderPlan();
         }
-        renderPlan();
     }
 
     async function generatePlanFromQueue() {
@@ -367,13 +410,43 @@
         }
         showLoading('Guardando plan…');
         try {
+            // Guardar el plan
             const res = await fetch(PLAN_SMD_API.guardarPlan, { 
                 method:'POST', 
                 headers:{'Content-Type':'application/json'}, 
                 body: JSON.stringify(plan)
             });
             if (!res.ok) throw new Error('HTTP '+res.status);
-            alertMsg('Plan guardado correctamente.');
+            
+            // Obtener códigos de WO únicos del plan
+            const codigosWO = [...new Set(plan.map(r => r.lote).filter(lote => lote && lote.trim()))];
+            
+            // Actualizar estado de cada WO a 'PLANIFICADA'
+            showLoading('Actualizando estado de WO…');
+            const updatePromises = codigosWO.map(async (codigoWO) => {
+                try {
+                    const updateRes = await fetch(`/api/wo/${encodeURIComponent(codigoWO)}/estado`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            estado: 'PLANIFICADA',
+                            modificador: window.usuarioLogueado || 'Sistema'
+                        })
+                    });
+                    if (!updateRes.ok) {
+                        console.warn(`Error actualizando WO ${codigoWO}: HTTP ${updateRes.status}`);
+                    } else {
+                        console.log(`✅ WO ${codigoWO} actualizada a PLANIFICADA`);
+                    }
+                } catch (err) {
+                    console.warn(`Error actualizando WO ${codigoWO}:`, err);
+                }
+            });
+            
+            // Esperar a que todas las actualizaciones terminen
+            await Promise.allSettled(updatePromises);
+            
+            alertMsg(`Plan guardado correctamente. ${codigosWO.length} WO(s) actualizadas a estado PLANIFICADA.`);
         } catch (e) { 
             console.error(e); 
             alertMsg('Error guardando el plan.'); 

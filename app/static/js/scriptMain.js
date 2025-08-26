@@ -101,6 +101,12 @@
                     lineMaterialStatusContainer.style.display = 'none';
                 }
                 
+                // Ocultar contenedor de Historial AOI
+                const historialAOIContainer = document.getElementById('historial-aoi-unique-container');
+                if (historialAOIContainer) {
+                    historialAOIContainer.style.display = 'none';
+                }
+                
                 // Ocultar contenedores específicos de Control de Producción que pueden quedar visibles
                 const controlProduccionSpecificContainers = [
                     'control-mask-metal-unique-container',
@@ -2989,3 +2995,541 @@ window.mostrarHistorialTensionMaskMetal = function() {
 };
 
 console.log('Todas las funciones AJAX para módulos de Control de Producción registradas globalmente');
+
+// ============================================================================
+// FUNCIONES PARA CONTROL DE CALIDAD
+// ============================================================================
+
+window.mostrarControlResultadoReparacion = function() {
+    try {
+        console.log('🚀 Iniciando carga de Control de resultado de reparación...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/control-resultado-reparacion-ajax', () => {
+                console.log('Control de resultado de reparación cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Control de resultado de reparación:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlResultadoReparacion:', error);
+    }
+};
+
+window.mostrarControlItemReparado = function() {
+    try {
+        console.log('🚀 Iniciando carga de Control de item reparado...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/control-item-reparado-ajax', () => {
+                console.log('Control de item reparado cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Control de item reparado:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlItemReparado:', error);
+    }
+};
+
+window.mostrarHistorialCambioMaterialMaquina = function() {
+    try {
+        console.log('🚀 Iniciando carga de Historial de cambio de material por máquina...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/historial-cambio-material-maquina-ajax', () => {
+                console.log('Historial de cambio de material por máquina cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Historial de cambio de material por máquina:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarHistorialCambioMaterialMaquina:', error);
+    }
+};
+
+window.mostrarHistorialUsoPegamentoSoldadura = function() {
+    try {
+        console.log('🚀 Iniciando carga de Historial de uso de pegamento de soldadura...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/historial-uso-pegamento-soldadura-ajax', () => {
+                console.log('Historial de uso de pegamento de soldadura cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Historial de uso de pegamento de soldadura:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarHistorialUsoPegamentoSoldadura:', error);
+    }
+};
+
+window.mostrarHistorialUsoMaskMetal = function() {
+    try {
+        console.log('🚀 Iniciando carga de Historial de uso de mask de metal...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/historial-uso-mask-metal-ajax', () => {
+                console.log('Historial de uso de mask de metal cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Historial de uso de mask de metal:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarHistorialUsoMaskMetal:', error);
+    }
+};
+
+window.mostrarHistorialUsoSqueegee = function() {
+    try {
+        console.log('🚀 Iniciando carga de Historial de uso de squeegee...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/historial-uso-squeegee-ajax', () => {
+                console.log('Historial de uso de squeegee cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Historial de uso de squeegee:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarHistorialUsoSqueegee:', error);
+    }
+};
+
+window.mostrarProcessInterlockHistory = function() {
+    try {
+        console.log('🚀 Iniciando carga de Process interlock History...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/process-interlock-history-ajax', () => {
+                console.log('Process interlock History cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Process interlock History:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarProcessInterlockHistory:', error);
+    }
+};
+
+window.mostrarControlMasterSampleSMT = function() {
+    try {
+        console.log('🚀 Iniciando carga de Control de Master Sample de SMT...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/control-master-sample-smt-ajax', () => {
+                console.log('Control de Master Sample de SMT cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Control de Master Sample de SMT:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlMasterSampleSMT:', error);
+    }
+};
+
+window.mostrarHistorialInspeccionMasterSampleSMT = function() {
+    try {
+        console.log('🚀 Iniciando carga de Historial de inspección de Master Sample de SMT...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/historial-inspeccion-master-sample-smt-ajax', () => {
+                console.log('Historial de inspección de Master Sample de SMT cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Historial de inspección de Master Sample de SMT:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarHistorialInspeccionMasterSampleSMT:', error);
+    }
+};
+
+window.mostrarControlInspeccionOQC = function() {
+    try {
+        console.log('🚀 Iniciando carga de Control de inspección de OQC...');
+
+        // Activar el botón "Control de calidad"
+        const controlCalidadButton = document.getElementById('Control de calidad');
+        if (controlCalidadButton) {
+            controlCalidadButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de calidad') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        // Mostrar el área de calidad
+        const materialContainer = document.getElementById('material-container');
+        const controlCalidadContent = document.getElementById('control-calidad-content');
+        const calidadContentArea = document.getElementById('calidad-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlCalidadContent) controlCalidadContent.style.display = 'block';
+        if (calidadContentArea) calidadContentArea.style.display = 'block';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('calidad-content-area', '/control-inspeccion-oqc-ajax', () => {
+                console.log('Control de inspección de OQC cargado exitosamente');
+            })
+            .catch(error => {
+                console.error('Error cargando Control de inspección de OQC:', error);
+            });
+        } else {
+            console.error('La función cargarContenidoDinamico no está disponible');
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlInspeccionOQC:', error);
+    }
+};
+
+console.log('Todas las funciones AJAX para módulos de Control de Calidad registradas globalmente');
+
+// Función AJAX para Historial AOI - GLOBAL
+window.mostrarHistorialAOI = function() {
+    try {
+        console.log('🚀 Iniciando carga AJAX de Historial AOI...');
+
+        // Activar el botón correcto en la navegación
+        const controlResultadosButton = document.getElementById('Control de resultados');
+        if (controlResultadosButton) {
+            controlResultadosButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de resultados') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+        
+        // Ocultar otros contenedores dentro del área de control de resultados
+        const controlResultadosContainers = [
+            'control-resultados-info-container'
+        ];
+        
+        controlResultadosContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar TODAS las áreas necesarias
+        const materialContainer = document.getElementById('material-container');
+        const controlResultadosContent = document.getElementById('control-resultados-content');
+        const controlResultadosContentArea = document.getElementById('control-resultados-content-area');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlResultadosContent) controlResultadosContent.style.display = 'block';
+        if (controlResultadosContentArea) controlResultadosContentArea.style.display = 'block';
+
+        // Obtener y mostrar el contenedor específico
+        const historialAOIContainer = document.getElementById('historial-aoi-unique-container');
+        if (!historialAOIContainer) {
+            console.error('El contenedor no existe en el HTML');
+            return;
+        }
+
+        historialAOIContainer.style.display = 'block';
+        historialAOIContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('historial-aoi-unique-container', '/historial-aoi-ajax', () => {
+                console.log('Contenido cargado exitosamente');
+                
+                // Ejecutar inicialización del módulo si existe
+                if (typeof window.inicializarHistorialAOI === 'function') {
+                    window.inicializarHistorialAOI();
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Error crítico:', error);
+    }
+};
+
+console.log('Función AJAX para Historial AOI registrada globalmente');

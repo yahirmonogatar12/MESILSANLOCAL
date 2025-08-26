@@ -1,0 +1,17 @@
+He identificado el problema: el campo de entrada tiene tanto onclick="mostrarDropdownWO()" como onkeyup="filtrarModelosWO()" configurados, y cada vez que el usuario hace clic o escribe, se ejecuta mostrarDropdownWO() que carga los modelos desde el servidor. Voy a modificar el código para que solo se carguen los modelos una vez al inicio y luego solo se filtre localmente.
+
+C:\Users\yahir\OneDrive\Escritorio\MES\MES\MESILSANLOCAL\app\templates\Control de produccion\Crear plan de produccion.html
+
++ 1 - 1
+
+Review
+
+Ahora voy a modificar la función mostrarDropdownWO para que solo cargue los modelos una vez y luego solo muestre el dropdown, evitando múltiples llamadas al servidor.
+
+C:\Users\yahir\OneDrive\Escritorio\MES\MES\MESILSANLOCAL\app\static\js\crear-plan-produccion.js
+
++ 40 - 40
+
+Review
+
+Ahora voy a probar la aplicación para verificar que el problema del dropdown se haya solucionado. Primero tomaré una captura de pantalla para ver el estado actual.

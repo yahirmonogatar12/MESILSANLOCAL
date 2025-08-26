@@ -548,6 +548,22 @@
         <!-- </div> -->
     </div>
     
+    <!-- Contenedor específico para el contenido de Control de Resultados (LADO DERECHO) -->
+    <div class="control-resultados-content-area" id="control-resultados-content-area" style="display: none;">
+        <!-- Contenedor por defecto con información general -->
+        <div id="control-resultados-info-container" style="display: block;">
+            <h2>Control de Resultados</h2>
+            <p>Seleccione una opción del menú lateral para ver el contenido correspondiente.</p>
+        </div>
+        
+        <!-- Contenedor específico para Historial AOI -->
+        <div id="historial-aoi-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+        
+        <!-- Aquí se pueden agregar más contenedores específicos para Control de Resultados -->
+    </div>
+    
     <!-- Contenedor específico para el contenido de Información Básica (LADO DERECHO) -->
     <div class="informacion-basica-content-area" id="informacion-basica-content-area" style="display: none;">
         <!-- Contenedor por defecto con información general -->
@@ -1891,6 +1907,7 @@
             const materialContentArea = document.getElementById('material-content-area');
             const produccionContentArea = document.getElementById('produccion-content-area');
             const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+            const controlResultadosContentArea = document.getElementById('control-resultados-content-area');
             const informacionBasicaContentArea = document.getElementById('informacion-basica-content-area');
             const materialInfoContainer = document.getElementById('material-info-container');
             const controlAlmacenContainer = document.getElementById('control-almacen-container');
@@ -3034,6 +3051,65 @@ function hideAllMaterialContainers() {
                     });
             };
             
+            // Función global para mostrar Control de Resultados
+            window.mostrarControlResultados = function() {
+                hideAllContent();
+                materialContainer.style.display = 'block';
+                controlResultadosContent.style.display = 'block';
+                controlResultadosContentArea.style.display = 'block';
+                
+                // Mostrar contenedor por defecto de control de resultados
+                const controlResultadosInfoContainer = document.getElementById('control-resultados-info-container');
+                if (controlResultadosInfoContainer) {
+                    controlResultadosInfoContainer.style.display = 'block';
+                }
+                
+                // IMPORTANTE: Asegurar que otras áreas estén ocultas
+                materialContentArea.style.display = 'none';
+                produccionContentArea.style.display = 'none';
+                controlProcesoContentArea.style.display = 'none';
+                informacionBasicaContentArea.style.display = 'none';
+                hideAllMaterialContainers();
+                
+                // IMPORTANTE: Ocultar sidebars de otras secciones
+                const controlMaterialSidebar = document.getElementById('control-material-content');
+                const controlProduccionSidebar = document.getElementById('control-produccion-content');
+                const controlProcesoSidebar = document.getElementById('control-proceso-content');
+                if (controlMaterialSidebar) {
+                    controlMaterialSidebar.style.display = 'none';
+                }
+                if (controlProduccionSidebar) {
+                    controlProduccionSidebar.style.display = 'none';
+                }
+                if (controlProcesoSidebar) {
+                    controlProcesoSidebar.style.display = 'none';
+                }
+                
+                // Cargar contenido dinámicamente del sidebar de control de resultados
+                cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
+                    .then(() => {
+                        console.log(' Contenido de Control de Resultados cargado exitosamente');
+                        
+                        // Asegurar que el área de contenido esté visible
+                        controlResultadosContentArea.style.display = 'block';
+                        
+                        // Mostrar contenedor por defecto de control de resultados
+                        const controlResultadosInfoContainer = document.getElementById('control-resultados-info-container');
+                        if (controlResultadosInfoContainer) {
+                            controlResultadosInfoContainer.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error cargando Control de Resultados:', error);
+                        // Fallback: mostrar contenedor por defecto aunque falle la carga
+                        controlResultadosContentArea.style.display = 'block';
+                        const controlResultadosInfoContainer = document.getElementById('control-resultados-info-container');
+                        if (controlResultadosInfoContainer) {
+                            controlResultadosInfoContainer.style.display = 'block';
+                        }
+                    });
+            };
+            
             // Función global para ocultar el contenido de almacén
             window.ocultarControlAlmacen = function() {
                 materialContentArea.style.display = 'none';
@@ -3111,13 +3187,20 @@ function hideAllMaterialContainers() {
                             .catch(error => console.error('Error cargando Control de Calidad:', error));
                         
                     } else if (this.id === 'Control de resultados') {
-                        materialContainer.style.display = 'block';
-                        controlResultadosContent.style.display = 'block';
-                        materialContentArea.style.display = 'none';
-                        
-                        // Cargar contenido dinámicamente
-                        cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
-                            .catch(error => console.error('Error cargando Control de Resultados:', error));
+                        // Usar la función global para mostrar Control de Resultados
+                        if (typeof window.mostrarControlResultados === 'function') {
+                            window.mostrarControlResultados();
+                        } else {
+                            // Fallback si la función no está disponible
+                            materialContainer.style.display = 'block';
+                            controlResultadosContent.style.display = 'block';
+                            controlResultadosContentArea.style.display = 'block';
+                            materialContentArea.style.display = 'none';
+                            
+                            // Cargar contenido dinámicamente
+                            cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
+                                .catch(error => console.error('Error cargando Control de Resultados:', error));
+                        }
                         
                     } else if (this.id === 'Control de reporte') {
                         materialContainer.style.display = 'block';
