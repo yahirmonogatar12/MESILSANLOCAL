@@ -3,6 +3,7 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta, date
 import pymysql
+from .auth_system import AuthSystem
 
 aoi_api = Blueprint("aoi_api", __name__)
 
@@ -36,7 +37,7 @@ def compute_shift_date(dt: datetime, shift: str) -> date:
 # ----- API: banner turno actual -----
 @aoi_api.get("/api/shift-now")
 def api_shift_now():
-    now = datetime.now()
+    now = AuthSystem.get_mexico_time()
     shift = classify_shift(now)
     sdate = compute_shift_date(now, shift)
     return jsonify({"now": now.isoformat(), "shift": shift, "shift_date": sdate.strftime("%Y-%m-%d")})
@@ -44,7 +45,7 @@ def api_shift_now():
 # ----- API: tabla turno en tiempo real -----
 @aoi_api.get("/api/realtime")
 def api_realtime():
-    now = datetime.now()
+    now = AuthSystem.get_mexico_time()
     shift = classify_shift(now)
     sdate = compute_shift_date(now, shift).strftime("%Y-%m-%d")
 
