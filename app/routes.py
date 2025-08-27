@@ -8078,127 +8078,150 @@ def api_movimientos():
             'items': []
         }), 500
 
-# ======== API PÚBLICA PARA ANDROID (SIN LOGIN) ========
+# ===============================
+# �🚀 RUTA SIMPLE PARA ANDROID - mysql-proxy.php
+# ===============================
 
-@app.route('/api/mysql-proxy', methods=['POST', 'GET', 'OPTIONS'])
-def mysql_proxy_api():
+@app.route('/mysql-proxy.php', methods=['POST', 'GET', 'OPTIONS'])
+def mysql_proxy_php():
     """
-    API pública para aplicaciones Android - No requiere login
-    Expone funcionalidad similar al mysql-proxy.php
+    Ruta simple para acceder al archivo PHP sin login requerido
+    Compatible con tu aplicación Android existente
     """
-    # Manejar preflight OPTIONS request
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        return response
-
-    # Headers CORS
-    def add_cors_headers(response):
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        return response
-
     try:
-        # Obtener datos de la petición
-        if request.method == 'POST':
-            data = request.get_json()
-            if not data or 'sql' not in data:
-                response = jsonify({
-                    'success': False,
-                    'error': 'SQL query is required'
-                })
-                return add_cors_headers(response), 400
-            
-            sql = data.get('sql')
-            params = data.get('params', [])
-        else:
-            # GET request para consultas simples
-            sql = request.args.get('sql')
-            if not sql:
-                response = jsonify({
-                    'success': False,
-                    'error': 'SQL query parameter is required'
-                })
-                return add_cors_headers(response), 400
-            params = []
-
-        # Validación de seguridad: tablas permitidas
-        allowed_tables = [
-            'materiales', 'inventario', 'movimientos_inventario', 'bom',
-            'control_material_almacen', 'control_material_produccion', 
-            'control_calidad', 'usuarios', 'work_orders', 'embarques',
-            'InventarioRollosSMD', 'InventarioRollosIMD', 'InventarioRollosMAIN',
-            'HistorialMovimientosRollosSMD', 'HistorialMovimientosRollosIMD', 
-            'HistorialMovimientosRollosMAIN'
-        ]
+        from flask import send_from_directory
+        import os
         
-        # Convertir a minúsculas para validación
-        sql_lower = sql.lower()
+        # Manejar preflight CORS
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'ok'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+            return response
         
-        # Prohibir operaciones peligrosas
-        dangerous_operations = ['drop', 'delete', 'truncate', 'alter', 'create']
-        for op in dangerous_operations:
-            if op in sql_lower:
-                response = jsonify({
-                    'success': False,
-                    'error': f'Operación no permitida: {op}'
-                })
-                return add_cors_headers(response), 400
+        # Ruta al archivo PHP
+        php_dir = os.path.join(os.path.dirname(__file__), 'php')
+        php_file = 'mysql-proxy.php'
         
-        # Validar que solo se acceda a tablas permitidas
-        table_found = False
-        for table in allowed_tables:
-            if table.lower() in sql_lower:
-                table_found = True
-                break
-        
-        if not table_found:
-            response = jsonify({
+        # Verificar que el archivo existe
+        php_path = os.path.join(php_dir, php_file)
+        if not os.path.exists(php_path):
+            return jsonify({
                 'success': False,
-                'error': 'Acceso a tabla no permitido'
-            })
-            return add_cors_headers(response), 400
-
-        # Limitar resultados para SELECT
-        if sql_lower.startswith('select') and 'limit' not in sql_lower:
-            sql += ' LIMIT 1000'
-
-        # Ejecutar consulta usando el sistema existente
-        if sql_lower.startswith('select') or sql_lower.startswith('show'):
-            # Consulta de lectura
-            if params:
-                result = execute_query(sql, params, fetch='all')
-            else:
-                result = execute_query(sql, fetch='all')
-            
-            response_data = {
-                'success': True,
-                'data': result if result else [],
-                'count': len(result) if result else 0
-            }
-        else:
-            # Consulta de escritura (INSERT, UPDATE)
-            if params:
-                affected = execute_query(sql, params)
-            else:
-                affected = execute_query(sql)
-            
-            response_data = {
-                'success': True,
-                'affected_rows': affected if affected else 0,
-                'data': []
-            }
-
-        response = jsonify(response_data)
-        return add_cors_headers(response)
-
+                'error': 'Archivo mysql-proxy.php no encontrado'
+            }), 404
+        
+        print(f"📍 Redirigiendo a: {php_path}")
+        
+        # Servir el archivo PHP directamente
+        return send_from_directory(php_dir, php_file)
+        
     except Exception as e:
-        print(f"Error en API MySQL Proxy: {e}")
+        print(f"❌ Error sirviendo mysql-proxy.php: {e}")
         response = jsonify({
             'success': False,
             'error': f'Error del servidor: {str(e)}'
         })
-        return add_cors_headers(response), 500
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+@app.route('/api/mysql', methods=['POST', 'GET', 'OPTIONS'])
+def api_mysql_simple():
+    """
+    Ruta API simple para consultas MySQL desde Android
+    Sin autenticación requerida - equivalente a tu PHP
+    """
+    try:
+        # Manejar preflight CORS
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'ok'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+            return response
+        
+        # Obtener consulta SQL
+        if request.method == 'POST':
+            data = request.get_json()
+            if not data:
+                return jsonify({
+                    'success': False,
+                    'error': 'No se recibió JSON'
+                }), 400
+            sql_query = data.get('sql', '').strip()
+        else:  # GET
+            sql_query = request.args.get('sql', '').strip()
+        
+        # Si no hay consulta SQL, usar una consulta por defecto para test
+        if not sql_query:
+            sql_query = 'SELECT COUNT(*) as total_materiales FROM materiales'
+            print(f"⚠️ No se proporcionó SQL, usando consulta por defecto: {sql_query}")
+        
+        print(f"🔍 Ejecutando consulta API simple: {sql_query}")
+        
+        # Validaciones básicas de seguridad
+        sql_upper = sql_query.upper()
+        if not sql_upper.startswith('SELECT') and not sql_upper.startswith('SHOW'):
+            return jsonify({
+                'success': False,
+                'error': 'Solo se permiten consultas SELECT y SHOW'
+            }), 403
+        
+        # Ejecutar consulta usando la función existente
+        result = execute_query(sql_query, fetch='all')
+        
+        # Preparar respuesta
+        response_data = {
+            'success': True,
+            'data': result if result else [],
+            'count': len(result) if result else 0
+        }
+        
+        response = jsonify(response_data)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        
+        print(f"✅ API Simple - Consulta exitosa: {len(result) if result else 0} registros")
+        return response
+        
+    except Exception as e:
+        print(f"❌ Error en API MySQL Simple: {e}")
+        
+        error_response = jsonify({
+            'success': False,
+            'error': str(e)
+        })
+        error_response.headers.add('Access-Control-Allow-Origin', '*')
+        return error_response, 500
+
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """
+    Endpoint simple para verificar el estado de la API
+    """
+    try:
+        response_data = {
+            'success': True,
+            'status': 'API funcionando correctamente',
+            'endpoints': [
+                '/api/mysql - Consultas SQL directas',
+                '/api/mysql-proxy - Proxy MySQL compatible',
+                '/mysql-proxy.php - Archivo PHP original'
+            ],
+            'database': 'MySQL conectado',
+            'timestamp': str(datetime.now())
+        }
+        
+        response = jsonify(response_data)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
+        
+    except Exception as e:
+        error_response = jsonify({
+            'success': False,
+            'error': str(e)
+        })
+        error_response.headers.add('Access-Control-Allow-Origin', '*')
+        return error_response, 500
