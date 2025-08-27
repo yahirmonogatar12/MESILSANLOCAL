@@ -1,77 +1,817 @@
-<!-- TEMPLATE AJAX: Control de operacion de linea SMT -->
-<!-- SUFIJO ÚNICO: -operacion-linea-smt -->
-<!-- CONTENEDOR: operacion-linea-smt-unique-container -->
-
-<div id="operacion-linea-smt-main-container-unique-operacion-linea-smt" class="operacion-linea-smt-container">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Front – Plan & Historial (Dark)</title>
   <style>
-        .operacion-linea-smt-container {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #2B2D3E;
-            color: #E0E0E0;
-            font-size: 12px;
-            width: 100%;
-            min-height: calc(100vh - 120px);
-            padding: 10px;
-        }
-        .operacion-linea-smt-container * { margin: 0; padding: 0; box-sizing: border-box; }
-        .operacion-linea-smt-container .title-bar-operacion-linea-smt {
-            background-color: #3C3F52;
-            padding: 12px 15px;
-            border: 1px solid #20688C;
-            border-radius: 4px 4px 0 0;
-            font-size: 14px;
-            font-weight: 600;
-            color: #E0E0E0;
-        }
-        .operacion-linea-smt-container .btn-primary-operacion-linea-smt {
-            padding: 8px 20px;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            color: white;
-        }
-        .operacion-linea-smt-container .btn-iniciar-operacion-linea-smt { background-color: #3498DB; }
-        .operacion-linea-smt-container .btn-fin-operacion-linea-smt { background-color: #E74C3C; }
-        .operacion-linea-smt-container .btn-pausa-operacion-linea-smt { background-color: #95A5A6; }
+    /* ESTILOS AISLADOS CON ALTA ESPECIFICIDAD - COMPACTOS PARA UNA PANTALLA */
+    #app-mes-front-isolated {
+      --bg: #32323E !important;
+      --panel: #34334E !important;
+      --panel-2: #2c3e50 !important;
+      --ink: #dfe6eb !important;
+      --muted: #95a5a6 !important;
+      --line: #20688C !important;
+      --btn-blue: #3498db !important;
+      --btn-red: #e74c3c !important;
+      --btn-gray: #3C3940 !important;
+      --btn-green: #456636 !important;
+      --btn-orange: #e67e22 !important;
+      --btn-cyan: #2980b9 !important;
+      --btn-purple: #502696 !important;
+      
+      background-color: var(--bg) !important;
+      color: var(--ink) !important;
+      padding: 8px !important;
+      max-width: 1600px !important;
+      margin: 0 auto !important;
+      min-height: 100vh !important;
+      font-family: "Segoe UI", Inter, system-ui, -apple-system, Roboto, Arial, sans-serif !important;
+      box-sizing: border-box !important;
+    }
+
+    /* UTILIDADES */
+    #app-mes-front-isolated .row {
+      display: grid !important;
+      gap: 6px !important;
+    }
+
+    #app-mes-front-isolated .row.cols-2 {
+      grid-template-columns: 1fr 1fr !important;
+    }
+
+    #app-mes-front-isolated .row.cols-3 {
+      grid-template-columns: 1fr 1fr 1fr !important;
+    }
+
+    #app-mes-front-isolated .spacer {
+      height: 4px !important;
+    }
+
+    #app-mes-front-isolated .right {
+      margin-left: auto !important;
+    }
+
+    /* PANELES */
+    #app-mes-front-isolated .panel {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 4px !important;
+      overflow: hidden !important;
+      position: relative !important;
+      box-shadow: 0 0 0 1px rgba(32,104,140,.25), 0 4px 12px rgba(0,0,0,.35) !important;
+      margin-bottom: 6px !important;
+    }
+
+    #app-mes-front-isolated .panel-header {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      padding: 6px 8px !important;
+      background: var(--header) !important;
+      border-bottom: 1px solid rgba(32,104,140,.6) !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.1px !important;
+    }
+
+    #app-mes-front-isolated .panel-header .title {
+      font-size: 12px !important;
+      color: var(--ink) !important;
+      font-weight: 600 !important;
+    }
+
+    #app-mes-front-isolated .panel-body {
+      padding: 6px !important;
+      background: transparent !important;
+    }
+
+    /* CONTROLES */
+    #app-mes-front-isolated label {
+      font-size: 10px !important;
+      color: var(--muted) !important;
+      display: block !important;
+      margin-bottom: 2px !important;
+      font-weight: 500 !important;
+    }
+
+    #app-mes-front-isolated .toolbar {
+      display: grid !important;
+      grid-template-columns: 1fr auto !important;
+      align-items: center !important;
+      gap: 8px !important;
+    }
+
+    #app-mes-front-isolated .inputs {
+      display: grid !important;
+      grid-template-columns: repeat(12, minmax(0,1fr)) !important;
+      gap: 6px !important;
+      align-items: end !important;
+    }
+
+    #app-mes-front-isolated .field {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    #app-mes-front-isolated .field.inline {
+      display: grid !important;
+      grid-template-columns: 100px 1fr !important;
+      align-items: center !important;
+      column-gap: 8px !important;
+      min-width: 0 !important;
+    }
+
+    #app-mes-front-isolated .field.inline > label {
+      display: block !important;
+      margin: 0 !important;
+      text-align: left !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    #app-mes-front-isolated .field.inline input[type="text"],
+    #app-mes-front-isolated .field.inline input[type="date"],
+    #app-mes-front-isolated .field.inline select {
+      width: 100% !important;
+    }
+
+    #app-mes-front-isolated input[type="text"],
+    #app-mes-front-isolated input[type="date"],
+    #app-mes-front-isolated select {
+      background: #0b1426 !important;
+      color: var(--ink) !important;
+      border: 1px solid rgba(32,104,140,.8) !important;
+      border-radius: 3px !important;
+      padding: 4px 6px !important;
+      outline: none !important;
+      font-size: 11px !important;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.25) !important;
+      font-family: inherit !important;
+      box-sizing: border-box !important;
+      display: block !important;
+    }
+
+    #app-mes-front-isolated input[type="date"] {
+      width: 120px !important;
+    }
+
+    #app-mes-front-isolated select {
+      min-width: 80px !important;
+    }
+
+    #app-mes-front-isolated .controls-right {
+      display: flex !important;
+      gap: 4px !important;
+    }
+
+    /* BOTONES */
+    #app-mes-front-isolated .btn {
+      border: 1px solid var(--line) !important;
+      border-radius: 3px !important;
+      padding: 4px 8px !important;
+      font-weight: 600 !important;
+      font-size: 10px !important;
+      color: #fff !important;
+      cursor: pointer !important;
+      background: var(--btn-gray) !important;
+      font-family: inherit !important;
+      display: inline-block !important;
+      text-align: center !important;
+      line-height: 1.1 !important;
+      box-sizing: border-box !important;
+      text-decoration: none !important;
+      transition: all 0.2s ease !important;
+    }
+
+    #app-mes-front-isolated .btn:hover {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+    }
+
+    #app-mes-front-isolated .btn:active {
+      transform: translateY(1px) !important;
+    }
+
+    #app-mes-front-isolated .btn.blue {
+      background: var(--btn-blue) !important;
+      border-color: var(--btn-blue) !important;
+    }
+
+    #app-mes-front-isolated .btn.red {
+      background: var(--btn-red) !important;
+      border-color: var(--btn-red) !important;
+    }
+
+    #app-mes-front-isolated .btn.gray {
+      background: var(--btn-gray) !important;
+      border-color: var(--btn-gray) !important;
+    }
+
+    #app-mes-front-isolated .btn.green {
+      background: var(--btn-green) !important;
+      border-color: var(--btn-green) !important;
+    }
+
+    #app-mes-front-isolated .btn.orange {
+      background: var(--btn-orange) !important;
+      border-color: var(--btn-orange) !important;
+    }
+
+    #app-mes-front-isolated .btn.cyan {
+      background: var(--btn-cyan) !important;
+      border-color: var(--btn-cyan) !important;
+    }
+
+    #app-mes-front-isolated .btn.purple {
+      background: var(--btn-purple) !important;
+      border-color: var(--btn-purple) !important;
+    }
+
+    /* TABLAS */
+    #app-mes-front-isolated .table {
+      border: 1px solid var(--line) !important;
+      border-radius: 4px !important;
+      overflow: hidden !important;
+      background: #40424F !important;
+      width: 100% !important;
+    }
+
+    /* ESTILOS PARA TABLAS VACÍAS */
+    #app-mes-front-isolated .table .placeholder {
+      height: 120px !important;
+      display: grid !important;
+      place-items: center !important;
+      color: #95a5a6 !important;
+      font-weight: 600 !important;
+      background: linear-gradient(135deg, #40424F 0%, #3a3d4a 100%) !important;
+      font-size: 11px !important;
+      border: 1px dashed #5F6375 !important;
+      border-radius: 4px !important;
+      margin: 4px !important;
+    }
+
+    /* FORZAR COLORES DE CELDAS */
+    #app-mes-front-isolated table td,
+    #app-mes-front-isolated .table td {
+      background: inherit !important;
+      background-color: inherit !important;
+      color: #dfe6eb !important;
+    }
+
+    /* ESTILOS CSS AGRESIVOS PARA EVITAR INTERFERENCIA GLOBAL */
+    #app-mes-front-isolated *[class*="table"] thead,
+    #app-mes-front-isolated *[class*="table"] thead tr,
+    #app-mes-front-isolated *[class*="table"] thead th,
+    #app-mes-front-isolated *[id*="table"] thead,
+    #app-mes-front-isolated *[id*="table"] thead tr,
+    #app-mes-front-isolated *[id*="table"] thead th {
+      background: #172A46 !important;
+      background-color: #172A46 !important;
+      color: #ecf0f1 !important;
+    }
+
+    #app-mes-front-isolated *[class*="table"] tbody,
+    #app-mes-front-isolated *[class*="table"] tbody tr,
+    #app-mes-front-isolated *[id*="table"] tbody,
+    #app-mes-front-isolated *[id*="table"] tbody tr {
+      background: #40424F !important;
+      background-color: #40424F !important;
+    }
+
+    #app-mes-front-isolated *[class*="table"] tbody tr:nth-child(even),
+    #app-mes-front-isolated *[id*="table"] tbody tr:nth-child(even) {
+      background: #44475A !important;
+      background-color: #44475A !important;
+    }
+
+    /* SOBRESCRIBIR CUALQUIER ESTILO GLOBAL DE TABLAS */
+    #app-mes-front-isolated table,
+    #app-mes-front-isolated .table {
+      background: #40424F !important;
+      background-color: #40424F !important;
+    }
+
+    #app-mes-front-isolated table thead,
+    #app-mes-front-isolated .table thead {
+      background: #172A46 !important;
+      background-color: #172A46 !important;
+    }
+
+    #app-mes-front-isolated table tbody,
+    #app-mes-front-isolated .table tbody {
+      background: #40424F !important;
+      background-color: #40424F !important;
+    }
+
+    #app-mes-front-isolated .table th {
+      padding: 4px 4px !important;
+      text-align: left !important;
+      font-size: 10px !important;
+      color: #ecf0f1 !important;
+      white-space: nowrap !important;
+      border-right: 1px solid var(--line) !important;
+      font-weight: 600 !important;
+      background: #172A46 !important;
+      background-color: #172A46 !important;
+      box-sizing: border-box !important;
+    }
+
+    #app-mes-front-isolated .table th:last-child {
+      border-right: 0 !important;
+    }
+
+    #app-mes-front-isolated .table .body {
+      height: 120px !important;
+      overflow: auto !important;
+      background: #40424F !important;
+    }
+
+    #app-mes-front-isolated .table .placeholder {
+      height: 120px !important;
+      display: grid !important;
+      place-items: center !important;
+      color: #95a5a6 !important;
+      font-weight: 600 !important;
+      background: linear-gradient(135deg, #40424F 0%, #3a3d4a 100%) !important;
+      font-size: 11px !important;
+      border: 1px dashed #5F6375 !important;
+      border-radius: 4px !important;
+      margin: 4px !important;
+    }
+
+    /* ESTILOS PARA LAS CELDAS DE LA TABLA */
+    #app-mes-front-isolated .table tbody {
+      background: #40424F !important;
+      background-color: #40424F !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr {
+      background-color: #40424F !important;
+      background: #40424F !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr:nth-child(even) {
+      background-color: #44475A !important;
+      background: #44475A !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr:hover {
+      background-color: #485563 !important;
+      background: #485563 !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr:nth-child(even):hover {
+      background-color: #485563 !important;
+      background: #485563 !important;
+    }
+
+    #app-mes-front-isolated .table td {
+      padding: 4px 4px !important;
+      text-align: left !important;
+      font-size: 10px !important;
+      color: #dfe6eb !important;
+      white-space: nowrap !important;
+      border-bottom: 1px solid #5F6375 !important;
+      border-right: 1px solid #5F6375 !important;
+      background-color: inherit !important;
+      background: inherit !important;
+      box-sizing: border-box !important;
+    }
+
+    #app-mes-front-isolated .table td:last-child {
+      border-right: 0 !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr:last-child td {
+      border-bottom: 0 !important;
+    }
+
+    /* CHECKBOXES EN TABLAS */
+    #app-mes-front-isolated .table input[type="checkbox"] {
+      transform: scale(0.9) !important;
+      cursor: pointer !important;
+      accent-color: #3498db !important;
+      margin: 0 !important;
+    }
+
+    #app-mes-front-isolated .table input[type="checkbox"]:checked {
+      accent-color: #27ae60 !important;
+    }
+
+    #app-mes-front-isolated .table input[type="checkbox"]:not(:checked) {
+      accent-color: #95a5a6 !important;
+    }
+
+    /* MEJORAS VISUALES PARA TABLAS CON DATOS */
+    #app-mes-front-isolated .table tbody tr:not(:empty) {
+      transition: background-color 0.2s ease !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr:not(:empty):hover {
+      background-color: #485563 !important;
+      box-shadow: inset 0 0 0 1px rgba(52, 152, 219, 0.3) !important;
+    }
+
+    /* ESTILOS PARA CELDAS CON DATOS ESPECÍFICOS */
+    #app-mes-front-isolated .table td[data-status="active"] {
+      color: #27ae60 !important;
+      font-weight: 600 !important;
+    }
+
+    #app-mes-front-isolated .table td[data-status="warning"] {
+      color: #f39c12 !important;
+      font-weight: 600 !important;
+    }
+
+    #app-mes-front-isolated .table td[data-status="error"] {
+      color: #e74c3c !important;
+      font-weight: 600 !important;
+    }
+
+    #app-mes-front-isolated .table td[data-type="quantity"] {
+      text-align: right !important;
+      font-weight: 600 !important;
+      color: #3498db !important;
+    }
+
+    #app-mes-front-isolated .table td[data-type="date"] {
+      color: #95a5a6 !important;
+      font-size: 9px !important;
+    }
+
+    /* RESALTADO PARA FILAS IMPORTANTES */
+    #app-mes-front-isolated .table tbody tr.highlight {
+      background-color: rgba(52, 152, 219, 0.1) !important;
+      border-left: 3px solid #3498db !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr.highlight:nth-child(even) {
+      background-color: rgba(52, 152, 219, 0.15) !important;
+    }
+
+    #app-mes-front-isolated .table tbody tr.highlight:hover {
+      background-color: rgba(52, 152, 219, 0.2) !important;
+    }
+
+    /* MEJORAS PARA SCROLLBARS DE TABLAS */
+    #app-mes-front-isolated .table .body::-webkit-scrollbar {
+      width: 6px !important;
+      height: 6px !important;
+    }
+
+    #app-mes-front-isolated .table .body::-webkit-scrollbar-track {
+      background: #2c3e50 !important;
+      border-radius: 3px !important;
+    }
+
+    #app-mes-front-isolated .table .body::-webkit-scrollbar-thumb {
+      background: #3498db !important;
+      border-radius: 3px !important;
+    }
+
+    #app-mes-front-isolated .table .body::-webkit-scrollbar-thumb:hover {
+      background: #2980b9 !important;
+    }
+
+    #app-mes-front-isolated .footer-row {
+      display: flex !important;
+      justify-content: flex-start !important;
+      align-items: center !important;
+      padding: 4px 4px !important;
+      color: #95a5a6 !important;
+      font-size: 10px !important;
+      background: #40424F !important;
+      border-top: 1px solid var(--line) !important;
+    }
+
+    #app-mes-front-isolated .btnbar {
+      display: flex !important;
+      gap: 4px !important;
+      flex-wrap: wrap !important;
+    }
+
+    /* SCROLLBAR */
+    #app-mes-front-isolated ::-webkit-scrollbar {
+      height: 6px !important;
+      width: 6px !important;
+    }
+
+    #app-mes-front-isolated ::-webkit-scrollbar-track {
+      background: #0e1a2e !important;
+    }
+
+    #app-mes-front-isolated ::-webkit-scrollbar-thumb {
+      background: #29506b !important;
+      border-radius: 6px !important;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      #app-mes-front-isolated {
+        padding: 4px !important;
+      }
+
+      #app-mes-front-isolated .row.cols-2,
+      #app-mes-front-isolated .row.cols-3 {
+        grid-template-columns: 1fr !important;
+      }
+
+      #app-mes-front-isolated .inputs {
+        grid-template-columns: 1fr !important;
+        gap: 4px !important;
+      }
+
+      #app-mes-front-isolated .field.inline {
+        grid-template-columns: 1fr !important;
+        gap: 2px !important;
+      }
+
+      #app-mes-front-isolated .field.inline > label {
+        text-align: left !important;
+      }
+
+      #app-mes-front-isolated .btnbar {
+        flex-direction: column !important;
+        gap: 3px !important;
+      }
+
+      #app-mes-front-isolated .btn {
+        width: 100% !important;
+        padding: 6px 8px !important;
+        font-size: 10px !important;
+      }
+
+      #app-mes-front-isolated .table .body {
+        height: 80px !important;
+      }
+
+      #app-mes-front-isolated .table .placeholder {
+        height: 80px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #app-mes-front-isolated {
+        padding: 2px !important;
+      }
+
+      #app-mes-front-isolated .panel-body {
+        padding: 4px !important;
+      }
+
+      #app-mes-front-isolated .btn {
+        padding: 4px 6px !important;
+        font-size: 9px !important;
+      }
+
+      #app-mes-front-isolated .table .body {
+        height: 60px !important;
+      }
+
+      #app-mes-front-isolated .table .placeholder {
+        height: 60px !important;
+      }
+    }
   </style>
+</head>
+<body>
+  <div id="app-mes-front-isolated">
 
-    <div class="title-bar-operacion-linea-smt">Control de operación de línea SMT</div>
-    
-    <div style="background-color: #40424F; border: 1px solid #20688C; padding: 15px; display: flex; gap: 15px; flex-wrap: wrap;">
-        <label>Numero de lote</label>
-        <input type="text" id="numeroLote-operacion-linea-smt" style="background-color: #2C3E50; color: #E0E0E0; border: 1px solid #34495E; border-radius: 4px; padding: 8px 12px; flex: 1;">
-        <button id="btnIniciar-operacion-linea-smt" class="btn-primary-operacion-linea-smt btn-iniciar-operacion-linea-smt">Iniciar</button>
-        <button id="btnFin-operacion-linea-smt" class="btn-primary-operacion-linea-smt btn-fin-operacion-linea-smt">Fin</button>
-        <button id="btnPausa-operacion-linea-smt" class="btn-primary-operacion-linea-smt btn-pausa-operacion-linea-smt">Pausa</button>
+    <!-- =================== BARRA SUPERIOR =================== -->
+    <section class="panel" id="panel-top">
+      <div class="panel-body toolbar">
+        <div class="inputs">
+          <div class="field inline" style="grid-column: span 2" id="fld-lot-no">
+            <label for="lotNo">Lot No</label>
+            <input id="lotNo" type="text" placeholder="" />
+          </div>
+          <div class="field inline" style="grid-column: span 2" id="fld-lot-no-info">
+            <label for="lotNoInfo">Lot No Info</label>
+            <input id="lotNoInfo" type="text" placeholder="" />
+          </div>
+          <div class="field inline" style="grid-column: span 5" id="fld-blank-spacer">
+            <label>&nbsp;</label>
+            <input type="text" placeholder="" />
+          </div>
+          <div class="controls-right" style="grid-column: span 3" id="ctrl-start-stop">
+            <button class="btn blue" id="btn-start">Start(Re-Start)</button>
+            <button class="btn red" id="btn-end">End</button>
+            <button class="btn gray" id="btn-stop">Stop</button>
+          </div>
+        </div>
       </div>
+    </section>
 
-    <div style="background-color: #40424F; border: 1px solid #20688C; margin-top: 10px; padding: 15px; text-align: center; color: #95A5A6;">
-        Módulo Control de operación de línea SMT cargado correctamente
+    <div class="spacer"></div>
+
+    <!-- =================== FILTROS + TABLA PRINCIPAL =================== -->
+    <section class="panel" id="panel-plan">
+      <div class="panel-body">
+        <div class="toolbar" style="margin-bottom:6px">
+          <div class="inputs" style="grid-template-columns:repeat(16,minmax(0,1fr))">
+            <div class="field inline" style="grid-column: span 6" id="fld-prod-date">
+              <label>Production Date</label>
+              <div style="display:grid; grid-auto-flow:column; grid-auto-columns:max-content; align-items:center; column-gap:6px; min-width:0">
+                <input type="date" id="dateFrom" />
+                <span style="color:var(--muted)">~</span>
+                <input type="date" id="dateTo" />
+              </div>
+            </div>
+            <div class="field inline" style="grid-column: span 3" id="fld-line">
+              <label for="selLine">Line</label>
+              <div style="display:grid; grid-auto-flow:column; grid-auto-columns:max-content; align-items:center; column-gap:6px">
+                <select id="selLine">
+                  <option>ALL</option>
+                </select>
+                <button class="btn gray" title="Clear" id="btn-clear-line">x</button>
+              </div>
+            </div>
+            <div class="right controls-right" style="grid-column: 13 / span 4" id="ctrl-search-export">
+              <button class="btn gray" id="btn-search">Search</button>
+              <button class="btn green" id="btn-export-main">Excel Export</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla principal -->
+        <div class="table" id="tbl-plan">
+          <table style="width:100%; border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="width:80px">Line</th>
+                <th style="width:120px">Production Date</th>
+                <th style="width:120px">Lot No</th>
+                <th style="width:100px">Status</th>
+                <th style="width:100px">Model</th>
+                <th style="width:100px">Process</th>
+                <th style="width:60px">Side</th>
+                <th style="width:50px">Xout</th>
+                <th style="width:100px">Plan Quantity</th>
+                <th style="width:120px">Production Quantity</th>
+              </tr>
+            </thead>
+          </table>
+          <div class="placeholder">No data</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="spacer"></div>
+
+    <!-- =================== SEGUNDA FILA: 2 PANELES =================== -->
+    <div class="row cols-2">
+      <!-- Bom List -->
+      <section class="panel" id="panel-bom">
+        <div class="panel-header">
+          <span class="title">Bom List</span>
+          <div class="right btnbar">
+            <button class="btn green" id="btn-bom-export">Excel Export</button>
+            <button class="btn gray" id="btn-verification-pass">Verification Pass</button>
+            <button class="btn orange" id="btn-alt-mat">Alternative material registration</button>
+            <button class="btn cyan" id="btn-merge-slots">Merge Slots</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table" id="tbl-bom">
+            <table style="width:100%; border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th style="width:24px"><input type="checkbox" aria-label="select-all"/></th>
+                  <th>Equip...</th>
+                  <th>Slot No</th>
+                  <th>Materia...</th>
+                  <th>Part Nu...</th>
+                  <th>Incorre...</th>
+                  <th>batch i...</th>
+                  <th>Verifica...</th>
+                  <th>Merge...</th>
+                  <th>Alter M...</th>
+                  <th>Remain...</th>
+                </tr>
+              </thead>
+            </table>
+            <div class="placeholder">No data</div>
+          </div>
+          <div class="footer-row">Total Rows : 0</div>
+        </div>
+      </section>
+
+      <!-- Material Changed History -->
+      <section class="panel" id="panel-mch">
+        <div class="panel-header">
+          <span class="title">Material Changed History</span>
+          <div class="right btnbar">
+            <button class="btn green" id="btn-mch-export">Excel Export</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table" id="tbl-mch">
+            <table style="width:100%; border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th>Equipment...</th>
+                  <th>Slot No</th>
+                  <th>Regist Date</th>
+                  <th>Warehousing...</th>
+                  <th>Regist Quan...</th>
+                  <th>Current Qu...</th>
+                </tr>
+              </thead>
+            </table>
+            <div class="placeholder">No data</div>
+          </div>
+          <div class="footer-row">Total Rows : 0</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- =================== TERCERA FILA: 3 PANELES =================== -->
+    <div class="row cols-3">
+      <!-- Solder History -->
+      <section class="panel" id="panel-solder">
+        <div class="panel-header">
+          <span class="title">Solder History</span>
+          <div class="right btnbar">
+            <button class="btn purple" id="btn-solder-regist">Regist</button>
+            <button class="btn green" id="btn-solder-export">Excel Export</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table" id="tbl-solder">
+            <table style="width:100%; border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th>Regist D...</th>
+                  <th>Solder S...</th>
+                  <th>Remainin...</th>
+                  <th>Effective...</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+            </table>
+            <div class="placeholder">No data</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Metalmask History -->
+      <section class="panel" id="panel-metalmask">
+        <div class="panel-header">
+          <span class="title">Metalmask History</span>
+          <div class="right btnbar">
+            <button class="btn purple" id="btn-metalmask-regist">Regist</button>
+            <button class="btn green" id="btn-metalmask-export">Excel Export</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table" id="tbl-metalmask">
+            <table style="width:100%; border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th>Regist Date</th>
+                  <th>Manage No</th>
+                  <th>Available Q...</th>
+                </tr>
+              </thead>
+            </table>
+            <div class="placeholder">No data</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Squeegee History -->
+      <section class="panel" id="panel-squeegee">
+        <div class="panel-header">
+          <span class="title">Squeegee History</span>
+          <div class="right btnbar">
+            <button class="btn purple" id="btn-squeegee-regist">Regist</button>
+            <button class="btn green" id="btn-squeegee-export">Excel Export</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table" id="tbl-squeegee">
+            <table style="width:100%; border-collapse:collapse">
+              <thead>
+                <tr>
+                  <th>Regist Date</th>
+                  <th>Front Manage...</th>
+                  <th>Front Available...</th>
+                  <th>Rear Manage...</th>
+                  <th>Rear Available...</th>
+                </tr>
+              </thead>
+            </table>
+            <div class="placeholder">No data</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="spacer" style="height:15px"></div>
   </div>
-
-  <script>
-        (function() {
-            console.log('🚀 Inicializando Control de operación de línea SMT AJAX...');
-            
-            window.inicializarControlOperacionLineaSMTAjax = function() {
-                console.log('✅ Control de operación de línea SMT AJAX inicializado');
-                
-                const btnIniciar = document.getElementById('btnIniciar-operacion-linea-smt');
-                const btnFin = document.getElementById('btnFin-operacion-linea-smt');
-                const btnPausa = document.getElementById('btnPausa-operacion-linea-smt');
-                
-                if (btnIniciar) btnIniciar.addEventListener('click', () => console.log('🚀 Iniciar clicked'));
-                if (btnFin) btnFin.addEventListener('click', () => console.log('🛑 Fin clicked'));
-                if (btnPausa) btnPausa.addEventListener('click', () => console.log('⏸️ Pausa clicked'));
-            };
-            
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', window.inicializarControlOperacionLineaSMTAjax);
-            } else {
-                setTimeout(window.inicializarControlOperacionLineaSMTAjax, 100);
-            }
-    })();
-  </script>
-</div>
+</body>
+</html>

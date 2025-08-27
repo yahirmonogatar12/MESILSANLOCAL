@@ -1856,11 +1856,12 @@ body {
 .Control-de-produccion-SMT-unique-container,
 .bom-unique-container,
 .inventario-imd-terminado-unique-container,
-.control-proceso-info-container {
+.control-proceso-info-container,
+.historial-aoi-unique-container {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     max-height: calc(100vh - var(--header-height) - 20px) !important;
-    padding: 10px !important;
+    padding: 5px !important;
     background-color: #2B2D3E !important;
     border-radius: 4px !important;
     border: 1px solid #3C3F51 !important;
@@ -1874,11 +1875,12 @@ body {
 .material-content-area,
 .produccion-content-area,
 .control-proceso-content-area,
-.informacion-basica-content-area {
+.informacion-basica-content-area,
+.control-resultados-content-area {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     max-height: calc(100vh - var(--header-height) - 10px) !important;
-    padding: 10px !important;
+    padding: 5px !important;
     margin-top: 5px !important;
 }
 
@@ -1886,11 +1888,13 @@ body {
 .material-container,
 .control-proceso-content,
 .produccion-content,
-.informacion-basica-content {
+.informacion-basica-content,
+.control-resultados-content,
+.control-resultados-info-container {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     max-height: calc(100vh - var(--header-height) - 20px) !important;
-    padding: 10px !important;
+    padding: 5px !important;
     margin-top: 5px !important;
 }
 
@@ -2027,4 +2031,107 @@ html, body {
     transform: translateY(0) !important;
     margin-top: 0 !important;
     top: 0 !important;
+}
+
+/* ============================================= */
+/* ESTILOS ESPECÍFICOS PARA HISTORIAL AOI       */
+/* ============================================= */
+/* Contenedor principal del Historial AOI */
+.historial-aoi-unique-container {
+    padding: 5px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+/* Tablas del Historial AOI */
+.historial-aoi-unique-container table {
+    margin: 5px 0 !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+    background-color: #2B2D3E !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+}
+
+/* Encabezados de tabla del Historial AOI */
+.historial-aoi-unique-container th {
+    background-color: #3498db !important;
+    color: white !important;
+    padding: 8px 5px !important;
+    text-align: left !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid #2980b9 !important;
+}
+
+/* Celdas de tabla del Historial AOI */
+.historial-aoi-unique-container td {
+    padding: 6px 5px !important;
+    border-bottom: 1px solid #3C3F51 !important;
+    color: #E8E8E8 !important;
+}
+
+/* Filas alternas para mejor legibilidad */
+.historial-aoi-unique-container tr:nth-child(even) {
+    background-color: #32344A !important;
+}
+
+.historial-aoi-unique-container tr:hover {
+    background-color: #3C3F51 !important;
+}
+
+/* Botones del Historial AOI */
+.historial-aoi-unique-container button {
+    margin: 2px !important;
+    padding: 6px 12px !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background-color: #3498db !important;
+    color: white !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+}
+
+.historial-aoi-unique-container button:hover {
+    background-color: #2980b9 !important;
+}
+
+/* Campos de entrada del Historial AOI */
+.historial-aoi-unique-container input[type="date"],
+.historial-aoi-unique-container input[type="text"] {
+    padding: 5px !important;
+    margin: 2px !important;
+    border: 1px solid #3C3F51 !important;
+    border-radius: 4px !important;
+    background-color: #2B2D3E !important;
+    color: #E8E8E8 !important;
+}
+
+/* Contenedores de información del turno */
+.historial-aoi-unique-container .shift-info {
+    background-color: #3498db !important;
+    color: white !important;
+    padding: 8px 5px !important;
+    margin: 5px 0 !important;
+    border-radius: 4px !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+}
+
+/* Scrollbar personalizado para el contenedor AOI */
+.historial-aoi-unique-container::-webkit-scrollbar {
+    width: 8px !important;
+}
+
+.historial-aoi-unique-container::-webkit-scrollbar-track {
+    background: #2B2D3E !important;
+    border-radius: 4px !important;
+}
+
+.historial-aoi-unique-container::-webkit-scrollbar-thumb {
+    background: #3498db !important;
+    border-radius: 4px !important;
+}
+
+.historial-aoi-unique-container::-webkit-scrollbar-thumb:hover {
+    background: #2980b9 !important;
 }
