@@ -393,78 +393,198 @@
   </div>
 
 <script>
-const fmt = n => new Intl.NumberFormat('es-MX').format(n);
-
-function paintTableByOrder(tbodyId, rows, order){
-  const tb = document.getElementById(tbodyId);
-  tb.innerHTML='';
-  if(!rows || rows.length===0){
-    tb.innerHTML = `<tr><td colspan="${order.length}" id="aoi-empty">Sin registros</td></tr>`;
-    return;
-  }
-  for(const r of rows){
-    const tr=document.createElement('tr');
-    for(const k of order){
-      const td=document.createElement('td');
-      const v=r[k];
-      td.textContent = (k==='cantidad') ? fmt(v) : v;
-      tr.appendChild(td);
-    }
-    tb.appendChild(tr);
-  }
-}
-
-async function j(url){ const r=await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-function todayISO(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;}
-
-async function loadRealtime(){
-  const meta = await j('/api/shift-now');
-  document.getElementById('aoi-now').textContent = new Date(meta.now).toLocaleString();
-  document.getElementById('aoi-shift-badge').textContent = `${meta.shift} • ${meta.shift_date}`;
-  document.getElementById('aoi-shift-title').textContent = `${meta.shift} | ${meta.shift_date}`;
-
-  const data = await j('/api/realtime');
-  paintTableByOrder('aoi-rt-body', data.rows, ['linea','modelo','lado','cantidad']);
-  const total = data.rows.reduce((s,r)=>s+(+r.cantidad||0),0);
-  document.getElementById('aoi-rt-total').textContent = 'Total turno: ' + fmt(total);
-}
-
-async function loadDay(d){
-  document.getElementById('aoi-day-title').textContent = d;
-  const data = await j('/api/day?date='+encodeURIComponent(d));
-  paintTableByOrder('aoi-day-body', data.rows, ['fecha','linea','turno','modelo','lado','cantidad']);
-  const total = data.rows.reduce((s,r)=>s+(+r.cantidad||0),0);
-  document.getElementById('aoi-day-total').textContent = 'Total día: ' + fmt(total);
-}
-
-document.getElementById('aoi-btn-refresh').addEventListener('click', loadRealtime);
-document.getElementById('aoi-btn-query').addEventListener('click', ()=> {
-  const d = document.getElementById('aoi-date').value;
-  if(d) loadDay(d);
-});
-
-document.getElementById('aoi-date').value = todayISO();
-loadRealtime();
-setInterval(loadRealtime, 15000);
-
-// Auto-inicialización del módulo
+// Historial AOI AJAX Module - Sistema de limpieza y gestión
 (function() {
-    console.log('Inicializando Historial AOI AJAX...');
+    'use strict';
     
-    window.inicializarHistorialAOI = function() {
-        // Lógica de inicialización del módulo
-        console.log('Historial AOI AJAX inicializado');
+    console.log('🚀 Inicializando módulo Historial AOI AJAX...');
+    
+    // Variables globales del módulo
+    let aoiIntervals = [];
+    let aoiEventListeners = [];
+    let isModuleInitialized = false;
+    
+    // Función de utilidades
+    const fmt = n => new Intl.NumberFormat('es-MX').format(n);
+    
+    function paintTableByOrder(tbodyId, rows, order){
+        const tb = document.getElementById(tbodyId);
+        if (!tb) return;
+        
+        tb.innerHTML='';
+        if(!rows || rows.length===0){
+            tb.innerHTML = `<tr><td colspan="${order.length}" id="aoi-empty">Sin registros</td></tr>`;
+            return;
+        }
+        for(const r of rows){
+            const tr=document.createElement('tr');
+            for(const k of order){
+                const td=document.createElement('td');
+                const v=r[k];
+                td.textContent = (k==='cantidad') ? fmt(v) : v;
+                tr.appendChild(td);
+            }
+            tb.appendChild(tr);
+        }
+    }
+
+    async function j(url){ 
+        const r=await fetch(url); 
+        if(!r.ok) throw new Error(await r.text()); 
+        return r.json(); 
+    }
+    
+    function todayISO(){
+        const d=new Date(),p=n=>String(n).padStart(2,'0');
+        return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+    }
+
+    async function loadRealtime(){
+        try {
+            const meta = await j('/api/shift-now');
+            const nowElement = document.getElementById('aoi-now');
+            const shiftBadge = document.getElementById('aoi-shift-badge');
+            const shiftTitle = document.getElementById('aoi-shift-title');
+            
+            if (nowElement) nowElement.textContent = new Date(meta.now).toLocaleString();
+            if (shiftBadge) shiftBadge.textContent = `${meta.shift} • ${meta.shift_date}`;
+            if (shiftTitle) shiftTitle.textContent = `${meta.shift} | ${meta.shift_date}`;
+
+            const data = await j('/api/realtime');
+            paintTableByOrder('aoi-rt-body', data.rows, ['linea','modelo','lado','cantidad']);
+            const total = data.rows.reduce((s,r)=>s+(+r.cantidad||0),0);
+            const totalElement = document.getElementById('aoi-rt-total');
+            if (totalElement) totalElement.textContent = 'Total turno: ' + fmt(total);
+        } catch (error) {
+            console.error('Error cargando datos en tiempo real:', error);
+        }
+    }
+
+    async function loadDay(d){
+        try {
+            const dayTitle = document.getElementById('aoi-day-title');
+            if (dayTitle) dayTitle.textContent = d;
+            
+            const data = await j('/api/day?date='+encodeURIComponent(d));
+            paintTableByOrder('aoi-day-body', data.rows, ['fecha','linea','turno','modelo','lado','cantidad']);
+            const total = data.rows.reduce((s,r)=>s+(+r.cantidad||0),0);
+            const totalElement = document.getElementById('aoi-day-total');
+            if (totalElement) totalElement.textContent = 'Total día: ' + fmt(total);
+        } catch (error) {
+            console.error('Error cargando datos del día:', error);
+        }
+    }
+    
+    // Función para registrar event listeners con limpieza automática
+    function addManagedEventListener(element, event, handler) {
+        if (element) {
+            element.addEventListener(event, handler);
+            aoiEventListeners.push({ element, event, handler });
+        }
+    }
+    
+    // Función para registrar intervals con limpieza automática
+    function addManagedInterval(callback, interval) {
+        const intervalId = setInterval(callback, interval);
+        aoiIntervals.push(intervalId);
+        return intervalId;
+    }
+    
+    // Función de limpieza del módulo
+    function cleanupModule() {
+        console.log('🧹 Limpiando módulo Historial AOI...');
+        
+        // Limpiar intervals
+        aoiIntervals.forEach(intervalId => {
+            clearInterval(intervalId);
+        });
+        aoiIntervals = [];
+        
+        // Limpiar event listeners
+        aoiEventListeners.forEach(({ element, event, handler }) => {
+            if (element) {
+                element.removeEventListener(event, handler);
+            }
+        });
+        aoiEventListeners = [];
+        
+        isModuleInitialized = false;
+        console.log('✅ Módulo Historial AOI limpiado');
+    }
+    
+    // Función principal de inicialización
+    function inicializarModulo() {
+        if (isModuleInitialized) {
+            console.log('⚠️ Módulo ya inicializado, limpiando primero...');
+            cleanupModule();
+        }
+        
+        console.log('✅ Inicializando Historial AOI...');
+        isModuleInitialized = true;
+        
+        // Configurar event listeners
+        const btnRefresh = document.getElementById('aoi-btn-refresh');
+        const btnQuery = document.getElementById('aoi-btn-query');
+        const dateInput = document.getElementById('aoi-date');
+        
+        addManagedEventListener(btnRefresh, 'click', loadRealtime);
+        addManagedEventListener(btnQuery, 'click', () => {
+            const d = dateInput ? dateInput.value : '';
+            if(d) loadDay(d);
+        });
+
+        // Configurar fecha por defecto
+        if (dateInput && !dateInput.value) {
+            dateInput.value = todayISO();
+        }
         
         // Cargar datos iniciales
         loadRealtime();
-    };
-    
-    // Ejecutar inmediatamente si el DOM está listo
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', window.inicializarHistorialAOI);
-    } else {
-        window.inicializarHistorialAOI();
+        
+        // Auto-refresh cada 15 segundos
+        addManagedInterval(loadRealtime, 15000);
     }
+    
+    // Exposer funciones globalmente para uso externo
+    window.inicializarHistorialAOI = inicializarModulo;
+    window.limpiarHistorialAOI = cleanupModule;
+    
+    // Auto-inicialización
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializarModulo);
+    } else {
+        // Usar setTimeout para evitar conflictos con carga dinámica
+        setTimeout(inicializarModulo, 100);
+    }
+    
+    // Observador para detectar cuando el módulo se carga dinámicamente
+    if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    const aoiRoot = document.getElementById('aoi-root');
+                    if (aoiRoot && !isModuleInitialized) {
+                        console.log('🔍 Detectado contenido dinámico AOI, inicializando...');
+                        setTimeout(inicializarModulo, 200);
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+    
+    // Cleanup cuando el módulo se descarga
+    window.addEventListener('beforeunload', cleanupModule);
+    
+    // Callback para sistemas de templates
+    if (typeof window.onTemplateLoaded === 'function') {
+        window.onTemplateLoaded('historial_aoi_ajax');
+    }
+    
 })();
 </script>
 </body>

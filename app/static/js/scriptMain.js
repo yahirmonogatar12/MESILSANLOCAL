@@ -163,6 +163,18 @@
                         container.style.display = 'none';
                     }
                 });
+                
+                // Ocultar todos los contenedores AJAX de Control de Resultados
+                const controlResultadosAjaxContainers = [
+                    'historial-aoi-unique-container'
+                ];
+                
+                controlResultadosAjaxContainers.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                });
             }
             
             function hideAllInformacionBasicaContainers() {
@@ -3477,6 +3489,11 @@ window.mostrarHistorialAOI = function() {
         // Ocultar todos los contenedores primero
         if (typeof window.hideAllMaterialContainers === 'function') {
             window.hideAllMaterialContainers();
+        }
+        
+        // Limpiar módulos previos de Control de Resultados si existen
+        if (typeof window.limpiarHistorialAOI === 'function') {
+            window.limpiarHistorialAOI();
         }
         
         // Ocultar otros contenedores dentro del área de control de resultados
