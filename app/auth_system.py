@@ -697,6 +697,38 @@ class AuthSystem:
         finally:
             conn.close()
     
+    def obtener_informacion_usuario(self, username):
+        """Obtener información completa del usuario"""
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                SELECT id, username, nombre_completo, email, departamento, activo
+                FROM usuarios_sistema 
+                WHERE username = %s
+            ''', (username,))
+            
+            usuario = cursor.fetchone()
+            
+            if usuario:
+                return {
+                    'id': usuario['id'],
+                    'username': usuario['username'],
+                    'nombre_completo': usuario['nombre_completo'],
+                    'email': usuario['email'],
+                    'departamento': usuario['departamento'],
+                    'activo': usuario['activo']
+                }
+            else:
+                return None
+                
+        except Exception as e:
+            print(f"Error obteniendo información del usuario: {e}")
+            return None
+        finally:
+            conn.close()
+
     def obtener_permisos_usuario(self, username):
         """Obtener todos los permisos de un usuario basado en sus roles"""
         conn = get_db_connection()

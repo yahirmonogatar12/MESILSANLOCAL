@@ -279,6 +279,21 @@ def login():
             print(f" Login exitoso con sistema BD: {user}")
             session['usuario'] = user
             
+            # Obtener información completa del usuario
+            info_usuario = auth_system.obtener_informacion_usuario(user)
+            if info_usuario:
+                session['nombre_completo'] = info_usuario['nombre_completo']
+                session['email'] = info_usuario['email']
+                session['departamento'] = info_usuario['departamento']
+                print(f"✅ Información completa cargada para {user}:")
+                print(f"  - Nombre completo: {info_usuario['nombre_completo']}")
+                print(f"  - Email: {info_usuario['email']}")
+                print(f"  - Departamento: {info_usuario['departamento']}")
+            else:
+                # Fallback si no se puede obtener la información
+                session['nombre_completo'] = user  # Usar username como fallback
+                print(f"⚠️ No se pudo cargar información completa para {user}, usando username como fallback")
+            
             # Registrar auditoría
             auth_system.registrar_auditoria(
                 usuario=user,
@@ -324,6 +339,12 @@ def login():
                 print(f" Login exitoso con sistema JSON (fallback): {user}")
                 session['usuario'] = user
                 
+                # Para usuarios del sistema JSON, usar el username como nombre completo
+                session['nombre_completo'] = user  # Fallback para usuarios del sistema antiguo
+                session['email'] = ''  # Sin email para usuarios del sistema antiguo
+                session['departamento'] = ''  # Sin departamento para usuarios del sistema antiguo
+                print(f"⚠️ Usuario del sistema JSON (fallback): {user}")
+                
                 # Registrar auditoría del fallback
                 auth_system.registrar_auditoria(
                     usuario=user,
@@ -361,7 +382,33 @@ def login():
 @login_requerido
 def material():
     usuario = session.get('usuario', 'Invitado')
+    nombre_completo = session.get('nombre_completo', None)
+    
+    # Si no tenemos el nombre completo en la sesión, obtenerlo de la BD
+    if not nombre_completo and usuario != 'Invitado':
+        print(f"⚠️ Nombre completo no encontrado en sesión para {usuario}, obteniendo de BD...")
+        from .auth_system import auth_system
+        info_usuario = auth_system.obtener_informacion_usuario(usuario)
+        if info_usuario and info_usuario['nombre_completo']:
+            nombre_completo = info_usuario['nombre_completo']
+            session['nombre_completo'] = nombre_completo  # Guardar en sesión para futuras consultas
+            print(f"✅ Nombre completo obtenido de BD: {nombre_completo}")
+        else:
+            nombre_completo = usuario  # Fallback al username
+            session['nombre_completo'] = usuario
+            print(f"⚠️ No se pudo obtener nombre completo de BD, usando username: {usuario}")
+    
+    # Si todavía no tenemos nombre completo, usar el username
+    if not nombre_completo:
+        nombre_completo = usuario
+        
     permisos = session.get('permisos', {})
+    
+    # Debug: Verificar qué hay en la sesión
+    print(f"🔍 DEBUG Material Template:")
+    print(f"  - Usuario: {usuario}")
+    print(f"  - Nombre completo: {nombre_completo}")
+    print(f"  - Sesión completa: {dict(session)}")
     
     # Verificar si tiene permisos de administración de usuarios
     tiene_permisos_usuarios = False
@@ -369,7 +416,7 @@ def material():
         tiene_permisos_usuarios = 'usuarios' in permisos['sistema']
     
     return render_template('MaterialTemplate.html', 
-                        usuario=usuario, 
+                        usuario=nombre_completo,  # Pasar nombre completo en lugar de username 
                         tiene_permisos_usuarios=tiene_permisos_usuarios)
 
 @app.route('/Prueba')
