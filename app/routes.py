@@ -8079,7 +8079,7 @@ def api_movimientos():
         }), 500
 
 # ===============================
-# �🚀 RUTA SIMPLE PARA ANDROID - mysql-proxy.php
+# 🚀 RUTA SIMPLE PARA ANDROID - mysql-proxy.php
 # ===============================
 
 @app.route('/mysql-proxy.php', methods=['POST', 'GET', 'OPTIONS'])
@@ -8225,3 +8225,105 @@ def api_status():
         })
         error_response.headers.add('Access-Control-Allow-Origin', '*')
         return error_response, 500
+
+
+# =============================
+# Rutas para Plan SMD Diario
+# =============================
+
+@app.route("/plan-smd-diario")
+def plan_smd_diario():
+    """Página principal del Plan SMD Diario"""
+    return render_template("Control de proceso/plan_smd_diario.html")
+
+
+@app.route("/control-operacion-linea-smt")
+def control_operacion_linea_smt():
+    """Página de Control de Operación de Línea SMT con datos del plan SMD"""
+    return render_template("Control de proceso/Control de operacion de linea SMT.html")
+
+
+@app.route("/api/plan-smd-diario", methods=['GET'])
+def api_plan_smd_diario():
+    """
+    Cruza PLAN (plan_smd) con AOI por (fecha, LINEA y MODELO) usando aoi_file_log.
+    Params:
+      ?date=YYYY-MM-DD (obligatorio)
+      &shift=DIA|NOCHE|TIEMPO_EXTRA (opcional)
+    Suposiciones:
+      - EBR ≡ NParte (se compara en mayúsculas)
+      - plan_smd.linea es tipo "SMT A", "SMT B", "SMT C"
+      - aoi_file_log tiene columns: shift_date, shift, line_no, model, piece_w, board_side
+    """
+    date = request.args.get("date")
+    shift = request.args.get("shift", "").strip()
+    if not date:
+        return jsonify({"error": "missing 'date' (YYYY-MM-DD)"}), 400
+
+    # Armado dinámico de SQL compatible con MySQL 5.7+ (sin CTE)
+    aoi_where = "WHERE shift_date = %s"
+    params = [date]
+    if shift:
+        aoi_where += " AND shift = %s"
+        params.append(shift)
+
+    sql = f"""
+    SELECT
+      pd.id, pd.linea, pd.lote, pd.nparte, UPPER(pd.nparte) AS ebr,
+      pd.modelo, pd.tipo, pd.turno, pd.ct, pd.uph,
+      pd.qty, pd.fisico, pd.falta, pd.pct, pd.comentarios, pd.fecha_creacion, pd.usuario_creacion,
+      COALESCE(a.producido, 0) AS producido,
+      (COALESCE(a.producido,0) >= pd.qty) AS completo
+    FROM
+      (
+        SELECT
+          p.id, UPPER(p.linea) AS linea, p.lote, p.nparte, p.modelo, p.tipo, p.turno, p.ct, p.uph,
+          p.qty, p.fisico, p.falta, p.pct, p.comentarios, p.fecha_creacion, p.usuario_creacion
+        FROM plan_smd p
+        WHERE DATE(p.fecha_creacion) = %s
+      ) AS pd
+    LEFT JOIN
+      (
+        SELECT
+          shift_date,
+          shift,
+          CASE line_no
+            WHEN 1 THEN 'SMT A'
+            WHEN 2 THEN 'SMT B'
+            WHEN 3 THEN 'SMT C'
+            ELSE CONCAT('SMT ', line_no)
+          END AS linea,
+          UPPER(model) AS modelo,
+          SUM(piece_w) AS producido
+        FROM aoi_file_log
+        {aoi_where}
+        GROUP BY shift_date, shift, linea, UPPER(model)
+      ) AS a
+      ON a.modelo = UPPER(pd.nparte)
+     AND a.linea  = pd.linea
+    ORDER BY pd.linea, pd.modelo, pd.id;
+    """
+
+    # Inserta el parámetro de DATE(plan)
+    params = [date] + params
+
+    try:
+        rows = execute_query(sql, params, fetch='all')
+        if rows is None:
+            rows = []
+
+        # Normalizar tipos y strings
+        for r in rows:
+            r["qty"] = int(r.get("qty") or 0)
+            r["fisico"] = int(r.get("fisico") or 0)
+            r["falta"] = int(r.get("falta") or 0)
+            r["pct"] = int(r.get("pct") or 0)
+            r["producido"] = int(r.get("producido") or 0)
+            if r.get("fecha_creacion"):
+                r["fecha_creacion"] = str(r["fecha_creacion"])
+        
+        return jsonify(rows)
+    
+    except Exception as e:
+        print(f"❌ Error en api_plan_smd_diario: {e}")
+        return jsonify({"error": f"Error en consulta: {str(e)}"}), 500

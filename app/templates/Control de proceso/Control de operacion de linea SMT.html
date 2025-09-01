@@ -220,12 +220,78 @@
         }
 
         .data-table td {
-            padding: 20px 8px;
-            text-align: center;
-            color: #95A5A6;
-            font-style: italic;
+            padding: 8px 6px;
+            text-align: left;
+            border: 1px solid #5F6375;
             background-color: #40424F;
-            font-size: 12px;
+            color: #E0E0E0;
+            font-size: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .data-table td.mono {
+            font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+            text-align: center;
+        }
+
+        .data-table tr:hover td {
+            background-color: #485563;
+        }
+
+        .data-table tr:nth-child(even) td {
+            background-color: #44475A;
+        }
+
+        .data-table tr:nth-child(even):hover td {
+            background-color: #485563;
+        }
+
+        /* Tags de estado para la tabla */
+        .status-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+            text-align: center;
+            min-width: 40px;
+        }
+
+        .status-tag.completed {
+            background: rgba(39, 174, 96, 0.15);
+            border: 1px solid rgba(39, 174, 96, 0.5);
+            color: #27ae60;
+        }
+
+        .status-tag.partial {
+            background: rgba(243, 156, 18, 0.12);
+            border: 1px solid rgba(243, 156, 18, 0.4);
+            color: #f39c12;
+        }
+
+        .status-tag.pending {
+            background: rgba(231, 76, 60, 0.12);
+            border: 1px solid rgba(231, 76, 60, 0.4);
+            color: #e74c3c;
+        }
+
+        /* Barra de progreso para la tabla */
+        .progress-bar {
+            height: 10px;
+            background: #2c3e50;
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid #20688C;
+            position: relative;
+            min-width: 80px;
+        }
+
+        .progress-bar > span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #27ae60);
+            transition: width 0.5s ease;
+            border-radius: 4px;
         }
 
         /* Grid de secciones */
@@ -457,22 +523,29 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 30px;"></th>
+                    <th style="width: 30px;"><input type="checkbox" class="table-checkbox"></th>
+                    <th>ID</th>
                     <th>Línea</th>
-                    <th>Fecha de producci...</th>
-                    <th>Numero de lote</th>
-                    <th>Estado</th>
+                    <th>Lote</th>
+                    <th>NParte</th>
                     <th>Modelo</th>
-                    <th>Proceso</th>
-                    <th>Side</th>
-                    <th>Xout</th>
-                    <th>Cantidad planeada</th>
-                    <th>Cantidad de prod...</th>
+                    <th>Tipo</th>
+                    <th>Turno</th>
+                    <th>CT</th>
+                    <th>UPH</th>
+                    <th>Qty</th>
+                    <th>Producido</th>
+                    <th>Falta</th>
+                    <th>%</th>
+                    <th>Avance</th>
+                    <th>Creado</th>
+                    <th>Usuario</th>
+                    <th>Comentarios</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="dataTableBody-Control de operacion de linea SMT">
                 <tr>
-                    <td colspan="11">No hay dato registrado</td>
+                    <td colspan="18">Cargando datos...</td>
                 </tr>
             </tbody>
         </table>
@@ -632,43 +705,261 @@
         (function() {
             console.log('🚀 Inicializando módulo Control de operacion de linea SMT...');
             
-            // Función de inicialización específica del módulo
-            window.inicializarControlOperacionLineaSMT = function() {
-                console.log('✅ Control de operacion de linea SMT módulo inicializado');
-                
-                // Aquí irá la lógica específica del módulo
-                // Por ejemplo: event listeners, configuración inicial, etc.
-                
-                // Event listeners para botones específicos
-                const btnIniciar = document.getElementById('btnIniciar-Control de operacion de linea SMT');
-                const btnFin = document.getElementById('btnFin-Control de operacion de linea SMT');
-                const btnPausa = document.getElementById('btnPausa-Control de operacion de linea SMT');
-                
-                if (btnIniciar) {
-                    btnIniciar.addEventListener('click', function() {
-                        console.log('Iniciar/Reiniciar clicked');
-                    });
-                }
-                
-                if (btnFin) {
-                    btnFin.addEventListener('click', function() {
-                        console.log('Fin clicked');
-                    });
-                }
-                
-                if (btnPausa) {
-                    btnPausa.addEventListener('click', function() {
-                        console.log('Pausa clicked');
-                    });
-                }
-            };
+            // Variables globales del módulo
+            let currentData = [];
+            let isInitialized = false;
             
-            // Auto-ejecutar la inicialización
+            // Función para cargar datos del plan SMD diario
+            async function cargarDatosPlanSMD() {
+                const tableBody = document.getElementById('dataTableBody-Control de operacion de linea SMT');
+                
+                if (!tableBody) {
+                    console.warn('⚠️ Tabla no encontrada, reintentando en 1 segundo...');
+                    setTimeout(cargarDatosPlanSMD, 1000);
+                    return;
+                }
+                
+                try {
+                    // Usar fecha actual
+                    const today = new Date().toISOString().slice(0, 10);
+                    const url = `/api/plan-smd-diario?date=${today}`;
+                    
+                    console.log('🔄 Cargando datos del plan SMD desde:', url);
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    currentData = data;
+                    
+                    console.log('✅ Datos cargados:', data.length, 'registros');
+                    
+                    // Limpiar tabla
+                    tableBody.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="18">No hay datos disponibles para hoy</td></tr>';
+                        return;
+                    }
+                    
+                    // Renderizar filas
+                    data.forEach((item, index) => {
+                        const pct = Math.min(100, Math.round(((item.producido || 0) / (item.qty || 1)) * 100));
+                        const falta = Math.max(0, (item.qty || 0) - (item.producido || 0));
+                        
+                        let statusClass = 'pending';
+                        let statusText = 'Pendiente';
+                        if (pct >= 100) {
+                            statusClass = 'completed';
+                            statusText = 'Completado';
+                        } else if (pct > 0) {
+                            statusClass = 'partial';
+                            statusText = 'En Progreso';
+                        }
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td><input type="checkbox" class="table-checkbox" data-id="${item.id}"></td>
+                            <td class="mono">${item.id || ''}</td>
+                            <td>${item.linea || ''}</td>
+                            <td class="mono">${item.lote || ''}</td>
+                            <td class="mono">${item.nparte || ''}</td>
+                            <td>${item.modelo || ''}</td>
+                            <td>${item.tipo || ''}</td>
+                            <td><span class="status-tag ${statusClass}">${item.turno || ''}</span></td>
+                            <td>${item.ct || ''}</td>
+                            <td>${item.uph || ''}</td>
+                            <td class="mono">${item.qty || 0}</td>
+                            <td class="mono">${item.producido || 0}</td>
+                            <td class="mono">${falta}</td>
+                            <td><span class="status-tag ${statusClass}">${pct}%</span></td>
+                            <td><div class="progress-bar"><span style="width:${pct}%"></span></div></td>
+                            <td class="mono">${item.fecha_creacion ? item.fecha_creacion.substring(0, 16) : ''}</td>
+                            <td>${item.usuario_creacion || ''}</td>
+                            <td>${item.comentarios || ''}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Error cargando datos del plan SMD:', error);
+                    if (tableBody) {
+                        tableBody.innerHTML = `<tr><td colspan="18">Error cargando datos: ${error.message}</td></tr>`;
+                    }
+                }
+            }
+            
+            // Función para filtrar datos por rango de fechas (futuras mejoras)
+            function filtrarPorFechas() {
+                const fechaDesde = document.getElementById('fechaDesde-Control de operacion de linea SMT');
+                const fechaHasta = document.getElementById('fechaHasta-Control de operacion de linea SMT');
+                const linea = document.getElementById('linea-Control de operacion de linea SMT');
+                
+                if (fechaDesde && fechaHasta && linea) {
+                    console.log('🔍 Filtros aplicados:', { 
+                        fechaDesde: fechaDesde.value, 
+                        fechaHasta: fechaHasta.value, 
+                        linea: linea.value 
+                    });
+                }
+                
+                // Por ahora solo recargar datos
+                cargarDatosPlanSMD();
+            }
+            
+            // Función de inicialización específica del módulo
+            function inicializarModulo() {
+                if (isInitialized) {
+                    console.log('⚠️ Módulo ya inicializado, omitiendo...');
+                    return;
+                }
+                
+                console.log('✅ Control de operacion de linea SMT módulo inicializado');
+                isInitialized = true;
+                
+                // Función para configurar event listeners con verificación de existencia
+                function setupEventListeners() {
+                    const btnIniciar = document.getElementById('btnIniciar-Control de operacion de linea SMT');
+                    const btnFin = document.getElementById('btnFin-Control de operacion de linea SMT');
+                    const btnPausa = document.getElementById('btnPausa-Control de operacion de linea SMT');
+                    const btnConsultar = document.getElementById('btnConsultar-Control de operacion de linea SMT');
+                    
+                    if (btnIniciar) {
+                        btnIniciar.addEventListener('click', function() {
+                            console.log('Iniciar/Reiniciar clicked');
+                            cargarDatosPlanSMD();
+                        });
+                    }
+                    
+                    if (btnFin) {
+                        btnFin.addEventListener('click', function() {
+                            console.log('Fin clicked');
+                        });
+                    }
+                    
+                    if (btnPausa) {
+                        btnPausa.addEventListener('click', function() {
+                            console.log('Pausa clicked');
+                        });
+                    }
+                    
+                    if (btnConsultar) {
+                        btnConsultar.addEventListener('click', function() {
+                            console.log('Consultar clicked');
+                            filtrarPorFechas();
+                        });
+                    }
+                }
+                
+                // Configurar event listeners inmediatamente si los elementos existen
+                setupEventListeners();
+                
+                // Si no existen, reintentar cada 500ms hasta por 10 segundos
+                let retryCount = 0;
+                const maxRetries = 20;
+                const retryInterval = setInterval(() => {
+                    if (retryCount >= maxRetries) {
+                        clearInterval(retryInterval);
+                        console.log('⏰ Timeout configurando event listeners');
+                        return;
+                    }
+                    
+                    const container = document.getElementById('control-operacion-linea-smt-unique-container');
+                    if (container) {
+                        setupEventListeners();
+                        clearInterval(retryInterval);
+                        console.log('✅ Event listeners configurados tras', retryCount, 'reintentos');
+                    }
+                    retryCount++;
+                }, 500);
+                
+                // Cargar datos automáticamente al inicializar
+                setTimeout(cargarDatosPlanSMD, 1000);
+                
+                // Actualizar cada 30 segundos
+                setInterval(cargarDatosPlanSMD, 30000);
+            }
+            
+            // Exponer función globalmente para carga dinámica
+            window.inicializarControlOperacionLineaSMT = inicializarModulo;
+            
+            // Auto-ejecutar la inicialización según el estado del DOM
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', window.inicializarControlOperacionLineaSMT);
+                document.addEventListener('DOMContentLoaded', inicializarModulo);
             } else {
-                window.inicializarControlOperacionLineaSMT();
+                // Si el DOM ya está listo, ejecutar después de un pequeño delay
+                setTimeout(inicializarModulo, 100);
+            }
+            
+            // Observador de mutaciones para detectar cuando se agrega el contenido dinámicamente
+            if (typeof MutationObserver !== 'undefined') {
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList') {
+                            const container = document.getElementById('control-operacion-linea-smt-unique-container');
+                            if (container && !isInitialized) {
+                                console.log('🔍 Detectado contenido dinámico, inicializando...');
+                                setTimeout(inicializarModulo, 200);
+                            }
+                        }
+                    });
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
             }
         })();
+        
+        // Script adicional para carga dinámica - ejecutar manualmente si es necesario
+        window.reiniciarControlOperacionSMT = function() {
+            console.log('🔄 Reiniciando Control de Operación SMT manualmente...');
+            
+            // Resetear el estado de inicialización
+            if (window.inicializarControlOperacionLineaSMT) {
+                // Forzar una nueva inicialización
+                setTimeout(() => {
+                    window.inicializarControlOperacionLineaSMT();
+                }, 500);
+            }
+        };
+        
+        // Función para verificar si el módulo está cargado y funcionando
+        window.verificarControlOperacionSMT = function() {
+            const container = document.getElementById('control-operacion-linea-smt-unique-container');
+            const tableBody = document.getElementById('dataTableBody-Control de operacion de linea SMT');
+            const btnConsultar = document.getElementById('btnConsultar-Control de operacion de linea SMT');
+            
+            console.log('🔍 Verificando estado del módulo:');
+            console.log('- Contenedor encontrado:', !!container);
+            console.log('- Tabla encontrada:', !!tableBody);
+            console.log('- Botón consultar encontrado:', !!btnConsultar);
+            
+            if (container && tableBody && btnConsultar) {
+                console.log('✅ Todos los elementos están presentes');
+                return true;
+            } else {
+                console.log('❌ Faltan elementos, reiniciando...');
+                window.reiniciarControlOperacionSMT();
+                return false;
+            }
+        };
+    </script>
+    
+    <!-- Script de respaldo para detección de carga dinámica -->
+    <script>
+        // Este script se ejecuta cuando el template se carga dinámicamente
+        if (typeof window.onTemplateLoaded === 'function') {
+            window.onTemplateLoaded('Control de operacion de linea SMT');
+        }
+        
+        // Registrar el template como cargado
+        if (!window.templatesLoaded) window.templatesLoaded = [];
+        window.templatesLoaded.push('Control de operacion de linea SMT');
+        
+        console.log('📋 Template Control de operacion de linea SMT cargado');
     </script>
 </div>

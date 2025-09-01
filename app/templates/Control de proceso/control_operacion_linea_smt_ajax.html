@@ -507,6 +507,59 @@
       border-radius: 6px !important;
     }
 
+    /* ESTILOS PARA BARRAS DE PROGRESO Y TAGS DE ESTADO */
+    #app-mes-front-isolated .progress-bar {
+      height: 12px !important;
+      background: #2c3e50 !important;
+      border-radius: 6px !important;
+      overflow: hidden !important;
+      border: 1px solid var(--line) !important;
+      position: relative !important;
+      min-width: 80px !important;
+    }
+
+    #app-mes-front-isolated .progress-bar > span {
+      display: block !important;
+      height: 100% !important;
+      background: linear-gradient(90deg, var(--btn-blue), #27ae60) !important;
+      transition: width 0.5s ease !important;
+      border-radius: 5px !important;
+    }
+
+    #app-mes-front-isolated .status-tag {
+      display: inline-block !important;
+      padding: 2px 6px !important;
+      border-radius: 8px !important;
+      font-size: 9px !important;
+      font-weight: 500 !important;
+      text-align: center !important;
+      min-width: 35px !important;
+      border: 1px solid transparent !important;
+    }
+
+    #app-mes-front-isolated .status-tag.completed {
+      background: rgba(39, 174, 96, 0.15) !important;
+      border-color: rgba(39, 174, 96, 0.5) !important;
+      color: #27ae60 !important;
+    }
+
+    #app-mes-front-isolated .status-tag.partial {
+      background: rgba(243, 156, 18, 0.12) !important;
+      border-color: rgba(243, 156, 18, 0.4) !important;
+      color: #f39c12 !important;
+    }
+
+    #app-mes-front-isolated .status-tag.pending {
+      background: rgba(231, 76, 60, 0.12) !important;
+      border-color: rgba(231, 76, 60, 0.4) !important;
+      color: #e74c3c !important;
+    }
+
+    #app-mes-front-isolated .table td.mono {
+      font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace !important;
+      text-align: center !important;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 768px) {
       #app-mes-front-isolated {
@@ -640,20 +693,30 @@
           <table style="width:100%; border-collapse:collapse">
             <thead>
               <tr>
+                <th style="width:30px"><input type="checkbox" aria-label="select-all"/></th>
+                <th style="width:60px">ID</th>
                 <th style="width:80px">Line</th>
-                <th style="width:120px">Production Date</th>
-                <th style="width:120px">Lot No</th>
-                <th style="width:100px">Status</th>
+                <th style="width:100px">Lot No</th>
+                <th style="width:100px">NParte</th>
                 <th style="width:100px">Model</th>
-                <th style="width:100px">Process</th>
-                <th style="width:60px">Side</th>
-                <th style="width:50px">Xout</th>
-                <th style="width:100px">Plan Quantity</th>
-                <th style="width:120px">Production Quantity</th>
+                <th style="width:80px">Type</th>
+                <th style="width:80px">Shift</th>
+                <th style="width:60px">CT</th>
+                <th style="width:60px">UPH</th>
+                <th style="width:80px">Qty</th>
+                <th style="width:80px">Produced</th>
+                <th style="width:60px">Missing</th>
+                <th style="width:60px">%</th>
+                <th style="width:100px">Progress</th>
+                <th style="width:120px">Created</th>
+                <th style="width:80px">User</th>
+                <th style="width:120px">Comments</th>
               </tr>
             </thead>
+            <tbody id="tbody-plan-data">
+            </tbody>
           </table>
-          <div class="placeholder">No data</div>
+          <div class="placeholder" id="plan-placeholder">Loading data...</div>
         </div>
       </div>
     </section>
@@ -813,5 +876,276 @@
 
     <div class="spacer" style="height:15px"></div>
   </div>
+
+  <script>
+    // Control de Operación Línea SMT - Integración con Plan SMD
+    (function() {
+      console.log('🚀 Inicializando Control de Operación Línea SMT AJAX...');
+      
+      // Variables globales
+      let currentPlanData = [];
+      let autoRefreshInterval = null;
+      let isInitialized = false;
+      
+      // Elementos del DOM
+      const elements = {
+        tableBody: null,
+        placeholder: null,
+        dateFrom: null,
+        dateTo: null,
+        selLine: null,
+        btnSearch: null
+      };
+      
+      // Función para obtener elementos del DOM
+      function getElements() {
+        elements.tableBody = document.getElementById('tbody-plan-data');
+        elements.placeholder = document.getElementById('plan-placeholder');
+        elements.dateFrom = document.getElementById('dateFrom');
+        elements.dateTo = document.getElementById('dateTo');
+        elements.selLine = document.getElementById('selLine');
+        elements.btnSearch = document.getElementById('btn-search');
+        
+        return elements.tableBody && elements.placeholder;
+      }
+      
+      // Función para cargar datos del plan SMD
+      async function cargarDatosPlanSMD() {
+        if (!getElements()) {
+          console.warn('⚠️ Elementos no encontrados, reintentando...');
+          setTimeout(cargarDatosPlanSMD, 1000);
+          return;
+        }
+        
+        try {
+          // Usar fecha actual si no hay fechas seleccionadas
+          let dateParam = '';
+          if (elements.dateFrom && elements.dateFrom.value) {
+            dateParam = elements.dateFrom.value;
+          } else {
+            dateParam = new Date().toISOString().slice(0, 10);
+          }
+          
+          const url = `/api/plan-smd-diario?date=${dateParam}`;
+          console.log('🔄 Cargando datos desde:', url);
+          
+          // Mostrar estado de carga
+          elements.placeholder.textContent = 'Loading data...';
+          elements.placeholder.style.display = 'grid';
+          
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          currentPlanData = data;
+          
+          console.log('✅ Datos cargados:', data.length, 'registros');
+          
+          // Ocultar placeholder si hay datos
+          if (data.length > 0) {
+            elements.placeholder.style.display = 'none';
+          } else {
+            elements.placeholder.textContent = 'No data available for selected date';
+            elements.placeholder.style.display = 'grid';
+          }
+          
+          // Renderizar datos
+          renderPlanData(data);
+          
+        } catch (error) {
+          console.error('❌ Error cargando datos:', error);
+          elements.placeholder.textContent = `Error loading data: ${error.message}`;
+          elements.placeholder.style.display = 'grid';
+        }
+      }
+      
+      // Función para renderizar los datos en la tabla
+      function renderPlanData(data) {
+        if (!elements.tableBody) return;
+        
+        // Limpiar tabla
+        elements.tableBody.innerHTML = '';
+        
+        data.forEach((item, index) => {
+          const pct = Math.min(100, Math.round(((item.producido || 0) / (item.qty || 1)) * 100));
+          const falta = Math.max(0, (item.qty || 0) - (item.producido || 0));
+          
+          let statusClass = 'pending';
+          if (pct >= 100) statusClass = 'completed';
+          else if (pct > 0) statusClass = 'partial';
+          
+          const row = document.createElement('tr');
+          if (pct >= 100) row.classList.add('highlight');
+          
+          row.innerHTML = `
+            <td><input type="checkbox" data-id="${item.id}"></td>
+            <td class="mono">${item.id || ''}</td>
+            <td>${item.linea || ''}</td>
+            <td class="mono">${item.lote || ''}</td>
+            <td class="mono">${item.nparte || ''}</td>
+            <td>${item.modelo || ''}</td>
+            <td>${item.tipo || ''}</td>
+            <td><span class="status-tag ${statusClass}">${item.turno || ''}</span></td>
+            <td>${item.ct || ''}</td>
+            <td>${item.uph || ''}</td>
+            <td class="mono" data-type="quantity">${item.qty || 0}</td>
+            <td class="mono" data-type="quantity" data-status="${statusClass === 'completed' ? 'active' : statusClass === 'partial' ? 'warning' : 'error'}">${item.producido || 0}</td>
+            <td class="mono" data-type="quantity">${falta}</td>
+            <td><span class="status-tag ${statusClass}">${pct}%</span></td>
+            <td><div class="progress-bar"><span style="width:${pct}%"></span></div></td>
+            <td class="mono" data-type="date">${item.fecha_creacion ? item.fecha_creacion.substring(0, 16) : ''}</td>
+            <td>${item.usuario_creacion || ''}</td>
+            <td>${item.comentarios || ''}</td>
+          `;
+          
+          elements.tableBody.appendChild(row);
+        });
+      }
+      
+      // Función para configurar las fechas por defecto
+      function setupDefaultDates() {
+        if (elements.dateFrom && elements.dateTo) {
+          const today = new Date().toISOString().slice(0, 10);
+          if (!elements.dateFrom.value) elements.dateFrom.value = today;
+          if (!elements.dateTo.value) elements.dateTo.value = today;
+        }
+      }
+      
+      // Función para configurar event listeners
+      function setupEventListeners() {
+        if (!getElements()) return;
+        
+        // Botón de búsqueda
+        if (elements.btnSearch) {
+          elements.btnSearch.addEventListener('click', () => {
+            console.log('🔍 Búsqueda manual iniciada');
+            cargarDatosPlanSMD();
+          });
+        }
+        
+        // Cambio en fechas
+        if (elements.dateFrom) {
+          elements.dateFrom.addEventListener('change', () => {
+            console.log('📅 Fecha desde cambiada:', elements.dateFrom.value);
+            cargarDatosPlanSMD();
+          });
+        }
+        
+        if (elements.dateTo) {
+          elements.dateTo.addEventListener('change', () => {
+            console.log('📅 Fecha hasta cambiada:', elements.dateTo.value);
+            cargarDatosPlanSMD();
+          });
+        }
+        
+        // Otros botones
+        const btnStart = document.getElementById('btn-start');
+        const btnEnd = document.getElementById('btn-end');
+        const btnStop = document.getElementById('btn-stop');
+        
+        if (btnStart) {
+          btnStart.addEventListener('click', () => {
+            console.log('▶️ Start/Restart clicked');
+            cargarDatosPlanSMD();
+          });
+        }
+        
+        if (btnEnd) {
+          btnEnd.addEventListener('click', () => {
+            console.log('⏹️ End clicked');
+          });
+        }
+        
+        if (btnStop) {
+          btnStop.addEventListener('click', () => {
+            console.log('⏸️ Stop clicked');
+          });
+        }
+      }
+      
+      // Función principal de inicialización
+      function inicializar() {
+        if (isInitialized) {
+          console.log('⚠️ Ya inicializado, omitiendo...');
+          return;
+        }
+        
+        console.log('✅ Inicializando Control de Operación SMT AJAX...');
+        isInitialized = true;
+        
+        // Configurar fechas por defecto
+        setupDefaultDates();
+        
+        // Configurar event listeners
+        setupEventListeners();
+        
+        // Cargar datos iniciales
+        setTimeout(cargarDatosPlanSMD, 500);
+        
+        // Auto-refresh cada 30 segundos
+        autoRefreshInterval = setInterval(cargarDatosPlanSMD, 30000);
+      }
+      
+      // Función para reiniciar (para carga dinámica)
+      window.reiniciarControlOperacionSMTAjax = function() {
+        console.log('🔄 Reiniciando Control de Operación SMT AJAX...');
+        isInitialized = false;
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+        }
+        setTimeout(inicializar, 200);
+      };
+      
+      // Función para verificar estado
+      window.verificarControlOperacionSMTAjax = function() {
+        const container = document.getElementById('app-mes-front-isolated');
+        const table = document.getElementById('tbl-plan');
+        const tbody = document.getElementById('tbody-plan-data');
+        
+        console.log('🔍 Verificando estado:');
+        console.log('- Contenedor:', !!container);
+        console.log('- Tabla:', !!table);
+        console.log('- Tbody:', !!tbody);
+        console.log('- Datos cargados:', currentPlanData.length);
+        
+        return !!(container && table && tbody);
+      };
+      
+      // Auto-inicialización
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializar);
+      } else {
+        setTimeout(inicializar, 100);
+      }
+      
+      // Observador de mutaciones para detectar carga dinámica
+      if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+              const container = document.getElementById('app-mes-front-isolated');
+              if (container && !isInitialized) {
+                console.log('🔍 Detectado contenido dinámico, inicializando...');
+                setTimeout(inicializar, 300);
+              }
+            }
+          });
+        });
+        
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+      }
+      
+      // Callback para sistemas de templates
+      if (typeof window.onTemplateLoaded === 'function') {
+        window.onTemplateLoaded('control_operacion_linea_smt_ajax');
+      }
+      
+    })();
+  </script>
 </body>
 </html>

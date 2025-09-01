@@ -1,4 +1,4 @@
- // Mostrar/ocultar el contenedor de material según el botón
+// Mostrar/ocultar el contenedor de material según el botón
         document.addEventListener('DOMContentLoaded', function() {
             const materialContainer = document.getElementById('material-container');
             const informacionBasicaContent = document.getElementById('informacion-basica-content');
@@ -89,22 +89,16 @@
                     operacionLineaSMTContainer.style.display = 'none';
                 }
                 
+                // Ocultar contenedor de Plan SMD Diario
+                const planSmdDiarioContainer = document.getElementById('plan-smd-diario-unique-container');
+                if (planSmdDiarioContainer) {
+                    planSmdDiarioContainer.style.display = 'none';
+                }
+                
                 // Ocultar contenedor de Control de producción SMT
                 const controlProduccionSMTContainer = document.getElementById('Control de produccion SMT-unique-container');
                 if (controlProduccionSMTContainer) {
                     controlProduccionSMTContainer.style.display = 'none';
-                }
-                
-                // Ocultar contenedor de Line Material Status_es
-                const lineMaterialStatusContainer = document.getElementById('line-material-status-unique-container');
-                if (lineMaterialStatusContainer) {
-                    lineMaterialStatusContainer.style.display = 'none';
-                }
-                
-                // Ocultar contenedor de Historial AOI
-                const historialAOIContainer = document.getElementById('historial-aoi-unique-container');
-                if (historialAOIContainer) {
-                    historialAOIContainer.style.display = 'none';
                 }
                 
                 // Ocultar contenedores específicos de Control de Producción que pueden quedar visibles
@@ -141,6 +135,7 @@
                 
                 // Ocultar todos los contenedores AJAX de Control de Proceso
                 const controlProcesoAjaxContainers = [
+                    'plan-smd-diario-unique-container',
                     'control-impresion-identificacion-smt-unique-container',
                     'control-registro-identificacion-smt-unique-container',
                     'historial-operacion-proceso-unique-container',
@@ -3533,3 +3528,79 @@ window.mostrarHistorialAOI = function() {
 };
 
 console.log('Función AJAX para Historial AOI registrada globalmente');
+
+// Función AJAX para Plan SMD Diario - GLOBAL
+window.mostrarPlanSmdDiario = function() {
+    try {
+        console.log('🚀 Iniciando carga AJAX de Plan SMD Diario...');
+
+        // Activar el botón correcto en la navegación
+        const controlProcesoButton = document.getElementById('Control de proceso');
+        if (controlProcesoButton) {
+            controlProcesoButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de proceso') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+        
+        // Ocultar otros contenedores dentro del área de control de proceso
+        const controlProcesoContainers = [
+            'operacion-linea-smt-unique-container',
+            'Control de produccion SMT-unique-container',
+            'bom-unique-container',
+            'bom-management-process-unique-container'
+        ];
+        
+        controlProcesoContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        // Mostrar TODAS las áreas necesarias
+        const materialContainer = document.getElementById('material-container');
+        const controlProcesoContent = document.getElementById('control-proceso-content');
+
+        if (materialContainer) materialContainer.style.display = 'block';
+        if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+
+        // Crear o mostrar el contenedor específico del plan SMD diario
+        let planSmdDiarioContainer = document.getElementById('plan-smd-diario-unique-container');
+        if (!planSmdDiarioContainer) {
+            // Crear el contenedor si no existe
+            planSmdDiarioContainer = document.createElement('div');
+            planSmdDiarioContainer.id = 'plan-smd-diario-unique-container';
+            planSmdDiarioContainer.className = 'unique-container';
+            planSmdDiarioContainer.style.display = 'none';
+            
+            // Agregar al área de control de proceso
+            const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+            if (controlProcesoContentArea) {
+                controlProcesoContentArea.appendChild(planSmdDiarioContainer);
+            }
+        }
+
+        planSmdDiarioContainer.style.display = 'block';
+        planSmdDiarioContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('plan-smd-diario-unique-container', '/plan-smd-diario', () => {
+                console.log('Plan SMD Diario cargado exitosamente');
+            });
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarPlanSmdDiario:', error);
+    }
+};
+
+console.log('Función AJAX para Plan SMD Diario registrada globalmente');

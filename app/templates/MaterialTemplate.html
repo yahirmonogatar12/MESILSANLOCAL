@@ -458,6 +458,9 @@
         <div id="operacion-linea-smt-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
+        <div id="plan-smd-diario-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
         <div id="inventario-imd-terminado-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
@@ -2664,57 +2667,6 @@ function hideAllMaterialContainers() {
                     } else {
                         console.warn(' Funciones de inicialización de Control de Salida no disponibles');
                     }
-
-                    // � ACTIVACIÓN AUTOMÁTICA DEL SISTEMA DE AUTO-ENTER PARA AJAX
-                    setTimeout(() => {
-                        console.log(' ACTIVANDO AUTO-ENTER SIMPLE DESPUÉS DE CARGA AJAX...');
-                        
-                        // Verificar que el contenido se haya cargado
-                        const codigoInput = document.getElementById('salida_codigo_material_recibido');
-                        const verificacionInput = document.getElementById('salida_verificacion_codigo');
-                        
-                        if (codigoInput && verificacionInput) {
-                            // Activar configuración de auto-Enter SIMPLE
-                            if (typeof configurarEventListenersEscaneo === 'function') {
-                                console.log(' Configurando event listeners de escaneo SIMPLE...');
-                                configurarEventListenersEscaneo();
-                                
-                                // Test inmediato para verificar que funciona
-                                console.log('🧪 Auto-Enter configurado, campo enfocado');
-                                codigoInput.focus();
-                                
-                                // Mostrar funciones de test disponibles
-                                console.log('💡 Funciones de test disponibles:');
-                                console.log('   - testAutoEnterSimple() - Simula escaneo completo');
-                                console.log('   - verificarAutoEnter() - Verifica configuración');
-                                
-                                // Test automático simple
-                                setTimeout(() => {
-                                    console.log('🔬 Ejecutando test automático básico...');
-                                    if (typeof window.verificarAutoEnter === 'function') {
-                                        window.verificarAutoEnter();
-                                    }
-                                }, 500);
-                            } else {
-                                console.warn(' configurarEventListenersEscaneo no disponible');
-                            }
-                            
-                            // Activar observador AJAX si está disponible
-                            if (typeof configurarObservadorAJAX === 'function') {
-                                console.log('👁️ Activando observador AJAX...');
-                                configurarObservadorAJAX();
-                            }
-                            
-                            // Auto-enfocar el campo de código para iniciar el flujo
-                            setTimeout(() => {
-                                codigoInput.focus();
-                                console.log(' Auto-Enter SIMPLE ACTIVADO - Escribe 8+ caracteres');
-                            }, 200);
-                            
-                        } else {
-                            console.warn(' Campos de entrada no encontrados para auto-Enter');
-                        }
-                    }, 300); // Tiempo suficiente para que el DOM se estabilice
 
                     // 🔧 RECONEXIÓN DE EVENT LISTENERS (MANTENER COMPATIBILIDAD)
                     setTimeout(() => {

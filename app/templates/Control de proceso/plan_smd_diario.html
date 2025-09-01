@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PLAN SMD — Diario</title>
+<style>
+/* Estilos para Plan SMD Diario - Inspirado en control_bom.css con IDs únicos */
+
+/* Variables de color base */
+:root {
+  --plan-bg: #32323E;
+  --plan-card: #40424F;
+  --plan-text: lightgray;
+  --plan-dim: #95a5a6;
+  --plan-border: #20688C;
+  --plan-header: #172A46;
+  --plan-toolbar: #34334E;
+  --plan-hover: #485563;
+  --plan-green: #27ae60;
+  --plan-amber: #f39c12;
+  --plan-red: #e74c3c;
+  --plan-blue: #3498db;
+  --plan-input: #2c3e50;
+}
+
+/* Contenedor principal */
+body {
+  margin: 0;
+  background: var(--plan-bg);
+  color: var(--plan-text);
+  font-family: 'LG regular', system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  min-height: 100vh;
+}
+
+#planSmd_app {
+  max-width: 1400px;
+  margin: 10px auto;
+  padding: 5px;
+  background-color: var(--plan-card);
+  border: 1px solid var(--plan-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+/* Header/Toolbar */
+#planSmd_header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 5px;
+  padding: 12px;
+  background-color: var(--plan-toolbar);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border: var(--plan-border) 1px solid;
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+#planSmd_title {
+  font-weight: 700;
+  font-size: 18px;
+  color: #ecf0f1;
+  margin-right: auto;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Controles del formulario */
+.planSmd_ctl {
+  display: flex;
+  flex-direction: column;
+}
+
+.planSmd_label {
+  font-size: 11px;
+  color: var(--plan-dim);
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.planSmd_inpt, .planSmd_sel {
+  background-color: var(--plan-input);
+  color: var(--plan-text);
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  padding: 8px 10px;
+  min-width: 160px;
+  font-size: 12px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.planSmd_inpt:focus, .planSmd_sel:focus {
+  outline: none;
+  border-color: var(--plan-blue);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.planSmd_btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #3C3940;
+  border: var(--plan-border) 1px solid;
+  color: white;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.planSmd_btn:hover {
+  background-color: var(--plan-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.planSmd_btn:active {
+  transform: translateY(0);
+}
+
+/* Switch checkbox */
+.planSmd_switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  font-size: 11px;
+  color: var(--plan-text);
+}
+
+.planSmd_switch input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  transform: scale(1.2);
+  cursor: pointer;
+  accent-color: var(--plan-blue);
+}
+
+/* Contenedor de tabla */
+#planSmd_tableWrap {
+  background-color: var(--plan-card);
+  padding: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+  border-top: 1px solid var(--plan-border);
+  border-radius: 0 0 6px 6px;
+}
+
+/* Tabla principal */
+#planSmd_table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 11px;
+  background-color: var(--plan-card);
+  table-layout: auto;
+  max-width: 100%;
+}
+
+#planSmd_table th {
+  background-color: var(--plan-header);
+  color: #ecf0f1;
+  padding: 8px 6px;
+  text-align: left;
+  border: 1px solid var(--plan-border);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  font-size: 10px;
+  line-height: 1.2;
+  min-width: 60px;
+  cursor: default;
+}
+
+#planSmd_table td {
+  padding: 6px 5px;
+  text-align: left;
+  border: 1px solid #5F6375;
+  background-color: var(--plan-card);
+  color: var(--plan-text);
+  transition: background-color 0.3s;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  cursor: default;
+}
+
+#planSmd_table td.planSmd_mono {
+  font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+  text-align: center;
+}
+
+/* Efectos hover */
+#planSmd_table tr:hover td {
+  background-color: var(--plan-hover);
+}
+
+#planSmd_table tr:nth-child(even) td {
+  background-color: #44475A;
+}
+
+#planSmd_table tr:nth-child(even):hover td {
+  background-color: var(--plan-hover);
+}
+
+/* Tags de estado */
+.planSmd_tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  border: 1px solid var(--plan-border);
+  background: #0d1526;
+  font-weight: 500;
+  text-align: center;
+  min-width: 40px;
+}
+
+.planSmd_tag.planSmd_ok {
+  background: rgba(39, 174, 96, 0.15);
+  border-color: rgba(39, 174, 96, 0.5);
+  color: var(--plan-green);
+}
+
+.planSmd_tag.planSmd_mid {
+  background: rgba(243, 156, 18, 0.12);
+  border-color: rgba(243, 156, 18, 0.4);
+  color: var(--plan-amber);
+}
+
+.planSmd_tag.planSmd_bad {
+  background: rgba(231, 76, 60, 0.12);
+  border-color: rgba(231, 76, 60, 0.4);
+  color: var(--plan-red);
+}
+
+/* Barra de progreso */
+.planSmd_bar {
+  height: 12px;
+  background: #2c3e50;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--plan-border);
+  position: relative;
+  min-width: 100px;
+}
+
+.planSmd_bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--plan-blue), var(--plan-green));
+  transition: width 0.5s ease;
+  border-radius: 5px;
+}
+
+/* Filas con estado */
+.planSmd_row-ok {
+  background: rgba(39, 174, 96, 0.08) !important;
+}
+
+.planSmd_row-mid {
+  background: rgba(243, 156, 18, 0.06) !important;
+}
+
+.planSmd_row-bad {
+  background: rgba(231, 76, 60, 0.06) !important;
+}
+
+.planSmd_row-ok:hover {
+  background: rgba(39, 174, 96, 0.15) !important;
+}
+
+.planSmd_row-mid:hover {
+  background: rgba(243, 156, 18, 0.12) !important;
+}
+
+.planSmd_row-bad:hover {
+  background: rgba(231, 76, 60, 0.12) !important;
+}
+
+/* Footer */
+#planSmd_footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--plan-dim);
+  font-size: 11px;
+  background-color: var(--plan-toolbar);
+  border-top: 1px solid var(--plan-border);
+  border-radius: 0 0 6px 6px;
+}
+
+#planSmd_count {
+  color: var(--plan-blue);
+  font-weight: 500;
+}
+
+/* Tooltips para contenido truncado */
+#planSmd_table td:hover::after {
+  content: attr(title);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: normal;
+  max-width: 250px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 1px solid #34495e;
+  word-wrap: break-word;
+  text-align: left;
+  line-height: 1.4;
+  pointer-events: none;
+  opacity: 0;
+  animation: planSmdTooltipFadeIn 0.2s ease-in-out forwards;
+}
+
+#planSmd_table td[title]:hover::after {
+  opacity: 1;
+}
+
+@keyframes planSmdTooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  #planSmd_app {
+    margin: 5px;
+    padding: 3px;
+  }
+
+  #planSmd_header {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+  }
+  
+  .planSmd_ctl {
+    width: 100%;
+  }
+
+  .planSmd_inpt, .planSmd_sel {
+    min-width: 100%;
+    width: 100%;
+    font-size: 14px;
+    padding: 10px;
+  }
+  
+  .planSmd_btn {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    margin: 2px 0;
+  }
+  
+  #planSmd_tableWrap {
+    padding: 3px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #planSmd_table {
+    min-width: 800px;
+    font-size: 10px;
+  }
+
+  #planSmd_table th {
+    font-size: 9px;
+    padding: 6px 3px;
+    min-width: 70px;
+  }
+
+  #planSmd_table td {
+    font-size: 9px;
+    padding: 6px 3px;
+  }
+
+  #planSmd_footer {
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  #planSmd_app {
+    margin: 2px;
+    padding: 2px;
+  }
+
+  #planSmd_header {
+    padding: 8px;
+  }
+
+  .planSmd_inpt, .planSmd_sel {
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  .planSmd_btn {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  #planSmd_table {
+    font-size: 9px;
+  }
+
+  #planSmd_table th {
+    font-size: 8px;
+    padding: 4px 2px;
+  }
+
+  #planSmd_table td {
+    font-size: 8px;
+    padding: 4px 2px;
+  }
+}
+</style>
+</head>
+<body>
+<div id="planSmd_app">
+  <div id="planSmd_header">
+    <div id="planSmd_title">PLAN SMD — Diario</div>
+    <div class="planSmd_ctl">
+      <label class="planSmd_label" for="planSmd_date">Fecha</label>
+      <input id="planSmd_date" class="planSmd_inpt" type="date">
+    </div>
+    <div class="planSmd_ctl">
+      <label class="planSmd_label" for="planSmd_shift">Turno (AOI)</label>
+      <select id="planSmd_shift" class="planSmd_sel">
+        <option value="">Todos</option>
+        <option value="DIA">DIA</option>
+        <option value="TIEMPO_EXTRA">TIEMPO_EXTRA</option>
+        <option value="NOCHE">NOCHE</option>
+      </select>
+    </div>
+    <div class="planSmd_ctl">
+      <label class="planSmd_label">&nbsp;</label>
+      <button id="planSmd_btn" class="planSmd_btn">Actualizar</button>
+    </div>
+    <div class="planSmd_ctl">
+      <label class="planSmd_label">&nbsp;</label>
+      <label class="planSmd_switch"><input id="planSmd_hideDone" type="checkbox" checked> Ocultar completados</label>
+    </div>
+  </div>
+
+  <div id="planSmd_tableWrap">
+    <table id="planSmd_table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Línea</th>
+          <th>Lote</th>
+          <th>NParte</th>
+          <th>EBR</th>
+          <th>Modelo</th>
+          <th>Tipo</th>
+          <th>Turno</th>
+          <th>CT</th>
+          <th>UPH</th>
+          <th>Qty</th>
+          <th>Producido (AOI)</th>
+          <th>Falta</th>
+          <th>%</th>
+          <th style="min-width:160px">Avance</th>
+          <th>Creado</th>
+          <th>Usuario</th>
+          <th>Comentarios</th>
+        </tr>
+      </thead>
+      <tbody id="planSmd_tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="planSmd_footer">
+    <div id="planSmd_count">0 registros</div>
+    <div>Se ocultan filas completas si "Ocultar completados" está activo.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const elDate = document.getElementById('planSmd_date');
+  const elShift = document.getElementById('planSmd_shift');
+  const elBtn = document.getElementById('planSmd_btn');
+  const elHide = document.getElementById('planSmd_hideDone');
+  const elBody = document.getElementById('planSmd_tbody');
+  const elCount = document.getElementById('planSmd_count');
+
+  // Fecha por defecto = hoy
+  const today = new Date().toISOString().slice(0,10);
+  elDate.value = today;
+
+  async function loadData(){
+    const params = new URLSearchParams();
+    if(elDate.value) params.set('date', elDate.value);
+    if(elShift.value) params.set('shift', elShift.value);
+    const url = '/api/plan-smd-diario?'+params.toString();
+
+    const res = await fetch(url);
+    if(!res.ok){ alert('Error al cargar datos'); return; }
+    const rows = await res.json();
+
+    // Filtrar completados si el switch está activo
+    const data = elHide.checked ? rows.filter(r => (r.producido ?? 0) < r.qty) : rows;
+
+    elBody.innerHTML = '';
+    for(const r of data){
+      const pct = Math.min(100, Math.round( ( (r.producido ?? 0) / (r.qty || 1) ) * 100 ));
+      const falta = Math.max(0, (r.qty || 0) - (r.producido ?? 0));
+
+      let tagClass = 'planSmd_bad';
+      if(pct >= 100) tagClass = 'planSmd_ok';
+      else if(pct > 0) tagClass = 'planSmd_mid';
+
+      let rowClass = 'planSmd_row-bad';
+      if(pct >= 100) rowClass = 'planSmd_row-ok';
+      else if(pct > 0) rowClass = 'planSmd_row-mid';
+
+      const tr = document.createElement('tr');
+      tr.className = rowClass;
+      tr.innerHTML = `
+        <td class="planSmd_mono">${r.id}</td>
+        <td>${r.linea ?? ''}</td>
+        <td class="planSmd_mono">${r.lote ?? ''}</td>
+        <td class="planSmd_mono">${r.nparte ?? ''}</td>
+        <td class="planSmd_mono">${r.ebr ?? ''}</td>
+        <td>${r.modelo ?? ''}</td>
+        <td>${r.tipo ?? ''}</td>
+        <td><span class="planSmd_tag">${r.turno ?? ''}</span></td>
+        <td>${r.ct ?? ''}</td>
+        <td>${r.uph ?? ''}</td>
+        <td class="planSmd_mono">${r.qty ?? 0}</td>
+        <td class="planSmd_mono">${r.producido ?? 0}</td>
+        <td class="planSmd_mono">${falta}</td>
+        <td><span class="planSmd_tag ${tagClass}">${pct}%</span></td>
+        <td><div class="planSmd_bar"><span style="width:${pct}%"></span></div></td>
+        <td class="planSmd_mono">${r.fecha_creacion ?? ''}</td>
+        <td>${r.usuario_creacion ?? ''}</td>
+        <td>${r.comentarios ?? ''}</td>
+      `;
+      elBody.appendChild(tr);
+    }
+    elCount.textContent = `${data.length} registros`;
+  }
+
+  elBtn.addEventListener('click', loadData);
+  elHide.addEventListener('change', loadData);
+  setInterval(loadData, 15000);
+  loadData();
+})();
+</script>
+</body>
+</html>

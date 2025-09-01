@@ -125,11 +125,13 @@
     // COLA de pendientes
     // ===============================
     function addToQueue(wo) {
+        console.log('➕ Agregando WO a la cola:', wo);
         if (queue.find(x => x.id === wo.id)) { 
             alertMsg("Esta WO ya está en la cola."); 
             return; 
         }
         queue.push(wo);
+        console.log('✅ WO agregada. Cola actual:', queue);
         renderQueue();
     }
     
@@ -174,7 +176,7 @@
     }
 
     function planRowFrom(wo, invRow) {
-        const qty = num(wo.cantidad);
+        const qty = num(wo.cantidad_planeada || wo.cantidad || 0);
         const fisico = num(invRow.stock_total);
         const diferencia = 0;
         const falta = Math.max(0, qty - (fisico + diferencia));
@@ -202,6 +204,11 @@
         const qty = num(faltante);
         const fisico = num(totalFisico || 0);
         const diferencia = 0;
+        
+        // Si no hay faltantes, mostrar que está completo
+        const comentarios = qty > 0 ? 'Generado por faltantes' : 'Stock completo';
+        const pct = qty > 0 ? 0 : 100; // 100% si está completo
+        
         return {
             linea: 'SMT A',
             lote: wo.codigo_wo || newLote('P'), // Usar código WO para trazabilidad
@@ -213,10 +220,10 @@
             uph: '',
             qty,
             fisico,
-            falta: qty,
+            falta: qty, // La falta es igual a la cantidad faltante
             diferencia,
-            pct: qty ? 0 : 100,
-            comentarios: 'Generado por faltantes'
+            pct,
+            comentarios
         };
     }
 
@@ -344,32 +351,65 @@
             alertMsg('Agrega WO a la cola primero.'); 
             return; 
         }
+        
+        console.log('🚀 Generando plan con', queue.length, 'WO en cola:', queue);
         showLoading('Generando plan con inventario…');
+        
         try {
             const rows = [];
             const onlyShortage = document.getElementById('smdOnlyShortage').checked;
+            console.log('📊 Solo faltantes:', onlyShortage);
+            
             for (const wo of queue) {
+                console.log('🔍 Procesando WO:', wo.codigo_wo, 'Modelo:', wo.codigo_modelo || wo.modelo);
+                
                 const inv = await fetchJSON(PLAN_SMD_API.inventarioPorModelo(wo.codigo_modelo||wo.modelo||''));
                 const invRows = Array.isArray(inv) ? inv : (inv.rows||[]);
+                console.log('📦 Inventario encontrado:', invRows.length, 'registros');
 
                 if (onlyShortage) {
                     const { faltante, totalFisico } = computeShortage(wo, invRows);
-                    if (faltante > 0) rows.push(planRowFromFaltante(wo, faltante, totalFisico));
-                } else {
-                    if (!invRows.length) {
-                        rows.push(planRowFrom(wo, { nparte: wo.codigo_modelo || (wo.modelo||'') , stock_total: 0 }));
+                    console.log('📊 Faltante calculado:', faltante, 'Total físico:', totalFisico);
+                    
+                    // Si hay faltantes, generar fila por faltante
+                    if (faltante > 0) {
+                        const row = planRowFromFaltante(wo, faltante, totalFisico);
+                        console.log('➕ Agregando fila por faltante:', row);
+                        rows.push(row);
                     } else {
-                        invRows.forEach(ir => rows.push(planRowFrom(wo, ir)));
+                        // Si no hay faltantes pero solo faltantes está activado, 
+                        // generar fila con cantidad 0 para mostrar que está completo
+                        const row = planRowFromFaltante(wo, 0, totalFisico);
+                        console.log('➕ Agregando fila sin faltantes (completo):', row);
+                        rows.push(row);
+                    }
+                } else {
+                    // Generar plan completo (todas las WO)
+                    if (!invRows.length) {
+                        const row = planRowFrom(wo, { nparte: wo.codigo_modelo || (wo.modelo||'') , stock_total: 0 });
+                        console.log('➕ Agregando fila sin inventario:', row);
+                        rows.push(row);
+                    } else {
+                        invRows.forEach(ir => {
+                            const row = planRowFrom(wo, ir);
+                            console.log('➕ Agregando fila con inventario:', row);
+                            rows.push(row);
+                        });
                     }
                 }
             }
+            
+            console.log('✅ Plan generado con', rows.length, 'filas:', rows);
             plan = rows;
             renderPlan();
+            
         } catch (e) { 
-            console.error(e); 
-            alertMsg('No fue posible generar el plan.'); 
+            console.error('❌ Error generando plan:', e); 
+            alertMsg('No fue posible generar el plan: ' + e.message); 
         }
-        finally { hideLoading(); }
+        finally { 
+            hideLoading(); 
+        }
     }
 
     // ===============================
