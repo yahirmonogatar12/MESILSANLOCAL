@@ -1,38 +1,619 @@
 <!-- CONTENEDOR DESTINO (COMPARTIDO): calidad-content-area -->
-<div id="historial-cambio-material-maquina-unique-container" class="ajax-module-container">
-    <div class="module-header">
-        <h2>Historial de cambio de material por máquina</h2>
+<div id="historial-cambio-material-maquina-unique-container" class="hcmm-container">
+    <div class="hcmm-header">
+        <h2 class="hcmm-title">Material Changed History</h2>
+        <button class="hcmm-export-btn" id="hcmm-export-btn">Excel Export</button>
     </div>
     
-    <div class="module-content">
-        <!-- Contenido del módulo se cargará aquí -->
-        <p>Módulo de Historial de cambio de material por máquina</p>
+    <!-- Filtros -->
+    <div class="hcmm-filters">
+        <div class="hcmm-filter-row">
+            <div class="hcmm-filter-group">
+                <label for="hcmm-equipment">Equipment:</label>
+                <select id="hcmm-equipment" class="hcmm-select">
+                    <option value="">All Equipment</option>
+                    <option value="LINE01">LINE01</option>
+                    <option value="LINE02">LINE02</option>
+                    <option value="LINE03">LINE03</option>
+                    <option value="LINE04">LINE04</option>
+                </select>
+            </div>
+            
+            <div class="hcmm-filter-group">
+                <label for="hcmm-slot">Slot No:</label>
+                <input type="text" id="hcmm-slot" class="hcmm-input" placeholder="Slot number">
+            </div>
+            
+            <div class="hcmm-filter-group">
+                <label for="hcmm-part-name">Part Name:</label>
+                <input type="text" id="hcmm-part-name" class="hcmm-input" placeholder="Part name">
+            </div>
+        </div>
+        
+        <div class="hcmm-filter-row">
+            <div class="hcmm-filter-group">
+                <label for="hcmm-date-from">Date From:</label>
+                <input type="date" id="hcmm-date-from" class="hcmm-input">
+            </div>
+            
+            <div class="hcmm-filter-group">
+                <label for="hcmm-date-to">Date To:</label>
+                <input type="date" id="hcmm-date-to" class="hcmm-input">
+            </div>
+            
+            <div class="hcmm-filter-group">
+                <button id="hcmm-search-btn" class="hcmm-search-btn">Search</button>
+                <button id="hcmm-clear-btn" class="hcmm-clear-btn">Clear</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabla de datos -->
+    <div class="hcmm-table-container">
+        <table class="hcmm-table" id="hcmm-table">
+            <thead>
+                <tr>
+                    <th>Equipment...</th>
+                    <th>Slot No</th>
+                    <th>Regist Date</th>
+                    <th>Warehousing...</th>
+                    <th>Regist Quan...</th>
+                    <th>Current Qu...</th>
+                </tr>
+            </thead>
+            <tbody id="hcmm-tbody">
+                <tr>
+                    <td colspan="6" class="hcmm-no-data">No data</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Footer con total de registros -->
+    <div class="hcmm-footer">
+        <span id="hcmm-total-rows">Total Rows : 0</span>
     </div>
 </div>
 
 <style>
-.ajax-module-container {
-    padding: 20px;
-    background: white;
+/* Estilos para Historial de Cambio de Material por Máquina */
+.hcmm-container {
+    font-family: 'LG regular', sans-serif;
+    background-color: #32323E;
+    color: lightgray;
+    min-height: 100vh;
+    margin: 0;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.hcmm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #34334E;
+    border: 1px solid #20688C;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.module-header h2 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 24px;
+.hcmm-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ecf0f1;
+    margin: 0;
 }
 
-.module-content {
-    min-height: 200px;
+.hcmm-export-btn {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.hcmm-export-btn:hover {
+    background-color: #219a52;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+/* Filtros */
+.hcmm-filters {
+    background-color: #34334E;
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.hcmm-filter-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.hcmm-filter-row:last-child {
+    margin-bottom: 0;
+}
+
+.hcmm-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 150px;
+}
+
+.hcmm-filter-group label {
+    font-size: 12px;
+    color: #bdc3c7;
+    font-weight: 500;
+}
+
+.hcmm-input, .hcmm-select {
+    background-color: #2c3e50;
+    color: lightgray;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 12px;
+    transition: border-color 0.3s;
+}
+
+.hcmm-input:focus, .hcmm-select:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.hcmm-search-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.hcmm-search-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.hcmm-clear-btn {
+    background-color: #95a5a6;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s;
+    margin-left: 10px;
+}
+
+.hcmm-clear-btn:hover {
+    background-color: #7f8c8d;
+    transform: translateY(-2px);
+}
+
+/* Tabla */
+.hcmm-table-container {
+    background-color: #40424F;
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.hcmm-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 11px;
+    background-color: #40424F;
+}
+
+.hcmm-table thead th {
+    background-color: #172A46;
+    color: #ecf0f1;
+    padding: 12px 8px;
+    text-align: center;
+    border: 1px solid #20688C;
+    font-weight: 600;
+    white-space: nowrap;
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+.hcmm-table tbody td {
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid #5F6375;
+    background-color: #40424F;
+    color: lightgray;
+    transition: background-color 0.3s;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.hcmm-table tbody tr:hover td {
+    background-color: #485563;
+}
+
+.hcmm-table tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+.hcmm-table tbody tr:nth-child(even):hover td {
+    background-color: #485563;
+}
+
+.hcmm-no-data {
+    text-align: center;
+    padding: 30px;
+    color: #95a5a6;
+    font-style: italic;
+    background-color: #40424F;
+    font-size: 14px;
+}
+
+/* Footer */
+.hcmm-footer {
+    text-align: right;
+    padding: 10px;
+    background-color: #34334E;
+    border: 1px solid #20688C;
+    border-radius: 8px;
+    color: #3498db;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hcmm-container {
+        padding: 10px;
+    }
+    
+    .hcmm-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .hcmm-filter-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .hcmm-filter-group {
+        min-width: 100%;
+    }
+    
+    .hcmm-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .hcmm-table {
+        min-width: 600px;
+    }
+    
+    .hcmm-footer {
+        text-align: center;
+    }
 }
 </style>
 
 <script>
-// Auto-inicialización del módulo
-document.addEventListener('DOMContentLoaded', function() {
-    // Módulo inicializado
-});
+// Historial de Cambio de Material por Máquina - Módulo AJAX
+(function() {
+    'use strict';
+    
+    console.log('🚀 Inicializando módulo Historial Cambio Material Máquina AJAX...');
+    
+    // Variables globales del módulo
+    let currentData = [];
+    let isModuleInitialized = false;
+    
+    // Elementos del DOM
+    const elements = {
+        equipmentSelect: null,
+        slotInput: null,
+        partNameInput: null,
+        dateFromInput: null,
+        dateToInput: null,
+        searchBtn: null,
+        clearBtn: null,
+        exportBtn: null,
+        tableBody: null,
+        totalRows: null
+    };
+    
+    // Función para obtener elementos del DOM
+    function getElements() {
+        elements.equipmentSelect = document.getElementById('hcmm-equipment');
+        elements.slotInput = document.getElementById('hcmm-slot');
+        elements.partNameInput = document.getElementById('hcmm-part-name');
+        elements.dateFromInput = document.getElementById('hcmm-date-from');
+        elements.dateToInput = document.getElementById('hcmm-date-to');
+        elements.searchBtn = document.getElementById('hcmm-search-btn');
+        elements.clearBtn = document.getElementById('hcmm-clear-btn');
+        elements.exportBtn = document.getElementById('hcmm-export-btn');
+        elements.tableBody = document.getElementById('hcmm-tbody');
+        elements.totalRows = document.getElementById('hcmm-total-rows');
+        
+        return elements.equipmentSelect && elements.tableBody;
+    }
+    
+    // Función para cargar datos del historial
+    async function cargarDatos() {
+        if (!getElements()) {
+            console.warn('⚠️ Elementos no encontrados, reintentando...');
+            setTimeout(cargarDatos, 1000);
+            return;
+        }
+        
+        try {
+            // Obtener filtros
+            const filtros = {
+                equipment: elements.equipmentSelect ? elements.equipmentSelect.value : '',
+                slot_no: elements.slotInput ? elements.slotInput.value : '',
+                part_name: elements.partNameInput ? elements.partNameInput.value : '',
+                date_from: elements.dateFromInput ? elements.dateFromInput.value : '',
+                date_to: elements.dateToInput ? elements.dateToInput.value : ''
+            };
+            
+            // Construir URL con parámetros
+            const params = new URLSearchParams();
+            Object.keys(filtros).forEach(key => {
+                if (filtros[key]) {
+                    params.append(key, filtros[key]);
+                }
+            });
+            
+            const url = `/api/historial-cambio-material-maquina?${params.toString()}`;
+            console.log('🔄 Cargando datos desde:', url);
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Error desconocido');
+            }
+            
+            currentData = data.data || [];
+            console.log('✅ Datos cargados:', currentData.length, 'registros');
+            
+            // Renderizar datos
+            renderTable(currentData);
+            
+        } catch (error) {
+            console.error('❌ Error cargando datos:', error);
+            if (elements.tableBody) {
+                elements.tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="hcmm-no-data">Error loading data: ${error.message}</td>
+                    </tr>
+                `;
+            }
+            if (elements.totalRows) {
+                elements.totalRows.textContent = 'Total Rows : 0';
+            }
+        }
+    }
+    
+    // Función para renderizar la tabla
+    function renderTable(data) {
+        if (!elements.tableBody) return;
+        
+        // Limpiar tabla
+        elements.tableBody.innerHTML = '';
+        
+        if (!data || data.length === 0) {
+            elements.tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="hcmm-no-data">No data</td>
+                </tr>
+            `;
+            if (elements.totalRows) {
+                elements.totalRows.textContent = 'Total Rows : 0';
+            }
+            return;
+        }
+        
+        // Renderizar filas
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td title="${row.equipment || ''}">${row.equipment || ''}</td>
+                <td title="${row.slot_no || ''}">${row.slot_no || ''}</td>
+                <td title="${row.regist_date || ''}">${row.regist_date || ''}</td>
+                <td title="${row.warehousing || ''}">${row.warehousing || ''}</td>
+                <td title="${row.regist_quantity || 0}">${row.regist_quantity || 0}</td>
+                <td title="${row.current_quantity || 0}">${row.current_quantity || 0}</td>
+            `;
+            elements.tableBody.appendChild(tr);
+        });
+        
+        // Actualizar total
+        if (elements.totalRows) {
+            elements.totalRows.textContent = `Total Rows : ${data.length}`;
+        }
+    }
+    
+    // Función para limpiar filtros
+    function limpiarFiltros() {
+        if (elements.equipmentSelect) elements.equipmentSelect.value = '';
+        if (elements.slotInput) elements.slotInput.value = '';
+        if (elements.partNameInput) elements.partNameInput.value = '';
+        if (elements.dateFromInput) elements.dateFromInput.value = '';
+        if (elements.dateToInput) elements.dateToInput.value = '';
+    }
+    
+    // Función para exportar a Excel
+    function exportarExcel() {
+        if (!currentData || currentData.length === 0) {
+            alert('No hay datos para exportar');
+            return;
+        }
+        
+        try {
+            // Crear CSV
+            const headers = ['Equipment', 'Slot No', 'Regist Date', 'Warehousing', 'Regist Quantity', 'Current Quantity'];
+            const csvContent = [
+                headers.join(','),
+                ...currentData.map(row => [
+                    `"${row.equipment || ''}"`,
+                    `"${row.slot_no || ''}"`,
+                    `"${row.regist_date || ''}"`,
+                    `"${row.warehousing || ''}"`,
+                    row.regist_quantity || 0,
+                    row.current_quantity || 0
+                ].join(','))
+            ].join('\n');
+            
+            // Descargar archivo
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `material_changed_history_${new Date().toISOString().slice(0, 10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            console.log('✅ Archivo Excel exportado exitosamente');
+        } catch (error) {
+            console.error('❌ Error exportando Excel:', error);
+            alert('Error al exportar archivo');
+        }
+    }
+    
+    // Función para configurar event listeners
+    function setupEventListeners() {
+        if (!getElements()) return;
+        
+        // Botón de búsqueda
+        if (elements.searchBtn) {
+            elements.searchBtn.addEventListener('click', cargarDatos);
+        }
+        
+        // Botón de limpiar
+        if (elements.clearBtn) {
+            elements.clearBtn.addEventListener('click', () => {
+                limpiarFiltros();
+                cargarDatos();
+            });
+        }
+        
+        // Botón de exportar
+        if (elements.exportBtn) {
+            elements.exportBtn.addEventListener('click', exportarExcel);
+        }
+        
+        // Enter en inputs
+        [elements.slotInput, elements.partNameInput].forEach(input => {
+            if (input) {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        cargarDatos();
+                    }
+                });
+            }
+        });
+    }
+    
+    // Función para configurar fechas por defecto
+    function setupDefaultDates() {
+        if (elements.dateFromInput && !elements.dateFromInput.value) {
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            elements.dateFromInput.value = thirtyDaysAgo.toISOString().slice(0, 10);
+        }
+        
+        if (elements.dateToInput && !elements.dateToInput.value) {
+            const today = new Date().toISOString().slice(0, 10);
+            elements.dateToInput.value = today;
+        }
+    }
+    
+    // Función principal de inicialización
+    function inicializar() {
+        if (isModuleInitialized) {
+            console.log('⚠️ Módulo ya inicializado, omitiendo...');
+            return;
+        }
+        
+        console.log('✅ Inicializando Historial Cambio Material Máquina...');
+        isModuleInitialized = true;
+        
+        // Configurar fechas por defecto
+        setupDefaultDates();
+        
+        // Configurar event listeners
+        setupEventListeners();
+        
+        // Cargar datos iniciales
+        setTimeout(cargarDatos, 500);
+    }
+    
+    // Exposer funciones globalmente
+    window.inicializarHistorialCambioMaterialMaquina = inicializar;
+    
+    // Auto-inicialización
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+        setTimeout(inicializar, 100);
+    }
+    
+    // Observador para detectar cuando el módulo se carga dinámicamente
+    if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    const container = document.getElementById('historial-cambio-material-maquina-unique-container');
+                    if (container && !isModuleInitialized) {
+                        console.log('🔍 Detectado contenido dinámico HCMM, inicializando...');
+                        setTimeout(inicializar, 200);
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+    
+    // Callback para sistemas de templates
+    if (typeof window.onTemplateLoaded === 'function') {
+        window.onTemplateLoaded('historial_cambio_material_maquina_ajax');
+    }
+    
+})();
 </script>
 

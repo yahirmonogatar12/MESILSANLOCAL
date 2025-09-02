@@ -341,9 +341,7 @@
         </div>
     </header>
 
-<div class="block-left col-md-3">
-    
-</div>
+
 
     <!-- Contenedor principal para el sidebar -->
 <div class="main-content-container" id="material-container" style="display: none;">
@@ -769,11 +767,6 @@
         </div>
     </div>
 </div>
-
-    <!-- Sistema nuevo desactivado - usando mobile-lists-hamburger.js -->
-    <button class="mobile-lists-toggle" id="mobile-lists-toggle" title="Ver listas">
-    <i class="bi bi-list-ul"></i>
-</button>
 
 <div class="mobile-lists-overlay" id="mobile-lists-overlay"></div>
 
@@ -2037,6 +2030,7 @@ function hideAllMaterialContainers() {
     inventarioRollosSMDContainer.style.display = 'none';
     ajusteNumeroContainer.style.display = 'none';
     historialCambioSmtContainer.style.display = 'none';
+    
     const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
     if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'none';
     const controlProduccionSmtParent = document.getElementById('control-produccion-smt-container');

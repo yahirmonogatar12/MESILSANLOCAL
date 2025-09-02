@@ -7780,6 +7780,128 @@ def historial_cambio_material_maquina_ajax():
     """Template para Historial de cambio de material por máquina"""
     return render_template('Control de calidad/historial_cambio_material_maquina_ajax.html')
 
+@app.route('/api/historial-cambio-material-maquina', methods=['GET'])
+@login_requerido
+def api_historial_cambio_material_maquina():
+    """API para obtener historial de cambio de material por máquina"""
+    try:
+        # Obtener parámetros de filtrado
+        equipment = request.args.get('equipment', '')
+        slot_no = request.args.get('slot_no', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        part_name = request.args.get('part_name', '')
+        
+        print(f"🔍 API Historial cambio material - Filtros:")
+        print(f"  Equipment: {equipment}")
+        print(f"  Slot No: {slot_no}")
+        print(f"  Date From: {date_from}")
+        print(f"  Date To: {date_to}")
+        print(f"  Part Name: {part_name}")
+        
+        from .db_mysql import get_connection
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Consulta simple y segura
+        query = """
+            SELECT
+                linea,
+                maquina, 
+                ScanDate,
+                ScanTime,
+                SlotNo,
+                Result,
+                PreviousBarcode,
+                Productdate,
+                PartName,
+                Quantity,
+                SEQ,
+                Vendor,
+                LOTNO,
+                Barcode,
+                FeederBase,
+                archivo
+            FROM historial_cambio_material_smt
+            WHERE ScanDate >= %s
+            ORDER BY ScanDate DESC, ScanTime DESC
+            LIMIT 100
+        """
+        
+        # Usar fecha por defecto si no se proporciona
+        default_date = '20250801'
+        cursor.execute(query, [default_date])
+        resultados = cursor.fetchall()
+        
+        print(f"📊 Encontrados {len(resultados)} registros en historial cambio material")
+        
+        # Formatear datos para la tabla de manera más segura
+        formatted_data = []
+        for i, row in enumerate(resultados):
+            try:
+                # Acceso seguro a índices
+                linea = row[0] if len(row) > 0 else ''
+                maquina = row[1] if len(row) > 1 else ''
+                scan_date = row[2] if len(row) > 2 else ''
+                scan_time = row[3] if len(row) > 3 else ''
+                slot_no = row[4] if len(row) > 4 else ''
+                result = row[5] if len(row) > 5 else ''
+                previous_barcode = row[6] if len(row) > 6 else ''
+                product_date = row[7] if len(row) > 7 else ''
+                part_name = row[8] if len(row) > 8 else ''
+                quantity = row[9] if len(row) > 9 else 0
+                seq = row[10] if len(row) > 10 else ''
+                vendor = row[11] if len(row) > 11 else ''
+                lot_no = row[12] if len(row) > 12 else ''
+                barcode = row[13] if len(row) > 13 else ''
+                feeder_base = row[14] if len(row) > 14 else ''
+                archivo = row[15] if len(row) > 15 else ''
+                
+                # Formatear fecha
+                formatted_date = scan_date
+                if scan_date and len(str(scan_date)) == 8:
+                    date_str = str(scan_date)
+                    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+                
+                formatted_row = {
+                    'equipment': linea or '',
+                    'slot_no': str(slot_no) if slot_no else '',
+                    'regist_date': formatted_date or '',
+                    'warehousing': vendor or '',
+                    'regist_quantity': quantity or 0,
+                    'current_quantity': quantity or 0,
+                    'part_name': part_name or '',
+                    'machine': maquina or '',
+                    'result': result or '',
+                    'scan_time': scan_time or '',
+                    'barcode': barcode or '',
+                    'lot_no': lot_no or ''
+                }
+                formatted_data.append(formatted_row)
+                
+            except Exception as row_error:
+                print(f"❌ Error procesando fila {i}: {row_error}")
+                continue
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_data,
+            'total': len(formatted_data),
+            'message': f'Se encontraron {len(formatted_data)} registros'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en API historial cambio material: {e}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/historial-uso-pegamento-soldadura-ajax')
 @login_requerido
 def historial_uso_pegamento_soldadura_ajax():

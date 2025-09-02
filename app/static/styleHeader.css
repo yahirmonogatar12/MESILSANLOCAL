@@ -9,6 +9,13 @@
   --touch-target: 44px;
 }
 
+/* Sincronizar altura del header en móviles */
+@media (max-width: 768px) {
+  :root {
+    --header-height: var(--mobile-header-height);
+  }
+}
+
 /* ============================================= */
 /* Header                                        */
 /* ============================================= */

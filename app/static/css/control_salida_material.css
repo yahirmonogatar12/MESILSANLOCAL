@@ -1,5 +1,15 @@
 
         /* Estilos específicos para Control de Material que complementan style.css */
+        
+        /* CONTENEDOR PRINCIPAL DEL CONTROL DE SALIDA - SIMPLIFICADO */
+        #control-salida-container {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            background-color: #32323E !important;
+            box-sizing: border-box !important;
+        }
+        
         /* Sección de escaneo dentro del toolbar del medio */
         .material-toolbar .scan-field-group {
             display: flex;

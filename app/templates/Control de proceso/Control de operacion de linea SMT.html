@@ -599,22 +599,22 @@
                 <table class="section-table">
                     <thead>
                         <tr>
-                            <th>Numero de...</th>
-                            <th>Numero de...</th>
-                            <th>Fecha de re...</th>
-                            <th>Codigo de...</th>
-                            <th>Cantidad re...</th>
-                            <th>Cantidad ac...</th>
+                            <th>Equipment</th>
+                            <th>Slot No</th>
+                            <th>Regist Date</th>
+                            <th>Warehousing</th>
+                            <th>Regist Quantity</th>
+                            <th>Current Quantity</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="materialHistoryTableBody-Control de operacion de linea SMT">
                         <tr>
-                            <td colspan="6">No hay dato registrado</td>
+                            <td colspan="6">Cargando datos...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <div class="section-footer">Total Rows : 0</div>
+            <div class="section-footer" id="materialHistoryFooter-Control de operacion de linea SMT">Total Rows : 0</div>
         </div>
     </div>
 
@@ -784,7 +784,7 @@
                     });
                     
                 } catch (error) {
-                    console.error('❌ Error cargando datos del plan SMD:', error);
+                    console.error(' Error cargando datos del plan SMD:', error);
                     if (tableBody) {
                         tableBody.innerHTML = `<tr><td colspan="18">Error cargando datos: ${error.message}</td></tr>`;
                     }
@@ -805,8 +805,149 @@
                     });
                 }
                 
-                // Por ahora solo recargar datos
+                // Recargar ambas tablas
                 cargarDatosPlanSMD();
+                cargarHistorialMaterial();
+            }
+            
+            // Función para cargar datos del historial de cambio de material
+            async function cargarHistorialMaterial() {
+                const tableBody = document.getElementById('materialHistoryTableBody-Control de operacion de linea SMT');
+                
+                if (!tableBody) {
+                    console.warn('⚠️ Tabla de historial de material no encontrada, reintentando en 1 segundo...');
+                    setTimeout(cargarHistorialMaterial, 1000);
+                    return;
+                }
+                
+                try {
+                    const url = '/api/historial-cambio-material-maquina';
+                    
+                    console.log('🔄 Cargando historial de material desde:', url);
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Error en la respuesta del API');
+                    }
+                    
+                    const data = result.data || [];
+                    
+                    console.log('✅ Historial de material cargado:', data.length, 'registros');
+                    
+                    // Limpiar tabla
+                    tableBody.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #95A5A6;">No hay datos disponibles</td></tr>';
+                        return;
+                    }
+                    
+                    // Renderizar filas (solo mostrar las primeras 10 para no sobrecargar la tabla)
+                    const maxRows = 10;
+                    const dataToShow = data.slice(0, maxRows);
+                    
+                    dataToShow.forEach((item, index) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td style="padding: 6px; font-size: 10px;">${item.equipment || ''}</td>
+                            <td style="padding: 6px; font-size: 10px; text-align: center;">${item.slot_no || ''}</td>
+                            <td style="padding: 6px; font-size: 10px;">${item.regist_date || ''}</td>
+                            <td style="padding: 6px; font-size: 10px;">${item.warehousing || ''}</td>
+                            <td style="padding: 6px; font-size: 10px; text-align: right;">${item.regist_quantity || 0}</td>
+                            <td style="padding: 6px; font-size: 10px; text-align: right;">${item.current_quantity || 0}</td>
+                        `;
+                        
+                        // Efecto hover
+                        row.addEventListener('mouseenter', () => {
+                            row.style.backgroundColor = '#485563';
+                        });
+                        row.addEventListener('mouseleave', () => {
+                            row.style.backgroundColor = index % 2 === 0 ? '#40424F' : '#44475A';
+                        });
+                        
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // Actualizar footer con el total de filas
+                    const footer = document.getElementById('materialHistoryFooter-Control de operacion de linea SMT');
+                    if (footer) {
+                        footer.textContent = `Total Rows : ${data.length}${data.length > maxRows ? ` (mostrando ${maxRows})` : ''}`;
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Error cargando historial de material:', error);
+                    if (tableBody) {
+                        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #E74C3C;">Error cargando datos</td></tr>';
+                    }
+                }
+            }
+            
+            // Función para exportar historial de material a Excel
+            async function exportarHistorialMaterial() {
+                try {
+                    console.log('📊 Exportando historial de material...');
+                    
+                    const url = '/api/historial-cambio-material-maquina';
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || 'Error en la respuesta del API');
+                    }
+                    
+                    const data = result.data || [];
+                    
+                    if (data.length === 0) {
+                        alert('No hay datos disponibles para exportar');
+                        return;
+                    }
+                    
+                    // Crear CSV
+                    const headers = ['Equipment', 'Slot No', 'Regist Date', 'Warehousing', 'Regist Quantity', 'Current Quantity'];
+                    const csvContent = [
+                        headers.join(','),
+                        ...data.map(row => [
+                            `"${row.equipment || ''}"`,
+                            `"${row.slot_no || ''}"`,
+                            `"${row.regist_date || ''}"`,
+                            `"${row.warehousing || ''}"`,
+                            row.regist_quantity || 0,
+                            row.current_quantity || 0
+                        ].join(','))
+                    ].join('\n');
+                    
+                    // Crear archivo y descargar
+                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const filename = `historial_material_${new Date().toISOString().slice(0, 10)}.csv`;
+                    
+                    if (link.download !== undefined) {
+                        const url = URL.createObjectURL(blob);
+                        link.setAttribute('href', url);
+                        link.setAttribute('download', filename);
+                        link.style.visibility = 'hidden';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        console.log('✅ Archivo exportado:', filename);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Error exportando historial:', error);
+                    alert('Error al exportar los datos: ' + error.message);
+                }
             }
             
             // Función de inicialización específica del módulo
@@ -816,7 +957,7 @@
                     return;
                 }
                 
-                console.log('✅ Control de operacion de linea SMT módulo inicializado');
+                console.log('Control de operacion de linea SMT módulo inicializado');
                 isInitialized = true;
                 
                 // Función para configurar event listeners con verificación de existencia
@@ -851,6 +992,15 @@
                             filtrarPorFechas();
                         });
                     }
+                    
+                    // Event listener para exportar historial de material
+                    const btnExportarHistorial = document.getElementById('btnExportarHistorial-Control de operacion de linea SMT');
+                    if (btnExportarHistorial) {
+                        btnExportarHistorial.addEventListener('click', function() {
+                            console.log('Exportar historial clicked');
+                            exportarHistorialMaterial();
+                        });
+                    }
                 }
                 
                 // Configurar event listeners inmediatamente si los elementos existen
@@ -870,16 +1020,18 @@
                     if (container) {
                         setupEventListeners();
                         clearInterval(retryInterval);
-                        console.log('✅ Event listeners configurados tras', retryCount, 'reintentos');
+                        console.log('Event listeners configurados tras', retryCount, 'reintentos');
                     }
                     retryCount++;
                 }, 500);
                 
                 // Cargar datos automáticamente al inicializar
                 setTimeout(cargarDatosPlanSMD, 1000);
+                setTimeout(cargarHistorialMaterial, 1500);
                 
                 // Actualizar cada 30 segundos
                 setInterval(cargarDatosPlanSMD, 30000);
+                setInterval(cargarHistorialMaterial, 35000);
             }
             
             // Exponer función globalmente para carga dinámica
@@ -916,7 +1068,7 @@
         
         // Script adicional para carga dinámica - ejecutar manualmente si es necesario
         window.reiniciarControlOperacionSMT = function() {
-            console.log('🔄 Reiniciando Control de Operación SMT manualmente...');
+            console.log('Reiniciando Control de Operación SMT manualmente...');
             
             // Resetear el estado de inicialización
             if (window.inicializarControlOperacionLineaSMT) {
@@ -939,10 +1091,10 @@
             console.log('- Botón consultar encontrado:', !!btnConsultar);
             
             if (container && tableBody && btnConsultar) {
-                console.log('✅ Todos los elementos están presentes');
+                console.log('Todos los elementos están presentes');
                 return true;
             } else {
-                console.log('❌ Faltan elementos, reiniciando...');
+                console.log('Faltan elementos, reiniciando...');
                 window.reiniciarControlOperacionSMT();
                 return false;
             }
@@ -959,7 +1111,5 @@
         // Registrar el template como cargado
         if (!window.templatesLoaded) window.templatesLoaded = [];
         window.templatesLoaded.push('Control de operacion de linea SMT');
-        
-        console.log('📋 Template Control de operacion de linea SMT cargado');
     </script>
 </div>

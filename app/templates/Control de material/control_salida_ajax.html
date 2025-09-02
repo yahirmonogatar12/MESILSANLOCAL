@@ -1,5 +1,5 @@
-<!-- CONTENEDOR DESTINO (COMPARTIDO): material-info-container -->
-<div id="control-salida-unique-container" class="ajax-module-container">
+<!-- CONTENEDOR DESTINO: Usando el ID correcto para CSS -->
+<div class="ajax-module-container">
     <div class="module-header">
         <h2>Control de salida</h2>
     </div>
@@ -11,23 +11,43 @@
 </div>
 
 <style>
+/* INCLUIR EXPLÍCITAMENTE LOS ESTILOS NECESARIOS PARA AJAX */
+/* CSS específico para cuando se carga dinámicamente */
 .ajax-module-container {
-    padding: 20px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 0 !important;
+    background: #32323E !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
 }
 
-.module-header h2 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 24px;
+/* Asegurar que el control de salida use sus estilos propios */
+#control-salida-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background-color: #32323E !important;
+    box-sizing: border-box !important;
+}
+
+.module-header {
+    display: none !important; /* Ocultar header genérico */
 }
 
 .module-content {
-    min-height: 200px;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
 }
 </style>
+
+<!-- FORZAR CARGA DEL CSS ESPECÍFICO -->
+<link rel="stylesheet" href="/static/css/control_salida_material.css">
+<link rel="stylesheet" href="/static/css/control_salida_material_responsive.css">
 
 <script>
 // Auto-inicialización del módulo
