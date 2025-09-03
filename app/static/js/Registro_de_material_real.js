@@ -64,6 +64,7 @@ function consultarInventarioGeneral() {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include', // Incluir cookies de sesión
             body: JSON.stringify(filtrosActivos)
         })
         .then(response => response.json())
@@ -543,6 +544,7 @@ function verHistorialCompleto(numeroParte) {
         headers: {
             'Content-Type': 'application/json',
         },
+        credentials: 'include', // Incluir cookies de sesión
         body: JSON.stringify({ numero_parte: numeroParte })
     })
     .then(response => response.json())
@@ -604,6 +606,7 @@ function verLotesDetallados(numeroParte) {
         headers: {
             'Content-Type': 'application/json',
         },
+        credentials: 'include', // Incluir cookies de sesión
         body: JSON.stringify({ numero_parte: numeroParte })
     })
     .then(response => response.json())

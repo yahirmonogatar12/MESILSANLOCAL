@@ -56,46 +56,42 @@
          */
         async cargarPermisosUsuario() {
             try {
-                // Intento 1: endpoint bajo /admin
-                let response = await fetch('/admin/obtener_permisos_usuario_actual', {
+                const response = await fetch('/admin/obtener_permisos_usuario_actual', {
                     method: 'GET',
                     credentials: 'include',  // Incluir cookies de sesión
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
                 });
-                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-                let data = await response.json();
-
-                // Fallback: completar rol/permisos desde el endpoint global si falta
-                if (!data || (!data.rol && !data.role && !data.rol_nombre)) {
-                    try {
-                        const resp2 = await fetch('/obtener_permisos_usuario_actual', {
-                            method: 'GET',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        if (resp2.ok) {
-                            const data2 = await resp2.json();
-                            data = Object.assign({}, data, data2);
-                        }
-                    } catch (e) { /* ignore */ }
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
                 }
-
-                if (data && data.error) throw new Error(data.error);
-
-                permisosUsuario = (data && data.permisos) ? data.permisos : {};
-                usuarioActual = data && data.usuario ? data.usuario : null;
-                rolUsuario = ((data && (data.rol || data.role || data.rol_nombre)) || '').toString().toLowerCase();
-
-                // Cachear
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                permisosUsuario = data.permisos || {};
+                usuarioActual = data.usuario;
+                rolUsuario = data.rol;
+                
+                if (CONFIG.DEBUG) {
+                }
+                
+                // Guardar en localStorage para cache
                 localStorage.setItem('permisos_dropdowns', JSON.stringify({
                     permisos: permisosUsuario,
                     usuario: usuarioActual,
                     rol: rolUsuario,
                     timestamp: Date.now()
                 }));
-
+                
             } catch (error) {
                 console.warn(' Error cargando permisos del servidor, usando cache:', error);
+                
                 // Intentar cargar desde cache
                 const cached = localStorage.getItem('permisos_dropdowns');
                 if (cached) {
@@ -103,7 +99,7 @@
                     if (Date.now() - data.timestamp < CONFIG.CACHE_DURATION) {
                         permisosUsuario = data.permisos;
                         usuarioActual = data.usuario;
-                        rolUsuario = (data.rol || '').toString().toLowerCase();
+                        rolUsuario = data.rol;
                     }
                 }
             }
@@ -144,35 +140,17 @@
          * Aplicar permisos a elementos existentes en la página
          */
         aplicarPermisosExistentes() {
-            console.log(`🛡️ Aplicando permisos. Usuario: ${usuarioActual}, Rol: ${rolUsuario}`);
-            console.log(`📋 Permisos disponibles:`, permisosUsuario);
-            
-            // Permitir a superadmin/admin ver todo
-            if (rolUsuario === 'superadmin' || rolUsuario === 'admin') {
-                console.log(`👑 Usuario es ${rolUsuario}, permitir todo`);
-                return;
-            }
             
             // Buscar todos los elementos con atributos de permisos
             const elementosConPermisos = document.querySelectorAll('[data-permiso-pagina]');
             
-            console.log(`🎯 Encontrados ${elementosConPermisos.length} elementos con permisos`);
             
-            elementosConPermisos.forEach((elemento, index) => {
-                const pagina = elemento.dataset.permisoPagina;
-                const seccion = elemento.dataset.permisoSeccion;
-                const boton = elemento.dataset.permisoBoton;
-                console.log(`   ${index + 1}. Elemento: ${pagina} > ${seccion} > ${boton}`);
+            elementosConPermisos.forEach(elemento => {
                 this.validarElemento(elemento);
             });
             
-            // La validación de elementos de lista ahora se maneja completamente
-            // por el bucle genérico de 'elementosConPermisos'.
-            // this.validarElementosListas();
-            
-            // Log final
-            const elementosOcultos = document.querySelectorAll('[data-sin-permiso="true"]');
-            console.log(`🚫 Total elementos ocultados: ${elementosOcultos.length}`);
+            // Validar elementos específicos de listas
+            this.validarElementosListas();
         },
         
         /**
@@ -185,22 +163,16 @@
             
             if (!pagina || !seccion || !boton) {
                 if (CONFIG.DEBUG) {
-                    console.warn(`⚠️ Element missing permission attributes:`, elemento);
+                    console.warn(' Elemento sin datos de permisos completos:', elemento);
                 }
                 return;
             }
             
             const tienePermiso = this.tienePermiso(pagina, seccion, boton);
             
-            console.log(`🔍 Validando: ${pagina} > ${seccion} > ${boton}`);
-            console.log(`   Resultado: ${tienePermiso ? '✅ PERMITIDO' : '❌ DENEGADO'}`);
-            console.log(`   Elemento:`, elemento);
-            
             if (!tienePermiso) {
-                console.log(`   🚫 OCULTANDO elemento: ${boton}`);
                 this.ocultarElemento(elemento, pagina, seccion, boton);
             } else {
-                console.log(`   ✅ MOSTRANDO elemento: ${boton}`);
                 this.mostrarElemento(elemento);
             }
         },
@@ -209,36 +181,13 @@
          * Validar elementos específicos de las listas
          */
         validarElementosListas() {
-            // Validar sidebar links de LISTA_DE_MATERIALES - CONTROL DE MATERIAL (13 elementos)
+            // Validar sidebar links de LISTA_DE_MATERIALES
             this.validarSidebarLinks('LISTA_DE_MATERIALES', [
                 { selector: 'li.sidebar-link:contains("Control de material de almacén")', seccion: 'Control de material', boton: 'Control de material de almacén' },
                 { selector: 'li.sidebar-link:contains("Control de salida")', seccion: 'Control de material', boton: 'Control de salida' },
                 { selector: 'li.sidebar-link:contains("Control de material retorno")', seccion: 'Control de material', boton: 'Control de material retorno' },
-                { selector: 'li.sidebar-link:contains("Recibo y pago del material")', seccion: 'Control de material', boton: 'Recibo y pago del material' },
                 { selector: 'li.sidebar-link:contains("Historial de material")', seccion: 'Control de material', boton: 'Historial de material' },
-                { selector: 'li.sidebar-link:contains("Estatus de material")', seccion: 'Control de material', boton: 'Estatus de material' },
-                { selector: 'li.sidebar-link:contains("Material sustituto")', seccion: 'Control de material', boton: 'Material sustituto' },
-                { selector: 'li.sidebar-link:contains("Consultar PEPS")', seccion: 'Control de material', boton: 'Consultar PEPS' },
-                { selector: 'li.sidebar-link:contains("Control de Long-Term Inventory")', seccion: 'Control de material', boton: 'Control de Long-Term Inventory' },
-                { selector: 'li.sidebar-link:contains("Registro de material real")', seccion: 'Control de material', boton: 'Registro de material real' },
-                { selector: 'li.sidebar-link:contains("Historial de inventario real")', seccion: 'Control de material', boton: 'Historial de inventario real' },
-                { selector: 'li.sidebar-link:contains("Inventario de rollos SMD")', seccion: 'Control de material', boton: 'Inventario de rollos SMD' },
-                { selector: 'li.sidebar-link:contains("Ajuste de número de parte")', seccion: 'Control de material', boton: 'Ajuste de número de parte' }
-            ]);
-            
-            // Validar sidebar links de LISTA_DE_MATERIALES - CONTROL DE MATERIAL MSL (3 elementos)
-            this.validarSidebarLinks('LISTA_DE_MATERIALES', [
-                { selector: 'li.sidebar-link:contains("Control total de material")', seccion: 'Control de material MSL', boton: 'Control total de material' },
-                { selector: 'li.sidebar-link:contains("Control de entrada y salida de material")', seccion: 'Control de material MSL', boton: 'Control de entrada y salida de material' },
-                { selector: 'li.sidebar-link:contains("Estatus de material MSL")', seccion: 'Control de material MSL', boton: 'Estatus de material MSL' }
-            ]);
-            
-            // Validar sidebar links de LISTA_DE_MATERIALES - CONTROL DE REFACCIONES (3 elementos)
-            this.validarSidebarLinks('LISTA_DE_MATERIALES', [
-                { selector: 'li.sidebar-link:contains("Estándares sobre refacciones")', seccion: 'Control de refacciones', boton: 'Estándares sobre refacciones' },
-                { selector: 'li.sidebar-link:contains("Control de recibo de refacciones")', seccion: 'Control de refacciones', boton: 'Control de recibo de refacciones' },
-                { selector: 'li.sidebar-link:contains("Control de salida de refacciones")', seccion: 'Control de refacciones', boton: 'Control de salida de refacciones' },
-                { selector: 'li.sidebar-link:contains("Estatus de inventario de refacciones")', seccion: 'Control de refacciones', boton: 'Estatus de inventario de refacciones' }
+                { selector: 'li.sidebar-link:contains("Estatus de material")', seccion: 'Control de material', boton: 'Estatus de material' }
             ]);
             
             // Validar sidebar links de LISTA_INFORMACIONBASICA
@@ -415,60 +364,11 @@
          * Función de testing para verificar permisos específicos
          */
         testPermiso(pagina, seccion, boton) {
-            console.log(`🧪 Testing permiso: ${pagina} > ${seccion} > ${boton}`);
-            console.log(`Usuario actual: ${usuarioActual}`);
-            console.log(`Rol usuario: ${rolUsuario}`);
-            console.log(`Permisos disponibles:`, permisosUsuario);
             
             // Buscar elementos relacionados
             const elementos = document.querySelectorAll(`[data-permiso-pagina="${pagina}"][data-permiso-seccion="${seccion}"][data-permiso-boton="${boton}"]`);
-            console.log(`Elementos encontrados con estos permisos:`, elementos);
             
             return this.tienePermiso(pagina, seccion, boton);
-        },
-        
-        /**
-         * Función de diagnóstico completo del sistema de permisos
-         */
-        diagnosticarPermisos() {
-            console.log(`
-🔍 === DIAGNÓSTICO COMPLETO DE PERMISOS ===
-Usuario: ${usuarioActual}
-Rol: ${rolUsuario}
-Sistema inicializado: ${isInitialized}
-Total permisos: ${Object.keys(permisosUsuario).length}
-            `);
-            
-            // Analizar cada página
-            Object.keys(permisosUsuario).forEach(pagina => {
-                console.log(`\n📄 PÁGINA: ${pagina}`);
-                Object.keys(permisosUsuario[pagina]).forEach(seccion => {
-                    console.log(`  📂 SECCIÓN: ${seccion}`);
-                    permisosUsuario[pagina][seccion].forEach(boton => {
-                        console.log(`    ✅ BOTÓN: ${boton}`);
-                    });
-                });
-            });
-            
-            // Buscar elementos con atributos de permisos que no estén funcionando
-            const elementosConPermisos = document.querySelectorAll('[data-permiso-pagina]');
-            console.log(`\n🎯 ELEMENTOS EN DOM CON PERMISOS: ${elementosConPermisos.length}`);
-            
-            elementosConPermisos.forEach((elemento, index) => {
-                const pagina = elemento.dataset.permisoPagina;
-                const seccion = elemento.dataset.permisoSeccion;
-                const boton = elemento.dataset.permisoBoton;
-                const tienePermiso = this.tienePermiso(pagina, seccion, boton);
-                const visible = elemento.style.display !== 'none';
-                
-                console.log(`${index + 1}. ${pagina} > ${seccion} > ${boton}`);
-                console.log(`   Permiso: ${tienePermiso ? '✅' : '❌'} | Visible: ${visible ? '👀' : '🙈'}`);
-                
-                if (!tienePermiso && visible) {
-                    console.warn(`   ⚠️ PROBLEMA: Element should be hidden but is visible!`);
-                    elemento.style.border = '2px solid red';
-                }
-            });
         },
         
         /**
@@ -527,31 +427,6 @@ Total permisos: ${Object.keys(permisosUsuario).length}
         }, CONFIG.CACHE_DURATION);
     }
     
-    // Funciones globales para debugging
-    window.debugPermisos = function() {
-        if (window.PermisosDropdowns) {
-            window.PermisosDropdowns.diagnosticarPermisos();
-        } else {
-            console.error('❌ Sistema de permisos no disponible');
-        }
-    };
-    
-    window.testPermiso = function(pagina, seccion, boton) {
-        if (window.PermisosDropdowns) {
-            return window.PermisosDropdowns.testPermiso(pagina, seccion, boton);
-        } else {
-            console.error('❌ Sistema de permisos no disponible');
-            return false;
-        }
-    };
-    
-    window.recargarPermisos = function() {
-        if (window.PermisosDropdowns) {
-            window.PermisosDropdowns.recargarPermisos();
-        } else {
-            console.error('❌ Sistema de permisos no disponible');
-        }
-    };
-    
 })();
+
 

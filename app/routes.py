@@ -911,29 +911,41 @@ def consultar_lotes_detalle():
         if using_mysql:
             query = '''
                 SELECT 
-                    cma.codigo_material_recibido,
-                    cma.numero_lote_material,
-                    cma.cantidad_actual,
-                    COALESCE(salidas_lote.total_salidas, 0) as total_salidas,
-                    (cma.cantidad_actual - COALESCE(salidas_lote.total_salidas, 0)) as cantidad_disponible,
-                    cma.fecha_recibo,
-                    cma.fecha_fabricacion,
-                    cma.especificacion,
-                    cma.propiedad_material,
-                    cma.ubicacion_salida,
-                    cma.codigo_material,
-                    cma.codigo_material_original
-                FROM control_material_almacen cma
-                LEFT JOIN (
+                    codigo_material_recibido,
+                    numero_lote_material,
+                    total_entrada as cantidad_total_entrada,
+                    total_salidas,
+                    (total_entrada - total_salidas) as cantidad_disponible,
+                    fecha_recibo,
+                    fecha_fabricacion,
+                    especificacion,
+                    propiedad_material,
+                    ubicacion_salida,
+                    codigo_material,
+                    codigo_material_original
+                FROM (
                     SELECT 
-                        cms.codigo_material_recibido,
-                        SUM(cms.cantidad_salida) as total_salidas
-                    FROM control_material_salida cms
-                    GROUP BY cms.codigo_material_recibido
-                ) salidas_lote ON cma.codigo_material_recibido = salidas_lote.codigo_material_recibido
-                WHERE cma.numero_parte = %s 
-                  AND (cma.cantidad_actual - COALESCE(salidas_lote.total_salidas, 0)) > 0
-                ORDER BY cma.fecha_recibo DESC
+                        cma.codigo_material_recibido,
+                        cma.numero_lote_material,
+                        SUM(cma.cantidad_actual) as total_entrada,
+                        COALESCE((
+                            SELECT SUM(cms.cantidad_salida) 
+                            FROM control_material_salida cms 
+                            WHERE cms.codigo_material_recibido = cma.codigo_material_recibido
+                        ), 0) as total_salidas,
+                        MIN(cma.fecha_recibo) as fecha_recibo,
+                        MIN(cma.fecha_fabricacion) as fecha_fabricacion,
+                        MIN(cma.especificacion) as especificacion,
+                        MIN(cma.propiedad_material) as propiedad_material,
+                        MIN(cma.ubicacion_salida) as ubicacion_salida,
+                        MIN(cma.codigo_material) as codigo_material,
+                        MIN(cma.codigo_material_original) as codigo_material_original
+                    FROM control_material_almacen cma
+                    WHERE cma.numero_parte = %s 
+                    GROUP BY cma.codigo_material_recibido, cma.numero_lote_material
+                ) lotes_calc
+                WHERE (total_entrada - total_salidas) > 0
+                ORDER BY fecha_recibo DESC
             '''
             print(f"🔍 Ejecutando consulta de lotes con parámetro: {numero_parte}")
             cursor.execute(query, [numero_parte])
@@ -953,7 +965,7 @@ def consultar_lotes_detalle():
                 lote_data = {
                     'codigo_material_recibido': row['codigo_material_recibido'],
                     'numero_lote': row['numero_lote_material'],
-                    'cantidad_original': float(row['cantidad_actual']) if row['cantidad_actual'] else 0.0,
+                    'cantidad_original': float(row['cantidad_total_entrada']) if row['cantidad_total_entrada'] else 0.0,
                     'total_salidas': float(row['total_salidas']) if row['total_salidas'] else 0.0,
                     'cantidad_disponible': float(row['cantidad_disponible']) if row['cantidad_disponible'] else 0.0,
                     'fecha_recibo': row['fecha_recibo'].strftime('%Y-%m-%d') if row['fecha_recibo'] else '',
@@ -4983,7 +4995,7 @@ def obtener_historial_numero_parte():
         
         entradas_rows = cursor.fetchall()
         
-        # Obtener todas las salidas usando JOIN con control_material_almacen para obtener numero_parte
+        # Obtener todas las salidas usando numero_parte directamente
         if using_mysql:
             salidas_query = '''
                 SELECT 
@@ -4997,8 +5009,7 @@ def obtener_historial_numero_parte():
                     CONCAT('SALIDA - ', cms.modelo, ' - ', cms.depto_salida, ' - ', cms.proceso_salida) as detalle_movimiento,
                     cms.fecha_registro
                 FROM control_material_salida cms
-                INNER JOIN control_material_almacen cma ON cms.codigo_material_recibido = cma.codigo_material_recibido
-                WHERE cma.numero_parte = %s
+                WHERE cms.numero_parte = %s
                 ORDER BY cms.fecha_salida DESC
             '''
             cursor.execute(salidas_query, [numero_parte])
@@ -5015,8 +5026,7 @@ def obtener_historial_numero_parte():
                     ('SALIDA - ' || cms.modelo || ' - ' || cms.depto_salida || ' - ' || cms.proceso_salida) as detalle_movimiento,
                     cms.fecha_registro
                 FROM control_material_salida cms
-                INNER JOIN control_material_almacen cma ON cms.codigo_material_recibido = cma.codigo_material_recibido
-                WHERE cma.numero_parte = ?
+                WHERE cms.numero_parte = ?
                 ORDER BY cms.fecha_salida DESC
             '''
             cursor.execute(salidas_query, [numero_parte])

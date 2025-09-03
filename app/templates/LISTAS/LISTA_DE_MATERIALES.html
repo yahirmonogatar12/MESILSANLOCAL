@@ -8,55 +8,55 @@
                         <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                     </button>
                     <ul class="collapse sidebar-dropdown-list" id="sidebarControlMaterial">
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlAlmacen()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlAlmacen()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Control de material de almacén">Control de material de almacén</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlSalida()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlSalida()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Control de salida">Control de salida</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarControlRetorno()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlRetorno()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Control de material retorno">Control de material retorno</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarReciboPago()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarReciboPago()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Recibo y pago del material">Recibo y pago del material</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialMaterial()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarHistorialMaterial()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Historial de material">Historial de material</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarEstatusMaterial()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarEstatusMaterial()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Estatus de material">Estatus de material</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarMaterialSustituto()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarMaterialSustituto()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Material sustituto">Material sustituto</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarConsultarPeps()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarConsultarPeps()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Consultar PEPS">Consultar PEPS</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarLongtermInventory()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarLongtermInventory()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Control de Long-Term Inventory">Control de Long-Term Inventory</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarRegistroMaterial()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarRegistroMaterial()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Registro de material real">Registro de material real</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarHistorialInventario()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarHistorialInventario()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Historial de inventario real">Historial de inventario real</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarInventarioRollosSMD()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarInventarioRollosSMD()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Inventario de rollos SMD">Inventario de rollos SMD</li>
-                        <li class="sidebar-link" tabindex="0" onclick="mostrarAjusteNumero()" 
+                        <li class="sidebar-link" tabindex="0" onclick="window.mostrarAjusteNumero()" 
                             data-permiso-pagina="LISTA_DE_MATERIALES" 
                             data-permiso-seccion="Control de material" 
                             data-permiso-boton="Ajuste de número de parte">Ajuste de número de parte</li>
@@ -115,13 +115,11 @@
     </div>
 
 <script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>
-<!-- <script src="{{ url_for('static', filename='js/permisos-botones.js') }}"></script> COMENTADO -->
-<script src="{{ url_for('static', filename='js/permisos-botones-simple.js') }}"></script>
 <script>
     // Inicializar el sistema de permisos cuando se carga el documento
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof PermisosDropdowns !== 'undefined') {
-            PermisosDropdowns.inicializar();
+            PermisosDropdowns.init();
         }
     });
 </script>
