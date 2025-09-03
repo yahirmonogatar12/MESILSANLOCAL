@@ -3,8 +3,19 @@ Migración desde SQLite a MySQL para el hosting"""
 
 import os
 from .config_mysql import execute_query, test_connection
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
+
+def obtener_fecha_hora_mexico():
+    """Obtener fecha y hora actual en zona horaria de México (GMT-6)"""
+    try:
+        # Calcular hora de México Central (GMT-6)
+        utc_now = datetime.utcnow()
+        mexico_time = utc_now - timedelta(hours=6)
+        return mexico_time.strftime('%Y-%m-%d %H:%M:%S')
+    except Exception as e:
+        # Fallback a hora local
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 # Importar pandas si está disponible
 try:
@@ -1297,8 +1308,7 @@ def registrar_salida_material_mysql(data):
     Determina automáticamente el proceso destino basado en la especificación del material
     """
     try:
-        from datetime import datetime
-        fecha_registro = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        fecha_registro = obtener_fecha_hora_mexico()
         
         # Extraer numero_parte del codigo_material_recibido (antes de la coma)
         codigo_material = data['codigo_material_recibido']
@@ -2017,9 +2027,10 @@ def diagnosticar_problemas_importacion():
         
         # 7. Probar inserción de prueba
         print("\n🧪 Probando inserción de material de prueba...")
+        fecha_actual = obtener_fecha_hora_mexico().replace('-', '').replace(':', '').replace(' ', '_')
         test_data = {
             'codigo_material': 'TEST_DIAG_001',
-            'numero_parte': f'TEST_DIAG_PART_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
+            'numero_parte': f'TEST_DIAG_PART_{fecha_actual}',
             'propiedad_material': 'Test Material for Diagnostics',
             'classification': 'TEST',
             'especificacion_material': 'Material de prueba para diagnóstico',

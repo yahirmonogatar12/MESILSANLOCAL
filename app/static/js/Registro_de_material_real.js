@@ -3,6 +3,7 @@ let inventarioGeneralData = [];
 let inventarioSelectedItems = new Set();
 let filtrosActivos = {};
 let filtrosHeaders = {};
+let inventarioCargado = false; // Flag para saber si ya se intentó cargar
 
 // Variables de control para evitar múltiples aperturas
 let modalCargandoLotes = false;
@@ -67,8 +68,11 @@ function consultarInventarioGeneral() {
             credentials: 'include', // Incluir cookies de sesión
             body: JSON.stringify(filtrosActivos)
         })
-        .then(response => response.json())
+        .then(response => {
+            return response.json();
+        })
         .then(data => {
+            inventarioCargado = true; // Marcar que ya se intentó cargar
             if (data.success) {
                 inventarioGeneralData = data.inventario;
                 datosInventarioOriginal = [...data.inventario]; // Guardar copia para filtros
@@ -80,14 +84,15 @@ function consultarInventarioGeneral() {
                     poblarTodasLasOpcionesFiltros();
                 }, 100);
             } else {
-                console.error('Error al consultar inventario:', data.message);
+                console.error('❌ Error al consultar inventario:', data.message);
                 inventarioGeneralData = [];
                 datosInventarioOriginal = [];
                 renderizarInventarioTabla();
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('❌ Error en fetch:', error);
+            inventarioCargado = true; // Marcar que ya se intentó cargar aunque haya fallado
             inventarioGeneralData = [];
             datosInventarioOriginal = [];
             renderizarInventarioTabla();
@@ -101,6 +106,11 @@ function renderizarInventarioTabla() {
     
     if (!tableBody) {
         console.error('❌ No se encontró el tbody de la tabla');
+        return;
+    }
+    
+    // Si no se ha intentado cargar aún, mantener el mensaje inicial
+    if (!inventarioCargado) {
         return;
     }
     
@@ -516,12 +526,10 @@ document.addEventListener('DOMContentLoaded', function() {
 function verHistorialCompleto(numeroParte) {
     // Prevenir múltiples aperturas
     if (modalCargandoHistorial) {
-        console.log('⏳ Modal de historial ya se está cargando...');
         return;
     }
     
     modalCargandoHistorial = true;
-    console.log(`📈 Consultando historial completo para: ${numeroParte}`);
     
     // Mostrar indicador de carga (opcional)
     const loadingModal = document.querySelector('.trazabilidad-modal-overlay');
@@ -578,12 +586,10 @@ function verHistorialCompleto(numeroParte) {
 function verLotesDetallados(numeroParte) {
     // Prevenir múltiples aperturas
     if (modalCargandoLotes) {
-        console.log('⏳ Modal de lotes ya se está cargando...');
         return;
     }
     
     modalCargandoLotes = true;
-    console.log(`📦 Consultando lotes detallados para: ${numeroParte}`);
     
     // Mostrar indicador de carga
     const loadingModal = document.querySelector('.trazabilidad-modal-overlay');
@@ -1001,7 +1007,6 @@ function aplicarFiltroHeader(campo, valor) {
 // Función principal para aplicar todos los filtros
 function aplicarTodosLosFiltros() {
     if (!datosInventarioOriginal.length) {
-        console.log('No hay datos para filtrar');
         return;
     }
     
@@ -1127,8 +1132,6 @@ function aplicarTodosLosFiltros() {
     inventarioGeneralData = datosFiltrados;
     renderizarInventarioTabla();
     actualizarContadorFiltrado(datosFiltrados.length, datosInventarioOriginal.length);
-    
-    console.log(`Filtros aplicados: ${datosFiltrados.length}/${datosInventarioOriginal.length} elementos mostrados`);
 }
 
 // Función para poblar opciones de un filtro específico
@@ -1212,8 +1215,6 @@ function limpiarTodosLosFiltros() {
     inventarioGeneralData = [...datosInventarioOriginal];
     renderizarInventarioTabla();
     actualizarContadorFiltrado(datosInventarioOriginal.length, datosInventarioOriginal.length);
-    
-    console.log('Todos los filtros han sido limpiados');
 }
 
 // Función para actualizar contador con información de filtrado

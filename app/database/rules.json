@@ -299,5 +299,12 @@
     "partNumberLength": 11,
     "lotNumberStart": 12,
     "lotNumberLength": 12
+  },
+  "PRUEBA456": {
+    "character_pattern": "XXXXXXXXXXXXXXXXXX",
+    "partNumberStart": 0,
+    "partNumberLength": 18,
+    "lotNumberStart": -1,
+    "lotNumberLength": 0
   }
 }

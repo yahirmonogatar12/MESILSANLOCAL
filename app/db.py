@@ -286,6 +286,29 @@ def agregar_control_material_almacen(data):
     """Agregar control de material de almacén"""
     try:
         if MYSQL_AVAILABLE:
+            # Importar función para zona horaria de México
+            from .db_mysql import obtener_fecha_hora_mexico
+            from datetime import datetime, timedelta
+            
+            # Convertir fechas del frontend para incluir hora actual de México
+            fecha_recibo = data.get('fecha_recibo')
+            fecha_fabricacion = data.get('fecha_fabricacion')
+            
+            # Si las fechas vienen como solo fecha (YYYY-MM-DD), agregar hora actual de México
+            if fecha_recibo and isinstance(fecha_recibo, str) and len(fecha_recibo) == 10:
+                # Calcular hora actual de México
+                utc_now = datetime.utcnow()
+                mexico_time = utc_now - timedelta(hours=6)
+                hora_mexico = mexico_time.strftime('%H:%M:%S')
+                fecha_recibo = f"{fecha_recibo} {hora_mexico}"
+                
+            if fecha_fabricacion and isinstance(fecha_fabricacion, str) and len(fecha_fabricacion) == 10:
+                # Calcular hora actual de México
+                utc_now = datetime.utcnow()
+                mexico_time = utc_now - timedelta(hours=6)
+                hora_mexico = mexico_time.strftime('%H:%M:%S')
+                fecha_fabricacion = f"{fecha_fabricacion} {hora_mexico}"
+            
             query = """
                 INSERT INTO control_material_almacen 
                 (forma_material, cliente, codigo_material_original, codigo_material,
@@ -293,17 +316,21 @@ def agregar_control_material_almacen(data):
                  cantidad_actual, numero_lote_material, codigo_material_recibido,
                  numero_parte, cantidad_estandarizada, codigo_material_final,
                  propiedad_material, especificacion, material_importacion_local_final,
-                 estado_desecho, ubicacion_salida)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 estado_desecho, ubicacion_salida, fecha_registro)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
+            
+            # Obtener fecha_registro con hora de México
+            fecha_registro_mexico = obtener_fecha_hora_mexico()
+            
             params = (
                 data.get('forma_material'),
                 data.get('cliente'),
                 data.get('codigo_material_original'),
                 data.get('codigo_material'),
                 data.get('material_importacion_local'),
-                data.get('fecha_recibo'),
-                data.get('fecha_fabricacion'),
+                fecha_recibo,  # Con hora de México
+                fecha_fabricacion,  # Con hora de México
                 data.get('cantidad_actual', 0),
                 data.get('numero_lote_material'),
                 data.get('codigo_material_recibido'),
@@ -314,7 +341,8 @@ def agregar_control_material_almacen(data):
                 data.get('especificacion'),
                 data.get('material_importacion_local_final'),
                 data.get('estado_desecho', False),
-                data.get('ubicacion_salida')
+                data.get('ubicacion_salida'),
+                fecha_registro_mexico  # Fecha registro con hora de México
             )
             return execute_query(query, params) > 0
         else:

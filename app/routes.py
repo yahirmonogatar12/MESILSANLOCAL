@@ -7,8 +7,20 @@ import subprocess
 import threading
 import socket
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
+
+def obtener_fecha_hora_mexico():
+    """Obtener fecha y hora actual en zona horaria de México (GMT-6)"""
+    try:
+        # Calcular hora de México Central (GMT-6)
+        utc_now = datetime.utcnow()
+        mexico_time = utc_now - timedelta(hours=6)
+        return mexico_time
+    except Exception as e:
+        # Fallback a hora local
+        return datetime.now()
+
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
 from .db import (get_db_connection, init_db, test_database_connection,
                 agregar_entrada_aereo, obtener_entradas_aereo,
@@ -893,8 +905,6 @@ def consultar_lotes_detalle():
                 'error': 'Número de parte requerido'
             }), 400
         
-        print(f"🔍 Consultando detalles de lotes para número de parte: {numero_parte}")
-        
         from .db import is_mysql_connection
         using_mysql = is_mysql_connection()
         
@@ -947,7 +957,6 @@ def consultar_lotes_detalle():
                 WHERE (total_entrada - total_salidas) > 0
                 ORDER BY fecha_recibo DESC
             '''
-            print(f"🔍 Ejecutando consulta de lotes con parámetro: {numero_parte}")
             cursor.execute(query, [numero_parte])
         else:
             # Fallback para SQLite (aunque no lo usamos)
@@ -956,12 +965,10 @@ def consultar_lotes_detalle():
                 'error': 'Solo MySQL soportado'
             }), 500
         rows = cursor.fetchall()
-        print(f"🔍 Filas obtenidas de la consulta: {len(rows)}")
         
         lotes_detalle = []
         for i, row in enumerate(rows):
             try:
-                print(f"🔍 Procesando fila {i+1}: {row['codigo_material_recibido']}...")
                 lote_data = {
                     'codigo_material_recibido': row['codigo_material_recibido'],
                     'numero_lote': row['numero_lote_material'],
@@ -1420,8 +1427,7 @@ def exportar_excel():
         print("Archivo Excel creado exitosamente")
         
         # Crear nombre del archivo
-        from datetime import datetime
-        fecha_actual = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        fecha_actual = obtener_fecha_hora_mexico().strftime('%Y-%m-%d_%H-%M-%S')
         nombre_archivo = f'materiales_export_{fecha_actual}.xlsx'
         
         print(f"Enviando archivo: {nombre_archivo}")
@@ -1823,12 +1829,12 @@ def actualizar_estado_desecho_almacen():
 def obtener_siguiente_secuencial():
     """
     Obtiene el siguiente número secuencial para el código de material recibido.
-    Formato correcto: CODIGO_MATERIAL,YYYYMMDD0001 (donde 0001 incrementa por cada registro del mismo código y fecha)
+    Formato corregido: NUMERO_PARTE,YYYYMMDD0001 (donde 0001 incrementa por cada registro del mismo número de parte y fecha)
     
     Ejemplos:
-    - OCH1223K678,202507080001 (primer registro del día)
-    - OCH1223K678,202507080002 (segundo registro del día)  
-    - OCH1223K678,202507080003 (tercer registro del día)
+    - 0CE106AH638,202507080001 (primer registro del día)
+    - 0CE106AH638,202507080002 (segundo registro del día)  
+    - 0CE106AH638,202507080003 (tercer registro del día)
     """
     try:
         # Obtener el código de material del parámetro de la URL
@@ -1844,14 +1850,31 @@ def obtener_siguiente_secuencial():
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # Primero buscar el número de parte correspondiente al código de material
+        query_numero_parte = """
+        SELECT numero_parte
+        FROM materiales 
+        WHERE codigo_material = %s
+        LIMIT 1
+        """
+        
+        cursor.execute(query_numero_parte, (codigo_material,))
+        resultado_numero_parte = cursor.fetchone()
+        
+        if resultado_numero_parte:
+            numero_parte = resultado_numero_parte['numero_parte']
+            print(f"🔍 Número de parte encontrado: '{numero_parte}' para código: '{codigo_material}'")
+        else:
+            numero_parte = codigo_material  # Fallback al código original
+            print(f"⚠️ No se encontró número de parte, usando código material: '{numero_parte}'")
+        
         # Obtener la fecha actual en formato YYYYMMDD
-        from datetime import datetime
-        fecha_actual = datetime.now().strftime('%Y%m%d')
+        fecha_actual = obtener_fecha_hora_mexico().strftime('%Y%m%d')
         
-        print(f"🔍 Buscando secuenciales para código: '{codigo_material}' y fecha: {fecha_actual}")
+        print(f"🔍 Buscando secuenciales para número de parte: '{numero_parte}' y fecha: {fecha_actual}")
         
-        # Buscar registros específicos para este código de material y fecha exacta
-        # El formato buscado es: CODIGO_MATERIAL,YYYYMMDD0001 en el campo codigo_material_recibido
+        # Buscar registros específicos para este número de parte y fecha exacta
+        # El formato buscado es: NUMERO_PARTE,YYYYMMDD0001 en el campo codigo_material_recibido
         query = """
         SELECT codigo_material_recibido, fecha_registro
         FROM control_material_almacen 
@@ -1859,24 +1882,24 @@ def obtener_siguiente_secuencial():
         ORDER BY fecha_registro DESC
         """
         
-        # Patrón de búsqueda: CODIGO,YYYYMMDD seguido de 4 dígitos (CORRECTO: con coma)
-        patron_busqueda = f"{codigo_material},{fecha_actual}%"
+        # Patrón de búsqueda: NUMERO_PARTE,YYYYMMDD seguido de 4 dígitos (usando número de parte)
+        patron_busqueda = f"{numero_parte},{fecha_actual}%"
         
         cursor.execute(query, (patron_busqueda,))
         resultados = cursor.fetchall()
         
         print(f"🔍 Encontrados {len(resultados)} registros para el patrón '{patron_busqueda}'")
         
-        # Buscar el secuencial más alto para este código de material y fecha específica
+        # Buscar el secuencial más alto para este número de parte y fecha específica
         secuencial_mas_alto = 0
-        patron_regex = rf'^{re.escape(codigo_material)},{fecha_actual}(\d{{4}})$'
+        patron_regex = rf'^{re.escape(numero_parte)},{fecha_actual}(\d{{4}})$'
         
         for resultado in resultados:
             codigo_recibido = resultado['codigo_material_recibido'] or ''
             
             print(f" Analizando: codigo_material_recibido='{codigo_recibido}'")
             
-            # Buscar patrón exacto: CODIGO_MATERIAL,YYYYMMDD0001
+            # Buscar patrón exacto: NUMERO_PARTE,YYYYMMDD0001
             match = re.match(patron_regex, codigo_recibido)
             
             if match:
@@ -1891,8 +1914,8 @@ def obtener_siguiente_secuencial():
         
         siguiente_secuencial = secuencial_mas_alto + 1
         
-        # Generar el próximo código de material recibido completo
-        siguiente_codigo_completo = f"{codigo_material},{fecha_actual}{siguiente_secuencial:04d}"
+        # Generar el próximo código de material recibido completo usando número de parte
+        siguiente_codigo_completo = f"{numero_parte},{fecha_actual}{siguiente_secuencial:04d}"
         
         print(f" Siguiente secuencial: {siguiente_secuencial}")
         print(f" Próximo código completo: {siguiente_codigo_completo}")
@@ -1905,6 +1928,7 @@ def obtener_siguiente_secuencial():
             'siguiente_secuencial': siguiente_secuencial,
             'fecha_actual': fecha_actual,
             'codigo_material': codigo_material,
+            'numero_parte': numero_parte,
             'secuencial_mas_alto_encontrado': secuencial_mas_alto,
             'patron_busqueda': patron_busqueda,
             'proximo_codigo_completo': siguiente_codigo_completo
@@ -1998,8 +2022,7 @@ def control_embarque_ajax():
 def crear_plan_produccion():
     """Cargar la página de Crear Plan de Producción"""
     try:
-        from datetime import datetime
-        fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+        fecha_hoy = obtener_fecha_hora_mexico().strftime('%Y-%m-%d')
         usuario_logueado = session.get('usuario', '')
         return render_template('Control de produccion/Crear plan de produccion.html', 
                              fecha_hoy=fecha_hoy, 
@@ -2252,8 +2275,7 @@ def api_generar_plan_smd():
         
         # 1. TRAER WORK ORDERS
         try:
-            from datetime import datetime
-            fecha_actual = datetime.now().strftime('%Y%m%d')
+            fecha_actual = obtener_fecha_hora_mexico().strftime('%Y%m%d')
             
             # Construir filtros para work orders
             filtros = {
@@ -2485,8 +2507,7 @@ def generar_plan_smd():
         plan_renglones = []
         
         # Generar fecha y contador de lote
-        from datetime import datetime
-        fecha_lote = datetime.now().strftime('%Y%m%d')
+        fecha_lote = obtener_fecha_hora_mexico().strftime('%Y%m%d')
         contador_lote = 1
         
         def generar_lote():
@@ -2983,8 +3004,7 @@ def crear_plan_micom_ajax():
 def control_operacion_linea_smt_ajax():
     """Ruta AJAX para cargar dinámicamente el contenido de Control de operación de línea SMT"""
     try:
-        from datetime import datetime
-        fecha_hoy = datetime.now().strftime('%d/%m/%Y')
+        fecha_hoy = obtener_fecha_hora_mexico().strftime('%d/%m/%Y')
         return render_template('Control de proceso/control_operacion_linea_smt_ajax.html', fecha_hoy=fecha_hoy)
     except Exception as e:
         print(f"Error al cargar template Control de operación de línea SMT AJAX: {e}")
@@ -4475,14 +4495,14 @@ def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
             print(" ZEBRA RED: Etiqueta enviada exitosamente")
             
             # Log del evento
-            print(f"📊 ZEBRA LOG: {datetime.now()} - Usuario: {session.get('usuario')} - Código: {codigo} - IP: {ip_impresora}")
+            print(f"📊 ZEBRA LOG: {obtener_fecha_hora_mexico()} - Usuario: {session.get('usuario')} - Código: {codigo} - IP: {ip_impresora}")
             
             return jsonify({
                 'success': True,
                 'message': f'Etiqueta enviada a impresora Zebra {ip_impresora}',
                 'metodo': 'red',
                 'codigo': codigo,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': obtener_fecha_hora_mexico().isoformat()
             })
             
         except socket.timeout:
@@ -4560,7 +4580,7 @@ def imprimir_etiqueta_qr():
             }), 400
         
         # Log del intento de impresión
-        timestamp = datetime.now().isoformat()
+        timestamp = obtener_fecha_hora_mexico().isoformat()
         usuario = session.get('usuario', 'unknown')
         print(f"📊 PRINT LOG: {timestamp} - User: {usuario} - Code: {codigo} - Method: {metodo}")
         
@@ -4773,43 +4793,34 @@ def consultar_inventario_general():
         data = request.get_json()
         filtros = data if data else {}
         
-        print(f"🔍 Consultando inventario consolidado con filtros: {filtros}")
-        
         # Usar específicamente la conexión MySQL del hosting
         from .config_mysql import get_mysql_connection
         
         conn = get_mysql_connection()
         using_mysql = True
-        print(f"🗄️ Usando MySQL: {using_mysql}")
         
         if conn is None:
-            print("❌ No se pudo obtener conexión a MySQL")
             return jsonify({
                 'success': False,
                 'error': 'No se pudo conectar a la base de datos MySQL'
             }), 500
             
-        cursor = conn.cursor()
+        cursor = conn.cursor()  # Usar cursor normal
         
         # Verificar que la tabla inventario_consolidado existe en MySQL
         try:
             cursor.execute("SHOW TABLES LIKE 'inventario_consolidado'")
             
             if not cursor.fetchone():
-                print("❌ Tabla inventario_consolidado no existe en MySQL")
                 return jsonify({
                     'success': False,
                     'error': 'Tabla inventario_consolidado no encontrada en MySQL'
                 }), 500
-                print(" Tabla inventario_consolidado encontrada en MySQL")
         except Exception as table_error:
-            print(f"❌ Error verificando tablas en MySQL: {table_error}")
             return jsonify({
                 'success': False,
                 'error': f'Error verificando tablas: {str(table_error)}'
             }), 500
-        
-        print(" Tabla inventario_consolidado verificada en MySQL")
         
         # Construir consulta optimizada para MySQL
         query = '''
@@ -4846,42 +4857,26 @@ def consultar_inventario_general():
         
         query += ' ORDER BY ic.fecha_ultima_entrada DESC'
         
-        print(f"🔍 Ejecutando consulta optimizada: {query}")
-        print(f"🔍 Con parámetros: {params}")
-        
         cursor.execute(query, params)
         rows = cursor.fetchall()
-        
-        print(f"🔍 Filas obtenidas: {len(rows) if rows else 0}")
         
         inventario = []
         for i, row in enumerate(rows):
             try:
-                print(f"🔍 Procesando fila {i}: {row}")
-                
-                # Verificar si row es un diccionario o una tupla
-                if hasattr(row, 'keys'):  # Es un diccionario
-                    cantidad_total = float(row.get('cantidad_total', 0)) if row.get('cantidad_total') else 0.0
-                    numero_parte = row.get('numero_parte', '')
-                    total_entradas = float(row.get('total_entradas', 0)) if row.get('total_entradas') else 0.0
-                    total_salidas = float(row.get('total_salidas', 0)) if row.get('total_salidas') else 0.0
-                    total_lotes = int(row.get('total_lotes', 0)) if row.get('total_lotes') else 0
-                    codigo_material = row.get('codigo_material', '') or numero_parte
-                    especificacion = row.get('especificacion', '') or ''
-                    propiedad_material = row.get('propiedad_material', '') or 'COMMON USE'
-                    fecha_ultimo_recibo = row.get('fecha_ultimo_recibo')
-                    fecha_primer_recibo = row.get('fecha_primer_recibo')
-                else:  # Es una tupla - procesar por índices
-                    numero_parte = row[0] if len(row) > 0 else ''
-                    codigo_material = row[1] if len(row) > 1 else numero_parte
-                    especificacion = row[2] if len(row) > 2 else ''
-                    propiedad_material = row[3] if len(row) > 3 else 'COMMON USE'
-                    cantidad_total = float(row[4]) if len(row) > 4 and row[4] is not None else 0.0
-                    total_lotes = int(row[5]) if len(row) > 5 and row[5] is not None else 0
-                    fecha_ultimo_recibo = row[6] if len(row) > 6 else None
-                    fecha_primer_recibo = row[7] if len(row) > 7 else None
-                    total_entradas = float(row[8]) if len(row) > 8 and row[8] is not None else 0.0
-                    total_salidas = float(row[9]) if len(row) > 9 and row[9] is not None else 0.0
+                # Procesar como tupla (orden según la consulta SELECT)
+                # SELECT numero_parte, codigo_material, especificacion, propiedad_material,
+                #        cantidad_actual, total_lotes, fecha_ultima_entrada, fecha_primera_entrada,
+                #        total_entradas, total_salidas
+                numero_parte = row[0] if len(row) > 0 else ''
+                codigo_material = row[1] if len(row) > 1 else numero_parte
+                especificacion = row[2] if len(row) > 2 else ''
+                propiedad_material = row[3] if len(row) > 3 else 'COMMON USE'
+                cantidad_total = float(row[4]) if len(row) > 4 and row[4] is not None else 0.0
+                total_lotes = int(row[5]) if len(row) > 5 and row[5] is not None else 0
+                fecha_ultimo_recibo = row[6] if len(row) > 6 else None
+                fecha_primer_recibo = row[7] if len(row) > 7 else None
+                total_entradas = float(row[8]) if len(row) > 8 and row[8] is not None else 0.0
+                total_salidas = float(row[9]) if len(row) > 9 and row[9] is not None else 0.0
                     
                 # Mostrar registros que tengan entradas (aunque la cantidad total sea 0 o negativa)
                 if total_entradas > 0:
@@ -4901,11 +4896,7 @@ def consultar_inventario_general():
                     })
                         
             except Exception as row_error:
-                print(f"❌ Error procesando fila {i}: {row_error}")
-                print(f"❌ Datos de la fila: {row}")
                 continue
-        
-        print(f" Inventario consultado: {len(inventario)} números de parte encontrados")
         
         return jsonify({
             'success': True,
@@ -4916,7 +4907,6 @@ def consultar_inventario_general():
         })
         
     except Exception as e:
-        print(f"❌ Error al consultar inventario general: {e}")
         return jsonify({
             'success': False,
             'error': f'Error al consultar inventario: {str(e)}'
@@ -4942,8 +4932,6 @@ def obtener_historial_numero_parte():
                 'success': False,
                 'error': 'Número de parte requerido'
             }), 400
-        
-        print(f"🔍 Consultando historial para número de parte: {numero_parte}")
         
         from .db import is_mysql_connection
         using_mysql = is_mysql_connection()
