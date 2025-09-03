@@ -1635,20 +1635,7 @@ def guardar_control_almacen():
         resultado = agregar_control_material_almacen(data)
         
         if resultado:
-            # TODO: Implementar actualización de inventario general si es necesario
-            # Por ahora comentamos esta función que no existe
-            # numero_parte = data.get('numero_parte', '').strip()
-            # cantidad_actual = float(data.get('cantidad_actual', 0))
-            # codigo_material = data.get('codigo_material', '')
-            # propiedad_material = data.get('propiedad_material', '')
-            # especificacion = data.get('especificacion', '')
-            
-            # if numero_parte and cantidad_actual > 0:
-            #     actualizar_inventario_general_entrada(
-            #         numero_parte, codigo_material, propiedad_material, 
-            #         especificacion, cantidad_actual
-            #     )
-            #     print(f"📦 Inventario general actualizado: +{cantidad_actual} para {numero_parte}")
+            print(f"✅ Registro de almacén guardado exitosamente para {data.get('numero_parte', 'N/A')}")
             
             return jsonify({
                 'success': True, 
@@ -1724,6 +1711,152 @@ def consultar_control_almacen():
     except Exception as e:
         print(f"Error al consultar control de almacén: {str(e)}")
         return jsonify({'error': f'Error al consultar: {str(e)}'}), 500
+        
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
+
+@app.route('/actualizar_control_almacen', methods=['POST'])
+@login_requerido
+def actualizar_control_almacen():
+    """Endpoint para actualizar un registro de control de material de almacén"""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json()
+        
+        if not data or 'id' not in data:
+            return jsonify({'success': False, 'error': 'ID no proporcionado'}), 400
+        
+        # Obtener el ID del registro a actualizar
+        registro_id = data['id']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # PASO 1: Obtener los valores actuales de la base de datos
+        cursor.execute("SELECT * FROM control_material_almacen WHERE id = %s", (registro_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'Registro no encontrado'}), 404
+        
+        # Convertir a dict usando nombres de columna
+        columns = [desc[0] for desc in cursor.description]
+        valores_actuales = dict(zip(columns, row))
+        
+        # PASO 2: Comparar y construir query solo para campos que cambiaron
+        campos_actualizables = [
+            'forma_material', 'cliente', 'codigo_material_original', 'codigo_material',
+            'material_importacion_local', 'fecha_recibo', 'fecha_fabricacion',
+            'cantidad_actual', 'numero_lote_material', 'codigo_material_recibido',
+            'numero_parte', 'cantidad_estandarizada', 'codigo_material_final',
+            'propiedad_material', 'especificacion', 'material_importacion_local_final',
+            'estado_desecho', 'ubicacion_salida'
+        ]
+        
+        sets = []
+        params = []
+        campos_modificados = []
+        
+        for campo in campos_actualizables:
+            # Solo procesar campos que fueron enviados explícitamente
+            if campo in data:
+                valor_nuevo = data[campo]
+                valor_actual = valores_actuales.get(campo)
+                
+                # Normalizar valores para comparación
+                # Manejar campos de fecha vacíos
+                if campo in ['fecha_recibo', 'fecha_fabricacion']:
+                    if valor_nuevo == '':
+                        valor_nuevo = None
+                    # Convertir datetime a string para comparación
+                    if valor_actual is not None:
+                        valor_actual = str(valor_actual)
+                
+                # Manejar conversión de estado_desecho (texto a entero)
+                if campo == 'estado_desecho':
+                    if valor_nuevo == 'Activo' or valor_nuevo == '1' or valor_nuevo == 1:
+                        valor_nuevo = 1
+                    elif valor_nuevo == 'Inactivo' or valor_nuevo == 'Desecho' or valor_nuevo == '0' or valor_nuevo == 0:
+                        valor_nuevo = 0
+                    else:
+                        valor_nuevo = 1 if valor_nuevo else 0
+                
+                # Convertir ambos valores a string para comparación consistente
+                valor_nuevo_str = str(valor_nuevo) if valor_nuevo is not None else ''
+                valor_actual_str = str(valor_actual) if valor_actual is not None else ''
+                
+                # Solo actualizar si los valores son diferentes
+                if valor_nuevo_str != valor_actual_str:
+                    sets.append(f"{campo} = %s")
+                    params.append(valor_nuevo)
+                    campos_modificados.append(campo)
+                    print(f"� Campo MODIFICADO: {campo} = '{valor_actual}' → '{valor_nuevo}'")
+                else:
+                    print(f"⚪ Campo SIN CAMBIOS: {campo} = '{valor_actual}'")
+            else:
+                print(f"➖ Campo NO ENVIADO (se mantiene): {campo} = '{valores_actuales.get(campo)}'")
+        
+        if not sets:
+            return jsonify({
+                'success': True, 
+                'message': 'No hay cambios que guardar',
+                'campos_modificados': []
+            })
+        
+        # Agregar ID al final de los parámetros
+        params.append(registro_id)
+        
+        # Query de actualización solo para campos modificados
+        query = f"""
+            UPDATE control_material_almacen 
+            SET {', '.join(sets)}
+            WHERE id = %s
+        """
+        
+        print(f"📤 Query SQL: {query}")
+        print(f"📤 Parámetros: {params}")
+        print(f"📝 Campos modificados: {campos_modificados}")
+        
+        # Ejecutar la actualización
+        cursor.execute(query, params)
+        conn.commit()
+        
+        print(f"✅ Filas afectadas: {cursor.rowcount}")
+        
+        if cursor.rowcount > 0:
+            print(f"Registro de control de almacén actualizado: ID {registro_id}")
+            
+            # Verificar si necesitamos actualizar el inventario consolidado
+            if any(campo in campos_modificados for campo in ['cantidad_actual', 'codigo_material']):
+                try:
+                    from app.db import actualizar_inventario_consolidado_entrada
+                    actualizar_inventario_consolidado_entrada()
+                    print("Inventario consolidado actualizado automáticamente")
+                except Exception as e:
+                    print(f"Error al actualizar inventario consolidado: {str(e)}")
+            
+            return jsonify({
+                'success': True, 
+                'message': f'Registro actualizado exitosamente. Campos modificados: {", ".join(campos_modificados)}',
+                'campos_modificados': campos_modificados
+            })
+        else:
+            print(f"❌ No se pudo actualizar el registro con ID: {registro_id}")
+            return jsonify({'success': False, 'error': 'No se pudo actualizar el registro'}), 500
+        
+    except Exception as e:
+        print(f"Error al actualizar control de almacén: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error al actualizar: {str(e)}'}), 500
         
     finally:
         try:

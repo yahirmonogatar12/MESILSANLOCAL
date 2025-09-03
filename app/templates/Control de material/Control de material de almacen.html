@@ -17,20 +17,23 @@
     <link rel="stylesheet" href="/static/css/control_material_almacen_responsive.css">
     
     <!-- Scripts necesarios -->
-    <script src="/static/js/jquery.min.js"></script>
-    <script src="/static/js/popper.min.js"></script>
-    <script src="/static/js/bootstrap.min.js"></script>
-    <script src="/static/js/fontawesome.all.min.js"></script>
-    <script src="/static/js/Chart.min.js"></script>
-    <script src="/static/js/jquery.dataTables.min.js"></script>
-    <script src="/static/js/dataTables.bootstrap5.min.js"></script>
-    <script src="/static/js/sweetalert2.all.min.js"></script>
-    <script src="/static/js/moment.min.js"></script>
-    <script src="/static/js/daterangepicker.js"></script>
-    <script src="/static/js/select2.min.js"></script>
-    <script src="/static/js/flatpickr.min.js"></script>
-    <script src="/static/js/autoNumeric.min.js"></script>
+    <!-- Scripts usando CDN para asegurar disponibilidad -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.9.0/dist/sweetalert2.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/autonumeric@4.8.1/dist/autoNumeric.min.js"></script>
+    <!-- Control Material Almacén JS - puede mantenerse local si existe -->
     <script src="/static/js/control_material_almacen.js"></script>
+    <script src="/static/js/material-edit-drawer.js"></script>
     
     <!-- CSS para modal de registro de reglas de trazabilidad -->
     <style>
@@ -283,6 +286,60 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
+
+        /* Estilos para filas y celdas clickeables */
+        .fila-clickeable {
+            cursor: pointer !important;
+            transition: background-color 0.2s ease;
+        }
+
+        .fila-clickeable:hover {
+            background-color: rgba(52, 152, 219, 0.1) !important;
+        }
+
+        .fila-clickeable.seleccionada {
+            background-color: rgba(52, 152, 219, 0.3) !important;
+        }
+
+        .celda-clickeable {
+            cursor: pointer !important;
+            pointer-events: auto !important;
+            position: relative;
+        }
+
+        /* Mejorar la selección de texto en celdas largas */
+        .celda-clickeable.codigo-material-cell {
+            user-select: none; /* Prevenir selección accidental de texto */
+            position: relative;
+        }
+
+        /* Crear una capa invisible clickeable sobre las celdas con overflow */
+        .celda-clickeable::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+            cursor: pointer;
+        }
+
+        /* Asegurar que el texto sea visible */
+        .celda-clickeable > * {
+            position: relative;
+            z-index: 0;
+        }
+
+        /* Asegurar que las celdas con overflow sean clickeables */
+        .material-table tbody tr td {
+            position: relative;
+            z-index: 1;
+        }
+
+        .material-table tbody tr.fila-clickeable td {
+            pointer-events: auto;
+        }
     </style>
     
 </head>
@@ -420,6 +477,15 @@
     </div>
 </div>
 
+<!-- Modal de Carga -->
+<div id="modal-carga" class="loading-modal">
+    <div class="loading-modal-content">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Consultando datos<span class="loading-dots"></span></div>
+        <div class="loading-subtext">Por favor espere mientras cargamos la información</div>
+    </div>
+</div>
+
 <!-- Formulario principal con autocomplete deshabilitado -->
 <form autocomplete="off" data-form-type="other"
 <!-- Fila 1: SOLO Forma de material, ancho completo -->
@@ -448,7 +514,7 @@
                     <option value="">
                         Seleccionar
                     </option>
-                    <option value="LG_REFRIS">
+                    <option value="LG_REFRIS" selected>
                         LG_REFRIS
                     </option>
                     <option value="LG_ESTUFAS">
@@ -636,12 +702,12 @@
                         <th>Fecha de recibo</th>
                         <th>Especificación</th>
                         <th>Material importación/local</th>
-                        <th>Estado de desecho</th>
+                        <th style="display: none;">Estado de desecho</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="12" class="no-data">
+                        <td colspan="11" class="no-data">
                             No hay datos para mostrar. Haga clic en "Consultar" para cargar los registros.
                         </td>
                     </tr>
@@ -814,6 +880,9 @@
             // Establecer fecha actual en todos los campos de fecha
             establecerFechasActuales();
             
+            // Forzar selección de LG_REFRIS como cliente por defecto
+            forzarClienteLGRefris();
+            
             cargarCodigosMaterial();
             cargarClienteSeleccionado(); // Cargar la última selección de cliente
             cargarSiguienteSecuencial(); // Cargar el siguiente número secuencial
@@ -840,6 +909,22 @@
             if (filtroFechaFin) filtroFechaFin.value = fechaHoy;
         }
 
+        // Nueva función para forzar cliente LG_REFRIS siempre
+        function forzarClienteLGRefris() {
+            const selectCliente = document.getElementById('cliente');
+            if (selectCliente) {
+                selectCliente.value = 'LG_REFRIS';
+                // También agregar un listener para evitar que se cambie
+                selectCliente.addEventListener('change', function() {
+                    if (this.value !== 'LG_REFRIS') {
+                        this.value = 'LG_REFRIS';
+                        // Opcional: mostrar mensaje
+                        // alert('El cliente debe ser LG_REFRIS');
+                    }
+                });
+            }
+        }
+
         // Verificar si el DOM ya está listo o esperar a que lo esté
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', inicializarControlAlmacen);
@@ -848,21 +933,23 @@
             inicializarControlAlmacen();
         }
 
-        // Función para cargar la última selección de cliente
+        // Función para cargar la última selección de cliente - siempre LG_REFRIS
         async function cargarClienteSeleccionado() {
             try {
-                const response = await fetch('/cargar_cliente_seleccionado');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.cliente) {
-                        const selectCliente = document.getElementById('cliente');
-                        if (selectCliente) {
-                            selectCliente.value = data.cliente;
-                        }
-                    }
+                // Siempre establecer LG_REFRIS como cliente por defecto
+                const selectCliente = document.getElementById('cliente');
+                if (selectCliente) {
+                    selectCliente.value = 'LG_REFRIS';
+                    // Guardar la selección por defecto
+                    await guardarClienteSeleccionado('LG_REFRIS');
                 }
             } catch (error) {
                 console.error('Error al cargar cliente seleccionado:', error);
+                // En caso de error, asegurar que LG_REFRIS esté seleccionado
+                const selectCliente = document.getElementById('cliente');
+                if (selectCliente) {
+                    selectCliente.value = 'LG_REFRIS';
+                }
             }
         }
 
@@ -2086,6 +2173,9 @@ if (document.readyState === 'loading') {
         // Función principal de carga de datos (actualizada para usar la nueva función)
         function cargarDatosDesdeServidor() {
             
+            // Mostrar modal de carga
+            mostrarModalCarga();
+            
             const fechaInicio = document.getElementById('filtro_fecha_inicio').value;
             const fechaFin = document.getElementById('filtro_fecha_fin').value;
             
@@ -2109,6 +2199,8 @@ if (document.readyState === 'loading') {
                 .then(data => {
                     
                     nuevaCargarDatos(data);
+                    // Ocultar modal de carga
+                    ocultarModalCarga();
                 })
                 .catch(error => {
                     console.error('❌ Error completo:', error);
@@ -2117,6 +2209,8 @@ if (document.readyState === 'loading') {
                     if (tbody) {
                         tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #e74c3c;">Error al cargar los datos. Por favor, intente nuevamente.</td></tr>';
                     }
+                    // Ocultar modal de carga en caso de error
+                    ocultarModalCarga();
                 });
             
         }
@@ -2144,25 +2238,56 @@ if (document.readyState === 'loading') {
             datos.forEach((item, index) => {
                 const row = document.createElement('tr');
                 
-                // Hacer la fila clickeable para selección
+                // Hacer la fila clickeable para selección - mejorado para textos largos
                 row.className = 'fila-clickeable';
-                row.onclick = () => seleccionarFilaTabla(row, item, index);
+                row.style.cursor = 'pointer';
+                
+                // Usar addEventListener para mejor control de eventos
+                row.addEventListener('click', function(e) {
+                    // Evitar propagación desde elementos hijos
+                    e.stopPropagation();
+                    seleccionarFilaTabla(this, item, index);
+                });
+                
+                // Agregar evento de doble clic para edición
+                row.addEventListener('dblclick', function(e) {
+                    e.stopPropagation();
+                    abrirEdicionControlAlmacen(item);
+                });
+
+                // Crear las celdas con clases específicas para el tooltip
+                const codigoMaterialCell = `<td class="codigo-material-cell celda-clickeable" data-full-text="${item.codigo_material || ''}" title="${item.codigo_material || ''}">${item.codigo_material || ''}</td>`;
 
                 row.innerHTML = `
-                    <td>${item.codigo_material_recibido || ''}</td>
-                    <td>${item.codigo_material || ''}</td>
-                    <td>${item.numero_parte || ''}</td>
-                    <td>${item.numero_lote_material || ''}</td>
-                    <td>${item.propiedad_material || ''}</td>
-                    <td>${item.cantidad_actual || ''}</td>
-                    <td>${item.cantidad_estandarizada || ''}</td>
-                    <td>${item.ubicacion_salida || ''}</td>
-                    <td>${item.fecha_recibo || ''}</td>
-                    <td>${item.especificacion || ''}</td>
-                    <td>${item.material_importacion_local || ''}</td>
-                    <td>${item.estado_desecho || ''}</td>
+                    <td class="celda-clickeable">${item.codigo_material_recibido || ''}</td>
+                    ${codigoMaterialCell}
+                    <td class="celda-clickeable">${item.numero_parte || ''}</td>
+                    <td class="celda-clickeable">${item.numero_lote_material || ''}</td>
+                    <td class="celda-clickeable">${item.propiedad_material || ''}</td>
+                    <td class="celda-clickeable">${item.cantidad_actual || ''}</td>
+                    <td class="celda-clickeable">${item.cantidad_estandarizada || ''}</td>
+                    <td class="celda-clickeable">${item.ubicacion_salida || ''}</td>
+                    <td class="celda-clickeable">${item.fecha_recibo || ''}</td>
+                    <td class="celda-clickeable">${item.especificacion || ''}</td>
+                    <td class="celda-clickeable">${item.material_importacion_local || ''}</td>
+                    <td class="celda-clickeable" style="display: none;">${(item.estado_desecho === 1 || item.estado_desecho === '1') ? 'Activo' : (item.estado_desecho === 0 || item.estado_desecho === '0') ? 'Desecho' : (item.estado_desecho || '')}</td>
                 `;
                 tbody.appendChild(row);
+                
+                // Agregar listeners adicionales a todas las celdas para asegurar clickeabilidad
+                const celdas = row.querySelectorAll('.celda-clickeable');
+                celdas.forEach(celda => {
+                    celda.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        // Propagar el click a la fila padre
+                        seleccionarFilaTabla(row, item, index);
+                    });
+                    
+                    celda.addEventListener('dblclick', function(e) {
+                        e.stopPropagation();
+                        abrirEdicionControlAlmacen(item);
+                    });
+                });
             });
             
             // IMPORTANTE: Llama a actualizarTotalFilasTabla() después de actualizar los datos de la tabla
@@ -2190,8 +2315,8 @@ if (document.readyState === 'loading') {
             // Limpiar selección anterior
             limpiarSeleccionTabla();
             
-            // Marcar nueva selección
-            fila.classList.add('fila-seleccionada');
+            // Marcar nueva selección con la clase correcta
+            fila.classList.add('seleccionada');
             filaSeleccionada = fila;
             datosFilaSeleccionada = datos;
             
@@ -2199,9 +2324,12 @@ if (document.readyState === 'loading') {
         
         // Función para limpiar selección de tabla
         function limpiarSeleccionTabla() {
-            if (filaSeleccionada) {
-                filaSeleccionada.classList.remove('fila-seleccionada');
-            }
+            // Remover clase de todas las filas
+            const todasLasFilas = document.querySelectorAll('.fila-clickeable');
+            todasLasFilas.forEach(fila => {
+                fila.classList.remove('seleccionada', 'selected');
+            });
+            
             filaSeleccionada = null;
             datosFilaSeleccionada = null;
         }
@@ -2245,8 +2373,8 @@ if (document.readyState === 'loading') {
                 fechaRecibo: datos.fecha_recibo || '', //  Desde SQL
                 cantidadEstandarizada: datos.cantidad_estandarizada || '',
                 ubicacionSalida: datos.ubicacion_salida || '',
-                materialImportacionLocal: datos.material_importacion_local || '',
-                estadoDesecho: datos.estado_desecho || ''
+                materialImportacionLocal: datos.material_importacion_local || ''
+                // estadoDesecho: datos.estado_desecho || '' // Funcionalidad futura - deshabilitado
             };
             
             
@@ -5280,16 +5408,7 @@ if (document.readyState === 'loading') {
                 event.preventDefault();
                 const etiquetaEscaneada = event.target.value.trim();
                 const loteProveedor = document.getElementById('escaneo-lote-proveedor').value.trim() || ultimoLoteEscaneado;
-                
-                if (!loteProveedor) {
-                    alert('Primero debe escanear el lote del proveedor');
-                    return;
-                }
-                
-                if (!etiquetaEscaneada) {
-                    alert('Debe escanear una etiqueta');
-                    return;
-                }
+
                 
                 // Buscar la etiqueta en la lista
                 const indiceEtiqueta = asignacionesLotes.findIndex(item => 
@@ -5429,6 +5548,21 @@ if (document.readyState === 'loading') {
             // Cerrar modal y limpiar después de confirmar
             document.getElementById('modal-asignacion-lotes').style.display = 'none';
             limpiarFormularioCompleto();
+        }
+        
+        // Funciones para el modal de carga
+        function mostrarModalCarga() {
+            const modal = document.getElementById('modal-carga');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+        
+        function ocultarModalCarga() {
+            const modal = document.getElementById('modal-carga');
+            if (modal) {
+                modal.style.display = 'none';
+            }
         }
         
         async function finalizarAsignacionLotes(permitirSinAsignar = false) {
@@ -5777,6 +5911,512 @@ if (document.readyState === 'loading') {
             .catch(error => {
                 console.error('Error:', error);
                 alert("Error al importar el archivo");
+            });
+        }
+
+        // Función para abrir la edición de control de almacén
+        function abrirEdicionControlAlmacen(item) {
+            try {
+                console.log('🔧 Datos recibidos para edición:', item);
+                
+                // Verificar que el sistema esté disponible
+                if (!window.materialEditDrawer) {
+                    console.log('Inicializando sistema de edición...');
+                    window.initializeMaterialDrawer();
+                    
+                    // Esperar un momento para la inicialización
+                    setTimeout(() => {
+                        abrirEdicionControlAlmacen(item);
+                    }, 200);
+                    return;
+                }
+
+                // Crear drawer específico para control de almacén si no existe
+                if (!document.getElementById('controlAlmacenEditDrawer')) {
+                    console.log('🎨 Creando drawer de control de almacén...');
+                    crearDrawerControlAlmacen();
+                    
+                    // Esperar un momento para que se cree el HTML antes de llenar
+                    setTimeout(() => {
+                        console.log('📝 Drawer creado, ahora llenando formulario...');
+                        llenarFormularioControlAlmacen(materialData);
+                        
+                        // Mostrar el drawer
+                        document.getElementById('controlAlmacenEditDrawer').classList.add('open');
+                        if (document.getElementById('controlAlmacenOverlay')) {
+                            document.getElementById('controlAlmacenOverlay').classList.add('active');
+                        }
+                        
+                        console.log('🔧 Panel de edición abierto para:', materialData.codigo_material);
+                    }, 300);
+                    return;
+                }
+
+                // Mapear los datos del control de almacén (usar los nombres exactos del servidor)
+                const materialData = {
+                    id: item.id || '',
+                    forma_material: item.forma_material || '',
+                    cliente: item.cliente || '',
+                    codigo_material_original: item.codigo_material_original || '',
+                    codigo_material: item.codigo_material || '',
+                    material_importacion_local: item.material_importacion_local || '',
+                    fecha_recibo: item.fecha_recibo || '',
+                    fecha_fabricacion: item.fecha_fabricacion || '',
+                    cantidad_actual: item.cantidad_actual || 0,
+                    numero_lote_material: item.numero_lote_material || '',
+                    codigo_material_recibido: item.codigo_material_recibido || '',
+                    numero_parte: item.numero_parte || '',
+                    cantidad_estandarizada: item.cantidad_estandarizada || 0,
+                    codigo_material_final: item.codigo_material_final || '',
+                    propiedad_material: item.propiedad_material || '',
+                    especificacion: item.especificacion || '',
+                    material_importacion_local_final: item.material_importacion_local_final || '',
+                    // estado_desecho: item.estado_desecho || '', // Funcionalidad futura - deshabilitado
+                    ubicacion_salida: item.ubicacion_salida || ''
+                };
+
+                console.log('🔧 Datos mapeados:', materialData);
+
+                // Llenar formulario del drawer
+                llenarFormularioControlAlmacen(materialData);
+
+                // Mostrar el drawer
+                document.getElementById('controlAlmacenEditDrawer').classList.add('open');
+                if (document.getElementById('controlAlmacenOverlay')) {
+                    document.getElementById('controlAlmacenOverlay').classList.add('active');
+                }
+
+                console.log('🔧 Panel de edición de control de almacén abierto para:', materialData.codigo_material);
+
+            } catch (error) {
+                console.error('Error al abrir edición:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al abrir el editor: ' + error.message
+                });
+            }
+        }
+
+        // Función para crear el drawer específico de control de almacén
+        function crearDrawerControlAlmacen() {
+            const drawerHTML = `
+                <!-- Overlay -->
+                <div id="controlAlmacenOverlay" class="material-edit-overlay" onclick="cerrarDrawerControlAlmacen()"></div>
+                
+                <!-- Drawer de Control de Almacén -->
+                <div id="controlAlmacenEditDrawer" class="material-edit-drawer">
+                    <div class="drawer-header">
+                        <h3><i class="fas fa-warehouse me-2"></i>Editar Control de Almacén</h3>
+                        <button type="button" class="btn-close-drawer" onclick="cerrarDrawerControlAlmacen()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="drawer-body">
+                        <form id="editControlAlmacenForm">
+                            <input type="hidden" id="editControlId" name="id">
+                            
+                            <!-- Información del Material -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-info-circle me-2"></i>Información del Material</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editFormaMaterial" class="form-label">
+                                                <i class="fas fa-shapes me-1"></i>Forma del Material
+                                            </label>
+                                            <input type="text" class="form-control" id="editFormaMaterial" name="forma_material">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editCliente" class="form-label">
+                                                <i class="fas fa-building me-1"></i>Cliente
+                                            </label>
+                                            <input type="text" class="form-control" id="editCliente" name="cliente">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editCodigoMaterialOriginal" class="form-label">
+                                                <i class="fas fa-barcode me-1"></i>Código Material Original
+                                            </label>
+                                            <input type="text" class="form-control" id="editCodigoMaterialOriginal" name="codigo_material_original">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editCodigoMaterial" class="form-label">
+                                                <i class="fas fa-qrcode me-1"></i>Código de Material
+                                            </label>
+                                            <input type="text" class="form-control" id="editCodigoMaterial" name="codigo_material">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editCodigoMaterialRecibido" class="form-label">
+                                                <i class="fas fa-receipt me-1"></i>Código Material Recibido
+                                            </label>
+                                            <input type="text" class="form-control" id="editCodigoMaterialRecibido" name="codigo_material_recibido">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editCodigoMaterialFinal" class="form-label">
+                                                <i class="fas fa-check-circle me-1"></i>Código Material Final
+                                            </label>
+                                            <input type="text" class="form-control" id="editCodigoMaterialFinal" name="codigo_material_final">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editNumeroParte" class="form-label">
+                                                <i class="fas fa-hashtag me-1"></i>Número de Parte
+                                            </label>
+                                            <input type="text" class="form-control" id="editNumeroParte" name="numero_parte">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editPropiedadMaterial" class="form-label">
+                                                <i class="fas fa-tag me-1"></i>Propiedad Material
+                                            </label>
+                                            <input type="text" class="form-control" id="editPropiedadMaterial" name="propiedad_material">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editMaterialImportacionLocal" class="form-label">
+                                                <i class="fas fa-globe me-1"></i>Material Importación/Local
+                                            </label>
+                                            <input type="text" class="form-control" id="editMaterialImportacionLocal" name="material_importacion_local">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editMaterialImportacionLocalFinal" class="form-label">
+                                                <i class="fas fa-flag me-1"></i>Material Importación/Local Final
+                                            </label>
+                                            <input type="text" class="form-control" id="editMaterialImportacionLocalFinal" name="material_importacion_local_final">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Fechas y Cantidades -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-calendar-alt me-2"></i>Fechas y Cantidades</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editFechaRecibo" class="form-label">
+                                                <i class="fas fa-calendar me-1"></i>Fecha de Recibo
+                                            </label>
+                                            <input type="date" class="form-control" id="editFechaRecibo" name="fecha_recibo">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editFechaFabricacion" class="form-label">
+                                                <i class="fas fa-industry me-1"></i>Fecha de Fabricación
+                                            </label>
+                                            <input type="date" class="form-control" id="editFechaFabricacion" name="fecha_fabricacion">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editCantidadActual" class="form-label">
+                                                <i class="fas fa-sort-numeric-up me-1"></i>Cantidad Actual
+                                            </label>
+                                            <input type="number" class="form-control" id="editCantidadActual" name="cantidad_actual" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editCantidadEstandarizada" class="form-label">
+                                                <i class="fas fa-balance-scale me-1"></i>Cantidad Estandarizada
+                                            </label>
+                                            <input type="number" class="form-control" id="editCantidadEstandarizada" name="cantidad_estandarizada" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="editNumeroLoteMaterial" class="form-label">
+                                        <i class="fas fa-boxes me-1"></i>Número de Lote
+                                    </label>
+                                    <input type="text" class="form-control" id="editNumeroLoteMaterial" name="numero_lote_material">
+                                </div>
+                            </div>
+                            
+                            <!-- Ubicación y Estado -->
+                            <div class="form-section">
+                                <h5><i class="fas fa-map-marker-alt me-2"></i>Ubicación y Estado</h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="editUbicacionSalida" class="form-label">
+                                                <i class="fas fa-location-arrow me-1"></i>Ubicación de Salida
+                                            </label>
+                                            <input type="text" class="form-control" id="editUbicacionSalida" name="ubicacion_salida">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6" style="display: none;">
+                                        <div class="form-group">
+                                            <label for="editEstadoDesecho" class="form-label">
+                                                <i class="fas fa-trash-alt me-1"></i>Estado de Desecho
+                                            </label>
+                                            <select class="form-control" id="editEstadoDesecho" name="estado_desecho">
+                                                <option value="">Seleccionar...</option>
+                                                <option value="Activo">Activo</option>
+                                                <option value="Desecho">Desecho</option>
+                                                <option value="Reparación">Reparación</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="editEspecificacion" class="form-label">
+                                        <i class="fas fa-file-alt me-1"></i>Especificación
+                                    </label>
+                                    <textarea class="form-control" id="editEspecificacion" name="especificacion" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="drawer-footer">
+                        <button type="button" class="btn btn-secondary me-2" onclick="cerrarDrawerControlAlmacen()">
+                            <i class="fas fa-times me-1"></i>Cancelar
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="guardarEdicionControlAlmacen()">
+                            <i class="fas fa-save me-1"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Insertar HTML en el body
+            document.body.insertAdjacentHTML('beforeend', drawerHTML);
+        }
+
+        // Función para llenar el formulario con los datos
+        function llenarFormularioControlAlmacen(data) {
+            try {
+                // Verificar que los elementos existan antes de llenarlos
+                const elementos = {
+                    'editControlId': data.id,
+                    'editFormaMaterial': data.forma_material,
+                    'editCliente': data.cliente,
+                    'editCodigoMaterialOriginal': data.codigo_material_original,
+                    'editCodigoMaterial': data.codigo_material,
+                    'editCodigoMaterialRecibido': data.codigo_material_recibido,
+                    'editCodigoMaterialFinal': data.codigo_material_final,
+                    'editNumeroParte': data.numero_parte,
+                    'editPropiedadMaterial': data.propiedad_material,
+                    'editMaterialImportacionLocal': data.material_importacion_local,
+                    'editMaterialImportacionLocalFinal': data.material_importacion_local_final,
+                    'editFechaRecibo': data.fecha_recibo,
+                    'editFechaFabricacion': data.fecha_fabricacion,
+                    'editCantidadActual': data.cantidad_actual,
+                    'editCantidadEstandarizada': data.cantidad_estandarizada,
+                    'editNumeroLoteMaterial': data.numero_lote_material,
+                    'editUbicacionSalida': data.ubicacion_salida,
+                    // 'editEstadoDesecho': data.estado_desecho, // Funcionalidad futura - deshabilitado
+                    'editEspecificacion': data.especificacion
+                };
+
+                for (const [elementId, valor] of Object.entries(elementos)) {
+                    const elemento = document.getElementById(elementId);
+                    if (elemento) {
+                        // Conversión especial para estado_desecho deshabilitada - funcionalidad futura
+                        /*
+                        if (elementId === 'editEstadoDesecho') {
+                            let valorTexto = '';
+                            if (valor === 1 || valor === '1') {
+                                valorTexto = 'Activo';
+                            } else if (valor === 0 || valor === '0') {
+                                valorTexto = 'Desecho';
+                            } else {
+                                valorTexto = valor || '';
+                            }
+                            elemento.value = valorTexto;
+                        } else {
+                            elemento.value = valor || '';
+                        }
+                        */
+                        elemento.value = valor || '';
+                        
+                        // Agregar listener para detectar cambios en cantidad_actual
+                        if (elementId === 'editCantidadActual' || elementId === 'editCantidadEstandarizada') {
+                            elemento.addEventListener('input', function() {
+                                // Listener para detectar cambios pero sin logs
+                            });
+                        }
+                    } else {
+                        // Elemento no encontrado - sin logs
+                    }
+                }
+                
+                // Formulario llenado correctamente
+                
+            } catch (error) {
+                console.error('Error al llenar formulario:', error);
+            }
+        }
+
+        // Función para cerrar el drawer
+        function cerrarDrawerControlAlmacen() {
+            console.log('🚪 Cerrando drawer de control de almacén...');
+            
+            const drawer = document.getElementById('controlAlmacenEditDrawer');
+            const overlay = document.getElementById('controlAlmacenOverlay');
+            
+            if (drawer) {
+                drawer.classList.remove('open');
+                console.log('✅ Drawer cerrado');
+            } else {
+                console.warn('⚠️ Drawer no encontrado');
+            }
+            
+            if (overlay) {
+                overlay.classList.remove('active');
+                console.log('✅ Overlay cerrado');
+            } else {
+                console.warn('⚠️ Overlay no encontrado');
+            }
+        }
+
+        // Función para guardar los cambios
+        function guardarEdicionControlAlmacen() {
+            const form = document.getElementById('editControlAlmacenForm');
+            if (!form) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Formulario no encontrado'
+                });
+                return;
+            }
+            
+            const formData = new FormData(form);
+            
+            // Convertir FormData a objeto JSON, filtrando campos vacíos
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                // Solo incluir campos que tienen contenido o son específicamente importantes
+                if (value !== '' && value !== null && value !== undefined) {
+                    data[key] = value;
+                } else if (key === 'id') {
+                    // El ID siempre debe incluirse aunque esté vacío
+                    data[key] = value;
+                }
+            }
+            
+            // Verificar campos críticos
+            const camposCriticos = ['id', 'forma_material', 'cliente', 'codigo_material'];
+            for (const campo of camposCriticos) {
+                if (!data[campo]) {
+                    // Campo crítico faltante
+                }
+            }
+            if (!data.id) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'ID de registro no encontrado'
+                });
+                return;
+            }
+
+            // Mostrar loading
+            Swal.fire({
+                title: 'Guardando...',
+                text: 'Actualizando registro de control de almacén',
+                icon: 'info',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Enviar datos al servidor
+            fetch('/actualizar_control_almacen', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                Swal.close();
+                
+                if (result.success) {
+                    // Mostrar mensaje personalizado según los campos modificados
+                    let mensaje = 'Registro actualizado correctamente';
+                    if (result.campos_modificados && result.campos_modificados.length > 0) {
+                        mensaje += `\n\nCampos modificados: ${result.campos_modificados.join(', ')}`;
+                    } else if (result.message && result.message.includes('No hay cambios')) {
+                        mensaje = 'No se detectaron cambios que guardar';
+                    }
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Éxito',
+                        text: mensaje,
+                        timer: 3000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        // Cerrar drawer y recargar datos solo si hubo cambios
+                        cerrarDrawerControlAlmacen();
+                        if (result.campos_modificados && result.campos_modificados.length > 0) {
+                            nuevaCargarDatos();
+                        }
+                    });
+                    
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: result.error || 'Error al actualizar el registro'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.close();
+                console.error('❌ Error de conexión:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Conexión',
+                    text: 'Error al conectar con el servidor: ' + error.message
+                });
             });
         }
     </script>

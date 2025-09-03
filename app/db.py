@@ -344,7 +344,17 @@ def agregar_control_material_almacen(data):
                 data.get('ubicacion_salida'),
                 fecha_registro_mexico  # Fecha registro con hora de México
             )
-            return execute_query(query, params) > 0
+            result = execute_query(query, params) > 0
+            
+            # Actualizar inventario_consolidado después de la inserción exitosa
+            if result:
+                try:
+                    actualizar_inventario_consolidado_entrada(data)
+                except Exception as e:
+                    print(f"⚠️ Error actualizando inventario_consolidado: {e}")
+                    # No fallar el guardado principal por esto
+            
+            return result
         else:
             # Implementación SQLite similar...
             return True
@@ -387,6 +397,55 @@ def migrar_datos_sqlite():
         return False
 
 # === FUNCIONES DE PRUEBA ===
+
+def actualizar_inventario_consolidado_entrada(data):
+    """Actualizar o insertar en inventario_consolidado cuando se registra una entrada"""
+    try:
+        if not MYSQL_AVAILABLE:
+            return False
+            
+        numero_parte = data.get('numero_parte', '').strip()
+        if not numero_parte:
+            return False
+            
+        # Recalcular valores agregados para este numero_parte específico
+        query_recalcular = """
+            INSERT INTO inventario_consolidado 
+            (numero_parte, codigo_material, especificacion, propiedad_material,
+             cantidad_actual, total_lotes, fecha_ultima_entrada, fecha_primera_entrada,
+             total_entradas, total_salidas)
+            SELECT 
+                numero_parte,
+                MAX(codigo_material) as codigo_material,
+                MAX(especificacion) as especificacion,
+                MAX(propiedad_material) as propiedad_material,
+                SUM(COALESCE(cantidad_actual, 0)) as cantidad_actual,
+                COUNT(DISTINCT numero_lote_material) as total_lotes,
+                MAX(fecha_recibo) as fecha_ultima_entrada,
+                MIN(fecha_recibo) as fecha_primera_entrada,
+                SUM(COALESCE(cantidad_actual, 0)) as total_entradas,
+                0 as total_salidas
+            FROM control_material_almacen 
+            WHERE numero_parte = %s AND estado_desecho = FALSE
+            GROUP BY numero_parte
+            ON DUPLICATE KEY UPDATE
+                codigo_material = VALUES(codigo_material),
+                especificacion = VALUES(especificacion),
+                propiedad_material = VALUES(propiedad_material),
+                cantidad_actual = VALUES(cantidad_actual),
+                total_lotes = VALUES(total_lotes),
+                fecha_ultima_entrada = VALUES(fecha_ultima_entrada),
+                fecha_primera_entrada = LEAST(fecha_primera_entrada, VALUES(fecha_primera_entrada)),
+                total_entradas = VALUES(total_entradas);
+        """
+        
+        result = execute_query(query_recalcular, (numero_parte,))
+        print(f"📦 Inventario consolidado actualizado para {numero_parte}")
+        return result > 0
+        
+    except Exception as e:
+        print(f"❌ Error actualizando inventario_consolidado: {e}")
+        return False
 
 def test_database_connection():
     """Probar conexión a la base de datos"""
