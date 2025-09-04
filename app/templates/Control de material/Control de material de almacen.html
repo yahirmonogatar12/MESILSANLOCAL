@@ -901,16 +901,16 @@
 ^PW392
 ^LL165
 ^LS0
-^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
-^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
-^FT5,95^BQN,2,8
+^FT188,70^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT187,120^A0N,24,22^FH\\^CI28^FDQTY:^FS^CI27
+^FT25,95^BQN,2,6
 ^FH\\^FDLA,${datosEjemplo.codigoCompleto}^FS
-^FT188,15^A0N,25,25^FH\\^CI28^FD${datosEjemplo.codigoMaterial}^FS^CI27
-^FT188,40^A0N,25,25^FH\\^CI28^FD${datosEjemplo.numeroSerie}^FS^CI27
-^FT188,75^A0N,21,20^FH\\^CI28^FD${datosEjemplo.fecha}^FS^CI27
-^FT188,125^A0N,21,20^FH\\^CI28^FD${datosEjemplo.descripcionMaterial}^FS^CI27
-^FT188,147^A0N,21,20^FH\\^CI28^FD^FS^CI27
-^FT223,104^A0N,22,20^FH\\^CI28^FD${datosEjemplo.cantidadEstandarizada}^FS^CI27
+^FT188,15^A0N,32,30^FH\\^CI28^FD${datosEjemplo.codigoMaterial}^FS^CI27
+^FT188,50^A0N,32,30^FH\\^CI28^FD${datosEjemplo.numeroSerie}^FS^CI27
+^FT188,95^A0N,27,25^FH\\^CI28^FD${datosEjemplo.fecha}^FS^CI27
+^FT188,150^A0N,30,28^FH\\^CI28^FD${datosEjemplo.descripcionMaterial}^FS^CI27
+^FT188,175^A0N,30,28^FH\\^CI28^FD^FS^CI27
+^FT240,122^A0N,28,26^FH\\^CI28^FD${datosEjemplo.cantidadEstandarizada}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             
@@ -3538,11 +3538,11 @@ if (document.readyState === 'loading') {
                 // Etiqueta simple optimizada para 33.2mm x 14mm
                 comandoZPL = `^XA
 ^PW264^LL112
-^FO5,5^BQN,2,2^FDQA,${codigo}^FS
-^FO50,8^ADN,8,5^FD${codigo}^FS
-^FO50,25^ADN,6,4^FD${fechaHora}^FS
-^FO5,45^ADN,5,3^FDMAT.REC^FS
-^FO5,60^ADN,5,3^FDILSAN^FS
+^FO10,5^BQN,2,1^FDQA,${codigo}^FS
+^FO55,10^ADN,12,8^FD${codigo}^FS
+^FO55,32^ADN,10,7^FD${fechaHora}^FS
+^FO5,54^ADN,8,6^FDMAT.REC^FS
+^FO5,75^ADN,8,6^FDILSAN^FS
 ^XZ`;
             } else {
                 // Etiqueta usando diseño proporcionado por el usuario
@@ -3574,16 +3574,16 @@ if (document.readyState === 'loading') {
 ^PW392
 ^LL165
 ^LS0
-^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
-^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
-^FT5,135^BQN,2,8
+^FT188,70^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT187,120^A0N,24,22^FH\\^CI28^FDQTY:^FS^CI27
+^FT25,135^BQN,2,6
 ^FH\\^FDLA,${codigo}^FS
-^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
-^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
-^FT188,75^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
-^FT188,125^A0N,21,20^FH\\^CI28^FD${especificacionLine1}^FS^CI27
-^FT188,147^A0N,21,20^FH\\^CI28^FD${especificacionLine2}^FS^CI27
-^FT223,104^A0N,22,20^FH\\^CI28^FD${cantidadActual}^FS^CI27
+^FT188,15^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
+^FT188,50^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
+^FT188,95^A0N,27,25^FH\\^CI28^FD${fecha}^FS^CI27
+^FT188,150^A0N,30,28^FH\\^CI28^FD${especificacionLine1}^FS^CI27
+^FT188,175^A0N,30,28^FH\\^CI28^FD${especificacionLine2}^FS^CI27
+^FT240,122^A0N,28,26^FH\\^CI28^FD${cantidadActual}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
@@ -3659,11 +3659,11 @@ if (document.readyState === 'loading') {
                 // Etiqueta simple optimizada para 33.2mm x 14mm
                 zplCommand = `^XA
 ^PW264^LL112
-^FO5,2^BQN,2,2^FDQA,${codigo}^FS
-^FO50,8^ADN,8,5^FD${codigo}^FS
-^FO50,25^ADN,6,4^FD${fechaHora}^FS
-^FO5,45^ADN,5,3^FDMAT.REC^FS
-^FO5,60^ADN,5,3^FDILSAN^FS
+^FO10,2^BQN,2,1^FDQA,${codigo}^FS
+^FO55,10^ADN,12,8^FD${codigo}^FS
+^FO55,32^ADN,10,7^FD${fechaHora}^FS
+^FO5,54^ADN,8,6^FDMAT.REC^FS
+^FO5,75^ADN,8,6^FDILSAN^FS
 ^XZ`;
             } else {
                 // Etiqueta usando diseño proporcionado por el usuario
@@ -3695,16 +3695,16 @@ if (document.readyState === 'loading') {
 ^PW392
 ^LL165
 ^LS0
-^FT188,55^A0N,16,15^FH\\^CI28^FDFecha de entrada:^FS^CI27
-^FT187,102^A0N,18,18^FH\\^CI28^FDQTY:^FS^CI27
-^FT5,95^BQN,2,8
+^FT188,70^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT187,120^A0N,24,22^FH\\^CI28^FDQTY:^FS^CI27
+^FT25,95^BQN,2,6
 ^FH\\^FDLA,${codigo}^FS
-^FT188,15^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
-^FT188,40^A0N,25,25^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
-^FT188,75^A0N,21,20^FH\\^CI28^FD${fecha}^FS^CI27
-^FT188,125^A0N,21,20^FH\\^CI28^FD${propiedadLine1}^FS^CI27
-^FT188,147^A0N,21,20^FH\\^CI28^FD${propiedadLine2}^FS^CI27
-^FT223,104^A0N,22,20^FH\\^CI28^FD${cantidadActual}^FS^CI27
+^FT188,15^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
+^FT188,50^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
+^FT188,95^A0N,27,25^FH\\^CI28^FD${fecha}^FS^CI27
+^FT188,150^A0N,30,28^FH\\^CI28^FD${propiedadLine1}^FS^CI27
+^FT188,175^A0N,30,28^FH\\^CI28^FD${propiedadLine2}^FS^CI27
+^FT240,122^A0N,28,26^FH\\^CI28^FD${cantidadActual}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
