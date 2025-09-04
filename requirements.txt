@@ -2,10 +2,8 @@
 # Versiones compatibles para hosting y desarrollo
 
 # Framework web principal
-Flask==2.3.3
-Werkzeug==2.3.7
-Jinja2==3.1.2
-MarkupSafe==2.1.3
+Flask>=2.3.0,<3.0.0
+Werkzeug>=2.3.0,<3.0.0
 
 # Base de datos
 pymysql>=1.0.0
@@ -30,6 +28,12 @@ requests>=2.30.0
 # Utilidades básicas
 psutil>=5.9.0
 pytz>=2023.3
+
+
+
+# SMT Monitor dependencies
+mysql-connector-python==8.0.33
+watchdog==3.0.0
 
 
 
