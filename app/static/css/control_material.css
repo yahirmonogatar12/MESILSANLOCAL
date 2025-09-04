@@ -119,7 +119,7 @@
 }
 
 .material-close {
-    color: #e74c3c;
+    color: #3498db;
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
@@ -131,7 +131,7 @@
 }
 
 .material-close:hover {
-    color: #c0392b;
+    color: #2980b9;
 }
 
 /* Formulario - ESPECÍFICO PARA CONTROL DE MATERIAL */
@@ -423,7 +423,7 @@
 .material-error {
     text-align: center;
     padding: 25px;
-    color: #e74c3c;
+    color: #3498db;
     font-size: 12px;
 }
 

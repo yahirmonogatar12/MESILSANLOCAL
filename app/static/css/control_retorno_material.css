@@ -415,7 +415,7 @@
         #control-retorno-container .material-error {
             text-align: center;
             padding: 25px;
-            color: #e74c3c;
+            color: #2980b9;
             font-size: 14px;
         }
 
@@ -430,7 +430,7 @@
         #control-retorno-container .error-message {
             text-align: center !important;
             padding: 25px !important;
-            color: #e74c3c !important;
+            color: #2980b9 !important;
             font-size: 16px !important;
         }
 

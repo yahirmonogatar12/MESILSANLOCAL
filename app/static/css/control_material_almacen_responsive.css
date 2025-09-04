@@ -10,6 +10,33 @@
     display: none !important;
 }
 
+/* ===== ESTILOS DE SELECCIÓN DE TABLA - APLICAR EN TODOS LOS DISPOSITIVOS ===== */
+
+/* Focus en fila seleccionada - MUY ESPECÍFICO Y VISIBLE */
+#tablaControlAlmacen tbody tr.fila-seleccionada:focus td,
+#tablaControlAlmacen tbody tr.seleccionada:focus td,
+#tablaControlAlmacen tbody tr.fila-seleccionada:focus-within td,
+#tablaControlAlmacen tbody tr.seleccionada:focus-within td,
+#tablaControlAlmacen tbody tr.fila-seleccionada[tabindex]:focus td,
+#tablaControlAlmacen tbody tr.seleccionada[tabindex]:focus td {
+    background-color: #2980b9 !important; /* Azul más oscuro para focus */
+    z-index: 999 !important;
+    position: relative !important;
+}
+
+
+/* Focus en radio button - MUY ESPECÍFICO */
+#tablaControlAlmacen input[type="radio"]:focus,
+#tablaControlAlmacen input[type="radio"]:focus-visible {
+    z-index: 1000 !important;
+    position: relative !important;
+}
+
+/* Radio button checked - MUY ESPECÍFICO */
+#tablaControlAlmacen input[type="radio"]:checked {
+    box-shadow: 0 0 8px rgba(41, 128, 185, 0.6) !important;
+}
+
 /* ESTILOS RESPONSIVE PARA MÓVILES - SOLO DISPOSITIVOS MÓVILES */
 @media (max-width: 768px) {
     
@@ -248,12 +275,13 @@
         background-color: #44475A !important; /* Color original preservado */
     }
     
+    /* HOVER - Selección más visible */
     #tablaControlAlmacen tbody tr:hover td {
-        background-color: #485563 !important; /* Color original preservado */
+        background-color: #2980b9 !important; /* Azul más visible para hover */
     }
     
     #tablaControlAlmacen tbody tr:nth-child(even):hover td {
-        background-color: #485563 !important; /* Color original preservado */
+        background-color: #2980b9 !important; /* Azul más visible para hover en filas pares */
     }
     
     /* Columnas específicas con anchos optimizados para móvil */
@@ -474,7 +502,7 @@
     /* Mejorar la visualización de campos requeridos */
     .material-form-group.required label::after {
         content: " *" !important;
-        color: #e74c3c !important;
+        color: #2980b9 !important;
         font-weight: bold !important;
     }
     
@@ -508,5 +536,26 @@
     .material-form-group select {
         align-self: stretch !important;
         text-align: left !important;
+    }
+    
+    
+    
+    /* Radio buttons más visibles */
+    #tablaControlAlmacen input[type="radio"] {
+        transform: scale(1.5) !important; /* Más grandes en móvil */
+        accent-color: #3498db !important;
+        cursor: pointer !important;
+    }
+    
+    /* Celda con radio button centrada */
+    #tablaControlAlmacen td:has(input[type="radio"]) {
+        text-align: center !important;
+        vertical-align: middle !important;
+        padding: 8px !important;
+    }
+    
+    /* Efecto al hacer clic en radio button */
+    #tablaControlAlmacen input[type="radio"]:checked {
+        box-shadow: 0 0 6px rgba(41, 128, 185, 0.6) !important;
     }
 }

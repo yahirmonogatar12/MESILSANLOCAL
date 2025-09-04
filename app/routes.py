@@ -4432,20 +4432,58 @@ def forzar_actualizacion_inventario(numero_parte):
 @app.route('/recalcular_inventario_general', methods=['POST'])
 @login_requerido
 def recalcular_inventario_general_endpoint():
-    """Endpoint para recalcular todo el inventario general desde cero"""
+    """Endpoint para recalcular todo el inventario consolidado desde cero"""
     try:
-        resultado = recalcular_inventario_general()
+        # Importar función de base de datos
+        from .db_mysql import get_connection
         
-        if resultado:
-            return jsonify({
-                'success': True,
-                'message': 'Inventario general recalculado exitosamente'
-            })
-        else:
+        connection = get_connection()
+        if not connection:
             return jsonify({
                 'success': False,
-                'error': 'Error al recalcular inventario general'
+                'error': 'Error de conexión a la base de datos'
             }), 500
+            
+        cursor = connection.cursor()
+        
+        # 1. Limpiar tabla inventario_consolidado
+        cursor.execute("DELETE FROM inventario_consolidado")
+        
+        # 2. Recalcular desde control_material_almacen
+        query_recalcular = """
+            INSERT INTO inventario_consolidado 
+            (numero_parte, codigo_material, especificacion, propiedad_material,
+             cantidad_actual, total_lotes, fecha_ultima_entrada, fecha_primera_entrada,
+             total_entradas, total_salidas)
+            SELECT 
+                numero_parte,
+                MAX(codigo_material) as codigo_material,
+                MAX(especificacion) as especificacion,
+                MAX(propiedad_material) as propiedad_material,
+                SUM(COALESCE(cantidad_actual, 0)) as cantidad_actual,
+                COUNT(DISTINCT numero_lote_material) as total_lotes,
+                MAX(fecha_recibo) as fecha_ultima_entrada,
+                MIN(fecha_recibo) as fecha_primera_entrada,
+                SUM(COALESCE(cantidad_actual, 0)) as total_entradas,
+                0 as total_salidas
+            FROM control_material_almacen 
+            WHERE estado_desecho = FALSE
+            GROUP BY numero_parte
+        """
+        
+        cursor.execute(query_recalcular)
+        filas_afectadas = cursor.rowcount
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        print(f"✅ Inventario consolidado recalculado: {filas_afectadas} números de parte actualizados")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Inventario consolidado recalculado exitosamente. {filas_afectadas} números de parte actualizados.'
+        })
             
     except Exception as e:
         print(f"Error en endpoint recalcular inventario: {str(e)}")
