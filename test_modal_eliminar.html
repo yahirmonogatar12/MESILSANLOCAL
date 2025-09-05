@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Modal Eliminar</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-button { padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .test-button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 15px; margin: 15px 0; border: 1px solid #ddd; border-radius: 4px; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Modal de Eliminación</h1>
+    
+    <div>
+        <button class="test-button" onclick="testModal()">Probar Modal de Edición</button>
+        <button class="test-button" onclick="checkModalHTML()">Verificar HTML del Modal</button>
+        <button class="test-button" onclick="clearLog()">Limpiar Log</button>
+    </div>
+    
+    <div id="log" class="log">
+        <strong>📋 Log de pruebas:</strong><br>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += new Date().toLocaleTimeString() + ' - ' + message + '<br>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '<strong>📋 Log de pruebas:</strong><br>';
+        }
+
+        function testModal() {
+            log('🔍 Iniciando prueba de modal...');
+            
+            // Simular datos de prueba con ID
+            const testData = {
+                id: 123,
+                modelo: 'EBR23966202',
+                Job: 'Test Job',
+                linea: 'D3',
+                Usuario: 'Yahir'
+            };
+            
+            log('📊 Datos de prueba: ' + JSON.stringify(testData));
+            
+            // Verificar si el modal existe
+            if (window.rawEditModal) {
+                log('✅ Modal encontrado, abriendo con datos de prueba...');
+                window.rawEditModal.abrir(testData, 'EDITAR');
+                
+                // Verificar botón eliminar después de un momento
+                setTimeout(() => {
+                    const btnEliminar = document.getElementById('btn-eliminar');
+                    if (btnEliminar) {
+                        log('✅ Botón eliminar encontrado: ' + btnEliminar.style.display);
+                        log('🆔 Record ID en botón: ' + btnEliminar.getAttribute('data-record-id'));
+                    } else {
+                        log('❌ Botón eliminar NO encontrado');
+                    }
+                }, 100);
+                
+            } else {
+                log('❌ Modal NO encontrado, creando nuevo...');
+                try {
+                    window.rawEditModal = new RawEditModal();
+                    log('✅ Modal creado exitosamente');
+                    window.rawEditModal.abrir(testData, 'EDITAR');
+                } catch (error) {
+                    log('❌ Error creando modal: ' + error.message);
+                }
+            }
+        }
+
+        function checkModalHTML() {
+            log('🔍 Verificando HTML del modal...');
+            
+            const modal = document.getElementById('rawEditModal');
+            if (modal) {
+                log('✅ Modal HTML encontrado');
+                
+                const btnEliminar = document.getElementById('btn-eliminar');
+                if (btnEliminar) {
+                    log('✅ Botón eliminar encontrado en DOM');
+                    log('🎨 Estilo display: ' + btnEliminar.style.display);
+                    log('📝 Contenido: ' + btnEliminar.innerHTML);
+                } else {
+                    log('❌ Botón eliminar NO encontrado en DOM');
+                }
+                
+                const footer = modal.querySelector('.modal-footer');
+                if (footer) {
+                    log('✅ Footer encontrado');
+                    log('📝 Footer HTML: ' + footer.innerHTML.substring(0, 200) + '...');
+                } else {
+                    log('❌ Footer NO encontrado');
+                }
+                
+            } else {
+                log('❌ Modal HTML NO encontrado');
+            }
+        }
+
+        // Cargar el script del visor MySQL
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Página cargada, inicializando...');
+            
+            // Simular las variables globales necesarias
+            window.RX = {
+                table: "raw",
+                columns: ["id", "modelo", "Job", "linea", "Usuario"],
+                rows: [],
+                allRows: []
+            };
+            
+            // Crear función $ si no existe
+            if (!window.$) {
+                window.$ = (id) => document.getElementById(id);
+            }
+            
+            log('✅ Variables globales inicializadas');
+            log('⏳ Esperando a que se cree el modal...');
+        });
+    </script>
+    
+    <!-- Cargar el script del visor MySQL -->
+    <script src="/static/js/visor_mysql.js"></script>
+</body>
+</html>

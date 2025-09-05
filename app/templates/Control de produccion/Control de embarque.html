@@ -926,6 +926,234 @@
                 flex-direction: column;
             }
         }
+
+        /* ========== ESTILOS PARA EL DRAWER DE PO - SIGUIENDO EL PATRÓN DE MATERIAL-EDIT-DRAWER ========== */
+
+        /* Panel Lateral (Drawer) para Crear PO */
+        .po-drawer {
+            position: fixed;
+            right: -450px;
+            top: 0;
+            bottom: 0;
+            width: 450px;
+            background: #4a5568;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
+            transition: right 0.4s ease;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            border-left: 2px solid #2d3748;
+        }
+
+        .po-drawer.open {
+            right: 0;
+        }
+
+        .drawer-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .drawer-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .drawer-header {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #1a202c;
+        }
+
+        .drawer-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 400;
+            color: #e2e8f0;
+        }
+
+        .btn-close-drawer {
+            background: none;
+            border: none;
+            color: #e2e8f0;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 0;
+            transition: background-color 0.3s ease;
+            width: 36px;
+            height: 36px;
+        }
+
+        .btn-close-drawer:hover {
+            background-color: #1a202c;
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #3a4556;
+        }
+
+        .form-section {
+            background: #4a5568;
+            border-radius: 0;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #2d3748;
+        }
+
+        .form-section h5 {
+            color: #cbd5e0;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 400;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            color: #cbd5e0;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 400;
+            display: block;
+        }
+
+        .form-label .required {
+            color: #5e9ed6;
+        }
+
+        .po-drawer .form-control {
+            background-color: #2d3748;
+            border: 1px solid #5e9ed6;
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 0;
+            font-size: 14px;
+            height: 36px;
+            width: 100%;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .po-drawer .form-control:focus {
+            outline: none;
+            border-color: #63b3ed;
+            box-shadow: 0 0 0 1px #63b3ed;
+        }
+
+        .po-drawer .form-control::placeholder {
+            color: #718096;
+        }
+
+        .drawer-footer {
+            background: #2d3748;
+            padding: 20px;
+            border-top: 2px solid #1a202c;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .drawer-footer .btn {
+            padding: 8px 24px;
+            border-radius: 0;
+            font-size: 14px;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            border: none;
+            height: 36px;
+            cursor: pointer;
+        }
+
+        .drawer-footer .btn-secondary {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border: 1px solid #2d3748;
+        }
+
+        .drawer-footer .btn-secondary:hover {
+            background-color: #2d3748;
+        }
+
+        .drawer-footer .btn-primary {
+            background-color: #5e9ed6;
+            color: #1a202c;
+            border: 1px solid #5e9ed6;
+        }
+
+        .drawer-footer .btn-primary:hover {
+            background-color: #63b3ed;
+            border-color: #63b3ed;
+        }
+
+        .drawer-footer .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background-color: #1a202c;
+        }
+
+        /* Scroll personalizado */
+        .drawer-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .drawer-body::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+
+        .drawer-body::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 0;
+        }
+
+        .drawer-body::-webkit-scrollbar-thumb:hover {
+            background: #5e9ed6;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .po-drawer {
+                width: 100%;
+                right: -100%;
+            }
+        }
+
+        /* Animaciones */
+        @keyframes slideInFromRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .po-drawer.open {
+            animation: slideInFromRight 0.4s ease;
+        }
+
+        /* ========== FIN ESTILOS DRAWER ========== */
     </style>
 </head>
 <body>
@@ -958,7 +1186,7 @@
         <button class="embarque-btn" id="btnConsultar" onclick="consultarPOs()">
             Consultar POs
         </button>
-        <button class="embarque-btn" id="btnRegistrar" onclick="abrirModalCrearPO()">
+        <button class="embarque-btn" id="btnRegistrar" onclick="abrirDrawerPO()">
             Nueva PO
         </button>
         <button class="embarque-btn" id="btnExportar" onclick="exportarDatos()">
@@ -1007,7 +1235,131 @@
     </div>
 </div>
 
-<!-- ========================= MODALES BOOTSTRAP ORIGINALES ========================= -->
+<!-- ========================= PANEL LATERAL PARA CREAR PO - ESTILO DRAWER ========================= -->
+
+<!-- Panel Lateral de Creación de PO -->
+<div id="crearPODrawer" class="po-drawer">
+    <div class="drawer-header">
+        <h3><i class="fas fa-plus me-2"></i>Nueva Purchase Order</h3>
+        <button type="button" class="btn-close-drawer" onclick="cerrarDrawerPO()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <div class="drawer-body">
+        <form id="formCrearPO">
+            <!-- Información Principal -->
+            <div class="form-section">
+                <h5><i class="fas fa-info-circle me-2"></i>Información Principal</h5>
+                
+                <div class="form-group">
+                    <label for="codigoPO" class="form-label">
+                        <i class="fas fa-barcode me-1"></i>Código de PO <span class="required">*</span>
+                    </label>
+                    <input type="text" class="form-control" id="codigoPO" name="codigo_po" placeholder="Se genera automáticamente" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="nombrePO" class="form-label">
+                        <i class="fas fa-tag me-1"></i>Nombre de PO <span class="required">*</span>
+                    </label>
+                    <input type="text" class="form-control" id="nombrePO" name="nombre_po" placeholder="Nombre descriptivo de la PO" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="modeloPO" class="form-label">
+                        <i class="fas fa-cube me-1"></i>Modelo <span class="required">*</span>
+                    </label>
+                    <div class="bom-search-container" style="position: relative;">
+                        <input type="text" class="form-control" name="modelo" id="poModelo"
+                               placeholder="Seleccione un modelo" onkeyup="filtrarModelosPO()" onclick="mostrarDropdownPO()" required />
+                        <div class="bom-dropdown-list" id="poDropdownList" style="display: none;">
+                            <!-- Los modelos se cargarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información del Cliente y Proveedor -->
+            <div class="form-section">
+                <h5><i class="fas fa-users me-2"></i>Cliente y Proveedor</h5>
+                
+                <div class="form-group">
+                    <label for="clientePO" class="form-label">
+                        <i class="fas fa-user me-1"></i>Cliente <span class="required">*</span>
+                    </label>
+                    <input type="text" class="form-control" id="clientePO" name="cliente" placeholder="Nombre del cliente" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="proveedorPO" class="form-label">
+                        <i class="fas fa-truck me-1"></i>Proveedor
+                    </label>
+                    <input type="text" class="form-control" id="proveedorPO" name="proveedor" placeholder="Nombre del proveedor">
+                </div>
+            </div>
+            
+            <!-- Cantidades y Fechas -->
+            <div class="form-section">
+                <h5><i class="fas fa-calendar-alt me-2"></i>Cantidades y Fechas</h5>
+                
+                <div class="form-group">
+                    <label for="totalCantidadPO" class="form-label">
+                        <i class="fas fa-boxes me-1"></i>Total cantidad planeada
+                    </label>
+                    <input type="number" class="form-control" id="totalCantidadPO" name="total_cantidad_entregada" min="0" value="0" placeholder="0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="fechaRegistroPO" class="form-label">
+                        <i class="fas fa-calendar me-1"></i>Fecha de registro <span class="required">*</span>
+                    </label>
+                    <input type="date" class="form-control" id="fechaRegistroPO" name="fecha_registro" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="fechaEntregaPO" class="form-label">
+                        <i class="fas fa-calendar-check me-1"></i>Fecha de entrega
+                    </label>
+                    <input type="date" class="form-control" id="fechaEntregaPO" name="fecha_entrega">
+                </div>
+                
+                <div class="form-group">
+                    <label for="cantidadEntregadaPO" class="form-label">
+                        <i class="fas fa-box me-1"></i>Cantidad entregada
+                    </label>
+                    <input type="number" class="form-control" id="cantidadEntregadaPO" name="cantidad_entregada" min="0" value="0" placeholder="0">
+                </div>
+            </div>
+            
+            <!-- Configuración de Entrega -->
+            <div class="form-section">
+                <h5><i class="fas fa-shipping-fast me-2"></i>Configuración de Entrega</h5>
+                
+                <div class="form-group">
+                    <label for="codigoEntregaPO" class="form-label">
+                        <i class="fas fa-qrcode me-1"></i>Código de entrega
+                    </label>
+                    <input type="text" class="form-control" id="codigoEntregaPO" name="codigo_entrega" placeholder="Se genera automáticamente">
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <div class="drawer-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarDrawerPO()">
+            <i class="fas fa-times me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" onclick="crearPO()">
+            <i class="fas fa-save me-1"></i>Crear PO
+        </button>
+    </div>
+</div>
+
+<!-- Overlay -->
+<div id="drawerOverlayPO" class="drawer-overlay" onclick="cerrarDrawerPO()"></div>
+
+<!-- ========================= MODALES BOOTSTRAP ORIGINALES (DEPRECATED) ========================= -->
 
 <!-- Modal para crear nueva PO - DISEÑO MODERNO -->
 <div class="modal fade" id="modalCrearPO" tabindex="-1">
@@ -1067,9 +1419,9 @@
                                 font-weight: 500;
                             ">Código de PO</label>
                             <input type="text" name="codigo_po" placeholder="Se genera automáticamente" readonly style="
-                                background-color: #1a1a1a;
-                                color: #888;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #bdc3c7;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1085,9 +1437,9 @@
                                 font-weight: 500;
                             ">Nombre de PO</label>
                             <input type="text" name="nombre_po" placeholder="Ingrese nombre de PO" required style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1105,9 +1457,9 @@
                             <div class="bom-search-container" style="position: relative;">
                                 <input type="text" class="bom-search-dropdown" name="modelo" id="poModelo"
                                        placeholder="Seleccione un modelo" onkeyup="filtrarModelosPO()" onclick="mostrarDropdownPO()" required style="
-                                    background-color: #2c3e50;
-                                    color: lightgray;
-                                    border: 1px solid #34495e;
+                                    background-color: #34495e;
+                                    color: #ecf0f1;
+                                    border: 1px solid #5a6c7d;
                                     border-radius: 4px;
                                     padding: 10px;
                                     font-size: 12px;
@@ -1128,9 +1480,9 @@
                                 font-weight: 500;
                             ">Cliente</label>
                             <input type="text" name="cliente" placeholder="Nombre del cliente" required style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1146,9 +1498,10 @@
                                 font-weight: 500;
                             ">Proveedor</label>
                             <input type="text" name="proveedor" placeholder="Nombre del proveedor" style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1164,9 +1517,9 @@
                                 font-weight: 500;
                             ">Total cantidad planeada</label>
                             <input type="number" name="total_cantidad_entregada" min="0" value="0" placeholder="0" style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1182,9 +1535,9 @@
                                 font-weight: 500;
                             ">Código de entrega</label>
                             <input type="text" name="codigo_entrega" placeholder="Se genera automáticamente" style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1200,9 +1553,9 @@
                                 font-weight: 500;
                             ">Fecha de registro</label>
                             <input type="date" name="fecha_registro" style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1218,9 +1571,9 @@
                                 font-weight: 500;
                             ">Fecha de entrega</label>
                             <input type="date" name="fecha_entrega" style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;
@@ -1236,9 +1589,9 @@
                                 font-weight: 500;
                             ">Cantidad entregada</label>
                             <input type="number" name="cantidad_entregada" min="0" value="0" placeholder="0" style="
-                                background-color: #2c3e50;
-                                color: lightgray;
-                                border: 1px solid #34495e;
+                                background-color: #34495e;
+                                color: #ecf0f1;
+                                border: 1px solid #5a6c7d;
                                 border-radius: 4px;
                                 padding: 10px;
                                 font-size: 12px;

@@ -528,17 +528,24 @@ def listar_pos():
         fecha_desde = request.args.get('fecha_desde')
         fecha_hasta = request.args.get('fecha_hasta')
         
-        # Construir consulta base
+        # Construir consulta base - consultando tabla embarques
         query = """
             SELECT 
                 codigo_po,
+                nombre_po,
+                fecha_registro,
                 modelo,
-                cantidad_planeada,
-                fecha_operacion,
+                cliente,
+                proveedor,
+                total_cantidad_entregada,
+                cantidad_entregada,
                 estado,
-                created_at
-            FROM work_orders 
-            WHERE codigo_po IS NOT NULL AND codigo_po != ''
+                codigo_entrega,
+                fecha_entrega,
+                usuario_creacion,
+                modificado
+            FROM embarques 
+            WHERE 1=1
         """
         
         params = []
@@ -549,28 +556,35 @@ def listar_pos():
             params.append(estado)
             
         if fecha_desde:
-            query += " AND fecha_operacion >= %s"
+            query += " AND fecha_registro >= %s"
             params.append(fecha_desde)
             
         if fecha_hasta:
-            query += " AND fecha_operacion <= %s"
+            query += " AND fecha_registro <= %s"
             params.append(fecha_hasta)
             
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY modificado DESC, fecha_registro DESC"
         
         # Ejecutar consulta
-        result = execute_query(query, params)
+        result = execute_query(query, params, fetch='all')
         
-        if result['success']:
+        if result is not None:
             pos = []
-            for row in result['data']:
+            for row in result:
                 po = {
-                    'codigo_po': row[0],
-                    'modelo': row[1],
-                    'cantidad_planeada': row[2],
-                    'fecha_operacion': row[3].strftime('%Y-%m-%d') if row[3] else None,
-                    'estado': row[4],
-                    'created_at': row[5].strftime('%Y-%m-%d %H:%M:%S') if row[5] else None
+                    'codigo_po': row['codigo_po'],
+                    'nombre_po': row['nombre_po'],
+                    'fecha_registro': row['fecha_registro'].strftime('%Y-%m-%d') if row['fecha_registro'] else None,
+                    'modelo': row['modelo'],
+                    'cliente': row['cliente'],
+                    'proveedor': row['proveedor'],
+                    'total_cantidad_entregada': row['total_cantidad_entregada'],
+                    'cantidad_entregada': row['cantidad_entregada'],
+                    'estado': row['estado'],
+                    'codigo_entrega': row['codigo_entrega'],
+                    'fecha_entrega': row['fecha_entrega'].strftime('%Y-%m-%d') if row['fecha_entrega'] else None,
+                    'usuario_creacion': row['usuario_creacion'],
+                    'modificado': row['modificado'].strftime('%Y-%m-%d %H:%M:%S') if row['modificado'] else None
                 }
                 pos.append(po)
             
@@ -581,15 +595,99 @@ def listar_pos():
                 "total": len(pos)
             })
         else:
-            print(f"❌ Error en consulta de POs: {result['error']}")
-            return jsonify({"success": False, "error": result['error']}), 500
+            print(f"❌ Error en consulta de POs: No se obtuvieron resultados")
+            return jsonify({"success": False, "error": "No se pudieron obtener las POs"}), 500
         
     except Exception as e:
         print(f"❌ Error listando POs: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@api_po_wo.route('/po/crear', methods=['POST'])
+def crear_po():
+    """Crear nueva Purchase Order"""
+    try:
+        data = request.get_json()
+        
+        # Validaciones básicas
+        if not data.get('nombre_po'):
+            return jsonify({"success": False, "error": "El nombre de PO es obligatorio"}), 400
+            
+        if not data.get('fecha_registro'):
+            return jsonify({"success": False, "error": "La fecha de registro es obligatoria"}), 400
+            
+        if not data.get('modelo'):
+            return jsonify({"success": False, "error": "El modelo es obligatorio"}), 400
+            
+        if not data.get('cliente'):
+            return jsonify({"success": False, "error": "El cliente es obligatorio"}), 400
+        
+        # Generar código PO automático
+        fecha_actual = datetime.now()
+        fecha_str = fecha_actual.strftime('%y%m%d')
+        
+        # Buscar el último número de secuencia para hoy
+        query_ultimo = "SELECT codigo_po FROM embarques WHERE codigo_po LIKE %s ORDER BY codigo_po DESC LIMIT 1"
+        resultado = execute_query(query_ultimo, (f'PO-{fecha_str}-%',), fetch='one')
+        
+        if resultado and resultado.get('codigo_po'):
+            ultimo_codigo = resultado['codigo_po']
+            ultimo_numero = int(ultimo_codigo.split('-')[-1])
+            nuevo_numero = ultimo_numero + 1
+        else:
+            nuevo_numero = 1
+        
+        codigo_po = f"PO-{fecha_str}-{nuevo_numero:04d}"
+        
+        # Preparar datos para inserción
+        insert_data = {
+            'codigo_po': codigo_po,
+            'nombre_po': data['nombre_po'],
+            'fecha_registro': data['fecha_registro'],
+            'modelo': data['modelo'],
+            'cliente': data['cliente'],
+            'proveedor': data.get('proveedor', ''),
+            'total_cantidad_entregada': data.get('total_cantidad_entregada', 0),
+            'fecha_entrega': data.get('fecha_entrega') if data.get('fecha_entrega') else None,
+            'cantidad_entregada': data.get('cantidad_entregada', 0),
+            'codigo_entrega': data.get('codigo_entrega', ''),
+            'estado': data.get('estado', 'PLAN'),
+            'usuario_creacion': 'Sistema'
+        }
+        
+        # Insertar en la base de datos
+        query_insert = """
+        INSERT INTO embarques (
+            codigo_po, nombre_po, fecha_registro, modelo, cliente, proveedor,
+            total_cantidad_entregada, fecha_entrega, cantidad_entregada, 
+            codigo_entrega, estado, usuario_creacion
+        ) VALUES (
+            %(codigo_po)s, %(nombre_po)s, %(fecha_registro)s, %(modelo)s, 
+            %(cliente)s, %(proveedor)s, %(total_cantidad_entregada)s, 
+            %(fecha_entrega)s, %(cantidad_entregada)s, %(codigo_entrega)s, 
+            %(estado)s, %(usuario_creacion)s
+        )
+        """
+        
+        affected_rows = execute_query(query_insert, insert_data)
+        
+        if affected_rows and affected_rows > 0:
+            print(f"✅ PO creada exitosamente: {codigo_po}")
+            return jsonify({
+                "success": True, 
+                "message": f"PO {codigo_po} creada exitosamente",
+                "data": {"codigo_po": codigo_po, **insert_data}
+            })
+        else:
+            print(f"❌ Error creando PO: No se insertaron filas")
+            return jsonify({"success": False, "error": "No se pudo insertar la PO"}), 500
+        
+    except Exception as e:
+        print(f"❌ Error creando PO: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 def registrar_rutas_po_wo(app):
     """Registrar el blueprint de PO/WO en la aplicación Flask"""
     app.register_blueprint(api_po_wo)
-    print("✅ Rutas PO/WO registradas")
+    print(" Rutas PO/WO registradas")

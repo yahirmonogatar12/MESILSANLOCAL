@@ -687,44 +687,26 @@ async function filtrarModelosPO() {
 // FUNCIONES DE MODAL
 // ===========================================
 
-function inicializarModalCrearPO() {
-    const modal = document.getElementById('modalCrearPO');
-    if (modal) {
-        modal.addEventListener('show.bs.modal', function () {
-            const hoy = new Date().toISOString().split('T')[0];
-            
-            // Establecer fecha de registro por defecto
-            const fechaRegistroInput = document.querySelector('input[name="fecha_registro"]');
-            if (fechaRegistroInput) {
-                fechaRegistroInput.value = hoy;
-            }
-            
-            // Establecer fecha de entrega por defecto (mismo día)
-            const fechaEntregaInput = document.querySelector('input[name="fecha_entrega"]');
-            if (fechaEntregaInput) {
-                fechaEntregaInput.value = hoy;
-            }
-            
-            // Limpiar campos
-            const form = document.getElementById('formCrearPO');
-            if (form) {
-                form.reset();
-                // Volver a setear las fechas después del reset
-                if (fechaRegistroInput) fechaRegistroInput.value = hoy;
-                if (fechaEntregaInput) fechaEntregaInput.value = hoy;
-            }
-            
-            // Cargar modelos de Control de BOM
-            cargarModelosBOM();
+function inicializarDrawerCrearPO() {
+    const drawer = document.getElementById('crearPODrawer');
+    const overlay = document.getElementById('drawerOverlayPO');
+    
+    if (drawer && overlay) {
+        // Prevenir cierre del drawer al hacer click en el contenido
+        drawer.addEventListener('click', function(e) {
+            e.stopPropagation();
         });
         
-        // Prevenir cierre del modal al hacer click en el contenido
-        const yahirModal = modal.querySelector('.yahir-modal');
-        if (yahirModal) {
-            yahirModal.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-        }
+        // Cerrar drawer con tecla ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && drawer.classList.contains('open')) {
+                cerrarDrawerPO();
+            }
+        });
+        
+        console.log('✅ Drawer crear PO inicializado correctamente');
+    } else {
+        console.log('⚠️ Elementos del drawer PO no encontrados en DOM');
     }
 }
 
@@ -742,13 +724,46 @@ function inicializarModalCrearWO() {
     }
 }
 
-// Abrir modal para crear PO
-function abrirModalCrearPO() {
-    const modal = new bootstrap.Modal(document.getElementById('modalCrearPO'), {
-        backdrop: 'static',  // Evita cerrar al hacer click fuera
-        keyboard: true      // Permite cerrar con ESC
-    });
-    modal.show();
+// Abrir drawer para crear PO (reemplaza abrirModalCrearPO)
+function abrirDrawerPO() {
+    const drawer = document.getElementById('crearPODrawer');
+    const overlay = document.getElementById('drawerOverlayPO');
+    
+    if (drawer && overlay) {
+        // Configurar fecha por defecto
+        const fechaHoy = new Date().toISOString().split('T')[0];
+        const fechaRegistroInput = document.getElementById('fechaRegistroPO');
+        if (fechaRegistroInput && !fechaRegistroInput.value) {
+            fechaRegistroInput.value = fechaHoy;
+        }
+        
+        // Mostrar drawer
+        drawer.classList.add('open');
+        overlay.classList.add('active');
+        
+        console.log('✅ Drawer PO abierto correctamente');
+    } else {
+        console.error('❌ No se encontraron elementos del drawer PO');
+    }
+}
+
+// Cerrar drawer de PO
+function cerrarDrawerPO() {
+    const drawer = document.getElementById('crearPODrawer');
+    const overlay = document.getElementById('drawerOverlayPO');
+    
+    if (drawer && overlay) {
+        drawer.classList.remove('open');
+        overlay.classList.remove('active');
+        
+        // Limpiar formulario
+        const form = document.getElementById('formCrearPO');
+        if (form) {
+            form.reset();
+        }
+        
+        console.log('✅ Drawer PO cerrado');
+    }
 }
 
 // Abrir modal para crear WO desde PO
@@ -805,7 +820,7 @@ async function crearPO() {
     try {
         const form = document.getElementById('formCrearPO');
         const formData = new FormData(form);
-        const submitBtn = document.querySelector('[onclick="crearPO()"]');
+        const submitBtn = document.querySelector('.drawer-footer .btn-primary') || document.querySelector('[onclick="crearPO()"]');
         
         const data = {
             nombre_po: formData.get('nombre_po'),
@@ -858,14 +873,30 @@ async function crearPO() {
             body: JSON.stringify(data)
         });
         
+        // Verificar si la respuesta es válida
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Verificar el tipo de contenido
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await response.text();
+            console.error('❌ Respuesta no es JSON:', textResponse);
+            throw new Error('El servidor no devolvió JSON válido');
+        }
+        
         const result = await response.json();
         
         if (result.success) {
             ocultarModalLoading();
             mostrarToastModerno(`PO ${result.data.codigo_po} creada exitosamente`, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('modalCrearPO')).hide();
-            form.reset();
-            await consultarPOs(); // Recargar tabla
+            
+            // Cerrar drawer en lugar de modal
+            cerrarDrawerPO();
+            
+            // Recargar tabla
+            await consultarPOs();
         } else {
             throw new Error(result.error || 'Error creando PO');
         }
@@ -875,10 +906,10 @@ async function crearPO() {
         mostrarToastModerno('Error creando PO: ' + error.message, 'error');
     } finally {
         // Restaurar botón
-        const submitBtn = document.querySelector('[onclick="crearPO()"]');
+        const submitBtn = document.querySelector('.drawer-footer .btn-primary') || document.querySelector('[onclick="crearPO()"]');
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar PO';
+            submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Crear PO';
         }
     }
 }
@@ -1028,8 +1059,11 @@ function initControlEmbarque() {
     // Configurar fechas por defecto
     configurarFechasPorDefecto();
     
-    // Inicializar modal de crear PO
-    inicializarModalCrearPO();
+    // Cargar modelos BOM
+    cargarModelosBOM();
+    
+    // Inicializar drawer de crear PO
+    inicializarDrawerCrearPO();
     
     // Inicializar modal de crear WO
     inicializarModalCrearWO();
@@ -1282,50 +1316,6 @@ function llenarDropdownModelosPO() {
     `;
 }
 
-// Filtrar modelos en dropdown PO
-function filtrarModelosPO() {
-    const searchInput = document.getElementById('poModelo');
-    const dropdownList = document.getElementById('poDropdownList');
-    
-    if (!searchInput || !dropdownList) {
-        console.error('Elements for PO filtering not found');
-        return;
-    }
-    
-    const searchTerm = searchInput.value.toLowerCase();
-    const items = dropdownList.children;
-    
-    Array.from(items).forEach(item => {
-        const text = item.textContent.toLowerCase();
-        if (text.includes(searchTerm)) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
-    });
-    
-    // Mostrar dropdown si está oculto
-    if (dropdownList.style.display === 'none') {
-        dropdownList.style.display = 'block';
-    }
-}
-
-// Seleccionar modelo en formulario PO
-function seleccionarModeloPO(modelo) {
-    const searchInput = document.getElementById('poModelo');
-    const dropdownList = document.getElementById('poDropdownList');
-    
-    if (searchInput) {
-        searchInput.value = modelo;
-    }
-    
-    if (dropdownList) {
-        dropdownList.style.display = 'none';
-    }
-    
-    console.log('Modelo seleccionado para PO:', modelo);
-}
-
 // Event listeners para cerrar dropdowns cuando se hace clic fuera
 document.addEventListener('click', function(event) {
     const embarqueSearchContainer = document.querySelector('.embarque-search-container');
@@ -1360,7 +1350,8 @@ window.addEventListener('pagehide', function() {
 window.toggleSelectAll = toggleSelectAll;
 window.consultarPOs = consultarPOs;
 window.exportarDatos = exportarDatos;
-window.abrirModalCrearPO = abrirModalCrearPO;
+window.abrirDrawerPO = abrirDrawerPO;
+window.cerrarDrawerPO = cerrarDrawerPO;
 window.filtrarModelosPO = filtrarModelosPO;
 window.mostrarDropdownPO = mostrarDropdownPO;
 window.seleccionarModeloPO = seleccionarModeloPO;

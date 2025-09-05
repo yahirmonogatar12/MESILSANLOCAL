@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visor MySQL — {{ table }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/insight_dashboard.css') }}">
+</head>
+<body class="ix-body">
+  <header class="ix-topbar">
+    <div class="ix-brand">Visor MySQL</div>
+    <div class="ix-spacer"></div>
+    <div class="ix-status" id="ix-status">Listo</div>
+  </header>
+
+  <main class="ix-main">
+    <section class="ix-toolbar" id="ix-toolbar">
+      <div class="ix-title">Tabla: <span id="ix-table-name">{{ table }}</span></div>
+      <input id="ix-search" class="ix-input" placeholder="Buscar..." />
+      <select id="ix-interval" class="ix-select" title="Auto-actualización">
+        <option value="0">Sin auto-refresco</option>
+        <option value="5000">Cada 5 s</option>
+        <option value="10000" selected>Cada 10 s</option>
+        <option value="30000">Cada 30 s</option>
+      </select>
+      <button id="ix-refresh" class="ix-btn ix-btn-primary">Refrescar</button>
+      <div class="ix-right">
+        <label class="ix-label">Límite</label>
+        <select id="ix-limit" class="ix-select">
+          <option>50</option><option selected>200</option><option>500</option><option>1000</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="ix-tablecard">
+      <div class="ix-tablewrap" id="ix-table-wrap">
+        <table class="ix-table" id="ix-table">
+          <thead id="ix-thead"><tr><th>Cargando…</th></tr></thead>
+          <tbody id="ix-tbody"><tr><td>Esperando datos…</td></tr></tbody>
+        </table>
+      </div>
+      <footer class="ix-footbar">
+        <div id="ix-counter">0 filas</div>
+        <div class="ix-pager">
+          <button class="ix-btn" id="ix-prev">« Anterior</button>
+          <span id="ix-page">1</span>
+          <button class="ix-btn" id="ix-next">Siguiente »</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script>
+    window.IX_BOOT = { table: "{{ table }}" };
+  </script>
+</body>
+</html>

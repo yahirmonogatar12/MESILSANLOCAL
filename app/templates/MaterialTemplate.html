@@ -2306,6 +2306,13 @@ function hideAllMaterialContainers() {
                 }
             };
             
+            // Función para abrir el Visor MySQL en nueva ventana
+            window.abrirVisorMySQL = function() {
+                const url = '/visor-mysql?table=raw';
+                const windowFeatures = 'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no';
+                window.open(url, 'VisorMySQL', windowFeatures);
+            };
+            
             // Función para mostrar el contenido por defecto de material
             window.mostrarInfoMaterial = function() {
                 hideAllMaterialContainers();
