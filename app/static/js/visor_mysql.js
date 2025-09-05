@@ -272,11 +272,20 @@
       return;
     }
     
+    if (!RX.columns || RX.columns.length === 0) {
+      console.error('Columnas no cargadas aún');
+      return;
+    }
+    
     // Crear objeto vacío para nuevo registro
-    // Usuario es columna generada, no se puede llenar manualmente
+    // Usuario debe ser el usuario logueado actual
     const emptyRow = {};
     RX.columns.forEach(col => {
-      emptyRow[col] = '';
+      if (col === 'Usuario') {
+        emptyRow[col] = window.usuarioLogueado || 'Usuario no identificado';
+      } else {
+        emptyRow[col] = '';
+      }
     });
     
     window.rawEditModal.abrir(emptyRow, 'NUEVO');
@@ -317,6 +326,20 @@
   // Initialize
   (async function init() {
     try {
+      // Esperar a que el modal esté inicializado
+      let modalReady = false;
+      let attempts = 0;
+      const maxAttempts = 50; // 5 segundos máximo
+      
+      while (!modalReady && attempts < maxAttempts) {
+        if (window.rawEditModal) {
+          modalReady = true;
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+      }
+      
       await refreshAll();
       
       setStatus("Visor MySQL listo - Ctrl+R para actualizar, Ctrl+F para buscar");
@@ -437,85 +460,87 @@ class RawEditModal {
     <style>
     /* Modal de Edición RAW - Estilo del Sistema */
     .raw-edit-modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.7);
-      width: 90%;
-      max-width: 800px;
-      max-height: 80vh;
-      background: #4a5568;
-      border: 2px solid #2d3748;
-      z-index: 10000;
-      display: none;
-      flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-      opacity: 0;
-      transition: all 0.3s ease;
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) scale(0.7) !important;
+      width: 90% !important;
+      max-width: 800px !important;
+      max-height: 80vh !important;
+      background: #4a5568 !important;
+      border: 2px solid #2d3748 !important;
+      z-index: 9999999 !important;
+      display: none !important;
+      flex-direction: column !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
+      opacity: 0 !important;
+      transition: all 0.3s ease !important;
+      border-radius: 8px !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
     }
 
     .raw-edit-modal.open {
-      display: flex;
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
+      display: flex !important;
+      opacity: 1 !important;
+      transform: translate(-50%, -50%) scale(1) !important;
     }
 
     .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 9999;
-      opacity: 0;
-      transition: opacity 0.3s ease;
+      display: none !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      background: rgba(0, 0, 0, 0.8) !important;
+      z-index: 9999998 !important;
+      opacity: 0 !important;
+      transition: opacity 0.3s ease !important;
     }
 
     .modal-overlay.active {
-      display: block;
-      opacity: 1;
+      display: block !important;
+      opacity: 1 !important;
     }
 
     .modal-header {
-      background-color: #2d3748;
-      color: #e2e8f0;
-      padding: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid #1a202c;
+      background-color: #2d3748 !important;
+      color: #e2e8f0 !important;
+      padding: 20px !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      border-bottom: 2px solid #1a202c !important;
     }
 
     .modal-header h3 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 400;
-      color: #e2e8f0;
+      margin: 0 !important;
+      font-size: 16px !important;
+      font-weight: 400 !important;
+      color: #e2e8f0 !important;
     }
 
     .btn-close-modal {
-      background: none;
-      border: none;
-      color: #e2e8f0;
-      font-size: 18px;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 0;
-      transition: background-color 0.3s ease;
-      width: 36px;
-      height: 36px;
+      background: none !important;
+      border: none !important;
+      color: #e2e8f0 !important;
+      font-size: 18px !important;
+      cursor: pointer !important;
+      padding: 8px !important;
+      border-radius: 0 !important;
+      transition: background-color 0.3s ease !important;
+      width: 36px !important;
+      height: 36px !important;
     }
 
     .btn-close-modal:hover {
-      background-color: #1a202c;
+      background-color: #1a202c !important;
     }
 
     .modal-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
+      flex: 1 !important;
+      overflow-y: auto !important;
+      padding: 20px !important;
       background: #3a4556;
     }
 
@@ -666,6 +691,18 @@ class RawEditModal {
       background: #5e9ed6;
     }
 
+    /* Bloquear interacción con el body cuando modal está activo */
+    body.modal-open {
+      overflow: hidden !important;
+      position: fixed !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    
+    body.modal-open > *:not(#rawEditModal):not(#rawModalOverlay) {
+      pointer-events: none !important;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .raw-edit-modal {
@@ -722,6 +759,40 @@ class RawEditModal {
     document.getElementById('rawEditModal').classList.add('open');
     document.getElementById('rawModalOverlay').classList.add('active');
     
+    // Agregar clase al body para bloquear interacciones
+    document.body.classList.add('modal-open');
+    
+    // Forzar z-index y visibilidad para evitar sobreescritura
+    const modal = document.getElementById('rawEditModal');
+    const overlay = document.getElementById('rawModalOverlay');
+    
+    if (modal) {
+      modal.style.zIndex = '9999999';
+      modal.style.position = 'fixed';
+      modal.style.display = 'flex';
+      modal.style.opacity = '1';
+      modal.style.transform = 'translate(-50%, -50%) scale(1)';
+    }
+    
+    if (overlay) {
+      overlay.style.zIndex = '9999998';
+      overlay.style.position = 'fixed';
+      overlay.style.display = 'block';
+      overlay.style.opacity = '1';
+    }
+    
+    // Forzar que el modal esté por encima de cualquier otro elemento
+    setTimeout(() => {
+      if (modal) {
+        modal.style.zIndex = '9999999';
+        modal.style.display = 'flex';
+      }
+      if (overlay) {
+        overlay.style.zIndex = '9999998';
+        overlay.style.display = 'block';
+      }
+    }, 50);
+    
     console.log('Modal RAW abierto con datos:', data, 'Modo:', modo);
   }
 
@@ -730,8 +801,8 @@ class RawEditModal {
     container.innerHTML = '';
     
     // Definir campos de solo lectura (no editables)
-    // Usuario es columna generada - siempre readonly
-    const readonlyFields = ['Usuario', 'crea', 'upt'];
+    // Usuario es readonly solo en modo EDITAR, en modo NUEVO debe ser editable pero pre-llenado
+    const readonlyFields = this.modo === 'NUEVO' ? ['crea', 'upt'] : ['Usuario', 'crea', 'upt'];
     
     // Definir campos numéricos
     const numericFields = ['hora_dia', 'c_t', 'uph', 'price', 'st', 'neck_st', 'l_b', 'input', 'output'];
@@ -770,6 +841,10 @@ class RawEditModal {
   cerrar() {
     document.getElementById('rawEditModal').classList.remove('open');
     document.getElementById('rawModalOverlay').classList.remove('active');
+    
+    // Remover clase del body para restaurar interacciones
+    document.body.classList.remove('modal-open');
+    
     this.currentData = null;
   }
 
@@ -781,9 +856,9 @@ class RawEditModal {
       const formData = new FormData(document.getElementById('rawEditForm'));
       const newData = {};
       
-      // Definir campos de solo lectura que no se deben enviar
-      // Usuario es columna generada - nunca se puede enviar
-      const readonlyFields = ['Usuario', 'crea', 'upt'];
+      // Definir campos de solo lectura que no se deben enviar en actualizaciones
+      // Para nuevos registros, Usuario debe incluirse con el usuario logueado
+      const readonlyFields = this.modo === 'NUEVO' ? ['crea', 'upt'] : ['Usuario', 'crea', 'upt'];
       
       // Definir campos numéricos para limpieza
       const numericFields = ['hora_dia', 'c_t', 'uph', 'price', 'st', 'neck_st', 'l_b', 'input', 'output'];
@@ -805,6 +880,13 @@ class RawEditModal {
       if (this.modo === 'NUEVO') {
         // Crear nuevo registro
         endpoint = '/api/mysql/create';
+        
+        // Asegurar que el usuario logueado se incluya en los datos
+        if (!newData.Usuario || newData.Usuario === '' || newData.Usuario === 'Usuario no identificado') {
+          newData.Usuario = window.usuarioLogueado || 'Usuario no identificado';
+          console.log('⚠️ Usuario asignado/corregido:', newData.Usuario);
+        }
+        
         requestBody = { data: newData };
         
         console.log('Creando nuevo registro:', newData);
@@ -1004,5 +1086,17 @@ class RawEditModal {
 
 // Inicializar modal cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
-  window.rawEditModal = new RawEditModal();
+  if (!window.rawEditModal) {
+    window.rawEditModal = new RawEditModal();
+  }
 });
+
+// También intentar inicializar inmediatamente por si el DOM ya está listo
+if (document.readyState === 'loading') {
+  // El DOM aún se está cargando
+} else {
+  // El DOM ya está cargado
+  if (!window.rawEditModal) {
+    window.rawEditModal = new RawEditModal();
+  }
+}

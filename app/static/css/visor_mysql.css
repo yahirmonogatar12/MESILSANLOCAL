@@ -7,7 +7,7 @@
   --ix-accent: #3498db;
   --ix-accent-2: #20688C; 
   --ix-border: #5F6375;
-  --ix-positive: #790b6b;
+  --ix-positive: #512696;
   --ix-warning: #f39c12;
   --ix-danger: #e74c3c;
   --ix-dark: #2c3e50;
@@ -166,12 +166,12 @@ body.ix-body{
 
 .ix-btn-success{
   background: var(--ix-positive);
-  border-color: #1e8449;
+  border-color: #8e44ad;
   color: white;
 }
 
 .ix-btn-success:hover{
-  background: #1e8449;
+  background: #8e44ad;
   color: white;
 }
 
@@ -184,7 +184,6 @@ body.ix-body{
   display: flex; 
   flex-direction: column;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  flex: 1;
 }
 
 .ix-tablewrap{
@@ -222,6 +221,30 @@ body.ix-body{
   min-width: 50px;
   max-width: 200px;
   cursor: default;
+}
+
+/* Columna PART_NO más ancha */
+.ix-table thead th:first-child,
+.ix-table tbody td:first-child {
+  min-width: 100px;
+  max-width: 100px;
+  width: 75px;
+}
+
+/* Columna modelo más ancha */
+.ix-table thead th:nth-child(2),
+.ix-table tbody td:nth-child(2) {
+  min-width: 100px;
+  max-width: 100px;
+  width: 75px;
+}
+
+/* Columna board más ancha */
+.ix-table thead th:nth-child(18),
+.ix-table tbody td:nth-child(18) {
+  min-width: 100px;
+  max-width: 100px;
+  width: 80px;
 }
 
 /* Tooltip para encabezados largos */

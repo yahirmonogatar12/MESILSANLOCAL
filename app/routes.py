@@ -8707,6 +8707,22 @@ def visor_mysql():
         table = "raw"
     return render_template("visor_mysql.html", table=table)
 
+@app.route('/control-modelos-visor-ajax')
+@login_requerido
+def control_modelos_visor_ajax():
+    """Ruta AJAX para cargar dinámicamente el visor MySQL para Control de modelos"""
+    try:
+        table = request.args.get("table", "raw")
+        # Validar nombre de tabla para seguridad
+        if not re.match(r"^[A-Za-z0-9_]+$", table):
+            table = "raw"
+        return render_template('INFORMACION BASICA/control_modelos_visor_ajax.html', 
+                             table=table, 
+                             usuario=session.get('username', 'Usuario no identificado'))
+    except Exception as e:
+        print(f"Error al cargar template de visor MySQL: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/api/mysql/columns')
 def api_mysql_columns():
     """API para obtener columnas de una tabla"""
@@ -8989,9 +9005,13 @@ def api_mysql_create():
             
             return value
         
-        # Preparar datos para inserción (excluir campos de solo lectura y generados)
-        readonly_fields = ['Usuario', 'crea', 'upt', 'raw']  # Usuario es columna generada, no se puede insertar
+        # Preparar datos para inserción (excluir campos de solo lectura)
+        readonly_fields = ['crea', 'upt', 'raw']  # Usuario ya no es columna generada
         insert_data = {}
+        
+        # Agregar usuario logueado si no está en los datos
+        if 'Usuario' not in new_data:
+            new_data['Usuario'] = session.get('usuario', 'Sistema')
         
         for key, value in new_data.items():
             if key not in readonly_fields:
@@ -9001,6 +9021,10 @@ def api_mysql_create():
         
         if not insert_data:
             return jsonify({"error": "No hay datos válidos para insertar"}), 400
+        
+        # Debug: mostrar datos que se van a insertar
+        print(f"📤 Usuario en sesión: {session.get('usuario', 'NO_ENCONTRADO')}")
+        print(f"📤 Datos a insertar: {insert_data}")
         
         # Construir consulta INSERT
         columns = list(insert_data.keys())
@@ -9013,6 +9037,9 @@ def api_mysql_create():
         """
         
         values = list(insert_data.values())
+        
+        print(f"📤 SQL final: {insert_sql}")
+        print(f"📤 Valores finales: {values}")
         
         # Ejecutar la inserción
         result = execute_query(insert_sql, values, fetch='none')
