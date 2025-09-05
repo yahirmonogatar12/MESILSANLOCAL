@@ -1,9 +1,9 @@
-/**
- * SISTEMA DE VALIDACIÓN DE PERMISOS DE DROPDOWNS
+﻿/**
+ * SISTEMA DE VALIDACIÃ“N DE PERMISOS DE DROPDOWNS
  * =============================================
  * 
  * Este sistema valida los permisos en el frontend y oculta/deshabilita
- * elementos según los permisos del usuario actual.
+ * elementos segÃºn los permisos del usuario actual.
  */
 
 (function() {
@@ -15,15 +15,15 @@
     let rolUsuario = null;
     let isInitialized = false;
     
-    // Configuración
+    // ConfiguraciÃ³n
     const CONFIG = {
-        DEBUG: true,  // Habilitar debug para ver qué está pasando
+        DEBUG: true,  // Habilitar debug para ver quÃ© estÃ¡ pasando
         CACHE_DURATION: 300000, // 5 minutos
         AUTO_REFRESH: true
     };
     
     /**
-     * Sistema principal de validación de permisos
+     * Sistema principal de validaciÃ³n de permisos
      */
     window.PermisosDropdowns = {
         
@@ -41,13 +41,13 @@
                 // Aplicar permisos a elementos existentes
                 this.aplicarPermisosExistentes();
                 
-                // Configurar observador para elementos dinámicos
+                // Configurar observador para elementos dinÃ¡micos
                 this.configurarObservadorMutaciones();
                 
                 isInitialized = true;
                 
             } catch (error) {
-                console.error('❌ Error inicializando sistema de permisos:', error);
+                console.error('âŒ Error inicializando sistema de permisos:', error);
             }
         },
         
@@ -59,7 +59,7 @@
                 // Intento 1: endpoint bajo /admin
                 let response = await fetch('/admin/obtener_permisos_usuario_actual', {
                     method: 'GET',
-                    credentials: 'include',  // Incluir cookies de sesión
+                    credentials: 'include',  // Incluir cookies de sesiÃ³n
                     headers: { 'Content-Type': 'application/json' }
                 });
                 if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
@@ -110,16 +110,16 @@
         },
         
         /**
-         * Verificar si el usuario tiene permiso para un dropdown específico
+         * Verificar si el usuario tiene permiso para un dropdown especÃ­fico
          */
         tienePermiso(pagina, seccion, boton) {
             if (!pagina || !seccion || !boton) {
-                if (CONFIG.DEBUG) console.warn(' Parámetros incompletos para verificar permiso');
+                if (CONFIG.DEBUG) console.warn(' ParÃ¡metros incompletos para verificar permiso');
                 return false;
             }
             
-            // SUPERADMIN y ADMIN tienen todos los permisos automáticamente
-            if (rolUsuario === 'superadmin' || rolUsuario === 'admin') {
+            // SOLO SUPERADMIN tienen todos los permisos automÃ¡ticamente
+            if (rolUsuario === 'superadmin') {
                 if (CONFIG.DEBUG) {
                 }
                 return true;
@@ -141,22 +141,22 @@
         },
         
         /**
-         * Aplicar permisos a elementos existentes en la página
+         * Aplicar permisos a elementos existentes en la pÃ¡gina
          */
         aplicarPermisosExistentes() {
-            console.log(`🛡️ Aplicando permisos. Usuario: ${usuarioActual}, Rol: ${rolUsuario}`);
-            console.log(`📋 Permisos disponibles:`, permisosUsuario);
+            console.log(`ðŸ›¡ï¸ Aplicando permisos. Usuario: ${usuarioActual}, Rol: ${rolUsuario}`);
+            console.log(`ðŸ“‹ Permisos disponibles:`, permisosUsuario);
             
             // Permitir a superadmin/admin ver todo
-            if (rolUsuario === 'superadmin' || rolUsuario === 'admin') {
-                console.log(`👑 Usuario es ${rolUsuario}, permitir todo`);
+            if (rolUsuario === 'superadmin') {
+                console.log(`ðŸ‘‘ Usuario es ${rolUsuario}, permitir todo`);
                 return;
             }
             
             // Buscar todos los elementos con atributos de permisos
             const elementosConPermisos = document.querySelectorAll('[data-permiso-pagina]');
             
-            console.log(`🎯 Encontrados ${elementosConPermisos.length} elementos con permisos`);
+            console.log(`ðŸŽ¯ Encontrados ${elementosConPermisos.length} elementos con permisos`);
             
             elementosConPermisos.forEach((elemento, index) => {
                 const pagina = elemento.dataset.permisoPagina;
@@ -166,17 +166,17 @@
                 this.validarElemento(elemento);
             });
             
-            // La validación de elementos de lista ahora se maneja completamente
-            // por el bucle genérico de 'elementosConPermisos'.
+            // La validaciÃ³n de elementos de lista ahora se maneja completamente
+            // por el bucle genÃ©rico de 'elementosConPermisos'.
             // this.validarElementosListas();
             
             // Log final
             const elementosOcultos = document.querySelectorAll('[data-sin-permiso="true"]');
-            console.log(`🚫 Total elementos ocultados: ${elementosOcultos.length}`);
+            console.log(`ðŸš« Total elementos ocultados: ${elementosOcultos.length}`);
         },
         
         /**
-         * Validar un elemento específico
+         * Validar un elemento especÃ­fico
          */
         validarElemento(elemento) {
             const pagina = elemento.dataset.permisoPagina;
@@ -185,33 +185,33 @@
             
             if (!pagina || !seccion || !boton) {
                 if (CONFIG.DEBUG) {
-                    console.warn(`⚠️ Element missing permission attributes:`, elemento);
+                    console.warn(`âš ï¸ Element missing permission attributes:`, elemento);
                 }
                 return;
             }
             
             const tienePermiso = this.tienePermiso(pagina, seccion, boton);
             
-            console.log(`🔍 Validando: ${pagina} > ${seccion} > ${boton}`);
-            console.log(`   Resultado: ${tienePermiso ? '✅ PERMITIDO' : '❌ DENEGADO'}`);
+            console.log(`ðŸ” Validando: ${pagina} > ${seccion} > ${boton}`);
+            console.log(`   Resultado: ${tienePermiso ? 'âœ… PERMITIDO' : 'âŒ DENEGADO'}`);
             console.log(`   Elemento:`, elemento);
             
             if (!tienePermiso) {
-                console.log(`   🚫 OCULTANDO elemento: ${boton}`);
+                console.log(`   ðŸš« OCULTANDO elemento: ${boton}`);
                 this.ocultarElemento(elemento, pagina, seccion, boton);
             } else {
-                console.log(`   ✅ MOSTRANDO elemento: ${boton}`);
+                console.log(`   âœ… MOSTRANDO elemento: ${boton}`);
                 this.mostrarElemento(elemento);
             }
         },
         
         /**
-         * Validar elementos específicos de las listas
+         * Validar elementos especÃ­ficos de las listas
          */
         validarElementosListas() {
             // Validar sidebar links de LISTA_DE_MATERIALES - CONTROL DE MATERIAL (13 elementos)
             this.validarSidebarLinks('LISTA_DE_MATERIALES', [
-                { selector: 'li.sidebar-link:contains("Control de material de almacén")', seccion: 'Control de material', boton: 'Control de material de almacén' },
+                { selector: 'li.sidebar-link:contains("Control de material de almacÃ©n")', seccion: 'Control de material', boton: 'Control de material de almacÃ©n' },
                 { selector: 'li.sidebar-link:contains("Control de salida")', seccion: 'Control de material', boton: 'Control de salida' },
                 { selector: 'li.sidebar-link:contains("Control de material retorno")', seccion: 'Control de material', boton: 'Control de material retorno' },
                 { selector: 'li.sidebar-link:contains("Recibo y pago del material")', seccion: 'Control de material', boton: 'Recibo y pago del material' },
@@ -223,7 +223,7 @@
                 { selector: 'li.sidebar-link:contains("Registro de material real")', seccion: 'Control de material', boton: 'Registro de material real' },
                 { selector: 'li.sidebar-link:contains("Historial de inventario real")', seccion: 'Control de material', boton: 'Historial de inventario real' },
                 { selector: 'li.sidebar-link:contains("Inventario de rollos SMD")', seccion: 'Control de material', boton: 'Inventario de rollos SMD' },
-                { selector: 'li.sidebar-link:contains("Ajuste de número de parte")', seccion: 'Control de material', boton: 'Ajuste de número de parte' }
+                { selector: 'li.sidebar-link:contains("Ajuste de nÃºmero de parte")', seccion: 'Control de material', boton: 'Ajuste de nÃºmero de parte' }
             ]);
             
             // Validar sidebar links de LISTA_DE_MATERIALES - CONTROL DE MATERIAL MSL (3 elementos)
@@ -235,7 +235,7 @@
             
             // Validar sidebar links de LISTA_DE_MATERIALES - CONTROL DE REFACCIONES (3 elementos)
             this.validarSidebarLinks('LISTA_DE_MATERIALES', [
-                { selector: 'li.sidebar-link:contains("Estándares sobre refacciones")', seccion: 'Control de refacciones', boton: 'Estándares sobre refacciones' },
+                { selector: 'li.sidebar-link:contains("EstÃ¡ndares sobre refacciones")', seccion: 'Control de refacciones', boton: 'EstÃ¡ndares sobre refacciones' },
                 { selector: 'li.sidebar-link:contains("Control de recibo de refacciones")', seccion: 'Control de refacciones', boton: 'Control de recibo de refacciones' },
                 { selector: 'li.sidebar-link:contains("Control de salida de refacciones")', seccion: 'Control de refacciones', boton: 'Control de salida de refacciones' },
                 { selector: 'li.sidebar-link:contains("Estatus de inventario de refacciones")', seccion: 'Control de refacciones', boton: 'Estatus de inventario de refacciones' }
@@ -243,14 +243,14 @@
             
             // Validar sidebar links de LISTA_INFORMACIONBASICA
             this.validarSidebarLinks('LISTA_INFORMACIONBASICA', [
-                { selector: 'li.sidebar-link:contains("Gestión de departamentos")', seccion: 'Información básica', boton: 'Gestión de departamentos' },
-                { selector: 'li.sidebar-link:contains("Gestión de empleados")', seccion: 'Información básica', boton: 'Gestión de empleados' },
-                { selector: 'li.sidebar-link:contains("Gestión de proveedores")', seccion: 'Información básica', boton: 'Gestión de proveedores' }
+                { selector: 'li.sidebar-link:contains("GestiÃ³n de departamentos")', seccion: 'InformaciÃ³n bÃ¡sica', boton: 'GestiÃ³n de departamentos' },
+                { selector: 'li.sidebar-link:contains("GestiÃ³n de empleados")', seccion: 'InformaciÃ³n bÃ¡sica', boton: 'GestiÃ³n de empleados' },
+                { selector: 'li.sidebar-link:contains("GestiÃ³n de proveedores")', seccion: 'InformaciÃ³n bÃ¡sica', boton: 'GestiÃ³n de proveedores' }
             ]);
         },
         
         /**
-         * Validar sidebar links para una lista específica
+         * Validar sidebar links para una lista especÃ­fica
          */
         validarSidebarLinks(pagina, elementos) {
             elementos.forEach(({ selector, seccion, boton }) => {
@@ -267,7 +267,7 @@
                     try {
                         elemento = document.querySelector(selector);
                     } catch (error) {
-                        console.warn(`Selector inválido ignorado: ${selector}`, error);
+                        console.warn(`Selector invÃ¡lido ignorado: ${selector}`, error);
                         return; // Saltar a siguiente elemento
                     }
                 }
@@ -294,7 +294,7 @@
                 return false;
             });
             
-            // También bloquear eventos táctiles
+            // TambiÃ©n bloquear eventos tÃ¡ctiles
             elemento.addEventListener('touchstart', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -302,7 +302,7 @@
                 return false;
             });
             
-            // Agregar clase visual para indicar que está deshabilitado
+            // Agregar clase visual para indicar que estÃ¡ deshabilitado
             elemento.classList.add('sin-permisos');
             elemento.style.pointerEvents = 'none';
             elemento.style.opacity = '0.5';
@@ -322,7 +322,7 @@
         },
         
         /**
-         * Configurar observador de mutaciones para elementos dinámicos
+         * Configurar observador de mutaciones para elementos dinÃ¡micos
          */
         configurarObservadorMutaciones() {
             const observador = new MutationObserver((mutaciones) => {
@@ -362,7 +362,7 @@
         },
         
         /**
-         * Verificar permiso específico (para uso en código)
+         * Verificar permiso especÃ­fico (para uso en cÃ³digo)
          */
         async verificarPermiso(pagina, seccion, boton) {
             // Primero verificar en cache local
@@ -370,7 +370,7 @@
                 return true;
             }
             
-            // Si no está en cache, verificar en servidor
+            // Si no estÃ¡ en cache, verificar en servidor
             try {
                 const response = await fetch('/admin/verificar_permiso_dropdown', {
                     method: 'POST',
@@ -397,7 +397,7 @@
         },
         
         /**
-         * Obtener información de estado
+         * Obtener informaciÃ³n de estado
          */
         getStatus() {
             return {
@@ -412,10 +412,10 @@
         },
         
         /**
-         * Función de testing para verificar permisos específicos
+         * FunciÃ³n de testing para verificar permisos especÃ­ficos
          */
         testPermiso(pagina, seccion, boton) {
-            console.log(`🧪 Testing permiso: ${pagina} > ${seccion} > ${boton}`);
+            console.log(`ðŸ§ª Testing permiso: ${pagina} > ${seccion} > ${boton}`);
             console.log(`Usuario actual: ${usuarioActual}`);
             console.log(`Rol usuario: ${rolUsuario}`);
             console.log(`Permisos disponibles:`, permisosUsuario);
@@ -428,31 +428,31 @@
         },
         
         /**
-         * Función de diagnóstico completo del sistema de permisos
+         * FunciÃ³n de diagnÃ³stico completo del sistema de permisos
          */
         diagnosticarPermisos() {
             console.log(`
-🔍 === DIAGNÓSTICO COMPLETO DE PERMISOS ===
+ðŸ” === DIAGNÃ“STICO COMPLETO DE PERMISOS ===
 Usuario: ${usuarioActual}
 Rol: ${rolUsuario}
 Sistema inicializado: ${isInitialized}
 Total permisos: ${Object.keys(permisosUsuario).length}
             `);
             
-            // Analizar cada página
+            // Analizar cada pÃ¡gina
             Object.keys(permisosUsuario).forEach(pagina => {
-                console.log(`\n📄 PÁGINA: ${pagina}`);
+                console.log(`\nðŸ“„ PÃGINA: ${pagina}`);
                 Object.keys(permisosUsuario[pagina]).forEach(seccion => {
-                    console.log(`  📂 SECCIÓN: ${seccion}`);
+                    console.log(`  ðŸ“‚ SECCIÃ“N: ${seccion}`);
                     permisosUsuario[pagina][seccion].forEach(boton => {
-                        console.log(`    ✅ BOTÓN: ${boton}`);
+                        console.log(`    âœ… BOTÃ“N: ${boton}`);
                     });
                 });
             });
             
-            // Buscar elementos con atributos de permisos que no estén funcionando
+            // Buscar elementos con atributos de permisos que no estÃ©n funcionando
             const elementosConPermisos = document.querySelectorAll('[data-permiso-pagina]');
-            console.log(`\n🎯 ELEMENTOS EN DOM CON PERMISOS: ${elementosConPermisos.length}`);
+            console.log(`\nðŸŽ¯ ELEMENTOS EN DOM CON PERMISOS: ${elementosConPermisos.length}`);
             
             elementosConPermisos.forEach((elemento, index) => {
                 const pagina = elemento.dataset.permisoPagina;
@@ -462,26 +462,26 @@ Total permisos: ${Object.keys(permisosUsuario).length}
                 const visible = elemento.style.display !== 'none';
                 
                 console.log(`${index + 1}. ${pagina} > ${seccion} > ${boton}`);
-                console.log(`   Permiso: ${tienePermiso ? '✅' : '❌'} | Visible: ${visible ? '👀' : '🙈'}`);
+                console.log(`   Permiso: ${tienePermiso ? 'âœ…' : 'âŒ'} | Visible: ${visible ? 'ðŸ‘€' : 'ðŸ™ˆ'}`);
                 
                 if (!tienePermiso && visible) {
-                    console.warn(`   ⚠️ PROBLEMA: Element should be hidden but is visible!`);
+                    console.warn(`   âš ï¸ PROBLEMA: Element should be hidden but is visible!`);
                     elemento.style.border = '2px solid red';
                 }
             });
         },
         
         /**
-         * Verificar permiso antes de ejecutar una función
+         * Verificar permiso antes de ejecutar una funciÃ³n
          */
         verificarPermisoAntesFuncion(pagina, seccion, boton, funcionCallback) {
             if (!this.tienePermiso(pagina, seccion, boton)) {
                 alert(` No tienes permisos para acceder a: ${boton}`);
-                console.warn(`🚫 Acceso denegado a función: ${pagina} > ${seccion} > ${boton}`);
+                console.warn(`ðŸš« Acceso denegado a funciÃ³n: ${pagina} > ${seccion} > ${boton}`);
                 return false;
             }
             
-            // Si tiene permiso, ejecutar la función
+            // Si tiene permiso, ejecutar la funciÃ³n
             if (typeof funcionCallback === 'function') {
                 funcionCallback();
             }
@@ -489,7 +489,7 @@ Total permisos: ${Object.keys(permisosUsuario).length}
         },
         
         /**
-         * Envolver función existente con verificación de permisos
+         * Envolver funciÃ³n existente con verificaciÃ³n de permisos
          */
         protegerFuncion(nombreFuncion, pagina, seccion, boton) {
             const funcionOriginal = window[nombreFuncion];
@@ -500,7 +500,7 @@ Total permisos: ${Object.keys(permisosUsuario).length}
                         return funcionOriginal.apply(this, args);
                     } else {
                         alert(` No tienes permisos para acceder a: ${boton}`);
-                        console.warn(`🚫 Acceso denegado a función: ${nombreFuncion}`);
+                        console.warn(`ðŸš« Acceso denegado a funciÃ³n: ${nombreFuncion}`);
                         return false;
                     }
                 };
@@ -509,7 +509,7 @@ Total permisos: ${Object.keys(permisosUsuario).length}
         }
     };
     
-    // Auto-inicializar cuando el DOM esté listo
+    // Auto-inicializar cuando el DOM estÃ© listo
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             window.PermisosDropdowns.init();
@@ -518,7 +518,7 @@ Total permisos: ${Object.keys(permisosUsuario).length}
         window.PermisosDropdowns.init();
     }
     
-    // Auto-recargar permisos periódicamente si está habilitado
+    // Auto-recargar permisos periÃ³dicamente si estÃ¡ habilitado
     if (CONFIG.AUTO_REFRESH) {
         setInterval(() => {
             if (isInitialized) {
@@ -532,7 +532,7 @@ Total permisos: ${Object.keys(permisosUsuario).length}
         if (window.PermisosDropdowns) {
             window.PermisosDropdowns.diagnosticarPermisos();
         } else {
-            console.error('❌ Sistema de permisos no disponible');
+            console.error('âŒ Sistema de permisos no disponible');
         }
     };
     
@@ -540,7 +540,7 @@ Total permisos: ${Object.keys(permisosUsuario).length}
         if (window.PermisosDropdowns) {
             return window.PermisosDropdowns.testPermiso(pagina, seccion, boton);
         } else {
-            console.error('❌ Sistema de permisos no disponible');
+            console.error('âŒ Sistema de permisos no disponible');
             return false;
         }
     };
@@ -549,9 +549,11 @@ Total permisos: ${Object.keys(permisosUsuario).length}
         if (window.PermisosDropdowns) {
             window.PermisosDropdowns.recargarPermisos();
         } else {
-            console.error('❌ Sistema de permisos no disponible');
+            console.error('âŒ Sistema de permisos no disponible');
         }
     };
     
 })();
+
+
 

@@ -2647,8 +2647,8 @@ function hideAllMaterialContainers() {
                 materialContentArea.style.display = 'block';
                 controlSalidaContainer.style.display = 'block';
                 
-                // Cargar contenido dinámicamente con callback de inicialización
-                cargarContenidoDinamico('control-salida-container', '/material/control_salida', () => {
+                // Cargar contenido dinámicamente usando la versión AJAX
+                cargarContenidoDinamico('control-salida-container', '/control-salida-ajax', () => {
                     // 🚀 INICIALIZACIÓN PRINCIPAL DE CONTROL DE SALIDA
                     if (typeof window.inicializarControlSalidaModule === 'function') {
                         console.log('🔧 Ejecutando inicializarControlSalidaModule...');
