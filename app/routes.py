@@ -416,12 +416,6 @@ def material():
         
     permisos = session.get('permisos', {})
     
-    # Debug: Verificar qué hay en la sesión
-    print(f"🔍 DEBUG Material Template:")
-    print(f"  - Usuario: {usuario}")
-    print(f"  - Nombre completo: {nombre_completo}")
-    print(f"  - Sesión completa: {dict(session)}")
-    
     # Verificar si tiene permisos de administración de usuarios
     tiene_permisos_usuarios = False
     if isinstance(permisos, dict) and 'sistema' in permisos:
@@ -8716,9 +8710,12 @@ def control_modelos_visor_ajax():
         # Validar nombre de tabla para seguridad
         if not re.match(r"^[A-Za-z0-9_]+$", table):
             table = "raw"
+        
+        usuario_actual = session.get('nombre_completo', session.get('usuario', 'Usuario no identificado')).strip()
+        
         return render_template('INFORMACION BASICA/control_modelos_visor_ajax.html', 
                              table=table, 
-                             usuario=session.get('username', 'Usuario no identificado'))
+                             usuario=usuario_actual)
     except Exception as e:
         print(f"Error al cargar template de visor MySQL: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -9011,7 +9008,7 @@ def api_mysql_create():
         
         # Agregar usuario logueado si no está en los datos
         if 'Usuario' not in new_data:
-            new_data['Usuario'] = session.get('usuario', 'Sistema')
+            new_data['Usuario'] = session.get('nombre_completo', session.get('usuario', 'Sistema')).strip()
         
         for key, value in new_data.items():
             if key not in readonly_fields:
@@ -9021,10 +9018,6 @@ def api_mysql_create():
         
         if not insert_data:
             return jsonify({"error": "No hay datos válidos para insertar"}), 400
-        
-        # Debug: mostrar datos que se van a insertar
-        print(f"📤 Usuario en sesión: {session.get('usuario', 'NO_ENCONTRADO')}")
-        print(f"📤 Datos a insertar: {insert_data}")
         
         # Construir consulta INSERT
         columns = list(insert_data.keys())
@@ -9037,9 +9030,6 @@ def api_mysql_create():
         """
         
         values = list(insert_data.values())
-        
-        print(f"📤 SQL final: {insert_sql}")
-        print(f"📤 Valores finales: {values}")
         
         # Ejecutar la inserción
         result = execute_query(insert_sql, values, fetch='none')
@@ -9063,10 +9053,13 @@ def api_mysql_create():
 def api_mysql_usuario_actual():
     """Obtener el usuario actualmente logueado"""
     try:
-        usuario = session.get('usuario', 'Sistema')
+        usuario_id = session.get('usuario', 'Sistema')
+        nombre_completo = session.get('nombre_completo', usuario_id).strip()
         return jsonify({
             "success": True,
-            "usuario": usuario
+            "usuario": usuario_id,
+            "nombre_completo": nombre_completo,
+            "usuario_display": nombre_completo  # El nombre que se mostrará en la UI
         })
     except Exception as e:
         print(f"❌ Error en api_mysql_usuario_actual: {e}")

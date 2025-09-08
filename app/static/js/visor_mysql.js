@@ -21,8 +21,8 @@
     }; 
   };
 
-  function setStatus(msg, type = 'info') { 
-    console.log(`Status: ${msg}`);
+  function setStatus(msg, type = 'info') {
+    // Estado actualizado silenciosamente
   }
 
   function formatCellValue(value, columnName) {
@@ -386,9 +386,6 @@
       }
     }
     
-    console.log('Datos de la fila con ID preservado:', rowData);
-    console.log('Record ID desde atributo:', recordId);
-    
     // Abrir modal con los datos
     if (window.rawEditModal) {
       window.rawEditModal.abrir(rowData);
@@ -737,23 +734,12 @@ class RawEditModal {
       // Solo mostrar botón de eliminar si es modo EDITAR y hay un ID válido
       const recordId = data.id || data.ID || data.Id || data._recordId || null;
       
-      console.log('Verificando ID para botón eliminar:', {
-        modo: modo,
-        recordId: recordId,
-        data_keys: Object.keys(data),
-        full_data: data
-      });
-      
       if (modo === 'EDITAR' && recordId && recordId !== '' && recordId !== 'null') {
         btnEliminar.style.display = 'inline-flex';
         btnEliminar.setAttribute('data-record-id', recordId);
-        console.log('✅ Botón eliminar mostrado para ID:', recordId);
       } else {
         btnEliminar.style.display = 'none';
-        console.log('❌ Botón eliminar oculto. Modo:', modo, 'ID:', recordId);
       }
-    } else {
-      console.log('❌ Botón eliminar no encontrado en DOM');
     }
     
     document.getElementById('rawEditModal').classList.add('open');
@@ -792,8 +778,6 @@ class RawEditModal {
         overlay.style.display = 'block';
       }
     }, 50);
-    
-    console.log('Modal RAW abierto con datos:', data, 'Modo:', modo);
   }
 
   generarCampos(data) {
@@ -801,8 +785,8 @@ class RawEditModal {
     container.innerHTML = '';
     
     // Definir campos de solo lectura (no editables)
-    // Usuario es readonly solo en modo EDITAR, en modo NUEVO debe ser editable pero pre-llenado
-    const readonlyFields = this.modo === 'NUEVO' ? ['crea', 'upt'] : ['Usuario', 'crea', 'upt'];
+    // Usuario siempre es readonly - se asigna automáticamente
+    const readonlyFields = ['Usuario', 'crea', 'upt'];
     
     // Definir campos numéricos
     const numericFields = ['hora_dia', 'c_t', 'uph', 'price', 'st', 'neck_st', 'l_b', 'input', 'output'];
@@ -856,9 +840,9 @@ class RawEditModal {
       const formData = new FormData(document.getElementById('rawEditForm'));
       const newData = {};
       
-      // Definir campos de solo lectura que no se deben enviar en actualizaciones
-      // Para nuevos registros, Usuario debe incluirse con el usuario logueado
-      const readonlyFields = this.modo === 'NUEVO' ? ['crea', 'upt'] : ['Usuario', 'crea', 'upt'];
+      // Definir campos de solo lectura que no se deben enviar desde el formulario
+      // Usuario se maneja por separado para asignarlo automáticamente
+      const readonlyFields = ['Usuario', 'crea', 'upt'];
       
       // Definir campos numéricos para limpieza
       const numericFields = ['hora_dia', 'c_t', 'uph', 'price', 'st', 'neck_st', 'l_b', 'input', 'output'];
@@ -875,29 +859,23 @@ class RawEditModal {
         }
       }
       
+      // SIEMPRE asignar el usuario logueado actual
+      newData.Usuario = window.usuarioLogueado || 'Usuario no identificado';
+      
       let response, endpoint, requestBody;
       
       if (this.modo === 'NUEVO') {
         // Crear nuevo registro
         endpoint = '/api/mysql/create';
-        
-        // Asegurar que el usuario logueado se incluya en los datos
-        if (!newData.Usuario || newData.Usuario === '' || newData.Usuario === 'Usuario no identificado') {
-          newData.Usuario = window.usuarioLogueado || 'Usuario no identificado';
-          console.log('⚠️ Usuario asignado/corregido:', newData.Usuario);
-        }
-        
         requestBody = { data: newData };
-        
-        console.log('Creando nuevo registro:', newData);
       } else {
         // Actualizar registro existente
         endpoint = '/api/mysql/update';
         
-        // Filtrar datos originales para enviar solo los campos de datos (sin metadatos y sin readonly)
+        // Filtrar datos originales para enviar solo los campos de datos (sin metadatos y sin readonly excepto Usuario)
         const originalData = {};
         Object.keys(this.currentData).forEach(key => {
-          if (!key.startsWith('_') && !readonlyFields.includes(key)) {
+          if (!key.startsWith('_') && !['crea', 'upt'].includes(key)) {
             let value = this.currentData[key];
             // Limpiar valores numéricos en datos originales también
             if (numericFields.includes(key) && typeof value === 'string') {
@@ -907,13 +885,13 @@ class RawEditModal {
           }
         });
         
+        // Para actualizaciones, también incluir el Usuario actualizado
+        originalData.Usuario = window.usuarioLogueado || 'Usuario no identificado';
+        
         requestBody = {
           original: originalData,
           new: newData
         };
-        
-        console.log('Datos originales (filtrados):', originalData);
-        console.log('Datos nuevos (sin readonly):', newData);
         
         // Verificar si hay cambios reales para updates
         const hasChanges = Object.keys(newData).some(key => 
@@ -984,12 +962,11 @@ class RawEditModal {
       }
       
       // Mostrar estado de carga en botón eliminar
+      // Cambiar estado del botón
       const btnEliminar = document.getElementById('btn-eliminar');
       const originalText = btnEliminar.innerHTML;
       btnEliminar.disabled = true;
       btnEliminar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
-      
-      console.log(`Eliminando registro ID: ${recordId}`);
       
       // Enviar solicitud de eliminación
       const response = await fetch('/api/mysql/delete', {
@@ -1015,14 +992,11 @@ class RawEditModal {
             window.refreshAll();
           }
         }, 500);
-        
-        console.log(`Registro ${recordId} eliminado exitosamente`);
       } else {
         throw new Error(result.error || 'Error al eliminar el registro');
       }
       
     } catch (error) {
-      console.error('Error eliminando registro:', error);
       this.showError(`Error al eliminar: ${error.message}`);
     } finally {
       // Restaurar botón eliminar
