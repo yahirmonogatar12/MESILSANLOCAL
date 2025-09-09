@@ -79,6 +79,11 @@
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarProduccion">
                     <li class="sidebar-link" tabindex="0" 
+                        onclick="window.parent.mostrarControlModelosSMT ? window.parent.mostrarControlModelosSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-modelos-smt-unique-container', '/control-modelos-smt-ajax') : window.location.href='/control-modelos-smt-ajax')"
+                        data-permiso-pagina="LISTA_INFORMACIONBASICA" 
+                        data-permiso-seccion="Control de produccion" 
+                        data-permiso-boton="Control de modelos SMT">Control de modelos SMT</li>
+                    <li class="sidebar-link" tabindex="0" 
                         onclick="window.parent.mostrarControlModelosVisor ? window.parent.mostrarControlModelosVisor() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-modelos-visor-unique-container', '/control-modelos-visor-ajax') : window.location.href='/control-modelos-visor-ajax')"
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de produccion" 

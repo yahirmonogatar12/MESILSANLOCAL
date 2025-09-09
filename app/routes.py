@@ -48,6 +48,7 @@ from .po_wo_models import (
     obtener_po_por_codigo, obtener_wo_por_codigo, listar_pos_por_estado, listar_pos_con_filtros, listar_wos_por_po, listar_wos_con_filtros
 )
 from .api_po_wo import registrar_rutas_po_wo
+from .api_raw_modelos import api_raw
 from .smd_inventory_api import register_smd_inventory_routes
 
 app = Flask(__name__)
@@ -58,6 +59,14 @@ register_smd_inventory_routes(app)
 
 # Registrar rutas API PO → WO
 # registrar_rutas_po_wo(app)  # Comentado para evitar conflicto con run.py
+
+# Registrar API RAW (modelos desde tabla raw) si no está ya registrado
+try:
+    if 'api_raw' not in app.blueprints:
+        app.register_blueprint(api_raw)
+        print(" API RAW (part_no) registrado en app.routes")
+except Exception as e:
+    print(f"Error registrando API RAW en app.routes: {e}")
 
 # Inicializar base de datos original
 init_db()  # Esto crea la tabla si no existe
@@ -2850,6 +2859,19 @@ def generar_plan_smd():
                         renglon['qty'], renglon['fisico'], renglon['falta'], renglon['pct'],
                         renglon['comentarios'], usuario_actual
                     ))
+                    # Registrar trazabilidad en estado PLANEADO
+                    try:
+                        execute_query(
+                            "INSERT INTO trazabilidad (linea, lot_no, codigo_wo, estado, usuario) VALUES (%s,%s,%s,'PLANEADO',%s)",
+                            (
+                                renglon.get('linea', ''),
+                                renglon.get('lote', ''),
+                                renglon.get('wo', ''),
+                                usuario_actual
+                            )
+                        )
+                    except Exception as e2:
+                        print(f"⚠️ Error insertando trazabilidad: {e2}")
                 
                 print(f"✅ {len(plan_renglones)} renglones guardados exitosamente")
                 
@@ -8720,6 +8742,18 @@ def control_modelos_visor_ajax():
         print(f"Error al cargar template de visor MySQL: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/control-modelos-smt-ajax')
+@login_requerido
+def control_modelos_smt_ajax():
+    """Ruta AJAX para cargar dinámicamente el contenido de Control de Modelos SMT"""
+    try:
+        usuario_actual = session.get('nombre_completo', session.get('usuario', 'Usuario no identificado')).strip()
+        return render_template('INFORMACION BASICA/control_modelos_smt_ajax.html', 
+                             usuario=usuario_actual)
+    except Exception as e:
+        print(f"Error al cargar template Control de Modelos SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/api/mysql/columns')
 def api_mysql_columns():
     """API para obtener columnas de una tabla"""
@@ -9128,3 +9162,211 @@ def api_mysql_delete():
         print(f"❌ Error en api_mysql_delete: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+def crear_tabla_plan_smd_runs():
+    """Crear tabla de ejecuciones del plan SMD (ciclos de producción)."""
+    try:
+        query = """
+        CREATE TABLE IF NOT EXISTS plan_smd_runs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            plan_id INT,
+            linea VARCHAR(32) NOT NULL,
+            lot_no VARCHAR(32) NOT NULL,
+            uph DECIMAL(20,6) DEFAULT 0,
+            ct DECIMAL(20,6) DEFAULT 0,
+            qty_plan INT DEFAULT 0,
+            start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            end_time DATETIME NULL,
+            status ENUM('RUNNING','ENDED') DEFAULT 'RUNNING',
+            created_by VARCHAR(64) DEFAULT 'sistema',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_linea (linea),
+            INDEX idx_lot (lot_no),
+            INDEX idx_plan (plan_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+        execute_query(query)
+        print(" Tabla plan_smd_runs creada/verificada")
+    except Exception as e:
+        print(f"❌ Error creando tabla plan_smd_runs: {e}")
+
+crear_tabla_plan_smd_runs()
+
+@app.route('/api/plan-smd/list', methods=['GET'])
+def api_plan_smd_list():
+    """Listar renglones de plan_smd con filtros simples.
+
+    Params opcionales: q (busca en modelo, nparte, lote), linea, desde, hasta
+    """
+    try:
+        q = (request.args.get('q') or '').strip()
+        linea = (request.args.get('linea') or '').strip()
+        desde = (request.args.get('desde') or '').strip()
+        hasta = (request.args.get('hasta') or '').strip()
+
+        sql = [
+            "SELECT id, linea, lote, nparte, modelo, tipo, turno, ct, uph, qty, fisico, falta, pct, comentarios, fecha_creacion",
+            "FROM plan_smd WHERE 1=1"
+        ]
+        params = []
+        if q:
+            sql.append("AND (modelo LIKE %s OR nparte LIKE %s OR lote LIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%", f"%{q}%"]) 
+        if linea:
+            sql.append("AND linea = %s")
+            params.append(linea)
+        if desde:
+            sql.append("AND fecha_creacion >= %s")
+            params.append(desde)
+        if hasta:
+            sql.append("AND fecha_creacion <= %s")
+            params.append(hasta)
+        sql.append("ORDER BY fecha_creacion DESC, id DESC")
+
+        rows = execute_query(" ".join(sql), tuple(params) if params else None, fetch='all') or []
+        return jsonify({'success': True, 'rows': rows, 'count': len(rows)})
+    except Exception as e:
+        print(f"❌ Error en api_plan_smd_list: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _generar_lot_no(prefix='I'):
+    from datetime import datetime
+    fecha = datetime.now().strftime('%Y%m%d')
+    like = f"{prefix}{fecha}-%"
+    q = "SELECT lot_no FROM plan_smd_runs WHERE lot_no LIKE %s ORDER BY lot_no DESC LIMIT 1"
+    last = execute_query(q, (like,), fetch='one')
+    if last and last.get('lot_no'):
+        try:
+            seq = int(last['lot_no'].split('-')[-1]) + 1
+        except Exception:
+            seq = 1
+    else:
+        seq = 1
+    return f"{prefix}{fecha}-{seq:04d}"
+
+
+@app.route('/api/plan-run/start', methods=['POST'])
+def api_plan_run_start():
+    """Iniciar un run de producción desde un renglón del plan.
+    Body: { plan_id, linea?, lot_prefix? }
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        plan_id = int(data.get('plan_id'))
+        linea = (data.get('linea') or '').strip()
+        lot_prefix = (data.get('lot_prefix') or 'I').strip() or 'I'
+        usuario = session.get('nombre_completo', session.get('usuario', 'Sistema')).strip()
+
+        # Obtener datos del plan
+        plan_row = execute_query("SELECT * FROM plan_smd WHERE id=%s", (plan_id,), fetch='one')
+        if not plan_row:
+            return jsonify({'success': False, 'error': 'Plan no encontrado'}), 404
+        if not linea:
+            linea = plan_row.get('linea', '')
+
+        # Usar LOT NO ya definido en el plan; no generar uno nuevo
+        lot_no = plan_row.get('lote')
+        if not lot_no:
+            return jsonify({'success': False, 'error': 'El plan no tiene LOT asignado'}), 400
+        uph = plan_row.get('uph') or 0
+        ct = plan_row.get('ct') or 0
+        qty_plan = plan_row.get('qty') or 0
+
+        insert = """
+            INSERT INTO plan_smd_runs (plan_id, linea, lot_no, uph, ct, qty_plan, status, created_by)
+            VALUES (%s,%s,%s,%s,%s,%s,'RUNNING',%s)
+        """
+        execute_query(insert, (plan_id, linea, lot_no, uph, ct, qty_plan, usuario))
+
+        # Actualizar trazabilidad: INICIADO
+        try:
+            execute_query("UPDATE trazabilidad SET estado='INICIADO', updated_at=NOW() WHERE lot_no=%s", (lot_no,))
+        except Exception as e2:
+            print(f"⚠️ Error actualizando trazabilidad (INICIADO): {e2}")
+
+        run = execute_query("SELECT * FROM plan_smd_runs WHERE lot_no=%s", (lot_no,), fetch='one')
+        return jsonify({'success': True, 'run': run})
+    except Exception as e:
+        print(f"❌ Error en api_plan_run_start: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/plan-run/end', methods=['POST'])
+def api_plan_run_end():
+    try:
+        data = request.get_json(force=True) or {}
+        run_id = int(data.get('run_id'))
+        update = "UPDATE plan_smd_runs SET status='ENDED', end_time=NOW() WHERE id=%s AND status='RUNNING'"
+        execute_query(update, (run_id,))
+        run = execute_query("SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch='one')
+        try:
+            if run and run.get('lot_no'):
+                execute_query("UPDATE trazabilidad SET estado='FINALIZADO', updated_at=NOW() WHERE lot_no=%s", (run['lot_no'],))
+        except Exception as e2:
+            print(f"⚠️ Error actualizando trazabilidad (FINALIZADO): {e2}")
+        return jsonify({'success': True, 'run': run})
+    except Exception as e:
+        print(f"❌ Error en api_plan_run_end: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/plan-run/status', methods=['GET'])
+def api_plan_run_status():
+    """Estado del run por linea o run_id.
+    Si está RUNNING, calcula progreso estimado usando UPH y tiempo transcurrido.
+    """
+    try:
+        run_id = request.args.get('run_id')
+        linea = request.args.get('linea')
+        if run_id:
+            row = execute_query("SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch='one')
+        elif linea:
+            row = execute_query("SELECT * FROM plan_smd_runs WHERE linea=%s AND status='RUNNING' ORDER BY start_time DESC LIMIT 1", (linea,), fetch='one')
+        else:
+            return jsonify({'success': False, 'error': 'Parámetros insuficientes'}), 400
+
+        if not row:
+            return jsonify({'success': True, 'running': False})
+
+        # Calcular progreso estimado
+        from datetime import datetime
+        start = row.get('start_time')
+        end = row.get('end_time')
+        uph = float(row.get('uph') or 0)
+        qty_plan = int(row.get('qty_plan') or 0)
+        producido = 0
+        if start and not end and uph > 0:
+            # elapsed hours
+            now = datetime.utcnow()
+            # MySQL datetime naive; asumir UTC-agnóstico
+            elapsed_hours = max(0.0, (now - start).total_seconds() / 3600.0)
+            producido = int(min(qty_plan, uph * elapsed_hours))
+        return jsonify({'success': True, 'running': row['status']=='RUNNING', 'run': row, 'producido_est': producido})
+    except Exception as e:
+        print(f"❌ Error en api_plan_run_status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+def crear_tabla_trazabilidad():
+    """Crear tabla de trazabilidad (LOTE por WO/LINEA con estados)."""
+    try:
+        query = """
+        CREATE TABLE IF NOT EXISTS trazabilidad (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            linea VARCHAR(32) NOT NULL,
+            lot_no VARCHAR(32) NOT NULL,
+            plan_id INT NULL,
+            codigo_wo VARCHAR(32) NULL,
+            estado ENUM('PLANEADO','INICIADO','PAUSA','FINALIZADO') DEFAULT 'PLANEADO',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            usuario VARCHAR(64) DEFAULT 'sistema',
+            INDEX idx_linea (linea),
+            INDEX idx_lot (lot_no),
+            INDEX idx_estado (estado)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+        execute_query(query)
+        print(" Tabla trazabilidad creada/verificada")
+    except Exception as e:
+        print(f"❌ Error creando tabla trazabilidad: {e}")
+
+crear_tabla_trazabilidad()

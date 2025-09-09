@@ -181,6 +181,12 @@
                 if (controlModelosVisorContainer) {
                     controlModelosVisorContainer.style.display = 'none';
                 }
+                
+                // Ocultar contenedor de Control de Modelos SMT
+                const controlModelosSMTContainer = document.getElementById('control-modelos-smt-unique-container');
+                if (controlModelosSMTContainer) {
+                    controlModelosSMTContainer.style.display = 'none';
+                }
             }
             
             function hideAllInformacionBasicaContainers() {
@@ -213,6 +219,12 @@
                         container.style.display = 'none';
                     }
                 });
+                
+                // Ocultar también el contenedor de Control de Modelos SMT AJAX
+                const controlModelosSMTContainer = document.getElementById('control-modelos-smt-unique-container');
+                if (controlModelosSMTContainer) {
+                    controlModelosSMTContainer.style.display = 'none';
+                }
             }
             
             // Hacer las funciones disponibles globalmente
@@ -819,6 +831,10 @@
                     // Ocultar todos los contenedores primero
                     if (typeof window.hideAllMaterialContainers === 'function') {
                         window.hideAllMaterialContainers();
+                    }
+                    
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') {
+                        window.hideAllInformacionBasicaContainers();
                     }
                     
                     // Ocultar otros contenedores dentro del área de control de proceso
@@ -1903,6 +1919,28 @@
                     console.log('📍 Ubicación de la función:', window.location.href);
                     console.log('🔍 Función disponible:', typeof window.mostrarControldeproduccionSMT);
 
+                    // FORZAR ocultado de TODAS las secciones primero
+                    const informacionBasicaElSMT = document.getElementById('informacion-basica-content');
+                    const controlMaterialElSMT = document.getElementById('control-material-content');
+                    const controlProduccionElSMT = document.getElementById('control-produccion-content');
+                    const controlProcesoElSMT = document.getElementById('control-proceso-content');
+                    const controlCalidadElSMT = document.getElementById('control-calidad-content');
+                    const controlResultadosElSMT = document.getElementById('control-resultados-content');
+                    const configuracionProgramaElSMT = document.getElementById('configuracion-programa-content');
+                    const materialContentElSMT = document.getElementById('material-content-area');
+                    const informacionBasicaContentElSMT = document.getElementById('informacion-basica-content-area');
+                    
+                    // Ocultar todas las secciones principales
+                    if (informacionBasicaElSMT) informacionBasicaElSMT.style.display = 'none';
+                    if (controlMaterialElSMT) controlMaterialElSMT.style.display = 'none';
+                    if (controlProduccionElSMT) controlProduccionElSMT.style.display = 'none';
+                    if (controlProcesoElSMT) controlProcesoElSMT.style.display = 'none';
+                    if (controlCalidadElSMT) controlCalidadElSMT.style.display = 'none';
+                    if (controlResultadosElSMT) controlResultadosElSMT.style.display = 'none';
+                    if (configuracionProgramaElSMT) configuracionProgramaElSMT.style.display = 'none';
+                    if (materialContentElSMT) materialContentElSMT.style.display = 'none';
+                    if (informacionBasicaContentElSMT) informacionBasicaContentElSMT.style.display = 'none';
+
                     // IMPORTANTE: Asegurar que estamos en la sección correcta
                     // Activar el botón "Control de proceso" para que scriptMain.js no interfiera
                     const controlProcesoButton = document.getElementById('Control de proceso');
@@ -1919,6 +1957,10 @@
                     // Ocultar todos los contenedores primero
                     if (typeof window.hideAllMaterialContainers === 'function') {
                         window.hideAllMaterialContainers();
+                    }
+                    
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') {
+                        window.hideAllInformacionBasicaContainers();
                     }
                     
                     // Ocultar otros contenedores dentro del área de control de proceso
@@ -2180,6 +2222,37 @@ window.mostrarCrearPlanMicom = function() {
                     console.log('📍 Ubicación de la función:', window.location.href);
                     console.log('🔍 Función disponible:', typeof window.mostrarControlBOM);
 
+                    // FORZAR ocultado de TODAS las secciones primero
+                    const informacionBasicaEl = document.getElementById('informacion-basica-content');
+                    const controlMaterialEl = document.getElementById('control-material-content');
+                    const controlProduccionEl = document.getElementById('control-produccion-content');
+                    const controlProcesoEl = document.getElementById('control-proceso-content');
+                    const controlCalidadEl = document.getElementById('control-calidad-content');
+                    const controlResultadosEl = document.getElementById('control-resultados-content');
+                    const configuracionProgramaEl = document.getElementById('configuracion-programa-content');
+                    const materialContentEl = document.getElementById('material-content-area');
+                    const informacionBasicaContentEl = document.getElementById('informacion-basica-content-area');
+                    
+                    // Ocultar todas las secciones principales
+                    if (informacionBasicaEl) informacionBasicaEl.style.display = 'none';
+                    if (controlMaterialEl) controlMaterialEl.style.display = 'none';
+                    if (controlProduccionEl) controlProduccionEl.style.display = 'none';
+                    if (controlProcesoEl) controlProcesoEl.style.display = 'none';
+                    if (controlCalidadEl) controlCalidadEl.style.display = 'none';
+                    if (controlResultadosEl) controlResultadosEl.style.display = 'none';
+                    if (configuracionProgramaEl) configuracionProgramaEl.style.display = 'none';
+                    if (materialContentEl) materialContentEl.style.display = 'none';
+                    if (informacionBasicaContentEl) informacionBasicaContentEl.style.display = 'none';
+
+                    // Ocultar todos los contenedores AJAX específicos
+                    if (typeof window.hideAllMaterialContainers === 'function') {
+                        window.hideAllMaterialContainers();
+                    }
+                    
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') {
+                        window.hideAllInformacionBasicaContainers();
+                    }
+
                     // IMPORTANTE: Asegurar que estamos en la sección correcta
                     // Activar el botón "Control de proceso" para que scriptMain.js no interfiera
                     const controlProcesoButton = document.getElementById('Control de proceso');
@@ -2196,6 +2269,10 @@ window.mostrarCrearPlanMicom = function() {
                     // Ocultar todos los contenedores primero
                     if (typeof window.hideAllMaterialContainers === 'function') {
                         window.hideAllMaterialContainers();
+                    }
+                    
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') {
+                        window.hideAllInformacionBasicaContainers();
                     }
                     
                     // Ocultar otros contenedores dentro del área de control de proceso
@@ -2215,25 +2292,25 @@ window.mostrarCrearPlanMicom = function() {
                     });
 
                     // Mostrar el área de control de proceso (esto es lo que scriptMain.js maneja)
-                    const materialContainer = document.getElementById('material-container');
-                    const controlProcesoContent = document.getElementById('control-proceso-content');
-                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                    const materialContainerBOM = document.getElementById('material-container');
+                    const controlProcesoContentBOM = document.getElementById('control-proceso-content');
+                    const controlProcesoContentAreaBOM = document.getElementById('control-proceso-content-area');
 
                     console.log('🔍 Verificando contenedores padre en mostrarControlBOM:');
-                    console.log('materialContainer:', materialContainer);
-                    console.log('controlProcesoContent:', controlProcesoContent);
-                    console.log('controlProcesoContentArea:', controlProcesoContentArea);
+                    console.log('materialContainer:', materialContainerBOM);
+                    console.log('controlProcesoContent:', controlProcesoContentBOM);
+                    console.log('controlProcesoContentArea:', controlProcesoContentAreaBOM);
 
-                    if (materialContainer) {
-                        materialContainer.style.display = 'block';
+                    if (materialContainerBOM) {
+                        materialContainerBOM.style.display = 'block';
                         console.log('✅ materialContainer mostrado');
                     }
-                    if (controlProcesoContent) {
-                        controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentBOM) {
+                        controlProcesoContentBOM.style.display = 'block';
                         console.log('✅ controlProcesoContent mostrado');
                     }
-                    if (controlProcesoContentArea) {
-                        controlProcesoContentArea.style.display = 'block';
+                    if (controlProcesoContentAreaBOM) {
+                        controlProcesoContentAreaBOM.style.display = 'block';
                         console.log('✅ controlProcesoContentArea mostrado');
                     }
 
@@ -3720,3 +3797,72 @@ window.mostrarControlModelosVisor = function() {
 };
 
 console.log('Función AJAX para Control de modelos - Visor MySQL registrada globalmente');
+
+// Función AJAX para Control de Modelos SMT - GLOBAL
+window.mostrarControlModelosSMT = function() {
+    try {
+        console.log('Iniciando carga AJAX de Control de Modelos SMT...');
+
+        // Activar el botón correcto en la navegación
+        const informacionBasicaButton = document.getElementById('Información básica');
+        if (informacionBasicaButton) {
+            informacionBasicaButton.classList.add('active');
+            informacionBasicaButton.click();
+        }
+
+        // Ocultar todos los contenedores primero
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+        
+        if (typeof window.hideAllInformacionBasicaContainers === 'function') {
+            window.hideAllInformacionBasicaContainers();
+        }
+        
+        // Mostrar la jerarquía de contenedores necesaria
+        const materialContainer = document.getElementById('material-container');
+        const informacionBasicaContent = document.getElementById('informacion-basica-content');
+        const informacionBasicaContentArea = document.getElementById('informacion-basica-content-area');
+        const controlModelosSMTContainer = document.getElementById('control-modelos-smt-unique-container');
+
+        if (materialContainer) {
+            materialContainer.style.display = 'block';
+            materialContainer.style.opacity = '1';
+        }
+
+        if (informacionBasicaContent) {
+            informacionBasicaContent.style.display = 'block';
+            informacionBasicaContent.style.opacity = '1';
+        }
+
+        if (informacionBasicaContentArea) {
+            informacionBasicaContentArea.style.display = 'block';
+            informacionBasicaContentArea.style.opacity = '1';
+        }
+
+        if (!controlModelosSMTContainer) {
+            console.error('Contenedor control-modelos-smt-unique-container no encontrado');
+            return;
+        }
+
+        controlModelosSMTContainer.style.display = 'block';
+        controlModelosSMTContainer.style.opacity = '1';
+
+        // Cargar contenido dinámicamente
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('control-modelos-smt-unique-container', '/control-modelos-smt-ajax', () => {
+                console.log('Control de Modelos SMT cargado exitosamente');
+                
+                // Ejecutar inicialización del módulo
+                if (typeof window.inicializarControlModelosSMTAjax === 'function') {
+                    window.inicializarControlModelosSMTAjax();
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarControlModelosSMT:', error);
+    }
+};
+
+console.log('Función AJAX para Control de Modelos SMT registrada globalmente');

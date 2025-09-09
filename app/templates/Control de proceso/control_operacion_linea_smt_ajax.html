@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Front – Plan & Historial (Dark)</title>
+  <title>Front â€“ Plan & Historial (Dark)</title>
   <style>
     /* ESTILOS AISLADOS CON ALTA ESPECIFICIDAD - COMPACTOS PARA UNA PANTALLA */
     #app-mes-front-isolated {
@@ -238,7 +238,7 @@
       width: 100% !important;
     }
 
-    /* ESTILOS PARA TABLAS VACÍAS */
+    /* ESTILOS PARA TABLAS VACÃAS */
     #app-mes-front-isolated .table .placeholder {
       height: 120px !important;
       display: grid !important;
@@ -414,7 +414,7 @@
       box-shadow: inset 0 0 0 1px rgba(52, 152, 219, 0.3) !important;
     }
 
-    /* ESTILOS PARA CELDAS CON DATOS ESPECÍFICOS */
+    /* ESTILOS PARA CELDAS CON DATOS ESPECÃFICOS */
     #app-mes-front-isolated .table td[data-status="active"] {
       color: #27ae60 !important;
       font-weight: 600 !important;
@@ -695,22 +695,22 @@
               <tr>
                 <th style="width:30px"><input type="checkbox" aria-label="select-all"/></th>
                 <th style="width:60px">ID</th>
-                <th style="width:80px">Line</th>
+                <th style="width:80px">Linea</th>
                 <th style="width:100px">Lot No</th>
                 <th style="width:100px">NParte</th>
-                <th style="width:100px">Model</th>
-                <th style="width:80px">Type</th>
-                <th style="width:80px">Shift</th>
+                <th style="width:100px">Modelo</th>
+                <th style="width:80px">Tipo</th>
+                <th style="width:80px">Turno</th>
                 <th style="width:60px">CT</th>
                 <th style="width:60px">UPH</th>
                 <th style="width:80px">Qty</th>
-                <th style="width:80px">Produced</th>
-                <th style="width:60px">Missing</th>
+                <th style="width:80px">Producido</th>
+                <th style="width:60px">Falta</th>
                 <th style="width:60px">%</th>
-                <th style="width:100px">Progress</th>
-                <th style="width:120px">Created</th>
-                <th style="width:80px">User</th>
-                <th style="width:120px">Comments</th>
+                <th style="width:100px">Progreso</th>
+                <th style="width:120px">Creado</th>
+                <th style="width:80px">Usuario</th>
+                <th style="width:120px">Comentarios</th>
               </tr>
             </thead>
             <tbody id="tbody-plan-data">
@@ -878,7 +878,7 @@
   </div>
 
   <script>
-    // Control de Operación Línea SMT - Integración con Plan SMD
+    // Control de OperaciÃ³n LÃ­nea SMT - IntegraciÃ³n con Plan SMD
     (function() {
       console.log('🚀 Inicializando Control de Operación Línea SMT AJAX...');
       
@@ -897,7 +897,7 @@
         btnSearch: null
       };
       
-      // Función para obtener elementos del DOM
+      // FunciÃ³n para obtener elementos del DOM
       function getElements() {
         elements.tableBody = document.getElementById('tbody-plan-data');
         elements.placeholder = document.getElementById('plan-placeholder');
@@ -909,59 +909,59 @@
         return elements.tableBody && elements.placeholder;
       }
       
-      // Función para cargar datos del plan SMD
+      // FunciÃ³n para cargar datos del plan SMD
       async function cargarDatosPlanSMD() {
         if (!getElements()) {
-          console.warn('⚠️ Elementos no encontrados, reintentando...');
+          console.warn('âš ï¸ Elementos no encontrados, reintentando...');
           setTimeout(cargarDatosPlanSMD, 1000);
           return;
         }
         
         try {
-          // Usar fecha actual si no hay fechas seleccionadas
-          let dateParam = '';
-          if (elements.dateFrom && elements.dateFrom.value) {
-            dateParam = elements.dateFrom.value;
-          } else {
-            dateParam = new Date().toISOString().slice(0, 10);
+          // Filtros de búsqueda
+          const params = new URLSearchParams();
+          const lotEl = document.getElementById('lotNo');
+          if (lotEl && lotEl.value) params.set('q', lotEl.value.trim());
+          if (elements.selLine && elements.selLine.value && elements.selLine.value !== 'ALL') { 
+            params.set('linea', elements.selLine.value); 
           }
-          
-          const url = `/api/plan-smd-diario?date=${dateParam}`;
-          console.log('🔄 Cargando datos desde:', url);
-          
-          // Mostrar estado de carga
-          elements.placeholder.textContent = 'Loading data...';
-          elements.placeholder.style.display = 'grid';
-          
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          
-          const data = await response.json();
-          currentPlanData = data;
-          
-          console.log('✅ Datos cargados:', data.length, 'registros');
-          
-          // Ocultar placeholder si hay datos
-          if (data.length > 0) {
-            elements.placeholder.style.display = 'none';
-          } else {
-            elements.placeholder.textContent = 'No data available for selected date';
-            elements.placeholder.style.display = 'grid';
-          }
-          
-          // Renderizar datos
-          renderPlanData(data);
-          
-        } catch (error) {
-          console.error('❌ Error cargando datos:', error);
+          if (elements.dateFrom && elements.dateFrom.value) params.set('desde', elements.dateFrom.value);
+          if (elements.dateTo && elements.dateTo.value) params.set('hasta', elements.dateTo.value);
+
+        const url = `/api/plan-smd/list?${params}`;
+        console.log('🔎 Cargando planes desde:', url);
+        
+        elements.placeholder.textContent = 'Loading data...';
+        elements.placeholder.style.display = 'grid';
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const rows = Array.isArray(data) ? data : (data.rows || []);
+        currentPlanData = rows;
+        console.log('✅ Planes cargados:', rows.length, 'registros');
+        if (rows.length > 0) { 
+          elements.placeholder.style.display = 'none'; 
+        } else { 
+          elements.placeholder.textContent = 'No hay planes con esos filtros'; 
+          elements.placeholder.style.display = 'grid'; 
+        }
+        renderPlanData(rows);
+        
+      } catch (error) {
+          console.error('âŒ Error cargando datos:', error);
           elements.placeholder.textContent = `Error loading data: ${error.message}`;
           elements.placeholder.style.display = 'grid';
         }
       }
       
-      // Función para renderizar los datos en la tabla
+      // FunciÃ³n para renderizar los datos en la tabla
+      let selectedPlanId = null;
+      let currentRunId = null;
+
       function renderPlanData(data) {
         if (!elements.tableBody) return;
         
@@ -969,6 +969,7 @@
         elements.tableBody.innerHTML = '';
         
         data.forEach((item, index) => {
+          const row = document.createElement('tr');
           const pct = Math.min(100, Math.round(((item.producido || 0) / (item.qty || 1)) * 100));
           const falta = Math.max(0, (item.qty || 0) - (item.producido || 0));
           
@@ -976,8 +977,11 @@
           if (pct >= 100) statusClass = 'completed';
           else if (pct > 0) statusClass = 'partial';
           
-          const row = document.createElement('tr');
-          if (pct >= 100) row.classList.add('highlight');
+          row.addEventListener('dblclick', () => { 
+            selectedPlanId = item.id; 
+            document.querySelectorAll('#tbody-plan-data tr').forEach(tr => tr.classList.remove('highlight')); 
+            row.classList.add('highlight'); 
+          });
           
           row.innerHTML = `
             <td><input type="checkbox" data-id="${item.id}"></td>
@@ -1004,7 +1008,7 @@
         });
       }
       
-      // Función para configurar las fechas por defecto
+      // FunciÃ³n para configurar las fechas por defecto
       function setupDefaultDates() {
         if (elements.dateFrom && elements.dateTo) {
           const today = new Date().toISOString().slice(0, 10);
@@ -1013,14 +1017,11 @@
         }
       }
       
-      // Función para configurar event listeners
+      // FunciÃ³n para configurar event listeners
       function setupEventListeners() {
         if (!getElements()) return;
-        
-        // Botón de búsqueda
         if (elements.btnSearch) {
           elements.btnSearch.addEventListener('click', () => {
-            console.log('🔍 Búsqueda manual iniciada');
             cargarDatosPlanSMD();
           });
         }
@@ -1028,14 +1029,14 @@
         // Cambio en fechas
         if (elements.dateFrom) {
           elements.dateFrom.addEventListener('change', () => {
-            console.log('📅 Fecha desde cambiada:', elements.dateFrom.value);
+            console.log('ðŸ“… Fecha desde cambiada:', elements.dateFrom.value);
             cargarDatosPlanSMD();
           });
         }
         
         if (elements.dateTo) {
           elements.dateTo.addEventListener('change', () => {
-            console.log('📅 Fecha hasta cambiada:', elements.dateTo.value);
+            console.log('ðŸ“… Fecha hasta cambiada:', elements.dateTo.value);
             cargarDatosPlanSMD();
           });
         }
@@ -1046,33 +1047,73 @@
         const btnStop = document.getElementById('btn-stop');
         
         if (btnStart) {
-          btnStart.addEventListener('click', () => {
-            console.log('▶️ Start/Restart clicked');
-            cargarDatosPlanSMD();
+          btnStart.addEventListener('click', async () => {
+            if (!selectedPlanId) { 
+              alert('Selecciona un plan (doble clic)'); 
+              return; 
+            }
+            try {
+              const linea = elements.selLine && elements.selLine.value && elements.selLine.value !== 'ALL' ? elements.selLine.value : '';
+              const resp = await fetch('/api/plan-run/start', { 
+                method: 'POST', 
+                headers: {'Content-Type':'application/json'}, 
+                body: JSON.stringify({ plan_id: selectedPlanId, linea, lot_prefix: 'I' }) 
+              });
+              const data = await resp.json();
+              if (!data.success) throw new Error(data.error || 'No se pudo iniciar');
+              currentRunId = data.run.id; 
+              localStorage.setItem('smtRunId', String(currentRunId));
+              const lotNoInput = document.getElementById('lotNo'); 
+              const lotInfo = document.getElementById('lotNoInfo');
+              if (lotNoInput) lotNoInput.value = data.run.lot_no; 
+              if (lotInfo) lotInfo.value = `Inicio: ${data.run.lot_no}`;
+              alert('Run iniciado: '+data.run.lot_no);
+            } catch(e){ 
+              console.error(e); 
+              alert('Error al iniciar run');
+            }
           });
         }
         
         if (btnEnd) {
-          btnEnd.addEventListener('click', () => {
-            console.log('⏹️ End clicked');
+          btnEnd.addEventListener('click', async () => {
+            try { 
+              const rid = currentRunId || Number(localStorage.getItem('smtRunId')) || null; 
+              if (!rid) { 
+                alert('No hay run activo'); 
+                return; 
+              }
+              const resp = await fetch('/api/plan-run/end', { 
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({ run_id: rid }) 
+              });
+              const data = await resp.json(); 
+              if (!data.success) throw new Error(data.error||'No se pudo finalizar');
+              localStorage.removeItem('smtRunId'); 
+              alert('Run finalizado'); 
+            } catch(e){ 
+              console.error(e); 
+              alert('Error al finalizar run'); 
+            }
           });
         }
         
         if (btnStop) {
           btnStop.addEventListener('click', () => {
-            console.log('⏸️ Stop clicked');
+            console.log('â¸ï¸ Stop clicked');
           });
         }
       }
       
-      // Función principal de inicialización
+      // FunciÃ³n principal de inicializaciÃ³n
       function inicializar() {
         if (isInitialized) {
-          console.log('⚠️ Ya inicializado, omitiendo...');
+          console.log('âš ï¸ Ya inicializado, omitiendo...');
           return;
         }
         
-        console.log('✅ Inicializando Control de Operación SMT AJAX...');
+        console.log('âœ… Inicializando Control de OperaciÃ³n SMT AJAX...');
         isInitialized = true;
         
         // Configurar fechas por defecto
@@ -1082,31 +1123,17 @@
         setupEventListeners();
         
         // Cargar datos iniciales
-        setTimeout(cargarDatosPlanSMD, 500);
-        
-        // Auto-refresh cada 30 segundos
-        autoRefreshInterval = setInterval(cargarDatosPlanSMD, 30000);
+        cargarDatosPlanSMD();
       }
-      
-      // Función para reiniciar (para carga dinámica)
-      window.reiniciarControlOperacionSMTAjax = function() {
-        console.log('🔄 Reiniciando Control de Operación SMT AJAX...');
-        isInitialized = false;
-        if (autoRefreshInterval) {
-          clearInterval(autoRefreshInterval);
-        }
-        setTimeout(inicializar, 200);
-      };
       
       // Función para verificar estado
       window.verificarControlOperacionSMTAjax = function() {
         const container = document.getElementById('app-mes-front-isolated');
-        const table = document.getElementById('tbl-plan');
-        const tbody = document.getElementById('tbody-plan-data');
+        const table = document.getElementById('tbody-plan-data');
+        const tbody = elements.tableBody;
         
-        console.log('🔍 Verificando estado:');
-        console.log('- Contenedor:', !!container);
-        console.log('- Tabla:', !!table);
+        console.log('- Container:', !!container);
+        console.log('- Table:', !!table);
         console.log('- Tbody:', !!tbody);
         console.log('- Datos cargados:', currentPlanData.length);
         
@@ -1120,14 +1147,14 @@
         setTimeout(inicializar, 100);
       }
       
-      // Observador de mutaciones para detectar carga dinámica
+      // Observador de mutaciones para detectar carga dinÃ¡mica
       if (typeof MutationObserver !== 'undefined') {
         const observer = new MutationObserver(function(mutations) {
           mutations.forEach(function(mutation) {
             if (mutation.type === 'childList') {
               const container = document.getElementById('app-mes-front-isolated');
               if (container && !isInitialized) {
-                console.log('🔍 Detectado contenido dinámico, inicializando...');
+                console.log('ðŸ” Detectado contenido dinÃ¡mico, inicializando...');
                 setTimeout(inicializar, 300);
               }
             }

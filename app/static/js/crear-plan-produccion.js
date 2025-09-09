@@ -190,6 +190,32 @@
         }
         */
 
+        // Cargar modelos (part_no) desde tabla RAW
+        async function cargarModelosRAW() {
+            try {
+                const response = await fetch('/api/raw/modelos', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (data.success && Array.isArray(data.data)) {
+                    modelosBOM = data.data.filter(m => m && m.trim() !== '');
+                } else {
+                    modelosBOM = [];
+                }
+                llenarDropdownModelos();
+            } catch (error) {
+                console.error('Error cargando modelos RAW:', error);
+                modelosBOM = [];
+                llenarDropdownModelos();
+            }
+        }
+
         // Llenar dropdown de modelos
         function llenarDropdownModelos() {
             const dropdownList = document.getElementById('woDropdownList');
@@ -426,9 +452,18 @@
                 }
             });
             
-            // Si no hay coincidencias, ocultar el dropdown
+            // Si no hay coincidencias, mantener abierto con mensaje
+            const NORES_ID = 'wo-no-results';
+            const old = dropdownList.querySelector('#' + NORES_ID);
+            if (old) old.remove();
             if (!hasVisibleItems && searchTerm.length > 0) {
-                dropdownList.style.display = 'none';
+                const msg = document.createElement('div');
+                msg.id = NORES_ID;
+                msg.className = 'bom-dropdown-item';
+                msg.textContent = 'Sin coincidencias';
+                msg.style.cssText = 'color:#f39c12; cursor: default;';
+                dropdownList.appendChild(msg);
+                dropdownList.style.display = 'block';
             }
         }
 
@@ -454,8 +489,8 @@
             // Solo cargar modelos si no están en memoria
             if (!modelosBOM || modelosBOM.length === 0) {
                 try {
-                    console.log('Cargando modelos desde BOM...');
-                    const response = await fetch('/listar_modelos_bom', {
+                    console.log('Cargando modelos desde RAW...');
+                    const response = await fetch('/api/raw/modelos', {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -467,10 +502,11 @@
                     }
                     
                     const data = await response.json();
+                    const lista = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
                     
-                    if (Array.isArray(data) && data.length > 0) {
+                    if (lista.length > 0) {
                         // Actualizar array local
-                        modelosBOM = data.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
+                        modelosBOM = lista.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
                         console.log('Modelos cargados exitosamente:', modelosBOM.length);
                         
                         // Llenar dropdown
@@ -691,10 +727,10 @@
                     <td>${wo.codigo_wo || ''}</td>
                     <td><span class="estado-badge estado-${(wo.estado || 'CREADA').toLowerCase()}">${wo.estado || 'CREADA'}</span></td>
                     <td>${formatearFecha(wo.fecha_operacion) || ''}</td>
-                    <td>${wo.codigo_modelo || ''}</td>
+                    <td>${wo.nombre_modelo || ''}</td>
                     <td class="modelo-cell">
-                        <span class="modelo-display">${wo.nombre_modelo || wo.modelo || ''}</span>
-                        <input type="text" class="modelo-edit" value="${wo.nombre_modelo || wo.modelo || ''}" style="display: none;">
+                        <span class="modelo-display">${wo.codigo_modelo || wo.modelo || ''}</span>
+                        <input type="text" class="modelo-edit" value="${wo.codigo_modelo || wo.modelo || ''}" style="display: none;">
                     </td>
                     <td class="cantidad-cell">
                         <span class="cantidad-display">${wo.cantidad_planeada || 0}</span>

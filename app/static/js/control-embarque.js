@@ -185,7 +185,7 @@ function actualizarTablaPOs() {
             <td>${formatearFecha(po.fecha_registro)}</td>
             <td>${po.cliente || '-'}</td>
             <td>${po.modelo || '-'}</td>
-            <td>${po.modelo || '-'}</td>
+            <td>${po.nombre_modelo || po.modelo || '-'}</td>
             <td>${po.proveedor || '-'}</td>
             <td>${po.total_cantidad_entregada || 0}</td>
             <td>${po.cantidad_entregada || 0}</td>
@@ -266,8 +266,8 @@ async function cargarModelosBOM() {
         // Crear nuevo AbortController
         currentModelosRequest = new AbortController();
         
-        console.log('Cargando modelos desde /api/bom/modelos...');
-        const response = await fetch('/api/bom/modelos', {
+        console.log('Cargando modelos desde /api/raw/modelos...');
+        const response = await fetch('/api/raw/modelos', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -341,6 +341,39 @@ async function cargarModelosBOM() {
     }
 }
 
+// Cargar modelos desde RAW (part_no) sin fallback
+async function cargarModelosRAW() {
+    try {
+        if (currentModelosRequest) {
+            currentModelosRequest.abort();
+        }
+        currentModelosRequest = new AbortController();
+
+        const response = await fetch('/api/raw/modelos', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            signal: currentModelosRequest.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+            modelosBOM = data.data.filter(m => m && m.trim() !== '');
+        } else {
+            modelosBOM = [];
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        console.error('Error cargando modelos RAW:', error);
+        modelosBOM = [];
+    } finally {
+        currentModelosRequest = null;
+    }
+}
+
 // Llenar dropdown de modelos
 function llenarDropdownModelos() {
     const dropdownList = document.getElementById('woDropdownList');
@@ -395,7 +428,20 @@ async function filtrarModelosWO() {
     
     // Si no hay coincidencias, ocultar el dropdown
     if (!hasVisibleItems && searchTerm.length > 0) {
-        dropdownList.style.display = 'none';
+        // Mantener abierto y mostrar mensaje de "Sin coincidencias"
+        // Eliminar mensajes previos
+        const prev = dropdownList.querySelector('#po-no-results');
+        if (prev) prev.remove();
+        const msg = document.createElement('div');
+        msg.id = 'po-no-results';
+        msg.className = 'embarque-dropdown-item';
+        msg.textContent = 'Sin coincidencias';
+        msg.style.cssText = 'color:#f39c12; cursor: default;';
+        dropdownList.appendChild(msg);
+        dropdownList.style.display = 'block';
+    } else {
+        const prev = dropdownList.querySelector('#po-no-results');
+        if (prev) prev.remove();
     }
 }
 
@@ -422,7 +468,7 @@ async function mostrarDropdownWO() {
     if (modelosBOM.length === 0) {
         console.log('No hay modelos en memoria, cargando dinámicamente...');
         try {
-            const response = await fetch('/api/bom/modelos', {
+            const response = await fetch('/api/raw/modelos', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -570,7 +616,7 @@ async function mostrarDropdownPO() {
     if (modelosBOM.length === 0) {
         console.log('No hay modelos en memoria, cargando dinámicamente...');
         try {
-            const response = await fetch('/api/bom/modelos', {
+            const response = await fetch('/api/raw/modelos', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1059,8 +1105,8 @@ function initControlEmbarque() {
     // Configurar fechas por defecto
     configurarFechasPorDefecto();
     
-    // Cargar modelos BOM
-    cargarModelosBOM();
+    // Cargar modelos desde RAW (part_no)
+    cargarModelosRAW();
     
     // Inicializar drawer de crear PO
     inicializarDrawerCrearPO();
@@ -1258,7 +1304,7 @@ async function mostrarDropdownPO() {
     // Si no hay modelos en memoria, cargarlos dinámicamente
     if (modelosBOM.length === 0) {
         console.log('No hay modelos en memoria, cargando dinámicamente...');
-        await cargarModelosBOM();
+        await cargarModelosRAW();
     }
     
     // Llenar dropdown con modelos
@@ -1282,7 +1328,7 @@ function llenarDropdownModelosPO() {
     
     modelosBOM.forEach(modelo => {
         const item = document.createElement('div');
-        item.className = 'bom-dropdown-item';
+        item.className = 'embarque-dropdown-item';
         item.textContent = modelo;
         item.style.cssText = `
             padding: 10px;

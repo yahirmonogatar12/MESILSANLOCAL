@@ -52,6 +52,41 @@ def generar_codigo_wo():
     return f"WO-{fecha_str}-{nuevo_numero:04d}"
 
 
+def _ensure_wo_model_columns():
+    """Asegurar que work_orders tenga columnas codigo_modelo y nombre_modelo.
+    No usa IF NOT EXISTS; verifica con SHOW COLUMNS y ALTER TABLE según sea necesario.
+    """
+    try:
+        cols = execute_query("SHOW COLUMNS FROM work_orders", fetch='all') or []
+        names = {c.get('Field') for c in cols}
+        if 'codigo_modelo' not in names:
+            try:
+                execute_query("ALTER TABLE work_orders ADD COLUMN codigo_modelo VARCHAR(64)")
+            except Exception as _:
+                pass
+        if 'nombre_modelo' not in names:
+            try:
+                execute_query("ALTER TABLE work_orders ADD COLUMN nombre_modelo VARCHAR(128)")
+            except Exception as _:
+                pass
+    except Exception as _:
+        # Si falla la verificación, continuar sin interrumpir
+        pass
+
+
+def _nombre_modelo_from_raw(part_no: str) -> str:
+    """Obtener nombre (project) desde raw por part_no. Retorna '' si no hay match."""
+    try:
+        if not part_no:
+            return ''
+        row = execute_query(
+            "SELECT project FROM raw WHERE TRIM(part_no)=TRIM(%s) ORDER BY id DESC LIMIT 1",
+            (part_no,), fetch='one')
+        return (row.get('project') if row else '') or ''
+    except Exception:
+        return ''
+
+
 def manejo_errores(func):
     """Decorator para manejo centralizado de errores"""
     @functools.wraps(func)
@@ -141,13 +176,25 @@ def crear_wo():
                 "message": f"Ya existe una WO con código {codigo_wo}"
             }), 409
         
-        # Crear work order
+        # Asegurar y preparar columnas persistentes de modelo
+        _ensure_wo_model_columns()
+        codigo_modelo = modelo  # part_no
+        nombre_modelo = _nombre_modelo_from_raw(modelo)
+
+        # Crear work order con persistencia de modelo/nombre
         query_insert = """
-            INSERT INTO work_orders (codigo_wo, modelo, codigo_po, fecha_operacion, cantidad_planeada, estado, fecha_modificacion, modificador)
-            VALUES (%s, %s, %s, %s, %s, 'CREADA', NOW(), %s)
+            INSERT INTO work_orders (
+                codigo_wo, codigo_po, modelo, codigo_modelo, nombre_modelo,
+                cantidad_planeada, fecha_operacion, estado, fecha_modificacion, modificador
+            ) VALUES (
+                %s, %s, %s, %s, %s,
+                %s, %s, 'CREADA', NOW(), %s
+            )
         """
-        
-        execute_query(query_insert, (codigo_wo, modelo, codigo_po, fecha_operacion, cantidad_planeada, modificador))
+        execute_query(query_insert, (
+            codigo_wo, codigo_po, modelo, codigo_modelo, nombre_modelo,
+            cantidad_planeada, fecha_operacion, modificador
+        ))
         
         print(f"✅ WO creada: {codigo_wo}")
         return jsonify({
@@ -192,8 +239,14 @@ def listar_wos():
     fecha_hasta = request.args.get('fecha_hasta')
     incluir_planificadas = request.args.get('incluir_planificadas', 'false').lower() == 'true'
     
-    # Construir query
-    query = "SELECT * FROM work_orders WHERE 1=1"
+    # Construir query con columnas persistentes y fallback a RAW
+    query = (
+        "SELECT w.*, COALESCE(w.nombre_modelo, ("
+        " SELECT r.project FROM raw r"
+        " WHERE TRIM(r.part_no) = COALESCE(NULLIF(TRIM(w.codigo_modelo), ''), TRIM(w.modelo))"
+        " ORDER BY r.id DESC LIMIT 1)) AS nombre_modelo"
+        " FROM work_orders w WHERE 1=1"
+    )
     params = []
     
     # Por defecto, excluir WO planificadas a menos que se solicite explícitamente
@@ -244,8 +297,14 @@ def listar_wos_alternativo():
     modelo = request.args.get('modelo')
     incluir_planificadas = request.args.get('incluir_planificadas', 'false').lower() == 'true'
     
-    # Construir query
-    query = "SELECT * FROM work_orders WHERE 1=1"
+    # Construir query incluyendo nombre_modelo desde tabla RAW
+    query = (
+        "SELECT w.*, "
+        "(SELECT r.project FROM raw r "
+        " WHERE TRIM(r.part_no) = COALESCE(NULLIF(TRIM(w.codigo_modelo), ''), TRIM(w.modelo)) "
+        " ORDER BY r.id DESC LIMIT 1) AS nombre_modelo "
+        "FROM work_orders w WHERE 1=1"
+    )
     params = []
     
     if fecha_desde:
@@ -450,14 +509,23 @@ def actualizar_wo_completa():
                 "error": f"No se encontró la WO con código {codigo_wo}"
             }), 404
         
-        # Actualizar los campos
+        # Asegurar columnas y actualizar también codigo_modelo/nombre_modelo
+        _ensure_wo_model_columns()
+        codigo_modelo = modelo
+        nombre_modelo = _nombre_modelo_from_raw(modelo)
+
         query_update = """
             UPDATE work_orders 
-            SET modelo = %s, cantidad_planeada = %s, codigo_po = %s, fecha_modificacion = NOW()
+            SET modelo = %s,
+                codigo_modelo = %s,
+                nombre_modelo = %s,
+                cantidad_planeada = %s,
+                codigo_po = %s,
+                fecha_modificacion = NOW()
             WHERE codigo_wo = %s
         """
         
-        execute_query(query_update, (modelo, cantidad_planeada, codigo_po, codigo_wo))
+        execute_query(query_update, (modelo, codigo_modelo, nombre_modelo, cantidad_planeada, codigo_po, codigo_wo))
         
         print(f"✅ WO actualizada: {codigo_wo} -> Modelo: {modelo}, Cantidad: {cantidad_planeada}, PO: {codigo_po}")
         return jsonify({
@@ -531,20 +599,23 @@ def listar_pos():
         # Construir consulta base - consultando tabla embarques
         query = """
             SELECT 
-                codigo_po,
-                nombre_po,
-                fecha_registro,
-                modelo,
-                cliente,
-                proveedor,
-                total_cantidad_entregada,
-                cantidad_entregada,
-                estado,
-                codigo_entrega,
-                fecha_entrega,
-                usuario_creacion,
-                modificado
-            FROM embarques 
+                e.codigo_po,
+                e.nombre_po,
+                e.fecha_registro,
+                e.modelo,
+                e.cliente,
+                e.proveedor,
+                e.total_cantidad_entregada,
+                e.cantidad_entregada,
+                e.estado,
+                e.codigo_entrega,
+                e.fecha_entrega,
+                e.usuario_creacion,
+                e.modificado,
+                (SELECT r.project FROM raw r 
+                   WHERE TRIM(r.part_no) = TRIM(e.modelo) 
+                   ORDER BY r.id DESC LIMIT 1) AS nombre_modelo
+            FROM embarques e
             WHERE 1=1
         """
         
@@ -576,6 +647,7 @@ def listar_pos():
                     'nombre_po': row['nombre_po'],
                     'fecha_registro': row['fecha_registro'].strftime('%Y-%m-%d') if row['fecha_registro'] else None,
                     'modelo': row['modelo'],
+                    'nombre_modelo': row.get('nombre_modelo'),
                     'cliente': row['cliente'],
                     'proveedor': row['proveedor'],
                     'total_cantidad_entregada': row['total_cantidad_entregada'],

@@ -1,0 +1,871 @@
+<!-- TEMPLATE AJAX: Control de Modelos SMT -->
+<!-- SUFIJO ÚNICO: -smt -->
+<!-- CONTENEDOR: control-modelos-smt-unique-container -->
+
+<div id="smt-main-container-unique-smt" class="smt-container">
+    <!-- Variable oculta para capturar usuario logueado -->
+    <input type="hidden" id="currentUser-smt" value="{{ usuario if usuario else '' }}" />
+    
+    <div class="smt-toolbar">
+        <input id="smtSearchInput-smt" type="text" class="smt-search-input" placeholder="Buscar en tabla... (ESC para limpiar)" oninput="filterTable()" />
+        <button class="smt-btn crear" onclick="openCreate()">Registrar</button>
+        <button class="smt-btn" onclick="refreshTable()">Actualizar</button>
+    </div>
+
+    <div class="smt-table-container">
+        <table id="smtTable-smt" class="smt-table">
+            <thead>
+                <tr id="smtTableHeader-smt">
+                    <!-- Se cargará dinámicamente -->
+                </tr>
+            </thead>
+            <tbody id="smtTableBody-smt">
+                <!-- Se cargará dinámicamente -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="smtModal-smt" class="smt-modal">
+    <div class="smt-modal-panel">
+        <h3 id="smtModalTitle-smt">Editar fila</h3>
+        <div id="smtModalForm-smt" class="smt-modal-grid"></div>
+        <div class="smt-modal-actions">
+            <button class="smt-btn-cancel" onclick="closeModal()">Cancelar</button>
+            <button id="smtDeleteBtn-smt" class="smt-btn-delete" onclick="deleteRow()">Eliminar</button>
+            <button id="smtSaveBtn-smt" class="smt-btn-save" onclick="saveRow()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Carga -->
+<div id="smtLoadingModal-smt" class="smt-loading-modal">
+    <div class="smt-loading-dialog">
+        <div class="smt-loading-spinner"></div>
+        <div id="smtLoadingTitle-smt" class="smt-loading-title">Procesando...</div>
+        <div id="smtLoadingMessage-smt" class="smt-loading-message">Por favor espere</div>
+    </div>
+</div>
+
+<style>
+/* Estilos para Control de Modelos SMT - Inspirado en control_bom.css */
+
+/* Contenedor principal */
+.smt-container {
+    font-family: 'Inter', 'LG regular', sans-serif;
+    background-color: #32323E;
+    color: lightgray;
+    min-height: 100vh;
+    padding: 2px;
+    margin: 0;
+}
+
+/* Toolbar de controles */
+.smt-toolbar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background-color: #34334E;
+    border-bottom: 1px solid #20688C;
+    flex-wrap: wrap;
+}
+
+/* Input de búsqueda */
+.smt-search-input {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    border: 2px solid #34495e;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    min-width: 300px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    outline: none;
+}
+
+.smt-search-input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    background-color: #2c3e50;
+}
+
+.smt-search-input::placeholder {
+    color: #95a5a6;
+    font-style: italic;
+}
+
+/* Botones */
+.smt-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background-color: #3C3940;
+    border: 1px solid #20688C;
+    color: white;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.smt-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.smt-btn.crear {
+    background-color: #502696;
+}
+
+.smt-btn.crear:hover {
+    background-color: #8e44ad;
+    box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+}
+
+.smt-btn.eliminar {
+    background-color: #e74c3c;
+}
+
+.smt-btn.eliminar:hover {
+    background-color: #c0392b;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+/* Contenedor de tabla */
+.smt-table-container {
+    background-color: #40424F;
+    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+    max-height: 76vh;
+    border: 1px solid #20688C;
+}
+
+/* Tabla */
+.smt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 11px;
+    background-color: #40424F;
+    table-layout: fixed;
+}
+
+.smt-table th {
+    background-color: #172A46;
+    color: #ecf0f1;
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid #20688C;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 10px;
+    line-height: 1.2;
+    min-width: 80px;
+    cursor: default;
+}
+
+.smt-table td {
+    padding: 6px 4px;
+    text-align: center;
+    border: 1px solid #5F6375;
+    background-color: #40424F;
+    color: lightgray;
+    transition: background-color 0.3s ease;
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    cursor: pointer;
+}
+
+.smt-table td:hover {
+    background-color: #485563;
+}
+
+.smt-table tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+.smt-table tr:nth-child(even):hover td {
+    background-color: #485563;
+}
+
+/* Mensaje sin datos */
+.smt-no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: #95a5a6;
+    font-style: italic;
+    background-color: #40424F;
+    font-size: 12px;
+}
+
+/* Modal personalizado */
+.smt-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 2000;
+}
+
+.smt-modal-panel {
+    background: #39515F;
+    border: 2px solid #3498db;
+    border-radius: 12px;
+    max-width: 720px;
+    width: 100%;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.7);
+    position: relative;
+}
+
+.smt-modal h3 {
+    margin: 0 0 20px 0;
+    color: #ecf0f1;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.smt-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.smt-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.smt-modal-field label {
+    color: #95a5a6;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.smt-modal-field input {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    border: 2px solid #34495e;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.smt-modal-field input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.smt-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.smt-modal-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.smt-btn-cancel {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.smt-btn-cancel:hover {
+    background-color: #7f8c8d;
+}
+
+.smt-btn-save {
+    background-color: #502696;
+    color: white;
+}
+
+.smt-btn-save:hover {
+    background-color: #8e44ad;
+}
+
+.smt-btn-delete {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.smt-btn-delete:hover {
+    background-color: #c0392b;
+}
+
+/* Estilos para botones deshabilitados */
+.smt-modal-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+    background-color: #7f8c8d !important;
+}
+
+/* Modal de Carga */
+.smt-loading-modal {
+    display: none;
+    position: fixed;
+    z-index: 3000;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.8);
+    justify-content: center;
+    align-items: center;
+}
+
+.smt-loading-dialog {
+    background: #2c3e50;
+    padding: 40px;
+    border-radius: 15px;
+    border: 2px solid #3498db;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    min-width: 350px;
+    max-width: 90vw;
+    text-align: center;
+    position: relative;
+    outline: none;
+}
+
+.smt-loading-title {
+    color: #3498db;
+    font-size: 1.4em;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.smt-loading-message {
+    color: #ecf0f1;
+    font-size: 1.1em;
+    margin-bottom: 25px;
+}
+
+.smt-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #34495e;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: smtLoadingSpin 1s linear infinite;
+    margin: 0 auto 20px auto;
+}
+
+@keyframes smtLoadingSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .smt-container {
+        padding: 5px;
+    }
+
+    .smt-toolbar {
+        flex-direction: column;
+        gap: 10px;
+        padding: 15px;
+    }
+
+    .smt-search-input {
+        min-width: 100%;
+        width: 100%;
+    }
+
+    .smt-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 16px;
+        font-size: 12px;
+    }
+
+    .smt-table-container {
+        padding: 5px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .smt-table {
+        min-width: 800px;
+        font-size: 10px;
+    }
+
+    .smt-table th {
+        font-size: 9px;
+        padding: 8px 4px;
+        min-width: 70px;
+    }
+
+    .smt-table td {
+        font-size: 9px;
+        padding: 8px 4px;
+    }
+
+    .smt-modal-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .smt-modal-panel {
+        margin: 10px;
+        padding: 20px;
+        max-width: calc(100vw - 20px);
+    }
+}
+
+@media (max-width: 480px) {
+    .smt-table {
+        font-size: 9px;
+    }
+
+    .smt-table th {
+        font-size: 8px;
+        padding: 6px 2px;
+    }
+
+    .smt-table td {
+        font-size: 8px;
+        padding: 6px 2px;
+    }
+}
+</style>
+
+<script>
+// Auto-inicialización del módulo Control de Modelos SMT
+(function() {
+    console.log('Inicializando Control de Modelos SMT AJAX...');
+    
+    let COLUMNS = [];
+    let ROWS = [];
+    let ROW_BY_HASH = {};
+    let allRows = [];
+    let searchTimeout = null;
+    let CURRENT = null;
+
+    window.inicializarControlModelosSMTAjax = function() {
+        console.log('Control de Modelos SMT AJAX inicializado');
+        cargarDatos();
+    };
+
+    // Función para cargar datos iniciales
+    async function cargarDatos() {
+        showLoadingModal('Cargando datos...', 'Obteniendo información de la base de datos');
+        
+        try {
+            const response = await fetch('/control-modelos/api/data');
+            const data = await response.json();
+            
+            if (!data.ok) {
+                throw new Error(data.error || 'Error al obtener datos');
+            }
+            
+            COLUMNS = data.columns;
+            ROWS = data.rows;
+            ROW_BY_HASH = Object.fromEntries(ROWS.map(r => [r.__rowhash, r]));
+            
+            updateTableHTML(data.columns, data.rows);
+            initializeRowCache();
+            
+            hideLoadingModal();
+            
+        } catch (error) {
+            hideLoadingModal();
+            console.error('Error cargando datos:', error);
+            document.getElementById('smtTableBody-smt').innerHTML = 
+                '<tr><td colspan="10" class="smt-no-data"><em>Error al cargar datos: ' + error.message + '</em></td></tr>';
+        }
+    }
+
+    // Función auxiliar para determinar si un campo debe ser ocultado/filtrado
+    function isUserOrDateField(fieldName) {
+        const forbiddenFields = [
+            'usuario_registro', 'fecha_registro', 'usuario_modificacion', 'fecha_modificacion',
+            'usuario_eliminacion', 'fecha_eliminacion', 'usuario', 'user', 'registrado_por',
+            'modificado_por', 'eliminado_por', 'created_by', 'updated_by', 'deleted_by'
+        ];
+        
+        return forbiddenFields.includes(fieldName.toLowerCase()) || 
+               fieldName.toLowerCase().includes('usuario') || 
+               fieldName.toLowerCase().includes('user') || 
+               fieldName.toLowerCase().includes('fecha') || 
+               fieldName.toLowerCase().includes('date');
+    }
+
+    // Funciones para modal de carga
+    function showLoadingModal(title = 'Procesando...', message = 'Por favor espere') {
+        document.getElementById('smtLoadingTitle-smt').textContent = title;
+        document.getElementById('smtLoadingMessage-smt').textContent = message;
+        document.getElementById('smtLoadingModal-smt').style.display = 'flex';
+        
+        const modalButtons = document.querySelectorAll('#smtModal-smt button');
+        modalButtons.forEach(btn => btn.disabled = true);
+    }
+
+    function hideLoadingModal() {
+        document.getElementById('smtLoadingModal-smt').style.display = 'none';
+        
+        const modalButtons = document.querySelectorAll('#smtModal-smt button');
+        modalButtons.forEach(btn => btn.disabled = false);
+    }
+
+    // Función para actualizar la tabla sin recargar página
+    window.refreshTable = async function() {
+        showLoadingModal('Actualizando...', 'Cargando nuevos datos...');
+        
+        try {
+            const response = await fetch('/control-modelos/api/data');
+            const data = await response.json();
+            
+            if (!data.ok) {
+                throw new Error(data.error || 'Error al obtener datos');
+            }
+            
+            COLUMNS = data.columns;
+            ROWS = data.rows;
+            ROW_BY_HASH = Object.fromEntries(ROWS.map(r => [r.__rowhash, r]));
+            
+            updateTableHTML(data.columns, data.rows);
+            initializeRowCache();
+            
+            hideLoadingModal();
+            
+        } catch (error) {
+            hideLoadingModal();
+            alert('Error al actualizar: ' + error.message);
+        }
+    };
+
+    // Función para actualizar el HTML de la tabla
+    function updateTableHTML(columns, rows) {
+        const thead = document.getElementById('smtTableHeader-smt');
+        const tbody = document.getElementById('smtTableBody-smt');
+        
+        // Actualizar encabezados
+        thead.innerHTML = '';
+        columns.forEach(col => {
+            const th = document.createElement('th');
+            th.setAttribute('title', col);
+            th.textContent = col;
+            thead.appendChild(th);
+        });
+        
+        // Actualizar filas
+        tbody.innerHTML = '';
+        
+        if (rows.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = columns.length;
+            td.className = 'smt-no-data';
+            td.innerHTML = '<em>Sin datos para mostrar.</em>';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+        
+        rows.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-rowhash', row.__rowhash);
+            
+            columns.forEach(col => {
+                const td = document.createElement('td');
+                td.setAttribute('data-col', col);
+                td.setAttribute('title', row[col] || '');
+                td.textContent = row[col] || '';
+                tr.appendChild(td);
+            });
+            
+            // Agregar evento de doble clic
+            tr.addEventListener('dblclick', () => {
+                openEditByHash(row.__rowhash);
+            });
+            
+            tbody.appendChild(tr);
+        });
+    }
+
+    function initializeRowCache() {
+        allRows = Array.from(document.querySelectorAll('#smtTableBody-smt tr[data-rowhash]'));
+    }
+
+    // Función de filtrado con debounce
+    window.filterTable = function() {
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        searchTimeout = setTimeout(() => {
+            performFilter();
+        }, 150);
+    };
+
+    function performFilter() {
+        const query = document.getElementById('smtSearchInput-smt').value.toLowerCase().trim();
+        let visibleCount = 0;
+        
+        if (!query) {
+            allRows.forEach(row => {
+                row.style.display = '';
+                visibleCount++;
+            });
+            return;
+        }
+
+        allRows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            
+            if (text.includes(query)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Funciones del modal
+    window.openCreate = function() {
+        CURRENT = { mode: 'create', original: {}, changes: {} };
+        document.getElementById('smtModalTitle-smt').innerText = 'Registrar nuevo registro SMD';
+        buildForm({});
+        document.getElementById('smtDeleteBtn-smt').style.display = 'none';
+        document.getElementById('smtModal-smt').style.display = 'flex';
+    };
+
+    window.openEditByHash = function(rowhash) {
+        const original = ROW_BY_HASH[rowhash] ? { ...ROW_BY_HASH[rowhash] } : null;
+        if(!original){
+            alert('No se halló la fila seleccionada.');
+            return;
+        }
+        delete original.__rowhash;
+
+        CURRENT = { mode: 'edit', original, changes: {}, rowhash };
+        document.getElementById('smtModalTitle-smt').innerText = 'Editar registro SMD';
+        buildForm(original);
+        document.getElementById('smtDeleteBtn-smt').style.display = '';
+        document.getElementById('smtModal-smt').style.display = 'flex';
+    };
+
+    window.closeModal = function() {
+        document.getElementById('smtModal-smt').style.display = 'none';
+        document.getElementById('smtModalForm-smt').innerHTML = '';
+        CURRENT = null;
+    };
+
+    function buildForm(values) {
+        const form = document.getElementById('smtModalForm-smt');
+        form.innerHTML = '';
+        
+        for(const c of COLUMNS){
+            // Omitir columnas que se manejan automáticamente
+            if (isUserOrDateField(c)) {
+                console.log('Campo de usuario/fecha ocultado:', c);
+                continue;
+            }
+            
+            const wrap = document.createElement('div');
+            wrap.className = 'smt-modal-field';
+
+            const label = document.createElement('label');
+            label.textContent = c;
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = (values[c] ?? '');
+            input.dataset.col = c;
+            input.oninput = (e)=>{
+                if(!CURRENT) return;
+                CURRENT.changes[c] = e.target.value === '' ? null : e.target.value;
+            };
+
+            wrap.appendChild(label);
+            wrap.appendChild(input);
+            form.appendChild(wrap);
+        }
+    }
+
+    window.saveRow = async function() {
+        if(!CURRENT) return;
+
+        // Obtener usuario logueado automáticamente
+        const currentUser = document.getElementById('currentUser-smt').value;
+        if (!currentUser) {
+            alert('Error: No se pudo obtener el usuario logueado. Por favor, inicie sesión nuevamente.');
+            return;
+        }
+
+        const operacion = CURRENT.mode === 'create' ? 'Creando registro...' : 'Actualizando registro...';
+        showLoadingModal(operacion, 'Por favor espere mientras procesamos la información');
+
+        try {
+            if(CURRENT.mode === 'create'){
+                const body = {};
+                
+                for(const c of COLUMNS){
+                    // Saltar campos prohibidos usando la función auxiliar
+                    if (isUserOrDateField(c)) {
+                        console.log('Campo de usuario/fecha ignorado en creación:', c);
+                        continue;
+                    }
+                    
+                    const el = [...document.querySelectorAll('#smtModalForm-smt [data-col="'+c+'"]')][0];
+                    if(el) body[c] = el.value === '' ? null : el.value;
+                }
+                
+                // Agregar automáticamente el usuario que está registrando
+                body['usuario_registro'] = currentUser;
+                body['fecha_registro'] = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                
+                console.log('Enviando datos de creación con usuario:', currentUser);
+                
+                const res = await fetch('/control-modelos/api/rows', {
+                    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+                });
+                const j = await res.json();
+                
+                hideLoadingModal();
+                
+                if(!j.ok){ 
+                    alert(j.error || 'Error al crear'); 
+                    return; 
+                }
+                
+                closeModal();
+                hideLoadingModal();
+                showLoadingModal('¡Éxito!', 'Registro creado correctamente. Actualizando tabla...');
+                
+                await refreshTable();
+                
+            } else {
+                // Para ediciones, filtrar campos prohibidos de los cambios usando función auxiliar
+                const filteredChanges = {};
+                for (const [key, value] of Object.entries(CURRENT.changes)) {
+                    if (isUserOrDateField(key)) {
+                        console.log('Campo de usuario/fecha ignorado en edición:', key);
+                        continue;
+                    }
+                    filteredChanges[key] = value;
+                }
+                
+                const body = { 
+                    original: CURRENT.original, 
+                    changes: filteredChanges 
+                };
+                
+                // Agregar automáticamente el usuario que está editando y la fecha de modificación
+                body.changes['usuario_modificacion'] = currentUser;
+                body.changes['fecha_modificacion'] = new Date().toISOString().slice(0, 19).replace('T', ' ');
+                
+                console.log('Enviando datos de edición con usuario:', currentUser);
+                
+                const res = await fetch('/control-modelos/api/rows/'+CURRENT.rowhash, {
+                    method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+                });
+                const j = await res.json();
+                
+                hideLoadingModal();
+                
+                if(!j.ok){ 
+                    alert(j.error || 'Error al guardar'); 
+                    return; 
+                }
+                
+                closeModal();
+                hideLoadingModal();
+                showLoadingModal('¡Éxito!', 'Registro actualizado correctamente. Actualizando tabla...');
+                
+                await refreshTable();
+            }
+        } catch (error) {
+            hideLoadingModal();
+            alert('Error de conexión: ' + error.message);
+        }
+    };
+
+    window.deleteRow = async function() {
+        if(!CURRENT || CURRENT.mode !== 'edit') return;
+        if(!confirm('¿Está seguro de que desea eliminar este registro? Esta acción no se puede deshacer.')) return;
+
+        // Obtener usuario logueado automáticamente
+        const currentUser = document.getElementById('currentUser-smt').value;
+        if (!currentUser) {
+            alert('Error: No se pudo obtener el usuario logueado. Por favor, inicie sesión nuevamente.');
+            return;
+        }
+
+        showLoadingModal('Eliminando registro...', 'Por favor espere mientras eliminamos el registro');
+
+        try {
+            const body = { 
+                original: CURRENT.original,
+                usuario_eliminacion: currentUser,
+                fecha_eliminacion: new Date().toISOString().slice(0, 19).replace('T', ' ')
+            };
+            
+            console.log('Enviando datos de eliminación con usuario:', currentUser);
+            
+            const res = await fetch('/control-modelos/api/rows/'+CURRENT.rowhash, {
+                method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+            });
+            const j = await res.json();
+            
+            hideLoadingModal();
+            
+            if(!j.ok){ 
+                alert(j.error || 'Error al eliminar'); 
+                return; 
+            }
+            
+            closeModal();
+            hideLoadingModal();
+            showLoadingModal('¡Éxito!', 'Registro eliminado correctamente. Actualizando tabla...');
+            
+            await refreshTable();
+            
+        } catch (error) {
+            hideLoadingModal();
+            alert('Error de conexión: ' + error.message);
+        }
+    };
+
+    // Ejecutar inmediatamente si el DOM está listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.inicializarControlModelosSMTAjax);
+    } else {
+        window.inicializarControlModelosSMTAjax();
+    }
+})();
+</script>

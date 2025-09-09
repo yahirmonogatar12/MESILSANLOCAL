@@ -1,53 +1,88 @@
 <!-- TEMPLATE AJAX: Control BOM -->
 <!-- SUFIJO ÚNICO: -bom -->
-<!-- CONTENEDOR DESTINO (EXTERNO): bom-unique-container -->
+<!-- CONTENEDOR: bom-unique-container -->
 
-<div id="control-bom-main-container-unique-bom" class="control-bom-container">
-    <h2 style="margin: 0 0 20px 0; color: #E0E0E0; text-align: center;">Control BOM</h2>
-    
-    <!-- Barra de herramientas -->
-    <div class="toolbar">
-        <div class="search-section">
-            <input type="text" id="searchBOM" placeholder="Buscar por modelo, número de parte..." class="search-input">
-            <button id="btnConsultar" class="btn btn-primary">Consultar</button>
+<div id="bom-main-container-unique-bom" class="bom-container">
+    <!-- Botonera -->
+    <div class="bom-toolbar">
+        <div class="bom-search-container">
+            <input type="text" id="bomModeloSearch-bom" placeholder="Seleccione un modelo" class="bom-search-input" onkeyup="filtrarModelos()" onclick="mostrarDropdown()">
+            <div id="bomDropdownList-bom" class="bom-dropdown-list" style="display: none;">
+                <!-- Los modelos se cargarán dinámicamente -->
+            </div>
         </div>
         
-        <div class="action-section">
-            <button id="btnRegistrar" class="btn btn-success">Registrar</button>
-            <button id="btnEliminar" class="btn btn-danger">Eliminar</button>
-            <button id="btnRegistroSustituto" class="btn btn-warning">Registro de mat. sustituto</button>
-            <button id="btnExportar" class="btn btn-info">Exportar al excel</button>
-            <button id="btnImportar" class="btn btn-secondary">Importar al excel</button>
-        </div>
+        <button class="bom-btn consultar" onclick="consultarBOM()">
+            🔍 Consultar
+        </button>
+        <button class="bom-btn registrar" onclick="mostrarFormularioBOM()">
+            ➕ Registrar
+        </button>
+        <button class="bom-btn eliminar" onclick="eliminarBOM()">
+            🗑️ Eliminar
+        </button>
+        <button class="bom-btn sustituir" onclick="mostrarSustitutoBOM()">
+            🔄 Registro de mat. sustituto
+        </button>
+        <button class="bom-btn exportar" onclick="exportarExcelBOM()">
+            📤 Exportar al excel
+        </button>
+        <input type="file" id="importarExcelBOM-bom" onchange="importarExcelBOM()" style="display:none" accept=".xlsx,.xls" />
+        <button class="bom-btn importar" onclick="document.getElementById('importarExcelBOM-bom').click()">
+            📥 Importar al excel
+        </button>
     </div>
 
-    <!-- Input de archivo oculto para importación -->
-    <input type="file" id="fileImportBOM" accept=".xlsx,.xls,.csv" style="display: none;">
-
-    <!-- Tabla de resultados -->
-    <div class="table-container">
-        <table id="bomTable" class="bom-table">
+    <!-- Tabla de BOM -->
+    <div class="bom-table-container">
+        <table class="bom-table" id="bomDataTable-bom">
             <thead>
                 <tr>
-                    <th><input type="checkbox" id="selectAllBOM"></th>
-                    <th>Modelo</th>
+                    <th>Selector</th>
+                    <th>Código de material</th>
+                    <th>Número de parte</th>
                     <th>Side</th>
                     <th>Tipo de material</th>
                     <th>Classification</th>
-                    <th>Especificación</th>
+                    <th>Especificación detallada</th>
                     <th>Vendor</th>
                     <th>Cantidad total</th>
                     <th>Cantidad original</th>
                     <th>Ubicación</th>
-                    <th>Acciones</th>
+                    <th>Material sustituto</th>
+                    <th>Material original</th>
+                    <th>Registrador</th>
+                    <th>Fecha de registro</th>
                 </tr>
             </thead>
-            <tbody id="bomTableBody">
+            <tbody id="bomTableBody-bom">
                 <tr>
-                    <td colspan="11" class="no-data">No hay datos para mostrar</td>
+                    <td colspan="15" class="bom-no-data">Sin datos para mostrar. Seleccione un modelo y haga clic en Consultar.</td>
                 </tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- Modal personalizado para mensajes -->
+<div id="customAlertModal-bom" class="bom-modal">
+    <div id="customAlertDialog-bom" class="bom-modal-dialog" tabindex="0">
+        <div id="customAlertMessage-bom" class="bom-modal-message"></div>
+        <button onclick="hideCustomAlert()" id="customAlertOkBtn-bom" class="bom-modal-btn">OK</button>
+    </div>
+</div>
+
+<!-- Modal de carga con progreso -->
+<div id="loadingModal-bom" class="bom-loading-modal">
+    <div id="loadingDialog-bom" class="bom-loading-dialog">
+        <div id="loadingTitle-bom" class="bom-loading-title">Cargando BOM</div>
+        <div id="loadingMessage-bom" class="bom-loading-message">Procesando archivo Excel...</div>
+        <div id="loadingProgressContainer-bom" class="bom-loading-progress">
+            <div id="loadingProgressBar-bom" class="bom-progress-bar"></div>
+        </div>
+        <div id="loadingSpinner-bom" class="bom-loading-spinner"></div>
+    </div>
+</div>
     </div>
 
     <!-- Modal para registro/edición -->

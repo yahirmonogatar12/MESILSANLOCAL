@@ -1,18 +1,18 @@
-/**
+﻿/**
  * Plan SMD Module
- * Módulo JavaScript encapsulado para manejo del Plan SMD
+ * MÃ³dulo JavaScript encapsulado para manejo del Plan SMD
  * Evita conflictos de variables globales usando IIFE
  */
 (function() {
     'use strict';
     
     // ===============================
-    // ENDPOINTS (privados al módulo)
+    // ENDPOINTS (privados al mÃ³dulo)
     // ===============================
     const PLAN_SMD_API = {
         workOrders: "/api/work-orders", // GET: q, estado, desde, hasta
         inventarioPorModelo: (modelo) => `/api/inventario/modelo/${encodeURIComponent(modelo)}` , // GET
-        guardarPlan: "/api/plan-smd" // POST [{...renglón...}]
+        guardarPlan: "/api/plan-smd" // POST [{...renglÃ³n...}]
     };
 
     // ===============================
@@ -23,11 +23,11 @@
     let plan = [];      // renglones del plan generado
 
     const fmtDate = (s) => {
-        if (!s) return "—";
+        if (!s) return '';
         try {
             const d = new Date(s);
             if (Number.isNaN(d.getTime())) return s;
-            const pad = (n) => String(n).padStart(2, "0");
+            const pad = (n) => String(n).padStart(2, '0');
             return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
         } catch { return s; }
     };
@@ -55,7 +55,7 @@
     }
 
     // ===============================
-    // WORK ORDERS – carga y render
+    // WORK ORDERS carga y render
     // ===============================
     function renderWorkOrders(rows) {
         const tbody = $("smdWoTbody");
@@ -74,11 +74,11 @@
                 <td><button class="smd-btn" type="button" aria-label="Agregar a cola">➕</button></td>
                 <td>${r.codigo_wo||'—'}</td>
                 <td>${r.codigo_po||'—'}</td>
-                <td>${(r.nombre_modelo? r.nombre_modelo+" · ":"")+(r.modelo||'')}</td>
+                <td>${r.nombre_modelo || r.modelo || ''}</td>
                 <td>${r.codigo_modelo||'—'}</td>
                 <td>${num(r.cantidad_planeada||0).toLocaleString()}</td>
                 <td>${fmtDate(r.fecha_operacion)}</td>
-                <td><span class="smd-badge ${r.estado||''}">${r.estado||'—'}</span></td>
+                <td><span class='smd-badge '></span></td>
             `;
             tr.querySelector("button").addEventListener("click", () => addToQueue(r));
             tbody.appendChild(tr);
@@ -99,7 +99,7 @@
             // No agregar filtro de estado para mostrar todos
             params.set("incluir_planificadas", "true");
         } else if (estado) {
-            // Filtrar por estado específico
+            // Filtrar por estado especÃ­fico
             params.set("estado", estado);
         } else {
             // Por defecto, solo mostrar WO con estado CREADA
@@ -109,7 +109,7 @@
         if (desde) params.set("desde", desde);
         if (hasta) params.set("hasta", hasta);
 
-        showLoading("Consultando WO…");
+        showLoading("Consultando WO...");
         try {
             const url = `${PLAN_SMD_API.workOrders}?${params.toString()}`;
             const data = await fetchJSON(url);
@@ -151,7 +151,7 @@
             tr.innerHTML = `
                 <td><button class="smd-btn warn" type="button">✖</button></td>
                 <td>${wo.codigo_wo||'—'}</td>
-                <td>${(wo.nombre_modelo? wo.nombre_modelo+" · ":"")+(wo.modelo||'')}</td>
+                <td>${wo.nombre_modelo || wo.modelo || ''}</td>
                 <td>${wo.codigo_modelo||'—'}</td>
                 <td>${num(wo.cantidad_planeada||0)}</td>
                 <td>${fmtDate(wo.fecha_operacion)}</td>
@@ -166,8 +166,8 @@
     // GENERADOR DE PLAN
     // ===============================
     function newLote(prefix = "L") {
-        // NOTA: Esta función ahora se usa como fallback si no hay código WO
-        // El campo 'lote' ahora contiene el código WO para trazabilidad
+        // NOTA: Esta funciÃ³n ahora se usa como fallback si no hay cÃ³digo WO
+        // El campo 'lote' ahora contiene el cÃ³digo WO para trazabilidad
         const d = new Date();
         const pad = (n) => String(n).padStart(2,'0');
         const base = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
@@ -184,9 +184,10 @@
         
         return {
             linea: 'SMT A',
-            lote: wo.codigo_wo || wo.wo || newLote('P'), // Usar código WO para trazabilidad
-            nparte: invRow.nparte || '',
-            modelo: wo.modelo || invRow.descripcion || '',
+            lote: '', // LOT se asigna al guardar
+            wo: wo.codigo_wo || wo.wo || '',
+            nparte: (invRow.nparte || wo.codigo_modelo || wo.modelo || ''),
+            modelo: (wo.nombre_modelo || invRow.model || invRow.descripcion || wo.modelo || ''),
             tipo: 'Main',
             turno: 'DIA',
             ct: wo.ct || '',
@@ -200,27 +201,28 @@
         };
     }
 
-    function planRowFromFaltante(wo, faltante, totalFisico) {
-        const qty = num(faltante);
+    function planRowFromFaltante(wo, planQty, totalFisico) {
+        const qty = num(planQty);
         const fisico = num(totalFisico || 0);
         const diferencia = 0;
         
         // Si no hay faltantes, mostrar que está completo
-        const comentarios = qty > 0 ? 'Generado por faltantes' : 'Stock completo';
+        const comentarios = 'Generado por faltantes';
         const pct = qty > 0 ? 0 : 100; // 100% si está completo
         
         return {
             linea: 'SMT A',
-            lote: wo.codigo_wo || newLote('P'), // Usar código WO para trazabilidad
-            nparte: wo.codigo_modelo || wo.modelo || '-',
-            modelo: wo.modelo || '-',
+            lote: wo.codigo_wo || newLote('P'), // Usar codigo WO para trazabilidad
+            wo: wo.codigo_wo || wo.wo || '',
+            nparte: (wo.codigo_modelo || wo.modelo || '-'),
+            modelo: (wo.nombre_modelo || wo.modelo || '-'),
             tipo: 'Main',
             turno: 'DIA',
             ct: '',
             uph: '',
             qty,
             fisico,
-            falta: qty, // La falta es igual a la cantidad faltante
+            falta: Math.max(0, qty - fisico),
             diferencia,
             pct,
             comentarios
@@ -234,7 +236,31 @@
         return { planQty, totalFisico, faltante };
     }
 
-    function renderPlan() {
+        // Obtener CT/UPH desde RAW SMD
+    async function fetchCtUph(partNo, linea) {
+        if (!partNo) return null;
+        const params = new URLSearchParams({ part_no: partNo });
+        if (linea) params.set('linea', linea);
+        try {
+            const data = await fetchJSON(`/api/raw/ct_uph?${params.toString()}`);
+            return (data && data.success) ? data : null;
+        } catch { return null; }
+    }
+
+    async function updateCtUphForRowAt(idx) {
+        const r = plan[idx];
+        if (!r) return;
+        const resp = await fetchCtUph(r.nparte, r.linea);
+        if (resp) {
+            r.ct = resp.ct ?? r.ct;
+            r.uph = resp.uph ?? r.uph;
+            if (!r.modelo || r.modelo === r.nparte) {
+                r.modelo = resp.model || r.modelo;
+            }
+            renderPlan();
+        }
+    }
+function renderPlan() {
         const tbody = $("smdPlanTbody");
         tbody.innerHTML = "";
         if (!plan.length) {
@@ -255,7 +281,7 @@
                         <option>SMT A</option><option>SMT B</option><option>SMT C</option><option>SMT D</option>
                     </select>
                 </td>
-                <td><input class="smd-inline-input" data-field="lote" data-idx="${idx}" value="${r.lote}"></td>
+                <td>${r.lote}</td>
                 <td>${r.nparte}</td>
                 <td>${r.modelo}</td>
                 <td>
@@ -272,7 +298,7 @@
                 </td>
                 <td><input class="smd-inline-input" data-field="ct" data-idx="${idx}" value="${r.ct}"></td>
                 <td><input class="smd-inline-input" data-field="uph" data-idx="${idx}" value="${r.uph}"></td>
-                <td><input class="smd-inline-input" data-field="qty" data-idx="${idx}" value="${r.qty}"></td>
+                <td data-field="qty" data-idx="${idx}">${num(r.qty).toLocaleString()}</td>
                 <td>${r.fisico.toLocaleString()}</td>
                 <td><input class="smd-inline-input" data-field="diferencia" data-idx="${idx}" value="${diferenciaValue}" style="${diferenciaStyle}" placeholder="±0"></td>
                 <td data-field="falta" data-idx="${idx}">${r.falta.toLocaleString()}</td>
@@ -292,7 +318,7 @@
             el.addEventListener('change', onPlanCellChange);
         });
         
-        // Recalcular automáticamente todos los valores después de renderizar
+        // Recalcular automÃ¡ticamente todos los valores despuÃ©s de renderizar
         recalculateAllRows();
     }
 
@@ -335,12 +361,14 @@
         const val = (el.tagName === 'SELECT') ? el.value : (el.type === 'number' ? Number(el.value) : el.value);
         plan[idx][field] = (field==='qty' || field==='diferencia') ? num(val) : val;
         
-        if (field==='qty' || field==='diferencia') { 
+        if (field==='qty' || field==='diferencia') {
             const qty = num(plan[idx].qty), fisico = num(plan[idx].fisico), diferencia = num(plan[idx].diferencia) || 0;
             const fisicoAjustado = fisico + diferencia;
             plan[idx].falta = Math.max(0, qty - fisicoAjustado);
             plan[idx].pct = qty ? Math.min(100, Math.round((Math.min(qty, fisicoAjustado)/qty)*100)) : 0;
             updateDisplayValues();
+        } else if (field==='linea') {
+            updateCtUphForRowAt(idx);
         } else {
             renderPlan();
         }
@@ -358,7 +386,7 @@
         try {
             const rows = [];
             const onlyShortage = document.getElementById('smdOnlyShortage').checked;
-            console.log('📊 Solo faltantes:', onlyShortage);
+            console.log('Solo faltantes:', onlyShortage);
             
             for (const wo of queue) {
                 console.log('🔍 Procesando WO:', wo.codigo_wo, 'Modelo:', wo.codigo_modelo || wo.modelo);
@@ -368,12 +396,12 @@
                 console.log('📦 Inventario encontrado:', invRows.length, 'registros');
 
                 if (onlyShortage) {
-                    const { faltante, totalFisico } = computeShortage(wo, invRows);
-                    console.log('📊 Faltante calculado:', faltante, 'Total físico:', totalFisico);
-                    
+                    const { faltante, totalFisico, planQty } = computeShortage(wo, invRows);
+                    console.log('🔍 Faltante calculado:', faltante, 'Total físico:', totalFisico);
+
                     // Si hay faltantes, generar fila por faltante
                     if (faltante > 0) {
-                        const row = planRowFromFaltante(wo, faltante, totalFisico);
+                        const row = planRowFromFaltante(wo, planQty, totalFisico);
                         console.log('➕ Agregando fila por faltante:', row);
                         rows.push(row);
                     } else {
@@ -402,6 +430,7 @@
             console.log('✅ Plan generado con', rows.length, 'filas:', rows);
             plan = rows;
             renderPlan();
+            for (let i = 0; i < plan.length; i++) { try { await updateCtUphForRowAt(i); } catch {} }
             
         } catch (e) { 
             console.error('❌ Error generando plan:', e); 
@@ -428,7 +457,7 @@
             return; 
         }
         const headers = ["linea","wo","nparte","modelo","tipo","turno","ct","uph","qty","fisico","falta","diferencia","pct","comentarios"];
-        const fieldMap = {"wo": "lote"}; // Mapear 'wo' a 'lote' en el objeto
+        const fieldMap = {}; // usar valores directos
         const lines = [headers.join(',')];
         plan.forEach(r => {
             const row = headers.map(h => toCSVCell(r[fieldMap[h] || h]));
@@ -457,9 +486,9 @@
                 body: JSON.stringify(plan)
             });
             if (!res.ok) throw new Error('HTTP '+res.status);
-            
+
             // Obtener códigos de WO únicos del plan
-            const codigosWO = [...new Set(plan.map(r => r.lote).filter(lote => lote && lote.trim()))];
+            const codigosWO = [...new Set(plan.map(r => r.wo).filter(lote => lote && lote.trim()))];
             
             // Actualizar estado de cada WO a 'PLANIFICADA'
             showLoading('Actualizando estado de WO…');
@@ -526,14 +555,14 @@
             $("smdAlertModal").style.display = "none";
         });
         
-        console.log('✅ Event listeners del Plan SMD configurados');
+        console.log('âœ… Event listeners del Plan SMD configurados');
     }
 
     // ===============================
-    // FUNCIÓN DE INICIALIZACIÓN PRINCIPAL
+    // FUNCIÃ“N DE INICIALIZACIÃ“N PRINCIPAL
     // ===============================
     function initPlanSMD() {
-        console.log('🚀 Inicializando Plan SMD Module...');
+        console.log('ðŸš€ Inicializando Plan SMD Module...');
         
         try {
             // Verificar que todos los elementos necesarios existen
@@ -546,7 +575,7 @@
             
             for (const elementId of requiredElements) {
                 if (!$(elementId)) {
-                    console.error(`❌ Elemento requerido no encontrado: ${elementId}`);
+                    console.error(`âŒ Elemento requerido no encontrado: ${elementId}`);
                     return false;
                 }
             }
@@ -560,11 +589,11 @@
             renderQueue();
             renderPlan();
             
-            console.log('✅ Plan SMD Module inicializado correctamente');
+            console.log('âœ… Plan SMD Module inicializado correctamente');
             return true;
             
         } catch (error) {
-            console.error('❌ Error inicializando Plan SMD Module:', error);
+            console.error('âŒ Error inicializando Plan SMD Module:', error);
             return false;
         }
     }
@@ -573,15 +602,15 @@
     // TESTS UNITARIOS
     // ===============================
     function runUnitTests(){
-        console.log('🧪 Ejecutando tests unitarios...');
+        console.log('ðŸ§ª Ejecutando tests unitarios...');
         const results = [];
         
         function expect(name, cond){ 
             if(!cond){ 
-                console.error('❌', name); 
+                console.error('âŒ', name); 
                 results.push(false);
             } else { 
-                console.log('✅', name);
+                console.log('âœ…', name);
             } 
         }
 
@@ -596,7 +625,7 @@
         expect('Lote prefijo', l1.startsWith('T'));
         expect('Lote secuencia', l1 !== l2);
 
-        // planRowFrom cálculo tests
+        // planRowFrom cÃ¡lculo tests
         const wo = {cantidad_planeada: 100, modelo:'M1', codigo_modelo:'C1'};
         const inv = {nparte:'N1', stock_total: 60};
         const pr = planRowFrom(wo, inv);
@@ -624,14 +653,14 @@
         if(results.includes(false)){ 
             console.warn('⚠️ Algunas pruebas fallaron'); 
         } else {
-            console.log('🎉 Todos los tests pasaron correctamente');
+            console.log('✅ Todos los tests pasaron correctamente');
         }
         
         return !results.includes(false);
     }
 
     // ===============================
-    // LIMPIEZA AL DESCARGAR PÁGINA
+    // LIMPIEZA AL DESCARGAR PÃGINA
     // ===============================
     function cleanup() {
         console.log('🧹 Limpiando Plan SMD Module...');
@@ -655,16 +684,28 @@
     };
 
     // ===============================
-    // AUTO-INICIALIZACIÓN
+    // AUTO-INICIALIZACIÃ“N
     // ===============================
-    // Si el DOM ya está listo, inicializar inmediatamente
+    // Si el DOM ya estÃ¡ listo, inicializar inmediatamente
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initPlanSMD);
     } else {
-        // DOM ya está listo, inicializar en el próximo tick
+        // DOM ya estÃ¡ listo, inicializar en el prÃ³ximo tick
         setTimeout(initPlanSMD, 0);
     }
 
-    console.log('📦 Plan SMD Module cargado y listo para inicializar');
+    console.log('ðŸ“¦ Plan SMD Module cargado y listo para inicializar');
 
 })(); // Fin del IIFE
+
+
+
+
+
+
+
+
+
+
+
+
