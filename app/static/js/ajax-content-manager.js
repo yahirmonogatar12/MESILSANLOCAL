@@ -212,11 +212,81 @@
         }
     }
 
+    // Ejecuta los <script> del HTML insertado dinámicamente
+    async function executeScriptsIn(container) {
+        const scripts = Array.from(container.querySelectorAll('script'));
+        const newlyLoaded = [];
+        for (const oldScript of scripts) {
+            try {
+                if (oldScript.src) {
+                    const src = oldScript.getAttribute('src');
+                    if (!window.__loadedScriptUrls || !window.__loadedScriptUrls.has(src)) {
+                        window.__loadedScriptUrls = window.__loadedScriptUrls || new Set();
+                        await new Promise((resolve, reject) => {
+                            const s = document.createElement('script');
+                            s.src = src;
+                            s.onload = () => { window.__loadedScriptUrls.add(src); resolve(); };
+                            s.onerror = reject;
+                            document.body.appendChild(s);
+                        });
+                        newlyLoaded.push(src);
+                    }
+                } else if (oldScript.textContent && oldScript.textContent.trim()) {
+                    const s = document.createElement('script');
+                    s.text = oldScript.textContent;
+                    document.body.appendChild(s);
+                }
+            } catch (e) {
+                console.warn('Error ejecutando script dinámico:', e);
+            }
+        }
+        return newlyLoaded;
+    }
+
+    // Desactiva CSS de módulos no activos para evitar conflicto de #mm-grid entre pantallas
+    function applyModuleStyles(mod) {
+        try {
+            const known = ['control_metal_mask.css', 'control_storage_box.css'];
+            const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+            links.forEach(link => {
+                const href = link.getAttribute('href') || '';
+                if (!known.some(n => href.includes(n))) return;
+                const enable = (mod === 'metal-mask' && href.includes('control_metal_mask.css')) ||
+                               (mod === 'storage-box' && href.includes('control_storage_box.css'));
+                link.disabled = !enable;
+            });
+        } catch (e) {
+            console.warn('applyModuleStyles error:', e);
+        }
+    }
+
     async function loadContent(url, targetSelector = '.main-wrapper', showLoader = true) {
         const target = document.querySelector(targetSelector);
         if (!target) {
             console.error('Target no encontrado:', targetSelector);
             return;
+        }
+
+        // Teardown del módulo activo antes de cargar uno nuevo
+        try {
+            if (typeof window.destroyMetalMask === 'function') {
+                window.destroyMetalMask();
+            }
+            if (typeof window.destroyStorageBox === 'function') {
+                window.destroyStorageBox();
+            }
+            const removeOwned = (owner) => {
+                ['#mm-drawer', '#mm-loading', '#mm-toast', '#mm-storage-modal'].forEach(id => {
+                    const el = document.querySelector(`${id}[data-owner="${owner}"]`);
+                    if (el && el.parentElement === document.body) {
+                        try { el.remove(); } catch (_) {}
+                    }
+                });
+            };
+            removeOwned('metal-mask');
+            removeOwned('storage-box');
+        } catch (e) {
+            console.warn('Error en teardown previo:', e);
         }
 
         try {
@@ -293,11 +363,31 @@
             await new Promise(resolve => setTimeout(resolve, 300)); // Esperar transición
             target.innerHTML = tempDiv.innerHTML;
             
+            // Ejecutar scripts incluidos en el HTML cargado
+            const newlyLoadedScripts = await executeScriptsIn(target);
+            
             console.log('📄 HTML insertado con estilos completamente aplicados');
             
             // 10. REINICIALIZAR SCRIPTS para el nuevo contenido
             updateLoadingText('Configurando funcionalidades...');
             reinitializeScripts();
+
+            // Inicializar módulos específicos si aplica (siempre; son idempotentes)
+            try {
+                const modEl = target.querySelector('#mm-app[data-module]');
+                if (modEl) {
+                    const mod = modEl.getAttribute('data-module');
+                    applyModuleStyles(mod);
+                    if (mod === 'metal-mask' && typeof window.initMetalMask === 'function') {
+                        window.initMetalMask();
+                    }
+                    if (mod === 'storage-box' && typeof window.initStorageBox === 'function') {
+                        window.initStorageBox();
+                    }
+                }
+            } catch (e) {
+                console.warn('Error inicializando módulo específico:', e);
+            }
             
             console.log('⚙️ Scripts reinicializados para contenido dinámico');
             

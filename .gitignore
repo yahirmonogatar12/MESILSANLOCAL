@@ -1,2 +1,57 @@
 .vercel
 .venv
+
+# Windows reserved names
+CON.txt
+PRN.txt
+AUX.txt
+NUL.txt
+COM1.txt
+COM2.txt
+COM3.txt
+COM4.txt
+COM5.txt
+COM6.txt
+COM7.txt
+COM8.txt
+COM9.txt
+LPT1.txt
+LPT2.txt
+LPT3.txt
+LPT4.txt
+LPT5.txt
+LPT6.txt
+LPT7.txt
+LPT8.txt
+LPT9.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
