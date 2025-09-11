@@ -9506,7 +9506,20 @@ def api_plan_run_start():
 
         # Actualizar trazabilidad: INICIADO
         try:
-            execute_query("UPDATE trazabilidad SET estado='INICIADO', updated_at=NOW() WHERE lot_no=%s", (lot_no,))
+            # Intentar INSERT primero
+            try:
+                execute_query("""
+                    INSERT INTO trazabilidad (lot_no, estado, updated_at) 
+                    VALUES (%s, 'INICIADO', NOW())
+                """, (lot_no,))
+            except Exception:
+                # Si falla (probablemente duplicado), actualizar el más reciente
+                execute_query("""
+                    UPDATE trazabilidad SET estado='INICIADO', updated_at=NOW() 
+                    WHERE lot_no=%s AND updated_at = (
+                        SELECT MAX(updated_at) FROM (SELECT updated_at FROM trazabilidad WHERE lot_no=%s) AS t
+                    )
+                """, (lot_no, lot_no))
         except Exception as e2:
             print(f"âš ï¸ Error actualizando trazabilidad (INICIADO): {e2}")
 
@@ -9573,7 +9586,20 @@ def api_plan_run_end():
             print(f"?? Error calculando producido final AOI: {e2}")
         try:
             if run and run.get('lot_no'):
-                execute_query("UPDATE trazabilidad SET estado='FINALIZADO', updated_at=NOW() WHERE lot_no=%s", (run['lot_no'],))
+                # Intentar INSERT primero
+                try:
+                    execute_query("""
+                        INSERT INTO trazabilidad (lot_no, estado, updated_at) 
+                        VALUES (%s, 'FINALIZADO', NOW())
+                    """, (run['lot_no'],))
+                except Exception:
+                    # Si falla (probablemente duplicado), actualizar el más reciente
+                    execute_query("""
+                        UPDATE trazabilidad SET estado='FINALIZADO', updated_at=NOW() 
+                        WHERE lot_no=%s AND updated_at = (
+                            SELECT MAX(updated_at) FROM (SELECT updated_at FROM trazabilidad WHERE lot_no=%s) AS t
+                        )
+                    """, (run['lot_no'], run['lot_no']))
         except Exception as e2:
             print(f"âš ï¸ Error actualizando trazabilidad (FINALIZADO): {e2}")
         return jsonify({'success': True, 'run': run})
@@ -9592,7 +9618,20 @@ def api_plan_run_pause():
         run = execute_query("SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch='one')
         if run and run.get('lot_no'):
             try:
-                execute_query("UPDATE trazabilidad SET estado='PAUSA', updated_at=NOW() WHERE lot_no=%s", (run['lot_no'],))
+                # Intentar INSERT primero
+                try:
+                    execute_query("""
+                        INSERT INTO trazabilidad (lot_no, estado, updated_at) 
+                        VALUES (%s, 'PAUSA', NOW())
+                    """, (run['lot_no'],))
+                except Exception:
+                    # Si falla (probablemente duplicado), actualizar el más reciente
+                    execute_query("""
+                        UPDATE trazabilidad SET estado='PAUSA', updated_at=NOW() 
+                        WHERE lot_no=%s AND updated_at = (
+                            SELECT MAX(updated_at) FROM (SELECT updated_at FROM trazabilidad WHERE lot_no=%s) AS t
+                        )
+                    """, (run['lot_no'], run['lot_no']))
             except Exception as e2:
                 print(f"⚠️ Error actualizando trazabilidad (PAUSA): {e2}")
         return jsonify({'success': True, 'run': run})
