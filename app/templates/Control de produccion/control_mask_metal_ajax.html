@@ -50,23 +50,23 @@
 <aside id="mm-drawer" aria-hidden="true" aria-label="Register panel">
   <header><strong id="mm-drawer-title">Gestión de Metal Mask — Registrar</strong><button class="mm-btn" id="mm-btn-close" aria-label="Cerrar">✕</button></header>
   <form id="mm-form">
-    <div class="mm-field"><label for="mm-management_no">Número de Gestión</label><input id="mm-management_no" class="mm-input" placeholder="EBR420050-01-T01" required /></div>
+    <div class="mm-field"><label for="mm-management_no">Número de Gestión</label><input id="mm-management_no" class="mm-input" placeholder="..." required /></div>
     <div class="mm-field"><label for="mm-storage_box">Caja de Almacenamiento</label><div class="mm-row"><input id="mm-storage_box" class="mm-input" placeholder="NO02-003" readonly /><button type="button" class="mm-btn" onclick="openStorageModal()">Elegir</button></div></div>
-    <div class="mm-field"><label for="mm-pcb_code">Código PCB</label><input id="mm-pcb_code" class="mm-input" placeholder="MAIN_PCB / KEY_PCB / KNOB_PCB" /></div>
+    <div class="mm-field"><label for="mm-pcb_code">Código PCB</label><input id="mm-pcb_code" class="mm-input" placeholder="...." /></div>
     <div class="mm-field"><label for="mm-side">Lado</label><select id="mm-side" class="mm-select"><option value="">Elegir</option><option value="TOP">Superior</option><option value="BOT">Inferior</option><option value="SINGLE">Único</option></select></div>
     <div class="mm-field"><label for="mm-prod_date">Fecha de Producción</label><input id="mm-prod_date" type="date" class="mm-input" /></div>
     <div class="mm-row">
       <div class="mm-field"><label for="mm-max_count">Conteo Máximo</label><input id="mm-max_count" type="number" min="0" step="1" class="mm-input" value="50000" /></div>
       <div class="mm-field"><label for="mm-allowance">Tolerancia</label><input id="mm-allowance" type="number" min="0" step="1" class="mm-input" value="0" /></div>
     </div>
-    <div class="mm-field"><label for="mm-model_name">Nombre del Modelo</label><input id="mm-model_name" class="mm-input" placeholder="Hyundai Mobis ... / 루팡Good Refresh ..." /></div>
+    <div class="mm-field"><label for="mm-model_name">Nombre del Modelo</label><input id="mm-model_name" class="mm-input" placeholder="..." /></div>
     <div class="mm-row">
       <div class="mm-field"><label for="mm-tension_min">Tensión(Mín)</label><input id="mm-tension_min" type="number" step="0.01" min="0" class="mm-input" value="0.20" /></div>
       <div class="mm-field"><label for="mm-tension_max">Tensión(Máx)</label><input id="mm-tension_max" type="number" step="0.01" min="0" class="mm-input" value="0.40" /></div>
     </div>
     <div class="mm-field"><label for="mm-thickness">Grosor</label><input id="mm-thickness" type="number" step="0.01" min="0" class="mm-input" value="0.13" /></div>
-    <div class="mm-field"><label for="mm-supplier">Proveedor</label><input id="mm-supplier" class="mm-input" placeholder="JTEC / ..." /></div>
-    <div class="mm-field"><label for="mm-disuse">Desuso</label><select id="mm-disuse-input" class="mm-select"><option value="Uso" selected>Uso</option><option value="Desuso">Desuso</option><option value="Scrap">Scrap</option></select></div>
+    <div class="mm-field"><label for="mm-supplier">Proveedor</label><input id="mm-supplier" class="mm-input" placeholder="..." /></div>
+    <div class="mm-field"><label for="mm-disuse">Estado de uso</label><select id="mm-disuse-input" class="mm-select"><option value="Uso" selected>Uso</option><option value="Desuso">Desuso</option><option value="Scrap">Scrap</option></select></div>
     <input id="mm-used_count" type="hidden" value="0" />
   </form>
   <div id="mm-actions"><button class="mm-btn" id="mm-btn-reset" type="button">Limpiar</button><button class="mm-btn mm-btn-success" id="mm-btn-save" type="button">Registrar</button></div>

@@ -8,7 +8,7 @@
     --mm-border: #20688C;
     --mm-text: lightgray;
     --mm-muted: #9ca3af;
-    --mm-accent: #22c55e;
+    --mm-accent: #5a7c42;
     --mm-primary: #6366f1;
     --mm-btn: #3C3940;
     --mm-btn-h: #4b5563;
@@ -137,11 +137,11 @@ html, body {
 
 .mm-btn-success {
     background: var(--mm-accent);
-    border-color: #16a34a;
+    border-color: #5a7c4294;
 }
 
 .mm-btn-success:hover {
-    background: #41d977;
+    background: #5a7c4294;
 }
 
 .mm-btn.registrar {
