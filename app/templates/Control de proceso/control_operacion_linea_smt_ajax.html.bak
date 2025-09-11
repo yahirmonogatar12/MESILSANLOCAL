@@ -908,10 +908,10 @@
                 <input type="date" id="dateTo" />
               </div>
             </div>
-            <div class="field inline" style="grid-column: span 1; justify-self:start; grid-template-columns: 36px auto !important; column-gap:2px !important; max-width:180px" id="fld-line">
+            <div class="field inline" style="grid-column: span 2; grid-template-columns: 44px 1fr; column-gap:2px" id="fld-line">
               <label for="selLine">Line</label>
               <div style="display:flex; align-items:center; gap:2px">
-                <select id="selLine" style="width:auto; min-width:88px;">
+                <select id="selLine">
                   <option>ALL</option>
                   <option>SMT A</option>
                   <option>SMT B</option>
@@ -931,7 +931,7 @@
             <div class="field inline" style="grid-column: span 2" id="fld-spacer">
               <label>&nbsp;</label>
             </div>
-            <div class="controls-right" style="grid-column: 11 / span 2; justify-self:end; display:flex; gap:4px; justify-content:flex-end" id="ctrl-search-export">
+            <div class="controls-right" style="grid-column: span 2; display:flex; gap:4px; justify-content:flex-end" id="ctrl-search-export">
               <button class="btn gray" id="btn-search">Search</button>
               <button class="btn green" id="btn-export-main">Excel Export</button>
             </div>
@@ -1133,7 +1133,6 @@
   
 </body>
 </html>
-
 
 
 

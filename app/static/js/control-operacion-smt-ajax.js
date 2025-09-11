@@ -213,7 +213,37 @@
           
           // Si el plan no está en los datos filtrados, hacer una consulta específica para obtenerlo
           if (!planSeleccionado) {
-            try {
+            try { 
+              // Requerir selección explícita para evitar finalizar el plan equivocado
+              if (!selectedPlanId) {
+                showError('SELECCIÓN REQUERIDA → Doble clic en el plan a finalizar');
+                return;
+              }
+              // Confirmación con detalles del plan
+              const datos = (isFiltered ? filteredPlanData : currentPlanData) || [];
+              const planRow = datos.find(x => x && Number(x.id) === Number(selectedPlanId));
+              if (!planRow) {
+                showError('PLAN NO ENCONTRADO → Actualiza la lista y vuelve a intentar');
+                return;
+              }
+              const confirmMsg = `Finalizar plan:\nLinea: ${planRow.linea || ''}\nLot: ${planRow.lote || ''}\nNParte: ${planRow.nparte || ''}.\n¿Confirmar?`;
+              if (!window.confirm(confirmMsg)) { return; }
+              // Resolver run_id del plan seleccionado
+              let ridMap = null;
+              try { const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}'); ridMap = map[String(selectedPlanId)]||null; } catch(_){}
+              if (!ridMap) {
+                const row2 = datos.find(x => x && Number(x.id) === Number(selectedPlanId));
+                ridMap = row2 && row2.run_id ? Number(row2.run_id) : null;
+              }
+              if (!ridMap) {
+                try{
+                  const respRun = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
+                  const jr = await respRun.json();
+                  const rr = Array.isArray(jr)? jr[0] : (jr.rows && jr.rows[0]);
+                  if (rr && rr.run_id) ridMap = Number(rr.run_id);
+                }catch(_){/* ignore */}
+              }
+              if (ridMap) currentRunId = ridMap;
               const planResponse = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
               if (planResponse.ok) {
                 const planData = await planResponse.json();
@@ -564,6 +594,9 @@
               
               // Actualizar estado local inmediatamente
               currentRunId = data.run.id; 
+              // Mapear plan->run para soportar múltiples activos
+              try { const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}'); map[String(selectedPlanId)] = Number(currentRunId); localStorage.setItem('smtRunMap', JSON.stringify(map)); } catch(_){}
+              // Legacy single key
               localStorage.setItem('smtRunId', String(currentRunId));
               
               // Actualizar UI inmediatamente
@@ -601,9 +634,31 @@
             btnEnd.classList.add('processing');
             
             try { 
-              const rid = currentRunId || Number(localStorage.getItem('smtRunId')) || null; 
-              if (!rid) { 
-                showError('NO HAY PROCESO ACTIVO → Inicia un proceso primero');
+              if (!selectedPlanId) {
+                showError('SELECCIÓN REQUERIDA → Doble clic en el plan a finalizar');
+                return;
+              }
+              const datos = (isFiltered ? filteredPlanData : currentPlanData) || [];
+              const planRow = datos.find(x => x && Number(x.id) === Number(selectedPlanId));
+              if (!planRow) {
+                showError('PLAN NO ENCONTRADO → Actualiza la lista');
+                return;
+              }
+              const ok = window.confirm(`Finalizar plan:\nLinea: ${planRow.linea||''}\nLot: ${planRow.lote||''}\nNParte: ${planRow.nparte||''}\n¿Confirmar?`);
+              if (!ok) { return; }
+              let rid = null;
+              try { const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}'); rid = map[String(selectedPlanId)] || null; } catch(_) {}
+              if (!rid && planRow.run_id) rid = Number(planRow.run_id);
+              if (!rid) {
+                try {
+                  const r1 = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
+                  const j1 = await r1.json();
+                  const row1 = Array.isArray(j1) ? j1[0] : (j1.rows && j1.rows[0]);
+                  if (row1 && row1.run_id) rid = Number(row1.run_id);
+                } catch(_) {}
+              }
+              if (!rid) {
+                showError('NO HAY PROCESO ACTIVO para el plan seleccionado');
                 return; 
               }
               
@@ -611,7 +666,7 @@
               const resp = await fetch('/api/plan-run/end', { 
                 method:'POST', 
                 headers:{'Content-Type':'application/json'}, 
-                body: JSON.stringify({ run_id: rid }) 
+                body: JSON.stringify({ run_id: rid, plan_id: selectedPlanId }) 
               });
               const data = await resp.json(); 
               
@@ -620,6 +675,25 @@
                 return;
               }
               
+              // Identificar el plan afectado y actualizar UI en sitio
+              const endedPlanId = (data && data.run && data.run.plan_id) ? Number(data.run.plan_id) : (selectedPlanId || null);
+              if (endedPlanId) {
+                const fila = document.querySelector(`tr[data-plan-id="${endedPlanId}"]`);
+                if (fila) {
+                  // Estatus visual
+                  const tdEstatus = fila.children[14];
+                  if (tdEstatus) tdEstatus.innerHTML = '<span class="status-tag completed">FINALIZADO</span>';
+                  fila.classList.remove('run-active','run-paused');
+                  fila.classList.add('run-completed');
+                }
+                // Actualizar cache local para que el refresco en vivo respete el estado
+                const all = Array.isArray(currentPlanData) ? currentPlanData : [];
+                const it = all.find(x => Number(x.id) === Number(endedPlanId));
+                if (it) { it.run_status = 'ENDED'; it.estatus = 'FINALIZADO'; }
+                // remover mapeo plan->run al finalizar
+                try { const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}'); delete map[String(endedPlanId)]; localStorage.setItem('smtRunMap', JSON.stringify(map)); } catch(_){}
+              }
+
               // Limpiar estado local inmediatamente
               localStorage.removeItem('smtRunId'); 
               currentRunId = null;
@@ -629,17 +703,6 @@
               const lotInfo = document.getElementById('lotNoInfo');
               if (lotNoInput) lotNoInput.value = '';
               if (lotInfo) lotInfo.value = '';
-              
-              // Actualizar la fila en la tabla sin recargar todo
-              if (selectedPlanId) {
-                const filaActual = document.querySelector(`tr[data-plan-id="${selectedPlanId}"]`);
-                if (filaActual) {
-                  const estatusCell = filaActual.querySelector('td:nth-child(15)');
-                  if (estatusCell) {
-                    estatusCell.innerHTML = '<span class="status-tag completed">FINALIZADO</span>';
-                  }
-                }
-              }
               
               // Notificación removida por solicitud del usuario
             } catch(e){ 
@@ -738,5 +801,119 @@
       if (typeof window.onTemplateLoaded === 'function') {
         window.onTemplateLoaded('control_operacion_linea_smt_ajax');
       }
-      
+
+      // ==========================
+      // Actualización en tiempo real
+      // ==========================
+      (function setupLiveRefresh(){
+        const REFRESH_MS = 15000; // 15s por defecto
+        let liveTimer = null;
+
+        function buildListUrlFromUI(){
+          const params = new URLSearchParams();
+          const lotEl = document.getElementById('lotNo');
+          const selLine = document.getElementById('selLine');
+          const chk = document.getElementById('chk-show-planned');
+          const d1 = document.getElementById('dateFrom');
+          const d2 = document.getElementById('dateTo');
+          if (lotEl && lotEl.value) params.set('q', lotEl.value.trim());
+          if (selLine && selLine.value && selLine.value !== 'ALL') params.set('linea', selLine.value);
+          if (chk && chk.checked){
+            params.set('solo_pendientes','true');
+          } else {
+            if (d1 && d1.value) params.set('desde', d1.value);
+            if (d2 && d2.value) params.set('hasta', d2.value);
+          }
+          return `/api/plan-smd/list?${params.toString()}`;
+        }
+
+        function computeStatus(item){
+          const total = (item.producido||0) + (item.falta||0);
+          const pct = Math.min(100, Math.round(((item.producido || 0) / (total || 1)) * 100));
+          let statusClass = 'pending';
+          if (item.run_status === 'RUNNING') statusClass = 'partial';
+          else if (item.run_status === 'PAUSED') statusClass = 'warning';
+          else if (item.run_status === 'ENDED' || item.estatus === 'FINALIZADO' || pct >= 100) statusClass = 'completed';
+          else if (pct > 0) statusClass = 'partial';
+          return { pct, statusClass };
+        }
+
+        function updateRowLive(item){
+          // Mantener mapeo plan->run para soportar múltiples activos
+          try {
+            if (item && item.id) {
+              const key = String(item.id);
+              const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}');
+              if (item.run_status === 'RUNNING' && item.run_id) {
+                map[key] = Number(item.run_id);
+                localStorage.setItem('smtRunMap', JSON.stringify(map));
+              } else if (item.run_status === 'ENDED') {
+                if (key in map) { delete map[key]; localStorage.setItem('smtRunMap', JSON.stringify(map)); }
+              }
+            }
+          } catch(_){}
+          const row = document.querySelector(`tr[data-plan-id="${item.id}"]`);
+          if (!row) return;
+          const { pct, statusClass } = computeStatus(item);
+          // celdas: 9: Qty, 10: Producido, 11: Falta, 12: %, 13: progress, 15: Estatus
+          const tdProducido = row.children[9];
+          const tdFalta = row.children[10];
+          const tdPct = row.children[11];
+          const tdProg = row.children[12];
+          const tdEstatus = row.children[14];
+          if (tdProducido) tdProducido.textContent = String(item.producido || 0);
+          if (tdFalta) tdFalta.textContent = String(item.falta || 0);
+          if (tdPct) tdPct.innerHTML = `<span class="status-tag ${statusClass}">${pct}%</span>`;
+          if (tdProg) {
+            const span = tdProg.querySelector('span');
+            if (span) span.style.width = `${pct}%`;
+          }
+          if (tdEstatus) tdEstatus.innerHTML = `<span class="status-tag ${statusClass}">${item.run_status==='RUNNING'?'INICIADO': (item.estatus || 'PLANEADO')}</span>`;
+          row.classList.remove('run-active','run-paused','run-completed');
+          if (item.run_status === 'RUNNING') row.classList.add('run-active');
+          else if (item.run_status === 'PAUSED') row.classList.add('run-paused');
+          else if (item.estatus === 'FINALIZADO' || item.run_status === 'ENDED') row.classList.add('run-completed');
+        }
+
+        async function liveTick(){
+          try{
+            // Si hay un plan filtrado, traer solo ese
+            if (typeof selectedPlanId !== 'undefined' && selectedPlanId){
+              const r = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
+              const j = await r.json();
+              const rows = Array.isArray(j) ? j : (j.rows||[]);
+              rows.forEach(updateRowLive);
+              return;
+            }
+            // Si no, refrescar todos los visibles con los filtros actuales
+            const url = buildListUrlFromUI();
+            const r = await fetch(url);
+            const j = await r.json();
+            const rows = Array.isArray(j) ? j : (j.rows||[]);
+            rows.forEach(updateRowLive);
+          }catch(e){
+            console.warn('Live refresh error:', e);
+          }
+        }
+
+        function start(){
+          if (liveTimer) return;
+          liveTimer = setInterval(liveTick, REFRESH_MS);
+        }
+        function stop(){
+          if (liveTimer) clearInterval(liveTimer);
+          liveTimer = null;
+        }
+
+        document.addEventListener('visibilitychange', ()=>{
+          if (document.hidden) stop(); else start();
+        });
+        // Exponer por si se desea controlar
+        window.startSmtLiveRefresh = start;
+        window.stopSmtLiveRefresh = stop;
+
+        // Arrancar tras un pequeño delay para permitir el primer render
+        setTimeout(start, 1200);
+      })();
+
     })();

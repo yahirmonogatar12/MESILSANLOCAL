@@ -9522,6 +9522,14 @@ def api_plan_run_end():
     try:
         data = request.get_json(force=True) or {}
         run_id = int(data.get('run_id'))
+        plan_id_req = data.get('plan_id')
+        # Validar run existente y opcionalmente que corresponda al plan indicado
+        run = execute_query("SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch='one')
+        if not run:
+            return jsonify({'success': False, 'error': 'Run no encontrado'}), 404
+        if plan_id_req is not None and str(run.get('plan_id')) != str(plan_id_req):
+            return jsonify({'success': False, 'error': 'El run no corresponde al plan indicado'}), 400
+        # Cerrar el run si está RUNNING
         update = "UPDATE plan_smd_runs SET status='ENDED', end_time=NOW() WHERE id=%s AND status='RUNNING'"
         execute_query(update, (run_id,))
         run = execute_query("SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch='one')
