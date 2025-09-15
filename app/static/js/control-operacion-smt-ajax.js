@@ -1,6 +1,6 @@
 // Control de Operación Línea SMT - Integración con Plan SMD
 (function() {
-  console.log('🚀 Inicializando Control de Operación Línea SMT AJAX...');
+  console.log('Inicializando Control de Operacion Linea SMT AJAX...');
   
   // Variables globales
   let currentPlanData = [];
@@ -128,7 +128,7 @@
           }
           // Si no está en modo focus, no recargar automáticamente para mantener velocidad
         } catch (error) {
-          console.warn('⚠️ Error en recarga rápida:', error);
+          console.warn('Error en recarga rapida:', error);
           // En caso de error, hacer recarga completa
           setTimeout(() => cargarDatosPlanSMD(), 500);
         }
@@ -137,7 +137,7 @@
       // FunciÃ³n para cargar datos del plan SMD
       async function cargarDatosPlanSMD() {
         if (!getElements()) {
-          console.warn('âš ï¸ Elementos no encontrados, reintentando...');
+          console.warn('Elementos no encontrados, reintentando...');
           setTimeout(cargarDatosPlanSMD, 1000);
           return;
         }
@@ -148,7 +148,6 @@
           const lotEl = document.getElementById('lotNo');
           if (lotEl && lotEl.value) params.set('q', lotEl.value.trim());
           if (elements.selLine && elements.selLine.value && elements.selLine.value !== 'ALL') { 
-            console.log('🔍 Filtro de línea aplicado:', elements.selLine.value);
             params.set('linea', elements.selLine.value); 
           }
           
@@ -162,7 +161,6 @@
           }
 
         const url = `/api/plan-smd/list?${params}`;
-        console.log('📡 URL de consulta:', url);
         
         elements.placeholder.textContent = 'Loading data...';
         elements.placeholder.style.display = 'grid';
@@ -176,10 +174,7 @@
         const rows = Array.isArray(data) ? data : (data.rows || []);
         currentPlanData = rows;
         
-        console.log(`📊 Datos recibidos: ${rows.length} planes`);
-        if (rows.length > 0) {
-          console.log('📋 Líneas encontradas:', [...new Set(rows.map(r => r.linea))]);
-        }
+        // Datos recibidos: ${rows.length} planes
         
         // Verificar si hay búsqueda por LOT NO para activar modo focus automáticamente
         const lotNoInput = document.getElementById('lotNo');
@@ -272,7 +267,7 @@
         aplicarSeleccionPersistida();
         
       } catch (error) {
-          console.error('âŒ Error cargando datos:', error);
+          console.error('Error cargando datos:', error);
           elements.placeholder.textContent = `Error loading data: ${error.message}`;
           elements.placeholder.style.display = 'grid';
         }
@@ -304,6 +299,12 @@
         
         // Recargar datos sin filtros para mostrar todos los planes
         cargarDatosPlanSMD();
+        
+        // Limpiar historial de materiales y BOM - mostrar mensaje inicial
+        setTimeout(() => {
+          mostrarMensajeInicialHistorial();
+          mostrarMensajeInicialBom();
+        }, 500);
       }
       
       // FunciÃ³n para renderizar los datos en la tabla
@@ -364,6 +365,7 @@
             }
           }
           
+          // Event listener para doble click (modo enfoque)
           row.addEventListener('dblclick', () => { 
             selectedPlanId = item.id; 
             try{ 
@@ -373,6 +375,49 @@
             // Activar modo enfoque en lugar de solo resaltar
             filtrarPorPlan(selectedPlanId);
           });
+          
+          // Event listener para click simple (modo focus con historial)
+          row.addEventListener('click', function(e) {
+            // Evitar que se active si se hace clic en el checkbox
+            if (e.target.type === 'checkbox') {
+              return;
+            }
+            
+            // Remover clase focus de otras filas
+            const allRows = document.querySelectorAll('#tbody-plan-data tr');
+            allRows.forEach(r => {
+              r.classList.remove('focused-row');
+            });
+            
+            // Agregar clase focus a la fila actual
+            row.classList.add('focused-row');
+            
+            // Guardar selección en localStorage
+            try {
+              localStorage.setItem('smtSelectedPlanId', item.id);
+            } catch(e) {
+              console.warn('No se pudo guardar selección:', e);
+            }
+            
+            // Obtener la línea del item y cargar historial
+            const lineaItem = item.linea;
+            const modeloItem = item.modelo || item.nparte || '';
+            
+            // Mapear línea a formato esperado y cargar historial
+            if (lineaItem) {
+              // Si estamos en modo focus, cargar historial filtrado por línea
+              cargarHistorialMaterial(lineaItem, 0);
+              
+              // También cargar el BOM List si tenemos modelo
+              if (modeloItem) {
+                cargarBomList(lineaItem, modeloItem, 0);
+              }
+            }
+          });
+          
+          // Agregar cursor pointer para indicar que es clickeable
+          row.style.cursor = 'pointer';
+          row.style.transition = 'all 0.2s ease';
           
           // Agregar clase especial si tiene run activo
           if (item.run_status === 'RUNNING') {
@@ -448,15 +493,224 @@
         }
       }
       
+      // Función para agregar estilos CSS dinámicamente
+      function addFocusStyles() {
+        // Verificar si ya existen los estilos
+        if (document.getElementById('smt-focus-styles')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'smt-focus-styles';
+        style.textContent = `
+          /* Estilos para modo focus */
+          #tbody-plan-data tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          
+          #tbody-plan-data tr.focused-row td {
+            background-color: #3498DB !important;
+            color: #FFFFFF !important;
+            font-weight: 500;
+            border-color: #2980B9 !important;
+          }
+
+          #tbody-plan-data tr.focused-row:hover td {
+            background-color: #2980B9 !important;
+          }
+          
+          #tbody-plan-data tr.focused-row .status-tag {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            color: #FFFFFF !important;
+            border-color: rgba(255, 255, 255, 0.3) !important;
+          }
+          
+          /* Estilos para contenedores de tabla - APLICAR A TODAS LAS TABLAS */
+          div.table,
+          .panel-body .table,
+          #tbl-mch,
+          #tbl-bom,
+          #tbl-solder,
+          #tbl-metalmask,
+          #tbl-squeegee {
+            max-height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            display: block !important;
+            position: relative !important;
+          }
+          
+          .panel-body {
+            max-height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+          }
+          
+          div.section-table-container {
+            max-height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            display: block !important;
+            position: relative !important;
+          }
+          
+          /* Asegurar que TODAS las tablas usen todo el ancho disponible */
+          .section-table,
+          #tbl-bom table,
+          #tbl-mch table,
+          #tbl-solder table,
+          #tbl-metalmask table,
+          #tbl-squeegee table,
+          .panel .table table {
+            width: 100% !important;
+            table-layout: fixed !important;
+          }
+          
+          /* Forzar scroll en cualquier contenedor que tenga el tbody del historial */
+          #materialHistoryTableBody-Control\\ de\\ operacion\\ de\\ linea\\ SMT {
+            /* Asegurar que el tbody sea visible */
+          }
+          
+          /* Contenedor padre del tbody del historial */
+          table:has(#materialHistoryTableBody-Control\\ de\\ operacion\\ de\\ linea\\ SMT) {
+            width: 100% !important;
+          }
+          
+          /* Selectores específicos para TODOS los paneles - SCROLL UNIVERSAL */
+          #panel-mch .panel-body,
+          #panel-bom .panel-body,
+          #panel-solder .panel-body,
+          #panel-metalmask .panel-body,
+          #panel-squeegee .panel-body {
+            max-height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+          }
+          
+          #panel-mch .table,
+          #panel-bom .table,
+          #panel-solder .table,
+          #panel-metalmask .table,
+          #panel-squeegee .table {
+            max-height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            display: block !important;
+            position: relative !important;
+          }
+          
+          div:has(table tbody[id*="materialHistory"]) {
+            max-height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+          }
+          
+          /* Estilos para el scrollbar - APLICAR A TODAS LAS TABLAS */
+          .section-table-container::-webkit-scrollbar,
+          .panel-body::-webkit-scrollbar,
+          .table::-webkit-scrollbar,
+          #tbl-mch::-webkit-scrollbar,
+          #tbl-bom::-webkit-scrollbar,
+          #tbl-solder::-webkit-scrollbar,
+          #tbl-metalmask::-webkit-scrollbar,
+          #tbl-squeegee::-webkit-scrollbar,
+          div.table::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+          
+          .section-table-container::-webkit-scrollbar-track,
+          #panel-bom .panel-body::-webkit-scrollbar-track,
+          #panel-bom .table::-webkit-scrollbar-track,
+          #tbl-bom::-webkit-scrollbar-track {
+            background: #40424F;
+            border-radius: 4px;
+          }
+          
+          .section-table-container::-webkit-scrollbar-thumb,
+          #panel-bom .panel-body::-webkit-scrollbar-thumb,
+          #panel-bom .table::-webkit-scrollbar-thumb,
+          #tbl-bom::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+          }
+          
+          .section-table-container::-webkit-scrollbar-thumb:hover,
+          #panel-bom .panel-body::-webkit-scrollbar-thumb:hover,
+          #panel-bom .table::-webkit-scrollbar-thumb:hover,
+          #tbl-bom::-webkit-scrollbar-thumb:hover {
+            background: #888;
+          }
+          
+          /* Estilos para BOM List */
+          .bom-pending {
+            border: 2px solid #E74C3C !important;
+          }
+          
+          .bom-matched {
+            border: 2px solid #27AE60 !important;
+          }
+          
+          .status-indicator {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+          }
+          
+          .status-indicator.bom-pending {
+            background-color: #E74C3C;
+            color: white;
+          }
+          
+          .status-indicator.bom-matched {
+            background-color: #27AE60;
+            color: white;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
       // FunciÃ³n para configurar event listeners
       function setupEventListeners() {
         if (!getElements()) return;
+        
+        // Agregar estilos CSS
+        addFocusStyles();
+        
+        // Configurar event listeners para historial de material
+        const btnExportarHistorial = document.getElementById('btnExportarHistorial-Control de operacion de linea SMT');
+        if (btnExportarHistorial) {
+          btnExportarHistorial.addEventListener('click', function() {
+            console.log('Exportar historial clicked');
+            exportarHistorialMaterial();
+          });
+        }
+        
+        const lineaDropdown = document.getElementById('linea-Control de operacion de linea SMT');
+        if (lineaDropdown) {
+          lineaDropdown.addEventListener('change', function() {
+            console.log('Línea cambiada a:', this.value);
+            onLineaChange();
+          });
+        }
+        
+        // No cargar historial automáticamente - solo cuando se seleccione un plan
+        // Mostrar mensaje inicial en lugar de cargar datos automáticamente
+        setTimeout(function() {
+            mostrarMensajeInicialHistorial();
+            mostrarMensajeInicialBom();
+        }, 1000);
+        
         if (elements.btnSearch) {
           elements.btnSearch.addEventListener('click', () => {
             // Salir del modo enfoque cuando se presiona Search
             if (isFiltered) {
               isFiltered = false;
               filteredPlanData = [];
+              // Limpiar historial y BOM cuando se sale del modo focus
+              setTimeout(() => {
+                mostrarMensajeInicialHistorial();
+                mostrarMensajeInicialBom();
+              }, 300);
             }
             
             // Limpiar campos Lot No y Lot No Info para búsqueda general
@@ -485,6 +739,11 @@
                 isFiltered = false;
                 filteredPlanData = [];
                 cargarDatosPlanSMD();
+                // Limpiar historial y BOM cuando se sale del modo focus
+                setTimeout(() => {
+                  mostrarMensajeInicialHistorial();
+                  mostrarMensajeInicialBom();
+                }, 300);
               }
             }
           });
@@ -514,6 +773,11 @@
               isFiltered = false;
               filteredPlanData = [];
               cargarDatosPlanSMD();
+              // Limpiar historial y BOM cuando se sale del modo focus
+              setTimeout(() => {
+                mostrarMensajeInicialHistorial();
+                mostrarMensajeInicialBom();
+              }, 300);
             }
           });
         }
@@ -536,7 +800,7 @@
         // Checkbox "Mostrar Planeadas"
         if (elements.chkShowPlanned) {
           elements.chkShowPlanned.addEventListener('change', () => {
-            console.log('📋 Mostrar planeadas:', elements.chkShowPlanned.checked);
+            console.log('Mostrar planeadas:', elements.chkShowPlanned.checked);
             cargarDatosPlanSMD();
           });
         }
@@ -718,7 +982,7 @@
         
         if (btnStop) {
           btnStop.addEventListener('click', () => {
-            console.log('â¸ï¸ Stop clicked');
+            console.log('Stop clicked');
           });
         }
       }
@@ -726,11 +990,11 @@
       // FunciÃ³n principal de inicializaciÃ³n
       function inicializar() {
         if (isInitialized) {
-          console.log('âš ï¸ Ya inicializado, omitiendo...');
+          console.log('Ya inicializado, omitiendo...');
           return;
         }
         
-        console.log('âœ… Inicializando Control de OperaciÃ³n SMT AJAX...');
+        console.log('Inicializando Control de Operacion SMT AJAX...');
         isInitialized = true;
         
         // Configurar event listeners primero
@@ -764,8 +1028,12 @@
       // Exponer funciones globalmente para uso en botones
       window.mostrarTodosLosDatos = mostrarTodosLosDatos;
       window.filtrarPorPlan = filtrarPorPlan;
+      window.controlOperacionSMTAjax = true;
       
-      // Auto-inicialización
+      // Auto-inicialización simplificada
+      console.log('Módulo SMT cargado correctamente');
+      
+      // Inicializar siempre
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', inicializar);
       } else {
@@ -801,6 +1069,546 @@
       if (typeof window.onTemplateLoaded === 'function') {
         window.onTemplateLoaded('control_operacion_linea_smt_ajax');
       }
+
+      // ==========================
+      // INTEGRACIÓN CON SISTEMA DE HISTORIAL DE MATERIAL
+      // ==========================
+      
+      // Función para mapear línea a equipo SMT y sus máquinas
+      function mapearLineaAEquipo(linea) {
+          const mapeoLineas = {
+              '1LINE': 'SMT A',
+              '2LINE': 'SMT B', 
+              '3LINE': 'SMT C',
+              '4LINE': 'SMT D',
+              // También mapear valores directos
+              'SMT A': 'SMT A',
+              'SMT B': 'SMT B',
+              'SMT C': 'SMT C',
+              'SMT D': 'SMT D'
+          };
+          return mapeoLineas[linea] || linea;
+      }
+      
+      // Función para obtener todas las máquinas de una línea SMT
+      function obtenerMaquinasDeLinea(linea) {
+          const maquinasPorLinea = {
+              '1LINE': ['L1 m1', 'L1 m2', 'L1 m3', '1line'],
+              '2LINE': ['L2 m1', 'L2 m2', 'L2 m3', '2line'],
+              '3LINE': ['L3 m1', 'L3 m2', 'L3 m3', '3line'],
+              '4LINE': ['L4 m1', 'L4 m2', 'L4 m3', '4line'],
+              'SMT A': ['L1 m1', 'L1 m2', 'L1 m3', '1line'],
+              'SMT B': ['L2 m1', 'L2 m2', 'L2 m3', '2line'],
+              'SMT C': ['L3 m1', 'L3 m2', 'L3 m3', '3line'],
+              'SMT D': ['L4 m1', 'L4 m2', 'L4 m3', '4line']
+          };
+          return maquinasPorLinea[linea] || [];
+      }
+      
+      // Función para cargar datos del historial de cambio de material
+      async function cargarHistorialMaterial(lineaSeleccionada = null, intentos = 0) {
+          console.log('Cargando historial de material para línea:', lineaSeleccionada);
+          
+          let tableBody = document.getElementById('materialHistoryTableBody-Control de operacion de linea SMT');
+          
+          // Fallback: template aislado (#tbl-mch table)
+          if (!tableBody) {
+              const mchTable = document.querySelector('#tbl-mch table');
+              if (mchTable) {
+                  tableBody = mchTable.querySelector('tbody');
+                  if (!tableBody) {
+                      tableBody = document.createElement('tbody');
+                      mchTable.appendChild(tableBody);
+                  }
+              }
+          }
+          
+          if (!tableBody) {
+              const maxIntentos = 20;
+              if (intentos < maxIntentos) {
+                  console.warn(`Tabla no encontrada (intento ${intentos + 1}/${maxIntentos}), reintentando en 300ms...`);
+                  setTimeout(() => cargarHistorialMaterial(lineaSeleccionada, intentos + 1), 300);
+                  return;
+              }
+              console.error('No se encontró el tbody objetivo para historial de material tras varios intentos');
+              return;
+          }
+          
+          try {
+              // Obtener la línea seleccionada del dropdown si no se proporciona
+              if (!lineaSeleccionada) {
+                  const lineaDropdown = document.getElementById('linea-Control de operacion de linea SMT');
+                  lineaSeleccionada = lineaDropdown ? lineaDropdown.value : 'Todos';
+                  console.log('Línea obtenida del dropdown:', lineaSeleccionada);
+              } else {
+                  console.log('Usando línea del parámetro:', lineaSeleccionada);
+              }
+              
+              // Si es "Todos", usar el endpoint original
+              if (lineaSeleccionada === 'Todos') {
+                  const url = '/api/historial-cambio-material-maquina';
+                  console.log('Cargando historial de material (todos) desde:', url);
+                  
+                  const response = await fetch(url);
+                  if (!response.ok) {
+                      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                  }
+                  
+                  const result = await response.json();
+                  
+                  if (!result.success) {
+                      throw new Error(result.error || 'Error en la respuesta del API');
+                  }
+                  
+                  const data = result.data || [];
+                  renderizarTablaHistorial(data, tableBody, lineaSeleccionada);
+                  return;
+              }
+              
+              // Para líneas específicas, usar el nuevo endpoint
+              const equipoSMT = mapearLineaAEquipo(lineaSeleccionada);
+              const fechaActual = new Date().toISOString().slice(0, 10);
+              const url = `/api/historial_smt_data?fecha_desde=${fechaActual}&linea=${encodeURIComponent(equipoSMT)}`;
+              
+              console.log('Mapeo de línea:');
+              console.log('  - Línea original:', lineaSeleccionada);
+              console.log('  - Equipo SMT mapeado:', equipoSMT);
+              console.log('  - Fecha actual:', fechaActual);
+              console.log('  - URL construida:', url);
+              console.log('Cargando historial de material para línea:', lineaSeleccionada, '(', equipoSMT, ') desde:', url);
+              
+              const response = await fetch(url);
+              if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+              
+              const result = await response.json();
+              const data = result.data || [];
+              
+              // Renderizar datos en la tabla del historial de material
+              console.log('Renderizando datos en la tabla del historial de material...');
+              renderizarTablaHistorial(data, tableBody, lineaSeleccionada);
+              
+          } catch (error) {
+              console.error('Error cargando historial de material:', error);
+              if (tableBody) {
+                  tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #E74C3C;">Error cargando datos</td></tr>';
+              }
+          }
+      }
+      
+      // Función auxiliar para renderizar la tabla de historial
+      function renderizarTablaHistorial(data, tableBody, lineaFiltro = null) {
+          // Verificar que tableBody existe
+          if (!tableBody) {
+              console.error('TableBody es null, no se puede renderizar la tabla');
+              return;
+          }
+          
+          // Limpiar tabla
+          tableBody.innerHTML = '';
+          
+          if (data.length === 0) {
+              tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #95A5A6;">No hay datos disponibles</td></tr>';
+              return;
+          }
+          
+          // Filtrar datos por línea si se especifica una línea y estamos en modo focus
+          let dataFiltrada = data;
+          if (lineaFiltro && isFiltered && selectedPlanId) {
+              const maquinasPermitidas = obtenerMaquinasDeLinea(lineaFiltro);
+              console.log(`Filtrando historial para línea: ${lineaFiltro}`);
+              console.log('Máquinas permitidas:', maquinasPermitidas);
+              
+              dataFiltrada = data.filter(item => {
+                  const maquina = item.maquina || item.equipment || item.Equipment || item.machine || '';
+                  const coincide = maquinasPermitidas.some(maq => 
+                      maquina.toLowerCase().includes(maq.toLowerCase()) ||
+                      maq.toLowerCase().includes(maquina.toLowerCase())
+                  );
+                  if (coincide) {
+                      console.log(`✓ Incluido: ${maquina} (coincide con ${maquinasPermitidas.find(m => 
+                          maquina.toLowerCase().includes(m.toLowerCase()) || 
+                          m.toLowerCase().includes(maquina.toLowerCase()))})`);
+                  }
+                  return coincide;
+              });
+              
+              console.log(`Datos filtrados: ${dataFiltrada.length} de ${data.length} registros`);
+          }
+          
+          // Renderizar filas filtradas
+          const maxRows = 1000; // Permitir hasta 1000 registros
+          const dataToShow = dataFiltrada.slice(0, maxRows);
+          
+          dataToShow.forEach((item, index) => {
+              const row = document.createElement('tr');
+              
+              // Debug: Ver los campos disponibles en el primer elemento
+              if (index === 0) {
+                  console.log('Campos disponibles en el API de historial:', Object.keys(item));
+                  console.log('Datos del primer elemento:', item);
+              }
+              
+              // Mapear campos del API a los campos esperados por la tabla
+              const equipment = item.maquina || item.equipment || item.Equipment || item.machine || '';
+              const slotNo = item.SlotNo || item.slot_no || item.slotno || item.SlotNumber || '';
+              const baseFeeder = item.FeederBase || item.feederbase || item.BaseFeeder || item.base_feeder || item.Feeder || item.feeder || '';
+              const registDate = item.fecha_formateada || item.regist_date || item.RegistDate || item.ScanDate || item.fecha || '';
+              const warehousing = item.PartName || item.warehousing || item.Warehousing || item.part_name || item.Material || '';
+              const registQuantity = item.Quantity || item.regist_quantity || item.RegistQuantity || item.quantity || 0;
+              const currentQuantity = item.Quantity || item.current_quantity || item.CurrentQuantity || item.quantity || 0;
+              
+              row.innerHTML = `
+                  <td style="padding: 6px; font-size: 10px;">${equipment}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center;">${slotNo}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center;">${baseFeeder}</td>
+                  <td style="padding: 6px; font-size: 10px;">${registDate}</td>
+                  <td style="padding: 6px; font-size: 10px;">${warehousing}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: right;">${registQuantity}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: right;">${currentQuantity}</td>
+              `;
+              
+              // Efecto hover
+              row.addEventListener('mouseenter', () => {
+                  row.style.backgroundColor = '#485563';
+              });
+              row.addEventListener('mouseleave', () => {
+                  row.style.backgroundColor = index % 2 === 0 ? '#40424F' : '#44475A';
+              });
+              
+              tableBody.appendChild(row);
+          });
+          
+          // Actualizar footer con el total de filas (template legacy)
+          const footer = document.getElementById('materialHistoryFooter-Control de operacion de linea SMT');
+          if (footer) {
+              const totalOriginal = data.length;
+              const totalFiltrado = dataFiltrada.length;
+              const mostrados = Math.min(totalFiltrado, maxRows);
+              
+              if (lineaFiltro && isFiltered && selectedPlanId && totalFiltrado < totalOriginal) {
+                  footer.textContent = `Total Rows : ${mostrados} (${totalFiltrado} de ${totalOriginal} - Filtrado por ${lineaFiltro})`;
+              } else {
+                  footer.textContent = `Total Rows : ${mostrados}${totalFiltrado > maxRows ? ` (mostrando ${maxRows})` : ''}`;
+              }
+          }
+          // Actualizar footer alternativo (template aislado)
+          const panelFooter = document.querySelector('#panel-mch .footer-row');
+          if (panelFooter) {
+              const totalOriginal = data.length;
+              const totalFiltrado = dataFiltrada.length;
+              const mostrados = Math.min(totalFiltrado, maxRows);
+              
+              if (lineaFiltro && isFiltered && selectedPlanId && totalFiltrado < totalOriginal) {
+                  panelFooter.textContent = `Total Rows : ${mostrados} (${totalFiltrado} de ${totalOriginal} - Filtrado por ${lineaFiltro})`;
+              } else {
+                  panelFooter.textContent = `Total Rows : ${mostrados}${totalFiltrado > maxRows ? ` (mostrando ${maxRows})` : ''}`;
+              }
+          }
+          
+          // Aplicar scroll después de renderizar
+          setTimeout(() => {
+              // Buscar contenedor para aplicar scroll
+              let container = tableBody.closest('.section-table-container');
+              
+              if (!container) {
+                  container = tableBody.closest('div.table');
+              }
+              
+              if (!container) {
+                  container = tableBody.closest('.panel-body');
+              }
+              
+              if (!container) {
+                  let parent = tableBody.parentElement;
+                  while (parent && parent.tagName !== 'DIV') {
+                      parent = parent.parentElement;
+                  }
+                  container = parent;
+              }
+              
+              if (container) {
+                  // Aplicar estilos de scroll
+                  container.style.setProperty('max-height', '400px', 'important');
+                  container.style.setProperty('overflow-y', 'auto', 'important');
+                  container.style.setProperty('overflow-x', 'hidden', 'important');
+                  container.style.setProperty('display', 'block', 'important');
+              }
+          }, 500);
+      }
+      
+      // Función para exportar historial de material a Excel
+      async function exportarHistorialMaterial() {
+          try {
+              console.log('Exportando historial de material...');
+              
+              const url = '/api/historial-cambio-material-maquina';
+              const response = await fetch(url);
+              
+              if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+              
+              const result = await response.json();
+              
+              if (!result.success) {
+                  throw new Error(result.error || 'Error en la respuesta del API');
+              }
+              
+              const data = result.data || [];
+              
+              if (data.length === 0) {
+                  alert('No hay datos disponibles para exportar');
+                  return;
+              }
+              
+              // Crear CSV
+              const headers = ['Equipment', 'Slot No', 'Base Feeder', 'Regist Date', 'Warehousing', 'Regist Quantity', 'Current Quantity'];
+              const csvContent = [
+                  headers.join(','),
+                  ...data.map(row => [
+                      `"${row.equipment || row.maquina || ''}"`,
+                      `"${row.slot_no || row.SlotNo || ''}"`,
+                      `"${row.base_feeder || row.FeederBase || ''}"`,
+                      `"${row.regist_date || row.ScanDate || ''}"`,
+                      `"${row.warehousing || row.PartName || ''}"`,
+                      row.regist_quantity || row.Quantity || 0,
+                      row.current_quantity || row.Quantity || 0
+                  ].join(','))
+              ].join('\n');
+              
+              // Crear archivo y descargar
+              const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement('a');
+              const filename = `historial_material_${new Date().toISOString().slice(0, 10)}.csv`;
+              
+              if (link.download !== undefined) {
+                  const url = URL.createObjectURL(blob);
+                  link.setAttribute('href', url);
+                  link.setAttribute('download', filename);
+                  link.style.visibility = 'hidden';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  
+                  console.log('Archivo exportado:', filename);
+              }
+              
+          } catch (error) {
+              console.error('Error exportando historial:', error);
+              alert('Error al exportar los datos: ' + error.message);
+          }
+      }
+      
+      // Función para manejar cambio de línea
+      function onLineaChange() {
+          const linea = document.getElementById('linea-Control de operacion de linea SMT');
+          if (linea) {
+              console.log('Línea seleccionada:', linea.value);
+              cargarHistorialMaterial(linea.value, 0);
+          }
+      }
+      
+      // Función para mostrar mensaje inicial en el historial
+      function mostrarMensajeInicialHistorial() {
+          const tableBody = document.getElementById('materialHistoryTableBody-Control de operacion de linea SMT');
+          if (!tableBody) {
+              // Buscar tabla alternativa
+              const mchTable = document.querySelector('#tbl-mch table tbody');
+              if (mchTable) {
+                  mchTable.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #95A5A6; font-style: italic;">Selecciona un plan para ver el historial de materiales</td></tr>';
+              }
+              return;
+          }
+          
+          tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #95A5A6; font-style: italic;">Selecciona un plan para ver el historial de materiales</td></tr>';
+          
+          // Actualizar footer
+          const footer = document.getElementById('materialHistoryFooter-Control de operacion de linea SMT');
+          if (footer) {
+              footer.textContent = 'Total Rows : 0';
+          }
+          const panelFooter = document.querySelector('#panel-mch .footer-row');
+          if (panelFooter) {
+              panelFooter.textContent = 'Total Rows : 0';
+          }
+      }
+
+      // ==========================
+      // INTEGRACIÓN CON SISTEMA DE BOM LIST
+      // ==========================
+      
+      // Función para cargar datos del BOM SMT basado en línea y modelo
+      async function cargarBomList(linea, modelCode, intentos = 0) {
+          console.log('Cargando BOM List para:', { linea, modelCode });
+          
+          let tableBody = document.querySelector('#panel-bom table tbody');
+          
+          // Crear tbody si no existe
+          if (!tableBody) {
+              const bomTable = document.querySelector('#panel-bom table');
+              if (bomTable) {
+                  tableBody = document.createElement('tbody');
+                  bomTable.appendChild(tableBody);
+              }
+          }
+          
+          if (!tableBody) {
+              const maxIntentos = 10;
+              if (intentos < maxIntentos) {
+                  console.warn(`Tabla BOM no encontrada (intento ${intentos + 1}/${maxIntentos}), reintentando...`);
+                  setTimeout(() => cargarBomList(linea, modelCode, intentos + 1), 300);
+                  return;
+              }
+              console.error('No se encontró la tabla BOM tras varios intentos');
+              return;
+          }
+          
+          try {
+              // Construir URL del endpoint
+              const equipoSMT = mapearLineaAEquipo(linea);
+              const url = `/api/bom-smt-data?linea=${encodeURIComponent(equipoSMT)}&model_code=${encodeURIComponent(modelCode)}`;
+              
+              console.log('Cargando BOM desde:', url);
+              
+              const response = await fetch(url);
+              if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              }
+              
+              const result = await response.json();
+              
+              if (!result.success) {
+                  throw new Error(result.error || 'Error en la respuesta del API');
+              }
+              
+              const data = result.data || [];
+              console.log(`BOM cargado: ${data.length} elementos`);
+              
+              // Renderizar datos en la tabla BOM
+              renderizarTablaBom(data, tableBody);
+              
+          } catch (error) {
+              console.error('Error cargando BOM:', error);
+              if (tableBody) {
+                  tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #E74C3C;">Error cargando datos del BOM</td></tr>';
+              }
+          }
+      }
+      
+      // Función para renderizar la tabla del BOM
+      function renderizarTablaBom(data, tableBody) {
+          if (!tableBody) {
+              console.error('TableBody del BOM es null');
+              return;
+          }
+          
+          // Limpiar tabla
+          tableBody.innerHTML = '';
+          
+          if (data.length === 0) {
+              tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #95A5A6;">No hay datos de BOM disponibles</td></tr>';
+              return;
+          }
+          
+          // Renderizar filas
+          data.forEach((item, index) => {
+              const row = document.createElement('tr');
+              
+              // Determinar el color del contorno (rojo por defecto, verde si coincide)
+              const statusClass = item.status === 'matched' ? 'bom-matched' : 'bom-pending';
+              row.className = statusClass;
+              
+              row.innerHTML = `
+                  <td style="padding: 6px; font-size: 10px;">${item.mounter || ''}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center;">${item.slot || ''}</td>
+                  <td style="padding: 6px; font-size: 10px;">${item.material_code || ''}</td>
+                  <td style="padding: 6px; font-size: 10px;">${item.description || ''}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center;">${item.feeder_info || ''}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center;">${item.qty || 0}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center;">${item.tabla_tipo || ''}</td>
+                  <td style="padding: 6px; font-size: 10px;">
+                      <span class="status-indicator ${statusClass}">
+                          ${item.status === 'matched' ? '✓' : '⏳'}
+                      </span>
+                  </td>
+              `;
+              
+              // Efecto hover
+              row.addEventListener('mouseenter', () => {
+                  row.style.backgroundColor = '#485563';
+              });
+              row.addEventListener('mouseleave', () => {
+                  row.style.backgroundColor = index % 2 === 0 ? '#40424F' : '#44475A';
+              });
+              
+              tableBody.appendChild(row);
+          });
+          
+          // Actualizar footer del BOM
+          const bomFooter = document.querySelector('#panel-bom .footer-row');
+          if (bomFooter) {
+              const pending = data.filter(item => item.status !== 'matched').length;
+              const matched = data.filter(item => item.status === 'matched').length;
+              bomFooter.textContent = `Total: ${data.length} | Pendientes: ${pending} | Verificados: ${matched}`;
+          }
+          
+          // Aplicar scroll después de renderizar
+          setTimeout(() => {
+              // Buscar contenedor para aplicar scroll al BOM
+              let bomContainer = tableBody.closest('#panel-bom .panel-body');
+              
+              if (!bomContainer) {
+                  bomContainer = tableBody.closest('#panel-bom .table');
+              }
+              
+              if (!bomContainer) {
+                  bomContainer = tableBody.closest('#tbl-bom');
+              }
+              
+              if (!bomContainer) {
+                  let parent = tableBody.parentElement;
+                  while (parent && parent.tagName !== 'DIV') {
+                      parent = parent.parentElement;
+                  }
+                  bomContainer = parent;
+              }
+              
+              if (bomContainer) {
+                  // Aplicar estilos de scroll al BOM
+                  bomContainer.style.setProperty('max-height', '400px', 'important');
+                  bomContainer.style.setProperty('overflow-y', 'auto', 'important');
+                  bomContainer.style.setProperty('overflow-x', 'hidden', 'important');
+                  bomContainer.style.setProperty('display', 'block', 'important');
+                  console.log('Scroll aplicado al contenedor BOM:', bomContainer);
+              }
+          }, 500);
+      }
+      
+      // Función para mostrar mensaje inicial en el BOM
+      function mostrarMensajeInicialBom() {
+          const tableBody = document.querySelector('#panel-bom table tbody');
+          if (!tableBody) return;
+          
+          tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #95A5A6; font-style: italic;">Selecciona un plan para ver el BOM</td></tr>';
+          
+          // Actualizar footer del BOM
+          const bomFooter = document.querySelector('#panel-bom .footer-row');
+          if (bomFooter) {
+              bomFooter.textContent = 'Total: 0 | Pendientes: 0 | Verificados: 0';
+          }
+      }
+
+      // Exponer funciones para uso externo
+      window.cargarHistorialMaterialPorLinea = cargarHistorialMaterial;
+      window.exportarHistorialMaterial = exportarHistorialMaterial;
+      window.onLineaChange = onLineaChange;
+      window.mostrarMensajeInicialHistorial = mostrarMensajeInicialHistorial;
+      window.cargarBomList = cargarBomList;
+      window.mostrarMensajeInicialBom = mostrarMensajeInicialBom;
+
+
 
       // ==========================
       // Actualización en tiempo real
@@ -916,4 +1724,4 @@
         setTimeout(start, 1200);
       })();
 
-    })();
+})();

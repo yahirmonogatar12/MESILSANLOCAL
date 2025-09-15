@@ -246,6 +246,29 @@
             background-color: #485563;
         }
 
+        /* Fila en modo focus */
+        .data-table tbody tr {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .data-table tr.focused-row td {
+            background-color: #3498DB !important;
+            color: #FFFFFF !important;
+            font-weight: 500;
+            border-color: #2980B9 !important;
+        }
+
+        .data-table tr.focused-row:hover td {
+            background-color: #2980B9 !important;
+        }
+        
+        .data-table tr.focused-row .status-tag {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            color: #FFFFFF !important;
+            border-color: rgba(255, 255, 255, 0.3) !important;
+        }
+
         /* Tags de estado para la tabla */
         .status-tag {
             display: inline-block;
@@ -368,8 +391,10 @@
         /* Contenedor de tabla de sección */
         .section-table-container {
             overflow-x: auto;
+            overflow-y: auto;
             background-color: #40424F;
             min-height: 150px;
+            max-height: 400px; /* Limitar altura máxima y activar scroll vertical */
         }
 
         /* Tabla de sección */
@@ -509,7 +534,11 @@
         </select>
         <label class="form-label">Linea</label>
         <select id="linea-Control de operacion de linea SMT" class="dropdown">
-            <option>Todos</option>
+            <option value="Todos">Todos</option>
+            <option value="1LINE">1LINE (SMT A)</option>
+            <option value="2LINE">2LINE (SMT B)</option>
+            <option value="3LINE">3LINE (SMT C)</option>
+            <option value="4LINE">4LINE (SMT D)</option>
         </select>
         <button id="btnCloseLine-Control de operacion de linea SMT" class="btn-close-line" title="Cerrar">×</button>
         <div style="margin-left: auto; display: flex; gap: 10px;">
@@ -703,7 +732,7 @@
     <script>
         // Auto-inicialización del módulo Control de operacion de linea SMT
         (function() {
-            console.log('🚀 Inicializando módulo Control de operacion de linea SMT...');
+            console.log('Inicializando módulo Control de operacion de linea SMT...');
             
             // Variables globales del módulo
             let currentData = [];
@@ -714,7 +743,7 @@
                 const tableBody = document.getElementById('dataTableBody-Control de operacion de linea SMT');
                 
                 if (!tableBody) {
-                    console.warn('⚠️ Tabla no encontrada, reintentando en 1 segundo...');
+                    console.warn('Tabla no encontrada, reintentando en 1 segundo...');
                     setTimeout(cargarDatosPlanSMD, 1000);
                     return;
                 }
@@ -724,7 +753,7 @@
                     const today = new Date().toISOString().slice(0, 10);
                     const url = `/api/plan-smd-diario?date=${today}`;
                     
-                    console.log('🔄 Cargando datos del plan SMD desde:', url);
+                    console.log('Cargando datos del plan SMD desde:', url);
                     
                     const response = await fetch(url);
                     if (!response.ok) {
@@ -734,7 +763,7 @@
                     const data = await response.json();
                     currentData = data;
                     
-                    console.log('✅ Datos cargados:', data.length, 'registros');
+                    console.log('Datos cargados:', data.length, 'registros');
                     
                     // Limpiar tabla
                     tableBody.innerHTML = '';
@@ -780,6 +809,55 @@
                             <td>${item.usuario_creacion || ''}</td>
                             <td>${item.comentarios || ''}</td>
                         `;
+                        
+                        // Agregar event listener para modo focus usando el sistema existente
+                        row.addEventListener('click', function(e) {
+                            console.log('Click detectado en fila:', e.target.tagName, e.target.type);
+                            
+                            // Evitar que se active si se hace clic en el checkbox
+                            if (e.target.type === 'checkbox') {
+                                console.log('Click en checkbox, ignorando...');
+                                return;
+                            }
+                            
+                            console.log('Activando modo focus para item:', item);
+                            
+                            // Usar las funciones del sistema existente si están disponibles
+                            if (typeof window.filtrarPorPlan === 'function') {
+                                window.filtrarPorPlan(item.id);
+                            }
+                            
+                            // Remover clase focus de otras filas
+                            const allRows = document.querySelectorAll('#dataTableBody-Control de operacion de linea SMT tr');
+                            console.log('Removiendo focus de', allRows.length, 'filas');
+                            allRows.forEach(r => {
+                                r.classList.remove('focused-row');
+                            });
+                            
+                            // Agregar clase focus a la fila actual
+                            row.classList.add('focused-row');
+                            console.log('Clase focused-row agregada a la fila');
+                            
+                            // Guardar selección en localStorage como el sistema existente
+                            try {
+                                localStorage.setItem('smtSelectedPlanId', item.id);
+                            } catch(e) {
+                                console.warn('No se pudo guardar selección:', e);
+                            }
+                            
+                            // Obtener la línea del item y cargar historial
+                            const lineaItem = item.linea;
+                            console.log('Modo focus activado para línea:', lineaItem);
+                            
+                            // Mapear línea a formato esperado y cargar historial
+                            if (lineaItem) {
+                                console.log('Cargando historial para línea:', lineaItem);
+                                cargarHistorialMaterial(lineaItem);
+                            } else {
+                                console.warn('No se encontró línea en el item');
+                            }
+                        });
+                        
                         tableBody.appendChild(row);
                     });
                     
@@ -807,153 +885,41 @@
                 
                 // Recargar ambas tablas
                 cargarDatosPlanSMD();
-                cargarHistorialMaterial();
+                cargarHistorialMaterial(linea ? linea.value : null);
             }
             
-            // Función para cargar datos del historial de cambio de material
-            async function cargarHistorialMaterial() {
-                const tableBody = document.getElementById('materialHistoryTableBody-Control de operacion de linea SMT');
-                
-                if (!tableBody) {
-                    console.warn('⚠️ Tabla de historial de material no encontrada, reintentando en 1 segundo...');
-                    setTimeout(cargarHistorialMaterial, 1000);
-                    return;
-                }
-                
-                try {
-                    const url = '/api/historial-cambio-material-maquina';
-                    
-                    console.log('🔄 Cargando historial de material desde:', url);
-                    
-                    const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    const result = await response.json();
-                    
-                    if (!result.success) {
-                        throw new Error(result.error || 'Error en la respuesta del API');
-                    }
-                    
-                    const data = result.data || [];
-                    
-                    console.log('✅ Historial de material cargado:', data.length, 'registros');
-                    
-                    // Limpiar tabla
-                    tableBody.innerHTML = '';
-                    
-                    if (data.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #95A5A6;">No hay datos disponibles</td></tr>';
-                        return;
-                    }
-                    
-                    // Renderizar filas (solo mostrar las primeras 10 para no sobrecargar la tabla)
-                    const maxRows = 10;
-                    const dataToShow = data.slice(0, maxRows);
-                    
-                    dataToShow.forEach((item, index) => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td style="padding: 6px; font-size: 10px;">${item.equipment || ''}</td>
-                            <td style="padding: 6px; font-size: 10px; text-align: center;">${item.slot_no || ''}</td>
-                            <td style="padding: 6px; font-size: 10px;">${item.regist_date || ''}</td>
-                            <td style="padding: 6px; font-size: 10px;">${item.warehousing || ''}</td>
-                            <td style="padding: 6px; font-size: 10px; text-align: right;">${item.regist_quantity || 0}</td>
-                            <td style="padding: 6px; font-size: 10px; text-align: right;">${item.current_quantity || 0}</td>
-                        `;
-                        
-                        // Efecto hover
-                        row.addEventListener('mouseenter', () => {
-                            row.style.backgroundColor = '#485563';
-                        });
-                        row.addEventListener('mouseleave', () => {
-                            row.style.backgroundColor = index % 2 === 0 ? '#40424F' : '#44475A';
-                        });
-                        
-                        tableBody.appendChild(row);
-                    });
-                    
-                    // Actualizar footer con el total de filas
-                    const footer = document.getElementById('materialHistoryFooter-Control de operacion de linea SMT');
-                    if (footer) {
-                        footer.textContent = `Total Rows : ${data.length}${data.length > maxRows ? ` (mostrando ${maxRows})` : ''}`;
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Error cargando historial de material:', error);
-                    if (tableBody) {
-                        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #E74C3C;">Error cargando datos</td></tr>';
-                    }
+            // Función para manejar cambio de línea
+            function onLineaChange() {
+                const linea = document.getElementById('linea-Control de operacion de linea SMT');
+                if (linea) {
+                    console.log('📍 Línea seleccionada:', linea.value);
+                    cargarHistorialMaterial(linea.value);
                 }
             }
             
-            // Función para exportar historial de material a Excel
-            async function exportarHistorialMaterial() {
-                try {
-                    console.log('📊 Exportando historial de material...');
-                    
-                    const url = '/api/historial-cambio-material-maquina';
-                    const response = await fetch(url);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    const result = await response.json();
-                    
-                    if (!result.success) {
-                        throw new Error(result.error || 'Error en la respuesta del API');
-                    }
-                    
-                    const data = result.data || [];
-                    
-                    if (data.length === 0) {
-                        alert('No hay datos disponibles para exportar');
-                        return;
-                    }
-                    
-                    // Crear CSV
-                    const headers = ['Equipment', 'Slot No', 'Regist Date', 'Warehousing', 'Regist Quantity', 'Current Quantity'];
-                    const csvContent = [
-                        headers.join(','),
-                        ...data.map(row => [
-                            `"${row.equipment || ''}"`,
-                            `"${row.slot_no || ''}"`,
-                            `"${row.regist_date || ''}"`,
-                            `"${row.warehousing || ''}"`,
-                            row.regist_quantity || 0,
-                            row.current_quantity || 0
-                        ].join(','))
-                    ].join('\n');
-                    
-                    // Crear archivo y descargar
-                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    const filename = `historial_material_${new Date().toISOString().slice(0, 10)}.csv`;
-                    
-                    if (link.download !== undefined) {
-                        const url = URL.createObjectURL(blob);
-                        link.setAttribute('href', url);
-                        link.setAttribute('download', filename);
-                        link.style.visibility = 'hidden';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        
-                        console.log('✅ Archivo exportado:', filename);
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Error exportando historial:', error);
-                    alert('Error al exportar los datos: ' + error.message);
-                }
+            // Función para mapear línea a equipo SMT
+            function mapearLineaAEquipo(linea) {
+                const mapeoLineas = {
+                    '1LINE': 'SMT A',
+                    '2LINE': 'SMT B', 
+                    '3LINE': 'SMT C',
+                    '4LINE': 'SMT D',
+                    // También mapear valores directos
+                    'SMT A': 'SMT A',
+                    'SMT B': 'SMT B',
+                    'SMT C': 'SMT C',
+                    'SMT D': 'SMT D'
+                };
+                return mapeoLineas[linea] || linea;
             }
+            
+            // Las funciones cargarHistorialMaterial, renderizarTablaHistorial y exportarHistorialMaterial
+            // están definidas en el archivo control-operacion-smt-ajax.js
             
             // Función de inicialización específica del módulo
             function inicializarModulo() {
                 if (isInitialized) {
-                    console.log('⚠️ Módulo ya inicializado, omitiendo...');
+                    console.log('Módulo ya inicializado, omitiendo...');
                     return;
                 }
                 
@@ -966,6 +932,7 @@
                     const btnFin = document.getElementById('btnFin-Control de operacion de linea SMT');
                     const btnPausa = document.getElementById('btnPausa-Control de operacion de linea SMT');
                     const btnConsultar = document.getElementById('btnConsultar-Control de operacion de linea SMT');
+                    const lineaDropdown = document.getElementById('linea-Control de operacion de linea SMT');
                     
                     if (btnIniciar) {
                         btnIniciar.addEventListener('click', function() {
@@ -993,6 +960,14 @@
                         });
                     }
                     
+                    // Event listener para cambio de línea
+                    if (lineaDropdown) {
+                        lineaDropdown.addEventListener('change', function() {
+                            console.log('Línea cambiada a:', this.value);
+                            onLineaChange();
+                        });
+                    }
+                    
                     // Event listener para exportar historial de material
                     const btnExportarHistorial = document.getElementById('btnExportarHistorial-Control de operacion de linea SMT');
                     if (btnExportarHistorial) {
@@ -1012,7 +987,7 @@
                 const retryInterval = setInterval(() => {
                     if (retryCount >= maxRetries) {
                         clearInterval(retryInterval);
-                        console.log('⏰ Timeout configurando event listeners');
+                        console.log('Timeout configurando event listeners');
                         return;
                     }
                     
@@ -1052,7 +1027,7 @@
                         if (mutation.type === 'childList') {
                             const container = document.getElementById('control-operacion-linea-smt-unique-container');
                             if (container && !isInitialized) {
-                                console.log('🔍 Detectado contenido dinámico, inicializando...');
+                                console.log('Detectado contenido dinámico, inicializando...');
                                 setTimeout(inicializarModulo, 200);
                             }
                         }
@@ -1085,7 +1060,7 @@
             const tableBody = document.getElementById('dataTableBody-Control de operacion de linea SMT');
             const btnConsultar = document.getElementById('btnConsultar-Control de operacion de linea SMT');
             
-            console.log('🔍 Verificando estado del módulo:');
+            console.log('Verificando estado del módulo:');
             console.log('- Contenedor encontrado:', !!container);
             console.log('- Tabla encontrada:', !!tableBody);
             console.log('- Botón consultar encontrado:', !!btnConsultar);
@@ -1099,6 +1074,25 @@
                 return false;
             }
         };
+        
+        // Exponer funciones para integración con sistema AJAX
+        window.filtrarPorPlan = function(planId) {
+            console.log('Filtrando por plan ID:', planId);
+            // Esta función será implementada por el archivo AJAX externo
+        };
+        
+        window.mostrarTodosLosDatos = function() {
+            console.log('Mostrando todos los datos');
+            // Salir del modo focus
+            document.querySelectorAll('#dataTableBody-Control de operacion de linea SMT tr').forEach(r => {
+                r.classList.remove('focused-row');
+            });
+            // Recargar datos
+            cargarDatosPlanSMD();
+        };
+        
+        // Exponer función de carga de historial para uso externo
+        window.cargarHistorialMaterialPorLinea = cargarHistorialMaterial;
     </script>
     
     <!-- Script de respaldo para detección de carga dinámica -->
@@ -1111,5 +1105,16 @@
         // Registrar el template como cargado
         if (!window.templatesLoaded) window.templatesLoaded = [];
         window.templatesLoaded.push('Control de operacion de linea SMT');
+    </script>
+    
+    <!-- Integración con el sistema AJAX existente -->
+    <script src="{{ url_for('static', filename='js/control-operacion-smt-ajax.js') }}"></script>
+    <script>
+        // Fallback para cuando se abre el archivo directamente
+        if (typeof window.controlOperacionSMTAjax === 'undefined') {
+            const script = document.createElement('script');
+            script.src = '../../static/js/control-operacion-smt-ajax.js';
+            document.head.appendChild(script);
+        }
     </script>
 </div>

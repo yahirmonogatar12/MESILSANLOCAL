@@ -19,7 +19,7 @@ function renderGrid(){ if(!isActive()) return; const tb=$('#mm-grid-body'); if(!
 <td>${r.management_no??''}</td><td>${r.code??''}</td><td>${r.name??''}</td><td>${r.location??''}</td>
 <td>${r.storage_status==='Ocupado'?'<span class="mm-tag occupied">Ocupado</span>':r.storage_status==='Mantenimiento'?'<span class="mm-tag maintenance">Mantenimiento</span>':'<span class="mm-tag available">Disponible</span>'}</td>
 <td>${r.used_status==='No Usado'?'<span class="mm-tag unused">No Usado</span>':'<span class="mm-tag used">Usado</span>'}</td>
-<td title="${r.note??''}">${(r.note??'').slice(0,50)}${(r.note||'').length>50?'…':''}</td><td>${r.registration_date??''}</td>`;tr.addEventListener('dblclick',()=>editRow(r));tb.appendChild(tr)}$('#mm-total').textContent=`Total de Filas : ${rows.length}`}
+<td title="${r.note??''}">${(r.note??'').slice(0,50)}${(r.note||'').length>50?'â€¦':''}</td><td>${r.registration_date??''}</td>`;tr.addEventListener('dblclick',()=>editRow(r));tb.appendChild(tr)}$('#mm-total').textContent=`Total de Filas : ${rows.length}`}
 function rootSB(){ return document.querySelector('#mm-app[data-module="storage-box"]'); }
 function owned(sel){ return document.querySelector(sel+"[data-owner='storage-box']") || document.querySelector(sel); }
 const openDrawer=()=>{
@@ -33,7 +33,7 @@ const closeDrawer=()=>{
     d.style.removeProperty('transform');
     d.classList.remove('mm-open');
     d.setAttribute('aria-hidden','true');
-    // Reubicar el drawer de vuelta al root del módulo para evitar interferencias
+    // Reubicar el drawer de vuelta al root del mÃ³dulo para evitar interferencias
     try {
       const root = rootSB();
       if (root && d.parentElement === document.body) {
@@ -44,13 +44,13 @@ const closeDrawer=()=>{
     try { if (typeof loadRows==='function') loadRows(); } catch(_){}
   }
 };
-const resetForm=()=>{$('#mm-form').reset();$('#mm-storage_status').value='Disponible';$('#mm-used_status').value='Usado';$('#mm-management_no').readOnly=false;$('#mm-drawer-title').textContent='Gestión de Cajas de Almacenamiento — Registrar';$('#mm-btn-save').textContent='Registrar';hideLoading();EDIT_MODE=false;EDIT_ITEM=null;generateManagementNo()};
-function editRow(r){EDIT_MODE=true;EDIT_ITEM=r;$('#mm-management_no').value=r.management_no??'';$('#mm-code').value=r.code??'';$('#mm-name').value=r.name??'';$('#mm-location').value=r.location??'';$('#mm-storage_status').value=r.storage_status??'Disponible';$('#mm-used_status').value=r.used_status??'Usado';$('#mm-note').value=r.note??'';$('#mm-management_no').readOnly=true;$('#mm-drawer-title').textContent=`Gestión de Cajas de Almacenamiento — Editar ${r.management_no}`;$('#mm-btn-save').textContent='Actualizar';openDrawer()}
+const resetForm=()=>{$('#mm-form').reset();$('#mm-storage_status').value='Disponible';$('#mm-used_status').value='Usado';$('#mm-management_no').readOnly=false;$('#mm-drawer-title').textContent='GestiÃ³n de Cajas de Almacenamiento â€" Registrar';$('#mm-btn-save').textContent='Registrar';hideLoading();EDIT_MODE=false;EDIT_ITEM=null;generateManagementNo()};
+function editRow(r){EDIT_MODE=true;EDIT_ITEM=r;$('#mm-management_no').value=r.management_no??'';$('#mm-code').value=r.code??'';$('#mm-name').value=r.name??'';$('#mm-location').value=r.location??'';$('#mm-storage_status').value=r.storage_status??'Disponible';$('#mm-used_status').value=r.used_status??'Usado';$('#mm-note').value=r.note??'';$('#mm-management_no').readOnly=true;$('#mm-drawer-title').textContent=`GestiÃ³n de Cajas de Almacenamiento â€" Editar ${r.management_no}`;$('#mm-btn-save').textContent='Actualizar';openDrawer()}
 function generateManagementNo(){const code=$('#mm-code').value;const location=$('#mm-location').value;const managementNoField=$('#mm-management_no');if(code&&location){managementNoField.value=code+'-'+location}else if(code){managementNoField.value=code+'-'}else{managementNoField.value=''}}
-async function saveRecord(){const p={management_no:$('#mm-management_no').value.trim(),code:$('#mm-code').value.trim(),name:$('#mm-name').value.trim(),location:$('#mm-location').value.trim(),storage_status:$('#mm-storage_status').value||'Disponible',used_status:$('#mm-used_status').value||'Usado',note:$('#mm-note').value.trim(),registration_date:new Date().toLocaleString('en-GB').replace(',','')};console.log('DEBUG - Datos a enviar:',p);if(!p.management_no){showToast('Falta Número de Gestión');hideLoading();return}
-showLoading();try{if(EDIT_MODE){const r=await fetch(`${API_BASE}/api/storage/${EDIT_ITEM.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!r.ok){const errorData=await r.json();throw new Error(errorData.error||'Error al actualizar')}const result=await r.json();Object.assign(EDIT_ITEM,p);await loadRows();showToast(result.message||'Actualizado');closeDrawer()}else{const r=await fetch(`${API_BASE}/api/storage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!r.ok){const errorData=await r.json();console.log('ERROR DATA:',errorData);showToast(errorData.error||'Error al registrar');hideLoading();return}const result=await r.json();await loadRows();showToast(result.message||'Registrado');closeDrawer()}}catch(err){console.error('CATCH ERROR:',err);showToast(err.message||'Error en la operación')}finally{hideLoading()}} 
+async function saveRecord(){const p={management_no:$('#mm-management_no').value.trim(),code:$('#mm-code').value.trim(),name:$('#mm-name').value.trim(),location:$('#mm-location').value.trim(),storage_status:$('#mm-storage_status').value||'Disponible',used_status:$('#mm-used_status').value||'Usado',note:$('#mm-note').value.trim(),registration_date:new Date().toLocaleString('en-GB').replace(',','')};console.log('DEBUG - Datos a enviar:',p);if(!p.management_no){showToast('Falta NÃºmero de GestiÃ³n');hideLoading();return}
+showLoading();try{if(EDIT_MODE){const r=await fetch(`${API_BASE}/api/storage/${EDIT_ITEM.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!r.ok){const errorData=await r.json();throw new Error(errorData.error||'Error al actualizar')}const result=await r.json();Object.assign(EDIT_ITEM,p);await loadRows();showToast(result.message||'Actualizado');closeDrawer()}else{const r=await fetch(`${API_BASE}/api/storage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!r.ok){const errorData=await r.json();console.log('ERROR DATA:',errorData);showToast(errorData.error||'Error al registrar');hideLoading();return}const result=await r.json();await loadRows();showToast(result.message||'Registrado');closeDrawer()}}catch(err){console.error('CATCH ERROR:',err);showToast(err.message||'Error en la operaciÃ³n')}finally{hideLoading()}} 
 async function loadRows(){ if(!isActive()) return; try{const r=await fetch(`${API_BASE}/api/storage?filter_storage_status=${encodeURIComponent(MM_FILTER === 'ALL' ? '' : MM_FILTER)}`);if(!r.ok)throw new Error(await r.text());const response=await r.json();MM_ROWS=response.data || response;renderGrid()}catch(e){console.error(e);showToast('No se pudo cargar')}}
-function exportCSV(){const headers=['Número de Gestión','Código','Nombre','Ubicación','Estado de Almacenamiento','Estado de Uso','Nota','Fecha de Registro'];const rows=MM_ROWS.filter(r=>MM_FILTER==='ALL'?true:r.storage_status===MM_FILTER).map(r=>[r.management_no,r.code,r.name,r.location,r.storage_status,r.used_status,r.note,r.registration_date]);const content=[headers,...rows].map(a=>a.map(v=>{const s=(v??'').toString().replace(/"/g,'""');return /[",\n]/.test(s)?`"${s}"`:s}).join(',')).join('\n');const blob=new Blob([content],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='storage_management.csv';document.body.appendChild(a);a.click();a.remove()}
+function exportCSV(){const headers=['NÃºmero de GestiÃ³n','CÃ³digo','Nombre','UbicaciÃ³n','Estado de Almacenamiento','Estado de Uso','Nota','Fecha de Registro'];const rows=MM_ROWS.filter(r=>MM_FILTER==='ALL'?true:r.storage_status===MM_FILTER).map(r=>[r.management_no,r.code,r.name,r.location,r.storage_status,r.used_status,r.note,r.registration_date]);const content=[headers,...rows].map(a=>a.map(v=>{const s=(v??'').toString().replace(/"/g,'""');return /[",\n]/.test(s)?`"${s}"`:s}).join(',')).join('\n');const blob=new Blob([content],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='storage_management.csv';document.body.appendChild(a);a.click();a.remove()}
 
 
 // Export global handlers used by inline HTML attributes
@@ -75,7 +75,7 @@ window.initStorageBox=window.initStorageBox||(function(){
       el=q('#mm-status'); if(el && !el._sbBound){ el.addEventListener('change',function(e){try{MM_FILTER=e.target.value;renderGrid()}catch(_){}}); el._sbBound=true; }
       el=q('#mm-btn-search'); if(el && !el._sbBound){ el.addEventListener('click',function(){try{loadRows()}catch(e){}}); el._sbBound=true; }
       el=q('#mm-btn-import'); if(el && !el._sbBound){ el.addEventListener('click',function(){try{showToast&&showToast('Implementa /api/storage/import en el backend')}catch(e){}}); el._sbBound=true; }
-      // Drawer (ya fue portalizado: está en body). Enlazar directamente dentro del drawer movido
+      // Drawer (ya fue portalizado: estÃ¡ en body). Enlazar directamente dentro del drawer movido
       const drawer=document.querySelector('#mm-drawer[data-owner="storage-box"]')||document.querySelector('#mm-drawer');
       if(drawer){
         const btnClose=drawer.querySelector('#mm-btn-close'); if(btnClose && !btnClose._sbBound){ btnClose.addEventListener('click',function(){ try{ closeDrawer(); }catch(e){} }); btnClose._sbBound=true; }
@@ -87,7 +87,7 @@ window.initStorageBox=window.initStorageBox||(function(){
   }
 })();
 
-// Teardown del módulo StorageBox: quitar listeners, cerrar y remover overlays propios
+// Teardown del mÃ³dulo StorageBox: quitar listeners, cerrar y remover overlays propios
 window.destroyStorageBox = window.destroyStorageBox || function(){
   try{
     const app = document.querySelector('#mm-app[data-module="storage-box"]');

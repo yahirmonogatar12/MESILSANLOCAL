@@ -8043,7 +8043,7 @@ def api_historial_cambio_material_maquina():
             FROM historial_cambio_material_smt
             WHERE ScanDate >= %s
             ORDER BY ScanDate DESC, ScanTime DESC
-            LIMIT 100
+            LIMIT 1000
         """
         
         # Usar fecha por defecto si no se proporciona
@@ -8103,6 +8103,8 @@ def api_historial_cambio_material_maquina():
         
         cursor.close()
         conn.close()
+        
+        print(f"✅ Enviando {len(formatted_data)} registros al frontend")
         
         return jsonify({
             'success': True,
@@ -9285,7 +9287,7 @@ def api_plan_smd_list():
             if linea:
                 sql.append("AND p.linea = %s")
                 params.append(linea)
-                print(f"🔍 Filtro de línea aplicado en API: '{linea}'")
+                print(f"Filtro de linea aplicado en API: '{linea}'")
             
         sql.append("ORDER BY fecha_creacion DESC, id DESC")
 
@@ -10046,3 +10048,127 @@ def api_update_storage(storage_id: int):
             return jsonify({'error': 'El Número de Gestión ya existe'}), 400
         print(f"Error en api_update_storage: {e}")
         return jsonify({'error': msg}), 500
+
+
+@app.route('/api/bom-smt-data', methods=['GET'])
+@login_requerido
+def api_bom_smt_data():
+    """API para obtener datos del BOM SMT basado en línea y modelo"""
+    try:
+        # Obtener parámetros
+        linea = request.args.get('linea', '')
+        model_code = request.args.get('model_code', '')
+        
+        if not linea or not model_code:
+            return jsonify({'success': False, 'error': 'Línea y modelo son requeridos'}), 400
+            
+        print(f"API BOM SMT - Filtros:")
+        print(f"  Linea: {linea}")
+        print(f"  Modelo: {model_code}")
+        
+        from .db_mysql import get_connection
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Mapear línea SMT a número de línea
+        mapeo_lineas = {
+            'SMT A': '2',
+            'SMT B': '2', 
+            'SMT C': '3',
+            'SMT D': '4',
+            '1LINE': '2',
+            '2LINE': '2',
+            '3LINE': '3',
+            '4LINE': '4'
+        }
+        
+        linea_numero = mapeo_lineas.get(linea, '2')
+        
+        # Consultar ambas tablas (bom_smt_f y bom_smt_r) - solo elementos con cantidad > 0
+        query_f = """
+            SELECT 
+                id, linea, model_code, mounter, slot, material_code, 
+                description, feeder_info, qty, raw_filename, 
+                created_at, updated_at, 'F' as tabla_tipo
+            FROM bom_smt_f 
+            WHERE linea = %s AND model_code LIKE %s AND qty > 0
+            ORDER BY mounter, slot
+        """
+        
+        query_r = """
+            SELECT 
+                id, linea, model_code, mounter, slot, material_code, 
+                description, feeder_info, qty, raw_filename, 
+                created_at, updated_at, 'R' as tabla_tipo  
+            FROM bom_smt_r 
+            WHERE linea = %s AND model_code LIKE %s AND qty > 0
+            ORDER BY mounter, slot
+        """
+        
+        # Buscar por modelo (puede contener EBR)
+        model_pattern = f'%{model_code}%'
+        
+        # Ejecutar consultas
+        cursor.execute(query_f, [linea_numero, model_pattern])
+        resultados_f = cursor.fetchall()
+        
+        cursor.execute(query_r, [linea_numero, model_pattern])
+        resultados_r = cursor.fetchall()
+        
+        # Combinar resultados
+        todos_resultados = list(resultados_f) + list(resultados_r)
+        
+        print(f"Encontrados {len(todos_resultados)} registros BOM ({len(resultados_f)} F + {len(resultados_r)} R)")
+        print(f"Parametros de busqueda - Linea numero: {linea_numero}, Patron modelo: {model_pattern}")
+        
+        # Formatear datos - solo incluir elementos con cantidad > 0
+        formatted_data = []
+        for row in todos_resultados:
+            try:
+                qty_value = row[8] if len(row) > 8 else 0
+                
+                # Solo incluir si qty > 0
+                if qty_value <= 0:
+                    continue
+                    
+                formatted_row = {
+                    'id': row[0] if len(row) > 0 else '',
+                    'linea': row[1] if len(row) > 1 else '',
+                    'model_code': row[2] if len(row) > 2 else '',
+                    'mounter': row[3] if len(row) > 3 else '',
+                    'slot': row[4] if len(row) > 4 else '',
+                    'material_code': row[5] if len(row) > 5 else '',
+                    'description': row[6] if len(row) > 6 else '',
+                    'feeder_info': row[7] if len(row) > 7 else '',
+                    'qty': qty_value,
+                    'raw_filename': row[9] if len(row) > 9 else '',
+                    'created_at': str(row[10]) if len(row) > 10 and row[10] else '',
+                    'updated_at': str(row[11]) if len(row) > 11 and row[11] else '',
+                    'tabla_tipo': row[12] if len(row) > 12 else '',
+                    'status': 'pending'  # Por defecto pendiente, se actualizará con el mapeo
+                }
+                formatted_data.append(formatted_row)
+                
+            except Exception as row_error:
+                print(f"Error procesando fila BOM: {row_error}")
+                continue
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"BOM filtrado: {len(formatted_data)} elementos con qty > 0")
+        
+        return jsonify({
+            'success': True,
+            'data': formatted_data,
+            'total': len(formatted_data),
+            'linea': linea,
+            'model_code': model_code,
+            'total_raw': len(todos_resultados),
+            'total_filtered': len(formatted_data)
+        })
+        
+    except Exception as e:
+        print(f"Error en api_bom_smt_data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
