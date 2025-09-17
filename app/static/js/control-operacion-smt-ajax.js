@@ -10,6 +10,68 @@
   let isFiltered = false; // Nueva variable para controlar el estado de filtro
   let autoRefreshInterval = null;
   let isInitialized = false;
+  // Datos cacheados para matching BOM <-> Historial
+  let lastHistoryDataNorm = [];
+  let historyMatchKeys = new Set();
+  let lastBomData = [];
+  let lastBomTableBody = null;
+
+  function parseSlotNumber(v){
+    try{
+      if (v === null || typeof v === 'undefined') return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const m = s.match(/\d+/);
+      return m ? Number(m[0]) : null;
+    }catch(_){ return null; }
+  }
+
+  function normalizeCode(v){
+    return String(v || '').trim().toUpperCase();
+  }
+
+  function parseMounterNumber(v){
+    try{
+      const s = String(v ?? '').trim();
+      if (!s) return null;
+      const m = s.match(/\d+/);
+      return m ? Number(m[0]) : null;
+    }catch(_){ return null; }
+  }
+
+  function parseMounterFromEquipment(equipment){
+    try{
+      const s = String(equipment ?? '');
+      const m = s.match(/m\s*(\d+)/i);
+      return m ? Number(m[1]) : null;
+    }catch(_){ return null; }
+  }
+
+  function parseSideFromBaseFeeder(v){
+    try{
+      const s = String(v ?? '').toUpperCase();
+      if (!s) return null;
+      if (s.includes('F')) return 'FRONT';
+      if (s.includes('R')) return 'REAR';
+      return null;
+    }catch(_){ return null; }
+  }
+
+  function makeKey(slot, code, mounter, side){
+    const sn = parseSlotNumber(slot);
+    const cn = normalizeCode(code);
+    const mn = parseMounterNumber(mounter);
+    const sd = side ? String(side).toUpperCase() : '';
+    return sn !== null && cn && mn !== null && sd ? `${sn}|${cn}|${mn}|${sd}` : '';
+  }
+
+  function rebuildHistoryMatchIndex(){
+    historyMatchKeys = new Set();
+    lastHistoryDataNorm.forEach(it => {
+      const key = makeKey(it.slot, it.part, it.mounter, it.side);
+      if (key) historyMatchKeys.add(key);
+    });
+  }
       
       // Elementos del DOM
       const elements = {
@@ -208,37 +270,7 @@
           
           // Si el plan no está en los datos filtrados, hacer una consulta específica para obtenerlo
           if (!planSeleccionado) {
-            try { 
-              // Requerir selección explícita para evitar finalizar el plan equivocado
-              if (!selectedPlanId) {
-                showError('SELECCIÓN REQUERIDA → Doble clic en el plan a finalizar');
-                return;
-              }
-              // Confirmación con detalles del plan
-              const datos = (isFiltered ? filteredPlanData : currentPlanData) || [];
-              const planRow = datos.find(x => x && Number(x.id) === Number(selectedPlanId));
-              if (!planRow) {
-                showError('PLAN NO ENCONTRADO → Actualiza la lista y vuelve a intentar');
-                return;
-              }
-              const confirmMsg = `Finalizar plan:\nLinea: ${planRow.linea || ''}\nLot: ${planRow.lote || ''}\nNParte: ${planRow.nparte || ''}.\n¿Confirmar?`;
-              if (!window.confirm(confirmMsg)) { return; }
-              // Resolver run_id del plan seleccionado
-              let ridMap = null;
-              try { const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}'); ridMap = map[String(selectedPlanId)]||null; } catch(_){}
-              if (!ridMap) {
-                const row2 = datos.find(x => x && Number(x.id) === Number(selectedPlanId));
-                ridMap = row2 && row2.run_id ? Number(row2.run_id) : null;
-              }
-              if (!ridMap) {
-                try{
-                  const respRun = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
-                  const jr = await respRun.json();
-                  const rr = Array.isArray(jr)? jr[0] : (jr.rows && jr.rows[0]);
-                  if (rr && rr.run_id) ridMap = Number(rr.run_id);
-                }catch(_){/* ignore */}
-              }
-              if (ridMap) currentRunId = ridMap;
+            try {
               const planResponse = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
               if (planResponse.ok) {
                 const planData = await planResponse.json();
@@ -401,16 +433,16 @@
             
             // Obtener la línea del item y cargar historial
             const lineaItem = item.linea;
-            const modeloItem = item.modelo || item.nparte || '';
+            const nParteItem = item.nparte || item.modelo || '';
             
             // Mapear línea a formato esperado y cargar historial
             if (lineaItem) {
               // Si estamos en modo focus, cargar historial filtrado por línea
               cargarHistorialMaterial(lineaItem, 0);
               
-              // También cargar el BOM List si tenemos modelo
-              if (modeloItem) {
-                cargarBomList(lineaItem, modeloItem, 0);
+              // También cargar el BOM List si tenemos NParte
+              if (nParteItem) {
+                cargarBomList(lineaItem, nParteItem, 0);
               }
             }
           });
@@ -528,7 +560,6 @@
           div.table,
           .panel-body .table,
           #tbl-mch,
-          #tbl-bom,
           #tbl-solder,
           #tbl-metalmask,
           #tbl-squeegee {
@@ -538,6 +569,20 @@
             display: block !important;
             position: relative !important;
           }
+          #tbl-bom {
+            max-height: 400px !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+            display: block !important;
+            position: relative !important;
+          }
+          #panel-bom .panel-body {
+            /* Evitar scroll vertical en el body del panel para que viva en #tbl-bom */
+            max-height: none !important;
+            overflow-y: visible !important;
+            overflow-x: auto !important;
+          }
+          
           
           .panel-body {
             max-height: 400px !important;
@@ -564,6 +609,21 @@
             width: 100% !important;
             table-layout: fixed !important;
           }
+
+          /* Ajustes de ancho de columnas para BOM */
+          #panel-bom table th:nth-child(4),
+          #panel-bom table td:nth-child(4) {
+            width: 20% !important;   /* Description más ancho */
+            min-width: 320px;
+            white-space: nowrap;
+          }
+          #panel-bom table th:nth-child(6),
+          #panel-bom table td:nth-child(6) {
+            width: 70px !important;  /* Qty más angosto */
+            max-width: 70px;
+            white-space: nowrap;
+            text-align: center;
+          }
           
           /* Forzar scroll en cualquier contenedor que tenga el tbody del historial */
           #materialHistoryTableBody-Control\\ de\\ operacion\\ de\\ linea\\ SMT {
@@ -581,7 +641,6 @@
           #panel-solder .panel-body,
           #panel-metalmask .panel-body,
           #panel-squeegee .panel-body {
-            max-height: 400px !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
           }
@@ -619,51 +678,77 @@
           }
           
           .section-table-container::-webkit-scrollbar-track,
-          #panel-bom .panel-body::-webkit-scrollbar-track,
-          #panel-bom .table::-webkit-scrollbar-track,
-          #tbl-bom::-webkit-scrollbar-track {
+          .panel-body::-webkit-scrollbar-track,
+          .table::-webkit-scrollbar-track,
+          #tbl-mch::-webkit-scrollbar-track,
+          #tbl-bom::-webkit-scrollbar-track,
+          #tbl-solder::-webkit-scrollbar-track,
+          #tbl-metalmask::-webkit-scrollbar-track,
+          #tbl-squeegee::-webkit-scrollbar-track,
+          div.table::-webkit-scrollbar-track {
             background: #40424F;
             border-radius: 4px;
           }
           
           .section-table-container::-webkit-scrollbar-thumb,
-          #panel-bom .panel-body::-webkit-scrollbar-thumb,
-          #panel-bom .table::-webkit-scrollbar-thumb,
-          #tbl-bom::-webkit-scrollbar-thumb {
+          .panel-body::-webkit-scrollbar-thumb,
+          .table::-webkit-scrollbar-thumb,
+          #tbl-mch::-webkit-scrollbar-thumb,
+          #tbl-bom::-webkit-scrollbar-thumb,
+          #tbl-solder::-webkit-scrollbar-thumb,
+          #tbl-metalmask::-webkit-scrollbar-thumb,
+          #tbl-squeegee::-webkit-scrollbar-thumb,
+          div.table::-webkit-scrollbar-thumb {
             background: #666;
             border-radius: 4px;
           }
           
           .section-table-container::-webkit-scrollbar-thumb:hover,
-          #panel-bom .panel-body::-webkit-scrollbar-thumb:hover,
-          #panel-bom .table::-webkit-scrollbar-thumb:hover,
-          #tbl-bom::-webkit-scrollbar-thumb:hover {
+          .panel-body::-webkit-scrollbar-thumb:hover,
+          .table::-webkit-scrollbar-thumb:hover,
+          #tbl-mch::-webkit-scrollbar-thumb:hover,
+          #tbl-bom::-webkit-scrollbar-thumb:hover,
+          #tbl-solder::-webkit-scrollbar-thumb:hover,
+          #tbl-metalmask::-webkit-scrollbar-thumb:hover,
+          #tbl-squeegee::-webkit-scrollbar-thumb:hover,
+          div.table::-webkit-scrollbar-thumb:hover {
             background: #888;
           }
           
           /* Estilos para BOM List */
           .bom-pending {
-            border: 2px solid #E74C3C !important;
+            border: 1px solid #E74C3C !important;
           }
           
           .bom-matched {
-            border: 2px solid #27AE60 !important;
+            border: 1px solid #27AE60 !important;
           }
           
           .status-indicator {
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-weight: bold;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-weight: 600;
+            display: inline-block;
           }
           
           .status-indicator.bom-pending {
-            background-color: #E74C3C;
-            color: white;
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #E74C3C;
+            border: 1px solid #E74C3C;
           }
           
           .status-indicator.bom-matched {
-            background-color: #27AE60;
-            color: white;
+            background-color: rgba(39, 174, 96, 0.15);
+            color: #27AE60;
+            border: 1px solid #27AE60;
+          }
+
+          /* Colorear texto de toda la fila del BOM según estado */
+          #panel-bom table tbody tr.bom-pending td {
+            color: #E74C3C !important;
+          }
+          #panel-bom table tbody tr.bom-matched td {
+            color: #27AE60 !important;
           }
         `;
         document.head.appendChild(style);
@@ -1167,13 +1252,11 @@
               
               // Para líneas específicas, usar el nuevo endpoint
               const equipoSMT = mapearLineaAEquipo(lineaSeleccionada);
-              const fechaActual = new Date().toISOString().slice(0, 10);
-              const url = `/api/historial_smt_data?fecha_desde=${fechaActual}&linea=${encodeURIComponent(equipoSMT)}`;
+              const url = `/api/historial_smt_latest_v2?linea=${encodeURIComponent(equipoSMT)}`;
               
               console.log('Mapeo de línea:');
               console.log('  - Línea original:', lineaSeleccionada);
               console.log('  - Equipo SMT mapeado:', equipoSMT);
-              console.log('  - Fecha actual:', fechaActual);
               console.log('  - URL construida:', url);
               console.log('Cargando historial de material para línea:', lineaSeleccionada, '(', equipoSMT, ') desde:', url);
               
@@ -1237,6 +1320,19 @@
               console.log(`Datos filtrados: ${dataFiltrada.length} de ${data.length} registros`);
           }
           
+          // Normalizar datos e indexar para matching BOM (incluye mounter desde Equipment y lado FRONT/REAR desde Base Feeder)
+          lastHistoryDataNorm = dataFiltrada.map(item => {
+              const equipment = item.maquina || item.equipment || item.Equipment || item.machine || '';
+              const baseFeederVal = item.FeederBase || item.feederbase || item.BaseFeeder || item.base_feeder || item.Feeder || item.feeder || '';
+              return {
+                  slot: item.SlotNo || item.slot_no || item.slotno || item.SlotNumber || '',
+                  part: item.PartName || item.warehousing || item.Warehousing || item.part_name || item.Material || '',
+                  mounter: parseMounterFromEquipment(equipment),
+                  side: parseSideFromBaseFeeder(baseFeederVal)
+              };
+          });
+          rebuildHistoryMatchIndex();
+
           // Renderizar filas filtradas
           const maxRows = 1000; // Permitir hasta 1000 registros
           const dataToShow = dataFiltrada.slice(0, maxRows);
@@ -1332,10 +1428,20 @@
                   // Aplicar estilos de scroll
                   container.style.setProperty('max-height', '400px', 'important');
                   container.style.setProperty('overflow-y', 'auto', 'important');
-                  container.style.setProperty('overflow-x', 'hidden', 'important');
+                  const esBom = container.id === 'tbl-bom' || container.closest('#panel-bom');
+                  container.style.setProperty('overflow-x', esBom ? 'auto' : 'hidden', 'important');
                   container.style.setProperty('display', 'block', 'important');
               }
           }, 500);
+
+          // Re-render del BOM para aplicar coincidencias si ya está cargado
+          try {
+              if (lastBomData && lastBomData.length && lastBomTableBody) {
+                  renderizarTablaBom(lastBomData, lastBomTableBody);
+              }
+          } catch (e) {
+              console.warn('No se pudo refrescar BOM tras historial:', e);
+          }
       }
       
       // Función para exportar historial de material a Excel
@@ -1486,8 +1592,12 @@
               const data = result.data || [];
               console.log(`BOM cargado: ${data.length} elementos`);
               
-              // Renderizar datos en la tabla BOM
-              renderizarTablaBom(data, tableBody);
+              // Guardar para aplicar matching con historial y re-renders
+              lastBomData = data;
+              lastBomTableBody = tableBody;
+              
+              // Renderizar datos en la tabla BOM (aplicará matching si existe historial)
+              renderizarTablaBom(lastBomData, lastBomTableBody);
               
           } catch (error) {
               console.error('Error cargando BOM:', error);
@@ -1512,12 +1622,20 @@
               return;
           }
           
-          // Renderizar filas
+          // Renderizar filas con lógica de match (slot + material_code + mounter + side)
           data.forEach((item, index) => {
               const row = document.createElement('tr');
               
-              // Determinar el color del contorno (rojo por defecto, verde si coincide)
-              const statusClass = item.status === 'matched' ? 'bom-matched' : 'bom-pending';
+              // Determinar match: slot + material_code + mounter presentes en historial
+              const bomSlot = item.slot;
+              const bomCode = item.material_code;
+              const bomMounter = item.mounter;
+              // Intentar obtener lado desde tipo explícito o desde feeder info como respaldo
+              const bomSide = (item.tabla_tipo ? String(item.tabla_tipo).toUpperCase() : '') ||
+                              parseSideFromBaseFeeder(item.base_feeder || item.feeder_info || '');
+              const k = makeKey(bomSlot, bomCode, bomMounter, bomSide);
+              const isMatched = k && historyMatchKeys.has(k);
+              const statusClass = isMatched ? 'bom-matched' : 'bom-pending';
               row.className = statusClass;
               
               row.innerHTML = `
@@ -1530,7 +1648,7 @@
                   <td style="padding: 6px; font-size: 10px; text-align: center;">${item.tabla_tipo || ''}</td>
                   <td style="padding: 6px; font-size: 10px;">
                       <span class="status-indicator ${statusClass}">
-                          ${item.status === 'matched' ? '✓' : '⏳'}
+                          ${isMatched ? 'PASS' : 'NG'}
                       </span>
                   </td>
               `;
@@ -1546,42 +1664,35 @@
               tableBody.appendChild(row);
           });
           
-          // Actualizar footer del BOM
+          // Actualizar footer del BOM (usando coincidencias calculadas)
           const bomFooter = document.querySelector('#panel-bom .footer-row');
           if (bomFooter) {
-              const pending = data.filter(item => item.status !== 'matched').length;
-              const matched = data.filter(item => item.status === 'matched').length;
+              let matched = 0;
+              data.forEach(it => {
+                  const side = (it.tabla_tipo ? String(it.tabla_tipo).toUpperCase() : '') ||
+                               parseSideFromBaseFeeder(it.base_feeder || it.feeder_info || '');
+                  const key = makeKey(it.slot, it.material_code, it.mounter, side);
+                  if (key && historyMatchKeys.has(key)) matched++;
+              });
+              const pending = Math.max(0, data.length - matched);
               bomFooter.textContent = `Total: ${data.length} | Pendientes: ${pending} | Verificados: ${matched}`;
           }
           
           // Aplicar scroll después de renderizar
           setTimeout(() => {
-              // Buscar contenedor para aplicar scroll al BOM
-              let bomContainer = tableBody.closest('#panel-bom .panel-body');
-              
+              // Usar siempre el contenedor específico del BOM para el scroll interno
+              let bomContainer = document.getElementById('tbl-bom');
               if (!bomContainer) {
-                  bomContainer = tableBody.closest('#panel-bom .table');
+                  // Fallback: contenedor .table más cercano
+                  bomContainer = tableBody.closest('#panel-bom .table') || tableBody.closest('#tbl-bom');
               }
-              
-              if (!bomContainer) {
-                  bomContainer = tableBody.closest('#tbl-bom');
-              }
-              
-              if (!bomContainer) {
-                  let parent = tableBody.parentElement;
-                  while (parent && parent.tagName !== 'DIV') {
-                      parent = parent.parentElement;
-                  }
-                  bomContainer = parent;
-              }
-              
               if (bomContainer) {
-                  // Aplicar estilos de scroll al BOM
+                  // Aplicar estilos de scroll al BOM (contenedor interno)
                   bomContainer.style.setProperty('max-height', '400px', 'important');
                   bomContainer.style.setProperty('overflow-y', 'auto', 'important');
-                  bomContainer.style.setProperty('overflow-x', 'hidden', 'important');
+                  bomContainer.style.setProperty('overflow-x', 'auto', 'important');
                   bomContainer.style.setProperty('display', 'block', 'important');
-                  console.log('Scroll aplicado al contenedor BOM:', bomContainer);
+                  console.log('Scroll interno aplicado al BOM:', bomContainer);
               }
           }, 500);
       }
@@ -1725,3 +1836,9 @@
       })();
 
 })();
+
+
+
+
+
+
