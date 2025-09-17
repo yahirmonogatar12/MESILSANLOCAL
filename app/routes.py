@@ -8324,6 +8324,60 @@ def api_historial_smt_latest_v2():
         print(traceback.format_exc())
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==========================
+# Metal Mask info lookup
+# ==========================
+@app.route('/api/masks/info', methods=['GET'])
+@login_requerido
+def api_masks_info():
+    try:
+        code = request.args.get('code', '').strip()
+        if not code:
+            return jsonify({'success': False, 'error': 'code requerido'}), 400
+
+        from .db_mysql import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        q = """
+            SELECT management_no, storage_box, pcb_code, side, production_date,
+                   used_count, max_count, allowance, model_name, tension_min,
+                   tension_max, thickness, supplier, registration_date, disuse
+            FROM masks
+            WHERE management_no = %s
+            LIMIT 1
+        """
+        cursor.execute(q, [code])
+        row = cursor.fetchone()
+        cursor.close(); conn.close()
+
+        if not row:
+            return jsonify({'success': False, 'found': False, 'message': 'No encontrado'})
+
+        fields = ['management_no','storage_box','pcb_code','side','production_date',
+                  'used_count','max_count','allowance','model_name','tension_min',
+                  'tension_max','thickness','supplier','registration_date','disuse']
+        data = { fields[i]: (row[i] if i < len(row) else None) for i in range(len(fields)) }
+
+        def to_int(v):
+            try:
+                return int(v)
+            except Exception:
+                try:
+                    return int(float(v))
+                except Exception:
+                    return 0
+
+        data['used_count'] = to_int(data.get('used_count'))
+        data['max_count'] = to_int(data.get('max_count'))
+        data['allowance'] = to_int(data.get('allowance'))
+
+        return jsonify({'success': True, 'found': True, 'data': data})
+    except Exception as e:
+        print('Error en api_masks_info:', e)
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/historial-uso-pegamento-soldadura-ajax')
 @login_requerido
 def historial_uso_pegamento_soldadura_ajax():

@@ -15,6 +15,7 @@
   let historyMatchKeys = new Set();
   let lastBomData = [];
   let lastBomTableBody = null;
+  let maskCheckOk = false;
 
   function parseSlotNumber(v){
     try{
@@ -435,8 +436,10 @@
             const lineaItem = item.linea;
             const nParteItem = item.nparte || item.modelo || '';
             
-            // Mapear línea a formato esperado y cargar historial
-            if (lineaItem) {
+          // Mapear línea a formato esperado y cargar historial
+          if (lineaItem) {
+              // Resetear validación de Metal Mask al cambiar el foco
+              maskCheckOk = false;
               // Si estamos en modo focus, cargar historial filtrado por línea
               cargarHistorialMaterial(lineaItem, 0);
               
@@ -750,6 +753,21 @@
           #panel-bom table tbody tr.bom-matched td {
             color: #27AE60 !important;
           }
+
+          /* Overlay Metal Mask scan */
+          .mm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 9999; }
+          .mm-dialog { width: 460px; background:#2f3241; border:1px solid #3e6ea1; border-radius:6px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+          .mm-dialog h3 { margin:0 0 8px 0; font-size:16px; color:#e4e7ef; }
+          .mm-row { display:flex; gap:10px; align-items:center; margin:12px 0; }
+          .mm-row label { width:140px; color:#cfd6e4; }
+          .mm-row input { flex:1; padding:8px; background:#1f2330; color:#e4e7ef; border:1px solid #3e6ea1; border-radius:4px; }
+          .mm-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:10px; }
+          .mm-actions .btn { padding:8px 12px; border-radius:4px; border:1px solid transparent; cursor:pointer; }
+          .btn-primary { background:#6741d9; color:#fff; border-color:#4f32a6; }
+          .btn-danger { background:#c0392b; color:#fff; border-color:#962d22; }
+          .mm-result { margin-top:10px; font-size:12px; }
+          .mm-ok { color:#2ecc71; }
+          .mm-ng { color:#e74c3c; }
         `;
         document.head.appendChild(style);
       }
@@ -767,6 +785,101 @@
           btnExportarHistorial.addEventListener('click', function() {
             console.log('Exportar historial clicked');
             exportarHistorialMaterial();
+          });
+        }
+
+        // Configurar event listeners para exportar BOM
+        const btnExportarBom = document.getElementById('btnExportarBom-Control de operacion de linea SMT');
+        if (btnExportarBom) {
+          btnExportarBom.addEventListener('click', function() {
+            console.log('Exportar BOM clicked');
+            exportarBomList();
+          });
+        }
+
+        // Función para detectar y configurar botones de Excel Export automáticamente
+        function configurarBotonesExcel() {
+          // Buscar botones en el panel BOM
+          const bomButtons = document.querySelectorAll(`
+            #panel-bom .btn[title*="Excel"],
+            #panel-bom .btn[onclick*="excel"],
+            #panel-bom .excel-export,
+            #panel-bom button[title*="Export"],
+            #panel-bom .btn:contains("Excel"),
+            #panel-bom .btn[data-export="excel"]
+          `);
+          
+          bomButtons.forEach(btn => {
+            // Remover event listeners anteriores
+            btn.removeAttribute('onclick');
+            btn.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Exportar BOM Excel (auto-detectado)');
+              exportarBomList();
+            });
+          });
+
+          // Buscar botones en el panel Material History
+          const historyButtons = document.querySelectorAll(`
+            #panel-mch .btn[title*="Excel"],
+            #panel-mch .btn[onclick*="excel"],
+            #panel-mch .excel-export,
+            #panel-mch button[title*="Export"],
+            #panel-mch .btn:contains("Excel"),
+            #panel-mch .btn[data-export="excel"]
+          `);
+          
+          historyButtons.forEach(btn => {
+            // Remover event listeners anteriores
+            btn.removeAttribute('onclick');
+            btn.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Exportar History Excel (auto-detectado)');
+              exportarHistorialMaterial();
+            });
+          });
+
+          console.log(`Botones Excel configurados: ${bomButtons.length} BOM, ${historyButtons.length} History`);
+        }
+
+        // Ejecutar configuración de botones después de un pequeño delay
+        setTimeout(configurarBotonesExcel, 1000);
+        
+        // Re-ejecutar cuando se cargue contenido dinámico
+        const observer = new MutationObserver(function(mutations) {
+          let shouldReconfig = false;
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+              mutation.addedNodes.forEach(node => {
+                if (node.nodeType === 1 && 
+                    (node.classList?.contains('btn') || 
+                     node.querySelector?.('.btn') ||
+                     node.id?.includes('panel-'))) {
+                  shouldReconfig = true;
+                }
+              });
+            }
+          });
+          
+          if (shouldReconfig) {
+            setTimeout(configurarBotonesExcel, 500);
+          }
+        });
+
+        if (document.querySelector('#panel-bom, #panel-mch')) {
+          observer.observe(document.querySelector('#panel-bom, #panel-mch') || document.body, {
+            childList: true,
+            subtree: true
+          });
+        }
+
+        // Abrir cuadro de escaneo para MetalMask
+        const btnMM = document.getElementById('btn-metalmask-regist');
+        if (btnMM) {
+          btnMM.addEventListener('click', () => {
+            showMetalMaskScanDialog();
           });
         }
         
@@ -900,6 +1013,15 @@
             if (!selectedPlanId) { 
               showError('SELECCIÓN REQUERIDA → Selecciona un plan (doble clic en fila)');
               return; 
+            }
+            // Validaciones previas: BOM y Metal Mask
+            if (!bomAllMatched()) {
+              showError('BOM NO VERIFICADO → Aún hay componentes NG');
+              return;
+            }
+            if (!maskCheckOk) {
+              showError('METAL MASK NO DISPONIBLE → Escanea y valida disponibilidad');
+              return;
             }
             
             // Deshabilitar botón inmediatamente
@@ -1158,6 +1280,106 @@
       // ==========================
       // INTEGRACIÓN CON SISTEMA DE HISTORIAL DE MATERIAL
       // ==========================
+      function getFocusedPlan(){
+          if (Array.isArray(filteredPlanData) && filteredPlanData.length > 0) return filteredPlanData[0];
+          return (currentPlanData||[]).find(p => p && Number(p.id) === Number(selectedPlanId));
+      }
+
+      function requiredUsesForPlan(){
+          const p = getFocusedPlan();
+          if (!p) return 0;
+          const candidates = [p.falta, p.qty, p.cantidad_total, p.cantidad, p.total];
+          for (const v of candidates){ const n = Number(v||0); if (!isNaN(n) && n>0) return n; }
+          return 0;
+      }
+
+      function bomAllMatched(){
+          if (!lastBomData || lastBomData.length === 0) return false;
+          for (const it of lastBomData){
+              const side = (it.tabla_tipo ? String(it.tabla_tipo).toUpperCase() : '') ||
+                           parseSideFromBaseFeeder(it.base_feeder || it.feeder_info || '');
+              const key = makeKey(it.slot, it.material_code, it.mounter, side);
+              if (!key || !historyMatchKeys.has(key)) return false;
+          }
+          return true;
+      }
+
+      async function consultMaskInfo(code){
+          const r = await fetch(`/api/masks/info?code=${encodeURIComponent(code)}`);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const j = await r.json();
+          if (!j.success || !j.found) throw new Error(j.error || 'No encontrada');
+          return j.data;
+      }
+
+      function showMetalMaskScanDialog(){
+          const overlay = document.createElement('div');
+          overlay.className = 'mm-overlay';
+          overlay.innerHTML = `
+            <div class="mm-dialog">
+              <h3>Registrar Metal Mask</h3>
+              <div class="mm-row">
+                <label>Metal Mask S/N</label>
+                <input id=\"mm-scan-input\" placeholder=\"Ej. MM1-2-001\" />
+              </div>
+              <div class=\"mm-actions\">
+                <button class=\"btn btn-primary\" id=\"mm-scan-ok\">Regist</button>
+                <button class=\"btn btn-danger\" id=\"mm-scan-cancel\">Close</button>
+              </div>
+              <div class=\"mm-result\" id=\"mm-scan-result\"></div>
+            </div>`;
+          document.body.appendChild(overlay);
+
+          const inp = overlay.querySelector('#mm-scan-input');
+          const btnOk = overlay.querySelector('#mm-scan-ok');
+          const btnCancel = overlay.querySelector('#mm-scan-cancel');
+          const res = overlay.querySelector('#mm-scan-result');
+          setTimeout(()=> inp && inp.focus(), 50);
+
+          const close = ()=> overlay.remove();
+          btnCancel.addEventListener('click', close);
+          overlay.addEventListener('click', (e)=>{ if (e.target === overlay) close(); });
+
+          async function doScan(){
+              const code = (inp.value||'').trim();
+              if (!code){ res.textContent='Ingrese el S/N a validar'; res.className='mm-result mm-ng'; return; }
+              res.textContent = 'Consultando...'; res.className='mm-result';
+              try{
+                  const data = await consultMaskInfo(code);
+                  const used = Number(data.used_count||0);
+                  const maxc = Number(data.max_count||0);
+                  const allowance = Number(data.allowance||0);
+                  const available = Math.max(0, (maxc + allowance) - used);
+                  const required = requiredUsesForPlan();
+                  const ok = available >= (required>0?required:1);
+                  maskCheckOk = ok;
+                  const now = new Date().toISOString().slice(0,16).replace('T',' ');
+                  res.innerHTML = ok
+                    ? `<span class="mm-ok">Disponible ✓</span> Usos disp.: <b>${available}</b> / Requeridos: <b>${required}</b>`
+                    : `<span class="mm-ng">No disponible ✗</span> Usos disp.: <b>${available}</b> / Requeridos: <b>${required}</b>`;
+
+                  // Append row into MetalMask history table
+                  try{
+                      let tbody = document.querySelector('#panel-metalmask table tbody');
+                      if (!tbody){ const t = document.querySelector('#panel-metalmask table'); tbody = document.createElement('tbody'); t && t.appendChild(tbody); }
+                      if (tbody){
+                          const tr = document.createElement('tr');
+                          tr.innerHTML = `<td style=\"padding:6px; font-size:10px;\">${now}</td>
+                                          <td style=\"padding:6px; font-size:10px;\">${data.management_no||code}</td>
+                                          <td style=\"padding:6px; font-size:10px; color:${ok?'#27AE60':'#E74C3C'};\">${available}</td>`;
+                          tbody.prepend(tr);
+                      }
+                  }catch(_){ }
+              }catch(err){
+                  maskCheckOk = false;
+                  res.textContent = 'Error consultando máscara: ' + err.message;
+                  res.className = 'mm-result mm-ng';
+              }
+          }
+
+          btnOk.addEventListener('click', doScan);
+          inp.addEventListener('keypress', (e)=>{ if (e.key==='Enter') doScan(); });
+      }
       
       // Función para mapear línea a equipo SMT y sus máquinas
       function mapearLineaAEquipo(linea) {
@@ -1448,62 +1670,250 @@
       async function exportarHistorialMaterial() {
           try {
               console.log('Exportando historial de material...');
+              showInfo('Preparando exportación de Material Changed History...');
               
-              const url = '/api/historial-cambio-material-maquina';
-              const response = await fetch(url);
+              // Si hay datos cargados en lastHistoryDataNorm, usar esos datos
+              let dataToExport = [];
               
-              if (!response.ok) {
-                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              if (lastHistoryDataNorm && lastHistoryDataNorm.length > 0) {
+                  // Usar datos ya normalizados y mostrados en pantalla
+                  const tableBody = document.getElementById('materialHistoryTableBody-Control de operacion de linea SMT') ||
+                                  document.querySelector('#tbl-mch table tbody');
+                  
+                  if (tableBody) {
+                      const rows = tableBody.querySelectorAll('tr');
+                      rows.forEach(row => {
+                          const cells = row.querySelectorAll('td');
+                          if (cells.length >= 7 && !cells[0].getAttribute('colspan')) {
+                              dataToExport.push({
+                                  equipment: cells[0].textContent.trim(),
+                                  slot_no: cells[1].textContent.trim(),
+                                  base_feeder: cells[2].textContent.trim(),
+                                  regist_date: cells[3].textContent.trim(),
+                                  warehousing: cells[4].textContent.trim(),
+                                  regist_quantity: cells[5].textContent.trim(),
+                                  current_quantity: cells[6].textContent.trim()
+                              });
+                          }
+                      });
+                  }
               }
               
-              const result = await response.json();
-              
-              if (!result.success) {
-                  throw new Error(result.error || 'Error en la respuesta del API');
+              // Si no hay datos en pantalla, consultar API
+              if (dataToExport.length === 0) {
+                  const url = '/api/historial-cambio-material-maquina';
+                  const response = await fetch(url);
+                  
+                  if (!response.ok) {
+                      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                  }
+                  
+                  const result = await response.json();
+                  
+                  if (!result.success) {
+                      throw new Error(result.error || 'Error en la respuesta del API');
+                  }
+                  
+                  dataToExport = result.data || [];
               }
               
-              const data = result.data || [];
-              
-              if (data.length === 0) {
-                  alert('No hay datos disponibles para exportar');
+              if (dataToExport.length === 0) {
+                  showWarning('No hay datos para exportar en Material Changed History');
                   return;
               }
               
-              // Crear CSV
-              const headers = ['Equipment', 'Slot No', 'Base Feeder', 'Regist Date', 'Warehousing', 'Regist Quantity', 'Current Quantity'];
-              const csvContent = [
-                  headers.join(','),
-                  ...data.map(row => [
-                      `"${row.equipment || row.maquina || ''}"`,
-                      `"${row.slot_no || row.SlotNo || ''}"`,
-                      `"${row.base_feeder || row.FeederBase || ''}"`,
-                      `"${row.regist_date || row.ScanDate || ''}"`,
-                      `"${row.warehousing || row.PartName || ''}"`,
-                      row.regist_quantity || row.Quantity || 0,
-                      row.current_quantity || row.Quantity || 0
-                  ].join(','))
-              ].join('\n');
-              
-              // Crear archivo y descargar
-              const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-              const link = document.createElement('a');
-              const filename = `historial_material_${new Date().toISOString().slice(0, 10)}.csv`;
-              
-              if (link.download !== undefined) {
-                  const url = URL.createObjectURL(blob);
-                  link.setAttribute('href', url);
-                  link.setAttribute('download', filename);
-                  link.style.visibility = 'hidden';
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
+              // Crear Excel usando SheetJS (si está disponible) o CSV como fallback
+              if (typeof XLSX !== 'undefined') {
+                  // Crear Excel usando SheetJS
+                  const wsData = [
+                      ['Equipment', 'Slot No', 'Base Feeder', 'Regist Date', 'Warehousing', 'Regist Quantity', 'Current Quantity'],
+                      ...dataToExport.map(row => [
+                          row.equipment || '',
+                          row.slot_no || '',
+                          row.base_feeder || '',
+                          row.regist_date || '',
+                          row.warehousing || '',
+                          row.regist_quantity || 0,
+                          row.current_quantity || 0
+                      ])
+                  ];
                   
-                  console.log('Archivo exportado:', filename);
+                  const ws = XLSX.utils.aoa_to_sheet(wsData);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'Material History');
+                  
+                  // Configurar anchos de columna
+                  ws['!cols'] = [
+                      { width: 15 }, // Equipment
+                      { width: 10 }, // Slot No
+                      { width: 12 }, // Base Feeder
+                      { width: 15 }, // Regist Date
+                      { width: 20 }, // Warehousing
+                      { width: 12 }, // Regist Quantity
+                      { width: 12 }  // Current Quantity
+                  ];
+                  
+                  const filename = `Material_Changed_History_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                  XLSX.writeFile(wb, filename);
+                  showSuccess(`Archivo Excel exportado: ${filename}`);
+              } else {
+                  // Fallback a CSV
+                  const headers = ['Equipment', 'Slot No', 'Base Feeder', 'Regist Date', 'Warehousing', 'Regist Quantity', 'Current Quantity'];
+                  const csvContent = [
+                      headers.join(','),
+                      ...dataToExport.map(row => [
+                          `"${row.equipment || ''}"`,
+                          `"${row.slot_no || ''}"`,
+                          `"${row.base_feeder || ''}"`,
+                          `"${row.regist_date || ''}"`,
+                          `"${row.warehousing || ''}"`,
+                          row.regist_quantity || 0,
+                          row.current_quantity || 0
+                      ].join(','))
+                  ].join('\n');
+                  
+                  // Crear archivo y descargar
+                  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const link = document.createElement('a');
+                  const filename = `Material_Changed_History_${new Date().toISOString().slice(0, 10)}.csv`;
+                  
+                  if (link.download !== undefined) {
+                      const url = URL.createObjectURL(blob);
+                      link.setAttribute('href', url);
+                      link.setAttribute('download', filename);
+                      link.style.visibility = 'hidden';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                      showSuccess(`Archivo CSV exportado: ${filename}`);
+                  }
               }
               
           } catch (error) {
               console.error('Error exportando historial:', error);
-              alert('Error al exportar los datos: ' + error.message);
+              showError('Error al exportar Material Changed History: ' + error.message);
+          }
+      }
+
+      // Función para exportar BOM List a Excel
+      async function exportarBomList() {
+          try {
+              console.log('Exportando BOM List...');
+              showInfo('Preparando exportación de BOM List...');
+              
+              // Verificar si hay datos de BOM cargados
+              if (!lastBomData || lastBomData.length === 0) {
+                  showWarning('No hay datos de BOM para exportar. Selecciona un plan primero.');
+                  return;
+              }
+              
+              // Preparar datos para exportación con información de matching
+              const dataToExport = lastBomData.map(item => {
+                  // Determinar match usando la misma lógica que en renderizarTablaBom
+                  const bomSlot = item.slot;
+                  const bomCode = item.material_code;
+                  const bomMounter = item.mounter;
+                  const bomSide = (item.tabla_tipo ? String(item.tabla_tipo).toUpperCase() : '') ||
+                                  parseSideFromBaseFeeder(item.base_feeder || item.feeder_info || '');
+                  const k = makeKey(bomSlot, bomCode, bomMounter, bomSide);
+                  const isMatched = k && historyMatchKeys.has(k);
+                  
+                  return {
+                      mounter: item.mounter || '',
+                      slot: item.slot || '',
+                      material_code: item.material_code || '',
+                      description: item.description || '',
+                      feeder_info: item.feeder_info || '',
+                      qty: item.qty || 0,
+                      type: item.tabla_tipo || '',
+                      status: isMatched ? 'PASS' : 'NG',
+                      verification_pass: isMatched ? 'YES' : 'NO'
+                  };
+              });
+              
+              // Crear Excel usando SheetJS (si está disponible) o CSV como fallback
+              if (typeof XLSX !== 'undefined') {
+                  // Crear Excel usando SheetJS
+                  const wsData = [
+                      ['Mounter', 'Slot', 'Material Code', 'Description', 'Feeder Info', 'Qty', 'Type', 'Status', 'Verification Pass'],
+                      ...dataToExport.map(row => [
+                          row.mounter,
+                          row.slot,
+                          row.material_code,
+                          row.description,
+                          row.feeder_info,
+                          row.qty,
+                          row.type,
+                          row.status,
+                          row.verification_pass
+                      ])
+                  ];
+                  
+                  const ws = XLSX.utils.aoa_to_sheet(wsData);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'BOM List');
+                  
+                  // Configurar anchos de columna
+                  ws['!cols'] = [
+                      { width: 12 }, // Mounter
+                      { width: 8 },  // Slot
+                      { width: 20 }, // Material Code
+                      { width: 30 }, // Description
+                      { width: 12 }, // Feeder Info
+                      { width: 8 },  // Qty
+                      { width: 10 }, // Type
+                      { width: 10 }, // Status
+                      { width: 15 }  // Verification Pass
+                  ];
+                  
+                  const filename = `BOM_List_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                  XLSX.writeFile(wb, filename);
+                  showSuccess(`Archivo Excel exportado: ${filename}`);
+              } else {
+                  // Fallback a CSV
+                  const headers = ['Mounter', 'Slot', 'Material Code', 'Description', 'Feeder Info', 'Qty', 'Type', 'Status', 'Verification Pass'];
+                  const csvContent = [
+                      headers.join(','),
+                      ...dataToExport.map(row => [
+                          `"${row.mounter}"`,
+                          `"${row.slot}"`,
+                          `"${row.material_code}"`,
+                          `"${row.description}"`,
+                          `"${row.feeder_info}"`,
+                          row.qty,
+                          `"${row.type}"`,
+                          `"${row.status}"`,
+                          `"${row.verification_pass}"`
+                      ].join(','))
+                  ].join('\n');
+                  
+                  // Crear archivo y descargar
+                  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const link = document.createElement('a');
+                  const filename = `BOM_List_${new Date().toISOString().slice(0, 10)}.csv`;
+                  
+                  if (link.download !== undefined) {
+                      const url = URL.createObjectURL(blob);
+                      link.setAttribute('href', url);
+                      link.setAttribute('download', filename);
+                      link.style.visibility = 'hidden';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                      showSuccess(`Archivo CSV exportado: ${filename}`);
+                  }
+              }
+              
+              // Estadísticas de exportación
+              const matched = dataToExport.filter(item => item.status === 'PASS').length;
+              const pending = dataToExport.length - matched;
+              showInfo(`Exportación completada: ${dataToExport.length} elementos (${matched} verificados, ${pending} pendientes)`);
+              
+          } catch (error) {
+              console.error('Error exportando BOM:', error);
+              showError('Error al exportar BOM List: ' + error.message);
           }
       }
       
@@ -1714,10 +2124,17 @@
       // Exponer funciones para uso externo
       window.cargarHistorialMaterialPorLinea = cargarHistorialMaterial;
       window.exportarHistorialMaterial = exportarHistorialMaterial;
+      window.exportarBomList = exportarBomList;
       window.onLineaChange = onLineaChange;
       window.mostrarMensajeInicialHistorial = mostrarMensajeInicialHistorial;
       window.cargarBomList = cargarBomList;
       window.mostrarMensajeInicialBom = mostrarMensajeInicialBom;
+      
+      // Funciones adicionales para compatibilidad con botones externos
+      window.exportBomToExcel = exportarBomList;
+      window.exportHistoryToExcel = exportarHistorialMaterial;
+      window.exportBOMList = exportarBomList;
+      window.exportMaterialHistory = exportarHistorialMaterial;
 
 
 
