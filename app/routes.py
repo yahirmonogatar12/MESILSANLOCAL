@@ -6934,10 +6934,277 @@ def control_salida_reporte_diario():
         
         # TODO: Implementar exportación a Excel si se requiere
         return jsonify({'success': False, 'error': 'Formato no soportado aún'}), 400
-        
+    
     except Exception as e:
         print(f"❌ Error generando reporte diario: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/importar_excel_plan_produccion', methods=['POST'])
+@login_requerido
+def importar_excel_plan_produccion():
+    """Importar plan de producción desde Excel"""
+    conn = None
+    cursor = None
+    temp_path = None
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No se proporcionó archivo'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No se seleccionó archivo'}), 400
+        
+        if not file or not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'Formato de archivo no válido. Use .xlsx o .xls'}), 400
+        
+        # Guardar el archivo temporalmente
+        filename = secure_filename(file.filename)
+        temp_path = os.path.join(os.path.dirname(__file__), 'temp_' + filename)
+        file.save(temp_path)
+        
+        # Leer el archivo Excel
+        try:
+            # Intentar leer con encabezados primero
+            df = pd.read_excel(temp_path, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+            
+            # Si las primeras filas contienen datos directamente (sin encabezados claros)
+            # y las columnas tienen nombres genéricos como 0, 1, 2, etc.
+            if all(isinstance(col, int) for col in df.columns):
+                # Leer sin encabezados y asignar nombres de columnas
+                df = pd.read_excel(temp_path, header=None, engine='openpyxl' if filename.endswith('.xlsx') else 'xlrd')
+                # Asignar nombres basados en la posición
+                if len(df.columns) >= 3:
+                    df.columns = ['Modelo', 'Numero_Parte', 'Cantidad'] + [f'Col_{i}' for i in range(3, len(df.columns))]
+                elif len(df.columns) == 2:
+                    df.columns = ['Modelo', 'Cantidad']
+                else:
+                    df.columns = ['Modelo']
+        except Exception as e:
+            try:
+                # Intentar leer sin encabezados como respaldo
+                df = pd.read_excel(temp_path, header=None)
+                if len(df.columns) >= 3:
+                    df.columns = ['Modelo', 'Numero_Parte', 'Cantidad'] + [f'Col_{i}' for i in range(3, len(df.columns))]
+                elif len(df.columns) == 2:
+                    df.columns = ['Modelo', 'Cantidad']
+                else:
+                    df.columns = ['Modelo']
+            except Exception as e2:
+                return jsonify({'success': False, 'error': f'Error al leer el archivo Excel: {str(e2)}'}), 500
+        
+        # Verificar que el DataFrame no esté vacío
+        if df.empty:
+            return jsonify({'success': False, 'error': 'El archivo Excel está vacío'}), 400
+        
+        # Obtener usuario de la sesión
+        usuario_actual = session.get('usuario', 'USUARIO_EXCEL')
+        
+        # Función auxiliar para obtener nombre del modelo desde raw
+        def obtener_nombre_modelo(codigo_modelo):
+            """Obtener nombre (project) desde raw por part_no"""
+            try:
+                if not codigo_modelo:
+                    return ''
+                cursor.execute(
+                    "SELECT project FROM raw WHERE TRIM(part_no)=TRIM(%s) ORDER BY id DESC LIMIT 1",
+                    (codigo_modelo,)
+                )
+                row = cursor.fetchone()
+                return (row.get('project') if row else '') or ''
+            except Exception as e:
+                print(f"Error obteniendo nombre modelo para {codigo_modelo}: {e}")
+                return ''
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Asegurar que la tabla work_orders tenga la columna linea
+        try:
+            cursor.execute("SHOW COLUMNS FROM work_orders LIKE 'linea'")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE work_orders ADD COLUMN linea VARCHAR(32)")
+                print("✅ Columna 'linea' agregada a work_orders")
+        except Exception as e:
+            print(f"Error agregando columna linea: {e}")
+        
+        registros_insertados = 0
+        registros_actualizados = 0
+        errores = []
+        
+        # Mapeo de columnas (flexible para diferentes nombres)
+        mapeo_columnas = {
+            'linea': ['Linea', 'linea', 'Line', 'LINEA', 'Línea'],
+            'modelo': ['Modelo', 'modelo', 'Model', 'MODELO'],
+            'numero_parte': ['Numero de parte', 'Número de parte', 'numero_parte', 'Part Number', 'NUMERO_PARTE', 'Numero_Parte'],
+            'cantidad': ['Cantidad', 'cantidad', 'Quantity', 'CANTIDAD'],
+            'fecha_operacion': ['Fecha', 'fecha_operacion', 'Fecha de operación', 'Date', 'FECHA'],
+            'codigo_po': ['PO', 'codigo_po', 'Código PO', 'Purchase Order', 'CODIGO_PO']
+        }
+        
+        # Debug: Mostrar información del DataFrame
+        print(f"Columnas en el DataFrame: {list(df.columns)}")
+        print(f"Primeras 3 filas del DataFrame:")
+        print(df.head(3))
+        
+        # Detectar columnas disponibles
+        columnas_detectadas = {}
+        for campo, posibles_nombres in mapeo_columnas.items():
+            for nombre in posibles_nombres:
+                if nombre in df.columns:
+                    columnas_detectadas[campo] = nombre
+                    break
+        
+        print(f"Columnas detectadas: {columnas_detectadas}")
+        
+        # Verificar que al menos tengamos modelo y cantidad
+        if 'modelo' not in columnas_detectadas or 'cantidad' not in columnas_detectadas:
+            # Información detallada para debugging
+            error_msg = f"El archivo debe contener al menos las columnas: Modelo y Cantidad. "
+            error_msg += f"Columnas encontradas: {list(df.columns)}. "
+            error_msg += f"Mapeo detectado: {columnas_detectadas}"
+            
+            return jsonify({
+                'success': False, 
+                'error': error_msg
+            }), 400
+        
+        # Procesar cada fila del DataFrame
+        for index, row in df.iterrows():
+            try:
+                # Extraer datos de la fila
+                modelo = str(row.get(columnas_detectadas['modelo'], '')).strip()
+                cantidad = row.get(columnas_detectadas['cantidad'], 0)
+                
+                # Validar datos básicos
+                if not modelo or modelo == 'nan':
+                    errores.append(f"Fila {index + 2}: Modelo vacío")
+                    continue
+                
+                try:
+                    cantidad = int(float(cantidad)) if cantidad and str(cantidad) != 'nan' else 0
+                except (ValueError, TypeError):
+                    cantidad = 0
+                
+                if cantidad <= 0:
+                    errores.append(f"Fila {index + 2}: Cantidad inválida ({cantidad})")
+                    continue
+                
+                # Datos opcionales
+                linea = str(row.get(columnas_detectadas.get('linea', ''), '')).strip()
+                if linea == 'nan':
+                    linea = ''
+                
+                numero_parte = str(row.get(columnas_detectadas.get('numero_parte', ''), '')).strip()
+                if numero_parte == 'nan':
+                    numero_parte = ''
+                
+                codigo_po = str(row.get(columnas_detectadas.get('codigo_po', ''), 'SIN-PO')).strip()
+                if codigo_po == 'nan' or not codigo_po:
+                    codigo_po = 'SIN-PO'
+                
+                # Fecha de operación
+                fecha_operacion = row.get(columnas_detectadas.get('fecha_operacion', ''), '')
+                if pd.isna(fecha_operacion) or fecha_operacion == 'nan':
+                    fecha_operacion = datetime.now().strftime('%Y-%m-%d')
+                else:
+                    try:
+                        if isinstance(fecha_operacion, str):
+                            # Intentar convertir string a fecha
+                            from dateutil import parser
+                            fecha_operacion = parser.parse(fecha_operacion).strftime('%Y-%m-%d')
+                        else:
+                            # Es datetime o similar
+                            fecha_operacion = fecha_operacion.strftime('%Y-%m-%d')
+                    except:
+                        fecha_operacion = datetime.now().strftime('%Y-%m-%d')
+                
+                # Generar código WO único
+                fecha_codigo = datetime.now().strftime('%y%m%d')
+                
+                # Buscar el último número de secuencia para hoy
+                cursor.execute("""
+                    SELECT codigo_wo FROM work_orders 
+                    WHERE codigo_wo LIKE %s 
+                    ORDER BY codigo_wo DESC LIMIT 1
+                """, (f'WO-{fecha_codigo}-%',))
+                
+                ultimo_wo = cursor.fetchone()
+                if ultimo_wo:
+                    try:
+                        ultimo_numero = int(ultimo_wo['codigo_wo'].split('-')[-1])
+                        nuevo_numero = ultimo_numero + 1
+                    except:
+                        nuevo_numero = 1
+                else:
+                    nuevo_numero = 1
+                
+                codigo_wo = f"WO-{fecha_codigo}-{nuevo_numero:04d}"
+                
+                # Obtener nombre del modelo desde la tabla raw
+                codigo_modelo = modelo
+                nombre_modelo = obtener_nombre_modelo(codigo_modelo)
+                
+                # Insertar nueva WO
+                cursor.execute("""
+                    INSERT INTO work_orders 
+                    (codigo_wo, codigo_po, modelo, codigo_modelo, nombre_modelo, linea, 
+                     cantidad_planeada, fecha_operacion, usuario_creacion, modificador, estado)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'CREADA')
+                """, (
+                    codigo_wo,
+                    codigo_po,
+                    modelo if modelo else numero_parte,  # Usar modelo o numero_parte como respaldo
+                    codigo_modelo,
+                    nombre_modelo,
+                    linea,
+                    cantidad,
+                    fecha_operacion,
+                    usuario_actual,
+                    usuario_actual
+                ))
+                
+                registros_insertados += 1
+                
+            except Exception as e:
+                errores.append(f"Fila {index + 2}: {str(e)}")
+                continue
+        
+        # Confirmar transacción
+        conn.commit()
+        
+        # Preparar respuesta
+        mensaje = f"Importación completada. {registros_insertados} WOs creadas."
+        if errores:
+            mensaje += f" {len(errores)} errores encontrados."
+        
+        return jsonify({
+            'success': True, 
+            'message': mensaje,
+            'registros_procesados': registros_insertados,
+            'errores': len(errores),
+            'detalles': {
+                'insertados': registros_insertados,
+                'errores': errores[:10] if errores else []  # Solo primeros 10 errores
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error general en importar_excel_plan_produccion: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+    
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception as e:
+            print(f"Error en cleanup: {str(e)}")
 
 # ===================================================================
 # 🔧 RUTAS DE MANTENIMIENTO Y DEBUGGING PARA CONTROL DE SALIDA
@@ -7672,6 +7939,7 @@ def exportar_wos_excel():
     try:
         import io
         from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         from flask import send_file
         
         # Obtener parámetros de filtro
@@ -7687,43 +7955,73 @@ def exportar_wos_excel():
         ws = wb.active
         ws.title = "Work Orders"
         
-        # Definir encabezados
+        # Definir encabezados que coincidan con la tabla HTML
         headers = [
-            'Código WO', 'Fecha Operación', 'Código Modelo', 'Nombre Modelo',
-            'Orden Proceso', 'Cantidad Planeada', 'Código PO', 'Registrado',
+            'Código WO', 'Estado', 'Fecha Operación', 'Línea', 'Código Modelo', 
+            'Nombre Modelo', 'Cantidad Planeada', 'Código PO', 'Registrado',
             'Modificador', 'Fecha Modificación', 'Fecha Creación'
         ]
         
+        # Estilos para encabezados
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="172A46", end_color="172A46", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin")
+        )
+        
         # Escribir encabezados
         for col, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col, value=header)
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = border
         
         # Escribir datos
-        for row, wo in enumerate(wos, 2):
-            ws.cell(row=row, column=1, value=wo.get('codigo_wo', ''))
-            ws.cell(row=row, column=2, value=wo.get('fecha_operacion', ''))
-            ws.cell(row=row, column=3, value=wo.get('codigo_modelo', ''))
-            ws.cell(row=row, column=4, value=wo.get('nombre_modelo', ''))
-            ws.cell(row=row, column=5, value=wo.get('orden_proceso', ''))
-            ws.cell(row=row, column=6, value=wo.get('cantidad_planeada', 0))
-            ws.cell(row=row, column=7, value=wo.get('codigo_po', ''))
-            ws.cell(row=row, column=8, value='Sí' if wo.get('registrado') else 'No')
-            ws.cell(row=row, column=9, value=wo.get('modificador', ''))
-            ws.cell(row=row, column=10, value=wo.get('fecha_modificacion', ''))
-            ws.cell(row=row, column=11, value=wo.get('fecha_creacion', ''))
+        for row_num, wo in enumerate(wos, 2):
+            # Datos que coincidan con las columnas de la tabla HTML
+            data = [
+                wo.get('codigo_wo', ''),                                    # Código WO
+                wo.get('estado', 'CREADA'),                                 # Estado
+                wo.get('fecha_operacion', ''),                              # Fecha Operación
+                wo.get('linea', 'SMT-1'),                                   # Línea
+                wo.get('codigo_modelo', '') or wo.get('modelo', ''),        # Código Modelo
+                wo.get('nombre_modelo', ''),                                # Nombre Modelo
+                wo.get('cantidad_planeada', 0),                             # Cantidad Planeada
+                wo.get('codigo_po', 'SIN-PO'),                              # Código PO
+                'Sí' if wo.get('registrado') else 'No',                    # Registrado
+                wo.get('modificador', ''),                                  # Modificador
+                wo.get('fecha_modificacion', ''),                           # Fecha Modificación
+                wo.get('fecha_creacion', '')                                # Fecha Creación
+            ]
+            
+            for col_num, value in enumerate(data, 1):
+                cell = ws.cell(row=row_num, column=col_num, value=value)
+                cell.border = border
+                cell.alignment = Alignment(horizontal="center", vertical="center")
         
         # Ajustar ancho de columnas
-        for column in ws.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
+        column_widths = {
+            'A': 15,  # Código WO
+            'B': 12,  # Estado
+            'C': 15,  # Fecha Operación
+            'D': 8,   # Línea
+            'E': 15,  # Código Modelo
+            'F': 20,  # Nombre Modelo
+            'G': 12,  # Cantidad Planeada
+            'H': 12,  # Código PO
+            'I': 10,  # Registrado
+            'J': 15,  # Modificador
+            'K': 18,  # Fecha Modificación
+            'L': 18   # Fecha Creación
+        }
+        
+        for column, width in column_widths.items():
+            ws.column_dimensions[column].width = width
         
         # Guardar en buffer
         buffer = io.BytesIO()
@@ -7743,6 +8041,7 @@ def exportar_wos_excel():
         )
         
     except Exception as e:
+        print(f"Error exportando WOs: {e}")
         return jsonify({
             'success': False,
             'error': f'Error exportando WOs: {str(e)}'
@@ -8383,6 +8682,326 @@ def api_masks_info():
 def historial_uso_pegamento_soldadura_ajax():
     """Template para Historial de uso de pegamento de soldadura"""
     return render_template('Control de calidad/historial_uso_pegamento_soldadura_ajax.html')
+
+# ==========================
+# API para historial de Metal Mask
+# ==========================
+@app.route('/api/metal-mask/history', methods=['POST'])
+@login_requerido
+def api_save_metal_mask_history():
+    """Guardar historial de uso de Metal Mask"""
+    try:
+        data = request.get_json()
+        
+        # Validar datos requeridos
+        required_fields = ['mask_code', 'model_code', 'linea', 'quantity_used']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'{field} es requerido'}), 400
+        
+        from .db_mysql import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Crear tabla si no existe
+        create_table_query = """
+            CREATE TABLE IF NOT EXISTS metal_mask_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                mask_code VARCHAR(50) NOT NULL,
+                model_code VARCHAR(50) NOT NULL,
+                linea VARCHAR(20) NOT NULL,
+                quantity_used INT NOT NULL DEFAULT 0,
+                scan_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                usuario VARCHAR(50),
+                plan_id INT,
+                run_id INT,
+                available_uses INT DEFAULT 0,
+                total_uses INT DEFAULT 0,
+                status ENUM('OK', 'NG', 'WARNING') DEFAULT 'OK',
+                notes TEXT,
+                INDEX idx_mask_code (mask_code),
+                INDEX idx_model_code (model_code),
+                INDEX idx_linea (linea),
+                INDEX idx_scan_date (scan_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+        cursor.execute(create_table_query)
+        conn.commit()
+        
+        # Insertar registro de historial
+        insert_query = """
+            INSERT INTO metal_mask_history 
+            (mask_code, model_code, linea, quantity_used, usuario, plan_id, run_id, 
+             available_uses, total_uses, status, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        usuario = session.get('usuario_logueado', 'Sistema')
+        plan_id = data.get('plan_id')
+        run_id = data.get('run_id')
+        available_uses = data.get('available_uses', 0)
+        total_uses = data.get('total_uses', 0)
+        status = data.get('status', 'OK')
+        notes = data.get('notes', '')
+        
+        cursor.execute(insert_query, [
+            data['mask_code'],
+            data['model_code'],
+            data['linea'],
+            data['quantity_used'],
+            usuario,
+            plan_id,
+            run_id,
+            available_uses,
+            total_uses,
+            status,
+            notes
+        ])
+        
+        history_id = cursor.lastrowid
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'history_id': history_id,
+            'message': 'Historial de Metal Mask guardado correctamente'
+        })
+        
+    except Exception as e:
+        print('Error en api_save_metal_mask_history:', e)
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/metal-mask/history', methods=['GET'])
+@login_requerido
+def api_get_metal_mask_history():
+    """Obtener historial de uso de Metal Mask"""
+    try:
+        # Parámetros de filtro
+        mask_code = request.args.get('mask_code', '').strip()
+        model_code = request.args.get('model_code', '').strip()
+        linea = request.args.get('linea', '').strip()
+        date_from = request.args.get('date_from', '').strip()
+        date_to = request.args.get('date_to', '').strip()
+        limit = int(request.args.get('limit', 100))
+        
+        from .db_mysql import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Construir consulta con filtros
+        where_conditions = []
+        params = []
+        
+        if mask_code:
+            where_conditions.append('mask_code = %s')
+            params.append(mask_code)
+        
+        if model_code:
+            where_conditions.append('model_code = %s')
+            params.append(model_code)
+        
+        if linea:
+            where_conditions.append('linea = %s')
+            params.append(linea)
+        
+        if date_from:
+            where_conditions.append('scan_date >= %s')
+            params.append(date_from)
+        
+        if date_to:
+            where_conditions.append('scan_date <= %s')
+            params.append(date_to + ' 23:59:59')
+        
+        where_clause = 'WHERE ' + ' AND '.join(where_conditions) if where_conditions else ''
+        
+        query = f"""
+            SELECT id, mask_code, model_code, linea, quantity_used,
+                   DATE_FORMAT(scan_date, '%%Y-%%m-%%d %%H:%%i:%%s') as scan_date,
+                   usuario, plan_id, run_id, available_uses, total_uses,
+                   status, notes
+            FROM metal_mask_history
+            {where_clause}
+            ORDER BY scan_date DESC
+            LIMIT %s
+        """
+        
+        params.append(limit)
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        # Convertir a lista de diccionarios
+        columns = ['id', 'mask_code', 'model_code', 'linea', 'quantity_used',
+                  'scan_date', 'usuario', 'plan_id', 'run_id', 'available_uses',
+                  'total_uses', 'status', 'notes']
+        
+        data = [dict(zip(columns, row)) for row in rows]
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': data,
+            'count': len(data)
+        })
+        
+    except Exception as e:
+        print('❌ Error en api_get_metal_mask_history:', e)
+        print('❌ Traceback completo:')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/metal-mask/update-used-count', methods=['POST'])
+@login_requerido
+def api_update_metal_mask_used_count():
+    """Actualizar used_count de Metal Mask al finalizar plan"""
+    try:
+        data = request.get_json()
+        plan_id = data.get('plan_id')
+        cantidad_producida = int(data.get('cantidad_producida', 0))
+        
+        if not plan_id or cantidad_producida <= 0:
+            return jsonify({'success': False, 'error': 'plan_id y cantidad_producida son requeridos'})
+        
+        from .db_mysql import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # 1. Obtener información del plan para saber el modelo y línea
+        cursor.execute("""
+            SELECT modelo, linea, nparte 
+            FROM plan_smd 
+            WHERE id = %s
+        """, (plan_id,))
+        plan_info = cursor.fetchone()
+        
+        if not plan_info:
+            return jsonify({'success': False, 'error': 'Plan no encontrado'})
+        
+        modelo, linea, nparte = plan_info
+        
+        # 2. Buscar Metal Masks que se usaron para este modelo/línea
+        # Prioridad 1: Buscar por plan_id específico
+        cursor.execute("""
+            SELECT DISTINCT mask_code, COUNT(*) as usage_count
+            FROM metal_mask_history 
+            WHERE plan_id = %s
+            GROUP BY mask_code
+            ORDER BY usage_count DESC, scan_date DESC
+        """, (plan_id,))
+        
+        mask_codes = [row[0] for row in cursor.fetchall()]
+        
+        # Prioridad 2: Si no hay historial del plan, buscar por modelo/línea reciente
+        if not mask_codes:
+            cursor.execute("""
+                SELECT DISTINCT mask_code, COUNT(*) as usage_count
+                FROM metal_mask_history 
+                WHERE model_code = %s AND linea = %s 
+                AND scan_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                GROUP BY mask_code
+                ORDER BY usage_count DESC, scan_date DESC
+                LIMIT 3
+            """, (modelo, linea))
+            mask_codes = [row[0] for row in cursor.fetchall()]
+            
+        # Prioridad 3: Buscar cualquier mask para el modelo (último recurso)
+        if not mask_codes:
+            cursor.execute("""
+                SELECT DISTINCT mask_code
+                FROM metal_mask_history 
+                WHERE model_code = %s 
+                ORDER BY scan_date DESC
+                LIMIT 1
+            """, (modelo,))
+            mask_codes = [row[0] for row in cursor.fetchall()]
+        
+        updated_count = 0
+        
+        # 3. Actualizar used_count en la tabla masks para cada mask_code encontrada
+        for mask_code in mask_codes:
+            cursor.execute("""
+                UPDATE masks 
+                SET used_count = used_count + %s 
+                WHERE management_no = %s
+            """, (cantidad_producida, mask_code))
+            
+            if cursor.rowcount > 0:
+                updated_count += cursor.rowcount
+                print(f"✅ Metal Mask {mask_code} - used_count incrementado en {cantidad_producida}")
+        
+        # 4. Registrar el update en el historial para cada mask actualizada
+        for mask_code in mask_codes:
+            # Obtener información actualizada de la mask
+            cursor.execute("""
+                SELECT used_count, max_count, allowance 
+                FROM masks 
+                WHERE management_no = %s
+            """, (mask_code,))
+            
+            mask_info = cursor.fetchone()
+            if mask_info:
+                used_count, max_count, allowance = mask_info
+                available_uses = max(0, (max_count + allowance) - used_count)
+                
+                cursor.execute("""
+                    INSERT INTO metal_mask_history 
+                    (mask_code, model_code, linea, quantity_used, plan_id, 
+                     available_uses, total_uses, status, notes, usuario, scan_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                """, (
+                    mask_code, modelo, linea, cantidad_producida, plan_id,
+                    available_uses, used_count, 'END_PLAN',
+                    f'Finalización de plan {plan_id} - Producido: {cantidad_producida}',
+                    session.get('usuario', 'sistema')
+                ))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'updated_masks': updated_count,
+            'cantidad_producida': cantidad_producida,
+            'plan_id': plan_id,
+            'masks_actualizadas': mask_codes
+        })
+        
+    except Exception as e:
+        print('❌ Error actualizando used_count:', e)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/metal-mask/test', methods=['GET'])
+def api_test_metal_mask():
+    """Test endpoint para Metal Mask"""
+    try:
+        from .db_mysql import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT COUNT(*) FROM metal_mask_history")
+        count = cursor.fetchone()[0]
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Metal Mask test OK',
+            'total_records': count
+        })
+    except Exception as e:
+        import traceback
+        print('❌ Error en test:', e)
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/historial-uso-mask-metal-ajax')
 @login_requerido

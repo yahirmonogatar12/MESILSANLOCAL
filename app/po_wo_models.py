@@ -502,7 +502,9 @@ def listar_wos(fecha_desde=None, fecha_hasta=None):
     try:
         base_query = """
         SELECT codigo_wo, codigo_po, modelo, cantidad_planeada, 
-               fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion
+               fecha_operacion, modificador, fecha_modificacion, estado, usuario_creacion,
+               nombre_modelo, codigo_modelo, orden_proceso, fecha_creacion, linea,
+               CASE WHEN estado != 'CREADA' THEN 1 ELSE 0 END as registrado
         FROM work_orders 
         """
         
@@ -535,7 +537,13 @@ def listar_wos(fecha_desde=None, fecha_hasta=None):
                 'modificador': row['modificador'],
                 'fecha_modificacion': row['fecha_modificacion'].isoformat() if row['fecha_modificacion'] else None,
                 'estado': row['estado'],
-                'usuario_creacion': row['usuario_creacion']
+                'usuario_creacion': row['usuario_creacion'],
+                'nombre_modelo': row.get('nombre_modelo'),
+                'codigo_modelo': row.get('codigo_modelo'),
+                'orden_proceso': row.get('orden_proceso', 'NORMAL'),
+                'fecha_creacion': row['fecha_creacion'].isoformat() if row.get('fecha_creacion') else None,
+                'linea': row.get('linea', 'SMT-1'),
+                'registrado': bool(row.get('registrado', 0))
             })
         
         return wos
@@ -608,7 +616,9 @@ def migrar_tabla_work_orders():
         nuevas_columnas = [
             ("orden_proceso", "ADD COLUMN orden_proceso VARCHAR(32) DEFAULT 'NORMAL'"),
             ("nombre_modelo", "ADD COLUMN nombre_modelo VARCHAR(64)"),
-            ("codigo_modelo", "ADD COLUMN codigo_modelo VARCHAR(64)")
+            ("codigo_modelo", "ADD COLUMN codigo_modelo VARCHAR(64)"),
+            ("fecha_creacion", "ADD COLUMN fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP"),
+            ("linea", "ADD COLUMN linea VARCHAR(16) DEFAULT 'SMT-1'")
         ]
         
         # Verificar qué columnas ya existen

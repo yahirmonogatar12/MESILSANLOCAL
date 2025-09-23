@@ -1,4 +1,4 @@
-// Control de Operación Línea SMT - Integración con Plan SMD
+// Control de OperaciÃ³n LÃ­nea SMT - IntegraciÃ³n con Plan SMD
 (function() {
   console.log('Inicializando Control de Operacion Linea SMT AJAX...');
   
@@ -84,7 +84,7 @@
         btnSearch: null
       };
       
-      // FunciÃ³n para obtener elementos del DOM
+      // FunciÃƒÂ³n para obtener elementos del DOM
       function getElements() {
         elements.tableBody = document.getElementById('tbody-plan-data');
         elements.placeholder = document.getElementById('plan-placeholder');
@@ -97,7 +97,7 @@
         return elements.tableBody && elements.placeholder;
       }
       
-      // Función para mostrar notificaciones toast sutiles
+      // FunciÃ³n para mostrar notificaciones toast sutiles
       function showToast(message, type = 'info', duration = 4000) {
         const container = document.getElementById('toast-container');
         if (!container) return;
@@ -106,27 +106,27 @@
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         
-        // Iconos por tipo - estilo más técnico/industrial
+        // Iconos por tipo - estilo mÃ¡s tÃ©cnico/industrial
         const icons = {
-          success: '✓',
-          error: '✗', 
-          warning: '⚠',
-          info: '●'
+          success: 'âœ“',
+          error: 'âœ—', 
+          warning: 'âš ',
+          info: 'â—'
         };
         
-        // Títulos por tipo - más técnicos
+        // TÃ­tulos por tipo - mÃ¡s tÃ©cnicos
         const titles = {
-          success: 'OPERACIÓN EXITOSA',
+          success: 'OPERACIÃ“N EXITOSA',
           error: 'ERROR DE SISTEMA',
           warning: 'ADVERTENCIA DEL SISTEMA', 
-          info: 'INFORMACIÓN DEL SISTEMA'
+          info: 'INFORMACIÃ“N DEL SISTEMA'
         };
 
         toast.innerHTML = `
           <div class="toast-header">
             <span class="toast-icon">${icons[type] || icons.info}</span>
             <span>${titles[type] || titles.info}</span>
-            <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            <button class="toast-close" onclick="this.parentElement.parentElement.remove()">Ã—</button>
           </div>
           <div class="toast-body">${message}</div>
         `;
@@ -134,12 +134,12 @@
         // Agregar al contenedor
         container.appendChild(toast);
 
-        // Mostrar con animación
+        // Mostrar con animaciÃ³n
         setTimeout(() => {
           toast.classList.add('show');
         }, 100);
 
-        // Auto-remover después del tiempo especificado
+        // Auto-remover despuÃ©s del tiempo especificado
         setTimeout(() => {
           toast.classList.remove('show');
           setTimeout(() => {
@@ -152,32 +152,188 @@
         return toast;
       }
 
-      // Función para mostrar alertas de éxito
+      // FunciÃ³n para mostrar alertas de Ã©xito
       function showSuccess(message, duration = 3000) {
         return showToast(message, 'success', duration);
       }
 
-      // Función para mostrar alertas de error  
+      // FunciÃ³n para mostrar alertas de error  
       function showError(message, duration = 5000) {
         return showToast(message, 'error', duration);
       }
 
-      // Función para mostrar alertas de advertencia
+      // FunciÃ³n para mostrar alertas de advertencia
       function showWarning(message, duration = 4000) {
         return showToast(message, 'warning', duration);
       }
 
-      // Función para mostrar alertas de información
+      // FunciÃ³n para mostrar alertas de informaciÃ³n
       function showInfo(message, duration = 3000) {
         return showToast(message, 'info', duration);
       }
 
-      // Función de recarga rápida para después de operaciones START/END
+      // FunciÃ³n para mostrar modal de Metal Mask con el mismo estilo que "Consultando WO..."
+      function mostrarModalMetalMask(titulo, mensaje) {
+        // Crear modal si no existe
+        let modal = document.getElementById('metalMaskModal');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'metalMaskModal';
+          modal.className = 'smd-modal-backdrop';
+          modal.setAttribute('aria-hidden', 'true');
+          modal.style.cssText = `
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+          `;
+          
+          modal.innerHTML = `
+            <div class="smd-modal" role="dialog" style="
+              background: #2c3e50;
+              border: 2px solid #db3434ff;
+              border-radius: 12px;
+              padding: 20px;
+              min-width: 320px;
+              max-width: 90vw;
+              box-shadow: 0 8px 32px rgba(0,0,0,.35);
+              text-align: center;
+            ">
+              <h3 id="metalMaskTitle" style="color: #db3434ff; margin: 0 0 6px 0; font-size: 16px; font-weight: 600;">${titulo}</h3>
+              <p id="metalMaskText" style="margin: 0; color: #ecf0f1; font-size: 14px;">${mensaje}</p>
+              <div style="margin-top: 12px;">
+                <button id="metalMaskOk" class="smd-btn" type="button" style="
+                  padding: 8px 16px;
+                  border: 1px solid #b92929ff;
+                  border-radius: 4px;
+                  background: #3C3940;
+                  color: #fff;
+                  cursor: pointer;
+                  font-size: 12px;
+                  font-weight: 600;
+                  transition: all 0.2s ease;
+                ">Aceptar</button>
+              </div>
+            </div>
+          `;
+          
+          document.body.appendChild(modal);
+          
+          // Event listener para el botÃ³n aceptar
+          modal.querySelector('#metalMaskOk').addEventListener('click', function() {
+            modal.style.display = 'none';
+          });
+          
+          // Cerrar al hacer clic en el backdrop
+          modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+              modal.style.display = 'none';
+            }
+          });
+        } else {
+          // Actualizar contenido si el modal ya existe
+          modal.querySelector('#metalMaskTitle').textContent = titulo;
+          modal.querySelector('#metalMaskText').textContent = mensaje;
+        }
+        
+        // Mostrar modal
+        modal.style.display = 'flex';
+        
+        // Auto-cerrar despuÃ©s de 8 segundos
+        setTimeout(() => {
+          if (modal.style.display === 'flex') {
+            modal.style.display = 'none';
+          }
+        }, 8000);
+      }
+
+      // Función para mostrar modal de BOM con el mismo estilo que "Consultando WO..."
+      function mostrarModalBom(titulo, mensaje) {
+        // Crear modal si no existe
+        let modal = document.getElementById('bomModal');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'bomModal';
+          modal.className = 'smd-modal-backdrop';
+          modal.setAttribute('aria-hidden', 'true');
+          modal.style.cssText = `
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+          `;
+          
+          modal.innerHTML = `
+            <div class="smd-modal" role="dialog" style="
+              background: #2c3e50;
+              border: 2px solid #db3434ff;
+              border-radius: 12px;
+              padding: 20px;
+              min-width: 320px;
+              max-width: 90vw;
+              box-shadow: 0 8px 32px rgba(0,0,0,.35);
+              text-align: center;
+            ">
+              <h3 id="bomTitle" style="color: #db3434ff; margin: 0 0 6px 0; font-size: 16px; font-weight: 600;">${titulo}</h3>
+              <p id="bomText" style="margin: 0; color: #ecf0f1; font-size: 14px;">${mensaje}</p>
+              <div style="margin-top: 12px;">
+                <button id="bomOk" class="smd-btn" type="button" style="
+                  padding: 8px 16px;
+                  border: 1px solid #b92929ff;
+                  border-radius: 4px;
+                  background: #3C3940;
+                  color: #fff;
+                  cursor: pointer;
+                  font-size: 12px;
+                  font-weight: 600;
+                  transition: all 0.2s ease;
+                ">Aceptar</button>
+              </div>
+            </div>
+          `;
+          
+          document.body.appendChild(modal);
+          
+          // Event listener para el botón aceptar
+          modal.querySelector('#bomOk').addEventListener('click', function() {
+            modal.style.display = 'none';
+          });
+          
+          // Cerrar al hacer clic en el backdrop
+          modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+              modal.style.display = 'none';
+            }
+          });
+        } else {
+          // Actualizar contenido si el modal ya existe
+          modal.querySelector('#bomTitle').textContent = titulo;
+          modal.querySelector('#bomText').textContent = mensaje;
+        }
+        
+        // Mostrar modal
+        modal.style.display = 'flex';
+        
+        // Auto-cerrar después de 8 segundos
+        setTimeout(() => {
+          if (modal.style.display === 'flex') {
+            modal.style.display = 'none';
+          }
+        }, 8000);
+      }
+
+      // FunciÃ³n de recarga rÃ¡pida para despuÃ©s de operaciones START/END
       async function recargaRapida() {
         try {
           // Solo recargar si es necesario mantener la vista actualizada
           if (isFiltered && selectedPlanId) {
-            // En modo focus, consultar solo el plan específico
+            // En modo focus, consultar solo el plan especÃ­fico
             const response = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
             if (response.ok) {
               const data = await response.json();
@@ -189,7 +345,7 @@
               }
             }
           }
-          // Si no está en modo focus, no recargar automáticamente para mantener velocidad
+          // Si no estÃ¡ en modo focus, no recargar automÃ¡ticamente para mantener velocidad
         } catch (error) {
           console.warn('Error en recarga rapida:', error);
           // En caso de error, hacer recarga completa
@@ -197,7 +353,7 @@
         }
       }
 
-      // FunciÃ³n para cargar datos del plan SMD
+      // FunciÃƒÂ³n para cargar datos del plan SMD
       async function cargarDatosPlanSMD() {
         if (!getElements()) {
           console.warn('Elementos no encontrados, reintentando...');
@@ -206,7 +362,7 @@
         }
         
         try {
-          // Filtros de búsqueda
+          // Filtros de bÃºsqueda
           const params = new URLSearchParams();
           const lotEl = document.getElementById('lotNo');
           if (lotEl && lotEl.value) params.set('q', lotEl.value.trim());
@@ -214,11 +370,11 @@
             params.set('linea', elements.selLine.value); 
           }
           
-          // Lógica para mostrar pendientes: ignorar fechas y solo mostrar PLANEADOS
+          // LÃ³gica para mostrar pendientes: ignorar fechas y solo mostrar PLANEADOS
           if (elements.chkShowPlanned && elements.chkShowPlanned.checked) {
             params.set('solo_pendientes', 'true');
           } else {
-            // Solo aplicar filtros de fecha si NO está marcado "Mostrar Pendientes"
+            // Solo aplicar filtros de fecha si NO estÃ¡ marcado "Mostrar Pendientes"
             if (elements.dateFrom && elements.dateFrom.value) params.set('desde', elements.dateFrom.value);
             if (elements.dateTo && elements.dateTo.value) params.set('hasta', elements.dateTo.value);
           }
@@ -239,14 +395,14 @@
         
         // Datos recibidos: ${rows.length} planes
         
-        // Verificar si hay búsqueda por LOT NO para activar modo focus automáticamente
+        // Verificar si hay bÃºsqueda por LOT NO para activar modo focus automÃ¡ticamente
         const lotNoInput = document.getElementById('lotNo');
         const lotNoValue = lotNoInput && lotNoInput.value ? lotNoInput.value.trim() : '';
         
         if (rows.length > 0) { 
           elements.placeholder.style.display = 'none'; 
           
-          // Si hay búsqueda por LOT NO y encontramos resultados, activar modo focus automáticamente
+          // Si hay bÃºsqueda por LOT NO y encontramos resultados, activar modo focus automÃ¡ticamente
           if (lotNoValue && rows.length > 0) {
             // Buscar el plan que coincida con el LOT NO
             const planPorLote = rows.find(p => p.lote && p.lote.toLowerCase().includes(lotNoValue.toLowerCase()));
@@ -257,7 +413,7 @@
               filteredPlanData = [planPorLote];
               renderPlanData(filteredPlanData);
               aplicarSeleccionPersistida();
-              return; // Salir aquí porque ya renderizamos en modo focus
+              return; // Salir aquÃ­ porque ya renderizamos en modo focus
             }
           }
         } else { 
@@ -269,7 +425,7 @@
         if (isFiltered && selectedPlanId) {
           let planSeleccionado = rows.find(p => p.id === selectedPlanId);
           
-          // Si el plan no está en los datos filtrados, hacer una consulta específica para obtenerlo
+          // Si el plan no estÃ¡ en los datos filtrados, hacer una consulta especÃ­fica para obtenerlo
           if (!planSeleccionado) {
             try {
               const planResponse = await fetch(`/api/plan-smd/list?plan_id=${selectedPlanId}`);
@@ -280,7 +436,7 @@
                 }
               }
             } catch (error) {
-              console.error('❌ Error consultando plan específico:', error);
+              console.error('âŒ Error consultando plan especÃ­fico:', error);
             }
           }
           
@@ -306,7 +462,7 @@
         }
       }
       
-      // Función para filtrar por plan específico (modo enfoque)
+      // FunciÃ³n para filtrar por plan especÃ­fico (modo enfoque)
       function filtrarPorPlan(planId) {
         const planSeleccionado = currentPlanData.find(p => p.id === planId);
         if (!planSeleccionado) {
@@ -317,14 +473,28 @@
         isFiltered = true;
         filteredPlanData = [planSeleccionado];
         renderPlanData(filteredPlanData);
+        
+        // Actualizar estado del botón Metal Mask
+        actualizarEstadoBotonMetalMask();
+        
+        // Cargar historial de Metal Mask específico para este plan/línea
+        setTimeout(async () => {
+          try {
+            const data = await cargarHistorialMetalMask();
+            renderizarHistorialMetalMask(data);
+          } catch (error) {
+            console.error('Error cargando Metal Mask:', error);
+            renderizarHistorialMetalMask([]);
+          }
+        }, 300);
       }
       
-      // Función para mostrar todos los planes (salir del modo enfoque)
+      // FunciÃ³n para mostrar todos los planes (salir del modo enfoque)
       function mostrarTodosLosDatos() {
         isFiltered = false;
         filteredPlanData = [];
         
-        // Limpiar el campo de búsqueda para mostrar realmente todos los planes
+        // Limpiar el campo de bÃºsqueda para mostrar realmente todos los planes
         const lotEl = document.getElementById('lotNo');
         if (lotEl) {
           lotEl.value = '';
@@ -333,16 +503,22 @@
         // Recargar datos sin filtros para mostrar todos los planes
         cargarDatosPlanSMD();
         
-        // Limpiar historial de materiales y BOM - mostrar mensaje inicial
+        // Actualizar estado del botón Metal Mask
+        actualizarEstadoBotonMetalMask();
+        
+        // Cargar último escaneado de Metal Mask cuando no hay focus específico
+        cargarUltimoMetalMask();
+        
+        // Limpiar historial de materiales y BOM - mostrar mensajes iniciales
         setTimeout(() => {
           mostrarMensajeInicialHistorial();
           mostrarMensajeInicialBom();
         }, 500);
       }
       
-      // FunciÃ³n para renderizar los datos en la tabla
+      // FunciÃƒÂ³n para renderizar los datos en la tabla
       function renderPlanData(data) {
-        // aplica después de render
+        // aplica despuÃ©s de render
         if (!elements.tableBody) return;
         
         // Limpiar tabla
@@ -359,9 +535,9 @@
           let statusClass = 'pending';
           let statusText = 'PLANEADO';
           
-          // Lógica simplificada: priorizar run_status sobre estatus
+          // LÃ³gica simplificada: priorizar run_status sobre estatus
           
-          // Primero verificar run_status (más específico)
+          // Primero verificar run_status (mÃ¡s especÃ­fico)
           if (item.run_status === 'RUNNING') {
             statusClass = 'partial';
             statusText = 'INICIADO';
@@ -425,27 +601,61 @@
             // Agregar clase focus a la fila actual
             row.classList.add('focused-row');
             
-            // Guardar selección en localStorage
+            // Guardar selecciÃ³n en localStorage
             try {
               localStorage.setItem('smtSelectedPlanId', item.id);
             } catch(e) {
-              console.warn('No se pudo guardar selección:', e);
+              console.warn('No se pudo guardar selecciÃ³n:', e);
             }
             
-            // Obtener la línea del item y cargar historial
+            // Obtener la lÃ­nea del item y cargar historial
             const lineaItem = item.linea;
             const nParteItem = item.nparte || item.modelo || '';
             
-          // Mapear línea a formato esperado y cargar historial
+          // Mapear lÃ­nea a formato esperado y cargar historial
           if (lineaItem) {
-              // Resetear validación de Metal Mask al cambiar el foco
+              // Resetear validaciÃ³n de Metal Mask al cambiar el foco
               maskCheckOk = false;
-              // Si estamos en modo focus, cargar historial filtrado por línea
+              // Si estamos en modo focus, cargar historial filtrado por lÃ­nea
               cargarHistorialMaterial(lineaItem, 0);
               
-              // También cargar el BOM List si tenemos NParte
+              // TambiÃ©n cargar el BOM List si tenemos NParte
               if (nParteItem) {
                 cargarBomList(lineaItem, nParteItem, 0);
+              }
+              
+              // Cargar historial de Metal Mask específico por línea y modelo
+              try {
+                if (typeof loadMaskHistory === 'function') {
+                  // Si existe la función del template, filtrar por modelo y línea específica
+                  setTimeout(() => {
+                    const maskModelFilter = document.getElementById('filter-model-code');
+                    const maskLineaFilter = document.getElementById('filter-linea');
+                    
+                    if (maskModelFilter) {
+                      maskModelFilter.value = nParteItem;
+                    }
+                    
+                    // Mapear línea para el filtro de metal mask
+                    if (maskLineaFilter) {
+                      const lineaMapeada = mapearLineaAEquipo(lineaItem);
+                      // Encontrar la opción correcta en el select
+                      Array.from(maskLineaFilter.options).forEach(option => {
+                        if (option.value === lineaItem || option.text.includes(lineaMapeada)) {
+                          maskLineaFilter.value = option.value;
+                        }
+                      });
+                    }
+                    
+                    if (typeof loadMaskHistory === 'function') {
+                      loadMaskHistory();
+                    }
+                    
+                    console.log(`Metal Mask cargado para: ${nParteItem} en línea ${lineaItem} (${mapearLineaAEquipo(lineaItem)})`);
+                  }, 800);
+                }
+              } catch (e) {
+                console.warn('No se pudo cargar historial de Metal Mask:', e);
               }
             }
           });
@@ -486,32 +696,47 @@
         });
       }
       
-      // Aplicar selección persistida tras renderizar
+      // Aplicar selecciÃ³n persistida tras renderizar
       function aplicarSeleccionPersistida() {
         try {
           const saved = Number(localStorage.getItem('smtSelectedPlanId')) || null;
-          if (!saved) return;
+          if (!saved) {
+            // Si no hay plan guardado, cargar Metal Mask general
+            setTimeout(() => {
+              actualizarEstadoBotonMetalMask();
+              cargarUltimoMetalMask();
+            }, 500);
+            return;
+          }
           
-          // Si hay un plan guardado, solo marcarlo como seleccionado (sin activar modo enfoque automáticamente)
+          // Si hay un plan guardado, marcarlo como seleccionado y cargar su Metal Mask
           const planGuardado = currentPlanData.find(p => p.id === saved);
           if (planGuardado) {
             selectedPlanId = saved;
-            // NO activar automáticamente el modo enfoque al cargar la página
+            console.log('Plan persistido encontrado:', planGuardado.model_code, 'línea:', planGuardado.linea);
+            
+            // Cargar Metal Mask específico para el plan guardado
+            setTimeout(() => {
+              actualizarEstadoBotonMetalMask();
+              cargarUltimoMetalMask();
+            }, 500);
+            
+            // NO activar automÃ¡ticamente el modo enfoque al cargar la pÃ¡gina
             // El usuario debe hacer doble clic para activar el modo enfoque
           }
         } catch(e) { 
-          console.warn('No se pudo aplicar selección persistida', e); 
+          console.warn('No se pudo aplicar selecciÃ³n persistida', e); 
         }
       }
       
-      // Función para configurar las fechas por defecto (México - Monterrey)
+      // FunciÃ³n para configurar las fechas por defecto (MÃ©xico - Monterrey)
       function setupDefaultDates() {
         // Obtener elementos directamente para asegurar que existen
         const dateFromEl = document.getElementById('dateFrom');
         const dateToEl = document.getElementById('dateTo');
         
         if (dateFromEl && dateToEl) {
-          // Crear fecha actual en zona horaria de México (UTC-6)
+          // Crear fecha actual en zona horaria de MÃ©xico (UTC-6)
           const mexicoTime = new Date().toLocaleString("en-CA", {
             timeZone: "America/Monterrey",
             year: "numeric",
@@ -519,7 +744,7 @@
             day: "2-digit"
           });
           
-          // SIEMPRE establecer la fecha actual de México (sobreescribir cualquier valor previo)
+          // SIEMPRE establecer la fecha actual de MÃ©xico (sobreescribir cualquier valor previo)
           dateFromEl.value = mexicoTime;
           dateToEl.value = mexicoTime;
         } else {
@@ -528,7 +753,7 @@
         }
       }
       
-      // Función para agregar estilos CSS dinámicamente
+      // FunciÃ³n para agregar estilos CSS dinÃ¡micamente
       function addFocusStyles() {
         // Verificar si ya existen los estilos
         if (document.getElementById('smt-focus-styles')) return;
@@ -566,7 +791,6 @@
           #tbl-solder,
           #tbl-metalmask,
           #tbl-squeegee {
-            max-height: 400px !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
             display: block !important;
@@ -588,7 +812,6 @@
           
           
           .panel-body {
-            max-height: 400px !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
           }
@@ -616,13 +839,13 @@
           /* Ajustes de ancho de columnas para BOM */
           #panel-bom table th:nth-child(4),
           #panel-bom table td:nth-child(4) {
-            width: 20% !important;   /* Description más ancho */
+            width: 20% !important;   /* Description mÃ¡s ancho */
             min-width: 320px;
             white-space: nowrap;
           }
           #panel-bom table th:nth-child(6),
           #panel-bom table td:nth-child(6) {
-            width: 70px !important;  /* Qty más angosto */
+            width: 70px !important;  /* Qty mÃ¡s angosto */
             max-width: 70px;
             white-space: nowrap;
             text-align: center;
@@ -638,7 +861,7 @@
             width: 100% !important;
           }
           
-          /* Selectores específicos para TODOS los paneles - SCROLL UNIVERSAL */
+          /* Selectores especÃ­ficos para TODOS los paneles - SCROLL UNIVERSAL */
           #panel-mch .panel-body,
           #panel-bom .panel-body,
           #panel-solder .panel-body,
@@ -746,7 +969,7 @@
             border: 1px solid #27AE60;
           }
 
-          /* Colorear texto de toda la fila del BOM según estado */
+          /* Colorear texto de toda la fila del BOM segÃºn estado */
           #panel-bom table tbody tr.bom-pending td {
             color: #E74C3C !important;
           }
@@ -772,7 +995,7 @@
         document.head.appendChild(style);
       }
       
-      // FunciÃ³n para configurar event listeners
+      // FunciÃƒÂ³n para configurar event listeners
       function setupEventListeners() {
         if (!getElements()) return;
         
@@ -780,7 +1003,7 @@
         addFocusStyles();
         
         // Configurar event listeners para historial de material
-        const btnExportarHistorial = document.getElementById('btnExportarHistorial-Control de operacion de linea SMT');
+        const btnExportarHistorial = document.getElementById('btn-mch-export');
         if (btnExportarHistorial) {
           btnExportarHistorial.addEventListener('click', function() {
             console.log('Exportar historial clicked');
@@ -789,7 +1012,7 @@
         }
 
         // Configurar event listeners para exportar BOM
-        const btnExportarBom = document.getElementById('btnExportarBom-Control de operacion de linea SMT');
+        const btnExportarBom = document.getElementById('btn-bom-export');
         if (btnExportarBom) {
           btnExportarBom.addEventListener('click', function() {
             console.log('Exportar BOM clicked');
@@ -797,57 +1020,61 @@
           });
         }
 
-        // Función para detectar y configurar botones de Excel Export automáticamente
+        // FunciÃ³n para detectar y configurar botones de Excel Export automÃ¡ticamente
         function configurarBotonesExcel() {
-          // Buscar botones en el panel BOM
+  let bomCount = 0, hisCount = 0, mmCount = 0;
+  const bom = document.getElementById('btn-bom-export');
+  if (bom) { bom.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); exportarBomList(); }; bomCount = 1; }
+  const mch = document.getElementById('btn-mch-export');
+  if (mch) { mch.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); exportarHistorialMaterial(); }; hisCount = 1; }
+  const mm = document.getElementById('btn-metalmask-export');
+  if (mm) { mm.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); exportarMetalMaskHistory(); }; mmCount = 1; }
+          
+          // Buscar botones genéricos en el panel BOM (solo si no están configurados)
           const bomButtons = document.querySelectorAll(`
-            #panel-bom .btn[title*="Excel"],
-            #panel-bom .btn[onclick*="excel"],
-            #panel-bom .excel-export,
-            #panel-bom button[title*="Export"],
-            #panel-bom .btn:contains("Excel"),
-            #panel-bom .btn[data-export="excel"]
+            #panel-bom .btn[title*="Excel"]:not([data-excel-configured]),
+            #panel-bom .btn[onclick*="excel"]:not([data-excel-configured]),
+            #panel-bom .excel-export:not([data-excel-configured]),
+            #panel-bom button[title*="Export"]:not([data-excel-configured])
           `);
           
           bomButtons.forEach(btn => {
-            // Remover event listeners anteriores
-            btn.removeAttribute('onclick');
-            btn.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('Exportar BOM Excel (auto-detectado)');
-              exportarBomList();
-            });
+            if (!btn.dataset.excelConfigured) {
+              btn.onclick = null; // Limpiar onclick anterior
+              btn.removeAttribute('onclick');
+              btn._exportHandler = (e) => { e.preventDefault(); e.stopPropagation(); exportarBomList(); };
+              btn.addEventListener('click', btn._exportHandler);
+              btn.dataset.excelConfigured = 'true';
+              bomCount++;
+            }
           });
 
-          // Buscar botones en el panel Material History
+          // Buscar botones genéricos en el panel Material History (solo si no están configurados)
           const historyButtons = document.querySelectorAll(`
-            #panel-mch .btn[title*="Excel"],
-            #panel-mch .btn[onclick*="excel"],
-            #panel-mch .excel-export,
-            #panel-mch button[title*="Export"],
-            #panel-mch .btn:contains("Excel"),
-            #panel-mch .btn[data-export="excel"]
+            #panel-mch .btn[title*="Excel"]:not([data-excel-configured]),
+            #panel-mch .btn[onclick*="excel"]:not([data-excel-configured]),
+            #panel-mch .excel-export:not([data-excel-configured]),
+            #panel-mch button[title*="Export"]:not([data-excel-configured])
           `);
           
           historyButtons.forEach(btn => {
-            // Remover event listeners anteriores
-            btn.removeAttribute('onclick');
-            btn.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('Exportar History Excel (auto-detectado)');
-              exportarHistorialMaterial();
-            });
+            if (!btn.dataset.excelConfigured) {
+              btn.onclick = null; // Limpiar onclick anterior
+              btn.removeAttribute('onclick');
+              btn._exportHandler = (e) => { e.preventDefault(); e.stopPropagation(); exportarHistorialMaterial(); };
+              btn.addEventListener('click', btn._exportHandler);
+              btn.dataset.excelConfigured = 'true';
+              hisCount++;
+            }
           });
 
-          console.log(`Botones Excel configurados: ${bomButtons.length} BOM, ${historyButtons.length} History`);
+          console.log(`Botones Excel configurados: BOM=${bomCount}, History=${hisCount}, MetalMask=${mmCount}`);
         }
 
-        // Ejecutar configuración de botones después de un pequeño delay
+        // Ejecutar configuraciÃ³n de botones despuÃ©s de un pequeÃ±o delay
         setTimeout(configurarBotonesExcel, 1000);
         
-        // Re-ejecutar cuando se cargue contenido dinámico
+        // Re-ejecutar cuando se cargue contenido dinÃ¡mico
         const observer = new MutationObserver(function(mutations) {
           let shouldReconfig = false;
           mutations.forEach(function(mutation) {
@@ -879,6 +1106,15 @@
         const btnMM = document.getElementById('btn-metalmask-regist');
         if (btnMM) {
           btnMM.addEventListener('click', () => {
+            // Validar que haya un plan en focus antes de permitir registro
+            if (!isFiltered || filteredPlanData.length === 0) {
+              console.warn('Metal Mask - Registro bloqueado: no hay plan en focus');
+              showError('Debe seleccionar un plan en modo Focus para registrar Metal Mask');
+              return;
+            }
+            
+            const planEnFocus = filteredPlanData[0];
+            console.log('Metal Mask - Plan en focus para registro:', planEnFocus.modelo, 'línea:', planEnFocus.linea);
             showMetalMaskScanDialog();
           });
         }
@@ -886,16 +1122,17 @@
         const lineaDropdown = document.getElementById('linea-Control de operacion de linea SMT');
         if (lineaDropdown) {
           lineaDropdown.addEventListener('change', function() {
-            console.log('Línea cambiada a:', this.value);
+            console.log('LÃ­nea cambiada a:', this.value);
             onLineaChange();
           });
         }
         
-        // No cargar historial automáticamente - solo cuando se seleccione un plan
-        // Mostrar mensaje inicial en lugar de cargar datos automáticamente
+        // No cargar historial automÃ¡ticamente - solo cuando se seleccione un plan
+        // Mostrar mensaje inicial en lugar de cargar datos automÃ¡ticamente
         setTimeout(function() {
             mostrarMensajeInicialHistorial();
             mostrarMensajeInicialBom();
+            ocultarFilasMetalMask(); // Ocultar filas Metal Mask hasta que haya un plan en focus
         }, 1000);
         
         if (elements.btnSearch) {
@@ -911,21 +1148,21 @@
               }, 300);
             }
             
-            // Limpiar campos Lot No y Lot No Info para búsqueda general
+            // Limpiar campos Lot No y Lot No Info para bÃºsqueda general
             const lotNoEl = document.getElementById('lotNo');
             const lotNoInfoEl = document.getElementById('lotNoInfo');
             if (lotNoEl) lotNoEl.value = '';
             if (lotNoInfoEl) lotNoInfoEl.value = '';
             
-            // Asegurar que las fechas siempre estén en el día actual
+            // Asegurar que las fechas siempre estÃ©n en el dÃ­a actual
             setupDefaultDates();
             
-            // Hacer búsqueda con los filtros aplicados
+            // Hacer bÃºsqueda con los filtros aplicados
             cargarDatosPlanSMD();
           });
         }
         
-        // Botón para limpiar LOT NO
+        // BotÃ³n para limpiar LOT NO
         const btnClearLot = document.getElementById('btn-clear-lot');
         if (btnClearLot) {
           btnClearLot.addEventListener('click', () => {
@@ -947,7 +1184,7 @@
           });
         }
         
-        // Event listener para campo LOT NO - activar búsqueda y modo focus al presionar Enter
+        // Event listener para campo LOT NO - activar bÃºsqueda y modo focus al presionar Enter
         const lotNoField = document.getElementById('lotNo');
         if (lotNoField) {
           lotNoField.addEventListener('keypress', (e) => {
@@ -957,16 +1194,16 @@
               // Si hay valor, buscar y activar modo focus
               const lotValue = lotNoField.value.trim();
               if (lotValue) {
-                // Forzar búsqueda inmediata
+                // Forzar bÃºsqueda inmediata
                 cargarDatosPlanSMD();
               }
             }
           });
           
-          // También agregar listener para cuando se limpia el campo
+          // TambiÃ©n agregar listener para cuando se limpia el campo
           lotNoField.addEventListener('input', (e) => {
             const lotValue = e.target.value.trim();
-            // Si se vació el campo, salir del modo focus
+            // Si se vaciÃ³ el campo, salir del modo focus
             if (!lotValue && isFiltered) {
               isFiltered = false;
               filteredPlanData = [];
@@ -983,14 +1220,14 @@
         // Cambio en fechas
         if (elements.dateFrom) {
           elements.dateFrom.addEventListener('change', () => {
-            console.log('ðŸ“… Fecha desde cambiada:', elements.dateFrom.value);
+            console.log('Ã°Å¸â€œâ€¦ Fecha desde cambiada:', elements.dateFrom.value);
             cargarDatosPlanSMD();
           });
         }
         
         if (elements.dateTo) {
           elements.dateTo.addEventListener('change', () => {
-            console.log('ðŸ“… Fecha hasta cambiada:', elements.dateTo.value);
+            console.log('Ã°Å¸â€œâ€¦ Fecha hasta cambiada:', elements.dateTo.value);
             cargarDatosPlanSMD();
           });
         }
@@ -1011,20 +1248,20 @@
         if (btnStart) {
           btnStart.addEventListener('click', async () => {
             if (!selectedPlanId) { 
-              showError('SELECCIÓN REQUERIDA → Selecciona un plan (doble clic en fila)');
+              showError('SELECCIÃ“N REQUERIDA â†’ Selecciona un plan (doble clic en fila)');
               return; 
             }
             // Validaciones previas: BOM y Metal Mask
             if (!bomAllMatched()) {
-              showError('BOM NO VERIFICADO → Aún hay componentes NG');
+              showError('BOM NO VERIFICADO â†’ AÃºn hay componentes NG');
               return;
             }
             if (!maskCheckOk) {
-              showError('METAL MASK NO DISPONIBLE → Escanea y valida disponibilidad');
+              mostrarModalMetalMask('METAL MASK NO VALIDADO', 'Escanea cÃ³digo y confirma disponibilidad');
               return;
             }
             
-            // Deshabilitar botón inmediatamente
+            // Deshabilitar botÃ³n inmediatamente
             btnStart.disabled = true;
             btnStart.textContent = 'Starting...';
             btnStart.classList.add('processing');
@@ -1034,23 +1271,23 @@
               const datosActuales = isFiltered ? filteredPlanData : currentPlanData;
               const planSeleccionado = datosActuales.find(p => p.id === selectedPlanId);
               if (!planSeleccionado) {
-                showError('PLAN NO ENCONTRADO → Actualiza los datos del sistema');
+                showError('PLAN NO ENCONTRADO â†’ Actualiza los datos del sistema');
                 return;
               }
               
-              // Validaciones rápidas
+              // Validaciones rÃ¡pidas
               if (planSeleccionado.run_status === 'RUNNING') {
-                showWarning(`PROCESO YA ACTIVO → ${planSeleccionado.lote}`);
+                showWarning(`PROCESO YA ACTIVO â†’ ${planSeleccionado.lote}`);
                 return;
               }
               
               const linea = planSeleccionado.linea;
               if (!linea) {
-                showError('LÍNEA NO ASIGNADA → Configura línea para el plan');
+                showError('LÃNEA NO ASIGNADA â†’ Configura lÃ­nea para el plan');
                 return;
               }
               
-              // Iniciar run directamente (sin verificación de línea para velocidad)
+              // Iniciar run directamente (sin verificaciÃ³n de lÃ­nea para velocidad)
               const resp = await fetch('/api/plan-run/start', { 
                 method: 'POST', 
                 headers: {'Content-Type':'application/json'}, 
@@ -1065,7 +1302,7 @@
               
               // Actualizar estado local inmediatamente
               currentRunId = data.run.id; 
-              // Mapear plan->run para soportar múltiples activos
+              // Mapear plan->run para soportar mÃºltiples activos
               try { const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}'); map[String(selectedPlanId)] = Number(currentRunId); localStorage.setItem('smtRunMap', JSON.stringify(map)); } catch(_){}
               // Legacy single key
               localStorage.setItem('smtRunId', String(currentRunId));
@@ -1085,11 +1322,11 @@
                 }
               }
               
-              // Notificación removida por solicitud del usuario
+              // NotificaciÃ³n removida por solicitud del usuario
             } catch(e){ 
               showError('Error al iniciar run: ' + e.message);
             } finally {
-              // Rehabilitar botón
+              // Rehabilitar botÃ³n
               btnStart.disabled = false;
               btnStart.textContent = 'Start(Re-Start)';
               btnStart.classList.remove('processing');
@@ -1099,23 +1336,23 @@
         
         if (btnEnd) {
           btnEnd.addEventListener('click', async () => {
-            // Deshabilitar botón inmediatamente
+            // Deshabilitar botÃ³n inmediatamente
             btnEnd.disabled = true;
             btnEnd.textContent = 'Ending...';
             btnEnd.classList.add('processing');
             
             try { 
               if (!selectedPlanId) {
-                showError('SELECCIÓN REQUERIDA → Doble clic en el plan a finalizar');
+                showError('SELECCIÃ“N REQUERIDA â†’ Doble clic en el plan a finalizar');
                 return;
               }
               const datos = (isFiltered ? filteredPlanData : currentPlanData) || [];
               const planRow = datos.find(x => x && Number(x.id) === Number(selectedPlanId));
               if (!planRow) {
-                showError('PLAN NO ENCONTRADO → Actualiza la lista');
+                showError('PLAN NO ENCONTRADO â†’ Actualiza la lista');
                 return;
               }
-              const ok = window.confirm(`Finalizar plan:\nLinea: ${planRow.linea||''}\nLot: ${planRow.lote||''}\nNParte: ${planRow.nparte||''}\n¿Confirmar?`);
+              const ok = window.confirm(`Finalizar plan:\nLinea: ${planRow.linea||''}\nLot: ${planRow.lote||''}\nNParte: ${planRow.nparte||''}\nÂ¿Confirmar?`);
               if (!ok) { return; }
               let rid = null;
               try { const map = JSON.parse(localStorage.getItem('smtRunMap')||'{}'); rid = map[String(selectedPlanId)] || null; } catch(_) {}
@@ -1144,6 +1381,20 @@
               if (!data.success) {
                 showError(data.error || 'No se pudo finalizar el run');
                 return;
+              }
+              
+              // Obtener cantidad producida del plan finalizado
+              const cantidadProducida = planRow.fisico || planRow.cantidad_producida || 0;
+              
+              // Actualizar used_count de Metal Mask si se produjo algo
+              if (cantidadProducida > 0) {
+                try {
+                  await actualizarUsedCountMetalMask(selectedPlanId, cantidadProducida);
+                  console.log('✅ Metal Mask used_count actualizado correctamente');
+                } catch (error) {
+                  console.warn('⚠️ Error actualizando Metal Mask:', error.message);
+                  // Continuar con el proceso aunque falle la actualización del Metal Mask
+                }
               }
               
               // Identificar el plan afectado y actualizar UI en sitio
@@ -1175,11 +1426,11 @@
               if (lotNoInput) lotNoInput.value = '';
               if (lotInfo) lotInfo.value = '';
               
-              // Notificación removida por solicitud del usuario
+              // NotificaciÃ³n removida por solicitud del usuario
             } catch(e){ 
               showError('Error al finalizar run: ' + e.message); 
             } finally {
-              // Rehabilitar botón
+              // Rehabilitar botÃ³n
               btnEnd.disabled = false;
               btnEnd.textContent = 'End';
               btnEnd.classList.remove('processing');
@@ -1194,7 +1445,7 @@
         }
       }
       
-      // FunciÃ³n principal de inicializaciÃ³n
+      // FunciÃƒÂ³n principal de inicializaciÃƒÂ³n
       function inicializar() {
         if (isInitialized) {
           console.log('Ya inicializado, omitiendo...');
@@ -1211,14 +1462,15 @@
         setTimeout(() => {
           setupDefaultDates();
           
-          // Cargar datos DESPUÉS de configurar las fechas
+          // Cargar datos DESPUÃ‰S de configurar las fechas
           setTimeout(() => {
             cargarDatosPlanSMD();
+            // La carga de Metal Mask se maneja en aplicarSeleccionPersistida()
           }, 200);
         }, 100);
       }
       
-      // Función para verificar estado
+      // FunciÃ³n para verificar estado
       window.verificarControlOperacionSMTAjax = function() {
         const container = document.getElementById('app-mes-front-isolated');
         const table = document.getElementById('tbody-plan-data');
@@ -1237,8 +1489,8 @@
       window.filtrarPorPlan = filtrarPorPlan;
       window.controlOperacionSMTAjax = true;
       
-      // Auto-inicialización simplificada
-      console.log('Módulo SMT cargado correctamente');
+      // Auto-inicializaciÃ³n simplificada
+      console.log('MÃ³dulo SMT cargado correctamente');
       
       // Inicializar siempre
       if (document.readyState === 'loading') {
@@ -1247,19 +1499,19 @@
         setTimeout(inicializar, 100);
       }
       
-      // Configuración adicional cuando la ventana esté completamente cargada
+      // ConfiguraciÃ³n adicional cuando la ventana estÃ© completamente cargada
       window.addEventListener('load', () => {
         setTimeout(setupDefaultDates, 200);
       });
       
-      // Observador de mutaciones para detectar carga dinÃ¡mica
+      // Observador de mutaciones para detectar carga dinÃƒÂ¡mica
       if (typeof MutationObserver !== 'undefined') {
         const observer = new MutationObserver(function(mutations) {
           mutations.forEach(function(mutation) {
             if (mutation.type === 'childList') {
               const container = document.getElementById('app-mes-front-isolated');
               if (container && !isInitialized) {
-                console.log('ðŸ” Detectado contenido dinÃ¡mico, inicializando...');
+                console.log('Ã°Å¸â€Â Detectado contenido dinÃƒÂ¡mico, inicializando...');
                 setTimeout(inicializar, 300);
               }
             }
@@ -1278,7 +1530,7 @@
       }
 
       // ==========================
-      // INTEGRACIÓN CON SISTEMA DE HISTORIAL DE MATERIAL
+      // INTEGRACIÃ“N CON SISTEMA DE HISTORIAL DE MATERIAL
       // ==========================
       function getFocusedPlan(){
           if (Array.isArray(filteredPlanData) && filteredPlanData.length > 0) return filteredPlanData[0];
@@ -1313,11 +1565,20 @@
       }
 
       function showMetalMaskScanDialog(){
+          // Validación de seguridad adicional
+          if (!isFiltered || filteredPlanData.length === 0) {
+              showError('No hay plan en focus. Seleccione un plan antes de registrar Metal Mask.');
+              return;
+          }
+          
+          const planActual = filteredPlanData[0];
+          
           const overlay = document.createElement('div');
           overlay.className = 'mm-overlay';
           overlay.innerHTML = `
             <div class="mm-dialog">
               <h3>Registrar Metal Mask</h3>
+              <p style="margin: 5px 0; color: #7FB3D3; font-size: 12px;">Plan: ${planActual.modelo} | Línea: ${planActual.linea}</p>
               <div class="mm-row">
                 <label>Metal Mask S/N</label>
                 <input id=\"mm-scan-input\" placeholder=\"Ej. MM1-2-001\" />
@@ -1355,24 +1616,77 @@
                   maskCheckOk = ok;
                   const now = new Date().toISOString().slice(0,16).replace('T',' ');
                   res.innerHTML = ok
-                    ? `<span class="mm-ok">Disponible ✓</span> Usos disp.: <b>${available}</b> / Requeridos: <b>${required}</b>`
-                    : `<span class="mm-ng">No disponible ✗</span> Usos disp.: <b>${available}</b> / Requeridos: <b>${required}</b>`;
+                    ? `<span class="mm-ok">Disponible âœ“</span> Usos disp.: <b>${available}</b> / Requeridos: <b>${required}</b>`
+                    : `<span class="mm-ng">No disponible âœ—</span> Usos disp.: <b>${available}</b> / Requeridos: <b>${required}</b>`;
 
-                  // Append row into MetalMask history table
+                  // Guardar en MySQL y actualizar tabla visual
                   try{
+                      // Obtener información del plan actual
+                      const planActual = getFocusedPlan();
+                      const modelCode = planActual ? (planActual.nparte || planActual.modelo || '') : '';
+                      const linea = planActual ? planActual.linea : '';
+                      const planId = planActual ? planActual.id : null;
+                      
+                      // Mapear línea al formato estándar para Metal Mask
+                      const lineaMapeada = mapearLineaAEquipo(linea);
+                      
+                      // Datos para guardar en MySQL
+                      const historyData = {
+                          mask_code: data.management_no || code,
+                          model_code: modelCode,
+                          linea: lineaMapeada, // Usar línea mapeada (SMT A, SMT B, etc.)
+                          quantity_used: required > 0 ? required : 1,
+                          plan_id: planId,
+                          run_id: currentRunId,
+                          available_uses: available,
+                          total_uses: used,
+                          status: ok ? 'OK' : 'NG',
+                          notes: `Escaneo manual - Plan: ${planActual?.lote || 'N/A'} - Cantidad producida: ${required}`
+                      };
+                      
+                      // Guardar en MySQL
+                      const saveResponse = await fetch('/api/metal-mask/history', {
+                          method: 'POST',
+                          headers: {
+                              'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify(historyData)
+                      });
+                      
+                      if (saveResponse.ok) {
+                          const saveResult = await saveResponse.json();
+                          if (saveResult.success) {
+                              console.log('Historial de Metal Mask guardado:', saveResult.history_id);
+                          } else {
+                              console.warn('Error guardando historial:', saveResult.error);
+                          }
+                      }
+                      
+                      // Actualizar tabla visual con información alineada por línea
                       let tbody = document.querySelector('#panel-metalmask table tbody');
-                      if (!tbody){ const t = document.querySelector('#panel-metalmask table'); tbody = document.createElement('tbody'); t && t.appendChild(tbody); }
+                      if (!tbody){ 
+                          const t = document.querySelector('#panel-metalmask table'); 
+                          tbody = document.createElement('tbody'); 
+                          t && t.appendChild(tbody); 
+                      }
                       if (tbody){
                           const tr = document.createElement('tr');
-                          tr.innerHTML = `<td style=\"padding:6px; font-size:10px;\">${now}</td>
-                                          <td style=\"padding:6px; font-size:10px;\">${data.management_no||code}</td>
-                                          <td style=\"padding:6px; font-size:10px; color:${ok?'#27AE60':'#E74C3C'};\">${available}</td>`;
+                          const lineaMostrar = mapearLineaAEquipo(linea);
+                          const loteInfo = planActual?.lote || 'Sin LOT';
+                          
+                          tr.innerHTML = `
+                              <td style="padding:6px; font-size:10px;">${now}</td>
+                              <td style="padding:6px; font-size:10px;"><strong>${data.management_no||code}</strong></td>
+                              <td style="padding:6px; font-size:10px; color:${ok?'#27AE60':'#E74C3C'};"><strong>${available}</strong></td>
+                              <td style="padding:6px; font-size:10px; color:${ok?'#27AE60':'#E74C3C'};"><strong>${ok ? 'OK' : 'NG'}</strong></td>`;
                           tbody.prepend(tr);
                       }
-                  }catch(_){ }
+                  }catch(err){ 
+                      console.error('Error guardando historial de Metal Mask:', err);
+                  }
               }catch(err){
                   maskCheckOk = false;
-                  res.textContent = 'Error consultando máscara: ' + err.message;
+                  res.textContent = 'Error consultando mÃ¡scara: ' + err.message;
                   res.className = 'mm-result mm-ng';
               }
           }
@@ -1381,14 +1695,14 @@
           inp.addEventListener('keypress', (e)=>{ if (e.key==='Enter') doScan(); });
       }
       
-      // Función para mapear línea a equipo SMT y sus máquinas
+      // FunciÃ³n para mapear lÃ­nea a equipo SMT y sus mÃ¡quinas
       function mapearLineaAEquipo(linea) {
           const mapeoLineas = {
               '1LINE': 'SMT A',
               '2LINE': 'SMT B', 
               '3LINE': 'SMT C',
               '4LINE': 'SMT D',
-              // También mapear valores directos
+              // TambiÃ©n mapear valores directos
               'SMT A': 'SMT A',
               'SMT B': 'SMT B',
               'SMT C': 'SMT C',
@@ -1397,7 +1711,7 @@
           return mapeoLineas[linea] || linea;
       }
       
-      // Función para obtener todas las máquinas de una línea SMT
+      // FunciÃ³n para obtener todas las mÃ¡quinas de una lÃ­nea SMT
       function obtenerMaquinasDeLinea(linea) {
           const maquinasPorLinea = {
               '1LINE': ['L1 m1', 'L1 m2', 'L1 m3', '1line'],
@@ -1412,9 +1726,9 @@
           return maquinasPorLinea[linea] || [];
       }
       
-      // Función para cargar datos del historial de cambio de material
+      // FunciÃ³n para cargar datos del historial de cambio de material
       async function cargarHistorialMaterial(lineaSeleccionada = null, intentos = 0) {
-          console.log('Cargando historial de material para línea:', lineaSeleccionada);
+          console.log('Cargando historial de material para lÃ­nea:', lineaSeleccionada);
           
           let tableBody = document.getElementById('materialHistoryTableBody-Control de operacion de linea SMT');
           
@@ -1437,18 +1751,18 @@
                   setTimeout(() => cargarHistorialMaterial(lineaSeleccionada, intentos + 1), 300);
                   return;
               }
-              console.error('No se encontró el tbody objetivo para historial de material tras varios intentos');
+              console.error('No se encontrÃ³ el tbody objetivo para historial de material tras varios intentos');
               return;
           }
           
           try {
-              // Obtener la línea seleccionada del dropdown si no se proporciona
+              // Obtener la lÃ­nea seleccionada del dropdown si no se proporciona
               if (!lineaSeleccionada) {
                   const lineaDropdown = document.getElementById('linea-Control de operacion de linea SMT');
                   lineaSeleccionada = lineaDropdown ? lineaDropdown.value : 'Todos';
-                  console.log('Línea obtenida del dropdown:', lineaSeleccionada);
+                  console.log('LÃ­nea obtenida del dropdown:', lineaSeleccionada);
               } else {
-                  console.log('Usando línea del parámetro:', lineaSeleccionada);
+                  console.log('Usando lÃ­nea del parÃ¡metro:', lineaSeleccionada);
               }
               
               // Si es "Todos", usar el endpoint original
@@ -1472,15 +1786,15 @@
                   return;
               }
               
-              // Para líneas específicas, usar el nuevo endpoint
+              // Para lÃ­neas especÃ­ficas, usar el nuevo endpoint
               const equipoSMT = mapearLineaAEquipo(lineaSeleccionada);
               const url = `/api/historial_smt_latest_v2?linea=${encodeURIComponent(equipoSMT)}`;
               
-              console.log('Mapeo de línea:');
-              console.log('  - Línea original:', lineaSeleccionada);
+              console.log('Mapeo de lÃ­nea:');
+              console.log('  - LÃ­nea original:', lineaSeleccionada);
               console.log('  - Equipo SMT mapeado:', equipoSMT);
               console.log('  - URL construida:', url);
-              console.log('Cargando historial de material para línea:', lineaSeleccionada, '(', equipoSMT, ') desde:', url);
+              console.log('Cargando historial de material para lÃ­nea:', lineaSeleccionada, '(', equipoSMT, ') desde:', url);
               
               const response = await fetch(url);
               if (!response.ok) {
@@ -1497,12 +1811,12 @@
           } catch (error) {
               console.error('Error cargando historial de material:', error);
               if (tableBody) {
-                  tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #E74C3C;">Error cargando datos</td></tr>';
+                  tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #E74C3C;">Error cargando datos</td></tr>';
               }
           }
       }
       
-      // Función auxiliar para renderizar la tabla de historial
+      // FunciÃ³n auxiliar para renderizar la tabla de historial
       function renderizarTablaHistorial(data, tableBody, lineaFiltro = null) {
           // Verificar que tableBody existe
           if (!tableBody) {
@@ -1518,12 +1832,12 @@
               return;
           }
           
-          // Filtrar datos por línea si se especifica una línea y estamos en modo focus
+          // Filtrar datos por lÃ­nea si se especifica una lÃ­nea y estamos en modo focus
           let dataFiltrada = data;
           if (lineaFiltro && isFiltered && selectedPlanId) {
               const maquinasPermitidas = obtenerMaquinasDeLinea(lineaFiltro);
-              console.log(`Filtrando historial para línea: ${lineaFiltro}`);
-              console.log('Máquinas permitidas:', maquinasPermitidas);
+              console.log(`Filtrando historial para lÃ­nea: ${lineaFiltro}`);
+              console.log('MÃ¡quinas permitidas:', maquinasPermitidas);
               
               dataFiltrada = data.filter(item => {
                   const maquina = item.maquina || item.equipment || item.Equipment || item.machine || '';
@@ -1532,7 +1846,7 @@
                       maq.toLowerCase().includes(maquina.toLowerCase())
                   );
                   if (coincide) {
-                      console.log(`✓ Incluido: ${maquina} (coincide con ${maquinasPermitidas.find(m => 
+                      console.log(`âœ“ Incluido: ${maquina} (coincide con ${maquinasPermitidas.find(m => 
                           maquina.toLowerCase().includes(m.toLowerCase()) || 
                           m.toLowerCase().includes(maquina.toLowerCase()))})`);
                   }
@@ -1578,11 +1892,11 @@
               const currentQuantity = item.Quantity || item.current_quantity || item.CurrentQuantity || item.quantity || 0;
               
               row.innerHTML = `
-                  <td style="padding: 6px; font-size: 10px;">${equipment}</td>
+                  <td style="padding: 6px; font-size: 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100px;" title="${equipment}">${equipment}</td>
                   <td style="padding: 6px; font-size: 10px; text-align: center;">${slotNo}</td>
-                  <td style="padding: 6px; font-size: 10px; text-align: center;">${baseFeeder}</td>
-                  <td style="padding: 6px; font-size: 10px;">${registDate}</td>
-                  <td style="padding: 6px; font-size: 10px;">${warehousing}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100px;" title="${baseFeeder}">${baseFeeder}</td>
+                  <td style="padding: 6px; font-size: 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;" title="${registDate}">${registDate}</td>
+                  <td style="padding: 6px; font-size: 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px;" title="${warehousing}">${warehousing}</td>
                   <td style="padding: 6px; font-size: 10px; text-align: right;">${registQuantity}</td>
                   <td style="padding: 6px; font-size: 10px; text-align: right;">${currentQuantity}</td>
               `;
@@ -1625,7 +1939,7 @@
               }
           }
           
-          // Aplicar scroll después de renderizar
+          // Aplicar scroll despuÃ©s de renderizar
           setTimeout(() => {
               // Buscar contenedor para aplicar scroll
               let container = tableBody.closest('.section-table-container');
@@ -1656,7 +1970,7 @@
               }
           }, 500);
 
-          // Re-render del BOM para aplicar coincidencias si ya está cargado
+          // Re-render del BOM para aplicar coincidencias si ya estÃ¡ cargado
           try {
               if (lastBomData && lastBomData.length && lastBomTableBody) {
                   renderizarTablaBom(lastBomData, lastBomTableBody);
@@ -1666,11 +1980,11 @@
           }
       }
       
-      // Función para exportar historial de material a Excel
+      // FunciÃ³n para exportar historial de material a Excel
       async function exportarHistorialMaterial() {
           try {
               console.log('Exportando historial de material...');
-              showInfo('Preparando exportación de Material Changed History...');
+              showInfo('Preparando exportaciÃ³n de Material Changed History...');
               
               // Si hay datos cargados en lastHistoryDataNorm, usar esos datos
               let dataToExport = [];
@@ -1722,7 +2036,7 @@
                   return;
               }
               
-              // Crear Excel usando SheetJS (si está disponible) o CSV como fallback
+              // Crear Excel usando SheetJS (si estÃ¡ disponible) o CSV como fallback
               if (typeof XLSX !== 'undefined') {
                   // Crear Excel usando SheetJS
                   const wsData = [
@@ -1793,14 +2107,17 @@
           } catch (error) {
               console.error('Error exportando historial:', error);
               showError('Error al exportar Material Changed History: ' + error.message);
+          } finally {
+              // Limpiar flag de progreso
+              window._exportingHistory = false;
           }
       }
 
-      // Función para exportar BOM List a Excel
+      // FunciÃ³n para exportar BOM List a Excel
       async function exportarBomList() {
           try {
               console.log('Exportando BOM List...');
-              showInfo('Preparando exportación de BOM List...');
+              showInfo('Preparando exportaciÃ³n de BOM List...');
               
               // Verificar si hay datos de BOM cargados
               if (!lastBomData || lastBomData.length === 0) {
@@ -1808,9 +2125,9 @@
                   return;
               }
               
-              // Preparar datos para exportación con información de matching
+              // Preparar datos para exportaciÃ³n con informaciÃ³n de matching
               const dataToExport = lastBomData.map(item => {
-                  // Determinar match usando la misma lógica que en renderizarTablaBom
+                  // Determinar match usando la misma lÃ³gica que en renderizarTablaBom
                   const bomSlot = item.slot;
                   const bomCode = item.material_code;
                   const bomMounter = item.mounter;
@@ -1832,7 +2149,7 @@
                   };
               });
               
-              // Crear Excel usando SheetJS (si está disponible) o CSV como fallback
+              // Crear Excel usando SheetJS (si estÃ¡ disponible) o CSV como fallback
               if (typeof XLSX !== 'undefined') {
                   // Crear Excel usando SheetJS
                   const wsData = [
@@ -1906,27 +2223,30 @@
                   }
               }
               
-              // Estadísticas de exportación
+              // EstadÃ­sticas de exportaciÃ³n
               const matched = dataToExport.filter(item => item.status === 'PASS').length;
               const pending = dataToExport.length - matched;
-              showInfo(`Exportación completada: ${dataToExport.length} elementos (${matched} verificados, ${pending} pendientes)`);
+              showInfo(`ExportaciÃ³n completada: ${dataToExport.length} elementos (${matched} verificados, ${pending} pendientes)`);
               
           } catch (error) {
               console.error('Error exportando BOM:', error);
               showError('Error al exportar BOM List: ' + error.message);
+          } finally {
+              // Limpiar flag de progreso
+              window._exportingBom = false;
           }
       }
       
-      // Función para manejar cambio de línea
+      // FunciÃ³n para manejar cambio de lÃ­nea
       function onLineaChange() {
           const linea = document.getElementById('linea-Control de operacion de linea SMT');
           if (linea) {
-              console.log('Línea seleccionada:', linea.value);
+              console.log('LÃ­nea seleccionada:', linea.value);
               cargarHistorialMaterial(linea.value, 0);
           }
       }
       
-      // Función para mostrar mensaje inicial en el historial
+      // FunciÃ³n para mostrar mensaje inicial en el historial
       function mostrarMensajeInicialHistorial() {
           const tableBody = document.getElementById('materialHistoryTableBody-Control de operacion de linea SMT');
           if (!tableBody) {
@@ -1952,10 +2272,10 @@
       }
 
       // ==========================
-      // INTEGRACIÓN CON SISTEMA DE BOM LIST
+      // INTEGRACIÃ“N CON SISTEMA DE BOM LIST
       // ==========================
       
-      // Función para cargar datos del BOM SMT basado en línea y modelo
+      // FunciÃ³n para cargar datos del BOM SMT basado en lÃ­nea y modelo
       async function cargarBomList(linea, modelCode, intentos = 0) {
           console.log('Cargando BOM List para:', { linea, modelCode });
           
@@ -1977,7 +2297,7 @@
                   setTimeout(() => cargarBomList(linea, modelCode, intentos + 1), 300);
                   return;
               }
-              console.error('No se encontró la tabla BOM tras varios intentos');
+              console.error('No se encontrÃ³ la tabla BOM tras varios intentos');
               return;
           }
           
@@ -2006,7 +2326,7 @@
               lastBomData = data;
               lastBomTableBody = tableBody;
               
-              // Renderizar datos en la tabla BOM (aplicará matching si existe historial)
+              // Renderizar datos en la tabla BOM (aplicarÃ¡ matching si existe historial)
               renderizarTablaBom(lastBomData, lastBomTableBody);
               
           } catch (error) {
@@ -2017,7 +2337,7 @@
           }
       }
       
-      // Función para renderizar la tabla del BOM
+      // FunciÃ³n para renderizar la tabla del BOM
       function renderizarTablaBom(data, tableBody) {
           if (!tableBody) {
               console.error('TableBody del BOM es null');
@@ -2032,7 +2352,7 @@
               return;
           }
           
-          // Renderizar filas con lógica de match (slot + material_code + mounter + side)
+          // Renderizar filas con lÃ³gica de match (slot + material_code + mounter + side)
           data.forEach((item, index) => {
               const row = document.createElement('tr');
               
@@ -2040,7 +2360,7 @@
               const bomSlot = item.slot;
               const bomCode = item.material_code;
               const bomMounter = item.mounter;
-              // Intentar obtener lado desde tipo explícito o desde feeder info como respaldo
+              // Intentar obtener lado desde tipo explÃ­cito o desde feeder info como respaldo
               const bomSide = (item.tabla_tipo ? String(item.tabla_tipo).toUpperCase() : '') ||
                               parseSideFromBaseFeeder(item.base_feeder || item.feeder_info || '');
               const k = makeKey(bomSlot, bomCode, bomMounter, bomSide);
@@ -2048,12 +2368,16 @@
               const statusClass = isMatched ? 'bom-matched' : 'bom-pending';
               row.className = statusClass;
               
+              const materialCode = item.material_code || '';
+              const description = item.description || '';
+              const feederInfo = item.feeder_info || '';
+              
               row.innerHTML = `
                   <td style="padding: 6px; font-size: 10px;">${item.mounter || ''}</td>
                   <td style="padding: 6px; font-size: 10px; text-align: center;">${item.slot || ''}</td>
-                  <td style="padding: 6px; font-size: 10px;">${item.material_code || ''}</td>
-                  <td style="padding: 6px; font-size: 10px;">${item.description || ''}</td>
-                  <td style="padding: 6px; font-size: 10px; text-align: center;">${item.feeder_info || ''}</td>
+                  <td style="padding: 6px; font-size: 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;" title="${materialCode}">${materialCode}</td>
+                  <td style="padding: 6px; font-size: 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px;" title="${description}">${description}</td>
+                  <td style="padding: 6px; font-size: 10px; text-align: center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100px;" title="${feederInfo}">${feederInfo}</td>
                   <td style="padding: 6px; font-size: 10px; text-align: center;">${item.qty || 0}</td>
                   <td style="padding: 6px; font-size: 10px; text-align: center;">${item.tabla_tipo || ''}</td>
                   <td style="padding: 6px; font-size: 10px;">
@@ -2088,12 +2412,12 @@
               bomFooter.textContent = `Total: ${data.length} | Pendientes: ${pending} | Verificados: ${matched}`;
           }
           
-          // Aplicar scroll después de renderizar
+          // Aplicar scroll despuÃ©s de renderizar
           setTimeout(() => {
-              // Usar siempre el contenedor específico del BOM para el scroll interno
+              // Usar siempre el contenedor especÃ­fico del BOM para el scroll interno
               let bomContainer = document.getElementById('tbl-bom');
               if (!bomContainer) {
-                  // Fallback: contenedor .table más cercano
+                  // Fallback: contenedor .table mÃ¡s cercano
                   bomContainer = tableBody.closest('#panel-bom .table') || tableBody.closest('#tbl-bom');
               }
               if (bomContainer) {
@@ -2107,7 +2431,7 @@
           }, 500);
       }
       
-      // Función para mostrar mensaje inicial en el BOM
+      // FunciÃ³n para mostrar mensaje inicial en el BOM
       function mostrarMensajeInicialBom() {
           const tableBody = document.querySelector('#panel-bom table tbody');
           if (!tableBody) return;
@@ -2120,6 +2444,452 @@
               bomFooter.textContent = 'Total: 0 | Pendientes: 0 | Verificados: 0';
           }
       }
+      
+      // Función para mostrar mensaje inicial en Metal Mask
+      function mostrarMensajeInicialMetalMask() {
+          try {
+              let tbody = document.querySelector('#panel-metalmask table tbody');
+              if (!tbody) {
+                  // Crear tabla si no existe
+                  renderizarHistorialMetalMask([]);
+                  tbody = document.querySelector('#panel-metalmask table tbody');
+              }
+              
+              if (tbody) {
+                  tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #95A5A6; font-style: italic;">Selecciona un plan específico para validar Metal Mask</td></tr>';
+              }
+          } catch (e) {
+              console.warn('No se pudo inicializar mensaje de Metal Mask:', e);
+          }
+      }
+      
+      // Función auxiliar para truncar texto con tooltip
+      function truncateWithTooltip(text, maxLength = 15) {
+          if (!text) return '';
+          const textStr = String(text);
+          if (textStr.length <= maxLength) {
+              return textStr;
+          }
+          const truncated = textStr.substring(0, maxLength - 3) + '...';
+          return `<span title="${textStr}" class="truncate">${truncated}</span>`;
+      }
+      
+      // Función para crear celda con tooltip para textos largos
+      function createCellWithTooltip(text, maxLength = 15) {
+          const textStr = String(text || '');
+          if (textStr.length > maxLength) {
+              return `<td title="${textStr}" style="padding:6px; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:0;">${textStr}</td>`;
+          } else {
+              return `<td style="padding:6px; font-size:10px;">${textStr}</td>`;
+          }
+      }
+      
+      // Función para ocultar solo las filas de datos cuando no hay plan en focus
+      function ocultarFilasMetalMask() {
+          const tbody = document.querySelector('#panel-metalmask table tbody');
+          if (tbody) {
+              tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #95A5A6; font-style: italic;">Selecciona un plan para ver Metal Mask</td></tr>';
+          }
+      }
+      
+      // Función para mostrar contenido Metal Mask cuando hay plan en focus
+      function mostrarFilasMetalMask() {
+          // Esta función se llama automáticamente cuando se renderiza el historial
+          // No necesita implementación específica
+      }
+
+      // ==========================
+      // FUNCIONES DE CONTROL DE ESTADO METAL MASK
+      // ==========================
+
+      // Función para actualizar estado visual del botón Metal Mask
+      function actualizarEstadoBotonMetalMask() {
+          const btnMM = document.getElementById('btn-metalmask-regist');
+          if (!btnMM) return;
+          
+          const hayPlanEnFocus = isFiltered && filteredPlanData.length > 0;
+          
+          if (hayPlanEnFocus) {
+              btnMM.disabled = false;
+              btnMM.style.opacity = '1';
+              btnMM.style.cursor = 'pointer';
+              btnMM.title = 'Registrar Metal Mask para plan en focus';
+          } else {
+              btnMM.disabled = true;
+              btnMM.style.opacity = '0.5';
+              btnMM.style.cursor = 'not-allowed';
+              btnMM.title = 'Debe seleccionar un plan en Focus para registrar Metal Mask';
+          }
+      }
+
+      // ==========================
+      // FUNCIONES DE METAL MASK HISTORY
+      // ==========================
+
+      // Función para actualizar used_count de Metal Mask al finalizar plan
+      async function actualizarUsedCountMetalMask(planId, cantidadProducida) {
+          try {
+              console.log('Actualizando used_count de Metal Mask para plan:', planId, 'cantidad producida:', cantidadProducida);
+              
+              const response = await fetch('/api/metal-mask/update-used-count', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                      plan_id: planId,
+                      cantidad_producida: cantidadProducida
+                  })
+              });
+              
+              if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}`);
+              }
+              
+              const result = await response.json();
+              if (!result.success) {
+                  throw new Error(result.error || 'Error desconocido');
+              }
+              
+              console.log('Metal Mask used_count actualizado:', result.updated_masks || 0, 'masks actualizadas');
+              return result;
+              
+          } catch (error) {
+              console.error('Error actualizando used_count de Metal Mask:', error);
+              // No lanzar error para no interrumpir el proceso de finalización
+              return { success: false, error: error.message };
+          }
+      }
+
+      // Función de test para Metal Mask
+      async function testMetalMaskConnection() {
+          try {
+              const response = await fetch('/api/metal-mask/test');
+              const result = await response.json();
+              console.log('Metal Mask test:', result);
+              return result.success;
+          } catch (error) {
+              console.error('Metal Mask test failed:', error);
+              return false;
+          }
+      }
+
+      // Función para cargar último escaneado de Metal Mask (para inicialización)
+      async function cargarUltimoMetalMask() {
+          try {
+              // Primero hacer test de conectividad
+              const testOK = await testMetalMaskConnection();
+              if (!testOK) {
+                  console.warn('Metal Mask - Test de conectividad falló');
+                  const tbody = document.querySelector('#panel-metalmask table tbody');
+                  if (tbody) {
+                      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #F39C12;">Metal Mask no disponible</td></tr>';
+                  }
+                  return;
+              }
+              // Si hay un plan en focus actual, cargar específico para ese plan
+              if (isFiltered && filteredPlanData.length > 0) {
+                  const planActual = filteredPlanData[0];
+                  const lineaMapeada = mapearLineaAEquipo(planActual.linea);
+                  const filtros = {
+                      model_code: planActual.model_code,
+                      linea: lineaMapeada,
+                      limit: 20
+                  };
+                  
+                  console.log('Metal Mask - Plan en focus:', planActual.model_code, 'línea original:', planActual.linea, 'línea mapeada:', lineaMapeada);
+                  
+                  const data = await cargarHistorialMetalMask(filtros);
+                  if (data.length > 0) {
+                      console.log('Metal Mask - Datos específicos del plan en focus cargados:', data.length, 'registros');
+                      renderizarHistorialMetalMask(data);
+                  } else {
+                      console.log('Metal Mask - No hay registros para el plan en focus. Filtros usados:', filtros);
+                      ocultarFilasMetalMask();
+                  }
+                  return;
+              }
+              
+              // Si no hay plan en focus, revisar si hay un plan guardado en localStorage
+              const savedPlanId = localStorage.getItem('smtSelectedPlanId');
+              if (savedPlanId && currentPlanData.length > 0) {
+                  const planGuardado = currentPlanData.find(p => String(p.id) === String(savedPlanId));
+                  if (planGuardado) {
+                      const lineaMapeada = mapearLineaAEquipo(planGuardado.linea);
+                      console.log('Metal Mask - Encontrado plan guardado:', planGuardado.model_code, 'línea original:', planGuardado.linea, 'línea mapeada:', lineaMapeada);
+                      const filtros = {
+                          model_code: planGuardado.model_code,
+                          linea: lineaMapeada,
+                          limit: 20
+                      };
+                      
+                      const data = await cargarHistorialMetalMask(filtros);
+                      if (data.length > 0) {
+                          console.log('Metal Mask - Datos del plan guardado cargados:', data.length, 'registros');
+                          renderizarHistorialMetalMask(data);
+                          return;
+                      } else {
+                          console.log('Metal Mask - No hay registros para el plan guardado. Filtros usados:', filtros);
+                      }
+                  }
+              }
+              
+              // Si no hay plan específico ni guardado, cargar últimos registros generales
+              const response = await fetch('/api/metal-mask/history?limit=10&order=desc');
+              if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}`);
+              }
+              
+              const result = await response.json();
+              if (!result.success) {
+                  throw new Error(result.error || 'Error desconocido');
+              }
+              
+              const data = result.data || [];
+              if (data.length > 0) {
+                  console.log('Metal Mask - Últimos registros generales cargados:', data.length, 'registros');
+                  renderizarHistorialMetalMask(data);
+              } else {
+                  console.log('Metal Mask - No hay registros recientes');
+                  ocultarFilasMetalMask();
+              }
+              
+          } catch (error) {
+              console.error('Error cargando último Metal Mask:', error);
+              // Mostrar mensaje de error en lugar de ocultar completamente
+              const tbody = document.querySelector('#panel-metalmask table tbody');
+              if (tbody) {
+                  tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #E74C3C;">Error cargando Metal Mask - Verifique conexión</td></tr>';
+              }
+          }
+      }
+      
+      // Función para cargar historial de Metal Mask desde MySQL (específico por línea)
+      async function cargarHistorialMetalMask(filtros = {}) {
+          try {
+              const params = new URLSearchParams();
+              if (filtros.mask_code) params.append('mask_code', filtros.mask_code);
+              if (filtros.model_code) params.append('model_code', filtros.model_code);
+              
+              // Mapear línea al formato correcto para Metal Mask
+              if (filtros.linea) {
+                  const lineaMapeada = mapearLineaAEquipo(filtros.linea);
+                  console.log('Metal Mask - Filtro línea:', filtros.linea, '→ mapeada a:', lineaMapeada);
+                  params.append('linea', lineaMapeada);
+              }
+              
+              if (filtros.date_from) params.append('date_from', filtros.date_from);
+              if (filtros.date_to) params.append('date_to', filtros.date_to);
+              params.append('limit', filtros.limit || 50);
+              
+              const response = await fetch(`/api/metal-mask/history?${params}`);
+              
+              if (!response.ok) {
+                  // Intentar obtener detalles del error
+                  let errorDetail = `HTTP ${response.status}`;
+                  try {
+                      const errorText = await response.text();
+                      errorDetail += ` - ${errorText}`;
+                  } catch(e) {
+                      // Ignorar error al leer respuesta
+                  }
+                  throw new Error(errorDetail);
+              }
+              
+              const result = await response.json();
+              
+              if (!result.success) {
+                  throw new Error(result.error || 'Error desconocido');
+              }
+              
+              return result.data || [];
+              
+          } catch (error) {
+              console.error('Error cargando historial de Metal Mask:', error);
+              throw error;
+          }
+      }
+      
+      // Función para renderizar historial de Metal Mask en tabla
+      function renderizarHistorialMetalMask(data) {
+          try {
+              let table = document.querySelector('#panel-metalmask table');
+              let tbody = table?.querySelector('tbody');
+              
+              // Crear tabla completa si no existe
+              if (!table) {
+                  const panelMetalMask = document.querySelector('#panel-metalmask');
+                  if (panelMetalMask) {
+                      table = document.createElement('table');
+                      table.style.width = '100%';
+                      table.style.borderCollapse = 'collapse';
+                      
+                      // Crear encabezados específicos para metal mask
+                      const thead = document.createElement('thead');
+                      thead.innerHTML = `
+                          <tr style="background:#2c3e50; color:white;">
+                              <th style="padding:8px; font-size:11px; border:1px solid #34495e;">Regist Date</th>
+                              <th style="padding:8px; font-size:11px; border:1px solid #34495e;">Manage No</th>
+                              <th style="padding:8px; font-size:11px; border:1px solid #34495e;">Available Qty</th>
+                              <th style="padding:8px; font-size:11px; border:1px solid #34495e;">Status</th>
+                          </tr>`;
+                      
+                      tbody = document.createElement('tbody');
+                      table.appendChild(thead);
+                      table.appendChild(tbody);
+                      panelMetalMask.appendChild(table);
+                  }
+              } else if (!tbody) {
+                  tbody = document.createElement('tbody');
+                  table.appendChild(tbody);
+              }
+              
+              if (!tbody) {
+                  console.warn('No se encontró tabla de Metal Mask para renderizar');
+                  return;
+              }
+              
+              // Limpiar tabla
+              tbody.innerHTML = '';
+              
+              if (data.length === 0) {
+                  tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #95A5A6;">No hay historial disponible</td></tr>';
+                  return;
+              }
+              
+              // Renderizar filas
+              data.forEach(item => {
+                  const tr = document.createElement('tr');
+                  const statusColor = item.status === 'OK' ? '#27AE60' : item.status === 'NG' ? '#E74C3C' : '#F39C12';
+                  
+                  const maskCode = item.mask_code || '';
+                  const modelCode = item.model_code || '';
+                  const lotInfo = item.lote || item.lot || item.LOT || '';
+                  
+                  tr.innerHTML = `
+                      <td style="padding:6px; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;" title="${item.scan_date}">${item.scan_date}</td>
+                      <td style="padding:6px; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;" title="${maskCode}"><strong>${maskCode}</strong></td>
+                      <td style="padding:6px; font-size:10px; text-align:center; color:${statusColor};"><strong>${item.available_uses}</strong></td>
+                      <td style="padding:6px; font-size:10px; color:${statusColor}; text-align:center;"><strong>${item.status}</strong></td>
+                  `;
+                  tbody.appendChild(tr);
+              });
+              
+              console.log(`Historial de Metal Mask renderizado: ${data.length} registros`);
+              
+          } catch (error) {
+              console.error('Error renderizando historial de Metal Mask:', error);
+          }
+      }
+      
+      // Función para exportar historial de Metal Mask
+      async function exportarMetalMaskHistory() {
+          // Verificar si ya hay una descarga en progreso
+          if (window._exportingMetalMask) {
+              console.log('Exportación de Metal Mask ya en progreso, ignorando...');
+              return;
+          }
+          window._exportingMetalMask = true;
+          
+          try {
+              console.log('Exportando historial de Metal Mask...');
+              showInfo('Preparando exportación de Metal Mask History...');
+              
+              // Obtener datos del historial
+              const data = await cargarHistorialMetalMask({ limit: 1000 });
+              
+              if (data.length === 0) {
+                  showWarning('No hay datos de Metal Mask para exportar.');
+                  return;
+              }
+              
+              // Verificar si XLSX está disponible
+              if (typeof XLSX !== 'undefined') {
+                  // Preparar datos para Excel
+                  const wsData = [
+                      ['Fecha', 'Código Mask', 'Modelo', 'Línea', 'Cantidad Usada', 'Usos Disponibles', 'Estado', 'Usuario', 'Notas']
+                  ];
+                  
+                  data.forEach(item => {
+                      wsData.push([
+                          item.scan_date,
+                          item.mask_code,
+                          item.model_code,
+                          item.linea,
+                          item.quantity_used,
+                          item.available_uses,
+                          item.status,
+                          item.usuario || '',
+                          item.notes || ''
+                      ]);
+                  });
+                  
+                  const ws = XLSX.utils.aoa_to_sheet(wsData);
+                  const wb = XLSX.utils.book_new();
+                  XLSX.utils.book_append_sheet(wb, ws, 'Metal Mask History');
+                  
+                  // Configurar anchos de columna
+                  ws['!cols'] = [
+                      { width: 18 }, // Fecha
+                      { width: 15 }, // Código Mask
+                      { width: 15 }, // Modelo
+                      { width: 10 }, // Línea
+                      { width: 12 }, // Cantidad Usada
+                      { width: 15 }, // Usos Disponibles
+                      { width: 8 },  // Estado
+                      { width: 12 }, // Usuario
+                      { width: 30 }  // Notas
+                  ];
+                  
+                  const filename = `Metal_Mask_History_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                  XLSX.writeFile(wb, filename);
+                  showSuccess(`Archivo Excel exportado: ${filename}`);
+              } else {
+                  // Fallback a CSV
+                  const headers = ['Fecha', 'Código Mask', 'Modelo', 'Línea', 'Cantidad Usada', 'Usos Disponibles', 'Estado', 'Usuario', 'Notas'];
+                  const csvContent = [
+                      headers.join(','),
+                      ...data.map(row => [
+                          `"${row.scan_date || ''}"`,
+                          `"${row.mask_code || ''}"`,
+                          `"${row.model_code || ''}"`,
+                          `"${row.linea || ''}"`,
+                          row.quantity_used || 0,
+                          row.available_uses || 0,
+                          `"${row.status || ''}"`,
+                          `"${row.usuario || ''}"`,
+                          `"${row.notes || ''}"`
+                      ].join(','))
+                  ].join('\n');
+                  
+                  // Crear archivo y descargar
+                  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const link = document.createElement('a');
+                  const filename = `Metal_Mask_History_${new Date().toISOString().slice(0, 10)}.csv`;
+                  
+                  if (link.download !== undefined) {
+                      const url = URL.createObjectURL(blob);
+                      link.setAttribute('href', url);
+                      link.setAttribute('download', filename);
+                      link.style.visibility = 'hidden';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                      showSuccess(`Archivo CSV exportado: ${filename}`);
+                  }
+              }
+              
+              showInfo(`Exportación completada: ${data.length} registros de Metal Mask`);
+              
+          } catch (error) {
+              console.error('Error exportando Metal Mask:', error);
+              showError('Error al exportar Metal Mask History: ' + error.message);
+          } finally {
+              // Limpiar flag de progreso
+              window._exportingMetalMask = false;
+          }
+      }
 
       // Exponer funciones para uso externo
       window.cargarHistorialMaterialPorLinea = cargarHistorialMaterial;
@@ -2129,6 +2899,16 @@
       window.mostrarMensajeInicialHistorial = mostrarMensajeInicialHistorial;
       window.cargarBomList = cargarBomList;
       window.mostrarMensajeInicialBom = mostrarMensajeInicialBom;
+      window.mostrarMensajeInicialMetalMask = mostrarMensajeInicialMetalMask;
+      window.actualizarEstadoBotonMetalMask = actualizarEstadoBotonMetalMask;
+      window.actualizarUsedCountMetalMask = actualizarUsedCountMetalMask;
+      window.testMetalMaskConnection = testMetalMaskConnection;
+      window.cargarHistorialMetalMask = cargarHistorialMetalMask;
+      window.cargarUltimoMetalMask = cargarUltimoMetalMask;
+      window.renderizarHistorialMetalMask = renderizarHistorialMetalMask;
+      window.exportarMetalMaskHistory = exportarMetalMaskHistory;
+      window.ocultarFilasMetalMask = ocultarFilasMetalMask;
+      window.mostrarFilasMetalMask = mostrarFilasMetalMask;
       
       // Funciones adicionales para compatibilidad con botones externos
       window.exportBomToExcel = exportarBomList;
@@ -2139,7 +2919,7 @@
 
 
       // ==========================
-      // Actualización en tiempo real
+      // ActualizaciÃ³n en tiempo real
       // ==========================
       (function setupLiveRefresh(){
         const REFRESH_MS = 15000; // 15s por defecto
@@ -2175,7 +2955,7 @@
         }
 
         function updateRowLive(item){
-          // Mantener mapeo plan->run para soportar múltiples activos
+          // Mantener mapeo plan->run para soportar mÃºltiples activos
           try {
             if (item && item.id) {
               const key = String(item.id);
@@ -2248,7 +3028,7 @@
         window.startSmtLiveRefresh = start;
         window.stopSmtLiveRefresh = stop;
 
-        // Arrancar tras un pequeño delay para permitir el primer render
+        // Arrancar tras un pequeÃ±o delay para permitir el primer render
         setTimeout(start, 1200);
       })();
 

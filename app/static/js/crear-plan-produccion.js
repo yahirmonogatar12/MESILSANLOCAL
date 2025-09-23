@@ -727,11 +727,12 @@
                     <td>${wo.codigo_wo || ''}</td>
                     <td><span class="estado-badge estado-${(wo.estado || 'CREADA').toLowerCase()}">${wo.estado || 'CREADA'}</span></td>
                     <td>${formatearFecha(wo.fecha_operacion) || ''}</td>
-                    <td>${wo.nombre_modelo || ''}</td>
+                    <td>${wo.linea || ''}</td>
                     <td class="modelo-cell">
                         <span class="modelo-display">${wo.codigo_modelo || wo.modelo || ''}</span>
                         <input type="text" class="modelo-edit" value="${wo.codigo_modelo || wo.modelo || ''}" style="display: none;">
                     </td>
+                    <td>${wo.nombre_modelo || ''}</td>
                     <td class="cantidad-cell">
                         <span class="cantidad-display">${wo.cantidad_planeada || 0}</span>
                         <input type="number" class="cantidad-edit" value="${wo.cantidad_planeada || 0}" min="1" style="display: none;">
@@ -760,7 +761,7 @@
             const tbody = document.querySelector('#bomTable tbody');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="14" class="no-data">No se encontraron Work Orders</td>
+                    <td colspan="15" class="no-data">No se encontraron Work Orders</td>
                 </tr>
             `;
         }
@@ -776,7 +777,7 @@
             if (mostrar) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="13" class="bom-loading">Cargando Work Orders...</td>
+                        <td colspan="15" class="bom-loading">Cargando Work Orders...</td>
                     </tr>
                 `;
             }
@@ -1095,12 +1096,108 @@ window.crearNuevaWO = crearNuevaWO;
             }
         }
 
+    // ================================================
+    // FUNCIONES DE IMPORTACIÓN DE EXCEL
+    // ================================================
+    
+    function importarExcel() {
+        console.log('Iniciando importación de Excel...');
+        const fileInput = document.getElementById('fileInputExcel');
+        if (fileInput) {
+            fileInput.click();
+        } else {
+            console.error('❌ Input de archivo no encontrado');
+            alert('Error: No se pudo encontrar el selector de archivo');
+        }
+    }
+    
+    function procesarArchivoExcel(input) {
+        if (!input.files || input.files.length === 0) {
+            console.log('No se seleccionó ningún archivo');
+            return;
+        }
+        
+        const archivo = input.files[0];
+        console.log('Archivo seleccionado:', archivo.name);
+        
+        // Validar tipo de archivo
+        const extensionesPermitidas = ['.xlsx', '.xls'];
+        const extension = archivo.name.toLowerCase().substring(archivo.name.lastIndexOf('.'));
+        
+        if (!extensionesPermitidas.includes(extension)) {
+            alert('Error: Solo se permiten archivos Excel (.xlsx, .xls)');
+            input.value = '';
+            return;
+        }
+        
+        // Validar tamaño del archivo (máximo 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (archivo.size > maxSize) {
+            alert('Error: El archivo es demasiado grande. Máximo 10MB permitido.');
+            input.value = '';
+            return;
+        }
+        
+        // Mostrar indicador de carga
+        const btnImportar = document.getElementById('btnImportar');
+        const textoOriginal = btnImportar ? btnImportar.textContent : '';
+        if (btnImportar) {
+            btnImportar.textContent = 'Importando...';
+            btnImportar.disabled = true;
+        }
+        
+        // Crear FormData para enviar el archivo
+        const formData = new FormData();
+        formData.append('file', archivo);
+        
+        // Enviar archivo al servidor
+        fetch('/importar_excel_plan_produccion', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Respuesta del servidor:', data);
+            
+            if (data.success) {
+                alert(`Excel importado exitosamente. Se procesaron ${data.registros_procesados || 0} registros.`);
+                
+                // Actualizar la tabla después de la importación
+                consultarWOs();
+                
+                // Mostrar detalles adicionales si están disponibles
+                if (data.detalles) {
+                    console.log('Detalles de importación:', data.detalles);
+                }
+            } else {
+                console.error('Error en importación:', data.error);
+                alert(`Error al importar Excel: ${data.error || 'Error desconocido'}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error en la petición:', error);
+            alert('Error de conexión al importar el archivo. Intente nuevamente.');
+        })
+        .finally(() => {
+            // Restaurar botón
+            if (btnImportar) {
+                btnImportar.textContent = textoOriginal || 'Importar Excel';
+                btnImportar.disabled = false;
+            }
+            
+            // Limpiar input
+            input.value = '';
+        });
+    }
+
 window.mostrarFormularioWO = mostrarFormularioWO;
 window.seleccionarModeloWO = seleccionarModeloWO;
 window.editarWO = editarWO;
 window.guardarWO = guardarWO;
 window.cancelarEditarWO = cancelarEditarWO;
 window.eliminarWO = eliminarWO;
+window.importarExcel = importarExcel;
+window.procesarArchivoExcel = procesarArchivoExcel;
 
 console.log('Crear Plan de Producción - Módulo inicializado');
 

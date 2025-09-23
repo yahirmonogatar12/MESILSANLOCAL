@@ -302,7 +302,7 @@ def listar_wos_alternativo():
         "SELECT w.*, "
         "(SELECT r.project FROM raw r "
         " WHERE TRIM(r.part_no) = COALESCE(NULLIF(TRIM(w.codigo_modelo), ''), TRIM(w.modelo)) "
-        " ORDER BY r.id DESC LIMIT 1) AS nombre_modelo "
+        " ORDER BY r.id DESC LIMIT 1) AS nombre_modelo_raw "
         "FROM work_orders w WHERE 1=1"
     )
     params = []
@@ -336,7 +336,7 @@ def listar_wos_alternativo():
     try:
         work_orders = execute_query(query, params, fetch='all') or []
         
-        # Formatear fechas para el frontend
+        # Formatear fechas y procesar nombres de modelo para el frontend
         for wo in work_orders:
             if wo.get('fecha_operacion'):
                 if hasattr(wo['fecha_operacion'], 'isoformat'):
@@ -344,6 +344,13 @@ def listar_wos_alternativo():
             if wo.get('fecha_modificacion'):
                 if hasattr(wo['fecha_modificacion'], 'isoformat'):
                     wo['fecha_modificacion'] = wo['fecha_modificacion'].isoformat()
+            
+            # Usar nombre_modelo_raw si está disponible, sino usar nombre_modelo existente
+            nombre_raw = wo.get('nombre_modelo_raw')
+            if nombre_raw and nombre_raw.strip():
+                wo['nombre_modelo'] = nombre_raw
+            elif not wo.get('nombre_modelo'):
+                wo['nombre_modelo'] = ''
         
         print(f"📋 Listando {len(work_orders)} WOs (ruta alternativa - estado filtrado: {estado or 'CREADA por defecto'})")
         return jsonify({"success": True, "data": work_orders})

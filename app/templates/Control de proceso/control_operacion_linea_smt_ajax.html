@@ -337,6 +337,10 @@
       background: #172A46 !important;
       background-color: #172A46 !important;
       box-sizing: border-box !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      max-width: 0 !important;
+      position: relative !important;
     }
 
     #app-mes-front-isolated .table th:last-child {
@@ -399,6 +403,9 @@
       background-color: inherit !important;
       background: inherit !important;
       box-sizing: border-box !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      max-width: 0 !important;
     }
 
     #app-mes-front-isolated .table td:last-child {
@@ -793,6 +800,43 @@
       text-align: center !important;
     }
 
+    /* ESTILOS PARA TOOLTIP EN CELDAS LARGAS */
+    #app-mes-front-isolated .table td[title],
+    #app-mes-front-isolated .table th[title] {
+      cursor: help !important;
+    }
+
+    #app-mes-front-isolated .table td[title]:hover,
+    #app-mes-front-isolated .table th[title]:hover {
+      background-color: rgba(52, 152, 219, 0.1) !important;
+      position: relative !important;
+    }
+
+    /* ESTILOS PARA TABLAS RESPONSIVAS */
+    #app-mes-front-isolated .table {
+      table-layout: fixed !important;
+      width: 100% !important;
+    }
+
+    /* ESTILOS PARA CELDAS CON TEXTO TRUNCADO */
+    #app-mes-front-isolated .table .truncate {
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+
+    /* MEJORAS VISUALES PARA HEADERS */
+    #app-mes-front-isolated .table th {
+      background: linear-gradient(180deg, #1e3a5f 0%, #172A46 100%) !important;
+      border-bottom: 2px solid var(--line) !important;
+    }
+
+    /* SCROLL HORIZONTAL PARA TABLAS */
+    #app-mes-front-isolated .table {
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+    }
+
     /* RESPONSIVE */
     @media (max-width: 768px) {
       #app-mes-front-isolated {
@@ -989,14 +1033,14 @@
             <table style="width:100%; border-collapse:collapse">
               <thead>
                 <tr>
-                  <th>Mounter</th>
-                  <th>Slot</th>
-                  <th>Material Code</th>
-                  <th>Description</th>
-                  <th>Feeder Info</th>
-                  <th>Qty</th>
-                  <th>Type</th>
-                  <th>Status</th>
+                  <th style="width:80px; min-width:60px;">Mounter</th>
+                  <th style="width:60px; min-width:50px;">Slot</th>
+                  <th style="width:120px; min-width:100px;">Material Code</th>
+                  <th style="width:150px; min-width:120px;">Description</th>
+                  <th style="width:100px; min-width:80px;">Feeder Info</th>
+                  <th style="width:60px; min-width:50px;">Qty</th>
+                  <th style="width:70px; min-width:60px;">Type</th>
+                  <th style="width:70px; min-width:60px;">Status</th>
                 </tr>
               </thead>
             </table>
@@ -1018,13 +1062,13 @@
             <table style="width:100%; border-collapse:collapse">
               <thead>
                 <tr>
-                  <th>Equipment...</th>
-                  <th>Slot No</th>
-                  <th>Base Feeder</th>
-                  <th>Regist Date</th>
-                  <th>Warehousing...</th>
-                  <th>Regist Quan...</th>
-                  <th>Current Qu...</th>
+                  <th style="width:100px; min-width:80px;">Equipment</th>
+                  <th style="width:60px; min-width:50px;">Slot No</th>
+                  <th style="width:100px; min-width:80px;">Base Feeder</th>
+                  <th style="width:120px; min-width:100px;">Regist Date</th>
+                  <th style="width:130px; min-width:110px;">Warehousing Code</th>
+                  <th style="width:100px; min-width:80px;">Regist Quantity</th>
+                  <th style="width:100px; min-width:80px;">Current Quantity</th>
                 </tr>
               </thead>
             </table>
@@ -1052,11 +1096,11 @@
             <table style="width:100%; border-collapse:collapse">
               <thead>
                 <tr>
-                  <th>Regist D...</th>
-                  <th>Solder S...</th>
-                  <th>Remainin...</th>
-                  <th>Effective...</th>
-                  <th>Status</th>
+                  <th style="width:120px; min-width:100px;">Regist Date</th>
+                  <th style="width:120px; min-width:100px;">Solder Serial</th>
+                  <th style="width:100px; min-width:80px;">Remaining Qty</th>
+                  <th style="width:120px; min-width:100px;">Effective Date</th>
+                  <th style="width:70px; min-width:60px;">Status</th>
                 </tr>
               </thead>
             </table>
@@ -1078,9 +1122,10 @@
             <table style="width:100%; border-collapse:collapse">
               <thead>
                 <tr>
-                  <th>Regist Date</th>
-                  <th>Manage No</th>
-                  <th>Available Q...</th>
+                  <th style="width:120px; min-width:100px;">Regist Date</th>
+                  <th style="width:120px; min-width:100px;">Manage No</th>
+                  <th style="width:120px; min-width:100px;">Available Qty</th>
+                  <th style="width:70px; min-width:60px;">Status</th>
                 </tr>
               </thead>
             </table>
@@ -1102,11 +1147,11 @@
             <table style="width:100%; border-collapse:collapse">
               <thead>
                 <tr>
-                  <th>Regist Date</th>
-                  <th>Front Manage...</th>
-                  <th>Front Available...</th>
-                  <th>Rear Manage...</th>
-                  <th>Rear Available...</th>
+                  <th style="width:120px; min-width:100px;">Regist Date</th>
+                  <th style="width:130px; min-width:110px;">Front Manage No</th>
+                  <th style="width:130px; min-width:110px;">Front Available</th>
+                  <th style="width:130px; min-width:110px;">Rear Manage No</th>
+                  <th style="width:130px; min-width:110px;">Rear Available</th>
                 </tr>
               </thead>
             </table>

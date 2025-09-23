@@ -199,6 +199,16 @@
             box-shadow: 0 4px 12px rgba(69, 102, 54, 0.3);
         }
 
+        #btnImportar {
+            background-color: #2E8B57;
+        }
+
+        #btnImportar:hover {
+            background-color: #3CB371;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 139, 87, 0.3);
+        }
+
         /* Tabla */
         #bomTableContainer {
             background-color: #40424F;
@@ -819,7 +829,11 @@
             <button id="btnRegistrar" class="bom-btn" onclick="mostrarFormularioWO()">Registrar</button>
             <button id="btnCancelar" class="bom-btn" onclick="cancelarOperacion()">Cancelar</button>
             <button id="btnExportar" class="bom-btn" onclick="exportarExcel()">Exportar el excel</button>
+            <button id="btnImportar" class="bom-btn" onclick="importarExcel()">Importar Excel</button>
         </div>
+
+        <!-- Input oculto para seleccionar archivo -->
+        <input type="file" id="fileInputExcel" accept=".xlsx,.xls" style="display: none;" onchange="procesarArchivoExcel(this)">
 
         <!-- Formulario para crear WO -->
         <div id="woFormContainer" style="display: none;">
@@ -872,8 +886,9 @@
                         <th id="thCodigoWO" style="width: 90px;">Código de WO</th>
                         <th id="thEstado" style="width: 80px;">Estado</th>
                         <th id="thFechaOperacion" style="width: 100px;">Fecha de operación</th>
-                        <th id="thCodigoModelo" style="width: 80px;">Nombre de Modelo</th>
-                        <th id="thNombreModelo" style="width: 100px;">Numero de parte</th>
+                        <th id="thLinea" style="width: 60px;">Línea</th>
+                        <th id="thCodigoModelo" style="width: 80px;">Código Modelo</th>
+                        <th id="thNombreModelo" style="width: 120px;">Nombre de Modelo</th>
                         <th id="thCantidadPlaneada" style="width: 80px;">Cantidad planeada</th>
                         <th id="thCodigoPO" style="width: 80px;">Código de PO</th>
                         <th id="thAcciones" style="width: 104px;">Acciones</th>

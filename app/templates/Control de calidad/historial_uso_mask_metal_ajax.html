@@ -2,11 +2,80 @@
 <div id="historial-uso-mask-metal-unique-container" class="ajax-module-container">
     <div class="module-header">
         <h2>Historial de uso de mask de metal</h2>
+        <div class="header-controls">
+            <button id="btn-refresh-mask-history" class="btn btn-primary">
+                <i class="fa fa-refresh"></i> Actualizar
+            </button>
+            <button id="btn-export-mask-history" class="btn btn-success">
+                <i class="fa fa-file-excel-o"></i> Excel Export
+            </button>
+        </div>
+    </div>
+    
+    <div class="module-filters">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label>Código Mask:</label>
+                <input type="text" id="filter-mask-code" placeholder="Ej: MM1-2-001">
+            </div>
+            <div class="filter-group">
+                <label>Modelo:</label>
+                <input type="text" id="filter-model-code" placeholder="Código del modelo">
+            </div>
+            <div class="filter-group">
+                <label>Línea:</label>
+                <select id="filter-linea">
+                    <option value="">Todas</option>
+                    <option value="1LINE">1LINE</option>
+                    <option value="2LINE">2LINE</option>
+                    <option value="3LINE">3LINE</option>
+                    <option value="4LINE">4LINE</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Fecha desde:</label>
+                <input type="date" id="filter-date-from">
+            </div>
+            <div class="filter-group">
+                <label>Fecha hasta:</label>
+                <input type="date" id="filter-date-to">
+            </div>
+            <div class="filter-group">
+                <button id="btn-apply-filters" class="btn btn-info">Buscar</button>
+                <button id="btn-clear-filters" class="btn btn-secondary">Limpiar</button>
+            </div>
+        </div>
     </div>
     
     <div class="module-content">
-        <!-- Contenido del módulo se cargará aquí -->
-        <p>Módulo de Historial de uso de mask de metal</p>
+        <div class="table-container">
+            <table id="metal-mask-history-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Código Mask</th>
+                        <th>Modelo</th>
+                        <th>Línea</th>
+                        <th>Cantidad Usada</th>
+                        <th>Usos Disponibles</th>
+                        <th>Estado</th>
+                        <th>Usuario</th>
+                        <th>Notas</th>
+                    </tr>
+                </thead>
+                <tbody id="metal-mask-history-tbody">
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 30px; color: #95A5A6;">
+                            Cargando historial de Metal Mask...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="footer-info">
+            <span id="mask-history-count">Total: 0 registros</span>
+        </div>
     </div>
 </div>
 
@@ -18,21 +87,277 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
 .module-header h2 {
-    margin: 0 0 20px 0;
+    margin: 0;
     color: #333;
     font-size: 24px;
 }
 
-.module-content {
-    min-height: 200px;
+.header-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.module-filters {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary { background: #007bff; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-info { background: #17a2b8; color: white; }
+.btn-secondary { background: #6c757d; color: white; }
+
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.table-container {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.table th {
+    background: #2c3e50;
+    color: white;
+    padding: 12px 8px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.table td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 11px;
+    vertical-align: middle;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.footer-info {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Estados de Metal Mask */
+.status-ok { color: #28a745; font-weight: 600; }
+.status-ng { color: #dc3545; font-weight: 600; }
+.status-warning { color: #ffc107; font-weight: 600; }
+
+/* Scrollbar personalizado */
+.table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 </style>
 
 <script>
+// Variables globales para el historial de Metal Mask
+let maskHistoryData = [];
+
 // Auto-inicialización del módulo
 document.addEventListener('DOMContentLoaded', function() {
-    // Módulo inicializado
+    console.log('Inicializando módulo de Historial de Metal Mask...');
+    
+    // Configurar fechas por defecto (últimos 7 días)
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    
+    document.getElementById('filter-date-from').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('filter-date-to').value = today.toISOString().split('T')[0];
+    
+    // Event listeners
+    document.getElementById('btn-refresh-mask-history').addEventListener('click', loadMaskHistory);
+    document.getElementById('btn-export-mask-history').addEventListener('click', exportMaskHistory);
+    document.getElementById('btn-apply-filters').addEventListener('click', loadMaskHistory);
+    document.getElementById('btn-clear-filters').addEventListener('click', clearFilters);
+    
+    // Cargar datos iniciales
+    loadMaskHistory();
 });
+
+// Función para cargar historial
+async function loadMaskHistory() {
+    try {
+        const tbody = document.getElementById('metal-mask-history-tbody');
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">Cargando...</td></tr>';
+        
+        // Obtener filtros
+        const filtros = {
+            mask_code: document.getElementById('filter-mask-code').value.trim(),
+            model_code: document.getElementById('filter-model-code').value.trim(),
+            linea: document.getElementById('filter-linea').value,
+            date_from: document.getElementById('filter-date-from').value,
+            date_to: document.getElementById('filter-date-to').value,
+            limit: 200
+        };
+        
+        // Llamar a la función del módulo principal si existe
+        let data = [];
+        if (typeof window.cargarHistorialMetalMask === 'function') {
+            data = await window.cargarHistorialMetalMask(filtros);
+        } else {
+            // Fallback directo al API
+            const params = new URLSearchParams();
+            Object.keys(filtros).forEach(key => {
+                if (filtros[key]) params.append(key, filtros[key]);
+            });
+            
+            const response = await fetch(`/api/metal-mask/history?${params}`);
+            const result = await response.json();
+            data = result.success ? result.data : [];
+        }
+        
+        maskHistoryData = data;
+        renderMaskHistory(data);
+        
+    } catch (error) {
+        console.error('Error cargando historial:', error);
+        document.getElementById('metal-mask-history-tbody').innerHTML = 
+            '<tr><td colspan="9" style="text-align: center; padding: 20px; color: red;">Error cargando datos</td></tr>';
+    }
+}
+
+// Función para renderizar la tabla
+function renderMaskHistory(data) {
+    const tbody = document.getElementById('metal-mask-history-tbody');
+    const countSpan = document.getElementById('mask-history-count');
+    
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #95A5A6;">No hay registros</td></tr>';
+        countSpan.textContent = 'Total: 0 registros';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    data.forEach(item => {
+        const tr = document.createElement('tr');
+        const statusClass = item.status === 'OK' ? 'status-ok' : 
+                           item.status === 'NG' ? 'status-ng' : 'status-warning';
+        
+        tr.innerHTML = `
+            <td>${item.scan_date}</td>
+            <td><strong>${item.mask_code}</strong></td>
+            <td>${item.model_code}</td>
+            <td>${item.linea}</td>
+            <td style="text-align: center;">${item.quantity_used}</td>
+            <td style="text-align: center;">${item.available_uses}</td>
+            <td class="${statusClass}">${item.status}</td>
+            <td>${item.usuario || ''}</td>
+            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${item.notes || ''}">${item.notes || ''}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    countSpan.textContent = `Total: ${data.length} registros`;
+}
+
+// Función para exportar
+async function exportMaskHistory() {
+    if (typeof window.exportarMetalMaskHistory === 'function') {
+        await window.exportarMetalMaskHistory();
+    } else {
+        alert('Función de exportación no disponible');
+    }
+}
+
+// Función para limpiar filtros
+function clearFilters() {
+    document.getElementById('filter-mask-code').value = '';
+    document.getElementById('filter-model-code').value = '';
+    document.getElementById('filter-linea').value = '';
+    
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+    
+    document.getElementById('filter-date-from').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('filter-date-to').value = today.toISOString().split('T')[0];
+    
+    loadMaskHistory();
+}
 </script>
 
