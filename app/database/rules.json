@@ -306,5 +306,12 @@
     "partNumberLength": 18,
     "lotNumberStart": -1,
     "lotNumberLength": 0
+  },
+  "A1": {
+    "character_pattern": "XXXXXXXXXXX",
+    "partNumberStart": 0,
+    "partNumberLength": 11,
+    "lotNumberStart": -1,
+    "lotNumberLength": 0
   }
 }

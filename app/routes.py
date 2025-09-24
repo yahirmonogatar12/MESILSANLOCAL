@@ -7001,6 +7001,13 @@ def importar_excel_plan_produccion():
         # Obtener usuario de la sesión
         usuario_actual = session.get('usuario', 'USUARIO_EXCEL')
         
+        # Obtener fecha de operación seleccionada por el usuario
+        fecha_operacion_usuario = request.form.get('fecha_operacion', '').strip()
+        if fecha_operacion_usuario:
+            print(f"📅 Fecha de operación personalizada seleccionada: {fecha_operacion_usuario}")
+        else:
+            print("📅 Usando fechas del Excel o fecha actual como respaldo")
+        
         # Función auxiliar para obtener nombre del modelo desde raw
         def obtener_nombre_modelo(codigo_modelo):
             """Obtener nombre (project) desde raw por part_no"""
@@ -7105,21 +7112,28 @@ def importar_excel_plan_produccion():
                 if codigo_po == 'nan' or not codigo_po:
                     codigo_po = 'SIN-PO'
                 
-                # Fecha de operación
-                fecha_operacion = row.get(columnas_detectadas.get('fecha_operacion', ''), '')
-                if pd.isna(fecha_operacion) or fecha_operacion == 'nan':
-                    fecha_operacion = datetime.now().strftime('%Y-%m-%d')
+                # Fecha de operación - priorizar la fecha seleccionada por el usuario
+                fecha_operacion_usuario = request.form.get('fecha_operacion', '').strip()
+                
+                if fecha_operacion_usuario:
+                    # Usar la fecha seleccionada por el usuario
+                    fecha_operacion = fecha_operacion_usuario
                 else:
-                    try:
-                        if isinstance(fecha_operacion, str):
-                            # Intentar convertir string a fecha
-                            from dateutil import parser
-                            fecha_operacion = parser.parse(fecha_operacion).strftime('%Y-%m-%d')
-                        else:
-                            # Es datetime o similar
-                            fecha_operacion = fecha_operacion.strftime('%Y-%m-%d')
-                    except:
+                    # Usar la fecha del Excel o fecha actual como respaldo
+                    fecha_operacion = row.get(columnas_detectadas.get('fecha_operacion', ''), '')
+                    if pd.isna(fecha_operacion) or fecha_operacion == 'nan':
                         fecha_operacion = datetime.now().strftime('%Y-%m-%d')
+                    else:
+                        try:
+                            if isinstance(fecha_operacion, str):
+                                # Intentar convertir string a fecha
+                                from dateutil import parser
+                                fecha_operacion = parser.parse(fecha_operacion).strftime('%Y-%m-%d')
+                            else:
+                                # Es datetime o similar
+                                fecha_operacion = fecha_operacion.strftime('%Y-%m-%d')
+                        except:
+                            fecha_operacion = datetime.now().strftime('%Y-%m-%d')
                 
                 # Generar código WO único
                 fecha_codigo = datetime.now().strftime('%y%m%d')
@@ -7177,6 +7191,8 @@ def importar_excel_plan_produccion():
         
         # Preparar respuesta
         mensaje = f"Importación completada. {registros_insertados} WOs creadas."
+        if fecha_operacion_usuario:
+            mensaje += f" Fecha de operación aplicada: {fecha_operacion_usuario}."
         if errores:
             mensaje += f" {len(errores)} errores encontrados."
         
@@ -7185,6 +7201,7 @@ def importar_excel_plan_produccion():
             'message': mensaje,
             'registros_procesados': registros_insertados,
             'errores': len(errores),
+            'fecha_aplicada': fecha_operacion_usuario or 'Fechas del Excel/Actual',
             'detalles': {
                 'insertados': registros_insertados,
                 'errores': errores[:10] if errores else []  # Solo primeros 10 errores

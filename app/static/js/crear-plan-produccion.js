@@ -1111,7 +1111,10 @@ window.crearNuevaWO = crearNuevaWO;
         }
     }
     
-    function procesarArchivoExcel(input) {
+    // Variable global para almacenar el archivo seleccionado
+    let archivoExcelSeleccionado = null;
+
+    function mostrarModalFechaImportacion(input) {
         if (!input.files || input.files.length === 0) {
             console.log('No se seleccionó ningún archivo');
             return;
@@ -1138,6 +1141,58 @@ window.crearNuevaWO = crearNuevaWO;
             return;
         }
         
+        // Almacenar el archivo globalmente
+        archivoExcelSeleccionado = archivo;
+        
+        // Mostrar el modal
+        const modal = document.getElementById('modalFechaImportacion');
+        const nombreArchivo = document.getElementById('nombreArchivoImportacion');
+        const fechaInput = document.getElementById('fechaImportacionSeleccionada');
+        
+        // Configurar valores por defecto
+        nombreArchivo.textContent = archivo.name;
+        
+        // Establecer fecha por defecto (mañana)
+        const mañana = new Date();
+        mañana.setDate(mañana.getDate() + 1);
+        fechaInput.value = mañana.toISOString().split('T')[0];
+        
+        modal.style.display = 'block';
+    }
+
+    function cancelarImportacion() {
+        const modal = document.getElementById('modalFechaImportacion');
+        const fileInput = document.getElementById('fileInputExcel');
+        
+        modal.style.display = 'none';
+        fileInput.value = '';
+        archivoExcelSeleccionado = null;
+    }
+
+    function confirmarImportacionConFecha() {
+        const fechaSeleccionada = document.getElementById('fechaImportacionSeleccionada').value;
+        
+        if (!fechaSeleccionada) {
+            alert('Por favor selecciona una fecha de operación');
+            return;
+        }
+        
+        if (!archivoExcelSeleccionado) {
+            alert('Error: No hay archivo seleccionado');
+            return;
+        }
+        
+        // Ocultar modal
+        const modal = document.getElementById('modalFechaImportacion');
+        modal.style.display = 'none';
+        
+        // Procesar archivo con la fecha seleccionada
+        procesarArchivoExcelConFecha(archivoExcelSeleccionado, fechaSeleccionada);
+    }
+
+    function procesarArchivoExcelConFecha(archivo, fechaOperacion) {
+        console.log('Procesando archivo:', archivo.name, 'con fecha:', fechaOperacion);
+        
         // Mostrar indicador de carga
         const btnImportar = document.getElementById('btnImportar');
         const textoOriginal = btnImportar ? btnImportar.textContent : '';
@@ -1146,9 +1201,10 @@ window.crearNuevaWO = crearNuevaWO;
             btnImportar.disabled = true;
         }
         
-        // Crear FormData para enviar el archivo
+        // Crear FormData para enviar el archivo y la fecha
         const formData = new FormData();
         formData.append('file', archivo);
+        formData.append('fecha_operacion', fechaOperacion);
         
         // Enviar archivo al servidor
         fetch('/importar_excel_plan_produccion', {
@@ -1160,7 +1216,7 @@ window.crearNuevaWO = crearNuevaWO;
             console.log('Respuesta del servidor:', data);
             
             if (data.success) {
-                alert(`Excel importado exitosamente. Se procesaron ${data.registros_procesados || 0} registros.`);
+                mostrarMensaje(`Excel importado exitosamente. Se procesaron ${data.registros_procesados || 0} registros para la fecha ${fechaOperacion}.`, 'success');
                 
                 // Actualizar la tabla después de la importación
                 consultarWOs();
@@ -1171,12 +1227,12 @@ window.crearNuevaWO = crearNuevaWO;
                 }
             } else {
                 console.error('Error en importación:', data.error);
-                alert(`Error al importar Excel: ${data.error || 'Error desconocido'}`);
+                mostrarMensaje(`Error al importar Excel: ${data.error || 'Error desconocido'}`, 'error');
             }
         })
         .catch(error => {
             console.error('Error en la petición:', error);
-            alert('Error de conexión al importar el archivo. Intente nuevamente.');
+            mostrarMensaje('Error de conexión al importar el archivo. Intente nuevamente.', 'error');
         })
         .finally(() => {
             // Restaurar botón
@@ -1185,9 +1241,16 @@ window.crearNuevaWO = crearNuevaWO;
                 btnImportar.disabled = false;
             }
             
-            // Limpiar input
-            input.value = '';
+            // Limpiar variables
+            const fileInput = document.getElementById('fileInputExcel');
+            fileInput.value = '';
+            archivoExcelSeleccionado = null;
         });
+    }
+
+    function procesarArchivoExcel(input) {
+        // Esta función ahora redirige al modal
+        mostrarModalFechaImportacion(input);
     }
 
 window.mostrarFormularioWO = mostrarFormularioWO;
@@ -1198,6 +1261,9 @@ window.cancelarEditarWO = cancelarEditarWO;
 window.eliminarWO = eliminarWO;
 window.importarExcel = importarExcel;
 window.procesarArchivoExcel = procesarArchivoExcel;
+window.mostrarModalFechaImportacion = mostrarModalFechaImportacion;
+window.cancelarImportacion = cancelarImportacion;
+window.confirmarImportacionConFecha = confirmarImportacionConFecha;
 
 console.log('Crear Plan de Producción - Módulo inicializado');
 

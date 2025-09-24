@@ -536,9 +536,7 @@
                     <input type="text" id="escaneo-etiqueta-impresa" placeholder="Escanee la etiqueta que se imprimió..." 
                            style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #636779; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px; cursor: not-allowed;"
                            onkeydown="procesarEscaneoEtiquetaImpresa(event)" 
-                           onfocus="console.log('ENFOQUE en campo etiqueta')" 
-                           oninput="detectarEscaneoEtiquetaAutomatico(event)" 
-                           onkeypress="console.log('TECLA presionada:', event.key)">
+                           oninput="detectarEscaneoEtiquetaAutomatico(event)">
                 </div>
             </div>
         </div>
@@ -1559,9 +1557,6 @@
                     
                     mostrarNotificacionEscaneo(resultado.partNumber, null, resultado.lotNumber);
                     
-                    // Verificar si es material existente para mostrar botón de unidades
-                    verificarMaterialExistente(codigoCompleto);
-                    
                     // NO limpiar el campo automáticamente - permitir que el usuario vea el código
                     return;
                 }
@@ -1746,6 +1741,12 @@
             
             // NO limpiar campo - permitir que el usuario vea el código procesado
             
+            // Verificar material existente después de que se llenen los campos
+            setTimeout(() => {
+                verificarMaterialExistente(codigo);
+                console.log('✅ Material existente verificado después de llenar campos');
+            }, 200); // Dar tiempo para que se llenen los campos primero
+            
             // *** VERIFICACIÓN RÁPIDA DE REGISTRO AUTOMÁTICO TRAS ESCANEO ***
             setTimeout(() => {
                 // verificarRegistroAutomaticoTrasEscaneo(); // DESACTIVADO PERMANENTEMENTE
@@ -1843,10 +1844,32 @@
             
             // Si ya están llenos los campos principales, solo cargar el secuencial
             if (campoNumeroParte && campoNumeroParte.value.trim()) {
-                console.log('� Campos ya llenos desde selección, solo cargando secuencial...');
+                console.log('✅ Campos ya llenos desde selección, cargando secuencial y actualizando especificación...');
+                
+                // Buscar la información completa del código de material para actualizar especificación
+                console.log('🔍 Buscando especificación para código:', codigoMaterial);
+                const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
+                let codigoEncontrado = codigoCompleto;
+                
+                if (!codigoEncontrado) {
+                    // Intentar buscar por número de parte también
+                    codigoEncontrado = codigosMaterial.find(c => c.numero_parte === codigoMaterial);
+                    if (codigoEncontrado) {
+                        console.log('✅ Especificación encontrada por número de parte:', codigoEncontrado);
+                    }
+                }
+                
+                // Actualizar especificación aunque los otros campos ya estén llenos
+                if (codigoEncontrado) {
+                    const especificacion = codigoEncontrado.especificacion_material || codigoEncontrado.spec || '';
+                    llenarCampoPorId('almacen_especificacion_material', especificacion);
+                    console.log('✅ Especificación actualizada:', especificacion);
+                } else {
+                    console.warn('❌ No se encontró especificación para:', codigoMaterial);
+                }
+                
                 cargarSiguienteSecuencial(codigoMaterial).then(() => {
                     if (proximoCodigoCompleto && (!campoRecibido || !campoRecibido.value.trim())) {
-                        llenarCampoPorId('codigo_material_recibido', proximoCodigoCompleto);
                         llenarCampoPorId('codigo_material_recibido', proximoCodigoCompleto);
                     }
                 }).catch(error => {
@@ -1856,7 +1879,23 @@
             }
             
             // Buscar la información completa del código de material
+            console.log('🔍 Buscando código:', codigoMaterial, 'en', codigosMaterial.length, 'códigos disponibles');
             const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
+            
+            let codigoEncontrado = codigoCompleto;
+            
+            if (!codigoEncontrado) {
+                console.warn('⚠️ Código no encontrado en codigosMaterial:', codigoMaterial);
+                // Intentar buscar por número de parte también
+                codigoEncontrado = codigosMaterial.find(c => c.numero_parte === codigoMaterial);
+                if (codigoEncontrado) {
+                    console.log('✅ Encontrado por número de parte:', codigoEncontrado);
+                } else {
+                    console.warn('❌ Tampoco encontrado por número de parte');
+                }
+            } else {
+                console.log('✅ Código encontrado:', codigoEncontrado);
+            }
             
             // Cargar secuencial y llenar campos
             cargarSiguienteSecuencial(codigoMaterial).then(() => {
@@ -1866,13 +1905,17 @@
                 }
                 
                 // Llenar otros campos si tenemos la información
-                if (codigoCompleto) {
-                    llenarCampoPorId('codigo_material_lower', codigoCompleto.numero_parte || '');
-                    llenarCampoPorId('numero_parte_lower', codigoCompleto.numero_parte || '');
-                    llenarCampoPorId('cantidad_estandarizada', codigoCompleto.cantidad_estandarizada || '');
-                    llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
-                    llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
-                    llenarCampoPorId('almacen_especificacion_material', codigoCompleto.especificacion_material || '');
+                if (codigoEncontrado) {
+                    llenarCampoPorId('codigo_material_lower', codigoEncontrado.numero_parte || '');
+                    llenarCampoPorId('numero_parte_lower', codigoEncontrado.numero_parte || '');
+                    llenarCampoPorId('cantidad_estandarizada', codigoEncontrado.cantidad_estandarizada || '');
+                    llenarCampoPorId('cantidad_actual', codigoEncontrado.cantidad_estandarizada || '');
+                    llenarCampoPorId('propiedad_material', codigoEncontrado.propiedad_material || '');
+                    llenarCampoPorId('almacen_especificacion_material', codigoEncontrado.especificacion_material || codigoEncontrado.spec || '');
+                    
+                    console.log('✅ Especificación cargada al escanear:', codigoEncontrado.especificacion_material || codigoEncontrado.spec || 'No encontrada');
+                } else {
+                    console.warn('❌ No se pudo llenar la especificación - código no encontrado');
                 }
             }).catch(error => {
                 console.error('Error al cargar secuencial:', error);
@@ -5187,11 +5230,17 @@ if (document.readyState === 'loading') {
             if (codigoEscaneado && codigoEscaneado.length > 5) {
                 // Usar el número de parte como base para el código consecutivo
                 const codigoOriginal = document.getElementById('numero_parte_lower')?.value || codigoEscaneado;
+                
+                // Obtener la especificación real del campo
+                const especificacionReal = document.getElementById('almacen_especificacion_material')?.value || '';
+                
                 materialExistente = {
                     codigo: codigoOriginal,
                     nombre: 'Material Existente',
-                    especificacion: 'Especificación del material'
+                    especificacion: especificacionReal || 'Material'
                 };
+                
+                console.log('✅ Material existente detectado con especificación:', especificacionReal);
                 
                 // Mostrar botón UNIDADES y mantener otros visibles
                 document.getElementById('btnUnidades').style.display = 'inline-block';
@@ -5465,6 +5514,7 @@ if (document.readyState === 'loading') {
         // Variables de control para evitar ejecuciones múltiples
         let procesandoLote = false;
         let procesandoEtiqueta = false;
+        let ultimaEtiquetaProcesada = '';
         
         // Funciones de detección automática de escaneo
         function detectarEscaneoLoteAutomatico(event) {
@@ -5504,7 +5554,6 @@ if (document.readyState === 'loading') {
         function detectarEscaneoEtiquetaAutomatico(event) {
             // Solo funcionar en el campo específico del modal de asignación de lotes
             if (event.target.id !== 'escaneo-etiqueta-impresa') {
-                console.log('⛔ detectarEscaneoEtiquetaAutomatico - Solo permitido en modal de asignación');
                 return;
             }
             
@@ -5512,9 +5561,10 @@ if (document.readyState === 'loading') {
             console.log('Detectando etiqueta automática - Longitud:', valor.length, 'Valor:', valor);
             
             // Detectar cuando el código tenga longitud típica de etiqueta
-            if (valor.length >= 20 && !procesandoEtiqueta) { // Evitar ejecuciones múltiples
+            if (valor.length >= 20 && !procesandoEtiqueta && ultimaEtiquetaProcesada !== valor) { // Evitar ejecuciones múltiples
                 procesandoEtiqueta = true;
-                console.log(' Longitud suficiente detectada, procesando automáticamente...');
+                ultimaEtiquetaProcesada = valor;
+                console.log('🔄 Longitud suficiente detectada, procesando automáticamente...');
                 setTimeout(() => {
                     // Simular Enter para procesar automáticamente
                     const enterEvent = new KeyboardEvent('keydown', {
@@ -5592,17 +5642,43 @@ if (document.readyState === 'loading') {
                 const etiquetaEscaneada = event.target.value.trim();
                 const loteProveedor = document.getElementById('escaneo-lote-proveedor').value.trim() || ultimoLoteEscaneado;
 
-                
+                // Evitar procesamiento duplicado si ya se está procesando esta etiqueta
+                if (procesandoEtiqueta && ultimaEtiquetaProcesada === etiquetaEscaneada) {
+                    console.log('⏸️ Evitando procesamiento duplicado de:', etiquetaEscaneada);
+                    return;
+                }
+
+                // Marcar como procesando y guardar la etiqueta actual
+                procesandoEtiqueta = true;
+                ultimaEtiquetaProcesada = etiquetaEscaneada;
+
                 // Buscar la etiqueta en la lista
                 const indiceEtiqueta = asignacionesLotes.findIndex(item => 
                     item.codigo === etiquetaEscaneada && !item.asignado
                 );
                 
                 if (indiceEtiqueta === -1) {
-                    alert('Etiqueta no encontrada o ya asignada: ' + etiquetaEscaneada);
+                    // Verificar si ya fue asignada (para dar un mensaje más específico)
+                    const yaAsignada = asignacionesLotes.findIndex(item => 
+                        item.codigo === etiquetaEscaneada && item.asignado
+                    );
+                    
+                    if (yaAsignada !== -1) {
+                        console.log('✅ Etiqueta ya procesada correctamente:', etiquetaEscaneada);
+                        // No mostrar alerta si ya fue asignada exitosamente
+                    } else {
+                        alert('Etiqueta no encontrada: ' + etiquetaEscaneada);
+                    }
+                    
                     // Limpiar solo el campo de etiqueta para reintentar
                     event.target.value = '';
                     event.target.focus();
+                    
+                    // Resetear flags después de un breve delay
+                    setTimeout(() => {
+                        procesandoEtiqueta = false;
+                        ultimaEtiquetaProcesada = '';
+                    }, 500);
                     return;
                 }
                 
@@ -5624,9 +5700,12 @@ if (document.readyState === 'loading') {
                 ultimoLoteEscaneado = '';
                 
                 // Resetear flags de procesamiento para permitir nuevos escaneos
-                procesandoEtiqueta = false;
-                procesandoLote = false;
-                console.log(' Flags de procesamiento y lote reseteados');
+                setTimeout(() => {
+                    procesandoEtiqueta = false;
+                    procesandoLote = false;
+                    ultimaEtiquetaProcesada = '';
+                    console.log('✅ Flags de procesamiento y lote reseteados');
+                }, 100); // Pequeño delay para asegurar que la asignación se complete
                 
                 // Restaurar colores iniciales de ambos campos
                 document.getElementById('escaneo-etiqueta-impresa').style.background = '#7B8181';
