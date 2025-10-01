@@ -1,0 +1,753 @@
+/* Ajustar ancho de la columna Grupo */
+#plan-table th:nth-child(20), 
+#plan-table td:nth-child(20) {
+  width: 60px;
+  max-width: 60px;
+  text-align: center;
+}
+
+/* Animación para notificaciones */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ====== Estilos específicos para módulo Plan Main ====== */
+
+/* Contenedor principal */
+#plan-container {
+    font-family: 'LG regular', sans-serif;
+    background-color: #32323E;
+    color: lightgray;
+    min-height: 100vh;
+    padding: 2px;
+}
+
+/* Estilos para filas de tabla con doble click */
+.plan-table tbody tr:hover {
+    background-color: #4a4a5a !important;
+    transition: background-color 0.2s ease;
+}
+
+.plan-table tbody tr.focused {
+    background-color: #20688C !important;
+    box-shadow: 0 0 8px rgba(32, 104, 140, 0.5);
+}
+
+/* Checkbox en lugar de radio buttons */
+.table-checkbox {
+    cursor: pointer;
+    transform: scale(0.9);
+    accent-color: #20688C;
+}
+
+/* Botonera superior */
+#plan-toolbar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 8px;
+    background-color: #34334E;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    border: #20688C 1px solid;
+    flex-wrap: nowrap; /* evita que se hagan varias filas */
+}
+
+/* Botones */
+.plan-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 3px;
+    background-color: #3C3940;
+    border: #20688C 1px solid;
+    color: white;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+.plan-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.plan-btn-add {
+    background-color: #502696;
+}
+.plan-btn-add:hover {
+    background-color: #8e44ad;
+}
+
+.plan-btn-confirm {
+    background-color: #456636;
+}
+.plan-btn-confirm:hover {
+    background-color: #5a7c42;
+}
+
+.plan-btn-refresh {
+    background-color: #3C3940;
+}
+
+/* Tabla contenedor */
+#plan-table-container {
+    background-color: #40424F;
+    padding: 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* Tabla */
+#plan-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 11px;
+    background-color: #40424F;
+    table-layout: fixed;
+}
+
+#plan-table th {
+    background-color: #172A46;
+    color: #ecf0f1;
+    padding: 6px 4px;
+    text-align: center;
+    border: 1px solid #20688C;
+    font-weight: 600;
+    white-space: nowrap;
+    font-size: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+#plan-table td {
+    padding: 5px 4px;
+    text-align: center;
+    border: 1px solid #5F6375;
+    background-color: #40424F;
+    color: lightgray;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Anchos específicos para columnas (ajustados por nueva columna #) */
+/* Columna 1: # (secuencia) */
+#plan-table th:nth-child(1),
+#plan-table td:nth-child(1) {
+    width: 44px;
+    min-width: 44px;
+}
+
+/* Columna 2: Lot No */
+#plan-table th:nth-child(2),
+#plan-table td:nth-child(2) {
+    width: 140px;
+    min-width: 140px;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* Columna 6: Line */
+#plan-table th:nth-child(6),
+#plan-table td:nth-child(6) {
+    width: 60px;
+    min-width: 60px;
+}
+
+/* Columna 7: Turno */
+#plan-table th:nth-child(7),
+#plan-table td:nth-child(7) {
+    width: 50px;
+    min-width: 50px;
+}
+
+#plan-table tr:hover td {
+    background-color: #485563;
+}
+#plan-table tr:nth-child(even) td {
+    background-color: #44475A;
+}
+#plan-table tr:nth-child(even):hover td {
+    background-color: #485563;
+}
+
+/* ====== Modal ====== */
+#plan-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+#plan-modal-content {
+    background: #2c3e50;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    border: 2px solid #20688C;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+#plan-modal-content h3 {
+    color: #fff;
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+/* Inputs */
+.plan-input {
+    background-color: #2c3e50;
+    color: lightgray;
+    border: 1px solid #34495e;
+    border-radius: 4px;
+    padding: 6px;
+    font-size: 11px;
+    width: 100%;
+    margin-bottom: 8px;
+}
+.plan-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 768px) {
+    #plan-toolbar {
+        flex-wrap: wrap; /* en pantallas chicas, permitir salto */
+        gap: 6px;
+    }
+    #plan-modal-content {
+        width: 95%;
+    }
+    #plan-table {
+        font-size: 9px;
+        min-width: 800px;
+    }
+    #plan-table th, #plan-table td {
+        padding: 4px 2px;
+    }
+}
+
+/* Tamaño compacto para filtros en la barra */
+#plan-toolbar input[type="date"],
+#plan-toolbar select.plan-input,
+#plan-toolbar .plan-input.filter-small {
+    width: 140px;       /* compacto */
+    min-width: 120px;
+    margin-bottom: 0;   /* sin margen vertical en toolbar */
+    padding: 4px 6px;
+    font-size: 11px;
+}
+
+/* ====== Iconos de Carga ====== */
+
+/* Spinner/Loading icon */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #20688C;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 6px;
+}
+
+.loading-spinner.large {
+    width: 24px;
+    height: 24px;
+    border-width: 3px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Overlay de carga para tablas */
+/* Loading overlay para modales */
+.table-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    border-radius: 8px;
+}
+
+.table-loading-overlay .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+.table-loading-overlay .loading-text {
+    font-size: 16px;
+    color: #333;
+    font-weight: 500;
+    text-align: center;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.table-loading-overlay .loading-content {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Estados de botones con carga */
+.plan-btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.plan-btn.loading::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 6px;
+}
+
+/* Contenedor relativo para overlays */
+.loading-container {
+    position: relative;
+}
+
+/* ====== Estilos para Planeación Integrada ====== */
+
+/* Estilos para celdas de tiempo */
+.tiempo-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 10px;
+    text-align: center;
+    background-color: #2c3e50 !important;
+    color: #ecf0f1 !important;
+}
+
+/* Columnas específicas de planeación */
+#plan-table th:nth-child(17), /* Tiempo */
+#plan-table td:nth-child(17) {
+    width: 60px;
+    min-width: 60px;
+}
+
+#plan-table th:nth-child(18), /* Inicio */
+#plan-table td:nth-child(18) {
+    width: 60px;
+    min-width: 60px;
+}
+
+#plan-table th:nth-child(19), /* Fin */
+#plan-table td:nth-child(19) {
+    width: 60px;
+    min-width: 60px;
+}
+
+#plan-table th:nth-child(20), /* Grupo */
+#plan-table td:nth-child(20) {
+    width: 50px;
+    min-width: 50px;
+}
+
+#plan-table th:nth-child(21), /* Extra */
+#plan-table td:nth-child(21) {
+    width: 70px;
+    min-width: 70px;
+}
+
+/* Indicadores de estado */
+.status-normal {
+    background-color: #27ae60 !important;
+    color: white !important;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.status-extra {
+    background-color: #e74c3c !important;
+    color: white !important;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.status-cancelled {
+    background-color: #6c757d !important;
+    color: white !important;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+.status-calc {
+    background-color: #95a5a6 !important;
+    color: white !important;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+/* Filas en tiempo extra */
+.overtime-row {
+    background-color: #8e2e2e !important;
+    color: #fff !important;
+}
+
+.overtime-row td {
+    background-color: #8e2e2e !important;
+    color: #fff !important;
+}
+
+/* Animaciones para cambios */
+.plan-table tr {
+    transition: background-color 0.3s ease;
+}
+
+/* Controles de planeación en toolbar */
+.planning-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px;
+    background-color: rgba(52, 51, 78, 0.5);
+    border-radius: 4px;
+    border: 1px solid #20688C;
+}
+
+/* Botones específicos de planeación */
+.plan-btn-auto {
+    background-color: #e67e22;
+}
+
+.plan-btn-auto:hover {
+    background-color: #d35400;
+}
+
+.plan-btn-calc {
+    background-color: #9b59b6;
+}
+
+.plan-btn-calc:hover {
+    background-color: #8e44ad;
+}
+
+/* ====== Estilos para Grupos Visuales ====== */
+
+/* Fila de encabezado de grupo */
+.group-header-row {
+    background-color: #2c3e50 !important;
+    border: 2px solid #20688C !important;
+}
+
+.group-header-row td {
+    background-color: #2c3e50 !important;
+    color: #ecf0f1 !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    padding: 12px 8px !important;
+    border: 2px solid #20688C !important;
+    font-size: 12px !important;
+}
+
+/* Zona de drop para grupos */
+.group-drop-zone {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.group-drop-zone td {
+    background-color: #34495e !important;
+    border: 2px dashed #20688C !important;
+    text-align: center !important;
+    padding: 15px 10px !important;
+    color: #bdc3c7 !important;
+    font-style: italic;
+    transition: all 0.3s ease;
+}
+
+.group-drop-zone:hover td {
+    background-color: #3498db !important;
+    border-color: #2980b9 !important;
+    color: #fff !important;
+}
+
+/* Zona de drop activa durante drag */
+.group-drop-zone.drag-over td {
+    background-color: #20688C !important;
+    border-color: #3498db !important;
+    color: #fff !important;
+}
+
+/* Filas de planes dentro de grupos */
+.plan-row {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.plan-row:hover {
+    border-left-color: #3498db;
+}
+
+.plan-row.dragging {
+    opacity: 0.6;
+    outline: 2px dashed #3498db;
+}
+
+/* Espaciadores entre grupos */
+.group-spacer td {
+    height: 15px !important;
+    background-color: #2c2c2c !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+/* Numeración de secuencia por grupo */
+.plan-row td:first-child {
+    background-color: #3498db !important;
+    color: white !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    border-right: 2px solid #2980b9 !important;
+}
+
+/* Columna de grupo */
+.plan-row td:nth-child(20) {
+    background-color: #3498db !important;
+    color: white !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    border: 1px solid #2980b9 !important;
+}
+
+/* Indicadores de estado en grupos */
+.status-group-normal {
+    background-color: #27ae60 !important;
+    color: white !important;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-group-extra {
+    background-color: #e74c3c !important;
+    color: white !important;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    animation: pulse 2s infinite;
+}
+
+/* Animación para tiempo extra */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* Totales de grupo */
+.group-total {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #ecf0f1;
+    margin-right: 15px;
+}
+
+/* Drop zone content */
+.drop-zone-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    font-size: 11px;
+    transition: all 0.5s ease;
+}
+
+/* Feedback visual para movimiento de planes */
+.drop-zone-success {
+    color: #27ae60 !important;
+    font-weight: bold !important;
+    animation: successPulse 0.5s ease;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1.05); }
+}
+
+/* Efectos hover para drag & drop */
+.group-drop-zone.drag-active {
+    animation: dropZonePulse 1s infinite;
+}
+
+@keyframes dropZonePulse {
+    0% { background-color: #34495e; }
+    50% { background-color: #20688C; }
+    100% { background-color: #34495e; }
+}
+
+/* Responsive para grupos visuales */
+@media (max-width: 1200px) {
+    #plan-table {
+        min-width: 1400px; /* Aumentar ancho mínimo por nuevas columnas */
+    }
+    
+    .tiempo-cell {
+        font-size: 9px;
+        padding: 3px 2px;
+    }
+    
+    .group-header-row td {
+        font-size: 10px !important;
+        padding: 8px 4px !important;
+    }
+    
+    .group-drop-zone td {
+        padding: 10px 5px !important;
+        font-size: 10px !important;
+    }
+    
+    .drop-zone-content {
+        min-height: 30px;
+        font-size: 10px;
+    }
+}
+
+/* Estilos para reordenamiento de secuencias */
+.drop-indicator {
+    pointer-events: none;
+    opacity: 0.8;
+    animation: dropPulse 1s infinite;
+}
+
+@keyframes dropPulse {
+    0%, 100% { 
+        background-color: #3498db; 
+        box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+    }
+    50% { 
+        background-color: #2980b9; 
+        box-shadow: 0 0 10px rgba(52, 152, 219, 0.8);
+    }
+}
+
+.plan-row.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+    background-color: #34495e !important;
+    transition: all 0.2s ease;
+}
+
+.plan-row {
+    transition: background-color 0.2s ease;
+    cursor: grab;
+}
+
+.plan-row:active {
+    cursor: grabbing;
+}
+
+.plan-row:hover {
+    background-color: rgba(52, 73, 94, 0.3) !important;
+}
+
+/* Indicador visual de zona de drop activa */
+.group-drop-zone.active {
+    background-color: #20688C !important;
+    border-color: #3498db !important;
+    animation: dropZonePulse 1.5s infinite;
+}
+
+@keyframes dropZonePulse {
+    0%, 100% { 
+        background-color: #20688C; 
+    }
+    50% { 
+        background-color: #2980b9; 
+    }
+}
+
+/* Feedback de éxito para drop zones */
+.drop-zone-success {
+    color: #27ae60 !important;
+    font-weight: bold !important;
+    animation: successFlash 0.3s ease;
+}
+
+@keyframes successFlash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Mejoras en la secuencia visual */
+.plan-row td:first-child {
+    position: relative;
+    font-weight: bold;
+    text-align: center;
+    min-width: 40px;
+}
+
+.plan-row td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background-color: #e74c3c;
+    border-radius: 2px;
+}

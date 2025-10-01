@@ -1,43 +1,366 @@
-<!-- TEMPLATE AJAX: Control de producción SMT -->
-<!-- SUFIJO ÚNICO: -control-produccion-smt -->
-<!-- CONTENEDOR DESTINO (EXTERNO): Control de produccion SMT-unique-container -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PLAN SMD</title>
+  <style>
+    /* ==========================
+       PLAN SMD – Builder de Plan (IDs únicos)
+       ========================== */
+    :root {
+      --bg-1: #32323E;     /* fondo app */
+      --bg-2: #34334E;     /* barra herramientas */
+      --bg-3: #40424F;     /* fondo tarjetas/tabla */
+      --bg-4: #172A46;     /* encabezado tabla */
+      --txt-1: lightgray;  /* texto base */
+      --txt-2: #ecf0f1;    /* texto claro */
+      --muted: #95a5a6;
+      --muted-2: #5F6375;
+      --accent-1: #3498db; /* azul */
+      --accent-2: #20688C; /* borde */
+      --ok: #27ae60;       /* verde */
+      --warn: #e67e22;     /* naranja */
+      --err: #e74c3c;      /* rojo */
+      --purple: #502696;
+      --green-btn: #456636;
+      --chip: #2c3e50;
+      --shadow: rgba(0,0,0,0.1);
+      --yellow: #caa300;
+    }
 
-<div id="control-produccion-smt-main-container-unique-control-produccion-smt" class="control-produccion-smt-container">
-	<h2 style="margin: 0 0 12px 0; color: #E0E0E0;">Control de producción SMT</h2>
-	<div class="contenido-placeholder" style="color: #B0B3B8; font-size: 13px;">
-		Este es el fragmento AJAX para Control de producción SMT. Sustituye este contenido con el módulo real.
-	</div>
-</div>
+    .smd-container { 
+      font-family: "LG regular", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; 
+      background: var(--bg-1); 
+      color: var(--txt-1); 
+      min-height: 100vh; 
+      padding: 8px; 
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
 
-<style>
-.control-produccion-smt-container {
-	padding: 16px;
-	background-color: #2B2D3E;
-	color: #E0E0E0;
-	border: 1px solid #3C3F51;
-	border-radius: 4px;
-}
-</style>
+    /* Top bar */
+    .smd-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px; background: var(--bg-2); border: 1px solid var(--accent-2); box-shadow: 0 2px 10px var(--shadow); border-radius: 6px; }
+    .smd-input, .smd-select, .smd-date { background: #2c3e50; color: var(--txt-1); border: 1px solid #34495e; border-radius: 4px; padding: 8px 10px; font-size: 12px; min-height: 34px; }
+    .smd-input::placeholder { color: #95a5a6; font-style: italic; }
+    .smd-btn { padding: 6px 10px; border: 1px solid var(--accent-2); border-radius: 4px; background: #3C3940; color: #fff; cursor: pointer; font-size: 11px; font-weight: 600; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+    .smd-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(52,152,219,.25); background: #2980b9; }
+    .smd-btn.prim { background: #3C3940; }
+    .smd-btn.warn { background: var(--warn); }
+    .smd-btn.save { background: var(--green-btn); }
+    .smd-btn.purple { background: var(--purple); }
 
-<script>
-(function() {
-	window.inicializarControlProduccionSMTModule = function() {
-		try {
-			// Inicialización mínima del módulo (sin emojis)
-			console.log('Inicializando Control de producción SMT AJAX...');
-			console.log('Control de producción SMT AJAX inicializado');
-		} catch (e) {
-			console.error('Error inicializando Control de producción SMT AJAX:', e);
-		}
-	};
+    /* Disposición principal - TODAS LAS TABLAS VERTICALES */
+    .smd-grid { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 15px; 
+      margin-top: 8px; 
+      height: auto;
+      min-height: calc(100vh - 120px);
+      padding-bottom: 20px;
+    }
+    .smd-col { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 15px; 
+      width: 100%;
+    }
 
-	// Auto-ejecutar inicialización si el DOM ya está listo
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', window.inicializarControlProduccionSMTModule);
-	} else {
-		window.inicializarControlProduccionSMTModule();
-	}
-})();
-</script>
+    .smd-card { 
+      background: var(--bg-3); 
+      border-radius: 8px; 
+      box-shadow: 0 2px 10px var(--shadow); 
+      border: 1px solid var(--accent-2); 
+      overflow: hidden; 
+      display: flex;
+      flex-direction: column;
+      height: 450px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .smd-card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; background: #2d3c4e; border-bottom: 1px solid var(--accent-2); }
+    .smd-card-header h2 { font-size: 14px; margin: 0; color: var(--txt-2); }
+    .smd-counter { color: var(--accent-1); font-size: 11px; }
 
+    .smd-summary { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--accent-2); }
+    .smd-chip { background: var(--chip); color: var(--txt-2); border: 1px solid #34495e; padding: 6px 8px; font-size: 11px; border-radius: 999px; }
 
+    /* Tablas */
+    .smd-table-container { 
+      overflow: auto; 
+      height: 100%; 
+      min-height: 300px; 
+      border: 1px solid var(--accent-2); 
+      border-radius: 6px; 
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .smd-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; background: var(--bg-3); }
+    .smd-table th { position: sticky; top: 0; z-index: 5; background: var(--bg-4); color: var(--txt-2); padding: 6px 4px; border: 1px solid var(--accent-2); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+    .smd-table td { padding: 6px 4px; text-align: center; border: 1px solid var(--muted-2); color: var(--txt-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+    .smd-table tr:hover td { background: #485563; }
+    .smd-table tr:nth-child(even) td { background: #44475A; }
+    .smd-table tr:nth-child(even):hover td { background: #485563; }
+    .smd-no-data { text-align: center; padding: 14px; color: var(--muted); font-style: italic; }
+
+    /* Badges estado */
+    .smd-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .2px; border: 1px solid transparent; }
+    .smd-badge.CREADA { background: #3C3940; color: #ddd; border-color: #666; }
+    .smd-badge.PLANIFICADA { background: #1f3a5b; color: #bfe4ff; border-color: #2b6ea5; }
+    .smd-badge.EN_PRODUCCION { background: #5a3b17; color: #ffe1b7; border-color: #d27a1b; }
+    .smd-badge.CERRADA { background: #103d25; color: #bff3d1; border-color: #27ae60; }
+
+    /* Inputs inline de plan - ALTA ESPECIFICIDAD */
+    .smd-container .smd-card .smd-table .smd-inline-input,
+    #planSmdApp .smd-inline-input,
+    .smd-table .smd-inline-input { 
+      width: 50px !important; 
+      background: #34495e !important; 
+      color: #ecf0f1 !important; 
+      border: 1px solid #2c3e50 !important; 
+      border-radius: 3px !important; 
+      padding: 1px 4px !important; 
+      font-size: 10px !important; 
+      transition: all 0.2s ease !important;
+      font-family: inherit !important;
+    }
+    .smd-container .smd-card .smd-table .smd-inline-input:hover,
+    #planSmdApp .smd-inline-input:hover,
+    .smd-table .smd-inline-input:hover { 
+      background: #3c5670 !important; 
+      border-color: #4a6b8a !important; 
+    }
+    .smd-container .smd-card .smd-table .smd-inline-input:focus,
+    #planSmdApp .smd-inline-input:focus,
+    .smd-table .smd-inline-input:focus { 
+      background: #455a75 !important; 
+      border-color: #3498db !important; 
+      outline: none !important; 
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2) !important;
+    }
+    .smd-container .smd-card .smd-table .smd-inline-select,
+    #planSmdApp .smd-inline-select,
+    .smd-table .smd-inline-select { 
+      width: 60px !important; 
+      background: #34495e !important; 
+      color: #ecf0f1 !important; 
+      border: 1px solid #2c3e50 !important; 
+      border-radius: 3px !important; 
+      padding: 1px 4px !important; 
+      font-size: 10px !important; 
+      transition: all 0.2s ease !important;
+      font-family: inherit !important;
+    }
+    .smd-container .smd-card .smd-table .smd-inline-select:hover,
+    #planSmdApp .smd-inline-select:hover,
+    .smd-table .smd-inline-select:hover { 
+      background: #3c5670 !important; 
+      border-color: #4a6b8a !important; 
+    }
+    .smd-container .smd-card .smd-table .smd-inline-select:focus,
+    #planSmdApp .smd-inline-select:focus,
+    .smd-table .smd-inline-select:focus { 
+      background: #455a75 !important; 
+      border-color: #3498db !important; 
+      outline: none !important; 
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2) !important;
+    }
+    .smd-inline-wide { width: 120px; }
+
+    .smd-tag-yellow { background: #4c4310; border:1px solid #7a6d14; color:#ffec99; border-radius: 8px; padding:2px 6px; font-size:10px; }
+
+    .smd-actions { display:flex; gap:6px; align-items:center; flex-wrap: wrap; }
+
+    /* Modales */
+    .smd-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9999; align-items: center; justify-content: center; }
+    .smd-modal { background: #2c3e50; border: 2px solid var(--accent-1); border-radius: 12px; padding: 20px; min-width: 320px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,.35); text-align: center; }
+    .smd-spinner { width: 40px; height: 40px; border: 4px solid #34495e; border-top: 4px solid var(--accent-1); border-radius: 50%; animation: smd-spin 1s linear infinite; margin: 12px auto; }
+    @keyframes smd-spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 1200px) { 
+      .smd-grid { 
+        gap: 10px;
+        margin-top: 5px;
+      } 
+      .smd-col {
+        gap: 10px;
+      }
+      .smd-card {
+        height: 210px;
+      }
+      .smd-table-container {
+        min-height: 250px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .smd-card {
+        height: 350px;
+      }
+      .smd-table-container {
+        min-height: 200px;
+      }
+      .smd-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .smd-input, .smd-select, .smd-date {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="smd-container" id="planSmdApp">
+
+    <!-- Toolbar de filtros (IDs únicos) -->
+    <section class="smd-toolbar" id="smdToolbar">
+      <input id="smdQuery" class="smd-input" type="text" placeholder="Buscar por WO / PO / Modelo / Código de modelo" aria-label="Buscar" />
+      <select id="smdEstado" class="smd-select" aria-label="Filtro por estado">
+        <option value="CREADA" selected>CREADA (por defecto)</option>
+        <option value="PLANIFICADA">PLANIFICADA</option>
+        <option value="EN_PRODUCCION">EN_PRODUCCION</option>
+        <option value="CERRADA">CERRADA</option>
+        <option value="TODOS">Todos los estados</option>
+      </select>
+      <input id="smdFechaDesde" class="smd-date" type="date" aria-label="Fecha desde" />
+      <input id="smdFechaHasta" class="smd-date" type="date" aria-label="Fecha hasta" />
+      <button id="smdBtnConsultar" class="smd-btn prim" type="button">Consultar WO</button>
+      <button id="smdBtnLimpiar" class="smd-btn" type="button">Limpiar</button>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;">
+        <input id="smdOnlyShortage" type="checkbox" checked /> Sólo faltantes (Main)
+      </label>
+    </section>
+
+    <!-- Layout principal: izquierda tablas WO + Pendientes; derecha Plan generado -->
+    <section class="smd-grid" id="smdGrid">
+      <div class="smd-col">
+        <!-- WO disponibles -->
+        <article class="smd-card" id="smdWoCard">
+          <div class="smd-card-header">
+            <h2>Órdenes de Trabajo (WO) – disponibles</h2>
+            <div class="smd-actions">
+              <span class="smd-counter" id="smdWoCounter">0 resultados</span>
+            </div>
+          </div>
+          <div class="smd-table-container">
+            <table class="smd-table" id="smdWoTable" aria-describedby="smdWoCounter">
+              <thead>
+                <tr>
+                  <th id="smdThAcc">Añadir</th>
+                  <th id="smdThWO" title="Código de WO">WO</th>
+                  <th id="smdThPO" title="Código de PO">PO</th>
+                  <th id="smdThModelo" title="Modelo / Nombre">Modelo</th>
+                  <th id="smdThCodModelo" title="Código de modelo">Cod. Modelo</th>
+                  <th id="smdThCantPlan" title="Cantidad planeada">Cant. Plan</th>
+                  <th id="smdThFechaOp" title="Fecha de operación">Fecha Op.</th>
+                  <th id="smdThEstado" title="Estado de la WO">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="smdWoTbody">
+                <tr><td class="smd-no-data" colspan="8">Usa los filtros y pulsa <b>Consultar WO</b>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- Lista de pendientes (cola) -->
+        <article class="smd-card" id="smdQueueCard">
+          <div class="smd-card-header">
+            <h2>Pendientes para Plan</h2>
+            <div class="smd-actions">
+              <button id="smdBtnGenerarPlan" class="smd-btn purple" type="button">Generar Plan</button>
+              <span class="smd-counter" id="smdQueueCounter">0 WO en cola</span>
+            </div>
+          </div>
+          <div class="smd-table-container">
+            <table class="smd-table" id="smdQueueTable">
+              <thead>
+                <tr>
+                  <th>Quitar</th>
+                  <th>WO</th>
+                  <th>Modelo</th>
+                  <th>Cod. Modelo</th>
+                  <th>Plan</th>
+                  <th>Fecha Op.</th>
+                </tr>
+              </thead>
+              <tbody id="smdQueueTbody">
+                <tr><td class="smd-no-data" colspan="6">Agrega WO con el botón ➕ de la tabla superior.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- PLAN generado -->
+        <article class="smd-card" id="smdPlanCard">
+          <div class="smd-card-header">
+            <h2>PLAN SMD (propuesta)</h2>
+            <div class="smd-actions">
+              <button id="smdBtnExportarCSV" class="smd-btn" type="button">Exportar CSV</button>
+              <button id="smdBtnGuardarPlan" class="smd-btn save" type="button">Guardar plan</button>
+              <span class="smd-counter" id="smdPlanCounter">0 renglones</span>
+            </div>
+          </div>
+
+          <div class="smd-summary" id="smdPlanSummary">
+            <span class="smd-chip" id="smdChipPlanes">WO en plan: 0</span>
+            <span class="smd-chip" id="smdChipTotalQty">Qty total a producir: 0</span>
+            <span class="smd-chip" id="smdChipTotalFaltante">Faltante total: 0</span>
+          </div>
+
+          <div class="smd-table-container">
+            <table class="smd-table" id="smdPlanTable">
+              <thead>
+                <tr>
+                  <th>Línea</th>
+                  <th>WO</th>
+                  <th>N° Parte</th>
+                  <th>Modelo</th>
+                  <th>Tipo</th>
+                  <th>Turno</th>
+                  <th>C/T</th>
+                  <th>UPH</th>
+                  <th>QTY</th>
+                  <th>Físico</th>
+                  <th>Dif.</th>
+                  <th>Falta</th>
+                  <th>%</th>
+                  <th>Comentarios</th>
+                </tr>
+              </thead>
+              <tbody id="smdPlanTbody">
+                <tr><td class="smd-no-data" colspan="14">Genera el plan desde la lista de pendientes (izquierda).</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+    <!-- Modal de carga -->
+    <div class="smd-modal-backdrop" id="smdLoadingModal" aria-hidden="true">
+      <div class="smd-modal" role="dialog" aria-labelledby="smdLoadingTitle">
+        <h3 id="smdLoadingTitle" style="color: var(--accent-1); margin: 0 0 6px 0;">Cargando…</h3>
+        <p id="smdLoadingText" style="margin: 0; color: var(--txt-2);">Procesando</p>
+        <div class="smd-spinner" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- Modal de alerta -->
+    <div class="smd-modal-backdrop" id="smdAlertModal" aria-hidden="true">
+      <div class="smd-modal" role="dialog" aria-labelledby="smdAlertTitle">
+        <h3 id="smdAlertTitle" style="color: var(--txt-2); margin: 0 0 6px 0;">Aviso</h3>
+        <p id="smdAlertMsg" style="margin: 0; color: var(--txt-2);"></p>
+        <div style="margin-top: 12px;"><button id="smdAlertOk" class="smd-btn" type="button">Aceptar</button></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Plan SMD JavaScript Module -->
+  <script src="{{ url_for('static', filename='js/plan-smd-module.js') }}"></script>
+</body>
+</html>

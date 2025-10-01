@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Plan Main</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='index-styles.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="{{ url_for('static', filename='plan.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='index-functions.js') }}" defer></script>
+</head>
+<body id="plan-container">
+
+  <!-- Toolbar -->
+  <div id="plan-toolbar">
+    <button id="plan-openModalBtn" class="plan-btn plan-btn-add">+ Nuevo Plan</button>
+    <button id="wo-openModalBtn" class="plan-btn">Importar WOs</button>
+    <button id="export-excel-btn" class="plan-btn">Exportar Excel</button>
+    <button id="reschedule-openModalBtn" class="plan-btn">Reprogramar</button>
+    
+    <!-- Controles de Planeación -->
+    <div class="planning-controls">
+      <label>Grupos:</label>
+      <select id="groups-count" class="plan-input">
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5" selected>5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+      </select>
+      <button id="auto-arrange-btn" class="plan-btn">Auto Acomodo</button>
+      <button id="save-sequences-btn" class="plan-btn">Guardar Orden</button>
+    </div>
+    
+    <input type="date" id="filter-start" class="plan-input">
+    <button onclick="loadPlans()" class="plan-btn plan-btn-refresh">Filtrar</button>
+  </div>
+
+  <!-- Tabla -->
+  <div id="plan-table-container">
+    <table id="plan-table">
+      <thead>
+        <tr>
+          <th>Sec</th>
+          <th>Lot No</th>
+          <th>WO</th>
+          <th>PO</th>
+          <th>Fecha</th>
+          <th>Line</th>
+          <th>Turno</th>
+          <th>Model Code</th>
+          <th>Part No</th>
+          <th>Project</th>
+          <th>Process</th>
+          <th>CT</th>
+          <th>UPH</th>
+          <th>Plan</th>
+          <th>Input</th>
+          <th>Output</th>
+          <th>Status</th>
+          <!-- Columnas de planeación -->
+          <th>Tiempo</th>
+          <th>Inicio</th>
+          <th>Fin</th>
+          <th>Grupo</th>
+          <th>Turno</th>
+        </tr>
+      </thead>
+      <tbody id="plan-tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Modal crear -->
+  <div id="plan-modal" class="modal-overlay">
+    <div id="plan-modal-content">
+      <h3>Registrar Plan</h3>
+      <form id="plan-form">
+        <label>Fecha:</label>
+        <input type="date" name="working_date" required class="plan-input">
+
+        <label>Part No:</label>
+        <input type="text" name="part_no" required class="plan-input">
+
+        <label>Line:</label>
+        <input type="text" name="line" required class="plan-input">
+
+        <label>Turno:</label>
+        <select name="turno" class="plan-input">
+          <option value="DIA" selected>DIA</option>
+          <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
+          <option value="NOCHE">NOCHE</option>
+        </select>
+
+        <label>Plan Count:</label>
+        <input type="number" name="plan_count" value="0" class="plan-input">
+
+        <label>WO Code:</label>
+        <input type="text" name="wo_code" class="plan-input">
+
+        <label>PO Code:</label>
+        <input type="text" name="po_code" class="plan-input">
+
+        <div class="form-actions">
+          <button type="submit" class="plan-btn plan-btn-add">Registrar</button>
+          <button type="button" id="plan-closeModalBtn" class="plan-btn">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Editar -->
+  <div id="plan-editModal" class="modal-overlay">
+    <div id="plan-modal-content">
+      <h3>Editar Plan</h3>
+      <form id="plan-editForm">
+        <input type="hidden" name="lot_no">
+
+        <label>Turno:</label>
+        <select name="turno" class="plan-input">
+          <option value="DIA">DIA</option>
+          <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
+          <option value="NOCHE">NOCHE</option>
+        </select>
+
+        <label>Plan Count:</label>
+        <input type="number" name="plan_count" class="plan-input">
+
+        <label>WO Code:</label>
+        <input type="text" name="wo_code" class="plan-input">
+
+        <label>PO Code:</label>
+        <input type="text" name="po_code" class="plan-input">
+
+        <label>Line:</label>
+        <input type="text" name="line" class="plan-input">
+
+        <div class="form-actions-with-gap">
+          <div>
+            <button type="submit" class="plan-btn plan-btn-add">Guardar</button>
+            <button type="button" class="plan-btn">Cerrar</button>
+          </div>
+          <button type="button" id="plan-cancelBtn" class="plan-btn plan-btn-danger">Cancelar plan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Work Orders -->
+  <div id="wo-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Work Orders - Importar como Planes</h3>
+        <button id="wo-closeModalBtn" class="plan-btn modal-close-btn">✕</button>
+      </div>
+      
+      <!-- Filtros WO -->
+      <div class="modal-filters">
+        <label>Fecha:</label>
+        <input type="date" id="wo-filter-date" class="plan-input">
+        <label>Estado:</label>
+        <select id="wo-filter-estado" class="plan-input">
+          <option value="">Todos</option>
+          <option value="CREADA">CREADA</option>
+          <option value="PLANIFICADA">PLANIFICADA</option>
+          <option value="EN PROGRESO">EN PROGRESO</option>
+          <option value="CERRADA">CERRADA</option>
+        </select>
+        <button onclick="loadWorkOrders()" class="plan-btn">Buscar</button>
+        <button onclick="importAllSelectedWOs()" class="plan-btn plan-btn-add">Importar Seleccionados</button>
+      </div>
+
+      <!-- Tabla WOs -->
+      <div class="modal-table-container">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>
+                <input type="checkbox" id="wo-select-all" onchange="toggleAllWOs(this)">
+              </th>
+              <th>WO Code</th>
+              <th>PO Code</th>
+              <th>Modelo</th>
+              <th>Cantidad</th>
+              <th>Fecha Op.</th>
+              <th>Estado</th>
+              <th>Modificador</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="wo-tableBody">
+            <!-- WOs se cargan aquí -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-status">
+        <span id="wo-status">Seleccione los WOs que desea importar como planes</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Reprogramar -->
+  <div id="reschedule-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="reschedule-title">Reprogramar Planes</h3>
+        <button id="reschedule-closeModalBtn" class="btn-close-line">&times;</button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="reschedule-filters">
+        <label>Fecha Desde:</label>
+        <input type="date" id="reschedule-date-from" class="plan-input">
+        
+        <label>Fecha Hasta:</label>
+        <input type="date" id="reschedule-date-to" class="plan-input">
+        
+        <label>Nueva Fecha:</label>
+        <input type="date" id="reschedule-new-date" class="plan-input" required>
+        
+        <button onclick="loadPendingPlans()" class="plan-btn reschedule-search-btn">Buscar Pendientes</button>
+        <button onclick="reschedulePendingPlans()" class="plan-btn plan-btn-add">Reprogramar Seleccionados</button>
+      </div>
+
+      <!-- Tabla Planes Pendientes -->
+      <div class="modal-table-container">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th>
+                <input type="checkbox" id="reschedule-select-all" onchange="toggleAllReschedule(this)">
+              </th>
+              <th>LOT NO</th>
+              <th>Fecha Actual</th>
+              <th>Part No</th>
+              <th>Line</th>
+              <th>Plan Count</th>
+              <th>Input</th>
+              <th>Pendiente</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="reschedule-tableBody">
+            <!-- Planes pendientes se cargan aquí -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-status">
+        <span id="reschedule-status">Seleccione una fecha para buscar planes con input pendiente</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -4,15 +4,10 @@
             <li class="sidebar-section">
                 <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarProduccionSMT" aria-expanded="false">
                     <span class="sidebar-icon"></span>
-                    Control de produccion   
+                    Control de produccion SMT
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarProduccionSMT">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
-                            data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="Plan SMD Diario"
-                            onclick="window.parent.mostrarPlanSmdDiario ? window.parent.mostrarPlanSmdDiario() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('plan-smd-diario-unique-container', '/plan-smd-diario') : window.location.href='/plan-smd-diario')">Plan SMD Diario</li>
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
@@ -50,6 +45,16 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
+                            data-permiso-boton="Control de produccion ASSY"
+                            onclick="window.parent && window.parent.mostrarPlanMainASSY ? window.parent.mostrarPlanMainASSY() : (window.parent && window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('plan-main-assy-unique-container', '/plan-main-assy-ajax') : window.location.href='/plan-main')">Control de produccion ASSY</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
+                            data-permiso-seccion="Control de produccion" 
+                            data-permiso-boton="Control de operacion de linea Main"
+                            onclick="window.parent && window.parent.mostrarControlOperacionLineaMain ? window.parent.mostrarControlOperacionLineaMain() : (window.parent && window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('operacion-linea-main-unique-container', '/control-operacion-linea-main-ajax') : window.location.href='/control-main')">Control de operacion de linea ASSY</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
+                            data-permiso-seccion="Control de produccion" 
                             data-permiso-boton="Historial de operacion por proceso"
                             onclick="window.parent.mostrarHistorialOperacionProceso ? window.parent.mostrarHistorialOperacionProceso() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-operacion-proceso-unique-container', '/historial-operacion-proceso-ajax') : window.location.href='/control_proceso/historial_operacion_proceso')">Historial de operacion por proceso</li>
                     <li class="sidebar-link" tabindex="0" 
@@ -57,11 +62,7 @@
                             data-permiso-seccion="Control de produccion" 
                             data-permiso-boton="BOM Management By Process"
                             onclick="window.parent.mostrarBOMManagementProcess ? window.parent.mostrarBOMManagementProcess() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('bom-management-process-unique-container', '/bom-management-process-ajax') : window.location.href='/control_proceso/bom_management_process')">BOM Management By Process</li> 
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
-                            data-permiso-seccion="Control de produccion" 
-                            data-permiso-boton="Control BOM"
-                            onclick="window.parent.mostrarControlBOM ? window.parent.mostrarControlBOM() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('bom-unique-container', '/control-bom-ajax') : window.location.href='/control_proceso/control_bom')">Control BOM</li>
+
                 </ul>
             </li>
             <li class="sidebar-section">

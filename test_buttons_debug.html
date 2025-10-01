@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test de Event Listeners</title>
+</head>
+<body>
+    <h1>Test de Debug de Botones</h1>
+    <button id="auto-arrange-btn">Auto Acomodo</button>
+    <button id="export-excel-btn">Exportar Excel</button>
+    <button id="save-sequences-btn">Guardar Orden</button>
+    
+    <div id="output" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;">
+        <h3>Logs:</h3>
+        <div id="log-container"></div>
+    </div>
+
+    <script>
+        // Simular funciones
+        window.autoArrangePlans = function() {
+            log('✅ autoArrangePlans fue llamada');
+        };
+        
+        window.exportarExcel = function() {
+            log('✅ exportarExcel fue llamada');
+        };
+        
+        window.saveGroupSequences = function() {
+            log('✅ saveGroupSequences fue llamada');
+        };
+        
+        function log(message) {
+            const logContainer = document.getElementById('log-container');
+            const logEntry = document.createElement('div');
+            logEntry.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            logContainer.appendChild(logEntry);
+            console.log(message);
+        }
+        
+        // Event delegation similar al que usamos
+        document.body.addEventListener('click', function(e) {
+            const target = e.target;
+            
+            log('Click detectado en: ' + target.id);
+            
+            if (target.id === 'auto-arrange-btn' || target.closest('#auto-arrange-btn')) {
+                e.preventDefault();
+                log('🎯 Click en auto-arrange-btn detectado');
+                if (typeof window.autoArrangePlans === 'function') {
+                    window.autoArrangePlans();
+                } else {
+                    log('❌ autoArrangePlans no es una función');
+                }
+                return;
+            }
+            
+            if (target.id === 'export-excel-btn' || target.closest('#export-excel-btn')) {
+                e.preventDefault();
+                log('🎯 Click en export-excel-btn detectado');
+                if (typeof window.exportarExcel === 'function') {
+                    window.exportarExcel();
+                } else {
+                    log('❌ exportarExcel no es una función');
+                }
+                return;
+            }
+            
+            if (target.id === 'save-sequences-btn' || target.closest('#save-sequences-btn')) {
+                e.preventDefault();
+                log('🎯 Click en save-sequences-btn detectado');
+                if (typeof window.saveGroupSequences === 'function') {
+                    window.saveGroupSequences();
+                } else {
+                    log('❌ saveGroupSequences no es una función');
+                }
+                return;
+            }
+        });
+        
+        log('Event delegation configurado');
+        log('Verificando si las funciones existen:');
+        log('- autoArrangePlans: ' + (typeof window.autoArrangePlans));
+        log('- exportarExcel: ' + (typeof window.exportarExcel));
+        log('- saveGroupSequences: ' + (typeof window.saveGroupSequences));
+    </script>
+</body>
+</html>

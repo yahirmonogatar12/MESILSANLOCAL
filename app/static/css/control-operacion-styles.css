@@ -1,0 +1,652 @@
+/* Estilos específicos para Control de operacion de linea Main.html */
+
+/* Reset y estilos base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Estilos de scrollbar minimalista */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #2B2D3E;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #5A5C6B;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6B6D7C;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #5A5C6B #2B2D3E;
+}
+
+/* Contenedor principal */
+.control-operacion-linea-smt-container {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    font-size: 12px;
+    overflow-x: hidden;
+    width: 100%;
+    min-height: 100vh;
+    padding: 5px;
+}
+
+/* Barra de título */
+.title-bar {
+    background-color: #3C3F52;
+    padding: 10px 15px;
+    border: 1px solid #20688C;
+    border-radius: 4px 4px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #E0E0E0;
+}
+
+/* Contenedor del formulario superior */
+.form-container {
+    background-color: #40424F;
+    border: 1px solid #20688C;
+    border-top: none;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+/* Etiquetas */
+.form-label {
+    color: #E0E0E0;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* Campos de entrada */
+.form-input {
+    background-color: #2C3E50;
+    color: #E0E0E0;
+    border: 1px solid #34495E;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+    min-width: 200px;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3498DB;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Inputs flexibles */
+.input-flex-1 {
+    flex: 1;
+}
+
+.input-flex-2 {
+    flex: 2;
+}
+
+/* Inputs de fecha */
+.input-date {
+    min-width: 150px;
+}
+
+/* Botones principales */
+.btn-primary {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 4px;
+    background-color: #3498DB;
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-primary:hover {
+    background-color: #2980B9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Botón Iniciar */
+.btn-iniciar {
+    background-color: #3498DB;
+}
+
+.btn-iniciar:hover {
+    background-color: #2980B9;
+}
+
+/* Botón Fin */
+.btn-fin {
+    background-color: #E74C3C;
+}
+
+.btn-fin:hover {
+    background-color: #C0392B;
+}
+
+/* Botón Pausa */
+.btn-pausa {
+    background-color: #95A5A6;
+}
+
+.btn-pausa:hover {
+    background-color: #7F8C8D;
+}
+
+/* Barra de herramientas de consulta */
+.query-toolbar {
+    background-color: #34334E;
+    border: 1px solid #20688C;
+    padding: 10px 15px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+/* Dropdowns */
+.dropdown {
+    background-color: #2C3E50;
+    color: #E0E0E0;
+    border: 1px solid #34495E;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 180px;
+    cursor: pointer;
+}
+
+.dropdown:focus {
+    outline: none;
+    border-color: #3498DB;
+}
+
+/* Estilos específicos para inputs de fecha */
+input[type="date"].dropdown {
+    color-scheme: dark;
+    background-color: #2C3E50;
+    color: #E0E0E0;
+}
+
+/* Personalizar el calendario del input date */
+input[type="date"].dropdown::-webkit-calendar-picker-indicator {
+    background-color: #3498DB;
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+/* Botón Consultar */
+.btn-consultar {
+    background-color: #3C3F52;
+    border: 2px solid #FFB74D;
+}
+
+.btn-consultar:hover {
+    background-color: #4A4D60;
+    border-color: #FFA726;
+}
+
+/* Botón de exportar específico */
+.btn-exportar {
+    background-color: #27AE60;
+    margin-left: auto;
+}
+
+.btn-exportar:hover {
+    background-color: #229954;
+}
+
+/* Tabla principal */
+.main-table-container {
+    background-color: #40424F;
+    margin-top: 5px;
+    border: 1px solid #20688C;
+    overflow-x: auto;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background-color: #172A46;
+    color: #E0E0E0;
+    padding: 6px 6px;
+    text-align: left;
+    border: 1px solid #20688C;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.data-table td {
+    padding: 4px 5px;
+    text-align: left;
+    border: 1px solid #5F6375;
+    background-color: #40424F;
+    color: #E0E0E0;
+    font-size: 10px;
+    line-height: 1.2;
+    transition: background-color 0.3s;
+}
+
+.data-table td.mono {
+    font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+    text-align: center;
+}
+
+.data-table tr:hover td {
+    background-color: #485563;
+}
+
+.data-table tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+.data-table tr:nth-child(even):hover td {
+    background-color: #485563;
+}
+
+/* Fila en modo focus */
+.data-table tbody tr {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.data-table tr.focused-row td {
+    background-color: #3498DB !important;
+    color: #FFFFFF !important;
+    font-weight: 500;
+    border-color: #2980B9 !important;
+}
+
+.data-table tr.focused-row:hover td {
+    background-color: #2980B9 !important;
+}
+
+.data-table tr.focused-row .status-tag {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Estilos para modo focus */
+.title-bar.focus-mode {
+    background: linear-gradient(135deg, #27ae60, #2c3e50);
+    animation: focusPulse 2s ease-in-out infinite;
+}
+
+@keyframes focusPulse {
+    0%, 100% { 
+        box-shadow: 0 0 5px rgba(39, 174, 96, 0.5); 
+    }
+    50% { 
+        box-shadow: 0 0 15px rgba(39, 174, 96, 0.8); 
+    }
+}
+
+/* Efecto hover mejorado para doble clic */
+.data-table tbody tr:hover {
+    cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.4), 0 2px 6px rgba(52, 152, 219, 0.25);
+}
+
+.data-table tbody tr:active {
+    box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.6), 0 2px 4px rgba(52, 152, 219, 0.35);
+}
+
+/* Tooltip deshabilitado */
+.data-table tbody tr::before {
+    display: none;
+}
+
+/* Tags de estado para la tabla */
+.status-tag {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    text-align: center;
+    min-width: 40px;
+}
+
+.status-tag.completed {
+    background: rgba(39, 174, 96, 0.15);
+    border: 1px solid rgba(39, 174, 96, 0.5);
+    color: #27ae60;
+}
+
+.status-tag.partial {
+    background: rgba(243, 156, 18, 0.12);
+    border: 1px solid rgba(243, 156, 18, 0.4);
+    color: #f39c12;
+}
+
+.status-tag.partial.running {
+    animation: statusPulse 1.8s ease-in-out infinite;
+}
+
+.status-tag.partial.paused {
+    border-style: dashed;
+}
+
+@keyframes statusPulse {
+    0% { box-shadow: 0 0 0 0 rgba(243,156,18,0.25); }
+    70% { box-shadow: 0 0 6px 3px rgba(243,156,18,0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(243,156,18,0.0); }
+}
+
+.status-tag.pending {
+    background: rgba(52, 152, 219, 0.12);
+    border: 1px solid rgba(52, 152, 219, 0.4);
+    color: #3498db;
+}
+
+/* Barra de progreso para la tabla */
+.progress-bar {
+    height: 10px;
+    background: #2c3e50;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #20688C;
+    position: relative;
+    min-width: 80px;
+}
+
+.progress-bar > span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #27ae60);
+    transition: width 0.5s ease;
+    border-radius: 4px;
+}
+
+/* Grid de secciones */
+.sections-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* Sección panel */
+.section-panel {
+    background-color: #40424F;
+    border: 2px solid #20688C;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.section-header {
+    background-color: #172A46;
+    padding: 10px 15px;
+    border-bottom: 1px solid #20688C;
+    font-size: 12px;
+    font-weight: 600;
+    color: #E0E0E0;
+}
+
+.section-toolbar {
+    background-color: #34334E;
+    padding: 10px 15px;
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid #20688C;
+    flex-wrap: wrap;
+}
+
+/* Botón Verif. Pass */
+.btn-verif {
+    background-color: #2C3E50;
+    border: 1px solid #34495E;
+}
+
+.btn-verif:hover {
+    background-color: #34495E;
+}
+
+/* Botón Registro */
+.btn-registro {
+    background-color: #E67E22;
+}
+
+.btn-registro:hover {
+    background-color: #D35400;
+}
+
+/* Botón Activar */
+.btn-activar {
+    background-color: #3498DB;
+}
+
+.btn-activar:hover {
+    background-color: #2980B9;
+}
+
+/* Botón Registrar (morado) */
+.btn-registrar {
+    background-color: #8E44AD;
+}
+
+.btn-registrar:hover {
+    background-color: #7B3A9D;
+}
+
+/* Contenedor de tabla de sección */
+.section-table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    background-color: #40424F;
+    min-height: 150px;
+    max-height: 400px;
+}
+
+/* Tabla de sección */
+.section-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.section-table th {
+    background-color: #2C3E50;
+    color: #E0E0E0;
+    padding: 8px 6px;
+    text-align: left;
+    border: 1px solid #34495E;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.section-table td {
+    padding: 20px;
+    text-align: center;
+    color: #95A5A6;
+    font-style: italic;
+    background-color: #40424F;
+}
+
+/* Footer de sección */
+.section-footer {
+    background-color: #2C3E50;
+    padding: 8px 15px;
+    color: #E0E0E0;
+    font-size: 11px;
+    border-top: 1px solid #34495E;
+}
+
+/* Grid de secciones inferiores */
+.bottom-sections-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* Checkbox */
+.table-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #3498DB;
+}
+
+/* Separador */
+.separator {
+    color: #7F8C8D;
+    margin: 0 5px;
+}
+
+/* Botón cerrar línea */
+.btn-close-line {
+    background-color: transparent;
+    color: #E0E0E0;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-close-line:hover {
+    color: #E74C3C;
+    background-color: rgba(231, 76, 60, 0.1);
+    border-radius: 3px;
+}
+
+/* Estilos para el loading de CT y UPH */
+.loading {
+    color: #888;
+    font-style: italic;
+    animation: loadingDots 1.5s infinite;
+}
+
+@keyframes loadingDots {
+    0%, 20% { opacity: 0.3; }
+    40% { opacity: 0.6; }
+    60%, 80% { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
+.ct-cell, .uph-cell {
+    transition: color 0.3s ease;
+}
+
+.ct-cell[title*="Error"], .uph-cell[title*="Error"] {
+    color: #ff6b6b;
+}
+
+/* Ocultar permanentemente columnas Selector e ID */
+.data-table th:first-child,
+.data-table td:first-child,
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+    display: none;
+}
+
+/* Ocultar columna de selección en modo focus */
+.data-table.focus-mode th:first-child,
+.data-table.focus-mode td:first-child { 
+    display: none; 
+}
+
+/* Asegurar que filas de mensajes/loader no sean afectadas por ocultar columnas */
+.data-table tr.loading-row td,
+.data-table tr.message-row td,
+.data-table tr.empty-row td {
+    display: table-cell !important;
+}
+
+/* Contenedores con flex y gap */
+.container-flex-gap {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+}
+
+/* Placeholder oculto */
+.plan-placeholder {
+    display: none;
+}
+
+/* Estilos de tabla específicos */
+.table-width-30 {
+    width: 30px;
+}
+
+/* Celdas de tabla con colspan */
+.table-cell-loading {
+    display: table-cell;
+    text-align: center;
+    padding: 28px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .sections-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bottom-sections-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .form-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .query-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .dropdown, .form-input {
+        width: 100%;
+    }
+
+    .btn-primary {
+        width: 100%;
+    }
+
+    .section-toolbar {
+        flex-direction: column;
+    }
+}

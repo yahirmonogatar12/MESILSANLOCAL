@@ -1,0 +1,138 @@
+<div id="control-operacion-linea-Main-unique-container" class="control-operacion-linea-smt-container">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/control-operacion-styles.css') }}">
+
+    <div class="title-bar">Consultar el numero de lote</div>
+    
+    <div class="form-container">
+        <label class="form-label">Numero de lote</label>
+        <input type="text" id="numeroLote-Control de operacion de linea Main" class="form-input input-flex-1">
+        <label class="form-label">Informacion de numero de lote</label>
+        <input type="text" id="infoNumeroLote-Control de operacion de linea Main" class="form-input input-flex-2" readonly>
+        <button id="btnIniciar-Control de operacion de linea Main" class="btn-primary btn-iniciar">Iniciar(reiniciar)</button>
+        <button id="btnFin-Control de operacion de linea Main" class="btn-primary btn-fin">Fin</button>
+        <button id="btnPausa-Control de operacion de linea Main" class="btn-primary btn-pausa">Pausa</button>
+    </div>
+
+    <div class="query-toolbar">
+        <label class="form-label">Fecha de prod.</label>
+        <input type="date" id="fechaDesde-Control de operacion de linea Main" class="dropdown input-date">
+        <span class="separator">~</span>
+        <input type="date" id="fechaHasta-Control de operacion de linea Main" class="dropdown input-date">
+        <label class="form-label">Linea</label>
+        <select id="linea-Control de operacion de linea Main" class="dropdown">
+            <option value="Todos">Todos</option>
+            <option value="M1">M1</option>
+            <option value="M2">M2</option>
+            <option value="M3">M3</option>
+            <option value="M4">M4</option>
+            <option value="D1">D1</option>
+            <option value="D2">D2</option>
+            <option value="D3">D3</option>
+            <option value="H">H1</option>
+        </select>
+        <button id="btnCloseLine-Control de operacion de linea Main" class="btn-close-line" title="Cerrar">×</button>
+        <div class="container-flex-gap">
+            <button id="btnConsultar-Control de operacion de linea Main" class="btn-primary btn-consultar">Consultar</button>
+            <button id="btnExportarMain-Control de operacion de linea Main" class="btn-primary btn-exportar">Exportar el excel</button>
+            <button id="btnIrPlanMain-Control de operacion de linea Main" class="btn-primary" onclick="(window.parent && window.parent.mostrarPlanMainASSY) ? window.parent.mostrarPlanMainASSY() : (window.location.href='/plan-main')">Plan Main</button>
+        </div>
+    </div>
+
+    <div class="main-table-container">
+        <div id="plan-placeholder" class="plan-placeholder"></div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 30px;"><input type="checkbox" class="table-checkbox"></th>
+                    <th>ID</th>
+                    <th>Línea</th>
+                    <th>Lote</th>
+                    <th>NParte</th>
+                    <th>Modelo</th>
+                    <th>Proceso</th>
+                    <th>CT</th>
+                    <th>UPH</th>
+                    <th>Qty</th>
+                    <th>Producido</th>
+                    <th>Falta</th>
+                    <th>%</th>
+                    <th>Avance</th>
+                    <th>Fecha Trabajo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-plan-data">
+                <tr class="loading-row">
+                    <td colspan="16" class="table-cell-loading">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/plan-main-loader.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/plan-main-integration.js') }}"></script>
+
+    <div class="sections-grid">
+        <div class="section-panel">
+            <div class="section-header">Lista de BOM</div>
+            <div class="section-toolbar">
+                <button id="btnExportarBOM-Control de operacion de linea Main" class="btn-primary btn-exportar">Exportar el excel</button>
+                <button id="btnVerifPass-Control de operacion de linea Main" class="btn-primary btn-verif">Verif. Pass</button>
+                <button id="btnRegistroMat-Control de operacion de linea Main" class="btn-primary btn-registro">Registro de mat. sustituto</button>
+                <button id="btnActivarComb-Control de operacion de linea Main" class="btn-primary btn-activar">Activar la combinacion</button>
+            </div>
+            <div class="section-table-container">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th class="table-width-30"><input type="checkbox" class="table-checkbox"></th>
+                            <th>Numer...</th>
+                            <th>Numer...</th>
+                            <th>Codigo...</th>
+                            <th>Numer...</th>
+                            <th>Resulta...</th>
+                            <th>Resulta...</th>
+                            <th>Verifica...</th>
+                            <th>Activar...</th>
+                            <th>Uso de...</th>
+                            <th>Tiempo...</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="11">No hay dato registrado</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="section-footer">Total Rows : 0</div>
+        </div>
+
+        <div class="section-panel">
+            <div class="section-header">Historial de cambio de material</div>
+            <div class="section-toolbar">
+                <button id="btnExportarHistorial-Control de operacion de linea Main" class="btn-primary btn-exportar">Exportar el excel</button>
+            </div>
+            <div class="section-table-container">
+                <table class="section-table">
+                    <thead>
+                        <tr>
+                            <th>Equipment</th>
+                            <th>Slot No</th>
+                            <th>Regist Date</th>
+                            <th>Warehousing</th>
+                            <th>Regist Quantity</th>
+                            <th>Current Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialHistoryTableBody-Control de operacion de linea SMT">
+                        <tr>
+                            <td colspan="6">Cargando datos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="section-footer" id="materialHistoryFooter-Control de operacion de linea Main">Total Rows : 0</div>
+        </div>
+    </div>
+</div>

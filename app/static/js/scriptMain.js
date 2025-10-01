@@ -136,6 +136,9 @@
                 // Ocultar todos los contenedores AJAX de Control de Proceso
                 const controlProcesoAjaxContainers = [
                     'plan-smd-diario-unique-container',
+                    'operacion-linea-smt-unique-container',
+                    'operacion-linea-main-unique-container',
+                    'plan-main-assy-unique-container',
                     'control-impresion-identificacion-smt-unique-container',
                     'control-registro-identificacion-smt-unique-container',
                     'historial-operacion-proceso-unique-container',
@@ -921,6 +924,80 @@
                 } catch (error) {
                     console.error('Error crítico en mostrarControlOperacionLineaSMT:', error);
                     alert('Error crítico al cargar Control de operación de línea SMT. Consulte la consola para más detalles.');
+                }
+            };
+
+            // Función AJAX: Control de operación de línea Main
+            window.mostrarControlOperacionLineaMain = function() {
+                try {
+                    // Activar sección Control de proceso
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => { if (btn.id !== 'Control de proceso') btn.classList.remove('active'); });
+                    }
+                    // Ocultar todo
+                    if (typeof window.hideAllMaterialContainers === 'function') window.hideAllMaterialContainers();
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') window.hideAllInformacionBasicaContainers();
+                    // Mostrar área de Control de proceso
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+                    // Contenedor específico
+                    const containerId = 'operacion-linea-main-unique-container';
+                    const cont = document.getElementById(containerId);
+                    if (!cont) return console.error('Contenedor no existe:', containerId);
+                    cont.style.display = 'block';
+                    cont.style.opacity = '1';
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico(containerId, '/control-operacion-linea-main-ajax', () => {
+                            if (typeof window.inicializarControlOperacionLineaMainAjax === 'function') {
+                                window.inicializarControlOperacionLineaMainAjax();
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error en mostrarControlOperacionLineaMain:', e);
+                }
+            };
+
+            // Función AJAX: Plan Main ASSY
+            window.mostrarPlanMainASSY = function() {
+                try {
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => { if (btn.id !== 'Control de proceso') btn.classList.remove('active'); });
+                    }
+                    if (typeof window.hideAllMaterialContainers === 'function') window.hideAllMaterialContainers();
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') window.hideAllInformacionBasicaContainers();
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+                    const containerId = 'plan-main-assy-unique-container';
+                    const cont = document.getElementById(containerId);
+                    if (!cont) return console.error('Contenedor no existe:', containerId);
+                    cont.style.display = 'block';
+                    cont.style.opacity = '1';
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico(containerId, '/plan-main-assy-ajax', () => {
+                            // Inicializar event listeners de plan después de cargar contenido dinámico
+                            console.log('📦 Contenido de Plan Main ASSY cargado, inicializando listeners...');
+                            if (typeof window.initializePlanEventListeners === 'function') {
+                                window.initializePlanEventListeners();
+                            } else {
+                                console.warn('⚠️ initializePlanEventListeners no disponible');
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error en mostrarPlanMainASSY:', e);
                 }
             };
 

@@ -21,7 +21,7 @@ def obtener_fecha_hora_mexico():
         # Fallback a hora local
         return datetime.now()
 
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_file, send_from_directory
 from .db import (get_db_connection, init_db, test_database_connection,
                 agregar_entrada_aereo, obtener_entradas_aereo,
                 agregar_control_material_almacen, obtener_control_material_almacen,
@@ -497,6 +497,650 @@ def logout():
     session.clear()
     
     return redirect(url_for('login'))
+
+# =============================
+# FRONT PLAN: Vistas y estáticos
+# =============================
+
+# Alias para servir los assets originales de FRONT PLAN ubicados en
+# app/FRONT PLAN/static sin depender de moverlos físicamente.
+@app.route('/front-plan/static/<path:filename>')
+def front_plan_static(filename):
+    try:
+        base_dir = os.path.join(os.path.dirname(__file__), 'FRONT PLAN', 'static')
+        return send_from_directory(base_dir, filename)
+    except Exception as e:
+        return jsonify({'error': f'Recurso no encontrado: {str(e)}'}), 404
+
+@app.route('/plan-main')
+@login_requerido
+def view_plan_main():
+    # Página de planeación (plantilla en Control de proceso)
+    return render_template('Control de proceso/Control_produccion_assy.html')
+
+@app.route('/control-main')
+@login_requerido
+def view_control_main():
+    # Panel de control de operación (plantilla en Control de proceso)
+    return render_template('Control de proceso/Control de operacion de linea Main.html')
+
+# Rutas AJAX para cargar módulos en el área de Control de Proceso (prompts)
+@app.route('/plan-main-assy-ajax')
+@login_requerido
+def plan_main_assy_ajax():
+    try:
+        return render_template('Control de proceso/Control_produccion_assy.html')
+    except Exception as e:
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+@app.route('/control-operacion-linea-main-ajax')
+@login_requerido
+def ctrl_operacion_linea_main_ajax():
+    try:
+        return render_template('Control de proceso/Control de operacion de linea Main.html')
+    except Exception as e:
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+# =============================
+# FRONT PLAN: API mínima plan_main
+# =============================
+
+def _fp_safe_date(s: str):
+    try:
+        return datetime.strptime(s[:10], '%Y-%m-%d').date()
+    except Exception:
+        return None
+
+def _fp_generate_lot_no(fecha: datetime):
+    try:
+        fecha_str = fecha.strftime('%y%m%d')
+        prefix = f'ASSYLINE-{fecha_str}'
+        row = execute_query("SELECT COUNT(*) AS c FROM plan_main WHERE lot_no LIKE %s", (f"{prefix}%",), fetch='one')
+        count = 0
+        if row:
+            if isinstance(row, dict):
+                count = list(row.values())[0] if len(row.values()) == 1 else (row.get('c') or row.get('COUNT(*)') or 0)
+            else:
+                count = row[0]
+        return f"{prefix}-{int(count)+1:03d}"
+    except Exception:
+        # Fallback
+        return f"ASSYLINE-{fecha.strftime('%y%m%d')}-001"
+
+@app.route('/api/plan', methods=['GET'])
+@login_requerido
+def api_plan_list():
+    try:
+        start = request.args.get('start')
+        end = request.args.get('end')
+        where = []
+        params = []
+        if start:
+            where.append('DATE(working_date) >= %s')
+            params.append(start)
+        if end:
+            where.append('DATE(working_date) <= %s')
+            params.append(end)
+        sql = (
+            "SELECT id, lot_no, wo_code, po_code, working_date, line, routing, model_code, part_no, project, process, "
+            "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
+            "COALESCE(produced_count,0) AS input, 0 AS output, COALESCE(produced_count,0) AS produced, "
+            "status, group_no, sequence FROM plan_main"
+        )
+        if where:
+            sql += ' WHERE ' + ' AND '.join(where)
+        sql += ' ORDER BY COALESCE(group_no,999), COALESCE(sequence,999), working_date, created_at'
+        rows = execute_query(sql, tuple(params) if params else None, fetch='all')
+        # Normalizar claves esperadas por el frontend
+        data = []
+        for r in rows:
+            data.append({
+                'lot_no': r.get('lot_no') if isinstance(r, dict) else r[1],
+                'wo_code': r.get('wo_code') if isinstance(r, dict) else r[2],
+                'po_code': r.get('po_code') if isinstance(r, dict) else r[3],
+                'working_date': str((r.get('working_date') if isinstance(r, dict) else r[4]) or '')[:10],
+                'line': r.get('line') if isinstance(r, dict) else r[5],
+                'routing': r.get('routing') if isinstance(r, dict) else r[6],
+                'model_code': r.get('model_code') if isinstance(r, dict) else r[7],
+                'part_no': r.get('part_no') if isinstance(r, dict) else r[8],
+                'project': r.get('project') if isinstance(r, dict) else r[9],
+                'process': r.get('process') if isinstance(r, dict) else r[10],
+                'ct': r.get('ct') if isinstance(r, dict) else r[11],
+                'uph': r.get('uph') if isinstance(r, dict) else r[12],
+                'plan_count': r.get('plan_count') if isinstance(r, dict) else r[13],
+                'input': r.get('input') if isinstance(r, dict) else r[14],
+                'output': r.get('output') if isinstance(r, dict) else r[15],
+                'produced': r.get('produced') if isinstance(r, dict) else r[16],
+                'status': r.get('status') if isinstance(r, dict) else r[17],
+                'group_no': r.get('group_no') if isinstance(r, dict) else r[18],
+                'sequence': r.get('sequence') if isinstance(r, dict) else r[19],
+            })
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan', methods=['POST'])
+@login_requerido
+def api_plan_create():
+    try:
+        data = request.get_json() or {}
+        working_date = data.get('working_date')
+        part_no = data.get('part_no')
+        line = data.get('line')
+        turno = (data.get('turno') or 'DIA').strip().upper()
+        plan_count = int(data.get('plan_count') or 0)
+        wo_code = data.get('wo_code')
+        po_code = data.get('po_code')
+        if not (working_date and part_no and line):
+            return jsonify({'error': 'Parámetros requeridos'}), 400
+        fecha = _fp_safe_date(working_date) or datetime.utcnow().date()
+        routing = {'DIA': 1, 'TIEMPO EXTRA': 2, 'NOCHE': 3}.get(turno, 1)
+        lot_no = _fp_generate_lot_no(datetime.combine(fecha, datetime.min.time()))
+        # Insert básico
+        sql = (
+            "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s,0),COALESCE(%s,0),%s,'PLAN',NOW())"
+        )
+        # Model/project/ct/uph opcionales (dejar vacíos)
+        params = (lot_no, wo_code, po_code, fecha, line, '', part_no, '', 'MAIN', plan_count, 0, 0, routing)
+        execute_query(sql, params)
+        return jsonify({'success': True, 'lot_no': lot_no})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan/update', methods=['POST'])
+@login_requerido
+def api_plan_update():
+    try:
+        data = request.get_json() or {}
+        lot_no = data.get('lot_no')
+        if not lot_no:
+            return jsonify({'error': 'lot_no requerido'}), 400
+        fields = []
+        vals = []
+        if 'plan_count' in data:
+            fields.append('plan_count = %s')
+            vals.append(int(data.get('plan_count') or 0))
+        if 'status' in data:
+            fields.append('status = %s')
+            vals.append(str(data.get('status')))
+        if 'line' in data:
+            fields.append('line = %s')
+            vals.append(str(data.get('line')))
+        if 'wo_code' in data:
+            fields.append('wo_code = %s')
+            vals.append(str(data.get('wo_code')))
+        if 'po_code' in data:
+            fields.append('po_code = %s')
+            vals.append(str(data.get('po_code')))
+        if 'turno' in data:
+            routing = {'DIA': 1, 'TIEMPO EXTRA': 2, 'NOCHE': 3}.get(str(data.get('turno')).strip().upper(), 1)
+            fields.append('routing = %s')
+            vals.append(routing)
+        # Agregar campos actualizados desde RAW
+        if 'uph' in data:
+            fields.append('uph = %s')
+            vals.append(str(data.get('uph')))
+        if 'ct' in data:
+            fields.append('ct = %s')
+            vals.append(str(data.get('ct')))
+        if 'project' in data:
+            fields.append('project = %s')
+            vals.append(str(data.get('project')))
+        if 'model_code' in data:
+            fields.append('model_code = %s')
+            vals.append(str(data.get('model_code')))
+        if not fields:
+            return jsonify({'error': 'Sin cambios'}), 400
+        fields.append('updated_at = NOW()')
+        sql = f"UPDATE plan_main SET {', '.join(fields)} WHERE lot_no = %s"
+        vals.append(lot_no)
+        execute_query(sql, tuple(vals))
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/raw/search', methods=['GET'])
+@login_requerido
+def api_raw_search():
+    """Buscar datos en la tabla RAW por part_no o model"""
+    try:
+        part_no = request.args.get('part_no', '').strip()
+        if not part_no:
+            return jsonify({'error': 'part_no requerido'}), 400
+        
+        # Buscar con múltiples campos para mayor flexibilidad
+        # Usar TRIM para ignorar espacios y comparación case-insensitive
+        sql = """
+            SELECT part_no, model, project, c_t as ct, uph 
+            FROM raw 
+            WHERE TRIM(model) = %s 
+               OR TRIM(part_no) = %s 
+               OR TRIM(part_no) LIKE %s
+               OR UPPER(TRIM(part_no)) = UPPER(%s)
+            LIMIT 1
+        """
+        params = (part_no, part_no, f'%{part_no}%', part_no)
+        
+        # CRÍTICO: Usar fetch='all' para obtener los datos, no el rowcount
+        result = execute_query(sql, params, fetch='all')
+        
+        # Verificar que result sea una lista/tupla antes de usar len()
+        if result and isinstance(result, (list, tuple)) and len(result) > 0:
+            row = result[0]
+            
+            # execute_query con fetch='all' retorna lista de diccionarios
+            # Acceder como diccionario, no como tupla
+            data = {
+                'part_no': row.get('part_no', '') if row.get('part_no') is not None else '',
+                'model': row.get('model', '') if row.get('model') is not None else '',
+                'model_code': row.get('model', '') if row.get('model') is not None else '',  # Alias
+                'project': row.get('project', '') if row.get('project') is not None else '',
+                'ct': str(row.get('ct', '0')) if row.get('ct') is not None else '0',
+                'uph': str(row.get('uph', '0')) if row.get('uph') is not None else '0'
+            }
+            return jsonify([data])
+        else:
+            return jsonify([])
+            
+    except Exception as e:
+        print(f"Error en api_raw_search: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan/status', methods=['POST'])
+@login_requerido
+def api_plan_status():
+    """Actualizar el status de un plan con validaciones y motivos"""
+    try:
+        data = request.get_json() or {}
+        lot_no = data.get('lot_no', '').strip()
+        new_status = data.get('status', '').strip().upper()
+        
+        if not lot_no:
+            return jsonify({'error': 'lot_no requerido', 'error_code': 'MISSING_LOT_NO'}), 400
+        
+        if not new_status:
+            return jsonify({'error': 'status requerido', 'error_code': 'MISSING_STATUS'}), 400
+        
+        # Validar status permitidos
+        valid_statuses = ['PENDIENTE', 'EN PROGRESO', 'PAUSADO', 'TERMINADO', 'CANCELADO']
+        if new_status not in valid_statuses:
+            return jsonify({'error': f'Status inválido: {new_status}', 'error_code': 'INVALID_STATUS'}), 400
+        
+        # Obtener información del plan actual
+        check_sql = "SELECT line, status, plan_count, produced_count, started_at, pause_started_at, paused_at FROM plan_main WHERE lot_no = %s"
+        plan_result = execute_query(check_sql, (lot_no,), fetch='one')
+        
+        if not plan_result:
+            return jsonify({'error': 'Plan no encontrado', 'error_code': 'NOT_FOUND'}), 404
+        
+        current_line = plan_result.get('line') or plan_result.get('linea')
+        current_status = (plan_result.get('status') or '').strip().upper()
+        plan_count = int(plan_result.get('plan_count') or plan_result.get('qty') or 0)
+        produced_count = int(plan_result.get('produced_count') or plan_result.get('producido') or 0)
+        started_at = plan_result.get('started_at')
+        pause_started_at = plan_result.get('pause_started_at')
+        paused_at = int(plan_result.get('paused_at') or 0)
+        
+        # Validación: Si se intenta poner EN PROGRESO, verificar que no haya otro plan EN PROGRESO en la misma línea
+        if new_status == 'EN PROGRESO' and current_status != 'EN PROGRESO':
+            conflict_sql = """
+                SELECT lot_no FROM plan_main 
+                WHERE line = %s AND status = 'EN PROGRESO' AND lot_no != %s 
+                LIMIT 1
+            """
+            conflict_result = execute_query(conflict_sql, (current_line, lot_no), fetch='one')
+            
+            if conflict_result:
+                conflicting_lot = conflict_result.get('lot_no') or conflict_result.get('lote')
+                return jsonify({
+                    'error': 'Ya existe un plan EN PROGRESO en esta línea',
+                    'error_code': 'LINE_CONFLICT',
+                    'line': current_line,
+                    'lot_no_en_progreso': conflicting_lot
+                }), 409
+        
+        # Construir el UPDATE
+        update_fields = ['status = %s', 'updated_at = NOW()']
+        update_values = [new_status]
+        
+        # Si cambia a EN PROGRESO
+        if new_status == 'EN PROGRESO':
+            if current_status == 'PAUSADO' and pause_started_at:
+                # Resumiendo desde pausa: calcular tiempo pausado y acumular
+                # MANTENER pause_started_at para historial (no limpiar)
+                update_fields.append('paused_at = paused_at + TIMESTAMPDIFF(SECOND, pause_started_at, NOW())')
+            elif current_status != 'EN PROGRESO' and not started_at:
+                # Iniciando por primera vez
+                update_fields.append('started_at = NOW()')
+        
+        # Si cambia a PAUSADO, guardar motivo de pausa y timestamp
+        if new_status == 'PAUSADO' and current_status == 'EN PROGRESO':
+            if 'pause_reason' in data:
+                update_fields.append('pause_reason = %s')
+                update_values.append(str(data.get('pause_reason', '')))
+            # Actualizar pause_started_at con la nueva pausa
+            update_fields.append('pause_started_at = NOW()')
+        
+        # Si cambia a TERMINADO, guardar ended_at y motivo si está incompleto
+        if new_status == 'TERMINADO':
+            if current_status == 'PAUSADO' and pause_started_at:
+                # Si estaba pausado, acumular tiempo pausado antes de terminar
+                # MANTENER pause_started_at para historial (no limpiar)
+                update_fields.append('paused_at = paused_at + TIMESTAMPDIFF(SECOND, pause_started_at, NOW())')
+            update_fields.append('ended_at = NOW()')
+            if produced_count < plan_count and 'end_reason' in data:
+                update_fields.append('end_reason = %s')
+                update_values.append(str(data.get('end_reason', '')))
+        
+        # Ejecutar UPDATE
+        update_sql = f"UPDATE plan_main SET {', '.join(update_fields)} WHERE lot_no = %s"
+        update_values.append(lot_no)
+        
+        rows_affected = execute_query(update_sql, tuple(update_values))
+        
+        if isinstance(rows_affected, int) and rows_affected == 0:
+            return jsonify({'error': 'No se actualizó ninguna fila', 'error_code': 'NO_ROWS_UPDATED'}), 400
+        
+        return jsonify({
+            'success': True,
+            'lot_no': lot_no,
+            'new_status': new_status,
+            'line': current_line
+        })
+        
+    except Exception as e:
+        print(f"Error en api_plan_status: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'error_code': 'UNHANDLED_EXCEPTION'}), 500
+
+@app.route('/api/plan/save-sequences', methods=['POST'])
+@login_requerido
+def api_plan_save_sequences():
+    try:
+        payload = request.get_json() or {}
+        sequences = payload.get('sequences', [])
+        updated = 0
+        for item in sequences:
+            lot_no = item.get('lot_no')
+            group_no = item.get('group_no')
+            sequence = item.get('sequence')
+            if not (lot_no and group_no is not None and sequence is not None):
+                continue
+            vals = []
+            sets = []
+            sets.append('group_no = %s'); vals.append(int(group_no))
+            sets.append('sequence = %s'); vals.append(int(sequence))
+            if item.get('plan_start_date') and item.get('plan_start_date') != '--':
+                sets.append('plan_start_date = %s'); vals.append(item['plan_start_date'])
+            if item.get('planned_start') and item.get('planned_start') != '--':
+                sets.append('planned_start = %s'); vals.append(item['planned_start'])
+            if item.get('planned_end') and item.get('planned_end') != '--':
+                sets.append('planned_end = %s'); vals.append(item['planned_end'])
+            if 'effective_minutes' in item:
+                sets.append('effective_minutes = %s'); vals.append(int(item.get('effective_minutes') or 0))
+            if 'breaks_minutes' in item:
+                sets.append('breaks_minutes = %s'); vals.append(int(item.get('breaks_minutes') or 0))
+            sets.append('updated_at = NOW()')
+            vals.append(lot_no)
+            sql = f"UPDATE plan_main SET {', '.join(sets)} WHERE lot_no = %s"
+            execute_query(sql, tuple(vals))
+            updated += 1
+        return jsonify({'success': True, 'updated_count': updated, 'message': f'{updated} secuencias guardadas correctamente'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan/pending', methods=['GET'])
+@login_requerido
+def api_plan_pending():
+    try:
+        start = request.args.get('start')
+        end = request.args.get('end')
+        where = ["status <> 'CANCELADO'"]
+        params = []
+        if start:
+            where.append('DATE(working_date) >= %s'); params.append(start)
+        if end:
+            where.append('DATE(working_date) <= %s'); params.append(end)
+        # Pendiente: plan_count - input
+        sql = (
+            "SELECT lot_no, working_date, part_no, line, COALESCE(plan_count,0) AS plan_count, COALESCE(produced_count,0) AS input, status "
+            "FROM plan_main WHERE " + ' AND '.join(where)
+        )
+        rows = execute_query(sql, tuple(params) if params else None, fetch='all')
+        data = []
+        for r in rows:
+            plan = r['plan_count'] if isinstance(r, dict) else r[4]
+            inp = r['input'] if isinstance(r, dict) else r[5]
+            if plan > inp:
+                data.append({
+                    'lot_no': r['lot_no'] if isinstance(r, dict) else r[0],
+                    'working_date': str((r['working_date'] if isinstance(r, dict) else r[1]) or '')[:10],
+                    'part_no': r['part_no'] if isinstance(r, dict) else r[2],
+                    'line': r['line'] if isinstance(r, dict) else r[3],
+                    'plan_count': plan,
+                    'input': inp,
+                    'status': r['status'] if isinstance(r, dict) else r[6]
+                })
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan/reschedule', methods=['POST'])
+@login_requerido
+def api_plan_reschedule():
+    try:
+        data = request.get_json() or {}
+        lot_nos = data.get('lot_nos', [])
+        new_date = data.get('new_working_date')
+        if not (lot_nos and new_date):
+            return jsonify({'error': 'Parámetros requeridos'}), 400
+        placeholders = ','.join(['%s'] * len(lot_nos))
+        sql = f"UPDATE plan_main SET working_date = %s, updated_at = NOW() WHERE lot_no IN ({placeholders})"
+        execute_query(sql, tuple([new_date] + lot_nos))
+        return jsonify({'success': True, 'updated': len(lot_nos)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan/export-excel', methods=['POST'])
+@login_requerido
+def api_plan_export_excel():
+    try:
+        payload = request.get_json() or {}
+        plans = payload.get('plans', [])
+        if not plans:
+            return jsonify({'error': 'No hay datos para exportar'}), 400
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment
+        import io
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Plan Producción'
+        headers = ['Sec', 'LOT NO', 'WO', 'PO', 'Fecha', 'Línea', 'Turno', 'Modelo', 'Part No', 'Proyecto', 'Proceso', 'CT', 'UPH', 'Plan', 'Producido', 'Status', 'Tiempo', 'Inicio', 'Fin', 'Grupo', 'Extra']
+        ws.append(headers)
+        for c in ws[1]:
+            c.font = Font(bold=True)
+            c.alignment = Alignment(horizontal='center')
+        for p in plans:
+            if p.get('isGroupHeader'):
+                ws.append([p.get('groupTitle', f"GRUPO {p.get('groupIndex', 0)+1}")])
+                continue
+            ws.append([
+                p.get('secuencia',''), p.get('lot_no',''), p.get('wo_code',''), p.get('po_code',''), p.get('working_date',''),
+                p.get('line',''), p.get('turno',''), p.get('model_code',''), p.get('part_no',''), p.get('project',''), p.get('process',''),
+                p.get('ct',''), p.get('uph',''), p.get('plan_count',''), p.get('produced',''), p.get('status',''), p.get('tiempo_produccion',''), p.get('inicio',''), p.get('fin',''), p.get('grupo',''), p.get('extra','')
+            ])
+        bio = io.BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        ts = datetime.utcnow().strftime('%Y%m%d_%H%M')
+        return send_file(bio, as_attachment=True, download_name=f'Plan_Produccion_{ts}.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/plan-main/list', methods=['GET'])
+@login_requerido
+def api_plan_main_list():
+    try:
+        q = request.args.get('q', '').strip()
+        linea = request.args.get('linea')
+        desde = request.args.get('desde')
+        hasta = request.args.get('hasta')
+        solo_pendientes = request.args.get('solo_pendientes') == 'true'
+        where = []
+        params = []
+        if q:
+            where.append('(lot_no LIKE %s OR part_no LIKE %s OR model_code LIKE %s)')
+            qv = f"%{q}%"; params.extend([qv, qv, qv])
+        if linea and linea not in ('Todos','ALL'):
+            where.append('line = %s'); params.append(linea)
+        if desde:
+            where.append('DATE(working_date) >= %s'); params.append(desde)
+        if hasta:
+            where.append('DATE(working_date) <= %s'); params.append(hasta)
+        if solo_pendientes:
+            where.append("status = 'PLAN'")
+        sql = (
+            "SELECT id, lot_no, part_no, model_code, line, working_date, COALESCE(plan_count,0) AS qty, COALESCE(produced_count,0) AS producido, "
+            "GREATEST(COALESCE(plan_count,0)-COALESCE(produced_count,0),0) AS falta, COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, status, process "
+            "FROM plan_main"
+        )
+        if where:
+            sql += ' WHERE ' + ' AND '.join(where)
+        sql += ' ORDER BY working_date DESC, created_at DESC'
+        rows = execute_query(sql, tuple(params) if params else None, fetch='all')
+        out = []
+        for r in rows:
+            qty = r['qty'] if isinstance(r, dict) else r[6]
+            producido = r['produced_count'] if isinstance(r, dict) and 'produced_count' in r else (r['producido'] if isinstance(r, dict) else r[7])
+            pct = int(round((producido/qty)*100, 0)) if qty else 0
+            out.append({
+                'id': r['id'] if isinstance(r, dict) else r[0],
+                'lote': r['lot_no'] if isinstance(r, dict) else r[1],
+                'nparte': r['part_no'] if isinstance(r, dict) else r[2],
+                'modelo': r['model_code'] if isinstance(r, dict) else r[3],
+                'linea': r['line'] if isinstance(r, dict) else r[4],
+                'fecha_inicio': str((r['working_date'] if isinstance(r, dict) else r[5]) or '')[:10],
+                'qty': qty,
+                'producido': producido,
+                'falta': max(0, qty - producido),
+                'ct': r['ct'] if isinstance(r, dict) else r[9],
+                'uph': r['uph'] if isinstance(r, dict) else r[10],
+                'estatus': r['status'] if isinstance(r, dict) else r[11],
+                'process': r['process'] if isinstance(r, dict) else r[12],
+            })
+        return jsonify(out)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/work-orders/import', methods=['POST'])
+@login_requerido
+def api_work_orders_import():
+    try:
+        data = request.get_json() or {}
+        wo_ids = data.get('wo_ids', [])
+        if not wo_ids:
+            return jsonify({'error': 'No se seleccionaron work orders'}), 400
+        imported = 0
+        plans = []
+        errors = []
+        for wo_id in wo_ids:
+            row = execute_query("SELECT * FROM work_orders WHERE id = %s", (wo_id,), fetch='one')
+            if not row:
+                errors.append(f'WO id {wo_id} no encontrado')
+                continue
+            wo = row
+            # Verificar si ya existe
+            existing = execute_query("SELECT lot_no, status FROM plan_main WHERE wo_code = %s", (wo.get('codigo_wo'),), fetch='one')
+            if existing:
+                errors.append(f"WO {wo.get('codigo_wo')} ya importado (LOT: {(existing.get('lot_no') if isinstance(existing, dict) else existing[0])})")
+                continue
+            
+            # Obtener part_no y línea del WO
+            # En work_orders: 'modelo' es el part_no (ej: EBR42005002)
+            # La línea viene directamente de la columna 'linea' del WO
+            part_no = wo.get('modelo') or wo.get('codigo_modelo') or ''
+            line = wo.get('linea') or 'MAIN_LINE'  # Línea del WO directamente
+            
+            # Buscar información adicional en raw (CT, UPH, MODEL, PROJECT)
+            # Usar consulta combinada como en FRONT PLAN original
+            # NO buscar linea en raw, solo CT, UPH, MODEL y PROJECT
+            raw_data_query = """
+                SELECT part_no, model, project, c_t as ct, uph
+                FROM raw
+                WHERE model = %s OR model = %s OR part_no = %s OR part_no LIKE %s
+                ORDER BY id DESC
+                LIMIT 1
+            """
+            raw_params = (wo.get('modelo'), wo.get('codigo_modelo'), wo.get('codigo_modelo'), f"%{wo.get('modelo')}%")
+            
+            raw_data = execute_query(raw_data_query, raw_params, fetch='one')
+            
+            # Extraer datos de raw o usar valores por defecto
+            if raw_data:
+                part_no = raw_data.get('part_no') or part_no
+                model_code = raw_data.get('model') or wo.get('modelo') or ''
+                project = raw_data.get('project') or wo.get('nombre_modelo') or ''
+                
+                # Normalizar CT y UPH
+                try:
+                    ct = float(raw_data.get('ct') or 0)
+                except:
+                    ct = 0.0
+                try:
+                    uph_raw = raw_data.get('uph')
+                    if uph_raw and str(uph_raw).strip().isdigit():
+                        uph = int(str(uph_raw).strip())
+                    else:
+                        uph = 0
+                except:
+                    uph = 0
+            else:
+                # Si no hay datos en raw, usar lo que venga de la WO
+                part_no = wo.get('codigo_modelo') or wo.get('modelo') or ''
+                model_code = wo.get('modelo') or ''
+                project = wo.get('nombre_modelo') or ''
+                ct = 0.0
+                uph = 0
+            
+            # Generar lot y crear plan
+            fecha_op = wo.get('fecha_operacion')
+            try:
+                if isinstance(fecha_op, str):
+                    fecha_dt = _fp_safe_date(fecha_op) or datetime.utcnow().date()
+                else:
+                    fecha_dt = (fecha_op.date() if hasattr(fecha_op, 'date') else datetime.utcnow().date())
+            except Exception:
+                fecha_dt = datetime.utcnow().date()
+            
+            lot_no = _fp_generate_lot_no(datetime.combine(fecha_dt, datetime.min.time()))
+            
+            insert_sql = (
+                "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',NOW())"
+            )
+            params = (
+                lot_no,
+                wo.get('codigo_wo'),
+                wo.get('codigo_po'),
+                fecha_dt,
+                line,
+                model_code,
+                part_no,
+                project,
+                'MAIN',
+                int(wo.get('cantidad_planeada') or 0),
+                ct,
+                uph,
+                1,  # routing por defecto: DIA
+            )
+            execute_query(insert_sql, params)
+            imported += 1
+            plans.append({'lot_no': lot_no})
+        return jsonify({'success': True, 'imported': imported, 'plans': plans, 'errors': errors})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/cargar_template', methods=['POST'])
 @login_requerido
@@ -11367,4 +12011,3 @@ def crear_datos_prueba_smt():
             'error': str(e),
             'traceback': traceback.format_exc()
         }), 500
-
