@@ -1,5 +1,28 @@
 // ====== Variables Globales para Planeación ======
 
+// Función helper para obtener fecha en zona horaria de Nuevo León, México (America/Monterrey)
+function getTodayInNuevoLeon() {
+  // Crear fecha en zona horaria de Monterrey
+  const options = { timeZone: 'America/Monterrey', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const formatter = new Intl.DateTimeFormat('en-CA', options); // en-CA da formato YYYY-MM-DD
+  return formatter.format(new Date());
+}
+
+// Función helper para obtener Date object ajustado a Nuevo León
+function getDateInNuevoLeon(daysOffset = 0) {
+  const dateStr = getTodayInNuevoLeon();
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (daysOffset !== 0) {
+    date.setDate(date.getDate() + daysOffset);
+  }
+  // Formatear a YYYY-MM-DD
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // Variables globales para planeación integrada
 let planningData = [];
 let currentConfig = {
@@ -188,8 +211,7 @@ document.getElementById("plan-form").addEventListener("submit", async function(e
 
 // Prefijar filtros a hoy
 function setDefaultDateFilters(){
-  const today = new Date();
-  const iso = today.toISOString().slice(0,10);
+  const iso = getTodayInNuevoLeon();
   const fs = document.getElementById("filter-start");
   const fe = document.getElementById("filter-end");
   if(fs && !fs.value) fs.value = iso;
@@ -396,7 +418,13 @@ function ensureOrderToolbar(fs, fe){
   `;
   document.head.appendChild(style);
 })();
-// Doble click para editar (delegado al #plan-table para soportar reemplazo de tbody)
+
+// ============================================================
+// NOTA: El evento de doble click ahora usa event delegation
+// Ver initializePlanEventListeners() más abajo
+// ============================================================
+/*
+// CÓDIGO ANTIGUO - Reemplazado por event delegation
 const planTableEl = document.getElementById('plan-table');
 if (planTableEl) {
   planTableEl.addEventListener('dblclick', (e) => {
@@ -406,6 +434,7 @@ if (planTableEl) {
     if (lotNo) openEditModal(lotNo);
   });
 }
+*/
 
 async function openEditModal(lotNo){
   try {
@@ -691,8 +720,15 @@ function createWorkOrdersModal() {
         </div>
         
         <div class="modal-filters">
-          <label>Fecha:</label>
-          <input type="date" id="wo-filter-date" class="plan-input">
+          <label>Buscar WO/PO:</label>
+          <input type="text" id="wo-search-input" class="plan-input" placeholder="Buscar por código WO o PO...">
+          
+          <label>Fecha Op. Desde:</label>
+          <input type="date" id="wo-filter-desde" class="plan-input" title="Filtrar WOs desde esta fecha">
+          
+          <label>Fecha Op. Hasta:</label>
+          <input type="date" id="wo-filter-hasta" class="plan-input" title="Filtrar WOs hasta esta fecha">
+          
           <label>Estado:</label>
           <select id="wo-filter-estado" class="plan-input">
             <option value="">Todos</option>
@@ -701,8 +737,12 @@ function createWorkOrdersModal() {
             <option value="EN PROGRESO">EN PROGRESO</option>
             <option value="CERRADA">CERRADA</option>
           </select>
-          <button id="wo-search-btn" class="plan-btn">Buscar</button>
+          
+          <button id="wo-reload-btn" class="plan-btn">Recargar</button>
           <button id="wo-import-selected-btn" class="plan-btn plan-btn-add">Importar Seleccionados</button>
+          
+          <label>Fecha de Importación:</label>
+          <input type="date" id="wo-filter-date" class="plan-input" title="Fecha a la que se importarán los planes seleccionados">
         </div>
 
         <div class="modal-table-container">
@@ -753,10 +793,22 @@ function setupWorkOrdersModalEvents() {
     });
   }
 
-  // Botón de búsqueda
-  const searchBtn = document.getElementById('wo-search-btn');
-  if (searchBtn) {
-    searchBtn.addEventListener('click', loadWorkOrders);
+  // Botón de recarga
+  const reloadBtn = document.getElementById('wo-reload-btn');
+  if (reloadBtn) {
+    reloadBtn.addEventListener('click', loadWorkOrders);
+  }
+
+  // Input de búsqueda - filtrar en tiempo real
+  const searchInput = document.getElementById('wo-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', filterWorkOrdersTable);
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        filterWorkOrdersTable();
+      }
+    });
   }
 
   // Checkbox "Seleccionar todos"
@@ -786,23 +838,51 @@ function setupWorkOrdersModalEvents() {
     });
   }
 
-  // Permitir búsqueda con Enter
+  // Permitir recarga con Enter en filtros de fecha
   const filterDate = document.getElementById('wo-filter-date');
+  const filterDesde = document.getElementById('wo-filter-desde');
+  const filterHasta = document.getElementById('wo-filter-hasta');
   const filterEstado = document.getElementById('wo-filter-estado');
+  
   if (filterDate) {
     filterDate.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') loadWorkOrders();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loadWorkOrders();
+      }
     });
   }
+  
+  if (filterDesde) {
+    filterDesde.addEventListener('change', function() {
+      loadWorkOrders(); // Recargar automáticamente al cambiar fecha desde
+    });
+  }
+  
+  if (filterHasta) {
+    filterHasta.addEventListener('change', function() {
+      loadWorkOrders(); // Recargar automáticamente al cambiar fecha hasta
+    });
+  }
+  
   if (filterEstado) {
-    filterEstado.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') loadWorkOrders();
+    filterEstado.addEventListener('change', function() {
+      loadWorkOrders(); // Recargar automáticamente al cambiar estado
     });
   }
 
-  // Establecer fecha de hoy por defecto
+  // Establecer fecha de importación por defecto (hoy en Nuevo León)
   if (filterDate && !filterDate.value) {
-    filterDate.value = new Date().toISOString().slice(0, 10);
+    filterDate.value = getTodayInNuevoLeon();
+  }
+  
+  // Establecer rango de fechas por defecto (día actual en Nuevo León)
+  if (filterDesde && !filterDesde.value) {
+    filterDesde.value = getTodayInNuevoLeon(); // Día actual
+  }
+  
+  if (filterHasta && !filterHasta.value) {
+    filterHasta.value = getTodayInNuevoLeon(); // Día actual
   }
 }
 
@@ -822,20 +902,31 @@ async function loadWorkOrders() {
     showTableBodyLoading('wo-tableBody', 'Cargando Work Orders...', 9);
     updateWOStatus("Cargando...");
     
-    const fecha = document.getElementById("wo-filter-date")?.value || "";
+    // Obtener valores de los filtros
+    const desde = document.getElementById("wo-filter-desde")?.value || "";
+    const hasta = document.getElementById("wo-filter-hasta")?.value || "";
     const estado = document.getElementById("wo-filter-estado")?.value || "";
     
+    // Construir URL con parámetros
     let url = "/api/work-orders";
     const params = [];
-    if (fecha) params.push(`fecha=${fecha}`);
+    if (desde) params.push(`desde=${desde}`);
+    if (hasta) params.push(`hasta=${hasta}`);
     if (estado) params.push(`estado=${estado}`);
     if (params.length) url += "?" + params.join("&");
     
     const response = await axios.get(url);
     const workOrders = response.data;
     
+    // Guardar todos los WOs para filtrado
+    allWorkOrders = workOrders;
+    
     renderWorkOrdersTable(workOrders);
     updateWOStatus(`${workOrders.length} work orders encontrados`);
+    
+    // Limpiar el campo de búsqueda al recargar
+    const searchInput = document.getElementById('wo-search-input');
+    if (searchInput) searchInput.value = '';
     
   } catch (error) {
     updateWOStatus("Error al cargar work orders");
@@ -850,8 +941,45 @@ async function loadWorkOrders() {
 // Exponer función globalmente
 window.loadWorkOrders = loadWorkOrders;
 
+// Variable global para almacenar todos los WOs cargados (para filtrado)
+let allWorkOrders = [];
+
+// Función para filtrar WOs en el frontend
+function filterWorkOrdersTable() {
+  const searchInput = document.getElementById('wo-search-input');
+  if (!searchInput) return;
+  
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    // Si no hay búsqueda, mostrar todos
+    renderWorkOrdersTable(allWorkOrders);
+    return;
+  }
+  
+  // Filtrar WOs por código WO, código PO, o modelo
+  const filtered = allWorkOrders.filter(wo => {
+    const woCode = (wo.codigo_wo || '').toLowerCase();
+    const poCode = (wo.codigo_po || '').toLowerCase();
+    const modelo = (wo.modelo || '').toLowerCase();
+    const nombreModelo = (wo.nombre_modelo || '').toLowerCase();
+    
+    return woCode.includes(searchTerm) || 
+           poCode.includes(searchTerm) || 
+           modelo.includes(searchTerm) ||
+           nombreModelo.includes(searchTerm);
+  });
+  
+  renderWorkOrdersTable(filtered);
+  updateWOStatus(`${filtered.length} de ${allWorkOrders.length} work orders`);
+}
+
+// Exponer función globalmente
+window.filterWorkOrdersTable = filterWorkOrdersTable;
+
 // Renderizar tabla de Work Orders
 function renderWorkOrdersTable(workOrders) {
+  // NO sobrescribir allWorkOrders aquí, se maneja en loadWorkOrders
   const tbody = document.getElementById("wo-tableBody");
   tbody.innerHTML = "";
   
@@ -878,16 +1006,17 @@ function renderWorkOrdersTable(workOrders) {
     
     // Si ya fue importado, aplicar estilo diferente
     if (yaImportado) {
-      row.style.backgroundColor = "#5a4a4a";
-      row.style.opacity = "0.7";
-      row.title = `WO ya importada como LOT NO: ${wo.lot_no_existente || 'N/A'}`;
+      row.style.backgroundColor = "#3a3a3a";
+      row.style.opacity = "0.6";
+      row.style.cursor = "not-allowed";
+      row.title = `⚠️ WO ya importada como LOT NO: ${wo.lot_no_existente || 'N/A'}`;
     }
     
     row.innerHTML = `
       <td style="padding:6px; text-align:center;">
         <input type="checkbox" class="wo-checkbox" value="${wo.id}" 
                ${wo.estado === 'CERRADA' || yaImportado ? 'disabled' : ''}>
-        ${yaImportado ? '<span style="color:#e74c3c; font-size:9px;">✓ IMPORTADO</span>' : ''}
+        ${yaImportado ? '<div style="color:#e74c3c; font-size:9px; font-weight:bold; margin-top:2px;">✓ IMPORTADO</div>' : ''}
       </td>
       <td style="padding:6px; font-size:10px;">${wo.codigo_wo || ''}</td>
       <td style="padding:6px; font-size:10px;">${wo.codigo_po || ''}</td>
@@ -901,11 +1030,14 @@ function renderWorkOrdersTable(workOrders) {
       </td>
       <td style="padding:6px; font-size:10px;">${wo.modificador || ''}</td>
       <td style="padding:6px; text-align:center;">
-        <button class="plan-btn wo-import-single-btn" data-wo-id="${wo.id}"
-                style="padding:2px 6px; font-size:9px; background:#27ae60;"
-                ${wo.estado === 'CERRADA' || yaImportado ? 'disabled' : ''}>
-          Importar
-        </button>
+        ${yaImportado ? 
+          `<span style="padding:2px 6px; font-size:9px; background:#555; color:#999; border-radius:3px;">🔒 Bloqueado</span>` :
+          `<button class="plan-btn wo-import-single-btn" data-wo-id="${wo.id}"
+                  style="padding:2px 6px; font-size:9px; background:#27ae60;"
+                  ${wo.estado === 'CERRADA' ? 'disabled' : ''}>
+            Importar
+          </button>`
+        }
       </td>
     `;
     
@@ -926,6 +1058,15 @@ async function importSingleWO(woId, button) {
   const originalText = button.textContent;
   
   try {
+    // Obtener fecha de importación
+    const importDateInput = document.getElementById('wo-filter-date');
+    const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
+    
+    if (!importDate) {
+      alert('⚠️ Por favor seleccione una fecha de importación');
+      return;
+    }
+    
     // Mostrar estado de carga en el botón
     button.textContent = 'Importando...';
     button.disabled = true;
@@ -934,7 +1075,8 @@ async function importSingleWO(woId, button) {
     updateWOStatus("Importando Work Order...");
     
     const response = await axios.post("/api/work-orders/import", {
-      wo_ids: [woId]
+      wo_ids: [woId],
+      import_date: importDate
     });
     
     if (response.data.success) {
@@ -965,9 +1107,18 @@ async function importAllSelectedWOs() {
     return;
   }
   
+  // Obtener fecha de importación
+  const importDateInput = document.getElementById('wo-filter-date');
+  const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
+  
+  if (!importDate) {
+    alert('⚠️ Por favor seleccione una fecha de importación');
+    return;
+  }
+  
   const woIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
   
-  if (!confirm(`¿Importar ${woIds.length} Work Order(s) como planes?`)) {
+  if (!confirm(`¿Importar ${woIds.length} Work Order(s) como planes para el ${importDate}?`)) {
     return;
   }
   
@@ -980,7 +1131,8 @@ async function importAllSelectedWOs() {
     setButtonLoading('wo-import-selected-btn', true, 'Importando...');
     
     const response = await axios.post("/api/work-orders/import", {
-      wo_ids: woIds
+      wo_ids: woIds,
+      import_date: importDate
     });
     
     if (response.data.success) {
@@ -1042,22 +1194,18 @@ document.getElementById("reschedule-closeModalBtn").addEventListener("click", ()
 
 // Establecer fechas por defecto
 function setDefaultRescheduleDates() {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 7); // Una semana atrás por defecto
-  
   const dateFrom = document.getElementById("reschedule-date-from");
   const dateTo = document.getElementById("reschedule-date-to");
   const newDate = document.getElementById("reschedule-new-date");
   
   if (dateFrom && !dateFrom.value) {
-    dateFrom.value = yesterday.toISOString().slice(0, 10);
+    dateFrom.value = getDateInNuevoLeon(-7); // Una semana atrás en Nuevo León
   }
   if (dateTo && !dateTo.value) {
-    dateTo.value = today.toISOString().slice(0, 10);
+    dateTo.value = getTodayInNuevoLeon(); // Hoy en Nuevo León
   }
   if (newDate && !newDate.value) {
-    newDate.value = today.toISOString().slice(0, 10);
+    newDate.value = getTodayInNuevoLeon(); // Hoy en Nuevo León
   }
 }
 
@@ -1066,8 +1214,17 @@ window.setDefaultRescheduleDates = setDefaultRescheduleDates;
 
 // Cargar planes pendientes
 async function loadPendingPlans() {
-  const dateFrom = document.getElementById("reschedule-date-from").value;
-  const dateTo = document.getElementById("reschedule-date-to").value;
+  const dateFromInput = document.getElementById("reschedule-date-from");
+  const dateToInput = document.getElementById("reschedule-date-to");
+  
+  if (!dateFromInput || !dateToInput) {
+    console.error('❌ Elementos de fecha no encontrados');
+    alert("Error: Elementos de fecha no disponibles");
+    return;
+  }
+  
+  const dateFrom = dateFromInput.value;
+  const dateTo = dateToInput.value;
   
   if (!dateFrom || !dateTo) {
     alert("⚠️ Seleccione el rango de fechas para buscar");
@@ -1086,7 +1243,7 @@ async function loadPendingPlans() {
     updateRescheduleStatus(`${pendingPlans.length} planes con input pendiente encontrados`);
     
   } catch (error) {
-
+    console.error('❌ Error al cargar planes pendientes:', error);
     alert("Error al cargar planes pendientes: " + (error.response?.data?.error || error.message));
     updateRescheduleStatus("Error al cargar planes");
   }
@@ -1142,7 +1299,15 @@ function toggleAllReschedule(masterCheckbox) {
 // Reprogramar planes seleccionados
 async function reschedulePendingPlans() {
   const selectedCheckboxes = document.querySelectorAll(".reschedule-checkbox:checked");
-  const newDate = document.getElementById("reschedule-new-date").value;
+  const newDateInput = document.getElementById("reschedule-new-date");
+  
+  if (!newDateInput) {
+    console.error('❌ Elemento reschedule-new-date no encontrado');
+    alert("Error: Elemento de fecha no disponible");
+    return;
+  }
+  
+  const newDate = newDateInput.value;
   
   if (selectedCheckboxes.length === 0) {
     alert("⚠️ Seleccione al menos un plan para reprogramar");
@@ -1176,14 +1341,19 @@ async function reschedulePendingPlans() {
     loadPendingPlans();
     
     // Recargar planes principales si está en la misma fecha
-    const currentStart = document.getElementById("filter-start").value;
-    const currentEnd = document.getElementById("filter-end").value;
-    if (newDate >= currentStart && newDate <= currentEnd) {
-      loadPlans();
+    const currentStartInput = document.getElementById("filter-start");
+    const currentEndInput = document.getElementById("filter-end");
+    
+    if (currentStartInput && currentEndInput) {
+      const currentStart = currentStartInput.value;
+      const currentEnd = currentEndInput.value;
+      if (newDate >= currentStart && newDate <= currentEnd) {
+        loadPlans();
+      }
     }
     
   } catch (error) {
-
+    console.error('❌ Error al reprogramar planes:', error);
     alert("Error al reprogramar planes: " + (error.response?.data?.error || error.message));
     updateRescheduleStatus("Error en reprogramación");
   }
@@ -2180,6 +2350,11 @@ function autoArrangePlans() {
 // Exponer función globalmente
 window.autoArrangePlans = autoArrangePlans;
 
+// Exponer funciones de reprogramación globalmente
+window.loadPendingPlans = loadPendingPlans;
+window.reschedulePendingPlans = reschedulePendingPlans;
+window.toggleAllReschedule = toggleAllReschedule;
+
 // Calcular y actualizar tiempos en la tabla
 function calculateAndUpdateTimes() {
   const tbody = document.getElementById('plan-tableBody');
@@ -2342,6 +2517,22 @@ function initializePlanEventListeners() {
         return;
       }
       
+      // Botón Buscar Pendientes del modal Reprogramar
+      if (target.id === 'reschedule-search-btn' || target.closest('#reschedule-search-btn')) {
+        e.preventDefault();
+        console.log('🎯 Click en reschedule-search-btn detectado');
+        if (typeof loadPendingPlans === 'function') loadPendingPlans();
+        return;
+      }
+      
+      // Botón Reprogramar Seleccionados
+      if (target.id === 'reschedule-submit-btn' || target.closest('#reschedule-submit-btn')) {
+        e.preventDefault();
+        console.log('🎯 Click en reschedule-submit-btn detectado');
+        if (typeof reschedulePendingPlans === 'function') reschedulePendingPlans();
+        return;
+      }
+      
       // ========== MODAL DE EDICIÓN ==========
       
       // Botón Cerrar modal Editar (el botón "Cerrar" dentro del form)
@@ -2423,9 +2614,43 @@ function initializePlanEventListeners() {
     
     // Listener para cambio en número de grupos
     document.body.addEventListener('change', function(e) {
-      if (e.target.id === 'groups-count') {
+      const target = e.target;
+      
+      // Selector de número de grupos
+      if (target.id === 'groups-count') {
         console.log('🎯 Cambio en groups-count detectado');
         reloadTableWithCurrentData();
+        return;
+      }
+      
+      // Checkbox "Seleccionar todos" del modal Reprogramar
+      if (target.id === 'reschedule-select-all') {
+        console.log('🎯 Change en reschedule-select-all detectado');
+        if (typeof toggleAllReschedule === 'function') toggleAllReschedule(target);
+        return;
+      }
+    });
+    
+    // ========== EVENT LISTENER DE DOBLE CLICK ==========
+    // Doble click en filas de la tabla para editar
+    document.body.addEventListener('dblclick', function(e) {
+      console.log('🎯 Doble click detectado en:', e.target);
+      
+      // Verificar si el doble click fue en una fila de la tabla de planes
+      const row = e.target.closest('tr.plan-row');
+      if (!row) {
+        console.log('❌ No es una fila de plan');
+        return;
+      }
+      
+      const lotNo = row.dataset.lot;
+      console.log('✅ Fila de plan detectada, lot_no:', lotNo);
+      
+      if (lotNo && typeof openEditModal === 'function') {
+        console.log('🔧 Abriendo modal de edición para lot_no:', lotNo);
+        openEditModal(lotNo);
+      } else {
+        console.error('⚠️ No se pudo abrir modal:', { lotNo, openEditModal: typeof openEditModal });
       }
     });
     
@@ -2732,26 +2957,27 @@ async function saveGroupSequences() {
           // Convertir startTime (HH:MM) a DATETIME para planned_start
           let plannedStart = null;
           if (startTime !== '--') {
-            const today = new Date();
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo León
+            const [year, month, day] = todayStr.split('-').map(Number);
             const [hours, minutes] = startTime.split(':').map(Number);
-            const dateTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, 0);
+            const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
             plannedStart = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
           }
           
           // Convertir endTime (HH:MM) a DATETIME para planned_end
           let plannedEnd = null;
           if (endTime !== '--') {
-            const today = new Date();
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo León
+            const [year, month, day] = todayStr.split('-').map(Number);
             const [hours, minutes] = endTime.split(':').map(Number);
-            const dateTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, 0);
+            const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
             plannedEnd = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
           }
           
           // También enviar solo la fecha para plan_start_date
           let planStartDate = null;
           if (startTime !== '--') {
-            const today = new Date();
-            planStartDate = today.toISOString().slice(0, 10); // Formato: YYYY-MM-DD
+            planStartDate = getTodayInNuevoLeon(); // Formato: YYYY-MM-DD en Nuevo León
           }
           
           // Calcular effective_minutes (tiempo productivo sin breaks)
@@ -2952,18 +3178,21 @@ function updateStartDates() {
 }
 
 // Configurar event listeners de modales (estos siempre están en el HTML)
+// ========= EVENT LISTENERS DINÁMICOS PARA MODALES =========
+// NOTA: Los event listeners del modal de Reprogramar ahora están en event delegation
+// Ver sección "EVENT DELEGATION: CLICK" para los botones reschedule-search-btn y reschedule-submit-btn
+// Ver sección "EVENT DELEGATION: CHANGE" para el checkbox reschedule-select-all
+
+// Los event listeners del modal WO se configuran en setupWorkOrdersModalEvents()
+// cuando se crea el modal dinámicamente
+
+/* REMOVIDO - Ahora manejado por event delegation
 document.addEventListener('DOMContentLoaded', function() {
-  // ========= EVENT LISTENERS DINÁMICOS PARA MODALES =========
-  // Nota: Los event listeners del modal WO se configuran en setupWorkOrdersModalEvents()
-  // cuando se crea el modal dinámicamente
-  
-  // Modal Reprogramar: Botón de búsqueda
   const rescheduleSearchBtn = document.getElementById('reschedule-search-btn');
   if (rescheduleSearchBtn) {
     rescheduleSearchBtn.addEventListener('click', loadPendingPlans);
   }
   
-  // Modal Reprogramar: Checkbox "Seleccionar todos"
   const rescheduleSelectAll = document.getElementById('reschedule-select-all');
   if (rescheduleSelectAll) {
     rescheduleSelectAll.addEventListener('change', function() {
@@ -2971,12 +3200,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Modal Reprogramar: Botón "Reprogramar Seleccionados"
   const rescheduleSubmitBtn = document.getElementById('reschedule-submit-btn');
   if (rescheduleSubmitBtn) {
     rescheduleSubmitBtn.addEventListener('click', reschedulePendingPlans);
   }
 });
+*/
 
 // Función para mostrar notificaciones
 function showNotification(message, type = 'info') {

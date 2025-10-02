@@ -1040,8 +1040,19 @@ def api_work_orders_import():
     try:
         data = request.get_json() or {}
         wo_ids = data.get('wo_ids', [])
+        import_date = data.get('import_date', None)  # Fecha de importación desde el frontend
+        
         if not wo_ids:
             return jsonify({'error': 'No se seleccionaron work orders'}), 400
+        
+        # Parsear fecha de importación si se proporciona
+        fecha_importacion = None
+        if import_date:
+            try:
+                fecha_importacion = datetime.strptime(import_date, '%Y-%m-%d').date()
+            except Exception as e:
+                return jsonify({'error': f'Fecha de importación inválida: {str(e)}'}), 400
+        
         imported = 0
         plans = []
         errors = []
@@ -1105,14 +1116,18 @@ def api_work_orders_import():
                 uph = 0
             
             # Generar lot y crear plan
-            fecha_op = wo.get('fecha_operacion')
-            try:
-                if isinstance(fecha_op, str):
-                    fecha_dt = _fp_safe_date(fecha_op) or datetime.utcnow().date()
-                else:
-                    fecha_dt = (fecha_op.date() if hasattr(fecha_op, 'date') else datetime.utcnow().date())
-            except Exception:
-                fecha_dt = datetime.utcnow().date()
+            # Usar fecha de importación si se proporciona, sino usar fecha_operacion de la WO
+            if fecha_importacion:
+                fecha_dt = fecha_importacion
+            else:
+                fecha_op = wo.get('fecha_operacion')
+                try:
+                    if isinstance(fecha_op, str):
+                        fecha_dt = _fp_safe_date(fecha_op) or datetime.utcnow().date()
+                    else:
+                        fecha_dt = (fecha_op.date() if hasattr(fecha_op, 'date') else datetime.utcnow().date())
+                except Exception:
+                    fecha_dt = datetime.utcnow().date()
             
             lot_no = _fp_generate_lot_no(datetime.combine(fecha_dt, datetime.min.time()))
             
@@ -2941,11 +2956,28 @@ def api_work_orders():
         # Ejecutar query
         work_orders = execute_query(query, params, fetch='all')
         
+        # Verificar cuáles WOs ya fueron importadas (existen en plan_main)
+        wo_ids = [wo['id'] for wo in work_orders]
+        ya_importados = {}
+        
+        if wo_ids:
+            placeholders = ','.join(['%s'] * len(wo_ids))
+            check_query = f"""
+            SELECT DISTINCT wo_id, lot_no
+            FROM plan_main 
+            WHERE wo_id IN ({placeholders}) AND wo_id IS NOT NULL
+            """
+            importados = execute_query(check_query, wo_ids, fetch='all')
+            
+            for imp in importados:
+                ya_importados[imp['wo_id']] = imp['lot_no']
+        
         # Formatear respuesta
         resultado = []
         for wo in work_orders:
+            wo_id = wo['id']
             resultado.append({
-                'id': wo['id'],
+                'id': wo_id,
                 'codigo_wo': wo['codigo_wo'],
                 'codigo_po': wo['codigo_po'] or '',
                 'modelo': wo['modelo'] or '',
@@ -2957,7 +2989,9 @@ def api_work_orders():
                 'usuario_creacion': wo['usuario_creacion'] or '',
                 'orden_proceso': wo['orden_proceso'] or '',
                 'modificador': wo['modificador'] or '',
-                'fecha_modificacion': wo['fecha_modificacion'].strftime('%Y-%m-%d %H:%M:%S') if wo['fecha_modificacion'] else ''
+                'fecha_modificacion': wo['fecha_modificacion'].strftime('%Y-%m-%d %H:%M:%S') if wo['fecha_modificacion'] else '',
+                'ya_importado': wo_id in ya_importados,
+                'lot_no_existente': ya_importados.get(wo_id, None)
             })
         
         return jsonify(resultado)
