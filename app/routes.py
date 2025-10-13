@@ -2062,20 +2062,20 @@ def debug_estructura_materiales():
 @login_requerido
 def exportar_excel():
     try:
-        print("Iniciando exportación de Excel...")
         conn = get_db_connection()
+        cursor = conn.cursor()
         
         # Obtener todos los materiales
-        materiales = conn.execute('''
+        cursor.execute('''
             SELECT codigo_material, numero_parte, propiedad_material, classification, 
                    especificacion_material, unidad_empaque, ubicacion_material, vendedor, 
                    prohibido_sacar, reparable, nivel_msl, espesor_msl, fecha_registro
             FROM materiales
             ORDER BY fecha_registro DESC
-        ''').fetchall()
+        ''')
+        materiales = cursor.fetchall()
         
         conn.close()
-        print(f"Se encontraron {len(materiales)} materiales")
         
         if not materiales:
             # Crear un DataFrame vacío con headers
@@ -2085,7 +2085,6 @@ def exportar_excel():
                 'Ubicación de material', 'Vendedor', 'Prohibido sacar', 'Reparable', 
                 'Nivel de MSL', 'Espesor de MSL', 'Fecha de registro'
             ])
-            print("Creando Excel con datos vacíos")
         else:
             # Convertir a DataFrame
             data = []

@@ -765,7 +765,7 @@
         <div class="material-form-group" style="justify-self: end;">
             <div style="display: flex; gap: 4px; align-items: center;">
                 <button type="button" class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()" style="display: inline-block;">Guardar</button>
-                <button type="button" class="material-btn botones-almacen" id="btnUnidades" onclick="event.preventDefault(); abrirModalUnidades()" style="background: #28a745; display: none;">UNIDADES</button>
+                <button type="button" class="material-btn botones-almacen" id="btnUnidades" onclick="event.preventDefault(); abrirModalUnidades()" style="background: #28a745; display: inline-block;">UNIDADES</button>
                 <button type="button" class="material-btn botones-almacen" id="btnImprimir" onclick="manejarImpresion()" style="display: inline-block;">Imprimir</button>
                 <button type="button" class="material-btn botones-almacen" id="btnConfigImpresora" onclick="verificarImpresoraZebra()" style="background: #6c757d; font-size: 9px; padding: 6px 8px; min-width: 80px; text-align: center;">CONF. DE IMPRESORA</button>
             </div>
@@ -791,9 +791,9 @@
             </div>
             <div style="display: flex; gap: 6px; flex-shrink: 0;">
                 <button type="button" class="material-btn" id="btnConsultar" onclick="event.preventDefault(); consultarRegistros()">Consultar</button>
-                <button class="material-btn secondary" onclick="exportarExcel()">Exportar Excel</button>
+                <button type="button" class="material-btn secondary" onclick="event.preventDefault(); exportarExcel()">Exportar Excel</button>
                 <input type="file" id="importarExcelAlmacen" onchange="importarExcelAlmacen()" style="display:none" accept=".xlsx,.xls" />
-                <button class="material-btn secondary" onclick="document.getElementById('importarExcelAlmacen').click()">Importar Excel</button>
+                <button type="button" class="material-btn secondary" onclick="event.preventDefault(); document.getElementById('importarExcelAlmacen').click()">Importar Excel</button>
             </div>
         </div>
 
@@ -987,6 +987,34 @@
             const tabla = document.getElementById('tablaControlAlmacen');
             if (tabla) {
                 tabla.style.display = 'table';
+            }
+            
+            // *** CONFIGURAR PROTECCIÓN ANTI-TAB/ENTER EN CAMPO DE ESCANEO ***
+            const campoEscaneo = document.getElementById('codigoMaterialOriginal');
+            if (campoEscaneo) {
+                // Listener adicional para keydown que previene TAB y ENTER
+                campoEscaneo.addEventListener('keydown', function(e) {
+                    if (e.key === 'Tab' || e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Mantener el foco aquí
+                        setTimeout(() => {
+                            campoEscaneo.focus();
+                        }, 10);
+                        console.log(`⛔ ${e.key} bloqueado - foco mantenido en campo de escaneo`);
+                    }
+                });
+                
+                // Listener para blur que devuelve el foco si fue por TAB
+                campoEscaneo.addEventListener('blur', function(e) {
+                    // Si el blur fue causado por navegación con teclado, devolver foco
+                    setTimeout(() => {
+                        if (document.activeElement !== campoEscaneo && campoEscaneo.value.trim() !== '') {
+                            console.log('🔙 Foco perdido - devolviendo al campo de escaneo');
+                            campoEscaneo.focus();
+                        }
+                    }, 50);
+                });
             }
             
             // Establecer fecha actual en todos los campos de fecha
@@ -1211,6 +1239,9 @@
                 llenarCampoPorId('cantidad_estandarizada', codigoCompleto.cantidad_estandarizada || '');
                 llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
                 llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
+                
+                // ✅ VERIFICAR MATERIAL EXISTENTE PARA HABILITAR BOTÓN UNIDADES
+                verificarMaterialExistente(codigo);
             }
             
             cerrarModalCodigoMaterial();
@@ -1412,18 +1443,27 @@
             const tiempoActual = Date.now();
             const input = event.target;
             
-            // *** DETECTAR NUEVO ESCANEO Y RESETEAR CONTROL ***
-            if (event.key && event.key.length === 1 && input.value.length === 0) {
-                // Se está empezando a escribir en campo vacío - nuevo escaneo
-                yaGuardadoEnEsteEscaneo = false;
-                console.log(' Nuevo escaneo iniciado - resetear control de guardado');
+            // *** PREVENIR TAB Y ENTER PARA MANTENER FOCO EN CAMPO DE ESCANEO ***
+            if (event.key === 'Tab') {
+                event.preventDefault();
+                console.log('⛔ TAB bloqueado - mantener foco en campo de escaneo');
+                input.focus(); // Forzar que el foco permanezca aquí
+                return;
             }
             
             // Detectar Enter (método tradicional) - Solo prevenir comportamiento por defecto
             if (event.key === 'Enter') {
                 event.preventDefault();
-                console.log('Enter detectado - no procesar, mantener datos del escaneo');
+                console.log('⛔ Enter bloqueado - mantener datos del escaneo');
+                input.focus(); // Asegurar que el foco permanezca aquí
                 return;
+            }
+            
+            // *** DETECTAR NUEVO ESCANEO Y RESETEAR CONTROL ***
+            if (event.key && event.key.length === 1 && input.value.length === 0) {
+                // Se está empezando a escribir en campo vacío - nuevo escaneo
+                yaGuardadoEnEsteEscaneo = false;
+                console.log('🔄 Nuevo escaneo iniciado - resetear control de guardado');
             }
             
             // Detección automática por velocidad de tipeo (escáneres son muy rápidos)

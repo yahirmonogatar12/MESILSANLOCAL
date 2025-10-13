@@ -9,22 +9,143 @@
     <!-- Bootstrap para iconos y componentes del panel lateral -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Estilos para filtros de cabecera */
+        .filterable-header {
+            position: relative;
+            vertical-align: top;
+            padding: 6px 8px !important;
+            min-width: 120px;
+        }
+
+        .filterable-header .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 32px;
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
+
+        .filterable-header .header-content span {
+            font-size: 11px;
+            font-weight: 600;
+            text-align: left;
+            line-height: 1.2;
+            flex: 1;
+            min-width: 0;
+            word-wrap: break-word;
+        }
+
+        .filterable-header .filter-btn {
+            background: #2c3e50;
+            border: 1px solid #20688C;
+            color: #3498db;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            font-size: 11px;
+            padding: 0;
+            margin-left: auto;
+        }
+
+        .filterable-header .filter-btn:hover {
+            background: #20688C;
+            color: #ecf0f1;
+            transform: scale(1.1);
+        }
+
+        .filterable-header .filter-btn.active {
+            background: #3498db;
+            color: #fff;
+            border-color: #2980b9;
+        }
+
+        .filterable-header .header-filter {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #2c3e50;
+            border: 1px solid #20688C;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 9999 !important;
+            padding: 5px;
+            margin-top: 2px;
+            min-width: 150px;
+            display: none;
+        }
+
+        .filterable-header .filter-input {
+            width: 100%;
+            background: #34495e !important;
+            border: 1px solid #20688C !important;
+            color: #ecf0f1 !important;
+            padding: 5px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .filterable-header .filter-input:focus {
+            border-color: #3498db !important;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .clear-all-filters {
+            background: #e74c3c !important;
+            border: 1px solid #c0392b !important;
+            color: #fff !important;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .clear-all-filters:hover {
+            background: #c0392b !important;
+            transform: scale(1.05);
+        }
+
+        /* Override para evitar conflictos */
+        .material-table th:not(.filterable-header) {
+            overflow: hidden;
+        }
+
+        .filterable-header {
+            overflow: visible !important;
+        }
+    </style>
 </head>
 <body>
-<div class="material-container">
+<div class="material-container" id="control-material-container">
     <!-- Botonera -->
     <div class="material-toolbar">
-        <button class="material-btn" onclick="consultar()">
+        <button class="material-btn" id="btn-consultar-material">
             Consultar
         </button>
-        <button class="material-btn purple" onclick="mostrarFormulario()">
+        <button class="material-btn purple" id="btn-registrar-material">
             Registrar
         </button>
-        <button class="material-btn secondary" onclick="exportarExcel()">
+        <button class="material-btn secondary" id="btn-exportar-excel">
             Exportar Excel
         </button>
-        <input type="file" id="importarExcel" onchange="importarExcel()" style="display:none" accept=".xlsx,.xls" />
-        <button class="material-btn secondary" onclick="document.getElementById('importarExcel').click()">
+        <input type="file" id="importarExcel" style="display:none" accept=".xlsx,.xls" />
+        <button class="material-btn secondary" id="btn-importar-excel">
             Importar Excel
         </button>
     </div>
@@ -56,20 +177,89 @@
                 <table class="material-table" id="tablaMateriales">
             <thead>
                 <tr>
-                    <th style="width: 80px;" title="Código único de identificación del material">Código</th>
-                    <th style="width: 80px;" title="Número de parte del componente">No. Parte</th>
-                    <th style="width: 60px;" title="Tipo de propiedad del material">Propiedad</th>
-                    <th style="width: 80px;" title="Clasificación del material">Classification</th>
-                    <th style="width: 100px;" title="Especificación técnica detallada del material">Especificación</th>
-                    <th style="width: 40px;" title="Cantidad de unidades por empaque">Und.</th>
-                    <th style="width: 30px;" title="Ubicación física del material en almacén">Ubicación</th>
-                    <th style="width: 70px;" title="Proveedor o vendedor del material">Vendedor</th>
-                    <th style="width: 50px;" title="Indica si el material está prohibido para sacar">Prohibido</th>
-                    <th style="width: 50px;" title="Indica si el material es reparable">Reparable</th>
-                    <th style="width: 40px;" title="Nivel de sensibilidad a la humedad (MSL)">MSL</th>
-                    <th style="width: 60px;" title="Espesor del material para MSL">Espesor</th>
-                    <th style="width: 80px;" title="Usuario que registró el material">Usuario</th>
-                    <th style="width: 60px;" title="Acciones disponibles para el material">Acciones</th>
+                    <th class="filterable-header" style="width: 80px;">
+                        <div class="header-content">
+                            <span>Código</span>
+                            <button class="filter-btn" data-column="codigo">▼</button>
+                        </div>
+                        <div id="filtro-codigo" class="header-filter">
+                            <input type="text" class="filter-input" data-column="codigo" placeholder="Buscar código...">
+                        </div>
+                    </th>
+                    <th class="filterable-header" style="width: 80px;">
+                        <div class="header-content">
+                            <span>No. Parte</span>
+                            <button class="filter-btn" data-column="nparte">▼</button>
+                        </div>
+                        <div id="filtro-nparte" class="header-filter">
+                            <input type="text" class="filter-input" data-column="nparte" placeholder="Buscar parte...">
+                        </div>
+                    </th>
+                    <th class="filterable-header" style="width: 60px;">
+                        <div class="header-content">
+                            <span>Propiedad</span>
+                            <button class="filter-btn" data-column="propiedad">▼</button>
+                        </div>
+                        <div id="filtro-propiedad" class="header-filter">
+                            <input type="text" class="filter-input" data-column="propiedad" placeholder="Buscar propiedad...">
+                        </div>
+                    </th>
+                    <th class="filterable-header" style="width: 80px;">
+                        <div class="header-content">
+                            <span>Classification</span>
+                            <button class="filter-btn" data-column="classification">▼</button>
+                        </div>
+                        <div id="filtro-classification" class="header-filter">
+                            <input type="text" class="filter-input" data-column="classification" placeholder="Buscar classification...">
+                        </div>
+                    </th>
+                    <th class="filterable-header" style="width: 100px;">
+                        <div class="header-content">
+                            <span>Especificación</span>
+                            <button class="filter-btn" data-column="especificacion">▼</button>
+                        </div>
+                        <div id="filtro-especificacion" class="header-filter">
+                            <input type="text" class="filter-input" data-column="especificacion" placeholder="Buscar especif...">
+                        </div>
+                    </th>
+                    <th style="width: 40px;">Und.</th>
+                    <th class="filterable-header" style="width: 30px;">
+                        <div class="header-content">
+                            <span>Ubicación</span>
+                            <button class="filter-btn" data-column="ubicacion">▼</button>
+                        </div>
+                        <div id="filtro-ubicacion" class="header-filter">
+                            <input type="text" class="filter-input" data-column="ubicacion" placeholder="Buscar ubicación...">
+                        </div>
+                    </th>
+                    <th class="filterable-header" style="width: 70px;">
+                        <div class="header-content">
+                            <span>Vendedor</span>
+                            <button class="filter-btn" data-column="vendedor">▼</button>
+                        </div>
+                        <div id="filtro-vendedor" class="header-filter">
+                            <input type="text" class="filter-input" data-column="vendedor" placeholder="Buscar vendedor...">
+                        </div>
+                    </th>
+                    <th style="width: 50px;">Prohibido</th>
+                    <th style="width: 50px;">Reparable</th>
+                    <th style="width: 40px;">MSL</th>
+                    <th style="width: 60px;">Espesor</th>
+                    <th class="filterable-header" style="width: 80px;">
+                        <div class="header-content">
+                            <span>Usuario</span>
+                            <button class="filter-btn" data-column="usuario">▼</button>
+                        </div>
+                        <div id="filtro-usuario" class="header-filter">
+                            <input type="text" class="filter-input" data-column="usuario" placeholder="Buscar usuario...">
+                        </div>
+                    </th>
+                    <th style="width: 60px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                            <span>Acciones</span>
+                            <button class="clear-all-filters" title="Limpiar todos los filtros">×</button>
+                        </div>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -318,62 +508,161 @@
 
     // La tabla permanece vacía hasta que el usuario haga clic en "Consultar"
 
-    // Permitir redimensionar columnas tipo Excel
-document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('tablaMateriales');
-    const thElements = table.querySelectorAll('th');
-    thElements.forEach(function (th) {
-        // Crear un "grip" para el resize
-        const resizer = document.createElement('div');
-        resizer.style.width = '5px';
-        resizer.style.height = '100%';
-        resizer.style.position = 'absolute';
-        resizer.style.right = '0';
-        resizer.style.top = '0';
-        resizer.style.cursor = 'col-resize';
-        resizer.style.userSelect = 'none';
-        resizer.style.zIndex = '100';
-        resizer.classList.add('th-resizer');
-        th.style.position = 'relative';
-        th.appendChild(resizer);
+    // ====== Event Delegation (CRÍTICO PARA CARGA DINÁMICA) ======
+    /**
+     * Función de inicialización usando Event Delegation
+     * Esta función puede llamarse múltiples veces sin causar problemas
+     */
+    function initializeControlMaterialEventListeners() {
+        
+        // Protección contra inicialización múltiple
+        if (!document.body.dataset.controlMaterialListenersAttached) {
+            
+            // Event delegation para clicks en botones principales
+            document.body.addEventListener('click', function(e) {
+                const target = e.target;
+                
+                // Botón Consultar
+                if (target.id === 'btn-consultar-material' || target.closest('#btn-consultar-material')) {
+                    e.preventDefault();
+                    consultar();
+                    return;
+                }
+                
+                // Botón Registrar
+                if (target.id === 'btn-registrar-material' || target.closest('#btn-registrar-material')) {
+                    e.preventDefault();
+                    mostrarFormulario();
+                    return;
+                }
+                
+                // Botón Exportar Excel
+                if (target.id === 'btn-exportar-excel' || target.closest('#btn-exportar-excel')) {
+                    e.preventDefault();
+                    exportarExcel();
+                    return;
+                }
+                
+                // Botón Importar Excel
+                if (target.id === 'btn-importar-excel' || target.closest('#btn-importar-excel')) {
+                    e.preventDefault();
+                    const fileInput = document.getElementById('importarExcel');
+                    if (fileInput) fileInput.click();
+                    return;
+                }
+                
+                // Botón de filtro
+                if (target.classList.contains('filter-btn') && target.closest('.filterable-header')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const columna = target.getAttribute('data-column');
+                    if (columna) {
+                        toggleFiltro(columna);
+                    }
+                    return;
+                }
+                
+                // Botón limpiar filtros
+                if (target.classList.contains('clear-all-filters') || target.closest('.clear-all-filters')) {
+                    e.preventDefault();
+                    limpiarTodosFiltros();
+                    return;
+                }
+                
+                // Clicks fuera de filtros - cerrar dropdowns
+                if (!target.closest('.filterable-header')) {
+                    document.querySelectorAll('.header-filter').forEach(filter => {
+                        filter.style.display = 'none';
+                    });
+                    document.querySelectorAll('.filter-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                }
+                
+                // Prevenir cierre si click dentro del filtro
+                if (target.closest('.header-filter')) {
+                    e.stopPropagation();
+                }
+            });
+            
+            // Event delegation para change en file input
+            document.body.addEventListener('change', function(e) {
+                if (e.target.id === 'importarExcel') {
+                    importarExcel();
+                }
+            });
+            
+            // Event delegation para input en filtros
+            document.body.addEventListener('input', function(e) {
+                if (e.target.classList.contains('filter-input')) {
+                    const columna = e.target.getAttribute('data-column');
+                    if (columna) {
+                        aplicarFiltroTexto(columna, e.target.value);
+                    }
+                }
+            });
+            
+            document.body.dataset.controlMaterialListenersAttached = 'true';
+        }
+        
+        // Inicializar columnas redimensionables
+        initializeResizableColumns();
+    }
 
-        let startX, startWidth;
+    // Función separada para inicializar columnas redimensionables
+    function initializeResizableColumns() {
+        const table = document.getElementById('tablaMateriales');
+        if (!table) return;
+        
+        const thElements = table.querySelectorAll('th');
+        thElements.forEach(function (th) {
+            // Crear un "grip" para el resize
+            const resizer = document.createElement('div');
+            resizer.style.width = '5px';
+            resizer.style.height = '100%';
+            resizer.style.position = 'absolute';
+            resizer.style.right = '0';
+            resizer.style.top = '0';
+            resizer.style.cursor = 'col-resize';
+            resizer.style.userSelect = 'none';
+            resizer.style.zIndex = '100';
+            resizer.classList.add('th-resizer');
+            th.style.position = 'relative';
+            th.appendChild(resizer);
 
-        resizer.addEventListener('mousedown', function (e) {
-            startX = e.pageX;
-            startWidth = th.offsetWidth;
-            document.body.style.cursor = 'col-resize';
+            let startX, startWidth;
 
-            function onMouseMove(e) {
-                const newWidth = startWidth + (e.pageX - startX);
-                th.style.width = newWidth + 'px';
-            }
+            resizer.addEventListener('mousedown', function (e) {
+                startX = e.pageX;
+                startWidth = th.offsetWidth;
+                document.body.style.cursor = 'col-resize';
 
-            function onMouseUp() {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-                document.body.style.cursor = '';
-            }
+                function onMouseMove(e) {
+                    const newWidth = startWidth + (e.pageX - startX);
+                    th.style.width = newWidth + 'px';
+                }
 
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+                function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    document.body.style.cursor = '';
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
         });
-    });
-});
+    }
 
-// 🆕 Función para inicializar el panel lateral después de cargar contenido AJAX
-function inicializarPanelLateral() {
-    // Forzar inicialización del drawer si no existe
+    // 🆕 Función para inicializar el panel lateral después de cargar contenido AJAX
+    function inicializarPanelLateral() {
+        // Forzar inicialización del drawer si no existe
     if (typeof window.materialEditDrawer === 'undefined') {
-        console.log(' Inicializando panel lateral después de carga AJAX...');
         
         // Cargar el script dinámicamente si no está cargado
         if (!document.querySelector('script[src*="material-edit-drawer.js"]')) {
             const script = document.createElement('script');
             script.src = '{{ url_for("static", filename="js/material-edit-drawer.js") }}';
-            script.onload = function() {
-                console.log(' Script del panel lateral cargado via AJAX');
-            };
             document.head.appendChild(script);
         } else {
             // El script ya está cargado, solo inicializar
@@ -451,6 +740,208 @@ function simularProgreso() {
     window.intervaloCarga = intervalo;
 }
 
+// ========== FUNCIONES DE FILTRADO DE TABLA ==========
+
+// Variable global para almacenar los datos originales
+let datosOriginales = [];
+
+// Mapeo de columnas para el filtrado
+const columnMapping = {
+    'codigo': 0,
+    'nparte': 1,
+    'propiedad': 2,
+    'classification': 3,
+    'especificacion': 4,
+    'ubicacion': 6,
+    'vendedor': 7,
+    'usuario': 12
+};
+
+// Función para toggle de filtros
+function toggleFiltro(columna) {
+    const filtroDiv = document.getElementById(`filtro-${columna}`);
+    const btn = filtroDiv.previousElementSibling.querySelector('.filter-btn');
+    
+    // Cerrar otros filtros abiertos
+    document.querySelectorAll('.header-filter').forEach(filter => {
+        if (filter.id !== `filtro-${columna}`) {
+            filter.style.display = 'none';
+            const otherBtn = filter.previousElementSibling.querySelector('.filter-btn');
+            if (otherBtn) otherBtn.classList.remove('active');
+        }
+    });
+    
+    // Toggle del filtro actual
+    if (filtroDiv.style.display === 'block') {
+        filtroDiv.style.display = 'none';
+        btn.classList.remove('active');
+    } else {
+        filtroDiv.style.display = 'block';
+        btn.classList.add('active');
+        // Enfocar el input
+        const input = filtroDiv.querySelector('.filter-input');
+        if (input) {
+            setTimeout(() => input.focus(), 100);
+        }
+    }
+}
+
+// Función para aplicar filtro de texto
+function aplicarFiltroTexto(columna, valor) {
+    const tabla = document.getElementById('tablaMateriales');
+    const tbody = tabla.querySelector('tbody');
+    const filas = Array.from(tbody.querySelectorAll('tr'));
+    const colIndex = columnMapping[columna];
+    
+    if (colIndex === undefined) return;
+    
+    const valorLower = valor.toLowerCase().trim();
+    
+    filas.forEach(fila => {
+        // Ignorar filas sin datos
+        if (fila.cells.length < 2) return;
+        
+        const celda = fila.cells[colIndex];
+        if (!celda) return;
+        
+        const textoCelda = celda.textContent.toLowerCase();
+        
+        // Mostrar u ocultar según coincidencia
+        if (textoCelda.includes(valorLower)) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+    
+    // Si el valor está vacío, aplicar todos los filtros activos
+    if (valorLower === '') {
+        aplicarTodosFiltros();
+    }
+}
+
+// Función para aplicar todos los filtros activos simultáneamente
+function aplicarTodosFiltros() {
+    const tabla = document.getElementById('tablaMateriales');
+    const tbody = tabla.querySelector('tbody');
+    const filas = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Recopilar todos los filtros activos
+    const filtrosActivos = {};
+    Object.keys(columnMapping).forEach(columna => {
+        const input = document.querySelector(`#filtro-${columna} .filter-input`);
+        if (input && input.value.trim() !== '') {
+            filtrosActivos[columna] = input.value.toLowerCase().trim();
+        }
+    });
+    
+    // Si no hay filtros activos, mostrar todas las filas
+    if (Object.keys(filtrosActivos).length === 0) {
+        filas.forEach(fila => {
+            if (fila.cells.length >= 2) {
+                fila.style.display = '';
+            }
+        });
+        return;
+    }
+    
+    // Aplicar todos los filtros
+    filas.forEach(fila => {
+        // Ignorar filas sin datos
+        if (fila.cells.length < 2) return;
+        
+        let mostrar = true;
+        
+        // Verificar cada filtro activo
+        Object.entries(filtrosActivos).forEach(([columna, valor]) => {
+            const colIndex = columnMapping[columna];
+            const celda = fila.cells[colIndex];
+            
+            if (celda) {
+                const textoCelda = celda.textContent.toLowerCase();
+                if (!textoCelda.includes(valor)) {
+                    mostrar = false;
+                }
+            }
+        });
+        
+        fila.style.display = mostrar ? '' : 'none';
+    });
+}
+
+// Función para limpiar todos los filtros
+function limpiarTodosFiltros() {
+    // Limpiar todos los inputs de filtro
+    document.querySelectorAll('.filter-input').forEach(input => {
+        input.value = '';
+    });
+    
+    // Cerrar todos los filtros
+    document.querySelectorAll('.header-filter').forEach(filter => {
+        filter.style.display = 'none';
+    });
+    
+    // Remover clase active de todos los botones
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Mostrar todas las filas
+    const tabla = document.getElementById('tablaMateriales');
+    const tbody = tabla.querySelector('tbody');
+    const filas = tbody.querySelectorAll('tr');
+    
+    filas.forEach(fila => {
+        if (fila.cells.length >= 2) {
+            fila.style.display = '';
+        }
+    });
+}
+
+// ====== Exponer Funciones Globalmente (CRÍTICO) ======
+// Exponer función de inicialización
+window.initializeControlMaterialEventListeners = initializeControlMaterialEventListeners;
+
+// Exponer funciones principales
+window.consultar = consultar;
+window.mostrarFormulario = mostrarFormulario;
+window.exportarExcel = exportarExcel;
+window.importarExcel = importarExcel;
+window.cargarDatosDesdeServidor = cargarDatosDesdeServidor;
+window.actualizarCampoMaterial = actualizarCampoMaterial;
+window.toggleFiltro = toggleFiltro;
+window.aplicarFiltroTexto = aplicarFiltroTexto;
+window.aplicarTodosFiltros = aplicarTodosFiltros;
+window.limpiarTodosFiltros = limpiarTodosFiltros;
+
+// ====== Auto-inicialización ======
+// Ejecutar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeControlMaterialEventListeners);
+} else {
+    initializeControlMaterialEventListeners();
+}
+
+</script>
+
+<!-- Script inline para inicialización después de carga AJAX -->
+<script>
+(function() {
+    
+    function tryInitialize() {
+        if (typeof window.initializeControlMaterialEventListeners === 'function') {
+            window.initializeControlMaterialEventListeners();
+        } else {
+            setTimeout(tryInitialize, 100);
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryInitialize);
+    } else {
+        tryInitialize();
+    }
+})();
 </script>
 
 <!-- Estilos adicionales para botones de editar -->
