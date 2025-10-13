@@ -3841,7 +3841,13 @@ def control_produccion_smt_ajax():
 def control_bom_ajax():
     """Ruta AJAX para cargar dinámicamente el contenido de Control BOM"""
     try:
-        return render_template('Control de proceso/control_bom_ajax.html')
+        # Obtener modelos para el dropdown
+        cursor = mysql.connection.cursor()
+        cursor.execute('SELECT DISTINCT Modelo FROM tbl_numero_parte_bom ORDER BY Modelo')
+        modelos = [row['Modelo'] for row in cursor.fetchall()]
+        cursor.close()
+        
+        return render_template('INFORMACION BASICA/CONTROL_DE_BOM.html', modelos=modelos)
     except Exception as e:
         print(f"Error al cargar template Control BOM AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500

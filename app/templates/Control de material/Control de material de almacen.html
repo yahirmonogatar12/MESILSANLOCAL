@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -1078,7 +1078,6 @@
                         setTimeout(() => {
                             campoEscaneo.focus();
                         }, 10);
-                        console.log(`⛔ ${e.key} bloqueado - foco mantenido en campo de escaneo`);
                     }
                 });
                 
@@ -1087,7 +1086,6 @@
                     // Si el blur fue causado por navegación con teclado, devolver foco
                     setTimeout(() => {
                         if (document.activeElement !== campoEscaneo && campoEscaneo.value.trim() !== '') {
-                            console.log('🔙 Foco perdido - devolviendo al campo de escaneo');
                             campoEscaneo.focus();
                         }
                     }, 50);
@@ -1367,15 +1365,11 @@
             // Implementar debounce para evitar demasiadas consultas
             timeoutBusqueda = setTimeout(async () => {
                 try {
-                    console.log(`🔍 Búsqueda inteligente para: "${filtro}"`);
-                    
                     // Llamar al servidor con búsqueda inteligente
                     const resultados = await cargarCodigosMaterial(filtro);
                     
                     // Mostrar resultados
                     mostrarResultadosEnTabla(resultados);
-                    
-                    console.log(` Encontrados ${resultados.length} resultados para: "${filtro}"`);
                     
                 } catch (error) {
                     console.error('Error en búsqueda:', error);
@@ -1530,7 +1524,6 @@
             // *** PREVENIR TAB Y ENTER PARA MANTENER FOCO EN CAMPO DE ESCANEO ***
             if (event.key === 'Tab') {
                 event.preventDefault();
-                console.log('⛔ TAB bloqueado - mantener foco en campo de escaneo');
                 input.focus(); // Forzar que el foco permanezca aquí
                 return;
             }
@@ -1538,7 +1531,6 @@
             // Detectar Enter (método tradicional) - Solo prevenir comportamiento por defecto
             if (event.key === 'Enter') {
                 event.preventDefault();
-                console.log('⛔ Enter bloqueado - mantener datos del escaneo');
                 input.focus(); // Asegurar que el foco permanezca aquí
                 return;
             }
@@ -1547,7 +1539,6 @@
             if (event.key && event.key.length === 1 && input.value.length === 0) {
                 // Se está empezando a escribir en campo vacío - nuevo escaneo
                 yaGuardadoEnEsteEscaneo = false;
-                console.log('🔄 Nuevo escaneo iniciado - resetear control de guardado');
             }
             
             // Detección automática por velocidad de tipeo (escáneres son muy rápidos)
@@ -1567,7 +1558,6 @@
                 timeoutEscaneo = setTimeout(() => {
                     const codigoCompleto = input.value.trim();
                     if (codigoCompleto && codigoCompleto.length > 10) { // Mínimo 10 caracteres para ser válido
-                        console.log('Escaneo automático detectado - procesando código:', codigoCompleto);
                         parsearYDistribuirCodigo(codigoCompleto);
                         // NO limpiar automáticamente - dejar el código visible
                     }
@@ -1622,8 +1612,6 @@
                 timeoutEscaneo = null;
             }
             ultimoTiempoEscaneo = 0;
-            
-            console.log('🧹 Campo limpiado manualmente - todos los controles reseteados');
         }
 
         function procesarCodigoManual() {
@@ -1639,41 +1627,29 @@
 
         async function parsearYDistribuirCodigo(codigoCompleto) {
             try {
-                console.log('🔍 Procesando código escaneado:', codigoCompleto);
-                
                 //  VERIFICAR QUE EL CÓDIGO ESTÉ EN EL CAMPO CORRECTO
                 const campoEscaneo = document.getElementById('codigoMaterialOriginal');
                 if (campoEscaneo) {
-                    console.log(' Campo de escaneo antes:', campoEscaneo.value);
                     // Asegurar que el código escaneado esté en el campo de escaneo
                     if (campoEscaneo.value !== codigoCompleto) {
                         campoEscaneo.value = codigoCompleto;
-                        console.log(' Código escaneado asignado a codigoMaterialOriginal:', codigoCompleto);
                     }
-                    console.log(' Campo de escaneo después:', campoEscaneo.value);
                 }
                 
                 // Primero intentar con las reglas de trazabilidad
                 const resultado = await aplicarReglasEscaneo(codigoCompleto);
                 
-                console.log(' Resultado de reglas de trazabilidad:', resultado);
-                
                 if (resultado) {
                     // Si se encontró una regla que coincide, usar esos datos
-                    console.log('Regla encontrada, aplicando...');
-                    console.log('Datos extraídos:', { partNumber: resultado.partNumber, lotNumber: resultado.lotNumber });
-                    
                     if (resultado.partNumber) {
                         // Usar el partNumber como código de material
                         buscarYSeleccionarCodigoMaterial(resultado.partNumber);
                     }
                     
                     if (resultado.lotNumber) {
-                        console.log('Asignando número de lote:', resultado.lotNumber);
                         const inputLote = document.getElementById('numero_lote_material');
                         if (inputLote) {
                             inputLote.value = resultado.lotNumber;
-                            console.log('Lote asignado al campo numero_lote_material:', inputLote.value);
                         } else {
                             console.error('No se encontró el campo numero_lote_material');
                         }
@@ -1686,7 +1662,6 @@
                 }
                 
                 // Si no se encontró regla de trazabilidad, abrir modal para registrar nueva regla
-                console.log('No se encontró regla, abriendo modal de trazabilidad...');
                 // Guardar el código escaneado para uso en el modal
                 window.ultimoCodigoEscaneado = codigoCompleto;
                 abrirModalTrazabilidad();
@@ -1736,11 +1711,9 @@
 
         // Función de prueba para verificar funcionamiento completo
         function probarSistemaCompleto() {
-            console.log('🧪 INICIANDO PRUEBA COMPLETA DEL SISTEMA');
             
             // Simular un código escaneado
             const codigoPrueba = 'H5602C622,202507250003';
-            console.log(' Código de prueba:', codigoPrueba);
             
             // Procesar el código
             parsearYDistribuirCodigo(codigoPrueba);
@@ -1748,19 +1721,13 @@
 
         // Función específica para probar la regla PRUEBA corregida
         function probarReglaPrueba() {
-            console.log('🧪 PROBANDO REGLA PRUEBA CORREGIDA');
             
             const codigoPrueba = '0RH5602C622,202507250003';
-            console.log(' Código para regla PRUEBA:', codigoPrueba);
-            console.log(' Longitud del código:', codigoPrueba.length);
             
             // Manualmente probar la extracción según la regla corregida
             const partNumber = codigoPrueba.substring(0, 11); // Posición 0-10
             const lotNumber = codigoPrueba.substring(12, 24); // Posición 12-23
             
-            console.log('✂️ Extracción manual:');
-            console.log('  📦 Número de parte:', `"${partNumber}"`);
-            console.log('  🏷️ Número de lote:', `"${lotNumber}"`);
             
             // Ahora probar con la función completa
             parsearYDistribuirCodigo(codigoPrueba);
@@ -1768,7 +1735,6 @@
 
         // Función para probar la creación de regla desde el modal
         function probarCreacionReglaModal() {
-            console.log('🧪 PROBANDO CREACIÓN DE REGLA DESDE MODAL');
             
             // Simular código escaneado
             const codigoPrueba = '0RH5602C622,202507250003';
@@ -1783,13 +1749,10 @@
                 document.getElementById('trazabilidad-part-number').value = '0RH5602C622';
                 document.getElementById('trazabilidad-lot-number').value = '202507250003';
                 
-                console.log('Modal llenado automáticamente para prueba');
-                console.log('💡 Ahora haz clic en "Crear Regla" para probar el backend');
             }, 500);
         }
 
         async function buscarYSeleccionarCodigoMaterial(codigo) {
-            console.log(`🔍 Búsqueda inteligente para código escaneado: "${codigo}"`);
             
             try {
                 // Primero intentar búsqueda exacta local
@@ -1797,7 +1760,6 @@
                 
                 // Si no se encuentra exactamente, usar búsqueda inteligente del servidor
                 if (!codigoEncontrado) {
-                    console.log(`📡 No encontrado localmente, buscando en servidor: "${codigo}"`);
                     
                     // Llamar al servidor con búsqueda inteligente
                     const resultadosBusqueda = await cargarCodigosMaterial(codigo);
@@ -1805,7 +1767,6 @@
                     if (resultadosBusqueda && resultadosBusqueda.length > 0) {
                         // Tomar el primer resultado (más relevante)
                         codigoEncontrado = resultadosBusqueda[0];
-                        console.log(` Encontrado por búsqueda inteligente:`, codigoEncontrado);
                     }
                 }
                 
@@ -1868,7 +1829,6 @@
             // Verificar material existente después de que se llenen los campos
             setTimeout(() => {
                 verificarMaterialExistente(codigo);
-                console.log('✅ Material existente verificado después de llenar campos');
             }, 200); // Dar tiempo para que se llenen los campos primero
             
             // *** VERIFICACIÓN RÁPIDA DE REGISTRO AUTOMÁTICO TRAS ESCANEO ***
@@ -1968,10 +1928,8 @@
             
             // Si ya están llenos los campos principales, solo cargar el secuencial
             if (campoNumeroParte && campoNumeroParte.value.trim()) {
-                console.log('✅ Campos ya llenos desde selección, cargando secuencial y actualizando especificación...');
                 
                 // Buscar la información completa del código de material para actualizar especificación
-                console.log('🔍 Buscando especificación para código:', codigoMaterial);
                 const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
                 let codigoEncontrado = codigoCompleto;
                 
@@ -1979,7 +1937,6 @@
                     // Intentar buscar por número de parte también
                     codigoEncontrado = codigosMaterial.find(c => c.numero_parte === codigoMaterial);
                     if (codigoEncontrado) {
-                        console.log('✅ Especificación encontrada por número de parte:', codigoEncontrado);
                     }
                 }
                 
@@ -1987,7 +1944,6 @@
                 if (codigoEncontrado) {
                     const especificacion = codigoEncontrado.especificacion_material || codigoEncontrado.spec || '';
                     llenarCampoPorId('almacen_especificacion_material', especificacion);
-                    console.log('✅ Especificación actualizada:', especificacion);
                 } else {
                     console.warn('❌ No se encontró especificación para:', codigoMaterial);
                 }
@@ -2003,7 +1959,6 @@
             }
             
             // Buscar la información completa del código de material
-            console.log('🔍 Buscando código:', codigoMaterial, 'en', codigosMaterial.length, 'códigos disponibles');
             const codigoCompleto = codigosMaterial.find(c => c.codigo === codigoMaterial);
             
             let codigoEncontrado = codigoCompleto;
@@ -2013,12 +1968,10 @@
                 // Intentar buscar por número de parte también
                 codigoEncontrado = codigosMaterial.find(c => c.numero_parte === codigoMaterial);
                 if (codigoEncontrado) {
-                    console.log('✅ Encontrado por número de parte:', codigoEncontrado);
                 } else {
                     console.warn('❌ Tampoco encontrado por número de parte');
                 }
             } else {
-                console.log('✅ Código encontrado:', codigoEncontrado);
             }
             
             // Cargar secuencial y llenar campos
@@ -2037,7 +1990,6 @@
                     llenarCampoPorId('propiedad_material', codigoEncontrado.propiedad_material || '');
                     llenarCampoPorId('almacen_especificacion_material', codigoEncontrado.especificacion_material || codigoEncontrado.spec || '');
                     
-                    console.log('✅ Especificación cargada al escanear:', codigoEncontrado.especificacion_material || codigoEncontrado.spec || 'No encontrada');
                 } else {
                     console.warn('❌ No se pudo llenar la especificación - código no encontrado');
                 }
@@ -2345,7 +2297,6 @@
         function verificarRegistroAutomaticoTrasEscaneo() {
             // *** CONTROL: No permitir múltiples guardados del mismo escaneo ***
             if (yaGuardadoEnEsteEscaneo) {
-                console.log('🔒 Ya se guardó este escaneo - ignorando duplicado');
                 return;
             }
             
@@ -2353,7 +2304,6 @@
             const checkboxRegistroAuto = document.getElementById('checkbox_registro_almacen');
             
             if (!checkboxRegistroAuto || !checkboxRegistroAuto.checked) {
-                console.log('🤖 Registro automático desactivado - no se guardará automáticamente');
                 return; // No hacer nada si no está marcado
             }
             
@@ -2369,7 +2319,6 @@
                 guardarFormulario();
                 
             } else {
-                console.log('Registro automático tras escaneo: Faltan campos:', validacion.camposFaltantes);
                 // Campos faltantes para registro automático
             }
         }
@@ -2379,7 +2328,6 @@
             // Verificar si ya existe un contador activo
             const contadorExistente = document.getElementById('contador_automatico_escaneo');
             if (contadorExistente) {
-                console.log('🔒 Ya hay un contador activo - cancelando nuevo guardado');
                 return;
             }
             
@@ -5364,7 +5312,6 @@ if (document.readyState === 'loading') {
                     especificacion: especificacionReal || 'Material'
                 };
                 
-                console.log('✅ Material existente detectado con especificación:', especificacionReal);
                 
                 // Mostrar botón UNIDADES y mantener otros visibles
                 document.getElementById('btnUnidades').style.display = 'inline-block';
@@ -5425,8 +5372,6 @@ if (document.readyState === 'loading') {
                 // Usar el número de parte como base para el código consecutivo
                 const codigoBase = document.getElementById('numero_parte_lower')?.value || materialExistente.codigo;
                 
-                console.log(`🚀 Generando ${cantidad} etiquetas para: ${codigoBase}`);
-                console.log(`📊 Contador secuencial: ${contadorSecuencial}`);
                 
                 // Generar todos los códigos usando el contador ya cargado
                 for (let i = 1; i <= cantidad; i++) {
@@ -5439,11 +5384,9 @@ if (document.readyState === 'loading') {
                     });
                 }
                 
-                console.log(' Etiquetas generadas:', etiquetasImpresas);
                 
                 //  MEJORADO: Abrir modal inmediatamente después de generar códigos
                 abrirModalAsignacionLotes();
-                console.log(' Modal de asignación abierto inmediatamente');
                 
                 //  MEJORADO: Imprimir en segundo plano usando función asíncrona
                 imprimirEnSegundoPlano(cantidad);
@@ -5457,13 +5400,11 @@ if (document.readyState === 'loading') {
         
         //  NUEVA FUNCIÓN: Imprimir en segundo plano
         async function imprimirEnSegundoPlano(cantidad) {
-            console.log('🖨️ Iniciando impresión en segundo plano...');
             
             for (let i = 0; i < etiquetasImpresas.length; i++) {
                 const etiqueta = etiquetasImpresas[i];
                 
                 try {
-                    console.log(`📄 Imprimiendo etiqueta ${i + 1}/${cantidad}: ${etiqueta.codigo}`);
                     
                     // Imprimir etiqueta individual (sin esperar a que termine)
                     imprimirEtiquetaIndividual(etiqueta.codigo, i + 1, cantidad)
@@ -5481,7 +5422,6 @@ if (document.readyState === 'loading') {
                 }
             }
             
-            console.log(' Todas las etiquetas enviadas a impresión en segundo plano');
             ocultarIndicadorProceso();
         }
         
@@ -5502,7 +5442,6 @@ if (document.readyState === 'loading') {
                         const secuencialExtraido = parseInt(fechaYSecuencial.slice(-4));
                         if (!isNaN(secuencialExtraido)) {
                             secuencialBase = secuencialExtraido;
-                            console.log(` Usando secuencial del formulario: ${secuencialBase} (extraído de: ${codigoExistente})`);
                         }
                     }
                 }
@@ -5513,12 +5452,10 @@ if (document.readyState === 'loading') {
             const secuencial = (secuencialBase + numero - 1).toString().padStart(4, '0');
             const codigoGenerado = `${codigoBase},${fechaActual}${secuencial}`;
             
-            console.log(` Código consecutivo generado: ${codigoGenerado} (base: ${secuencialBase}, número: ${numero})`);
             return codigoGenerado;
         }
         
         async function imprimirEtiquetaIndividual(codigo, numero, total) {
-            console.log(`Imprimiendo etiqueta ${numero}/${total}: ${codigo}`);
             
             try {
                 // Imprimir usando la función existente de Zebra
@@ -5558,7 +5495,6 @@ if (document.readyState === 'loading') {
             campoEtiqueta.style.pointerEvents = 'auto';
             campoEtiqueta.style.background = '#7B8181';
             
-            console.log('Campo etiqueta inicializado como DISPONIBLE');
             
             // Restaurar colores iniciales
             campoLote.style.background = '#7B8181';
@@ -5644,17 +5580,14 @@ if (document.readyState === 'loading') {
         function detectarEscaneoLoteAutomatico(event) {
             // Solo funcionar en el campo específico del modal de asignación de lotes
             if (event.target.id !== 'escaneo-lote-proveedor') {
-                console.log('⛔ detectarEscaneoLoteAutomatico - Solo permitido en modal de asignación');
                 return;
             }
             
             const valor = event.target.value.trim();
-            console.log('Detectando lote automático - Longitud:', valor.length, 'Valor:', valor);
             
             // Detectar cuando el código tenga longitud típica de lote
             if (valor.length >= 25 && !procesandoLote) { // Evitar ejecuciones múltiples
                 procesandoLote = true;
-                console.log(' Longitud suficiente detectada, procesando automáticamente...');
                 setTimeout(() => {
                     // Simular Enter para procesar automáticamente
                     const enterEvent = new KeyboardEvent('keydown', {
@@ -5665,7 +5598,6 @@ if (document.readyState === 'loading') {
                         bubbles: true
                     });
                     event.target.dispatchEvent(enterEvent);
-                    console.log('🚀 Evento Enter simulado para lote');
                     
                     // Resetear flag después de un tiempo
                     setTimeout(() => {
@@ -5682,13 +5614,11 @@ if (document.readyState === 'loading') {
             }
             
             const valor = event.target.value.trim();
-            console.log('Detectando etiqueta automática - Longitud:', valor.length, 'Valor:', valor);
             
             // Detectar cuando el código tenga longitud típica de etiqueta
             if (valor.length >= 20 && !procesandoEtiqueta && ultimaEtiquetaProcesada !== valor) { // Evitar ejecuciones múltiples
                 procesandoEtiqueta = true;
                 ultimaEtiquetaProcesada = valor;
-                console.log('🔄 Longitud suficiente detectada, procesando automáticamente...');
                 setTimeout(() => {
                     // Simular Enter para procesar automáticamente
                     const enterEvent = new KeyboardEvent('keydown', {
@@ -5699,7 +5629,6 @@ if (document.readyState === 'loading') {
                         bubbles: true
                     });
                     event.target.dispatchEvent(enterEvent);
-                    console.log('🚀 Evento Enter simulado para etiqueta');
                     
                     // Resetear flag después de un tiempo
                     setTimeout(() => {
@@ -5720,7 +5649,6 @@ if (document.readyState === 'loading') {
                     // Cambiar colores para indicar progreso
                     const campoEtiqueta = document.getElementById('escaneo-etiqueta-impresa');
                     
-                    console.log('✅ Lote escaneado, cambiando al siguiente campo');
                     
                     // Cambiar colores para indicar que el lote fue escaneado
                     event.target.style.background = '#d4edda';
@@ -5737,12 +5665,10 @@ if (document.readyState === 'loading') {
                     campoEtiqueta.style.border = '3px solid #3498db';
                     campoEtiqueta.style.boxShadow = '0 0 15px rgba(52, 152, 219, 0.7)';
                     
-                    console.log('🎯 Campo etiqueta desbloqueado y resaltado');
                     
                     // Enfocar INMEDIATAMENTE el campo de etiqueta para flujo continuo
                     campoEtiqueta.focus();
                     campoEtiqueta.select(); // Seleccionar todo el contenido para sobrescribir fácilmente
-                    console.log('➡️ FLUJO AUTOMÁTICO: Movido al campo de etiqueta');
                 }
             }
         }
@@ -5757,7 +5683,6 @@ if (document.readyState === 'loading') {
             campoLote.value = '';
             campoLote.style.background = '#7B8181';
             campoLote.style.border = '2px solid #e74c3c';
-            console.log('Lote limpiado para nueva secuencia');
         }
         
         function procesarEscaneoEtiquetaImpresa(event) {
@@ -5768,7 +5693,6 @@ if (document.readyState === 'loading') {
 
                 // Evitar procesamiento duplicado si ya se está procesando esta etiqueta
                 if (procesandoEtiqueta && ultimaEtiquetaProcesada === etiquetaEscaneada) {
-                    console.log('⏸️ Evitando procesamiento duplicado de:', etiquetaEscaneada);
                     return;
                 }
 
@@ -5788,7 +5712,6 @@ if (document.readyState === 'loading') {
                     );
                     
                     if (yaAsignada !== -1) {
-                        console.log('✅ Etiqueta ya procesada correctamente:', etiquetaEscaneada);
                         // No mostrar alerta si ya fue asignada exitosamente
                     } else {
                         alert('Etiqueta no encontrada: ' + etiquetaEscaneada);
@@ -5814,7 +5737,6 @@ if (document.readyState === 'loading') {
                 actualizarTablaAsignaciones();
                 
                 // Mostrar confirmación visual rápida
-                console.log(`✅ Asignado: ${etiquetaEscaneada} → ${loteProveedor}`);
                 
                 // Cambiar color del campo de etiqueta a verde (éxito)
                 event.target.style.background = '#d4edda';
@@ -5837,7 +5759,6 @@ if (document.readyState === 'loading') {
                     procesandoEtiqueta = false;
                     procesandoLote = false;
                     ultimaEtiquetaProcesada = '';
-                    console.log('✅ Flags de procesamiento y lote reseteados');
                     
                     // Restaurar colores iniciales del campo de etiqueta
                     campoEtiqueta.style.background = '#7B8181';
@@ -5852,7 +5773,6 @@ if (document.readyState === 'loading') {
                     // Flujo automático INMEDIATO: enfocar el campo de lote para nueva secuencia
                     campoLote.focus();
                     campoLote.select();
-                    console.log('➡️ FLUJO AUTOMÁTICO: Volviendo al campo de lote para nueva secuencia');
                 }, 250); // Breve pausa para feedback visual
                 
                 // Verificar si todas las etiquetas están asignadas
@@ -5876,7 +5796,6 @@ if (document.readyState === 'loading') {
             
             // Opcional: mostrar qué etiqueta se va a asignar
             const etiqueta = asignacionesLotes[indice];
-            console.log('Preparando asignación para etiqueta:', etiqueta.codigo);
         }
         
         function desasignarLote(indice) {
@@ -6039,7 +5958,6 @@ if (document.readyState === 'loading') {
                     throw new Error(data.message || 'Error al guardar');
                 }
                 
-                console.log(' Entrada guardada exitosamente:', item.codigo);
                 
             } catch (error) {
                 console.error('❌ Error guardando entrada:', error);
@@ -6139,7 +6057,6 @@ if (document.readyState === 'loading') {
             document.getElementById('trazabilidad-part-number').value = '';
             document.getElementById('trazabilidad-lot-number').value = '';
             
-            console.log('Modal de trazabilidad abierto con código:', textoActual);
         }
 
         function configurarSeleccionDirecta() {
@@ -6188,7 +6105,6 @@ if (document.readyState === 'loading') {
             const numeroLote = document.getElementById('trazabilidad-lot-number').value.trim();
             const textoOriginal = document.getElementById('trazabilidad-raw-text').textContent.trim();
             
-            console.log('🔍 Datos del formulario:', { proveedor, numeroParte, numeroLote, textoOriginal });
             
             // Validar campos requeridos
             if (!proveedor || !numeroParte) {
@@ -6207,7 +6123,6 @@ if (document.readyState === 'loading') {
                 activa: true
             };
             
-            console.log(' Enviando nueva regla:', nuevaRegla);
             
             try {
                 // Enviar al backend para guardar en rules.json
@@ -6219,11 +6134,9 @@ if (document.readyState === 'loading') {
                     body: JSON.stringify(nuevaRegla)
                 });
                 
-                console.log('📡 Respuesta del servidor:', response.status, response.statusText);
                 
                 if (response.ok) {
                     const resultado = await response.json();
-                    console.log(' Resultado exitoso:', resultado);
                     alert('Regla guardada exitosamente');
                     
                     // Cerrar modal
@@ -6315,11 +6228,9 @@ if (document.readyState === 'loading') {
         // Función para abrir la edición de control de almacén
         function abrirEdicionControlAlmacen(item) {
             try {
-                console.log('🔧 Datos recibidos para edición:', item);
                 
                 // Verificar que el sistema esté disponible
                 if (!window.materialEditDrawer) {
-                    console.log('Inicializando sistema de edición...');
                     window.initializeMaterialDrawer();
                     
                     // Esperar un momento para la inicialización
@@ -6331,12 +6242,10 @@ if (document.readyState === 'loading') {
 
                 // Crear drawer específico para control de almacén si no existe
                 if (!document.getElementById('controlAlmacenEditDrawer')) {
-                    console.log('🎨 Creando drawer de control de almacén...');
                     crearDrawerControlAlmacen();
                     
                     // Esperar un momento para que se cree el HTML antes de llenar
                     setTimeout(() => {
-                        console.log('📝 Drawer creado, ahora llenando formulario...');
                         llenarFormularioControlAlmacen(materialData);
                         
                         // Mostrar el drawer
@@ -6345,7 +6254,6 @@ if (document.readyState === 'loading') {
                             document.getElementById('controlAlmacenOverlay').classList.add('active');
                         }
                         
-                        console.log('🔧 Panel de edición abierto para:', materialData.codigo_material);
                     }, 300);
                     return;
                 }
@@ -6373,7 +6281,6 @@ if (document.readyState === 'loading') {
                     ubicacion_salida: item.ubicacion_salida || ''
                 };
 
-                console.log('🔧 Datos mapeados:', materialData);
 
                 // Llenar formulario del drawer
                 llenarFormularioControlAlmacen(materialData);
@@ -6384,7 +6291,6 @@ if (document.readyState === 'loading') {
                     document.getElementById('controlAlmacenOverlay').classList.add('active');
                 }
 
-                console.log('🔧 Panel de edición de control de almacén abierto para:', materialData.codigo_material);
 
             } catch (error) {
                 console.error('Error al abrir edición:', error);
@@ -6685,21 +6591,18 @@ if (document.readyState === 'loading') {
 
         // Función para cerrar el drawer
         function cerrarDrawerControlAlmacen() {
-            console.log('🚪 Cerrando drawer de control de almacén...');
             
             const drawer = document.getElementById('controlAlmacenEditDrawer');
             const overlay = document.getElementById('controlAlmacenOverlay');
             
             if (drawer) {
                 drawer.classList.remove('open');
-                console.log('✅ Drawer cerrado');
             } else {
                 console.warn('⚠️ Drawer no encontrado');
             }
             
             if (overlay) {
                 overlay.classList.remove('active');
-                console.log('✅ Overlay cerrado');
             } else {
                 console.warn('⚠️ Overlay no encontrado');
             }
@@ -6823,7 +6726,6 @@ if (document.readyState === 'loading') {
         // Nueva función para actualizar inventario consolidado tras edición
         async function actualizarInventarioConsolidadoTrasEdicion() {
             try {
-                console.log('🔄 Actualizando inventario consolidado tras edición...');
                 
                 // Actualización silenciosa en segundo plano - sin notificaciones
 
@@ -6839,7 +6741,6 @@ if (document.readyState === 'loading') {
                     const result = await response.json();
                     
                     if (result.success) {
-                        console.log('✅ Inventario consolidado actualizado exitosamente');
                         // Actualización silenciosa - sin notificaciones molestas
                         
                     } else {
@@ -6867,7 +6768,6 @@ if (document.readyState === 'loading') {
 
         // ====== Función de Limpieza para AJAX ======
         function cleanupControlAlmacen() {
-            console.log('🧹 Limpiando módulo Control de Almacén...');
             
             // Limpiar estilos inline de campos de escaneo
             const campoLote = document.getElementById('escaneo-lote-proveedor');
@@ -6923,7 +6823,6 @@ if (document.readyState === 'loading') {
                 delete document.body.dataset.controlAlmacenListenersAttached;
             }
             
-            console.log('Limpieza completada');
         }
 
         // ====== Exponer Funciones Globalmente para acceso externo (CRÍTICO) ======

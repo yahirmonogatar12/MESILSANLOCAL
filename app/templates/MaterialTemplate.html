@@ -1779,6 +1779,13 @@
                         console.warn('Error en cleanupControlAlmacen:', e);
                     }
                 }
+                if (typeof window.cleanupControlBOM === 'function') {
+                    try {
+                        window.cleanupControlBOM();
+                    } catch(e) {
+                        console.warn('Error en cleanupControlBOM:', e);
+                    }
+                }
                 // Agregar más funciones de limpieza aquí para otros módulos si es necesario
                 
                 // 1. CERRAR TODOS LOS DROPDOWNS ANTES DE LIMPIAR
@@ -2283,14 +2290,61 @@ function hideAllMaterialContainers() {
                     return false;
                 }
                 
+                // PASO 1: Ocultar TODOS los contenedores de Información Básica
                 hideAllInformacionBasicaContainers();
+                
+                // PASO 2: Ocultar también otros contenedores de otras secciones (CRÍTICO)
+                if (typeof window.hideAllMaterialContainers === 'function') {
+                    window.hideAllMaterialContainers();
+                }
+                
+                // PASO 3: Ocultar ESPECÍFICAMENTE el contenedor bom-unique-container de Control de Proceso
+                const bomProcesoContainer = document.getElementById('bom-unique-container');
+                if (bomProcesoContainer) {
+                    bomProcesoContainer.style.display = 'none';
+                }
+                
+                // PASO 4: Ocultar todos los contenedores de Control de Proceso
+                const controlProcesoContainers = [
+                    'control-proceso-info-container',
+                    'control-produccion-smt-container',
+                    'operacion-linea-smt-unique-container',
+                    'inventario-imd-terminado-unique-container',
+                    'Control de produccion SMT-unique-container',
+                    'crear-plan-micom-unique-container',
+                    'line-material-status-unique-container',
+                    'bom-management-process-unique-container'
+                ];
+                
+                controlProcesoContainers.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container) container.style.display = 'none';
+                });
+                
+                // PASO 5: Limpiar cualquier contenido visible en el área de Información Básica
+                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
+                if (informacionBasicaArea) {
+                    // Ocultar todos los divs hijos que puedan tener contenido visible
+                    const allChildDivs = informacionBasicaArea.querySelectorAll('div[id$="-container"]');
+                    allChildDivs.forEach(div => {
+                        if (div.id !== 'control-bom-info-container') {
+                            div.style.display = 'none';
+                        }
+                    });
+                }
+                
+                // PASO 6: Mostrar el contenedor de Control de BOM de Información Básica
                 const container = document.getElementById('control-bom-info-container');
                 if (container) {
                     container.style.display = 'block';
                     
-                    // Cargar el contenido dinámicamente del endpoint específico
+                    // PASO 7: Cargar el contenido dinámicamente (esto también ejecuta cleanup)
                     cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom')
                         .then(() => {
+                            // Inicializar event listeners si existen
+                            if (typeof window.initializeControlBOMEventListeners === 'function') {
+                                window.initializeControlBOMEventListeners();
+                            }
                         })
                         .catch(error => {
                             console.error('❌ Error cargando Control de BOM de Información Básica:', error);

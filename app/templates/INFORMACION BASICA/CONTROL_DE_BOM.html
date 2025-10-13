@@ -1,44 +1,40 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de BOM - ISEMM MES</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/control_bom.css') }}">
-</head>
-<body>
+<!-- Control de BOM - Módulo AJAX Compatible -->
+<style>
+    @import url("{{ url_for('static', filename='style.css') }}");
+    @import url("{{ url_for('static', filename='css/control_bom.css') }}");
+</style>
+
 <div class="bom-container">
     <!-- Botonera -->
     <div class="bom-toolbar">
         <div class="bom-search-container">
-            <input type="text" class="bom-search-dropdown" id="bomModeloSearch" placeholder="Seleccione un modelo" onkeyup="filtrarModelos()" onclick="mostrarDropdown()" />
+            <input type="text" class="bom-search-dropdown" id="bomModeloSearch" placeholder="Seleccione un modelo" />
             <div class="bom-dropdown-list" id="bomDropdownList" style="display: none;">
                 {% if modelos %}
                     {% for modelo in modelos %}
-                    <div class="bom-dropdown-item" data-value="{{ modelo.modelo }}" onclick="seleccionarModelo('{{ modelo.modelo }}')">{{ modelo.modelo }}</div>
+                    <div class="bom-dropdown-item" data-value="{{ modelo.modelo }}">{{ modelo.modelo }}</div>
                     {% endfor %}
                 {% endif %}
             </div>
         </div>
         
-        <button class="bom-btn consultar" onclick="consultarBOM()">
+        <button class="bom-btn consultar" id="btnConsultarBOM">
             Consultar
         </button>
-        <button class="bom-btn registrar" onclick="mostrarFormularioBOM()">
+        <button class="bom-btn registrar" id="btnRegistrarBOM">
             Registrar
         </button>
-        <button class="bom-btn eliminar" onclick="eliminarBOM()">
+        <button class="bom-btn eliminar" id="btnEliminarBOM">
             Eliminar
         </button>
-        <button class="bom-btn sustituir" onclick="mostrarSustitutoBOM()">
+        <button class="bom-btn sustituir" id="btnSustitutoBOM">
             Registro de mat. sustituto
         </button>
-        <button class="bom-btn exportar" onclick="exportarExcelBOM()">
+        <button class="bom-btn exportar" id="btnExportarExcelBOM">
             Exportar al excel
         </button>
-        <input type="file" id="importarExcelBOM" onchange="importarExcelBOM()" style="display:none" accept=".xlsx,.xls" />
-        <button class="bom-btn importar" onclick="document.getElementById('importarExcelBOM').click()">
+        <input type="file" id="importarExcelBOM" style="display:none" accept=".xlsx,.xls" />
+        <button class="bom-btn importar" id="btnImportarExcelBOM">
             Importar al excel
         </button>
     </div>
@@ -97,6 +93,99 @@
 </div>
 
 <script>
+    // ========== EVENT DELEGATION PARA AJAX ==========
+    function initializeControlBOMEventListeners() {
+        console.log('🎯 Inicializando Event Listeners para Control BOM');
+        
+        // Protección contra inicialización múltiple
+        if (!document.body.dataset.controlBOMListenersAttached) {
+            
+            // Event delegation para clicks en botones principales
+            document.body.addEventListener('click', function(e) {
+                const target = e.target;
+                
+                // Botón Consultar
+                if (target.id === 'btnConsultarBOM' || target.closest('#btnConsultarBOM')) {
+                    e.preventDefault();
+                    consultarBOM();
+                    return;
+                }
+                
+                // Botón Registrar
+                if (target.id === 'btnRegistrarBOM' || target.closest('#btnRegistrarBOM')) {
+                    e.preventDefault();
+                    mostrarFormularioBOM();
+                    return;
+                }
+                
+                // Botón Eliminar
+                if (target.id === 'btnEliminarBOM' || target.closest('#btnEliminarBOM')) {
+                    e.preventDefault();
+                    eliminarBOM();
+                    return;
+                }
+                
+                // Botón Sustituto
+                if (target.id === 'btnSustitutoBOM' || target.closest('#btnSustitutoBOM')) {
+                    e.preventDefault();
+                    mostrarSustitutoBOM();
+                    return;
+                }
+                
+                // Botón Exportar Excel
+                if (target.id === 'btnExportarExcelBOM' || target.closest('#btnExportarExcelBOM')) {
+                    e.preventDefault();
+                    exportarExcelBOM();
+                    return;
+                }
+                
+                // Botón Importar Excel
+                if (target.id === 'btnImportarExcelBOM' || target.closest('#btnImportarExcelBOM')) {
+                    e.preventDefault();
+                    const fileInput = document.getElementById('importarExcelBOM');
+                    if (fileInput) fileInput.click();
+                    return;
+                }
+                
+                // Dropdown items
+                if (target.classList.contains('bom-dropdown-item')) {
+                    const modelo = target.dataset.value;
+                    seleccionarModelo(modelo);
+                    return;
+                }
+            });
+            
+            // Event delegation para input en el buscador
+            document.body.addEventListener('keyup', function(e) {
+                if (e.target.id === 'bomModeloSearch') {
+                    filtrarModelos();
+                }
+            });
+            
+            // Event delegation para click en el buscador
+            document.body.addEventListener('click', function(e) {
+                if (e.target.id === 'bomModeloSearch') {
+                    mostrarDropdown();
+                }
+            });
+            
+            // Event delegation para change en file input
+            document.body.addEventListener('change', function(e) {
+                if (e.target.id === 'importarExcelBOM') {
+                    importarExcelBOM();
+                }
+            });
+            
+            document.body.dataset.controlBOMListenersAttached = 'true';
+            console.log('✅ Event Listeners de Control BOM inicializados correctamente');
+        } else {
+            console.log('⚠️ Event Listeners de Control BOM ya estaban inicializados');
+        }
+    }
+    
+    // Exponer función de inicialización globalmente
+    window.initializeControlBOMEventListeners = initializeControlBOMEventListeners;
+
     function cargarDatosBOMEnTabla(datos) {
         // Si se pasa un string (modelo), cargar desde servidor
         if (typeof datos === 'string') {
@@ -824,6 +913,68 @@
             }
         }
     }
+
+    // ========== FUNCIÓN DE LIMPIEZA PARA AJAX ==========
+    function cleanupControlBOM() {
+        console.log('🧹 Limpiando módulo Control BOM...');
+        
+        // Cerrar modales abiertos
+        const modalAlert = document.getElementById('customAlertModal');
+        const modalLoading = document.getElementById('loadingModal');
+        
+        if (modalAlert) modalAlert.style.display = 'none';
+        if (modalLoading) modalLoading.style.display = 'none';
+        
+        // Limpiar dropdown
+        const dropdown = document.getElementById('bomDropdownList');
+        if (dropdown) dropdown.style.display = 'none';
+        
+        // Resetear flag de listeners para permitir reinicialización
+        if (document.body.dataset.controlBOMListenersAttached) {
+            delete document.body.dataset.controlBOMListenersAttached;
+        }
+        
+        console.log('✅ Limpieza de Control BOM completada');
+    }
+
+    // Exponer función de limpieza globalmente
+    window.cleanupControlBOM = cleanupControlBOM;
+
+    // ========== EXPONER FUNCIONES GLOBALMENTE ==========
+    window.cargarDatosBOMEnTabla = cargarDatosBOMEnTabla;
+    window.consultarBOM = consultarBOM;
+    window.mostrarFormularioBOM = mostrarFormularioBOM;
+    window.eliminarBOM = eliminarBOM;
+    window.mostrarSustitutoBOM = mostrarSustitutoBOM;
+    window.exportarExcelBOM = exportarExcelBOM;
+    window.importarExcelBOM = importarExcelBOM;
+    window.filtrarModelos = filtrarModelos;
+    window.mostrarDropdown = mostrarDropdown;
+    window.seleccionarModelo = seleccionarModelo;
+
 </script>
-</body>
-</html>
+
+<!-- Script inline para inicialización después de carga AJAX -->
+<script>
+(function() {
+    console.log('📦 Script de auto-inicialización de Control BOM ejecutándose...');
+    
+    function tryInitialize() {
+        if (typeof window.initializeControlBOMEventListeners === 'function') {
+            console.log('✅ Inicializando Control BOM Event Listeners');
+            window.initializeControlBOMEventListeners();
+        } else {
+            console.log('⏳ Esperando carga de funciones de Control BOM...');
+            setTimeout(tryInitialize, 100);
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryInitialize);
+    } else {
+        tryInitialize();
+    }
+})();
+</script>
+
+<!-- Fin del módulo Control de BOM -->

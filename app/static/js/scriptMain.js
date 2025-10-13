@@ -815,8 +815,6 @@
             // Función AJAX para Control de operación de línea SMT - GLOBAL
             window.mostrarControlOperacionLineaSMT = function() {
                 try {
-                    console.log('FUNCIÓN mostrarControlOperacionLineaSMT EJECUTÁNDOSE...');
-                    console.log('Iniciando carga AJAX de Control de operación de línea SMT...');
 
                     // IMPORTANTE: Asegurar que estamos en la sección correcta
                     // Activar el botón "Control de proceso" para que scriptMain.js no interfiera
@@ -872,34 +870,24 @@
                         return;
                     }
 
-                    console.log('Contenedor encontrado:', operacionLineaContainer);
-                    console.log('Estado inicial - Display:', operacionLineaContainer.style.display);
 
                     // Mostrar el contenedor específico
                     operacionLineaContainer.style.display = 'block';
                     operacionLineaContainer.style.opacity = '1';
 
-                    console.log('Estado después de mostrar - Display:', operacionLineaContainer.style.display);
 
                     // Cargar contenido dinámicamente usando la nueva ruta AJAX
-                    console.log('Iniciando carga AJAX...');
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('operacion-linea-smt-unique-container', '/control-operacion-linea-smt-ajax', () => {
-                            console.log('Control de operación de línea SMT AJAX cargado exitosamente');
-                            console.log('Verificando contenedor después de carga...');
 
                             // Verificar que el contenedor esté visible
                             const containerAfterLoad = document.getElementById('operacion-linea-smt-unique-container');
                             if (containerAfterLoad) {
-                                console.log('Contenedor encontrado después de carga:', containerAfterLoad);
-                                console.log('Display:', containerAfterLoad.style.display);
-                                console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
                             }
 
                             // Ejecutar inicialización específica del módulo si existe
                             if (typeof window.inicializarControlOperacionLineaSMTAjax === 'function') {
                                 window.inicializarControlOperacionLineaSMTAjax();
-                                console.log('Módulo inicializado correctamente');
                             }
                         })
                         .catch(error => {
@@ -988,7 +976,6 @@
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico(containerId, '/plan-main-assy-ajax', () => {
                             // Inicializar event listeners de plan después de cargar contenido dinámico
-                            console.log('📦 Contenido de Plan Main ASSY cargado, inicializando listeners...');
                             if (typeof window.initializePlanEventListeners === 'function') {
                                 window.initializePlanEventListeners();
                             } else {
@@ -1001,7 +988,6 @@
                 }
             };
 
-            console.log('Función mostrarControlOperacionLineaSMT registrada globalmente');
 
             // ========================================
             // FUNCIONES AJAX PARA CONTROL DE PROCESO
@@ -1010,7 +996,6 @@
             // Control de impresión de identificación SMT
             window.mostrarControlImpresionIdentificacionSMT = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Control de impresión de identificación SMT...');
 
                     // Activar el botón correcto en la navegación
                     const controlProcesoButton = document.getElementById('Control de proceso');
@@ -1050,7 +1035,6 @@
                     // Cargar contenido dinámicamente
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('control-impresion-identificacion-smt-unique-container', '/control-impresion-identificacion-smt-ajax', () => {
-                            console.log('Control de impresión de identificación SMT cargado exitosamente');
                             
                             if (typeof window.inicializarControlImpresionIdentificacionSMTAjax === 'function') {
                                 window.inicializarControlImpresionIdentificacionSMTAjax();
@@ -1066,7 +1050,6 @@
             // Control de registro de identificación SMT
             window.mostrarControlRegistroIdentificacionSMT = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Control de registro de identificación SMT...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1101,7 +1084,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('control-registro-identificacion-smt-unique-container', '/control-registro-identificacion-smt-ajax', () => {
-                            console.log('Control de registro de identificación SMT cargado exitosamente');
                             
                             if (typeof window.inicializarControlRegistroIdentificacionSMTAjax === 'function') {
                                 window.inicializarControlRegistroIdentificacionSMTAjax();
@@ -1117,7 +1099,6 @@
             // Historial de operación de proceso
             window.mostrarHistorialOperacionProceso = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Historial de operación de proceso...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1152,7 +1133,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('historial-operacion-proceso-unique-container', '/historial-operacion-proceso-ajax', () => {
-                            console.log('Historial de operación de proceso cargado exitosamente');
                             
                             if (typeof window.inicializarHistorialOperacionProcesoAjax === 'function') {
                                 window.inicializarHistorialOperacionProcesoAjax();
@@ -1168,7 +1148,6 @@
             // BOM Management Process
             window.mostrarBomManagementProcess = function() {
                 try {
-                    console.log('Iniciando carga AJAX de BOM Management Process...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1203,7 +1182,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('bom-management-process-unique-container', '/bom-management-process-ajax', () => {
-                            console.log('BOM Management Process cargado exitosamente');
                             
                             if (typeof window.inicializarBomManagementProcessAjax === 'function') {
                                 window.inicializarBomManagementProcessAjax();
@@ -1219,7 +1197,6 @@
             // Reporte diario de inspección SMT
             window.mostrarReporteDiarioInspeccionSMT = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Reporte diario de inspección SMT...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1254,7 +1231,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('reporte-diario-inspeccion-smt-unique-container', '/reporte-diario-inspeccion-smt-ajax', () => {
-                            console.log('Reporte diario de inspección SMT cargado exitosamente');
                             
                             if (typeof window.inicializarReporteDiarioInspeccionSMTAjax === 'function') {
                                 window.inicializarReporteDiarioInspeccionSMTAjax();
@@ -1270,7 +1246,6 @@
             // Control diario de inspección SMT
             window.mostrarControlDiarioInspeccionSMT = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Control diario de inspección SMT...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1305,7 +1280,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('control-diario-inspeccion-smt-unique-container', '/control-diario-inspeccion-smt-ajax', () => {
-                            console.log('Control diario de inspección SMT cargado exitosamente');
                             
                             if (typeof window.inicializarControlDiarioInspeccionSMTAjax === 'function') {
                                 window.inicializarControlDiarioInspeccionSMTAjax();
@@ -1321,7 +1295,6 @@
             // Reporte diario de inspección de proceso
             window.mostrarReporteDiarioInspeccionProceso = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Reporte diario de inspección de proceso...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1356,7 +1329,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('reporte-diario-inspeccion-proceso-unique-container', '/reporte-diario-inspeccion-proceso-ajax', () => {
-                            console.log('Reporte diario de inspección de proceso cargado exitosamente');
                             
                             if (typeof window.inicializarReporteDiarioInspeccionProcesoAjax === 'function') {
                                 window.inicializarReporteDiarioInspeccionProcesoAjax();
@@ -1372,7 +1344,6 @@
             // Control de unidad de empaque por modelo
             window.mostrarControlUnidadEmpaqueModelo = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Control de unidad de empaque por modelo...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1407,7 +1378,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('control-unidad-empaque-modelo-unique-container', '/control-unidad-empaque-modelo-ajax', () => {
-                            console.log('Control de unidad de empaque por modelo cargado exitosamente');
                             
                             if (typeof window.inicializarControlUnidadEmpaqueModeloAjax === 'function') {
                                 window.inicializarControlUnidadEmpaqueModeloAjax();
@@ -1423,7 +1393,6 @@
             // Packaging Register Management
             window.mostrarPackagingRegisterManagement = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Packaging Register Management...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1458,7 +1427,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('packaging-register-management-unique-container', '/packaging-register-management-ajax', () => {
-                            console.log('Packaging Register Management cargado exitosamente');
                             
                             if (typeof window.inicializarPackagingRegisterManagementAjax === 'function') {
                                 window.inicializarPackagingRegisterManagementAjax();
@@ -1474,7 +1442,6 @@
             // Search Packaging History
             window.mostrarSearchPackagingHistory = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Search Packaging History...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1509,7 +1476,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('search-packaging-history-unique-container', '/search-packaging-history-ajax', () => {
-                            console.log('Search Packaging History cargado exitosamente');
                             
                             if (typeof window.inicializarSearchPackagingHistoryAjax === 'function') {
                                 window.inicializarSearchPackagingHistoryAjax();
@@ -1525,7 +1491,6 @@
             // Shipping Register Management
             window.mostrarShippingRegisterManagement = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Shipping Register Management...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1560,7 +1525,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('shipping-register-management-unique-container', '/shipping-register-management-ajax', () => {
-                            console.log('Shipping Register Management cargado exitosamente');
                             
                             if (typeof window.inicializarShippingRegisterManagementAjax === 'function') {
                                 window.inicializarShippingRegisterManagementAjax();
@@ -1576,7 +1540,6 @@
             // Search Shipping History
             window.mostrarSearchShippingHistory = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Search Shipping History...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1611,7 +1574,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('search-shipping-history-unique-container', '/search-shipping-history-ajax', () => {
-                            console.log('Search Shipping History cargado exitosamente');
                             
                             if (typeof window.inicializarSearchShippingHistoryAjax === 'function') {
                                 window.inicializarSearchShippingHistoryAjax();
@@ -1627,7 +1589,6 @@
             // Return Warehousing Register
             window.mostrarReturnWarehousingRegister = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Return Warehousing Register...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1662,7 +1623,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('return-warehousing-register-unique-container', '/return-warehousing-register-ajax', () => {
-                            console.log('Return Warehousing Register cargado exitosamente');
                             
                             if (typeof window.inicializarReturnWarehousingRegisterAjax === 'function') {
                                 window.inicializarReturnWarehousingRegisterAjax();
@@ -1678,7 +1638,6 @@
             // Return Warehousing History
             window.mostrarReturnWarehousingHistory = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Return Warehousing History...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1713,7 +1672,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('return-warehousing-history-unique-container', '/return-warehousing-history-ajax', () => {
-                            console.log('Return Warehousing History cargado exitosamente');
                             
                             if (typeof window.inicializarReturnWarehousingHistoryAjax === 'function') {
                                 window.inicializarReturnWarehousingHistoryAjax();
@@ -1729,7 +1687,6 @@
             // Registro de movimiento de identificación
             window.mostrarRegistroMovimientoIdentificacion = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Registro de movimiento de identificación...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1764,7 +1721,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('registro-movimiento-identificacion-unique-container', '/registro-movimiento-identificacion-ajax', () => {
-                            console.log('Registro de movimiento de identificación cargado exitosamente');
                             
                             if (typeof window.inicializarRegistroMovimientoIdentificacionAjax === 'function') {
                                 window.inicializarRegistroMovimientoIdentificacionAjax();
@@ -1780,7 +1736,6 @@
             // Control de otras identificaciones
             window.mostrarControlOtrasIdentificaciones = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Control de otras identificaciones...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1815,7 +1770,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('control-otras-identificaciones-unique-container', '/control-otras-identificaciones-ajax', () => {
-                            console.log('Control de otras identificaciones cargado exitosamente');
                             
                             if (typeof window.inicializarControlOtrasIdentificacionesAjax === 'function') {
                                 window.inicializarControlOtrasIdentificacionesAjax();
@@ -1831,7 +1785,6 @@
             // Control de movimiento NS producto
             window.mostrarControlMovimientoNSProducto = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Control de movimiento NS producto...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1866,7 +1819,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('control-movimiento-ns-producto-unique-container', '/control-movimiento-ns-producto-ajax', () => {
-                            console.log('Control de movimiento NS producto cargado exitosamente');
                             
                             if (typeof window.inicializarControlMovimientoNSProductoAjax === 'function') {
                                 window.inicializarControlMovimientoNSProductoAjax();
@@ -1882,7 +1834,6 @@
             // Model SN Management
             window.mostrarModelSNManagement = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Model SN Management...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1918,7 +1869,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('model-sn-management-unique-container', '/model-sn-management-ajax', () => {
-                            console.log('Model SN Management cargado exitosamente');
                             
                             if (typeof window.inicializarModelSNManagementAjax === 'function') {
                                 window.inicializarModelSNManagementAjax();
@@ -1934,7 +1884,6 @@
             // Control Scrap
             window.mostrarControlScrap = function() {
                 try {
-                    console.log('Iniciando carga AJAX de Control Scrap...');
 
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
@@ -1969,7 +1918,6 @@
 
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('control-scrap-unique-container', '/control-scrap-ajax', () => {
-                            console.log('Control Scrap cargado exitosamente');
                             
                             if (typeof window.inicializarControlScrapAjax === 'function') {
                                 window.inicializarControlScrapAjax();
@@ -1982,7 +1930,6 @@
                 }
             };
 
-            console.log('Todas las funciones AJAX de Control de Proceso registradas globalmente');
 
             // ========================================
             // FUNCIÓN PARA CONTROL DE PRODUCCIÓN SMT
@@ -1991,10 +1938,6 @@
             // Control de producción SMT - SIGUIENDO EL PATRÓN EXITOSO
             window.mostrarControldeproduccionSMT = function() {
                 try {
-                    console.log('🚀🚀🚀 FUNCIÓN mostrarControldeproduccionSMT EJECUTÁNDOSE... 🚀🚀🚀');
-                    console.log('🔥🔥🔥 Iniciando carga de Control de producción SMT... 🔥🔥🔥');
-                    console.log('📍 Ubicación de la función:', window.location.href);
-                    console.log('🔍 Función disponible:', typeof window.mostrarControldeproduccionSMT);
 
                     // FORZAR ocultado de TODAS las secciones primero
                     const informacionBasicaElSMT = document.getElementById('informacion-basica-content');
@@ -2064,11 +2007,6 @@
                     if (controlProcesoContent) controlProcesoContent.style.display = 'block';
                     if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
 
-                    console.log('🔍 Verificando contenedores padre en mostrarControldeproduccionSMT:');
-                    console.log('materialContainer:', materialContainer);
-                    console.log('controlProcesoContent:', controlProcesoContent);
-                    console.log('controlProcesoContentArea:', controlProcesoContentArea);
-                    console.log('✅ Todos los contenedores padre mostrados');
 
                     // Obtener el contenedor específico
                     const controlProduccionSMTContainer = document.getElementById('Control de produccion SMT-unique-container');
@@ -2077,52 +2015,32 @@
                         return;
                     }
 
-                    console.log('Contenedor encontrado:', controlProduccionSMTContainer);
-                    console.log('Estado inicial - Display:', controlProduccionSMTContainer.style.display);
 
                     // Mostrar el contenedor específico
                     controlProduccionSMTContainer.style.display = 'block';
                     controlProduccionSMTContainer.style.opacity = '1';
 
-                    console.log('Estado después de mostrar - Display:', controlProduccionSMTContainer.style.display);
 
                     // Cargar contenido dinámicamente usando la ruta completa
-                    console.log('Iniciando carga AJAX...');
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('Control de produccion SMT-unique-container', '/control_proceso/control_produccion_smt', () => {
-                            console.log('Control de producción SMT cargado exitosamente');
-                            console.log('Verificando contenedor después de carga...');
 
                             // Verificar que el contenedor esté visible
                             const containerAfterLoad = document.getElementById('Control de produccion SMT-unique-container');
                             if (containerAfterLoad) {
-                                console.log('Contenedor encontrado después de carga:', containerAfterLoad);
-                                console.log('Display:', containerAfterLoad.style.display);
-                                console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
                                 
                                 // Verificar que el contenedor esté realmente visible
-                                console.log('🔍 Verificando visibilidad del contenedor:');
-                                console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
-                                console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
-                                console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
-                                console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
-                                console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
                                 
                                 // Verificar que los contenedores padre también estén visibles
                                 const materialContainerAfter = document.getElementById('material-container');
                                 const controlProcesoContentAfter = document.getElementById('control-proceso-content');
                                 const controlProcesoContentAreaAfter = document.getElementById('control-proceso-content-area');
                                 
-                                console.log('🔍 Verificando contenedores padre después de carga:');
-                                console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
-                                console.log('controlProcesoContent display:', controlProcesoContentAfter ? window.getComputedStyle(controlProcesoContentAfter).display : 'NO ENCONTRADO');
-                                console.log('controlProcesoContentArea display:', controlProcesoContentAreaAfter ? window.getComputedStyle(controlProcesoContentAreaAfter).display : 'NO ENCONTRADO');
                             }
 
                             // Ejecutar inicialización específica del módulo si existe
                             if (typeof window.inicializarControlProduccionSMTModule === 'function') {
                                 window.inicializarControlProduccionSMTModule();
-                                console.log('Módulo inicializado correctamente');
                             }
                         })
                         .catch(error => {
@@ -2150,7 +2068,6 @@
                 }
             };
 
-            console.log('Función mostrarControldeproduccionSMT registrada globalmente');
 
             // ========================================
 // FUNCIÓN PARA CREAR PLAN MICOM
@@ -2159,10 +2076,6 @@
 // Crear plan micom - SIGUIENDO EL PATRÓN EXITOSO
 window.mostrarCrearPlanMicom = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarCrearPlanMicom EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Crear plan micom... 🔥🔥🔥');
-        console.log('📍 Ubicación de la función:', window.location.href);
-        console.log('🔍 Función disponible:', typeof window.mostrarCrearPlanMicom);
 
         // IMPORTANTE: Asegurar que estamos en la sección correcta
         // Activar el botón "Control de produccion" para que scriptMain.js no interfiera
@@ -2202,22 +2115,15 @@ window.mostrarCrearPlanMicom = function() {
         const produccionContent = document.getElementById('produccion-content');
         const produccionContentArea = document.getElementById('produccion-content-area');
 
-        console.log('🔍 Verificando contenedores padre en mostrarCrearPlanMicom:');
-        console.log('materialContainer:', materialContainer);
-        console.log('produccionContent:', produccionContent);
-        console.log('produccionContentArea:', produccionContentArea);
 
         if (materialContainer) {
             materialContainer.style.display = 'block';
-            console.log('✅ materialContainer mostrado');
         }
         if (produccionContent) {
             produccionContent.style.display = 'block';
-            console.log('✅ produccionContent mostrado');
         }
         if (produccionContentArea) {
             produccionContentArea.style.display = 'block';
-            console.log('✅ produccionContentArea mostrado');
         }
 
         // Obtener el contenedor específico
@@ -2227,52 +2133,32 @@ window.mostrarCrearPlanMicom = function() {
             return;
         }
 
-        console.log('Contenedor encontrado:', crearPlanMicomContainer);
-        console.log('Estado inicial - Display:', crearPlanMicomContainer.style.display);
 
         // Mostrar el contenedor específico
         crearPlanMicomContainer.style.display = 'block';
         crearPlanMicomContainer.style.opacity = '1';
 
-        console.log('Estado después de mostrar - Display:', crearPlanMicomContainer.style.display);
 
         // Cargar contenido dinámicamente usando la ruta AJAX
-        console.log('Iniciando carga AJAX...');
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/crear-plan-micom-ajax', () => {
-                console.log('Crear plan micom cargado exitosamente');
-                console.log('Verificando contenedor después de carga...');
 
                                  // Verificar que el contenedor esté visible
                  const containerAfterLoad = document.getElementById('produccion-info-container');
                 if (containerAfterLoad) {
-                    console.log('Contenedor encontrado después de carga:', containerAfterLoad);
-                    console.log('Display:', containerAfterLoad.style.display);
-                    console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
 
                     // Verificar que el contenedor esté realmente visible
-                    console.log('🔍 Verificando visibilidad del contenedor:');
-                    console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
-                    console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
-                    console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
-                    console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
-                    console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
 
                     // Verificar que los contenedores padre también estén visibles
                     const materialContainerAfter = document.getElementById('material-container');
                     const produccionContentAfter = document.getElementById('produccion-content');
                     const produccionContentAreaAfter = document.getElementById('produccion-content-area');
 
-                    console.log('🔍 Verificando contenedores padre después de carga:');
-                    console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
-                    console.log('produccionContent display:', produccionContentAfter ? window.getComputedStyle(produccionContentAfter).display : 'NO ENCONTRADO');
-                    console.log('produccionContentArea display:', produccionContentAreaAfter ? window.getComputedStyle(produccionContentAreaAfter).display : 'NO ENCONTRADO');
                 }
 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarCrearPlanMicomModule === 'function') {
                     window.inicializarCrearPlanMicomModule();
-                    console.log('Módulo inicializado correctamente');
                 }
             })
             .catch(error => {
@@ -2294,56 +2180,37 @@ window.mostrarCrearPlanMicom = function() {
             // Control BOM - SIGUIENDO EL PATRÓN EXITOSO
             window.mostrarControlBOM = function() {
                 try {
-                    console.log('🚀🚀🚀 FUNCIÓN mostrarControlBOM EJECUTÁNDOSE... 🚀🚀🚀');
-                    console.log('🔥🔥🔥 Iniciando carga de Control BOM... 🔥🔥🔥');
-                    console.log('📍 Ubicación de la función:', window.location.href);
-                    console.log('🔍 Función disponible:', typeof window.mostrarControlBOM);
-
-                    // FORZAR ocultado de TODAS las secciones primero
-                    const informacionBasicaEl = document.getElementById('informacion-basica-content');
-                    const controlMaterialEl = document.getElementById('control-material-content');
-                    const controlProduccionEl = document.getElementById('control-produccion-content');
-                    const controlProcesoEl = document.getElementById('control-proceso-content');
-                    const controlCalidadEl = document.getElementById('control-calidad-content');
-                    const controlResultadosEl = document.getElementById('control-resultados-content');
-                    const configuracionProgramaEl = document.getElementById('configuracion-programa-content');
-                    const materialContentEl = document.getElementById('material-content-area');
-                    const informacionBasicaContentEl = document.getElementById('informacion-basica-content-area');
+                    // PASO 1: Ocultar TODOS los contenedores de todas las secciones
+                    // Ocultar secciones principales
+                    const allSections = [
+                        'informacion-basica-content',
+                        'control-material-content', 
+                        'control-produccion-content',
+                        'control-proceso-content',
+                        'control-calidad-content',
+                        'control-resultados-content',
+                        'configuracion-programa-content'
+                    ];
                     
-                    // Ocultar todas las secciones principales
-                    if (informacionBasicaEl) informacionBasicaEl.style.display = 'none';
-                    if (controlMaterialEl) controlMaterialEl.style.display = 'none';
-                    if (controlProduccionEl) controlProduccionEl.style.display = 'none';
-                    if (controlProcesoEl) controlProcesoEl.style.display = 'none';
-                    if (controlCalidadEl) controlCalidadEl.style.display = 'none';
-                    if (controlResultadosEl) controlResultadosEl.style.display = 'none';
-                    if (configuracionProgramaEl) configuracionProgramaEl.style.display = 'none';
-                    if (materialContentEl) materialContentEl.style.display = 'none';
-                    if (informacionBasicaContentEl) informacionBasicaContentEl.style.display = 'none';
+                    allSections.forEach(sectionId => {
+                        const section = document.getElementById(sectionId);
+                        if (section) section.style.display = 'none';
+                    });
 
-                    // Ocultar todos los contenedores AJAX específicos
-                    if (typeof window.hideAllMaterialContainers === 'function') {
-                        window.hideAllMaterialContainers();
-                    }
+                    // Ocultar áreas de contenido
+                    const allAreas = [
+                        'material-content-area',
+                        'informacion-basica-content-area',
+                        'control-produccion-content-area',
+                        'control-proceso-content-area'
+                    ];
                     
-                    if (typeof window.hideAllInformacionBasicaContainers === 'function') {
-                        window.hideAllInformacionBasicaContainers();
-                    }
+                    allAreas.forEach(areaId => {
+                        const area = document.getElementById(areaId);
+                        if (area) area.style.display = 'none';
+                    });
 
-                    // IMPORTANTE: Asegurar que estamos en la sección correcta
-                    // Activar el botón "Control de proceso" para que scriptMain.js no interfiera
-                    const controlProcesoButton = document.getElementById('Control de proceso');
-                    if (controlProcesoButton) {
-                        controlProcesoButton.classList.add('active');
-                        // Remover active de otros botones
-                        document.querySelectorAll('.nav-button').forEach(btn => {
-                            if (btn.id !== 'Control de proceso') {
-                                btn.classList.remove('active');
-                            }
-                        });
-                    }
-
-                    // Ocultar todos los contenedores primero
+                    // Ocultar TODOS los contenedores AJAX específicos
                     if (typeof window.hideAllMaterialContainers === 'function') {
                         window.hideAllMaterialContainers();
                     }
@@ -2352,105 +2219,51 @@ window.mostrarCrearPlanMicom = function() {
                         window.hideAllInformacionBasicaContainers();
                     }
                     
-                    // Ocultar otros contenedores dentro del área de control de proceso
-                    const controlProcesoContainers = [
+                    // Ocultar contenedores de Control de Proceso manualmente
+                    const allControlProcesoContainers = [
                         'control-proceso-info-container',
                         'control-produccion-smt-container',
                         'operacion-linea-smt-unique-container',
                         'inventario-imd-terminado-unique-container',
-                        'Control de produccion SMT-unique-container'
+                        'Control de produccion SMT-unique-container',
+                        'crear-plan-micom-unique-container',
+                        'line-material-status-unique-container'
                     ];
                     
-                    controlProcesoContainers.forEach(containerId => {
+                    allControlProcesoContainers.forEach(containerId => {
                         const container = document.getElementById(containerId);
-                        if (container) {
-                            container.style.display = 'none';
-                        }
+                        if (container) container.style.display = 'none';
                     });
 
-                    // Mostrar el área de control de proceso (esto es lo que scriptMain.js maneja)
-                    const materialContainerBOM = document.getElementById('material-container');
-                    const controlProcesoContentBOM = document.getElementById('control-proceso-content');
-                    const controlProcesoContentAreaBOM = document.getElementById('control-proceso-content-area');
+                    // PASO 2: Mostrar el contenedor padre de Control de Proceso
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
 
-                    console.log('🔍 Verificando contenedores padre en mostrarControlBOM:');
-                    console.log('materialContainer:', materialContainerBOM);
-                    console.log('controlProcesoContent:', controlProcesoContentBOM);
-                    console.log('controlProcesoContentArea:', controlProcesoContentAreaBOM);
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
 
-                    if (materialContainerBOM) {
-                        materialContainerBOM.style.display = 'block';
-                        console.log('✅ materialContainer mostrado');
-                    }
-                    if (controlProcesoContentBOM) {
-                        controlProcesoContentBOM.style.display = 'block';
-                        console.log('✅ controlProcesoContent mostrado');
-                    }
-                    if (controlProcesoContentAreaBOM) {
-                        controlProcesoContentAreaBOM.style.display = 'block';
-                        console.log('✅ controlProcesoContentArea mostrado');
-                    }
-
-                    // Obtener el contenedor específico
+                    // PASO 3: Obtener y mostrar el contenedor específico de BOM
                     const bomContainer = document.getElementById('bom-unique-container');
                     if (!bomContainer) {
-                        console.error('El contenedor bom-unique-container no existe en el HTML');
+                        console.error('❌ El contenedor bom-unique-container no existe en el HTML');
                         return;
                     }
 
-                    console.log('Contenedor encontrado:', bomContainer);
-                    console.log('Estado inicial - Display:', bomContainer.style.display);
-
-                    // Mostrar el contenedor específico
                     bomContainer.style.display = 'block';
-                    bomContainer.style.opacity = '1';
 
-                    console.log('Estado después de mostrar - Display:', bomContainer.style.display);
-
-                    // Cargar contenido dinámicamente usando la ruta AJAX
-                    console.log('Iniciando carga AJAX...');
+                    // PASO 4: Cargar contenido dinámicamente (esto también ejecuta cleanup)
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico('bom-unique-container', '/control-bom-ajax', () => {
-                            console.log('Control BOM cargado exitosamente');
-                            console.log('Verificando contenedor después de carga...');
-
-                            // Verificar que el contenedor esté visible
-                            const containerAfterLoad = document.getElementById('bom-unique-container');
-                            if (containerAfterLoad) {
-                                console.log('Contenedor encontrado después de carga:', containerAfterLoad);
-                                console.log('Display:', containerAfterLoad.style.display);
-                                console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
-                                
-                                // Verificar que el contenedor esté realmente visible
-                                console.log('🔍 Verificando visibilidad del contenedor:');
-                                console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
-                                console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
-                                console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
-                                console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
-                                console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
-                                
-                                // Verificar que los contenedores padre también estén visibles
-                                const materialContainerAfter = document.getElementById('material-container');
-                                const controlProcesoContentAfter = document.getElementById('control-proceso-content');
-                                const controlProcesoContentAreaAfter = document.getElementById('control-proceso-content-area');
-                                
-                                console.log('🔍 Verificando contenedores padre después de carga:');
-                                console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
-                                console.log('controlProcesoContent display:', controlProcesoContentAfter ? window.getComputedStyle(controlProcesoContentAfter).display : 'NO ENCONTRADO');
-                                console.log('controlProcesoContentArea display:', controlProcesoContentAreaAfter ? window.getComputedStyle(controlProcesoContentAreaAfter).display : 'NO ENCONTRADO');
-                            }
-
                             // Ejecutar inicialización específica del módulo si existe
-                            if (typeof window.inicializarControlBOMModule === 'function') {
-                                window.inicializarControlBOMModule();
-                                console.log('Módulo inicializado correctamente');
+                            if (typeof window.initializeControlBOMEventListeners === 'function') {
+                                window.initializeControlBOMEventListeners();
                             }
                         })
                         .catch(error => {
-                            console.error('Error cargando Control BOM:', error);
-
-                            // Mostrar mensaje de error al usuario
-                            const errorContainer = document.querySelector('#bom-unique-container');
+                            console.error('❌ Error cargando Control BOM:', error);
+                            const errorContainer = document.getElementById('bom-unique-container');
                             if (errorContainer) {
                                 errorContainer.innerHTML = `
                                     <div class="error-message" style="padding: 20px; text-align: center; color: #dc3545; background-color: #2B2D3E; border: 1px solid #dc3545; border-radius: 4px;">
@@ -2462,16 +2275,15 @@ window.mostrarCrearPlanMicom = function() {
                             }
                         });
                     } else {
-                        console.error('Función cargarContenidoDinamico no está disponible');
+                        console.error('❌ Función cargarContenidoDinamico no está disponible');
                     }
 
                 } catch (error) {
-                    console.error('Error crítico en mostrarControlBOM:', error);
+                    console.error('❌ Error crítico en mostrarControlBOM:', error);
                     alert('Error crítico al cargar Control BOM. Consulte la consola para más detalles.');
                 }
             };
 
-            console.log('Función mostrarControlBOM registrada globalmente');
         });
 
 // ========================================
@@ -2480,10 +2292,6 @@ window.mostrarCrearPlanMicom = function() {
 
 window.mostrarLineMaterialStatus = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarLineMaterialStatus EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Line Material Status_es... 🔥🔥🔥');
-        console.log('📍 Ubicación de la función:', window.location.href);
-        console.log('🔍 Función disponible:', typeof window.mostrarLineMaterialStatus);
 
         // IMPORTANTE: Asegurar que estamos en la sección correcta
         // Activar el botón "Control de produccion" para que scriptMain.js no interfiera
@@ -2523,22 +2331,15 @@ window.mostrarLineMaterialStatus = function() {
         const produccionContent = document.getElementById('produccion-content');
         const produccionContentArea = document.getElementById('produccion-content-area');
 
-        console.log('🔍 Verificando contenedores padre en mostrarLineMaterialStatus:');
-        console.log('materialContainer:', materialContainer);
-        console.log('produccionContent:', produccionContent);
-        console.log('produccionContentArea:', produccionContentArea);
 
         if (materialContainer) {
             materialContainer.style.display = 'block';
-            console.log('✅ materialContainer mostrado');
         }
         if (produccionContent) {
             produccionContent.style.display = 'block';
-            console.log('✅ produccionContent mostrado');
         }
         if (produccionContentArea) {
             produccionContentArea.style.display = 'block';
-            console.log('✅ produccionContentArea mostrado');
         }
 
         // Obtener el contenedor específico
@@ -2548,52 +2349,32 @@ window.mostrarLineMaterialStatus = function() {
             return;
         }
 
-        console.log('Contenedor encontrado:', lineMaterialStatusContainer);
-        console.log('Estado inicial - Display:', lineMaterialStatusContainer.style.display);
 
         // Mostrar el contenedor específico
         lineMaterialStatusContainer.style.display = 'block';
         lineMaterialStatusContainer.style.opacity = '1';
 
-        console.log('Estado después de mostrar - Display:', lineMaterialStatusContainer.style.display);
 
         // Cargar contenido dinámicamente usando la ruta AJAX
-        console.log('Iniciando carga AJAX...');
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/line-material-status-ajax', () => {
-                console.log('Line Material Status_es cargado exitosamente');
-                console.log('Verificando contenedor después de carga...');
 
                 // Verificar que el contenedor esté visible
                 const containerAfterLoad = document.getElementById('produccion-info-container');
                 if (containerAfterLoad) {
-                    console.log('Contenedor encontrado después de carga:', containerAfterLoad);
-                    console.log('Display:', containerAfterLoad.style.display);
-                    console.log('HTML contenido:', containerAfterLoad.innerHTML.substring(0, 200) + '...');
 
                     // Verificar que el contenedor esté realmente visible
-                    console.log('🔍 Verificando visibilidad del contenedor:');
-                    console.log('getComputedStyle(display):', window.getComputedStyle(containerAfterLoad).display);
-                    console.log('getComputedStyle(opacity):', window.getComputedStyle(containerAfterLoad).opacity);
-                    console.log('getComputedStyle(visibility):', window.getComputedStyle(containerAfterLoad).visibility);
-                    console.log('getComputedStyle(position):', window.getComputedStyle(containerAfterLoad).position);
-                    console.log('getComputedStyle(z-index):', window.getComputedStyle(containerAfterLoad).zIndex);
 
                     // Verificar que los contenedores padre también estén visibles
                     const materialContainerAfter = document.getElementById('material-container');
                     const produccionContentAfter = document.getElementById('produccion-content');
                     const produccionContentAreaAfter = document.getElementById('produccion-content-area');
 
-                    console.log('🔍 Verificando contenedores padre después de carga:');
-                    console.log('materialContainer display:', materialContainerAfter ? window.getComputedStyle(materialContainerAfter).display : 'NO ENCONTRADO');
-                    console.log('produccionContent display:', produccionContentAfter ? window.getComputedStyle(produccionContentAfter).display : 'NO ENCONTRADO');
-                    console.log('produccionContentArea display:', produccionContentAreaAfter ? window.getComputedStyle(produccionContentAreaAfter).display : 'NO ENCONTRADO');
                 }
 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarLineMaterialStatusModule === 'function') {
                     window.inicializarLineMaterialStatusModule();
-                    console.log('Módulo inicializado correctamente');
                 }
             })
             .catch(error => {
@@ -2608,7 +2389,6 @@ window.mostrarLineMaterialStatus = function() {
     }
 };
 
-console.log('Función mostrarLineMaterialStatus registrada globalmente');
 
 // ========================================
 // FUNCIONES AJAX PARA MÓDULOS DE CONTROL DE PRODUCCIÓN
@@ -2616,8 +2396,6 @@ console.log('Función mostrarLineMaterialStatus registrada globalmente');
 
 window.mostrarControlMaskMetal = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarControlMaskMetal EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Control de mask de metal... 🔥🔥🔥');
 
         // Activar el botón "Control de produccion"
         const controlProduccionButton = document.getElementById('Control de produccion');
@@ -2673,7 +2451,6 @@ window.mostrarControlMaskMetal = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/control-mask-metal-ajax', () => {
-                console.log('Control de mask de metal cargado exitosamente');
                 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarControlMaskMetalModule === 'function') {
@@ -2694,8 +2471,6 @@ window.mostrarControlMaskMetal = function() {
 
 window.mostrarControlSqueegee = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarControlSqueegee EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Control de squeegee... 🔥🔥🔥');
 
         // Activar el botón "Control de produccion"
         const controlProduccionButton = document.getElementById('Control de produccion');
@@ -2751,7 +2526,6 @@ window.mostrarControlSqueegee = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/control-squeegee-ajax', () => {
-                console.log('Control de squeegee cargado exitosamente');
                 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarControlSqueegeeModule === 'function') {
@@ -2772,8 +2546,6 @@ window.mostrarControlSqueegee = function() {
 
 window.mostrarControlCajaMaskMetal = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarControlCajaMaskMetal EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Control de caja de mask de metal... 🔥🔥🔥');
 
         // Activar el botón "Control de produccion"
         const controlProduccionButton = document.getElementById('Control de produccion');
@@ -2829,7 +2601,6 @@ window.mostrarControlCajaMaskMetal = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/control-caja-mask-metal-ajax', () => {
-                console.log('Control de caja de mask de metal cargado exitosamente');
                 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarControlCajaMaskMetalModule === 'function') {
@@ -2850,8 +2621,6 @@ window.mostrarControlCajaMaskMetal = function() {
 
 window.mostrarEstandaresSoldadura = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarEstandaresSoldadura EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Estandares sobre control de soldadura... 🔥🔥🔥');
 
         // Activar el botón "Control de produccion"
         const controlProduccionButton = document.getElementById('Control de produccion');
@@ -2908,7 +2677,6 @@ window.mostrarEstandaresSoldadura = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/estandares-soldadura-ajax', () => {
-                console.log('Estandares sobre control de soldadura cargado exitosamente');
                 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarEstandaresSoldaduraModule === 'function') {
@@ -2929,8 +2697,6 @@ window.mostrarEstandaresSoldadura = function() {
 
 window.mostrarRegistroReciboSoldadura = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarRegistroReciboSoldadura EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Registro de recibo de soldadura... 🔥🔥🔥');
 
         // Activar el botón "Control de produccion"
         const controlProduccionButton = document.getElementById('Control de produccion');
@@ -2986,7 +2752,6 @@ window.mostrarRegistroReciboSoldadura = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/registro-recibo-soldadura-ajax', () => {
-                console.log('Registro de recibo de soldadura cargado exitosamente');
                 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarRegistroReciboSoldaduraModule === 'function') {
@@ -3007,8 +2772,6 @@ window.mostrarRegistroReciboSoldadura = function() {
 
 window.mostrarControlSalidaSoldadura = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarControlSalidaSoldadura EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Control de salida de soldadura... 🔥🔥🔥');
 
         // Activar el botón "Control de produccion"
         const controlProduccionButton = document.getElementById('Control de produccion');
@@ -3064,7 +2827,6 @@ window.mostrarControlSalidaSoldadura = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/control-salida-soldadura-ajax', () => {
-                console.log('Control de salida de soldadura cargado exitosamente');
                 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarControlSalidaSoldaduraModule === 'function') {
@@ -3085,8 +2847,6 @@ window.mostrarControlSalidaSoldadura = function() {
 
 window.mostrarHistorialTensionMaskMetal = function() {
     try {
-        console.log('🚀🚀🚀 FUNCIÓN mostrarHistorialTensionMaskMetal EJECUTÁNDOSE... 🚀🚀🚀');
-        console.log('🔥🔥🔥 Iniciando carga de Historial de tension de mask de metal... 🔥🔥🔥');
 
         // Activar el botón "Control de produccion"
         const controlProduccionButton = document.getElementById('Control de produccion');
@@ -3142,7 +2902,6 @@ window.mostrarHistorialTensionMaskMetal = function() {
         // Cargar contenido dinámicamente usando la ruta AJAX
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('produccion-info-container', '/historial-tension-mask-metal-ajax', () => {
-                console.log('Historial de tension de mask de metal cargado exitosamente');
                 
                 // Ejecutar inicialización específica del módulo si existe
                 if (typeof window.inicializarHistorialTensionMaskMetalModule === 'function') {
@@ -3161,7 +2920,6 @@ window.mostrarHistorialTensionMaskMetal = function() {
     }
 };
 
-console.log('Todas las funciones AJAX para módulos de Control de Producción registradas globalmente');
 
 // ============================================================================
 // FUNCIONES PARA CONTROL DE CALIDAD
@@ -3169,7 +2927,6 @@ console.log('Todas las funciones AJAX para módulos de Control de Producción re
 
 window.mostrarControlResultadoReparacion = function() {
     try {
-        console.log('🚀 Iniciando carga de Control de resultado de reparación...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3199,7 +2956,6 @@ window.mostrarControlResultadoReparacion = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/control-resultado-reparacion-ajax', () => {
-                console.log('Control de resultado de reparación cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Control de resultado de reparación:', error);
@@ -3215,7 +2971,6 @@ window.mostrarControlResultadoReparacion = function() {
 
 window.mostrarControlItemReparado = function() {
     try {
-        console.log('🚀 Iniciando carga de Control de item reparado...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3245,7 +3000,6 @@ window.mostrarControlItemReparado = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/control-item-reparado-ajax', () => {
-                console.log('Control de item reparado cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Control de item reparado:', error);
@@ -3261,7 +3015,6 @@ window.mostrarControlItemReparado = function() {
 
 window.mostrarHistorialCambioMaterialMaquina = function() {
     try {
-        console.log('🚀 Iniciando carga de Historial de cambio de material por máquina...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3291,7 +3044,6 @@ window.mostrarHistorialCambioMaterialMaquina = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/historial-cambio-material-maquina-ajax', () => {
-                console.log('Historial de cambio de material por máquina cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Historial de cambio de material por máquina:', error);
@@ -3307,7 +3059,6 @@ window.mostrarHistorialCambioMaterialMaquina = function() {
 
 window.mostrarHistorialUsoPegamentoSoldadura = function() {
     try {
-        console.log('🚀 Iniciando carga de Historial de uso de pegamento de soldadura...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3337,7 +3088,6 @@ window.mostrarHistorialUsoPegamentoSoldadura = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/historial-uso-pegamento-soldadura-ajax', () => {
-                console.log('Historial de uso de pegamento de soldadura cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Historial de uso de pegamento de soldadura:', error);
@@ -3353,7 +3103,6 @@ window.mostrarHistorialUsoPegamentoSoldadura = function() {
 
 window.mostrarHistorialUsoMaskMetal = function() {
     try {
-        console.log('🚀 Iniciando carga de Historial de uso de mask de metal...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3383,7 +3132,6 @@ window.mostrarHistorialUsoMaskMetal = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/historial-uso-mask-metal-ajax', () => {
-                console.log('Historial de uso de mask de metal cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Historial de uso de mask de metal:', error);
@@ -3399,7 +3147,6 @@ window.mostrarHistorialUsoMaskMetal = function() {
 
 window.mostrarHistorialUsoSqueegee = function() {
     try {
-        console.log('🚀 Iniciando carga de Historial de uso de squeegee...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3429,7 +3176,6 @@ window.mostrarHistorialUsoSqueegee = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/historial-uso-squeegee-ajax', () => {
-                console.log('Historial de uso de squeegee cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Historial de uso de squeegee:', error);
@@ -3445,7 +3191,6 @@ window.mostrarHistorialUsoSqueegee = function() {
 
 window.mostrarProcessInterlockHistory = function() {
     try {
-        console.log('🚀 Iniciando carga de Process interlock History...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3475,7 +3220,6 @@ window.mostrarProcessInterlockHistory = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/process-interlock-history-ajax', () => {
-                console.log('Process interlock History cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Process interlock History:', error);
@@ -3491,7 +3235,6 @@ window.mostrarProcessInterlockHistory = function() {
 
 window.mostrarControlMasterSampleSMT = function() {
     try {
-        console.log('🚀 Iniciando carga de Control de Master Sample de SMT...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3522,7 +3265,6 @@ window.mostrarControlMasterSampleSMT = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/control-master-sample-smt-ajax', () => {
-                console.log('Control de Master Sample de SMT cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Control de Master Sample de SMT:', error);
@@ -3538,7 +3280,6 @@ window.mostrarControlMasterSampleSMT = function() {
 
 window.mostrarHistorialInspeccionMasterSampleSMT = function() {
     try {
-        console.log('🚀 Iniciando carga de Historial de inspección de Master Sample de SMT...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3568,7 +3309,6 @@ window.mostrarHistorialInspeccionMasterSampleSMT = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/historial-inspeccion-master-sample-smt-ajax', () => {
-                console.log('Historial de inspección de Master Sample de SMT cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Historial de inspección de Master Sample de SMT:', error);
@@ -3584,7 +3324,6 @@ window.mostrarHistorialInspeccionMasterSampleSMT = function() {
 
 window.mostrarControlInspeccionOQC = function() {
     try {
-        console.log('🚀 Iniciando carga de Control de inspección de OQC...');
 
         // Activar el botón "Control de calidad"
         const controlCalidadButton = document.getElementById('Control de calidad');
@@ -3614,7 +3353,6 @@ window.mostrarControlInspeccionOQC = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('calidad-content-area', '/control-inspeccion-oqc-ajax', () => {
-                console.log('Control de inspección de OQC cargado exitosamente');
             })
             .catch(error => {
                 console.error('Error cargando Control de inspección de OQC:', error);
@@ -3628,12 +3366,10 @@ window.mostrarControlInspeccionOQC = function() {
     }
 };
 
-console.log('Todas las funciones AJAX para módulos de Control de Calidad registradas globalmente');
 
 // Función AJAX para Historial AOI - GLOBAL
 window.mostrarHistorialAOI = function() {
     try {
-        console.log('🚀 Iniciando carga AJAX de Historial AOI...');
 
         // Activar el botón correcto en la navegación
         const controlResultadosButton = document.getElementById('Control de resultados');
@@ -3690,7 +3426,6 @@ window.mostrarHistorialAOI = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('historial-aoi-unique-container', '/historial-aoi-ajax', () => {
-                console.log('Contenido cargado exitosamente');
                 
                 // Ejecutar inicialización del módulo si existe
                 if (typeof window.inicializarHistorialAOI === 'function') {
@@ -3704,12 +3439,10 @@ window.mostrarHistorialAOI = function() {
     }
 };
 
-console.log('Función AJAX para Historial AOI registrada globalmente');
 
 // Función AJAX para Plan SMD Diario - GLOBAL
 window.mostrarPlanSmdDiario = function() {
     try {
-        console.log('🚀 Iniciando carga AJAX de Plan SMD Diario...');
 
         // Activar el botón correcto en la navegación
         const controlProcesoButton = document.getElementById('Control de proceso');
@@ -3771,7 +3504,6 @@ window.mostrarPlanSmdDiario = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('plan-smd-diario-unique-container', '/plan-smd-diario', () => {
-                console.log('Plan SMD Diario cargado exitosamente');
             });
         }
 
@@ -3780,12 +3512,10 @@ window.mostrarPlanSmdDiario = function() {
     }
 };
 
-console.log('Función AJAX para Plan SMD Diario registrada globalmente');
 
 // Función AJAX para Control de modelos - VISOR MYSQL - GLOBAL
 window.mostrarControlModelosVisor = function() {
     try {
-        console.log('Iniciando carga AJAX de Visor MySQL para Control de modelos...');
 
         // Activar el botón correcto en la navegación
         const informacionBasicaButton = document.getElementById('Información Básica');
@@ -3859,7 +3589,6 @@ window.mostrarControlModelosVisor = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('control-modelos-visor-unique-container', '/control-modelos-visor-ajax', () => {
-                console.log('Visor MySQL para Control de modelos cargado exitosamente');
                 
                 // Ejecutar inicialización del módulo
                 if (typeof window.inicializarControlModelosVisorAjax === 'function') {
@@ -3873,12 +3602,10 @@ window.mostrarControlModelosVisor = function() {
     }
 };
 
-console.log('Función AJAX para Control de modelos - Visor MySQL registrada globalmente');
 
 // Función AJAX para Control de Modelos SMT - GLOBAL
 window.mostrarControlModelosSMT = function() {
     try {
-        console.log('Iniciando carga AJAX de Control de Modelos SMT...');
 
         // Activar el botón correcto en la navegación
         const informacionBasicaButton = document.getElementById('Información básica');
@@ -3928,7 +3655,6 @@ window.mostrarControlModelosSMT = function() {
         // Cargar contenido dinámicamente
         if (typeof window.cargarContenidoDinamico === 'function') {
             window.cargarContenidoDinamico('control-modelos-smt-unique-container', '/control-modelos-smt-ajax', () => {
-                console.log('Control de Modelos SMT cargado exitosamente');
                 
                 // Ejecutar inicialización del módulo
                 if (typeof window.inicializarControlModelosSMTAjax === 'function') {
@@ -3942,4 +3668,3 @@ window.mostrarControlModelosSMT = function() {
     }
 };
 
-console.log('Función AJAX para Control de Modelos SMT registrada globalmente');
