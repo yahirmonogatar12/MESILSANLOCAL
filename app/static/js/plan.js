@@ -25,6 +25,11 @@ function getDateInNuevoLeon(daysOffset = 0) {
 
 // Variables globales para planeación integrada
 let planningData = [];
+
+// ⭐ NUEVO: Almacenar copia original de los planes cargados desde la BD
+// Esta copia NUNCA se modifica y se usa para recuperar datos completos (incluyendo status)
+let originalPlansData = [];
+
 let currentConfig = {
   breaks: [
     { start: '09:30', end: '09:45', name: 'Break 1' },
@@ -226,6 +231,14 @@ function routingToTurno(v){
   return "";
 }
 
+// Map turno label to routing value
+function turnoToRouting(turno){
+  if(turno === "DIA") return 1;
+  if(turno === "TIEMPO EXTRA") return 2;
+  if(turno === "NOCHE") return 3;
+  return 1; // Default DIA
+}
+
 // Cargar planes
 async function loadPlans(){
   try {
@@ -243,6 +256,11 @@ async function loadPlans(){
     
     let res = await axios.get(url);
     let data = Array.isArray(res.data) ? res.data.slice() : [];
+    
+    // ⭐ IMPORTANTE: Guardar copia profunda de los datos originales
+    // Esta copia se usa para recuperar datos completos cuando se reorganizan planes
+    originalPlansData = data.map(plan => ({...plan}));
+    
     // Aplicar orden guardado (si existe) antes de renderizar
     data = applySavedOrderToData(data, fs, fe);
 
@@ -311,6 +329,10 @@ function enableRowDragDrop(tbody, fs, fe){
       const firstCell = tr.querySelector('td');
       if (firstCell) firstCell.textContent = String(i+1);
     });
+    
+    // IMPORTANTE: Sincronizar visualGroups con el orden actual de la tabla
+    syncVisualGroupsWithTableOrder();
+    
     // Recalcular tiempos automáticamente después del drag
     setTimeout(calculateAndUpdateTimes, 100);
   });
@@ -338,6 +360,86 @@ function getDragAfterElement(container, y){
       return closest;
     }
   }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// Función para sincronizar visualGroups con el orden actual de la tabla HTML
+function syncVisualGroupsWithTableOrder() {
+  const tbody = document.getElementById('plan-tableBody');
+  if (!tbody) {
+    return;
+  }
+  
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  if (rows.length === 0) {
+    return;
+  }
+  
+  // Obtener número de grupos actual
+  const groupCount = parseInt(document.getElementById('groups-count')?.value) || 6;
+  
+  // ⭐ IMPORTANTE: Usar originalPlansData (copia inmutable de BD) como fuente de verdad
+  // Esta copia siempre tiene los datos completos incluyendo status
+  
+  // Guardar también el estado actual de visualGroups por si originalPlansData está vacío
+  const visualGroupsBackup = [];
+  if (visualGroups && visualGroups.groups) {
+    visualGroups.groups.forEach(group => {
+      if (group && group.plans) {
+        group.plans.forEach(plan => {
+          if (plan && plan.lot_no) {
+            visualGroupsBackup.push({...plan});
+          }
+        });
+      }
+    });
+  }
+  
+  // Reinicializar grupos
+  initializeVisualGroups(groupCount);
+  
+  // Reconstruir los grupos basándose en el orden visual actual
+  rows.forEach((row, rowIndex) => {
+    const lotNo = row.dataset.lot;
+    if (!lotNo) return;
+    
+    // Buscar el plan en originalPlansData PRIMERO (fuente de verdad)
+    let planData = originalPlansData.find(p => p.lot_no === lotNo);
+    
+    // Si no está en originalPlansData, buscar en el backup de visualGroups
+    if (!planData) {
+      planData = visualGroupsBackup.find(p => p.lot_no === lotNo);
+    }
+    
+    // Si aún no encontramos el plan, crear un objeto desde la tabla HTML
+    if (!planData) {
+      const cells = row.querySelectorAll('td');
+      planData = {
+        lot_no: lotNo,
+        wo_code: cells[2]?.textContent || '',
+        po_code: cells[3]?.textContent || '',
+        working_date: cells[4]?.textContent || '',
+        line: cells[5]?.textContent || '',
+        routing: turnoToRouting(cells[6]?.textContent) || 1,
+        model_code: cells[7]?.textContent || '',
+        part_no: cells[8]?.textContent || '',
+        project: cells[9]?.textContent || '',
+        process: cells[10]?.textContent || 'MAIN',
+        ct: parseFloat(cells[11]?.textContent) || 0,
+        uph: parseInt(cells[12]?.textContent) || 0,
+        plan_count: parseInt(cells[13]?.textContent) || 0,
+        produced: parseInt(cells[14]?.textContent) || 0,
+        output: parseInt(cells[15]?.textContent) || 0,
+        status: cells[16]?.textContent?.trim() || 'PLAN' // Preservar status desde la celda
+      };
+    }
+    
+    // Determinar a qué grupo pertenece (distribución por filas)
+    const groupIndex = rowIndex % groupCount;
+    
+    // Agregar plan al grupo correspondiente (preservando todos los campos)
+    visualGroups.groups[groupIndex].plans.push(planData);
+    visualGroups.planAssignments.set(lotNo, groupIndex);
+  });
 }
 
 function orderStorageKey(fs, fe){
@@ -2066,25 +2168,30 @@ function reloadTableWithCurrentData() {
     
     if (!lotNo) return; // Skip si no tiene lot_no
     
-    const planData = {
-      lot_no: lotNo,
-      wo_code: cells[2]?.textContent?.trim() || '',
-      po_code: cells[3]?.textContent?.trim() || '',
-      working_date: cells[4]?.textContent?.trim() || '',
-      line: cells[5]?.textContent?.trim() || '',
-      routing: cells[6]?.textContent?.trim() === 'DIA' ? 1 : 
-               cells[6]?.textContent?.trim() === 'TIEMPO EXTRA' ? 2 : 
-               cells[6]?.textContent?.trim() === 'NOCHE' ? 3 : 1,
-      model_code: cells[7]?.textContent?.trim() || '',
-      part_no: cells[8]?.textContent?.trim() || '',
-      project: cells[9]?.textContent?.trim() || '',
-      process: cells[10]?.textContent?.trim() || 'MAIN',
-      ct: cells[11]?.textContent?.trim() || '0',
-      uph: parseInt(cells[12]?.textContent?.trim()) || 0,
-      plan_count: parseInt(cells[13]?.textContent?.trim()) || 0,
-      produced: parseInt(cells[14]?.textContent?.trim()) || 0,
-      status: cells[15]?.textContent?.trim() || 'PLAN'
-    };
+    // ⭐ BUSCAR PRIMERO en originalPlansData para preservar todos los campos (especialmente status)
+    let planData = originalPlansData.find(p => p.lot_no === lotNo);
+    
+    // Si no está en originalPlansData, reconstruir desde HTML (con índices corregidos)
+    if (!planData) {
+      planData = {
+        lot_no: lotNo,
+        wo_code: cells[2]?.textContent?.trim() || '',
+        po_code: cells[3]?.textContent?.trim() || '',
+        working_date: cells[4]?.textContent?.trim() || '',
+        line: cells[5]?.textContent?.trim() || '',
+        routing: turnoToRouting(cells[6]?.textContent?.trim()) || 1,
+        model_code: cells[7]?.textContent?.trim() || '',
+        part_no: cells[8]?.textContent?.trim() || '',
+        project: cells[9]?.textContent?.trim() || '',
+        process: cells[10]?.textContent?.trim() || 'MAIN',
+        ct: cells[11]?.textContent?.trim() || '0',
+        uph: parseInt(cells[12]?.textContent?.trim()) || 0,
+        plan_count: parseInt(cells[13]?.textContent?.trim()) || 0,
+        produced: parseInt(cells[14]?.textContent?.trim()) || 0,
+        output: parseInt(cells[15]?.textContent?.trim()) || 0,
+        status: cells[16]?.textContent?.trim() || 'PLAN' // ⭐ CORREGIDO: cells[16] no cells[15]
+      };
+    }
     
     // Validar que los datos esenciales existan
     if (planData.lot_no && planData.part_no) {
@@ -2182,7 +2289,6 @@ function calculatePlanningTimes(plans) {
 
 // Auto acomodo de planes por optimización distribuida
 function autoArrangePlans() {
-  console.log('🚀 Función autoArrangePlans ejecutándose...');
   const tbody = document.getElementById('plan-tableBody');
   const planRows = Array.from(tbody.querySelectorAll('.plan-row'));
   
@@ -2456,8 +2562,6 @@ function calculateAndUpdateTimes() {
 
 // Función de inicialización de event listeners usando event delegation
 function initializePlanEventListeners() {
-  console.log('🔧 Inicializando event listeners de plan con event delegation...');
-  
   // Usar event delegation en document.body para capturar clicks incluso en contenido dinámico
   if (!document.body.dataset.planListenersAttached) {
     document.body.addEventListener('click', function(e) {
@@ -2468,7 +2572,6 @@ function initializePlanEventListeners() {
       // Abrir modal Nuevo Plan
       if (target.id === 'plan-openModalBtn' || target.closest('#plan-openModalBtn')) {
         e.preventDefault();
-        console.log('🎯 Click en plan-openModalBtn detectado');
         const modal = document.getElementById('plan-modal');
         if (modal) modal.style.display = 'flex';
         return;
@@ -2477,7 +2580,6 @@ function initializePlanEventListeners() {
       // Cerrar modal Nuevo Plan
       if (target.id === 'plan-closeModalBtn' || target.closest('#plan-closeModalBtn')) {
         e.preventDefault();
-        console.log('🎯 Click en plan-closeModalBtn detectado');
         const modal = document.getElementById('plan-modal');
         if (modal) modal.style.display = 'none';
         return;
@@ -2486,7 +2588,6 @@ function initializePlanEventListeners() {
       // Abrir modal Work Orders
       if (target.id === 'wo-openModalBtn' || target.closest('#wo-openModalBtn')) {
         e.preventDefault();
-        console.log('🎯 Click en wo-openModalBtn detectado');
         if (typeof createWorkOrdersModal === 'function') createWorkOrdersModal();
         const modal = document.getElementById('wo-modal');
         if (modal) {
@@ -2499,7 +2600,6 @@ function initializePlanEventListeners() {
       // Abrir modal Reprogramar
       if (target.id === 'reschedule-openModalBtn' || target.closest('#reschedule-openModalBtn')) {
         e.preventDefault();
-        console.log('🎯 Click en reschedule-openModalBtn detectado');
         const modal = document.getElementById('reschedule-modal');
         if (modal) {
           modal.style.display = 'flex';
@@ -2511,7 +2611,6 @@ function initializePlanEventListeners() {
       // Cerrar modal Reprogramar
       if (target.id === 'reschedule-closeModalBtn' || target.closest('#reschedule-closeModalBtn')) {
         e.preventDefault();
-        console.log('🎯 Click en reschedule-closeModalBtn detectado');
         const modal = document.getElementById('reschedule-modal');
         if (modal) modal.style.display = 'none';
         return;
@@ -2520,7 +2619,6 @@ function initializePlanEventListeners() {
       // Botón Buscar Pendientes del modal Reprogramar
       if (target.id === 'reschedule-search-btn' || target.closest('#reschedule-search-btn')) {
         e.preventDefault();
-        console.log('🎯 Click en reschedule-search-btn detectado');
         if (typeof loadPendingPlans === 'function') loadPendingPlans();
         return;
       }
@@ -2528,7 +2626,6 @@ function initializePlanEventListeners() {
       // Botón Reprogramar Seleccionados
       if (target.id === 'reschedule-submit-btn' || target.closest('#reschedule-submit-btn')) {
         e.preventDefault();
-        console.log('🎯 Click en reschedule-submit-btn detectado');
         if (typeof reschedulePendingPlans === 'function') reschedulePendingPlans();
         return;
       }
@@ -2539,7 +2636,6 @@ function initializePlanEventListeners() {
       if (target.closest('#plan-editForm button[type="button"]') && 
           target.textContent.includes('Cerrar')) {
         e.preventDefault();
-        console.log('🎯 Click en cerrar modal de edición detectado');
         const modal = document.getElementById('plan-editModal');
         if (modal) modal.style.display = 'none';
         return;
@@ -2548,7 +2644,6 @@ function initializePlanEventListeners() {
       // Botón Cancelar Plan (botón rojo)
       if (target.id === 'plan-cancelBtn' || target.closest('#plan-cancelBtn')) {
         e.preventDefault();
-        console.log('🎯 Click en plan-cancelBtn detectado');
         if (typeof handleCancelPlan === 'function') handleCancelPlan();
         return;
       }
@@ -2558,7 +2653,6 @@ function initializePlanEventListeners() {
       // Auto acomodo
       if (target.id === 'auto-arrange-btn' || target.closest('#auto-arrange-btn')) {
         e.preventDefault();
-        console.log('🎯 Click en auto-arrange-btn detectado');
         autoArrangePlans();
         return;
       }
@@ -2566,7 +2660,6 @@ function initializePlanEventListeners() {
       // Exportar a Excel
       if (target.id === 'export-excel-btn' || target.closest('#export-excel-btn')) {
         e.preventDefault();
-        console.log('🎯 Click en export-excel-btn detectado');
         exportarExcel();
         return;
       }
@@ -2574,7 +2667,6 @@ function initializePlanEventListeners() {
       // Guardar secuencias
       if (target.id === 'save-sequences-btn' || target.closest('#save-sequences-btn')) {
         e.preventDefault();
-        console.log('🎯 Click en save-sequences-btn detectado');
         saveGroupSequences();
         return;
       }
@@ -2582,7 +2674,6 @@ function initializePlanEventListeners() {
       // Calcular tiempos
       if (target.id === 'calc-times-btn' || target.closest('#calc-times-btn')) {
         e.preventDefault();
-        console.log('🎯 Click en calc-times-btn detectado');
         reloadTableWithCurrentData();
         return;
       }
@@ -2604,7 +2695,6 @@ function initializePlanEventListeners() {
       // Submit del form de nuevo plan
       if (e.target.id === 'plan-form') {
         e.preventDefault();
-        console.log('🎯 Submit de plan-form detectado');
         if (typeof window.handleNewPlanSubmit === 'function') {
           window.handleNewPlanSubmit(e.target);
         }
@@ -2618,14 +2708,12 @@ function initializePlanEventListeners() {
       
       // Selector de número de grupos
       if (target.id === 'groups-count') {
-        console.log('🎯 Cambio en groups-count detectado');
         reloadTableWithCurrentData();
         return;
       }
       
       // Checkbox "Seleccionar todos" del modal Reprogramar
       if (target.id === 'reschedule-select-all') {
-        console.log('🎯 Change en reschedule-select-all detectado');
         if (typeof toggleAllReschedule === 'function') toggleAllReschedule(target);
         return;
       }
@@ -2634,31 +2722,21 @@ function initializePlanEventListeners() {
     // ========== EVENT LISTENER DE DOBLE CLICK ==========
     // Doble click en filas de la tabla para editar
     document.body.addEventListener('dblclick', function(e) {
-      console.log('🎯 Doble click detectado en:', e.target);
-      
       // Verificar si el doble click fue en una fila de la tabla de planes
       const row = e.target.closest('tr.plan-row');
       if (!row) {
-        console.log('❌ No es una fila de plan');
         return;
       }
       
       const lotNo = row.dataset.lot;
-      console.log('✅ Fila de plan detectada, lot_no:', lotNo);
       
       if (lotNo && typeof openEditModal === 'function') {
-        console.log('🔧 Abriendo modal de edición para lot_no:', lotNo);
         openEditModal(lotNo);
-      } else {
-        console.error('⚠️ No se pudo abrir modal:', { lotNo, openEditModal: typeof openEditModal });
       }
     });
     
     document.body.dataset.planListenersAttached = 'true';
-    console.log('✅ Event delegation configurado en document.body');
   }
-  
-  console.log('✅ Inicialización de event listeners completada');
 }
 
 // Event listeners para nuevos controles
@@ -2918,11 +2996,10 @@ loadPlans();
 // Utilidad de depuración: ver grupos y secuencias actuales
 window.debugGroups = function(){
   try {
-    console.log('visualGroups:', visualGroups.groups.map((g,i)=>({g:i+1, lots:g.plans.map(p=>p.lot_no)})));
     const rows = [...document.querySelectorAll('#plan-tableBody tr.plan-row')];
     const perGroup = {};
     rows.forEach(r=>{ const gi=parseInt(r.dataset.groupIndex)||0; const lot=r.dataset.lot; (perGroup[gi]=perGroup[gi]||[]).push(lot); });
-    console.log('DOM rows by group:', perGroup);
+    return { visualGroups: visualGroups.groups.map((g,i)=>({g:i+1, lots:g.plans.map(p=>p.lot_no)})), domRows: perGroup };
   } catch (e) { console.warn(e); }
 }
 
