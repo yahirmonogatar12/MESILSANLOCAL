@@ -244,7 +244,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="password" class="form-label">Contraseña</label>
-                                    <input type="password" class="form-control" id="password">
+                                    <input type="password" class="form-control" id="password" autocomplete="new-password">
                                     <div class="form-text" id="passwordHelp">Mínimo 6 caracteres</div>
                                 </div>
                             </div>
@@ -525,6 +525,9 @@
                 document.getElementById('cargo').value = usuario.cargo || '';
                 document.getElementById('activo').checked = usuario.activo;
                 
+                // CRÍTICO: Limpiar el campo de contraseña para evitar que se envíe el valor autocompletado
+                document.getElementById('password').value = '';
+                
                 // Cargar roles y marcar los asignados
                 await cargarRolesEnModal();
                 usuario.roles.forEach(rol => {
@@ -566,9 +569,11 @@
             const roles_seleccionados = Array.from(document.querySelectorAll('input[name="roles"]:checked'))
                 .map(cb => cb.value);
             
+            const passwordValue = document.getElementById('password').value;
+            
+            // Construir objeto de datos
             const datos = {
                 username: document.getElementById('username').value,
-                password: document.getElementById('password').value,
                 nombre_completo: document.getElementById('nombreCompleto').value,
                 email: document.getElementById('email').value,
                 departamento: document.getElementById('departamento').value,
@@ -576,6 +581,19 @@
                 activo: document.getElementById('activo').checked,
                 roles: roles_seleccionados
             };
+            
+            // CRÍTICO: Solo incluir password si NO está vacío
+            // Esto evita sobrescribir la contraseña cuando solo se editan otros campos
+            if (passwordValue && passwordValue.trim() !== '') {
+                datos.password = passwordValue;
+            }
+            
+            // Validación adicional para nuevos usuarios
+            if (!usuarioEditando && !datos.password) {
+                alert('⚠️ La contraseña es obligatoria para nuevos usuarios');
+                document.getElementById('password').focus();
+                return;
+            }
             
             try {
                 const response = await fetch('/admin/guardar_usuario', {
@@ -590,8 +608,15 @@
                     bootstrap.Modal.getInstance(document.getElementById('modalUsuario')).hide();
                     cargarUsuarios();
                     
-                    // Mostrar notificación
-                    mostrarNotificacion(result.mensaje || 'Usuario guardado exitosamente', 'success');
+                    // Mensaje personalizado si se cambió la contraseña
+                    let mensaje = result.mensaje || 'Usuario guardado exitosamente';
+                    if (usuarioEditando && passwordValue && passwordValue.trim() !== '') {
+                        mensaje = `Usuario actualizado y contraseña cambiada exitosamente`;
+                    } else if (usuarioEditando) {
+                        mensaje = `Usuario actualizado exitosamente (contraseña sin cambios)`;
+                    }
+                    
+                    mostrarNotificacion(mensaje, 'success');
                 } else {
                     alert('Error: ' + result.error);
                 }
@@ -725,6 +750,16 @@
         // Limpiar readonly cuando se cierra el modal
         document.getElementById('modalUsuario').addEventListener('hidden.bs.modal', function() {
             document.getElementById('username').readOnly = false;
+            // Limpiar el campo de contraseña al cerrar el modal por seguridad
+            document.getElementById('password').value = '';
+        });
+        
+        // Limpiar el campo de contraseña cuando se abre el modal (medida de seguridad adicional)
+        document.getElementById('modalUsuario').addEventListener('shown.bs.modal', function() {
+            // Solo limpiar si estamos editando (no en nuevo usuario)
+            if (usuarioEditando) {
+                document.getElementById('password').value = '';
+            }
         });
         
         // Función para confirmar logout
