@@ -327,13 +327,6 @@
             pointer-events: auto;
         }
 
-        /* Estilos para la columna de selección */
-        .material-table th:first-child,
-        .material-table td:first-child {
-            background-color: rgba(52, 73, 94, 0.05);
-            border-right: 2px solid rgba(52, 73, 94, 0.1);
-        }
-
         .material-table input[type="radio"] {
             accent-color: #3498db;
             cursor: pointer;
@@ -6872,6 +6865,67 @@ if (document.readyState === 'loading') {
             }
         }
 
+        // ====== Función de Limpieza para AJAX ======
+        function cleanupControlAlmacen() {
+            console.log('🧹 Limpiando módulo Control de Almacén...');
+            
+            // Limpiar estilos inline de campos de escaneo
+            const campoLote = document.getElementById('escaneo-lote-proveedor');
+            const campoEtiqueta = document.getElementById('escaneo-etiqueta-impresa');
+            
+            if (campoLote) {
+                campoLote.style.background = '';
+                campoLote.style.border = '';
+                campoLote.style.boxShadow = '';
+                campoLote.value = '';
+            }
+            
+            if (campoEtiqueta) {
+                campoEtiqueta.style.background = '';
+                campoEtiqueta.style.border = '';
+                campoEtiqueta.style.boxShadow = '';
+                campoEtiqueta.style.cursor = '';
+                campoEtiqueta.style.pointerEvents = '';
+                campoEtiqueta.value = '';
+            }
+            
+            // Cerrar modales abiertos
+            const modales = [
+                'modal-asignacion-lotes',
+                'modal-unidades',
+                'trazabilidad-modal',
+                'modalCodigoMaterial'
+            ];
+            
+            modales.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Limpiar variables globales
+            if (typeof ultimoLoteEscaneado !== 'undefined') {
+                window.ultimoLoteEscaneado = '';
+            }
+            if (typeof procesandoLote !== 'undefined') {
+                window.procesandoLote = false;
+            }
+            if (typeof procesandoEtiqueta !== 'undefined') {
+                window.procesandoEtiqueta = false;
+            }
+            if (typeof ultimaEtiquetaProcesada !== 'undefined') {
+                window.ultimaEtiquetaProcesada = '';
+            }
+            
+            // Resetear flag de listeners para permitir reinicialización
+            if (document.body.dataset.controlAlmacenListenersAttached) {
+                delete document.body.dataset.controlAlmacenListenersAttached;
+            }
+            
+            console.log('Limpieza completada');
+        }
+
         // ====== Exponer Funciones Globalmente para acceso externo (CRÍTICO) ======
         // Nota: initializeControlAlmacenEventListeners ya se expuso al principio
         window.guardarFormulario = guardarFormulario;
@@ -6884,6 +6938,7 @@ if (document.readyState === 'loading') {
         window.cargarDatosDesdeServidor = cargarDatosDesdeServidor;
         window.nuevaCargarDatos = nuevaCargarDatos;
         window.inicializarControlAlmacen = inicializarControlAlmacen;
+        window.cleanupControlAlmacen = cleanupControlAlmacen;
 
     </script>
 

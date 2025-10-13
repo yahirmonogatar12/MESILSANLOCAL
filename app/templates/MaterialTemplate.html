@@ -1770,6 +1770,16 @@
                     return Promise.reject(`Container ${containerId} no encontrado`);
                 }
                 
+                // 0. LLAMAR A FUNCIONES DE LIMPIEZA DE MÓDULOS ANTES DE DESCARGAR
+                // Esto permite que cada módulo limpie sus estilos inline y estados
+                if (typeof window.cleanupControlAlmacen === 'function') {
+                    try {
+                        window.cleanupControlAlmacen();
+                    } catch(e) {
+                        console.warn('Error en cleanupControlAlmacen:', e);
+                    }
+                }
+                // Agregar más funciones de limpieza aquí para otros módulos si es necesario
                 
                 // 1. CERRAR TODOS LOS DROPDOWNS ANTES DE LIMPIAR
                 cerrarTodosLosDropdownsMejorada();
