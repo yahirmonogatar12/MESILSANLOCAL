@@ -427,6 +427,7 @@
     border-bottom: 2px solid #34495e;
     position: sticky;
     top: 0;
+    z-index: 5;
 }
 
 .material-container2 .dropdown-table td {
@@ -437,14 +438,28 @@
     cursor: pointer;
     font-size: 14px;
     transition: background-color 0.3s;
+    position: relative;
+    z-index: 1;
 }
 
 .material-container2 .dropdown-table tr:hover td {
     background-color: #485563;
+    z-index: 2;
 }
 
 .material-container2 .dropdown-table tr:last-child td {
     border-bottom: none;
+}
+
+/* Asegurar que todas las filas sean clickeables */
+.material-container2 .dropdown-table tbody tr {
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+}
+
+.material-container2 .dropdown-table tbody tr:hover {
+    z-index: 2;
 }
 
 /* Animación para carga */

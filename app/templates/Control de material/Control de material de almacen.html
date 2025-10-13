@@ -764,10 +764,10 @@
         <div class="material-form-group"></div>
         <div class="material-form-group" style="justify-self: end;">
             <div style="display: flex; gap: 4px; align-items: center;">
-                <button type="button" class="material-btn orange botones-almacen" id="btnGuardar" onclick="guardarFormulario()" style="display: inline-block;">Guardar</button>
-                <button type="button" class="material-btn botones-almacen" id="btnUnidades" onclick="event.preventDefault(); abrirModalUnidades()" style="background: #28a745; display: inline-block;">UNIDADES</button>
-                <button type="button" class="material-btn botones-almacen" id="btnImprimir" onclick="manejarImpresion()" style="display: inline-block;">Imprimir</button>
-                <button type="button" class="material-btn botones-almacen" id="btnConfigImpresora" onclick="verificarImpresoraZebra()" style="background: #6c757d; font-size: 9px; padding: 6px 8px; min-width: 80px; text-align: center;">CONF. DE IMPRESORA</button>
+                <button type="button" class="material-btn orange botones-almacen" id="btnGuardar" style="display: inline-block;">Guardar</button>
+                <button type="button" class="material-btn botones-almacen" id="btnUnidades" style="background: #28a745; display: inline-block;">UNIDADES</button>
+                <button type="button" class="material-btn botones-almacen" id="btnImprimir" style="display: inline-block;">Imprimir</button>
+                <button type="button" class="material-btn botones-almacen" id="btnConfigImpresora" style="background: #6c757d; font-size: 9px; padding: 6px 8px; min-width: 80px; text-align: center;">CONF. DE IMPRESORA</button>
             </div>
         </div>
         <div class="material-form-group">
@@ -790,10 +790,10 @@
                 <input type="date" id="filtro_fecha_fin" style="width: 130px; height: 24px; font-size: 10px; min-width: 100px;">
             </div>
             <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                <button type="button" class="material-btn" id="btnConsultar" onclick="event.preventDefault(); consultarRegistros()">Consultar</button>
-                <button type="button" class="material-btn secondary" onclick="event.preventDefault(); exportarExcel()">Exportar Excel</button>
-                <input type="file" id="importarExcelAlmacen" onchange="importarExcelAlmacen()" style="display:none" accept=".xlsx,.xls" />
-                <button type="button" class="material-btn secondary" onclick="event.preventDefault(); document.getElementById('importarExcelAlmacen').click()">Importar Excel</button>
+                <button type="button" class="material-btn" id="btnConsultar">Consultar</button>
+                <button type="button" class="material-btn secondary" id="btnExportarExcel">Exportar Excel</button>
+                <input type="file" id="importarExcelAlmacen" style="display:none" accept=".xlsx,.xls" />
+                <button type="button" class="material-btn secondary" id="btnImportarExcel">Importar Excel</button>
             </div>
         </div>
 
@@ -864,6 +864,90 @@
         // Variables para manejo de selección de tabla
         let filaSeleccionada = null;
         let datosFilaSeleccionada = null;
+
+        // ====== Event Delegation (CRÍTICO PARA CARGA DINÁMICA) ======
+        /**
+         * Función de inicialización usando Event Delegation
+         * Esta función puede llamarse múltiples veces sin causar problemas
+         */
+        function initializeControlAlmacenEventListeners() {
+            
+            // Protección contra inicialización múltiple
+            if (!document.body.dataset.controlAlmacenListenersAttached) {
+                
+                // Event delegation para clicks en botones principales
+                document.body.addEventListener('click', function(e) {
+                    const target = e.target;
+                    
+                    // Excluir clicks dentro de modales para no interferir con su funcionalidad
+                    if (target.closest('#modal-asignacion-lotes') || 
+                        target.closest('#modal-unidades') || 
+                        target.closest('#trazabilidad-modal') ||
+                        target.closest('#modalCodigoMaterial')) {
+                        return;
+                    }
+                    
+                    // Botón Guardar
+                    if (target.id === 'btnGuardar' || target.closest('#btnGuardar')) {
+                        e.preventDefault();
+                        guardarFormulario();
+                        return;
+                    }
+                    
+                    // Botón UNIDADES
+                    if (target.id === 'btnUnidades' || target.closest('#btnUnidades')) {
+                        e.preventDefault();
+                        abrirModalUnidades();
+                        return;
+                    }
+                    
+                    // Botón Imprimir
+                    if (target.id === 'btnImprimir' || target.closest('#btnImprimir')) {
+                        e.preventDefault();
+                        manejarImpresion();
+                        return;
+                    }
+                    
+                    // Botón Config Impresora
+                    if (target.id === 'btnConfigImpresora' || target.closest('#btnConfigImpresora')) {
+                        e.preventDefault();
+                        verificarImpresoraZebra();
+                        return;
+                    }
+                    
+                    // Botón Consultar
+                    if (target.id === 'btnConsultar' || target.closest('#btnConsultar')) {
+                        e.preventDefault();
+                        consultarRegistros();
+                        return;
+                    }
+                    
+                    // Botón Exportar Excel
+                    if (target.id === 'btnExportarExcel' || target.closest('#btnExportarExcel')) {
+                        e.preventDefault();
+                        exportarExcel();
+                        return;
+                    }
+                    
+                    // Botón Importar Excel
+                    if (target.id === 'btnImportarExcel' || target.closest('#btnImportarExcel')) {
+                        e.preventDefault();
+                        const fileInput = document.getElementById('importarExcelAlmacen');
+                        if (fileInput) fileInput.click();
+                        return;
+                    }
+                });
+                
+                // Event delegation para change en file input
+                document.body.addEventListener('change', function(e) {
+                    if (e.target.id === 'importarExcelAlmacen') {
+                        importarExcelAlmacen();
+                    }
+                });
+                
+                document.body.dataset.controlAlmacenListenersAttached = 'true';
+            }
+        }
 
         // FUNCIONES DIRECTAS PARA BOTONES DE PRUEBA ZPL
         function mostrarEjemploZPLDirecto() {
@@ -1084,11 +1168,18 @@
             }
         }
 
-        // Verificar si el DOM ya está listo o esperar a que lo esté
+        // ====== Exponer función de inicialización inmediatamente (CRÍTICO) ======
+        window.initializeControlAlmacenEventListeners = initializeControlAlmacenEventListeners;
+
+        // ====== Auto-inicialización ======
+        // Ejecutar cuando el DOM esté listo
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarControlAlmacen);
+            document.addEventListener('DOMContentLoaded', function() {
+                initializeControlAlmacenEventListeners();
+                inicializarControlAlmacen();
+            });
         } else {
-            // DOM ya está listo, ejecutar inmediatamente
+            initializeControlAlmacenEventListeners();
             inicializarControlAlmacen();
         }
 
@@ -5626,7 +5717,7 @@ if (document.readyState === 'loading') {
         }
         
         function procesarEscaneoLoteProveedor(event) {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' || event.key === 'Tab') {
                 event.preventDefault();
                 const loteProveedor = event.target.value.trim();
                 
@@ -5636,11 +5727,12 @@ if (document.readyState === 'loading') {
                     // Cambiar colores para indicar progreso
                     const campoEtiqueta = document.getElementById('escaneo-etiqueta-impresa');
                     
-                    console.log(' Lote escaneado, cambiando colores visuales');
+                    console.log('✅ Lote escaneado, cambiando al siguiente campo');
                     
                     // Cambiar colores para indicar que el lote fue escaneado
                     event.target.style.background = '#d4edda';
                     event.target.style.border = '2px solid #28a745';
+                    event.target.style.boxShadow = '0 0 10px rgba(40, 167, 69, 0.5)';
                     
                     // Desbloquear y resaltar el campo de etiqueta
                     campoEtiqueta.readOnly = false;
@@ -5648,17 +5740,16 @@ if (document.readyState === 'loading') {
                     campoEtiqueta.removeAttribute('disabled');
                     campoEtiqueta.style.cursor = 'text';
                     campoEtiqueta.style.pointerEvents = 'auto';
-                    campoEtiqueta.style.background = '#7B8181';
-                    campoEtiqueta.style.border = '2px solid #3498db';
+                    campoEtiqueta.style.background = '#fff9e6';
+                    campoEtiqueta.style.border = '3px solid #3498db';
+                    campoEtiqueta.style.boxShadow = '0 0 15px rgba(52, 152, 219, 0.7)';
                     
-                    console.log('Campo etiqueta desbloqueado y resaltado para escaneo');
+                    console.log('🎯 Campo etiqueta desbloqueado y resaltado');
                     
-                    // Enfocar automáticamente el campo de etiqueta para flujo continuo
-                    setTimeout(() => {
-                        campoEtiqueta.focus();
-                        campoEtiqueta.select(); // Seleccionar todo el contenido para sobrescribir fácilmente
-                        console.log('Flujo automático: Campo etiqueta enfocado para escaneo');
-                    }, 100); // Reducido el tiempo para mayor fluidez
+                    // Enfocar INMEDIATAMENTE el campo de etiqueta para flujo continuo
+                    campoEtiqueta.focus();
+                    campoEtiqueta.select(); // Seleccionar todo el contenido para sobrescribir fácilmente
+                    console.log('➡️ FLUJO AUTOMÁTICO: Movido al campo de etiqueta');
                 }
             }
         }
@@ -5677,7 +5768,7 @@ if (document.readyState === 'loading') {
         }
         
         function procesarEscaneoEtiquetaImpresa(event) {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' || event.key === 'Tab') {
                 event.preventDefault();
                 const etiquetaEscaneada = event.target.value.trim();
                 const loteProveedor = document.getElementById('escaneo-lote-proveedor').value.trim() || ultimoLoteEscaneado;
@@ -5730,37 +5821,46 @@ if (document.readyState === 'loading') {
                 actualizarTablaAsignaciones();
                 
                 // Mostrar confirmación visual rápida
-                console.log(` Asignado: ${etiquetaEscaneada} → ${loteProveedor}`);
+                console.log(`✅ Asignado: ${etiquetaEscaneada} → ${loteProveedor}`);
+                
+                // Cambiar color del campo de etiqueta a verde (éxito)
+                event.target.style.background = '#d4edda';
+                event.target.style.border = '2px solid #28a745';
+                event.target.style.boxShadow = '0 0 10px rgba(40, 167, 69, 0.5)';
                 
                 // Limpiar ambos campos para nueva secuencia lote-etiqueta
-                document.getElementById('escaneo-etiqueta-impresa').value = '';
-                document.getElementById('escaneo-lote-proveedor').value = '';
+                const campoEtiqueta = document.getElementById('escaneo-etiqueta-impresa');
+                const campoLote = document.getElementById('escaneo-lote-proveedor');
                 
-                // Limpiar también la variable global del lote
-                ultimoLoteEscaneado = '';
-                
-                // Resetear flags de procesamiento para permitir nuevos escaneos
+                // Breve pausa visual para mostrar éxito (250ms)
                 setTimeout(() => {
+                    campoEtiqueta.value = '';
+                    campoLote.value = '';
+                    
+                    // Limpiar también la variable global del lote
+                    ultimoLoteEscaneado = '';
+                    
+                    // Resetear flags de procesamiento para permitir nuevos escaneos
                     procesandoEtiqueta = false;
                     procesandoLote = false;
                     ultimaEtiquetaProcesada = '';
                     console.log('✅ Flags de procesamiento y lote reseteados');
-                }, 100); // Pequeño delay para asegurar que la asignación se complete
-                
-                // Restaurar colores iniciales de ambos campos
-                document.getElementById('escaneo-etiqueta-impresa').style.background = '#7B8181';
-                document.getElementById('escaneo-etiqueta-impresa').style.border = '2px solid #636779';
-                
-                const campoLote = document.getElementById('escaneo-lote-proveedor');
-                campoLote.style.background = '#7B8181';
-                campoLote.style.border = '2px solid #e74c3c';
-                
-                // Flujo automático: enfocar el campo de lote para nueva secuencia
-                setTimeout(() => {
+                    
+                    // Restaurar colores iniciales del campo de etiqueta
+                    campoEtiqueta.style.background = '#7B8181';
+                    campoEtiqueta.style.border = '2px solid #636779';
+                    campoEtiqueta.style.boxShadow = 'none';
+                    
+                    // Resaltar el campo de lote para nueva secuencia
+                    campoLote.style.background = '#fff9e6';
+                    campoLote.style.border = '3px solid #e74c3c';
+                    campoLote.style.boxShadow = '0 0 15px rgba(231, 76, 60, 0.7)';
+                    
+                    // Flujo automático INMEDIATO: enfocar el campo de lote para nueva secuencia
                     campoLote.focus();
                     campoLote.select();
-                    console.log(' Flujo automático: Campo lote enfocado para nueva secuencia');
-                }, 100); // Tiempo reducido para mayor fluidez
+                    console.log('➡️ FLUJO AUTOMÁTICO: Volviendo al campo de lote para nueva secuencia');
+                }, 250); // Breve pausa para feedback visual
                 
                 // Verificar si todas las etiquetas están asignadas
                  const totalAsignadas = asignacionesLotes.filter(item => item.asignado).length;
@@ -6771,6 +6871,40 @@ if (document.readyState === 'loading') {
                 });
             }
         }
+
+        // ====== Exponer Funciones Globalmente para acceso externo (CRÍTICO) ======
+        // Nota: initializeControlAlmacenEventListeners ya se expuso al principio
+        window.guardarFormulario = guardarFormulario;
+        window.abrirModalUnidades = abrirModalUnidades;
+        window.manejarImpresion = manejarImpresion;
+        window.verificarImpresoraZebra = verificarImpresoraZebra;
+        window.consultarRegistros = consultarRegistros;
+        window.exportarExcel = exportarExcel;
+        window.importarExcelAlmacen = importarExcelAlmacen;
+        window.cargarDatosDesdeServidor = cargarDatosDesdeServidor;
+        window.nuevaCargarDatos = nuevaCargarDatos;
+        window.inicializarControlAlmacen = inicializarControlAlmacen;
+
+    </script>
+
+    <!-- Script inline para inicialización después de carga AJAX -->
+    <script>
+    (function() {
+        
+        function tryInitialize() {
+            if (typeof window.initializeControlAlmacenEventListeners === 'function') {
+                window.initializeControlAlmacenEventListeners();
+            } else {
+                setTimeout(tryInitialize, 100);
+            }
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', tryInitialize);
+        } else {
+            tryInitialize();
+        }
+    })();
     </script>
 
 </body>
