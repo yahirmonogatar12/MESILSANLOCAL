@@ -1,8 +1,15 @@
 .vercel
+.env
 .venv
+venv/
+env/
 .vscode
 __pycache__
+.kiro\steering
 .kiro
+scripts/.venv/
+scripts/venv/
+ZebraPrintService/*.log
 # Windows reserved names
 CON.txt
 PRN.txt
