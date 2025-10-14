@@ -52,7 +52,7 @@ from .api_raw_modelos import api_raw
 from .smd_inventory_api import register_smd_inventory_routes
 
 app = Flask(__name__)
-app.secret_key = 'alguna_clave_secreta'  # Necesario para usar sesiones
+app.secret_key = os.getenv('SECRET_KEY', 'fallback_key_for_development_only')  # Necesario para usar sesiones
 
 # Registrar rutas SMD Inventory después de crear la app
 register_smd_inventory_routes(app)
@@ -6767,11 +6767,11 @@ def get_csv_data():
         import mysql.connector
         
         mysql_config = {
-            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
-            'port': 11550,
-            'user': 'db_rrpq0erbdujn',
-            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
-            'database': 'db_rrpq0erbdujn',
+            'host': os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
+            'port': int(os.getenv('MYSQL_PORT', 11550)),
+            'user': os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
+            'password': os.getenv('MYSQL_PASSWORD', ''),
+            'database': os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
             'charset': 'utf8mb4'
         }
         
@@ -6875,11 +6875,11 @@ def get_csv_stats():
         import mysql.connector
         
         mysql_config = {
-            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
-            'port': 11550,
-            'user': 'db_rrpq0erbdujn',
-            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
-            'database': 'db_rrpq0erbdujn',
+            'host': os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
+            'port': int(os.getenv('MYSQL_PORT', 11550)),
+            'user': os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
+            'password': os.getenv('MYSQL_PASSWORD', ''),
+            'database': os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
             'charset': 'utf8mb4'
         }
         
@@ -7082,11 +7082,11 @@ def filter_csv_data():
         import mysql.connector
         
         mysql_config = {
-            'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
-            'port': 11550,
-            'user': 'db_rrpq0erbdujn',
-            'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
-            'database': 'db_rrpq0erbdujn',
+            'host': os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
+            'port': int(os.getenv('MYSQL_PORT', 11550)),
+            'user': os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
+            'password': os.getenv('MYSQL_PASSWORD', ''),
+            'database': os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
             'charset': 'utf8mb4'
         }
         

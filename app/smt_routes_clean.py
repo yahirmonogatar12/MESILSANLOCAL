@@ -7,17 +7,18 @@ Rutas SMT corregidas - API endpoints para historial de cambio de material SMT
 from flask import Blueprint, request, jsonify, render_template
 import mysql.connector
 import logging
+import os
 
-# Configurar logging
+# Configuración del logger
 logger = logging.getLogger(__name__)
 
 # Configuración MySQL
 DB_CONFIG = {
-    'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
-    'port': 11550,
-    'user': 'db_rrpq0erbdujn',
-    'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
-    'database': 'db_rrpq0erbdujn',
+    'host': os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
+    'port': int(os.getenv('MYSQL_PORT', 11550)),
+    'user': os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
+    'password': os.getenv('MYSQL_PASSWORD', ''),
+    'database': os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
     'charset': 'utf8mb4'
 }
 

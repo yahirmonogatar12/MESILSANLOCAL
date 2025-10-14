@@ -10,15 +10,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-// Database configuration
-$host = 'up-de-fra1-mysql-1.db.run-on-seenode.com';
-$port = 11550;
-$database = 'db_rrpq0erbdujn';
-$username = 'db_rrpq0erbdujn';
-$password = '5fUNbSRcPP3LN9K2I33Pr0ge';
+// Database configuration - Usa variables de entorno en producción
+$host = getenv('MYSQL_HOST') ?: 'up-de-fra1-mysql-1.db.run-on-seenode.com';
+$port = getenv('MYSQL_PORT') ?: 11550;
+$database = getenv('MYSQL_DATABASE') ?: 'db_rrpq0erbdujn';
+$username = getenv('MYSQL_USER') ?: 'db_rrpq0erbdujn';
+$password = getenv('MYSQL_PASSWORD') ?: '';
 
 // Security: API Key (opcional - descomenta para usar)
-// $required_api_key = 'tu_api_key_secreta_aqui';
+// $required_api_key = getenv('PROXY_API_KEY') ?: 'tu_api_key_secreta_aqui';
 
 // Security: Tablas permitidas
 $allowed_tables = [

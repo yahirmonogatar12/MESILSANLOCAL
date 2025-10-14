@@ -26,7 +26,7 @@ def get_mysql_connection_string():
     host = os.getenv('MYSQL_HOST', 'localhost')
     port = int(os.getenv('MYSQL_PORT', '3306'))
     database = os.getenv('MYSQL_DATABASE', '')
-    username = os.getenv('MYSQL_USERNAME', '')
+    username = os.getenv('MYSQL_USER', '')
     password = os.getenv('MYSQL_PASSWORD', '')
     
     return {
@@ -47,7 +47,7 @@ def get_mysql_connection_string():
 MYSQL_CONFIG = {
     'host': os.getenv('MYSQL_HOST', 'localhost'),
     'port': int(os.getenv('MYSQL_PORT', '3306')),
-    'user': os.getenv('MYSQL_USERNAME', ''),
+    'user': os.getenv('MYSQL_USER', ''),
     'passwd': os.getenv('MYSQL_PASSWORD', ''),
     'db': os.getenv('MYSQL_DATABASE', ''),
     'charset': 'utf8mb4',

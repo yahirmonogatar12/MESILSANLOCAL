@@ -8,17 +8,18 @@ Actualizado para usar la nueva estructura de tabla historial_cambio_material_smt
 from flask import Blueprint, request, jsonify, render_template
 import mysql.connector
 import logging
+import os
 
 # Configurar logging
 logger = logging.getLogger(__name__)
 
 # Configuración MySQL
 DB_CONFIG = {
-    'host': 'up-de-fra1-mysql-1.db.run-on-seenode.com',
-    'port': 11550,
-    'user': 'db_rrpq0erbdujn',
-    'password': '5fUNbSRcPP3LN9K2I33Pr0ge',
-    'database': 'db_rrpq0erbdujn',
+    'host': os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
+    'port': int(os.getenv('MYSQL_PORT', 11550)),
+    'user': os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
+    'password': os.getenv('MYSQL_PASSWORD', ''),
+    'database': os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
     'charset': 'utf8mb4'
 }
 
@@ -266,10 +267,10 @@ def debug_smt():
             """
             cursor.execute(query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
         else:
+            query = """
+                SELECT ScanDate, ScanTime, SlotNo, Result, LOTNO, Barcode, 
                        archivo, linea, maquina, PartName, Quantity, SEQ, Vendor,
                        PreviousBarcode, Productdate, FeederBase
-                SELECT ScanDate, ScanTime, SlotNo, Result, LOTNO, Barcode, 
-                       archivo, linea, maquina, PartName, Quantity, SEQ, Vendor
                 FROM historial_cambio_material_smt 
                 ORDER BY ScanDate DESC, ScanTime DESC 
                 LIMIT 50
@@ -339,10 +340,10 @@ def tabla_smt():
 
         # Construir consulta
         where_clause = (' WHERE ' + ' AND '.join(filters)) if filters else ''
+        query = f"""
+            SELECT ScanDate, ScanTime, SlotNo, Result, LOTNO, Barcode, 
                    archivo, linea, maquina, PartName, Quantity, SEQ, Vendor,
                    PreviousBarcode, Productdate, FeederBase
-            SELECT ScanDate, ScanTime, SlotNo, Result, LOTNO, Barcode, 
-                   archivo, linea, maquina, PartName, Quantity, SEQ, Vendor
             FROM historial_cambio_material_smt 
             {where_clause} 
             ORDER BY ScanDate DESC, ScanTime DESC 

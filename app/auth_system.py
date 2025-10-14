@@ -989,12 +989,15 @@ class AuthSystem:
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if 'usuario' not in session:
-                print(f"❌ No hay usuario en sesión para acceder a {request.endpoint}")
+                # Solo loguear si NO es una petición AJAX esperada de permisos
+                if not (request.is_json or '/obtener_permisos' in request.path):
+                    print(f"❌ No hay usuario en sesión para acceder a {request.endpoint}")
                 if request.is_json:
                     return jsonify({'error': 'No autenticado'}), 401
                 return redirect('/login')  # Usar ruta absoluta en lugar de url_for
             
-            print(f" Usuario {session.get('usuario')} accediendo a {request.endpoint}")
+            # Solo loguear accesos exitosos en modo verbose
+            # print(f"✓ Usuario {session.get('usuario')} accediendo a {request.endpoint}")
             # Actualizar última actividad
             self._actualizar_actividad_sesion(session.get('usuario'))
             

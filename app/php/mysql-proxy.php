@@ -10,12 +10,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-// Database configuration - Credenciales actualizadas
-$host = 'up-de-fra1-mysql-1.db.run-on-seenode.com';
-$port = 11550;
-$database = 'db_rrpq0erbdujn';
-$username = 'db_rrpq0erbdujn';
-$password = '5fUNbSRcPP3LN9K2I33Pr0ge';
+// Database configuration - Usa variables de entorno en producción
+// Para desarrollo local, puedes configurar estas variables
+$host = getenv('MYSQL_HOST') ?: 'up-de-fra1-mysql-1.db.run-on-seenode.com';
+$port = getenv('MYSQL_PORT') ?: 11550;
+$database = getenv('MYSQL_DATABASE') ?: 'db_rrpq0erbdujn';
+$username = getenv('MYSQL_USER') ?: 'db_rrpq0erbdujn';
+$password = getenv('MYSQL_PASSWORD') ?: '';
 
 try {
     // Create PDO connection

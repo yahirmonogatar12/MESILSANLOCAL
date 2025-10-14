@@ -53,7 +53,7 @@ def get_mysql_connection_string():
     host = os.getenv('MYSQL_HOST', 'localhost')
     port = int(os.getenv('MYSQL_PORT', '3306'))
     database = os.getenv('MYSQL_DATABASE', '')
-    username = os.getenv('MYSQL_USERNAME', '')
+    username = os.getenv('MYSQL_USER', '')
     password = os.getenv('MYSQL_PASSWORD', '')
     
     return {
