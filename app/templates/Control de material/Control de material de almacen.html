@@ -976,16 +976,16 @@
 ^PW392
 ^LL165
 ^LS0
-^FT188,70^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
-^FT187,120^A0N,24,22^FH\\^CI28^FDQTY:^FS^CI27
-^FT25,95^BQN,2,6
+^FT170,70^A0N,22,20^FH\\^CI28^FDQTY:^FS^CI27
+^FT15,0^BQN,2,5
 ^FH\\^FDLA,${datosEjemplo.codigoCompleto}^FS
-^FT188,15^A0N,32,30^FH\\^CI28^FD${datosEjemplo.codigoMaterial}^FS^CI27
-^FT188,50^A0N,32,30^FH\\^CI28^FD${datosEjemplo.numeroSerie}^FS^CI27
-^FT188,95^A0N,27,25^FH\\^CI28^FD${datosEjemplo.fecha}^FS^CI27
-^FT188,150^A0N,30,28^FH\\^CI28^FD${datosEjemplo.descripcionMaterial}^FS^CI27
-^FT188,175^A0N,30,28^FH\\^CI28^FD^FS^CI27
-^FT240,122^A0N,28,26^FH\\^CI28^FD${datosEjemplo.cantidadEstandarizada}^FS^CI27
+^FT170,1^A0N,32,30^FH\\^CI28^FD${datosEjemplo.codigoMaterial}^FS^CI27
+^FT170,50^A0N,32,30^FH\\^CI28^FD${datosEjemplo.numeroSerie}^FS^CI27
+^FT15,125^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT15,150^A0N,27,25^FH\\^CI28^FD${datosEjemplo.fecha}^FS^CI27
+^FT170,100^A0N,30,28^FH\\^CI28^FD${datosEjemplo.descripcionMaterial}^FS^CI27
+^FT170,123^A0N,30,28^FH\\^CI28^FD^FS^CI27
+^FT210,75^A0N,28,26^FH\\^CI28^FD${datosEjemplo.cantidadEstandarizada}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             
@@ -3660,7 +3660,7 @@ if (document.readyState === 'loading') {
 ^FO5,75^ADN,8,6^FDILSAN^FS
 ^XZ`;
             } else {
-                // Etiqueta usando diseño proporcionado por el usuario
+                // Etiqueta usando diseño actualizado por el usuario
                 // Split especificación at the opening parenthesis
                 const especificacionParts = especificacion.split('(');
                 const especificacionLine1 = especificacionParts[0] ? especificacionParts[0].trim() : '';
@@ -3689,16 +3689,16 @@ if (document.readyState === 'loading') {
 ^PW392
 ^LL165
 ^LS0
-^FT188,70^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
-^FT187,120^A0N,24,22^FH\\^CI28^FDQTY:^FS^CI27
-^FT25,135^BQN,2,6
+^FT170,70^A0N,22,20^FH\\^CI28^FDQTY:^FS^CI27
+^FT15,0^BQN,2,5
 ^FH\\^FDLA,${codigo}^FS
-^FT188,15^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
-^FT188,50^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
-^FT188,95^A0N,27,25^FH\\^CI28^FD${fecha}^FS^CI27
-^FT188,150^A0N,30,28^FH\\^CI28^FD${especificacionLine1}^FS^CI27
-^FT188,175^A0N,30,28^FH\\^CI28^FD${especificacionLine2}^FS^CI27
-^FT240,122^A0N,28,26^FH\\^CI28^FD${cantidadActual}^FS^CI27
+^FT170,1^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
+^FT170,50^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
+^FT15,125^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT15,150^A0N,27,25^FH\\^CI28^FD${fecha}^FS^CI27
+^FT170,100^A0N,30,28^FH\\^CI28^FD${especificacionLine1}^FS^CI27
+^FT170,123^A0N,30,28^FH\\^CI28^FD${especificacionLine2}^FS^CI27
+^FT210,75^A0N,28,26^FH\\^CI28^FD${cantidadActual}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
@@ -3781,7 +3781,7 @@ if (document.readyState === 'loading') {
 ^FO5,75^ADN,8,6^FDILSAN^FS
 ^XZ`;
             } else {
-                // Etiqueta usando diseño proporcionado por el usuario
+                // Etiqueta usando diseño actualizado por el usuario
                 // Split propiedad at the opening parenthesis
                 const propiedadParts = propiedad.split('(');
                 const propiedadLine1 = propiedadParts[0] ? propiedadParts[0].trim() : '';
@@ -3810,16 +3810,16 @@ if (document.readyState === 'loading') {
 ^PW392
 ^LL165
 ^LS0
-^FT188,70^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
-^FT187,120^A0N,24,22^FH\\^CI28^FDQTY:^FS^CI27
-^FT25,95^BQN,2,6
+^FT170,70^A0N,22,20^FH\\^CI28^FDQTY:^FS^CI27
+^FT15,0^BQN,2,5
 ^FH\\^FDLA,${codigo}^FS
-^FT188,15^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
-^FT188,50^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
-^FT188,95^A0N,27,25^FH\\^CI28^FD${fecha}^FS^CI27
-^FT188,150^A0N,30,28^FH\\^CI28^FD${propiedadLine1}^FS^CI27
-^FT188,175^A0N,30,28^FH\\^CI28^FD${propiedadLine2}^FS^CI27
-^FT240,122^A0N,28,26^FH\\^CI28^FD${cantidadActual}^FS^CI27
+^FT170,1^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[0] || codigo}^FS^CI27
+^FT170,50^A0N,32,30^FH\\^CI28^FD${codigo.split(',')[1] || ''}^FS^CI27
+^FT15,125^A0N,22,20^FH\\^CI28^FDFecha de entrada:^FS^CI27
+^FT15,150^A0N,27,25^FH\\^CI28^FD${fecha}^FS^CI27
+^FT170,100^A0N,30,28^FH\\^CI28^FD${propiedadLine1}^FS^CI27
+^FT170,123^A0N,30,28^FH\\^CI28^FD${propiedadLine2}^FS^CI27
+^FT210,75^A0N,28,26^FH\\^CI28^FD${cantidadActual}^FS^CI27
 ^PQ1,0,1,Y
 ^XZ`;
             }
