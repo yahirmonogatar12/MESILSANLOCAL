@@ -1,4 +1,4 @@
-// ====== Variables Globales para Planeación ======
+﻿// ====== Variables Globales para Planeación ======
 
 // Función helper para obtener fecha en zona horaria de Nuevo León, México (America/Monterrey)
 function getTodayInNuevoLeon() {
@@ -41,7 +41,7 @@ let currentConfig = {
   productiveHours: 9,  // 9 horas reales de trabajo (10 - 1 hora de breaks)
   lineFlows: {
     'M1': 'D1',
-    'M2': 'D2', 
+    'M2': 'D2',
     'M3': 'D3'
   }
 };
@@ -68,34 +68,34 @@ function createLoadingSpinner(size = 'normal') {
 function showTableLoading(containerId, message = 'Cargando...') {
   const container = document.getElementById(containerId);
   if (!container) return;
-  
+
   // Remover cualquier loading previo
   hideTableLoading(containerId);
-  
+
   // Asegurar que el container tenga position relative
   const computedStyle = window.getComputedStyle(container);
   if (computedStyle.position === 'static') {
     container.style.position = 'relative';
   }
-  
+
   // Crear overlay
   const overlay = document.createElement('div');
   overlay.className = 'table-loading-overlay';
   overlay.id = `${containerId}-loading`;
-  
+
   // Crear spinner
   const spinner = document.createElement('div');
   spinner.className = 'loading-spinner';
-  
+
   // Crear texto
   const text = document.createElement('div');
   text.className = 'loading-text';
   text.textContent = message;
-  
+
   // Agregar elementos al overlay
   overlay.appendChild(spinner);
   overlay.appendChild(text);
-  
+
   // Agregar overlay al container
   container.appendChild(overlay);
 }
@@ -104,7 +104,7 @@ function showTableLoading(containerId, message = 'Cargando...') {
 function showTableBodyLoading(tbodyId, message = 'Cargando...', colSpan = 15) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
-  
+
   tbody.innerHTML = `
     <tr class="loading-row">
       <td colspan="${colSpan}" style="display: table-cell; text-align: center; padding: 40px; background: #2A2D3E;">
@@ -144,7 +144,7 @@ function showSuccessModal(message) {
       justify-content: center;
       align-items: center;
     `;
-    
+
     modal.innerHTML = `
       <div style="background: #2A2D3E; border-radius: 12px; padding: 30px; color: #E0E0E0; text-align: center; max-width: 400px; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
         <div style="font-size: 48px; color: #28a745; margin-bottom: 15px;">✅</div>
@@ -155,10 +155,10 @@ function showSuccessModal(message) {
         </button>
       </div>
     `;
-    
+
     document.body.appendChild(modal);
   }
-  
+
   // Actualizar mensaje y mostrar
   document.getElementById('success-message').textContent = message;
   modal.style.display = 'flex';
@@ -176,7 +176,7 @@ function hideSuccessModal() {
 function setButtonLoading(buttonId, loading = true, originalText = '') {
   const button = document.getElementById(buttonId);
   if (!button) return;
-  
+
   if (loading) {
     button.dataset.originalText = button.textContent;
     button.classList.add('loading');
@@ -215,64 +215,64 @@ document.getElementById("plan-form").addEventListener("submit", async function(e
 */
 
 // Prefijar filtros a hoy
-function setDefaultDateFilters(){
+function setDefaultDateFilters() {
   const iso = getTodayInNuevoLeon();
   const fs = document.getElementById("filter-start");
   const fe = document.getElementById("filter-end");
-  if(fs && !fs.value) fs.value = iso;
-  if(fe && !fe.value) fe.value = iso;
+  if (fs && !fs.value) fs.value = iso;
+  if (fe && !fe.value) fe.value = iso;
 }
 
 // Map routing value to turno label
-function routingToTurno(v){
-  if(v === 1 || v === "1") return "DIA";
-  if(v === 2 || v === "2") return "TIEMPO EXTRA";
-  if(v === 3 || v === "3") return "NOCHE";
+function routingToTurno(v) {
+  if (v === 1 || v === "1") return "DIA";
+  if (v === 2 || v === "2") return "TIEMPO EXTRA";
+  if (v === 3 || v === "3") return "NOCHE";
   return "";
 }
 
 // Map turno label to routing value
-function turnoToRouting(turno){
-  if(turno === "DIA") return 1;
-  if(turno === "TIEMPO EXTRA") return 2;
-  if(turno === "NOCHE") return 3;
+function turnoToRouting(turno) {
+  if (turno === "DIA") return 1;
+  if (turno === "TIEMPO EXTRA") return 2;
+  if (turno === "NOCHE") return 3;
   return 1; // Default DIA
 }
 
 // Cargar planes
-async function loadPlans(){
+async function loadPlans() {
   try {
     // Mostrar loading en el tbody de la tabla
-  showTableBodyLoading('plan-tableBody', 'Cargando planes...', 16);
-    
+    showTableBodyLoading('plan-tableBody', 'Cargando planes...', 16);
+
     setDefaultDateFilters();
     const fs = document.getElementById("filter-start")?.value;
     const fe = document.getElementById("filter-end")?.value;
     let url = "/api/plan";
     const params = [];
-    if(fs) params.push(`start=${encodeURIComponent(fs)}`);
-    if(fe) params.push(`end=${encodeURIComponent(fe)}`);
-    if(params.length) url += `?${params.join("&")}`;
-    
+    if (fs) params.push(`start=${encodeURIComponent(fs)}`);
+    if (fe) params.push(`end=${encodeURIComponent(fe)}`);
+    if (params.length) url += `?${params.join("&")}`;
+
     let res = await axios.get(url);
     let data = Array.isArray(res.data) ? res.data.slice() : [];
-    
+
     // ⭐ IMPORTANTE: Guardar copia profunda de los datos originales
     // Esta copia se usa para recuperar datos completos cuando se reorganizan planes
-    originalPlansData = data.map(plan => ({...plan}));
-    
+    originalPlansData = data.map(plan => ({ ...plan }));
+
     // Aplicar orden guardado (si existe) antes de renderizar
     data = applySavedOrderToData(data, fs, fe);
 
     let tbody = document.getElementById("plan-tableBody");
     tbody.innerHTML = "";
-    
+
     data.forEach((r, idx) => {
       let tr = document.createElement("tr");
       tr.dataset.lot = r.lot_no;
       tr.draggable = true;
       tr.innerHTML = `
-        <td>${idx+1}</td>
+        <td>${idx + 1}</td>
         <td>${r.lot_no}</td>
         <td>${r.wo_code || ""}</td>
         <td>${r.po_code || ""}</td>
@@ -299,16 +299,16 @@ async function loadPlans(){
 
     enableRowDragDrop(tbody, fs, fe);
     // ensureOrderToolbar(fs, fe); // Ya no necesario - usamos save-sequences-btn
-  } catch(error) {
+  } catch (error) {
     alert("Error al cargar planes: " + (error.response?.data?.error || error.message));
     // En caso de error, limpiar la tabla
     let tbody = document.getElementById("plan-tableBody");
-  tbody.innerHTML = `<tr class="message-row"><td colspan="21" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
+    tbody.innerHTML = `<tr class="message-row"><td colspan="21" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
   }
 }
 
 // ====== Drag & Drop Reordenamiento ======
-function enableRowDragDrop(tbody, fs, fe){
+function enableRowDragDrop(tbody, fs, fe) {
   let dragSrcEl = null;
   tbody.addEventListener('dragstart', (e) => {
     const row = e.target.closest('tr');
@@ -316,7 +316,7 @@ function enableRowDragDrop(tbody, fs, fe){
     dragSrcEl = row;
     row.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', row.dataset.lot || ''); } catch {}
+    try { e.dataTransfer.setData('text/plain', row.dataset.lot || ''); } catch { }
   });
   tbody.addEventListener('dragend', (e) => {
     const row = e.target.closest('tr');
@@ -327,12 +327,12 @@ function enableRowDragDrop(tbody, fs, fe){
     // Renumerar secuencia visual inmediatamente
     Array.from(tbody.querySelectorAll('tr')).forEach((tr, i) => {
       const firstCell = tr.querySelector('td');
-      if (firstCell) firstCell.textContent = String(i+1);
+      if (firstCell) firstCell.textContent = String(i + 1);
     });
-    
+
     // IMPORTANTE: Sincronizar visualGroups con el orden actual de la tabla
     syncVisualGroupsWithTableOrder();
-    
+
     // Recalcular tiempos automáticamente después del drag
     setTimeout(calculateAndUpdateTimes, 100);
   });
@@ -349,7 +349,7 @@ function enableRowDragDrop(tbody, fs, fe){
   });
 }
 
-function getDragAfterElement(container, y){
+function getDragAfterElement(container, y) {
   const draggableElements = [...container.querySelectorAll('tr:not(.dragging)')];
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
@@ -368,18 +368,18 @@ function syncVisualGroupsWithTableOrder() {
   if (!tbody) {
     return;
   }
-  
+
   const rows = Array.from(tbody.querySelectorAll('tr'));
   if (rows.length === 0) {
     return;
   }
-  
+
   // Obtener número de grupos actual
   const groupCount = parseInt(document.getElementById('groups-count')?.value) || 6;
-  
+
   // ⭐ IMPORTANTE: Usar originalPlansData (copia inmutable de BD) como fuente de verdad
   // Esta copia siempre tiene los datos completos incluyendo status
-  
+
   // Guardar también el estado actual de visualGroups por si originalPlansData está vacío
   const visualGroupsBackup = [];
   if (visualGroups && visualGroups.groups) {
@@ -387,29 +387,29 @@ function syncVisualGroupsWithTableOrder() {
       if (group && group.plans) {
         group.plans.forEach(plan => {
           if (plan && plan.lot_no) {
-            visualGroupsBackup.push({...plan});
+            visualGroupsBackup.push({ ...plan });
           }
         });
       }
     });
   }
-  
+
   // Reinicializar grupos
   initializeVisualGroups(groupCount);
-  
+
   // Reconstruir los grupos basándose en el orden visual actual
   rows.forEach((row, rowIndex) => {
     const lotNo = row.dataset.lot;
     if (!lotNo) return;
-    
+
     // Buscar el plan en originalPlansData PRIMERO (fuente de verdad)
     let planData = originalPlansData.find(p => p.lot_no === lotNo);
-    
+
     // Si no está en originalPlansData, buscar en el backup de visualGroups
     if (!planData) {
       planData = visualGroupsBackup.find(p => p.lot_no === lotNo);
     }
-    
+
     // Si aún no encontramos el plan, crear un objeto desde la tabla HTML
     if (!planData) {
       const cells = row.querySelectorAll('td');
@@ -432,35 +432,35 @@ function syncVisualGroupsWithTableOrder() {
         status: cells[16]?.textContent?.trim() || 'PLAN' // Preservar status desde la celda
       };
     }
-    
+
     // Determinar a qué grupo pertenece (distribución por filas)
     const groupIndex = rowIndex % groupCount;
-    
+
     // Agregar plan al grupo correspondiente (preservando todos los campos)
     visualGroups.groups[groupIndex].plans.push(planData);
     visualGroups.planAssignments.set(lotNo, groupIndex);
   });
 }
 
-function orderStorageKey(fs, fe){
-  return `plan-order:${fs||''}:${fe||''}`;
+function orderStorageKey(fs, fe) {
+  return `plan-order:${fs || ''}:${fe || ''}`;
 }
 
-function saveCurrentOrder(tbody, fs, fe){
+function saveCurrentOrder(tbody, fs, fe) {
   const order = Array.from(tbody.querySelectorAll('tr')).map(tr => tr.dataset.lot).filter(Boolean);
   try {
     localStorage.setItem(orderStorageKey(fs, fe), JSON.stringify(order));
-  } catch {}
+  } catch { }
 }
 
-function applySavedOrderToData(data, fs, fe){
+function applySavedOrderToData(data, fs, fe) {
   try {
     // Primero intentar usar el orden guardado en MySQL (group_no y sequence)
     const plansWithOrder = data.filter(plan => plan.group_no != null && plan.sequence != null);
-    
+
     if (plansWithOrder.length > 0) {
 
-      
+
       // Los datos ya vienen ordenados desde el backend por group_no y sequence
       // Solo necesitamos verificar que el orden sea correcto
       const orderedData = data.slice().sort((a, b) => {
@@ -468,17 +468,17 @@ function applySavedOrderToData(data, fs, fe){
         const bGroup = b.group_no || 999;
         const aSeq = a.sequence || 999;
         const bSeq = b.sequence || 999;
-        
+
         if (aGroup !== bGroup) {
           return aGroup - bGroup;
         }
         return aSeq - bSeq;
       });
-      
+
 
       return orderedData;
     }
-    
+
     // Si no hay orden en MySQL, usar localStorage como respaldo
     const key = orderStorageKey(fs, fe);
     const raw = localStorage.getItem(key);
@@ -486,32 +486,32 @@ function applySavedOrderToData(data, fs, fe){
 
       return data;
     }
-    
+
 
     const order = JSON.parse(raw);
     if (!Array.isArray(order) || !order.length) return data;
-    
+
     const indexMap = new Map();
     order.forEach((lot, i) => indexMap.set(lot, i));
-    return data.slice().sort((a,b) => {
+    return data.slice().sort((a, b) => {
       const ia = indexMap.has(a.lot_no) ? indexMap.get(a.lot_no) : Infinity;
       const ib = indexMap.has(b.lot_no) ? indexMap.get(b.lot_no) : Infinity;
       if (ia === ib) return 0;
       return ia - ib;
     });
-  } catch(error) { 
+  } catch (error) {
 
-    return data; 
+    return data;
   }
 }
 
-function ensureOrderToolbar(fs, fe){
+function ensureOrderToolbar(fs, fe) {
   // Esta función ya no es necesaria porque usamos el botón save-sequences-btn del toolbar principal
   // El botón "💾 Guardar Orden" maneja tanto grupos como secuencias correctamente
 }
 
 // Estilos mínimos para drag
-(function injectDragStyles(){
+(function injectDragStyles() {
   const style = document.createElement('style');
   style.textContent = `
     #plan-tableBody tr.dragging { opacity: .6; outline: 2px dashed #3498db; }
@@ -538,24 +538,24 @@ if (planTableEl) {
 }
 */
 
-async function openEditModal(lotNo){
+async function openEditModal(lotNo) {
   try {
     // Mostrar modal inmediatamente con loading
     const modal = document.getElementById("plan-editModal");
     const form = document.getElementById("plan-editForm");
-    
+
     modal.style.display = "flex";
-    
+
     // Ocultar el formulario mientras carga
     form.style.display = "none";
-    
+
     showTableLoading('plan-modal-content', 'Cargando datos del plan...');
-    
+
     // Hacer la consulta a la API
     let res = await axios.get("/api/plan");
     let plan = res.data.find(p => p.lot_no === lotNo);
-    
-    if(!plan) {
+
+    if (!plan) {
       hideTableLoading('plan-modal-content');
       modal.style.display = "none";
       return alert("Plan no encontrado");
@@ -563,13 +563,13 @@ async function openEditModal(lotNo){
 
     // Llenar el formulario con los datos
     form.lot_no.value = plan.lot_no;
-    
+
     // Set turno based on routing
     const turnoSel = form.elements["turno"];
-    if(turnoSel){
+    if (turnoSel) {
       turnoSel.value = routingToTurno(plan.routing) || "DIA";
     }
-    
+
     form.plan_count.value = plan.plan_count;
     form.wo_code.value = plan.wo_code || "";
     form.po_code.value = plan.po_code || "";
@@ -583,15 +583,15 @@ async function openEditModal(lotNo){
     form.style.display = "block";
     form.style.opacity = "0";
     form.style.transform = "translateY(10px)";
-    
+
     // Animación de entrada
     setTimeout(() => {
       form.style.transition = "all 0.3s ease";
       form.style.opacity = "1";
       form.style.transform = "translateY(0)";
     }, 50);
-    
-  } catch(error) {
+
+  } catch (error) {
     hideTableLoading('plan-modal-content');
     document.getElementById("plan-editModal").style.display = "none";
     alert("Error al cargar datos del plan: " + (error.response?.data?.error || error.message));
@@ -608,7 +608,7 @@ async function handleEditPlanSubmit(form) {
   const data = Object.fromEntries(new FormData(form));
   const submitBtn = form.querySelector('button[type="submit"]');
   const originalText = submitBtn?.textContent || 'Guardar';
-  
+
   try {
     // Cambiar el botón a estado de carga
     if (submitBtn) {
@@ -617,26 +617,26 @@ async function handleEditPlanSubmit(form) {
       submitBtn.style.backgroundColor = '#6c757d';
       submitBtn.style.cursor = 'not-allowed';
     }
-    
+
     showTableLoading('plan-modal-content', 'Buscando Work Order y datos actualizados en RAW...');
-    
+
     // Buscar datos actualizados en la tabla RAW antes de guardar
     try {
       // El formulario no tiene part_no, pero tiene wo_code
       // Primero buscar el WO para obtener el part_no (modelo)
       const woCode = data.wo_code;
-      
+
       if (woCode && woCode !== 'SIN-WO') {
         // Buscar el WO en la tabla work_orders
         const woResponse = await axios.get(`/api/work-orders?q=${encodeURIComponent(woCode)}`);
-        
+
         if (woResponse.data && woResponse.data.length > 0) {
           // Filtrar exactamente el WO que coincide con wo_code
           const woData = woResponse.data.find(wo => wo.codigo_wo === woCode);
-          
+
           if (woData) {
             const partNo = woData.modelo; // El campo en work_orders se llama 'modelo'
-          
+
             if (partNo) {
               // Buscar en RAW con timeout de 5 segundos
               let rawResponse = null;
@@ -644,24 +644,24 @@ async function handleEditPlanSubmit(form) {
                 const timeoutPromise = new Promise((_, reject) => {
                   setTimeout(() => reject(new Error('Timeout: La petición tardó más de 5 segundos')), 5000);
                 });
-                
+
                 const axiosPromise = axios.get(`/api/raw/search?part_no=${encodeURIComponent(partNo)}`, {
                   timeout: 5000,
                   headers: {
                     'Content-Type': 'application/json'
                   }
                 });
-                
+
                 rawResponse = await Promise.race([axiosPromise, timeoutPromise]);
               } catch (axiosError) {
                 console.error('Error al buscar datos en RAW:', axiosError.message);
                 rawResponse = null;
               }
-              
+
               if (rawResponse && rawResponse.status === 200) {
                 if (rawResponse.data && rawResponse.data.length > 0) {
                   const rawData = rawResponse.data[0];
-                  
+
                   // Actualizar datos desde RAW
                   data.part_no = partNo;
                   data.uph = rawData.uph || 0;
@@ -683,17 +683,17 @@ async function handleEditPlanSubmit(form) {
     } catch (rawError) {
       console.error('Error al buscar datos en RAW:', rawError.message);
     }
-    
+
     showTableLoading('plan-modal-content', 'Actualizando plan...');
-    
+
     const updateResponse = await axios.post("/api/plan/update", data);
-    
+
     // Mostrar modal de éxito
     showSuccessModal(`Plan ${data.lot_no} actualizado exitosamente`);
-    
+
     document.getElementById("plan-editModal").style.display = "none";
     loadPlans();
-  } catch(error) {
+  } catch (error) {
     console.error('Error en handleEditPlanSubmit:', error);
     alert("Error actualizando plan: " + (error.response?.data?.error || error.message));
   } finally {
@@ -714,14 +714,14 @@ async function handleEditPlanSubmit(form) {
 async function handleCancelPlan() {
   const form = document.getElementById("plan-editForm");
   if (!form) return;
-  
+
   const lot = form.lot_no.value;
-  if(!lot) return;
-  if(!confirm(`¿Cancelar plan ${lot}?`)) return;
-  
+  if (!lot) return;
+  if (!confirm(`¿Cancelar plan ${lot}?`)) return;
+
   const cancelBtn = document.getElementById("plan-cancelBtn");
   const originalText = cancelBtn?.textContent || 'Cancelar plan';
-  
+
   try {
     // Cambiar el botón a estado de carga
     if (cancelBtn) {
@@ -730,17 +730,17 @@ async function handleCancelPlan() {
       cancelBtn.style.backgroundColor = '#6c757d';
       cancelBtn.style.cursor = 'not-allowed';
     }
-    
+
     showTableLoading('plan-editModal-content', 'Cancelando plan...');
-    
+
     await axios.post("/api/plan/update", { lot_no: lot, status: "CANCELADO" });
-    
+
     // Mostrar modal de éxito
     showSuccessModal(`Plan ${lot} cancelado exitosamente`);
-    
+
     document.getElementById("plan-editModal").style.display = "none";
     loadPlans();
-  } catch(error) {
+  } catch (error) {
     alert("Error cancelando plan: " + (error.response?.data?.error || error.message));
   } finally {
     // Restaurar botón
@@ -759,26 +759,26 @@ async function handleCancelPlan() {
  */
 async function handleNewPlanSubmit(form) {
   const data = Object.fromEntries(new FormData(form));
-  
+
   const submitBtn = form.querySelector('button[type="submit"]');
   const originalText = submitBtn?.textContent || 'Registrar';
-  
+
   try {
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Guardando...';
       submitBtn.style.cursor = 'not-allowed';
     }
-    
+
     await axios.post("/api/plan", data);
-    
+
     // Mostrar modal de éxito
     showSuccessModal('Plan registrado exitosamente');
-    
+
     document.getElementById("plan-modal").style.display = "none";
     form.reset();
     loadPlans();
-  } catch(error) {
+  } catch (error) {
     alert("Error registrando plan: " + (error.response?.data?.error || error.message));
   } finally {
     if (submitBtn) {
@@ -813,75 +813,92 @@ function createWorkOrdersModal() {
     return;
   }
 
-  const modalHTML = `
-    <div id="wo-modal" class="modal-overlay">
-      <div class="modal-content" id="wo-modal-content">
-        <div class="modal-header">
-          <h3>Work Orders - Importar como Planes</h3>
-          <button id="wo-closeModalBtn" class="plan-btn modal-close-btn">×</button>
-        </div>
+  console.log('📦 Creando modal wo-modal con estilos');
+
+  const woModal = document.createElement('div');
+  woModal.id = 'wo-modal';
+  woModal.className = 'modal-overlay';
+  
+  // IMPORTANTE: Agregar estilos inline como fallback
+  woModal.style.cssText = `
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+  `;
+  
+  woModal.innerHTML = `
+    <div class="modal-content" id="wo-modal-content" style="background: #34334E; border-radius: 8px; width: 90%; max-width: 1200px; max-height: 90%; padding: 20px; color: lightgray; overflow: auto;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #ecf0f1;">Work Orders - Importar como Planes</h3>
+        <button id="wo-closeModalBtn" class="plan-btn modal-close-btn" style="background: #666; border: none; color: white; font-size: 24px; cursor: pointer; width: 30px; height: 30px; border-radius: 4px;"></button>
+      </div>
+
+      <div class="modal-filters" style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
+        <label style="font-size: 11px; color: #ecf0f1;">Buscar WO/PO:</label>
+        <input type="text" id="wo-search-input" class="plan-input" placeholder="Buscar por código WO o PO..." style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 180px;">
         
-        <div class="modal-filters">
-          <label>Buscar WO/PO:</label>
-          <input type="text" id="wo-search-input" class="plan-input" placeholder="Buscar por código WO o PO...">
-          
-          <label>Fecha Op. Desde:</label>
-          <input type="date" id="wo-filter-desde" class="plan-input" title="Filtrar WOs desde esta fecha">
-          
-          <label>Fecha Op. Hasta:</label>
-          <input type="date" id="wo-filter-hasta" class="plan-input" title="Filtrar WOs hasta esta fecha">
-          
-          <label>Estado:</label>
-          <select id="wo-filter-estado" class="plan-input">
-            <option value="">Todos</option>
-            <option value="CREADA">CREADA</option>
-            <option value="PLANIFICADA">PLANIFICADA</option>
-            <option value="EN PROGRESO">EN PROGRESO</option>
-            <option value="CERRADA">CERRADA</option>
-          </select>
-          
-          <button id="wo-reload-btn" class="plan-btn">Recargar</button>
-          <button id="wo-import-selected-btn" class="plan-btn plan-btn-add">Importar Seleccionados</button>
-          
-          <label>Fecha de Importación:</label>
-          <input type="date" id="wo-filter-date" class="plan-input" title="Fecha a la que se importarán los planes seleccionados">
-        </div>
+        <label style="font-size: 11px; color: #ecf0f1;">Fecha Op. Desde:</label>
+        <input type="date" id="wo-filter-desde" class="plan-input" title="Filtrar WOs desde esta fecha" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
+        
+        <label style="font-size: 11px; color: #ecf0f1;">Fecha Op. Hasta:</label>
+        <input type="date" id="wo-filter-hasta" class="plan-input" title="Filtrar WOs hasta esta fecha" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
+        
+        <label style="font-size: 11px; color: #ecf0f1;">Estado:</label>
+        <select id="wo-filter-estado" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 120px;">
+          <option value="">Todos</option>
+          <option value="CREADA">CREADA</option>
+          <option value="PLANIFICADA">PLANIFICADA</option>
+          <option value="EN PROGRESO">EN PROGRESO</option>
+          <option value="CERRADA">CERRADA</option>
+        </select>
+        
+        <button id="wo-reload-btn" class="plan-btn" style="background-color: #2980b9; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Recargar</button>
+        <button id="wo-import-selected-btn" class="plan-btn plan-btn-add" style="background-color: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Importar Seleccionados</button>
+        
+        <label style="font-size: 11px; color: #ecf0f1;">Fecha de Importación:</label>
+        <input type="date" id="wo-filter-date" class="plan-input" title="Fecha a la que se importarán los planes seleccionados" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
+      </div>
 
-        <div class="modal-table-container">
-          <table class="modal-table">
-            <thead>
-              <tr>
-                <th>
-                  <input type="checkbox" id="wo-select-all">
-                </th>
-                <th>WO Code</th>
-                <th>PO Code</th>
-                <th>Modelo</th>
-                <th>Cantidad</th>
-                <th>Fecha Op.</th>
-                <th>Estado</th>
-                <th>Modificador</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody id="wo-tableBody"></tbody>
-          </table>
-        </div>
+      <div class="modal-table-container" style="overflow-x: auto; margin-bottom: 20px;">
+        <table class="modal-table" style="width: 100%; border-collapse: collapse; background: #2B2D3E;">
+          <thead>
+            <tr style="background: #1e1e2e;">
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">
+                <input type="checkbox" id="wo-select-all">
+              </th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">WO Code</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">PO Code</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Modelo</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Cantidad</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Fecha Op.</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Estado</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Modificador</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="wo-tableBody" style="color: lightgray;"></tbody>
+        </table>
+      </div>
 
-        <div class="modal-status">
-          <span id="wo-status">Seleccione los WOs que desea importar como planes</span>
-        </div>
+      <div class="modal-status" style="padding: 10px; text-align: center; color: #95a5a6; font-size: 12px;">
+        <span id="wo-status">Seleccione los WOs que desea importar como planes</span>
       </div>
     </div>
   `;
 
   // Insertar el modal en el body
-  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  document.body.appendChild(woModal);
 
   // Configurar event listeners después de crear el modal
   setupWorkOrdersModalEvents();
 }
-
 // Exponer función globalmente
 window.createWorkOrdersModal = createWorkOrdersModal;
 
@@ -905,7 +922,7 @@ function setupWorkOrdersModalEvents() {
   const searchInput = document.getElementById('wo-search-input');
   if (searchInput) {
     searchInput.addEventListener('input', filterWorkOrdersTable);
-    searchInput.addEventListener('keypress', function(e) {
+    searchInput.addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         filterWorkOrdersTable();
@@ -916,7 +933,7 @@ function setupWorkOrdersModalEvents() {
   // Checkbox "Seleccionar todos"
   const selectAll = document.getElementById('wo-select-all');
   if (selectAll) {
-    selectAll.addEventListener('change', function() {
+    selectAll.addEventListener('change', function () {
       toggleAllWOs(this);
     });
   }
@@ -930,7 +947,7 @@ function setupWorkOrdersModalEvents() {
   // Delegación de eventos para botones de importación individual
   const tbody = document.getElementById('wo-tableBody');
   if (tbody) {
-    tbody.addEventListener('click', function(e) {
+    tbody.addEventListener('click', function (e) {
       if (e.target.classList.contains('wo-import-single-btn')) {
         const woId = parseInt(e.target.dataset.woId);
         if (woId && !e.target.disabled) {
@@ -945,30 +962,30 @@ function setupWorkOrdersModalEvents() {
   const filterDesde = document.getElementById('wo-filter-desde');
   const filterHasta = document.getElementById('wo-filter-hasta');
   const filterEstado = document.getElementById('wo-filter-estado');
-  
+
   if (filterDate) {
-    filterDate.addEventListener('keypress', function(e) {
+    filterDate.addEventListener('keypress', function (e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         loadWorkOrders();
       }
     });
   }
-  
+
   if (filterDesde) {
-    filterDesde.addEventListener('change', function() {
+    filterDesde.addEventListener('change', function () {
       loadWorkOrders(); // Recargar automáticamente al cambiar fecha desde
     });
   }
-  
+
   if (filterHasta) {
-    filterHasta.addEventListener('change', function() {
+    filterHasta.addEventListener('change', function () {
       loadWorkOrders(); // Recargar automáticamente al cambiar fecha hasta
     });
   }
-  
+
   if (filterEstado) {
-    filterEstado.addEventListener('change', function() {
+    filterEstado.addEventListener('change', function () {
       loadWorkOrders(); // Recargar automáticamente al cambiar estado
     });
   }
@@ -977,12 +994,12 @@ function setupWorkOrdersModalEvents() {
   if (filterDate && !filterDate.value) {
     filterDate.value = getTodayInNuevoLeon();
   }
-  
+
   // Establecer rango de fechas por defecto (día actual en Nuevo León)
   if (filterDesde && !filterDesde.value) {
     filterDesde.value = getTodayInNuevoLeon(); // Día actual
   }
-  
+
   if (filterHasta && !filterHasta.value) {
     filterHasta.value = getTodayInNuevoLeon(); // Día actual
   }
@@ -1003,12 +1020,12 @@ async function loadWorkOrders() {
     // Mostrar loading en el tbody de work orders
     showTableBodyLoading('wo-tableBody', 'Cargando Work Orders...', 9);
     updateWOStatus("Cargando...");
-    
+
     // Obtener valores de los filtros
     const desde = document.getElementById("wo-filter-desde")?.value || "";
     const hasta = document.getElementById("wo-filter-hasta")?.value || "";
     const estado = document.getElementById("wo-filter-estado")?.value || "";
-    
+
     // Construir URL con parámetros
     let url = "/api/work-orders";
     const params = [];
@@ -1016,20 +1033,20 @@ async function loadWorkOrders() {
     if (hasta) params.push(`hasta=${hasta}`);
     if (estado) params.push(`estado=${estado}`);
     if (params.length) url += "?" + params.join("&");
-    
+
     const response = await axios.get(url);
     const workOrders = response.data;
-    
+
     // Guardar todos los WOs para filtrado
     allWorkOrders = workOrders;
-    
+
     renderWorkOrdersTable(workOrders);
     updateWOStatus(`${workOrders.length} work orders encontrados`);
-    
+
     // Limpiar el campo de búsqueda al recargar
     const searchInput = document.getElementById('wo-search-input');
     if (searchInput) searchInput.value = '';
-    
+
   } catch (error) {
     updateWOStatus("Error al cargar work orders");
     // En caso de error, mostrar mensaje en la tabla
@@ -1050,28 +1067,28 @@ let allWorkOrders = [];
 function filterWorkOrdersTable() {
   const searchInput = document.getElementById('wo-search-input');
   if (!searchInput) return;
-  
+
   const searchTerm = searchInput.value.toLowerCase().trim();
-  
+
   if (!searchTerm) {
     // Si no hay búsqueda, mostrar todos
     renderWorkOrdersTable(allWorkOrders);
     return;
   }
-  
+
   // Filtrar WOs por código WO, código PO, o modelo
   const filtered = allWorkOrders.filter(wo => {
     const woCode = (wo.codigo_wo || '').toLowerCase();
     const poCode = (wo.codigo_po || '').toLowerCase();
     const modelo = (wo.modelo || '').toLowerCase();
     const nombreModelo = (wo.nombre_modelo || '').toLowerCase();
-    
-    return woCode.includes(searchTerm) || 
-           poCode.includes(searchTerm) || 
-           modelo.includes(searchTerm) ||
-           nombreModelo.includes(searchTerm);
+
+    return woCode.includes(searchTerm) ||
+      poCode.includes(searchTerm) ||
+      modelo.includes(searchTerm) ||
+      nombreModelo.includes(searchTerm);
   });
-  
+
   renderWorkOrdersTable(filtered);
   updateWOStatus(`${filtered.length} de ${allWorkOrders.length} work orders`);
 }
@@ -1084,28 +1101,28 @@ function renderWorkOrdersTable(workOrders) {
   // NO sobrescribir allWorkOrders aquí, se maneja en loadWorkOrders
   const tbody = document.getElementById("wo-tableBody");
   tbody.innerHTML = "";
-  
+
   if (workOrders.length === 0) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">No hay work orders disponibles</td></tr>';
     return;
   }
-  
+
   workOrders.forEach(wo => {
     const row = document.createElement("tr");
     row.style.borderBottom = "1px solid #555";
-    
+
     // Verificar si ya fue importado (agregar atributo para identificarlo)
     const yaImportado = wo.ya_importado || false;
-    
+
     // Estado visual
     let estadoClass = "";
-    switch(wo.estado) {
+    switch (wo.estado) {
       case "CREADA": estadoClass = "background: #3498db; color: white;"; break;
       case "PLANIFICADA": estadoClass = "background: #f39c12; color: white;"; break;
       case "EN_PRODUCCION": estadoClass = "background: #27ae60; color: white;"; break;
       case "CERRADA": estadoClass = "background: #95a5a6; color: white;"; break;
     }
-    
+
     // Si ya fue importado, aplicar estilo diferente
     if (yaImportado) {
       row.style.backgroundColor = "#3a3a3a";
@@ -1113,7 +1130,7 @@ function renderWorkOrdersTable(workOrders) {
       row.style.cursor = "not-allowed";
       row.title = `⚠️ WO ya importada como LOT NO: ${wo.lot_no_existente || 'N/A'}`;
     }
-    
+
     row.innerHTML = `
       <td style="padding:6px; text-align:center;">
         <input type="checkbox" class="wo-checkbox" value="${wo.id}" 
@@ -1132,17 +1149,17 @@ function renderWorkOrdersTable(workOrders) {
       </td>
       <td style="padding:6px; font-size:10px;">${wo.modificador || ''}</td>
       <td style="padding:6px; text-align:center;">
-        ${yaImportado ? 
-          `<span style="padding:2px 6px; font-size:9px; background:#555; color:#999; border-radius:3px;">🔒 Bloqueado</span>` :
-          `<button class="plan-btn wo-import-single-btn" data-wo-id="${wo.id}"
+        ${yaImportado ?
+        `<span style="padding:2px 6px; font-size:9px; background:#555; color:#999; border-radius:3px;">🔒 Bloqueado</span>` :
+        `<button class="plan-btn wo-import-single-btn" data-wo-id="${wo.id}"
                   style="padding:2px 6px; font-size:9px; background:#27ae60;"
                   ${wo.estado === 'CERRADA' ? 'disabled' : ''}>
             Importar
           </button>`
-        }
+      }
       </td>
     `;
-    
+
     tbody.appendChild(row);
   });
 }
@@ -1158,29 +1175,29 @@ function toggleAllWOs(selectAllCheckbox) {
 // Importar WO individual
 async function importSingleWO(woId, button) {
   const originalText = button.textContent;
-  
+
   try {
     // Obtener fecha de importación
     const importDateInput = document.getElementById('wo-filter-date');
     const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
-    
+
     if (!importDate) {
       alert('⚠️ Por favor seleccione una fecha de importación');
       return;
     }
-    
+
     // Mostrar estado de carga en el botón
     button.textContent = 'Importando...';
     button.disabled = true;
     button.classList.add('loading');
-    
+
     updateWOStatus("Importando Work Order...");
-    
+
     const response = await axios.post("/api/work-orders/import", {
       wo_ids: [woId],
       import_date: importDate
     });
-    
+
     if (response.data.success) {
       const plan = response.data.plans[0];
       alert(`✅ WO importado exitosamente como Plan: ${plan.lot_no}`);
@@ -1203,58 +1220,58 @@ async function importSingleWO(woId, button) {
 // Importar WOs seleccionados
 async function importAllSelectedWOs() {
   const selectedCheckboxes = document.querySelectorAll(".wo-checkbox:checked");
-  
+
   if (selectedCheckboxes.length === 0) {
     alert("⚠️ Seleccione al menos un Work Order para importar");
     return;
   }
-  
+
   // Obtener fecha de importación
   const importDateInput = document.getElementById('wo-filter-date');
   const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
-  
+
   if (!importDate) {
     alert('⚠️ Por favor seleccione una fecha de importación');
     return;
   }
-  
+
   const woIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
-  
+
   if (!confirm(`¿Importar ${woIds.length} Work Order(s) como planes para el ${importDate}?`)) {
     return;
   }
-  
+
   try {
     // Mostrar loading en el modal
     showTableLoading('wo-modal-content', `Importando ${woIds.length} Work Orders...`);
     updateWOStatus("Importando work orders...");
-    
+
     // Deshabilitar botón de importar
     setButtonLoading('wo-import-selected-btn', true, 'Importando...');
-    
+
     const response = await axios.post("/api/work-orders/import", {
       wo_ids: woIds,
       import_date: importDate
     });
-    
+
     if (response.data.success) {
       const { imported, errors } = response.data;
       let message = `✅ ${imported} Work Orders importados exitosamente`;
-      
+
       if (errors && errors.length > 0) {
         message += `\n\n⚠️ WOs no importados:\n`;
         errors.forEach((error, index) => {
           message += `${index + 1}. ${error}\n`;
         });
       }
-      
+
       alert(message);
       loadPlans(); // Recargar tabla principal
       loadWorkOrders(); // Recargar WOs
-      
+
       // Desmarcar "Seleccionar todos"
       document.getElementById("wo-select-all").checked = false;
-      
+
     } else {
       alert("❌ Error en importación: " + (response.data.errors || []).join(", "));
     }
@@ -1299,7 +1316,7 @@ function setDefaultRescheduleDates() {
   const dateFrom = document.getElementById("reschedule-date-from");
   const dateTo = document.getElementById("reschedule-date-to");
   const newDate = document.getElementById("reschedule-new-date");
-  
+
   if (dateFrom && !dateFrom.value) {
     dateFrom.value = getDateInNuevoLeon(-7); // Una semana atrás en Nuevo León
   }
@@ -1318,32 +1335,32 @@ window.setDefaultRescheduleDates = setDefaultRescheduleDates;
 async function loadPendingPlans() {
   const dateFromInput = document.getElementById("reschedule-date-from");
   const dateToInput = document.getElementById("reschedule-date-to");
-  
+
   if (!dateFromInput || !dateToInput) {
     console.error('❌ Elementos de fecha no encontrados');
     alert("Error: Elementos de fecha no disponibles");
     return;
   }
-  
+
   const dateFrom = dateFromInput.value;
   const dateTo = dateToInput.value;
-  
+
   if (!dateFrom || !dateTo) {
     alert("⚠️ Seleccione el rango de fechas para buscar");
     return;
   }
-  
+
   try {
     showTableBodyLoading('reschedule-tableBody', 'Buscando planes pendientes...', 9);
     updateRescheduleStatus("Buscando planes pendientes...");
-    
+
     // Consultar planes con input pendiente
     const response = await axios.get(`/api/plan/pending?start=${dateFrom}&end=${dateTo}`);
     const pendingPlans = response.data;
-    
+
     renderPendingPlans(pendingPlans);
     updateRescheduleStatus(`${pendingPlans.length} planes con input pendiente encontrados`);
-    
+
   } catch (error) {
     console.error('❌ Error al cargar planes pendientes:', error);
     alert("Error al cargar planes pendientes: " + (error.response?.data?.error || error.message));
@@ -1355,7 +1372,7 @@ async function loadPendingPlans() {
 function renderPendingPlans(plans) {
   const tbody = document.getElementById("reschedule-tableBody");
   tbody.innerHTML = "";
-  
+
   if (plans.length === 0) {
     tbody.innerHTML = `
       <tr>
@@ -1366,10 +1383,10 @@ function renderPendingPlans(plans) {
     `;
     return;
   }
-  
+
   plans.forEach(plan => {
     const pendingQty = (plan.plan_count || 0) - (plan.input || 0);
-    
+
     const row = document.createElement("tr");
     row.style.cursor = "pointer";
     row.innerHTML = `
@@ -1385,7 +1402,7 @@ function renderPendingPlans(plans) {
       <td style="padding:6px; border:1px solid #555; color:#e74c3c; font-weight:bold;">${pendingQty}</td>
       <td style="padding:6px; border:1px solid #555;">${plan.status || '--'}</td>
     `;
-    
+
     tbody.appendChild(row);
   });
 }
@@ -1402,50 +1419,50 @@ function toggleAllReschedule(masterCheckbox) {
 async function reschedulePendingPlans() {
   const selectedCheckboxes = document.querySelectorAll(".reschedule-checkbox:checked");
   const newDateInput = document.getElementById("reschedule-new-date");
-  
+
   if (!newDateInput) {
     console.error('❌ Elemento reschedule-new-date no encontrado');
     alert("Error: Elemento de fecha no disponible");
     return;
   }
-  
+
   const newDate = newDateInput.value;
-  
+
   if (selectedCheckboxes.length === 0) {
     alert("⚠️ Seleccione al menos un plan para reprogramar");
     return;
   }
-  
+
   if (!newDate) {
     alert("⚠️ Seleccione la nueva fecha de trabajo");
     return;
   }
-  
+
   const lotNos = Array.from(selectedCheckboxes).map(cb => cb.value);
-  
+
   if (!confirm(`¿Reprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
     return;
   }
-  
+
   try {
     updateRescheduleStatus("Reprogramando planes...");
-    
+
     // Enviar solicitud de reprogramación
     const response = await axios.post('/api/plan/reschedule', {
       lot_nos: lotNos,
       new_working_date: newDate
     });
-    
+
     // Mostrar modal de éxito
     showSuccessModal(`${lotNos.length} plan(es) reprogramado(s) exitosamente para ${newDate}`);
-    
+
     // Recargar la lista de pendientes
     loadPendingPlans();
-    
+
     // Recargar planes principales si está en la misma fecha
     const currentStartInput = document.getElementById("filter-start");
     const currentEndInput = document.getElementById("filter-end");
-    
+
     if (currentStartInput && currentEndInput) {
       const currentStart = currentStartInput.value;
       const currentEnd = currentEndInput.value;
@@ -1453,7 +1470,7 @@ async function reschedulePendingPlans() {
         loadPlans();
       }
     }
-    
+
   } catch (error) {
     console.error('❌ Error al reprogramar planes:', error);
     alert("Error al reprogramar planes: " + (error.response?.data?.error || error.message));
@@ -1493,16 +1510,16 @@ function renderTableWithVisualGroups(data) {
   const oldTbody = document.getElementById('plan-tableBody');
   const tbody = document.createElement('tbody');
   tbody.id = 'plan-tableBody';
-  
+
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   initializeVisualGroups(groupCount);
-  
+
   // Verificar si los datos tienen información de grupos guardada
   const hasGroupData = data.some(plan => plan.group_no != null && plan.sequence != null);
-  
+
   if (hasGroupData) {
 
-    
+
     // Asignar planes basándose en group_no y sequence de la base de datos
     data.forEach((plan) => {
       if (plan.group_no != null && plan.sequence != null) {
@@ -1523,7 +1540,7 @@ function renderTableWithVisualGroups(data) {
         visualGroups.planAssignments.set(plan.lot_no, assignedGroup);
       }
     });
-    
+
     // Ordenar los planes dentro de cada grupo por sequence
     visualGroups.groups.forEach(group => {
       group.plans.sort((a, b) => {
@@ -1532,10 +1549,10 @@ function renderTableWithVisualGroups(data) {
         return aSeq - bSeq;
       });
     });
-    
+
   } else {
 
-    
+
     // Asignar planes a grupos (mantener asignaciones previas si existen)
     data.forEach((plan, index) => {
       let assignedGroup = visualGroups.planAssignments.get(plan.lot_no);
@@ -1547,7 +1564,7 @@ function renderTableWithVisualGroups(data) {
       visualGroups.groups[assignedGroup].plans.push(plan);
     });
   }
-  
+
   // Renderizar cada grupo
   visualGroups.groups.forEach((group, groupIndex) => {
     // Fila de encabezado del grupo
@@ -1564,8 +1581,8 @@ function renderTableWithVisualGroups(data) {
         </div>
       </td>
     `;
-  tbody.appendChild(groupHeaderRow);
-    
+    tbody.appendChild(groupHeaderRow);
+
     // Zona de drop para el grupo
     const dropZoneRow = document.createElement('tr');
     dropZoneRow.className = 'group-drop-zone';
@@ -1577,8 +1594,8 @@ function renderTableWithVisualGroups(data) {
         </div>
       </td>
     `;
-  tbody.appendChild(dropZoneRow);
-    
+    tbody.appendChild(dropZoneRow);
+
     // Renderizar planes del grupo
     group.plans.forEach((plan, planIndex) => {
       const globalIndex = data.findIndex(p => p.lot_no === plan.lot_no);
@@ -1587,10 +1604,10 @@ function renderTableWithVisualGroups(data) {
       tr.dataset.groupIndex = groupIndex;
       tr.draggable = true;
       tr.className = 'plan-row';
-      
+
       // Calcular secuencia dentro del grupo
       const groupSequence = planIndex + 1;
-      
+
       tr.innerHTML = `
         <td style="background-color: #e74c3c; color: white; font-weight: bold; text-align: center;">${groupSequence}</td>
         <td>${plan.lot_no}</td>
@@ -1615,10 +1632,10 @@ function renderTableWithVisualGroups(data) {
         <td style="text-align:center; font-weight:bold; background-color: #3498db; color: white;">${groupIndex + 1}</td>
         <td class="fecha-inicio-cell">--</td>
       `;
-      
+
       tbody.appendChild(tr);
     });
-    
+
     // Espacio entre grupos
     if (groupIndex < visualGroups.groups.length - 1) {
       const spacerRow = document.createElement('tr');
@@ -1627,7 +1644,7 @@ function renderTableWithVisualGroups(data) {
       tbody.appendChild(spacerRow);
     }
   });
-  
+
   // Reemplazar el tbody completo para evitar listeners duplicados
   if (oldTbody && oldTbody.parentNode) {
     oldTbody.parentNode.replaceChild(tbody, oldTbody);
@@ -1637,7 +1654,7 @@ function renderTableWithVisualGroups(data) {
 
   // Configurar drag & drop para grupos sobre el nuevo tbody
   setupGroupDragDrop();
-  
+
   // Calcular tiempos para grupos
   calculateGroupTimes();
 }
@@ -1649,7 +1666,7 @@ function setupGroupDragDrop() {
   let draggedFromGroup = null;
   let dropIndicator = null;
   let isDraggingOverDropZone = false;
-  
+
   // Crear indicador visual de inserción
   function createDropIndicator() {
     const indicator = document.createElement('tr');
@@ -1657,7 +1674,7 @@ function setupGroupDragDrop() {
     indicator.innerHTML = `<td colspan="21" style="height: 3px; background: #3498db; border: none; padding: 0;"></td>`;
     return indicator;
   }
-  
+
   // Limpiar indicador de drop
   function clearDropIndicator() {
     if (dropIndicator && dropIndicator.parentNode) {
@@ -1665,18 +1682,18 @@ function setupGroupDragDrop() {
     }
     dropIndicator = null;
   }
-  
+
   // Eventos para filas de planes
   tbody.addEventListener('dragstart', (e) => {
     const row = e.target.closest('.plan-row');
     if (!row) return;
-    
+
     draggedElement = row;
     draggedFromGroup = parseInt(row.dataset.groupIndex);
     row.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
   });
-  
+
   tbody.addEventListener('dragend', (e) => {
     const row = e.target.closest('.plan-row');
     if (row) {
@@ -1687,12 +1704,12 @@ function setupGroupDragDrop() {
     draggedFromGroup = null;
     isDraggingOverDropZone = false;
   });
-  
+
   tbody.addEventListener('dragover', (e) => {
     e.preventDefault();
-    
+
     if (!draggedElement) return;
-    
+
     // Verificar si estamos sobre una zona de drop entre grupos
     const dropZone = e.target.closest('.group-drop-zone');
     if (dropZone) {
@@ -1702,33 +1719,33 @@ function setupGroupDragDrop() {
       dropZone.style.borderColor = '#3498db';
       return;
     }
-    
+
     isDraggingOverDropZone = false;
     // limpiar estilos de todas las drop-zones si no estamos sobre una
     const allZones = tbody.querySelectorAll('.group-drop-zone');
     allZones.forEach(z => { z.style.backgroundColor = '#34495e'; z.style.borderColor = '#20688C'; });
-    
+
     // Lógica para reordenamiento dentro del grupo
     const targetRow = e.target.closest('.plan-row');
     if (!targetRow || targetRow === draggedElement) {
       clearDropIndicator();
       return;
     }
-    
+
     const targetGroupIndex = parseInt(targetRow.dataset.groupIndex);
     const draggedGroupIndex = parseInt(draggedElement.dataset.groupIndex);
-    
+
     // Solo permitir reordenamiento dentro del mismo grupo
     if (targetGroupIndex === draggedGroupIndex) {
       clearDropIndicator();
-      
+
       // Crear nuevo indicador
       dropIndicator = createDropIndicator();
-      
+
       // Determinar dónde insertar el indicador
       const rect = targetRow.getBoundingClientRect();
       const midpoint = rect.top + rect.height / 2;
-      
+
       if (e.clientY < midpoint) {
         // Insertar antes de la fila target
         targetRow.parentNode.insertBefore(dropIndicator, targetRow);
@@ -1736,10 +1753,10 @@ function setupGroupDragDrop() {
         // Insertar después de la fila target
         const nextSibling = targetRow.nextSibling;
         // Verificar que el siguiente elemento no sea un header de grupo o drop zone
-        if (nextSibling && 
-            !nextSibling.classList.contains('group-header-row') && 
-            !nextSibling.classList.contains('group-drop-zone') &&
-            !nextSibling.classList.contains('group-spacer')) {
+        if (nextSibling &&
+          !nextSibling.classList.contains('group-header-row') &&
+          !nextSibling.classList.contains('group-drop-zone') &&
+          !nextSibling.classList.contains('group-spacer')) {
           targetRow.parentNode.insertBefore(dropIndicator, nextSibling);
         } else {
           targetRow.parentNode.insertBefore(dropIndicator, nextSibling);
@@ -1749,7 +1766,7 @@ function setupGroupDragDrop() {
       clearDropIndicator();
     }
   });
-  
+
   tbody.addEventListener('dragleave', (e) => {
     const dropZone = e.target.closest('.group-drop-zone');
     if (dropZone && !dropZone.contains(e.relatedTarget)) {
@@ -1757,64 +1774,64 @@ function setupGroupDragDrop() {
       dropZone.style.borderColor = '#20688C';
     }
   });
-  
+
   tbody.addEventListener('drop', (e) => {
     e.preventDefault();
-    
+
     if (!draggedElement) return;
-    
+
     clearDropIndicator();
-    
+
     const dropZone = e.target.closest('.group-drop-zone');
-    
+
     if (dropZone && isDraggingOverDropZone) {
       // Movimiento entre grupos
       const targetGroupIndex = parseInt(dropZone.dataset.groupIndex);
       const lotNo = draggedElement.dataset.lot;
-      
+
       // Actualizar asignación
       visualGroups.planAssignments.set(lotNo, targetGroupIndex);
-      
+
       // Recargar tabla con nueva asignación
       reloadTableWithCurrentData();
-      
+
       // Actualizar secuencias y fechas de inicio
       setTimeout(() => {
         updateSequenceNumbers();
       }, 100);
-      
+
       // Restaurar estilos
       dropZone.style.backgroundColor = '#34495e';
       dropZone.style.borderColor = '#20688C';
-      
+
       // Feedback visual
       const dropZoneContent = dropZone.querySelector('.drop-zone-content');
       const originalText = dropZoneContent.innerHTML;
-      
+
       dropZoneContent.innerHTML = `✅ Plan ${lotNo.split('-')[2]} movido aquí`;
       dropZoneContent.classList.add('drop-zone-success');
-      
+
       setTimeout(() => {
         dropZoneContent.innerHTML = originalText;
         dropZoneContent.classList.remove('drop-zone-success');
       }, 1500);
-      
+
     } else {
       // Reordenamiento dentro del mismo grupo
       const targetRow = e.target.closest('.plan-row');
       if (!targetRow || targetRow === draggedElement) {
         return;
       }
-      
+
       const targetGroupIndex = parseInt(targetRow.dataset.groupIndex);
       const draggedGroupIndex = parseInt(draggedElement.dataset.groupIndex);
-      
+
       // Solo proceder si es el mismo grupo
       if (targetGroupIndex === draggedGroupIndex) {
         reorderWithinGroup(draggedElement, targetRow, targetGroupIndex, e.clientY);
       }
     }
-    
+
     isDraggingOverDropZone = false;
   });
 }
@@ -1823,32 +1840,32 @@ function setupGroupDragDrop() {
 function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
   const lotNo = draggedRow.dataset.lot;
   const targetLotNo = targetRow.dataset.lot;
-  
 
-  
+
+
   // Obtener el grupo actual
   const currentGroup = visualGroups.groups[groupIndex];
   if (!currentGroup) {
 
     return;
   }
-  
+
   // Encontrar índices de los planes
   const draggedIndex = currentGroup.plans.findIndex(plan => plan.lot_no === lotNo);
   const targetIndex = currentGroup.plans.findIndex(plan => plan.lot_no === targetLotNo);
-  
+
   if (draggedIndex === -1 || targetIndex === -1) {
 
     return;
   }
-  
 
-  
+
+
   // Determinar la nueva posición basada en la posición del mouse
   const rect = targetRow.getBoundingClientRect();
   const midpoint = rect.top + rect.height / 2;
   let newIndex;
-  
+
   if (clientY < midpoint) {
     // Insertar antes del target
     newIndex = targetIndex;
@@ -1856,39 +1873,39 @@ function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
     // Insertar después del target
     newIndex = targetIndex + 1;
   }
-  
+
   // Ajustar si estamos moviendo hacia adelante
   if (draggedIndex < newIndex) {
     newIndex--;
   }
-  
 
-  
+
+
   // Solo proceder si realmente hay cambio
   if (draggedIndex === newIndex) {
 
     return;
   }
-  
+
   // Reordenar el array
   const [movedPlan] = currentGroup.plans.splice(draggedIndex, 1);
   currentGroup.plans.splice(newIndex, 0, movedPlan);
-  
 
-  
+
+
   // Re-renderizar la tabla usando los grupos ya reordenados
   renderCurrentVisualGroups();
-  
+
   // Actualizar secuencias y fechas
   setTimeout(() => {
     updateSequenceNumbers();
-    
+
     // Feedback visual sutil
     const movedRowAfterReload = document.querySelector(`tr[data-lot="${lotNo}"]`);
     if (movedRowAfterReload) {
       movedRowAfterReload.style.transition = 'background-color 0.3s ease';
       movedRowAfterReload.style.backgroundColor = '#27ae60';
-      
+
       setTimeout(() => {
         movedRowAfterReload.style.backgroundColor = '';
         setTimeout(() => {
@@ -1905,31 +1922,31 @@ function calculateGroupTimes() {
     let totalProductiveMinutes = 0; // Solo tiempo productivo
     let currentTime = timeToMinutes(currentConfig.shiftStart);
     const groupStartTime = currentTime;
-    
+
     // Filtrar planes que NO están cancelados
     const activePlans = group.plans.filter(plan => plan.status !== 'CANCELADO');
-    
+
     activePlans.forEach((plan, planIndex) => {
       const productionTime = calculateProductionTime(plan.plan_count || 0, plan.uph || 0);
       const startTime = currentTime;
       const plannedEndTime = currentTime + productionTime;
-      
+
       // Verificar breaks que caen durante este plan
       let breaksDuringPlan = 0;
       currentConfig.breaks.forEach(breakInfo => {
         const breakStart = timeToMinutes(breakInfo.start);
         const breakEnd = timeToMinutes(breakInfo.end);
         const breakDuration = breakEnd - breakStart;
-        
+
         // Si el break cae durante la producción de este plan
         if (breakStart >= startTime && breakStart < plannedEndTime) {
           breaksDuringPlan += breakDuration;
         }
       });
-      
+
       // Tiempo real de fin (incluyendo breaks)
       const actualEndTime = plannedEndTime + breaksDuringPlan;
-      
+
       // Actualizar cálculos individuales
       planningCalculations.set(plan.lot_no, {
         groupNumber: groupIndex + 1,
@@ -1939,11 +1956,11 @@ function calculateGroupTimes() {
         isOvertime: false, // Se calculará después
         totalGroupTime: totalProductiveMinutes + productionTime
       });
-      
+
       currentTime = actualEndTime; // Avanzar al tiempo real (con breaks)
       totalProductiveMinutes += productionTime; // Solo sumar tiempo productivo
     });
-    
+
     // Para planes cancelados, no calcular tiempos pero mantener el registro
     group.plans.filter(plan => plan.status === 'CANCELADO').forEach(plan => {
       planningCalculations.set(plan.lot_no, {
@@ -1956,12 +1973,12 @@ function calculateGroupTimes() {
         isCancelled: true // Marca especial para planes cancelados
       });
     });
-    
+
     // Determinar si el grupo está en overtime (más de 9 horas productivas)
     const productiveMinutes = (currentConfig.productiveHours || 9) * 60; // 9 horas = 540 min
     group.totalTime = totalProductiveMinutes; // Solo tiempo productivo de planes activos
     group.isOvertime = totalProductiveMinutes > productiveMinutes;
-    
+
     // Marcar planes individuales en overtime (solo los activos)
     let accumulatedTime = 0;
     activePlans.forEach(plan => {
@@ -1971,11 +1988,11 @@ function calculateGroupTimes() {
         calc.isOvertime = accumulatedTime > productiveMinutes; // Overtime cuando excede 9h productivas
       }
     });
-    
+
     // Actualizar UI del grupo
     updateGroupUI(groupIndex, group);
   });
-  
+
   // Actualizar filas de planes con cálculos
   updatePlanRows();
 }
@@ -1984,12 +2001,12 @@ function calculateGroupTimes() {
 function updateGroupUI(groupIndex, group) {
   const totalElement = document.getElementById(`group-${groupIndex}-total`);
   const statusElement = document.getElementById(`group-${groupIndex}-status`);
-  
+
   if (totalElement) {
     const hours = (group.totalTime / 60).toFixed(1);
     totalElement.textContent = `Total: ${hours}h`;
   }
-  
+
   if (statusElement) {
     if (group.isOvertime) {
       statusElement.textContent = 'TIEMPO EXTRA';
@@ -2005,14 +2022,14 @@ function updateGroupUI(groupIndex, group) {
 function updatePlanRows() {
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
-  
+
   planRows.forEach(row => {
     const lotNo = row.dataset.lot;
     const calc = planningCalculations.get(lotNo);
-    
+
     if (calc) {
       const cells = row.querySelectorAll('td');
-      
+
       // Si el plan está cancelado, mostrar tiempos como -- y marcar como cancelado
       if (calc.isCancelled) {
         if (cells[17]) cells[17].textContent = '--'; // Tiempo Productivo
@@ -2020,7 +2037,7 @@ function updatePlanRows() {
         if (cells[19]) cells[19].textContent = '--'; // Fin
         if (cells[20]) cells[20].textContent = calc.groupNumber; // Grupo
         if (cells[21]) cells[21].innerHTML = '<span class="status-cancelled">CANCELADO</span>'; // Turno
-        
+
         // Resaltar fila como cancelada
         row.style.backgroundColor = '#6c6c6c';
         row.style.color = '#ccc';
@@ -2031,14 +2048,14 @@ function updatePlanRows() {
         if (cells[18]) cells[18].textContent = calc.startTime;
         if (cells[19]) cells[19].textContent = calc.endTime;
         if (cells[20]) cells[20].textContent = calc.groupNumber;
-        
+
         // Actualizar indicador de tiempo extra en la columna Turno
         if (cells[21]) {
-          cells[21].innerHTML = calc.isOvertime ? 
-            '<span class="status-extra">EXTRA</span>' : 
+          cells[21].innerHTML = calc.isOvertime ?
+            '<span class="status-extra">EXTRA</span>' :
             '<span class="status-normal">NORMAL</span>';
         }
-        
+
         // Resaltar fila si está en tiempo extra
         if (calc.isOvertime) {
           row.style.backgroundColor = '#8e2e2e';
@@ -2050,7 +2067,7 @@ function updatePlanRows() {
           row.style.textDecoration = '';
         }
       }
-      
+
       // NO sobrescribir el status real de la base de datos (cells[16])
       // El status real (PLAN, EN PROGRESO, CANCELADO, etc.) debe mantenerse
     }
@@ -2063,7 +2080,7 @@ function renderCurrentVisualGroups() {
   const oldTbody = document.getElementById('plan-tableBody');
   const tbody = document.createElement('tbody');
   tbody.id = 'plan-tableBody';
-  
+
   // Renderizar cada grupo usando los datos ya en memoria
   visualGroups.groups.forEach((group, groupIndex) => {
     // Fila de encabezado del grupo
@@ -2081,7 +2098,7 @@ function renderCurrentVisualGroups() {
       </td>
     `;
     tbody.appendChild(groupHeaderRow);
-    
+
     // Zona de drop para el grupo
     const dropZoneRow = document.createElement('tr');
     dropZoneRow.className = 'group-drop-zone';
@@ -2094,7 +2111,7 @@ function renderCurrentVisualGroups() {
       </td>
     `;
     tbody.appendChild(dropZoneRow);
-    
+
     // Renderizar planes del grupo en el orden actual
     group.plans.forEach((plan, planIndex) => {
       const tr = document.createElement('tr');
@@ -2102,10 +2119,10 @@ function renderCurrentVisualGroups() {
       tr.dataset.lot = plan.lot_no;
       tr.dataset.groupIndex = groupIndex;
       tr.draggable = true;
-      
+
       // Calcular secuencia dentro del grupo
       const groupSequence = planIndex + 1;
-      
+
       tr.innerHTML = `
         <td style="background-color: #e74c3c; color: white; font-weight: bold; text-align: center;">${groupSequence}</td>
         <td>${plan.lot_no}</td>
@@ -2130,10 +2147,10 @@ function renderCurrentVisualGroups() {
         <td style="text-align:center; font-weight:bold; background-color: #3498db; color: white;">${groupIndex + 1}</td>
         <td class="fecha-inicio-cell">--</td>
       `;
-      
+
       tbody.appendChild(tr);
     });
-    
+
     // Espacio entre grupos
     if (groupIndex < visualGroups.groups.length - 1) {
       const spacerRow = document.createElement('tr');
@@ -2142,7 +2159,7 @@ function renderCurrentVisualGroups() {
       tbody.appendChild(spacerRow);
     }
   });
-  
+
   // Reemplazar tbody para limpiar listeners viejos y reconfigurar drag & drop
   if (oldTbody && oldTbody.parentNode) {
     oldTbody.parentNode.replaceChild(tbody, oldTbody);
@@ -2150,7 +2167,7 @@ function renderCurrentVisualGroups() {
     table.appendChild(tbody);
   }
   setupGroupDragDrop();
-  
+
   // Calcular tiempos para grupos
   calculateGroupTimes();
 }
@@ -2161,16 +2178,16 @@ function reloadTableWithCurrentData() {
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
   const currentData = [];
-  
+
   planRows.forEach(row => {
     const cells = row.querySelectorAll('td');
     const lotNo = row.dataset.lot;
-    
+
     if (!lotNo) return; // Skip si no tiene lot_no
-    
+
     // ⭐ BUSCAR PRIMERO en originalPlansData para preservar todos los campos (especialmente status)
     let planData = originalPlansData.find(p => p.lot_no === lotNo);
-    
+
     // Si no está en originalPlansData, reconstruir desde HTML (con índices corregidos)
     if (!planData) {
       planData = {
@@ -2192,18 +2209,18 @@ function reloadTableWithCurrentData() {
         status: cells[16]?.textContent?.trim() || 'PLAN' // ⭐ CORREGIDO: cells[16] no cells[15]
       };
     }
-    
+
     // Validar que los datos esenciales existan
     if (planData.lot_no && planData.part_no) {
       currentData.push(planData);
     }
   });
-  
 
-  
+
+
   // Re-renderizar con datos actuales
   renderTableWithVisualGroups(currentData);
-  
+
   // Actualizar fechas de inicio después del renderizado
   setTimeout(() => {
     // Ya no necesitamos updateStartDates
@@ -2234,7 +2251,7 @@ function groupPlansIntoNGroups(plans, groupCount) {
   for (let i = 0; i < groupCount; i++) {
     groups.push([]);
   }
-  
+
   // Distribuir planes por líneas en grupos
   const lineGroups = {};
   plans.forEach(plan => {
@@ -2242,14 +2259,14 @@ function groupPlansIntoNGroups(plans, groupCount) {
     if (!lineGroups[line]) lineGroups[line] = [];
     lineGroups[line].push(plan);
   });
-  
+
   // Asignar líneas a grupos de manera balanceada
   const lines = Object.keys(lineGroups);
   lines.forEach((line, index) => {
     const groupIndex = index % groupCount;
     groups[groupIndex] = groups[groupIndex].concat(lineGroups[line]);
   });
-  
+
   return groups;
 }
 
@@ -2258,20 +2275,20 @@ function calculatePlanningTimes(plans) {
   planningCalculations.clear();
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   const groups = groupPlansIntoNGroups(plans, groupCount);
-  
+
   groups.forEach((groupPlans, groupIndex) => {
     let currentTime = timeToMinutes(currentConfig.shiftStart);
     let totalGroupTime = 0;
-    
+
     groupPlans.forEach(plan => {
       const productionTime = calculateProductionTime(plan.plan_count || 0, plan.uph || 0);
       const startTime = currentTime;
       const endTime = currentTime + productionTime;
-      
+
       // Calcular si está en tiempo extra (termina después de 17:30)
       const shiftEndMinutes = timeToMinutes(currentConfig.shiftEnd || '17:30');
       const isOvertime = endTime > shiftEndMinutes;
-      
+
       planningCalculations.set(plan.lot_no, {
         groupNumber: groupIndex + 1,
         productionTime: productionTime,
@@ -2280,7 +2297,7 @@ function calculatePlanningTimes(plans) {
         isOvertime: isOvertime,
         totalGroupTime: totalGroupTime + productionTime
       });
-      
+
       currentTime = endTime;
       totalGroupTime += productionTime;
     });
@@ -2291,26 +2308,26 @@ function calculatePlanningTimes(plans) {
 function autoArrangePlans() {
   const tbody = document.getElementById('plan-tableBody');
   const planRows = Array.from(tbody.querySelectorAll('.plan-row'));
-  
+
   if (planRows.length === 0) {
     // Feedback visual en lugar de alert
     const autoBtn = document.getElementById('auto-arrange-btn');
     const originalText = autoBtn.textContent;
     autoBtn.textContent = '⚠️ Sin planes';
     autoBtn.style.backgroundColor = '#e67e22';
-    
+
     setTimeout(() => {
       autoBtn.textContent = originalText;
       autoBtn.style.backgroundColor = '#27ae60';
     }, 2000);
     return;
   }
-  
+
   // Obtener datos de los planes desde el DOM
   const plans = planRows.map(row => {
     const cells = row.querySelectorAll('td');
     const lotNo = row.dataset.lot;
-    
+
     return {
       lot_no: lotNo,
       line: cells[5]?.textContent?.trim() || '',
@@ -2324,9 +2341,9 @@ function autoArrangePlans() {
       wo_code: cells[2]?.textContent?.trim() || '',
       po_code: cells[3]?.textContent?.trim() || '',
       working_date: cells[4]?.textContent?.trim() || '',
-      routing: cells[6]?.textContent?.trim() === 'DIA' ? 1 : 
-               cells[6]?.textContent?.trim() === 'TIEMPO EXTRA' ? 2 : 
-               cells[6]?.textContent?.trim() === 'NOCHE' ? 3 : 1,
+      routing: cells[6]?.textContent?.trim() === 'DIA' ? 1 :
+        cells[6]?.textContent?.trim() === 'TIEMPO EXTRA' ? 2 :
+          cells[6]?.textContent?.trim() === 'NOCHE' ? 3 : 1,
       model_code: cells[7]?.textContent?.trim() || '',
       part_no: cells[8]?.textContent?.trim() || '',
       project: cells[9]?.textContent?.trim() || '',
@@ -2336,7 +2353,7 @@ function autoArrangePlans() {
       status: cells[15]?.textContent?.trim() || 'PLAN'
     };
   });
-  
+
   // Agrupar planes por línea primero
   const lineGroups = {};
   plans.forEach(plan => {
@@ -2345,100 +2362,100 @@ function autoArrangePlans() {
     }
     lineGroups[plan.line].push(plan);
   });
-  
+
   // Ordenar planes dentro de cada línea por tiempo de producción (menor a mayor)
   Object.keys(lineGroups).forEach(line => {
     lineGroups[line].sort((a, b) => a.productionTime - b.productionTime);
   });
-  
+
   // Distribuir manteniendo líneas juntas y evitando tiempo extra
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   visualGroups.planAssignments.clear();
-  
+
   // Algoritmo mejorado que prioriza mantener líneas juntas y evitar tiempo extra
   const productiveMinutes = (currentConfig.productiveHours || 9) * 60; // 9 horas productivas = 540 min
   const groupTimes = new Array(groupCount).fill(0);
   const groupLines = new Array(groupCount).fill().map(() => new Map()); // Líneas y sus tiempos por grupo
-  
+
   // Auto-acomodo iniciado
-  
+
   // Ordenar líneas por tiempo total (líneas más pesadas primero para mejor distribución)
   const sortedLines = Object.keys(lineGroups).sort((a, b) => {
     const timeA = lineGroups[a].reduce((sum, plan) => sum + plan.productionTime, 0);
     const timeB = lineGroups[b].reduce((sum, plan) => sum + plan.productionTime, 0);
     return timeB - timeA; // Mayor a menor
   });
-  
+
   // Procesar línea por línea manteniendo planes juntos
   sortedLines.forEach(line => {
     const linePlans = lineGroups[line];
     const totalLineTime = linePlans.reduce((sum, plan) => sum + plan.productionTime, 0);
-    
 
-    
+
+
     // Buscar el mejor grupo para toda la línea
     let bestGroupIndex = 0;
     let bestScore = Infinity;
-    
+
     for (let i = 0; i < groupCount; i++) {
       const currentGroupTime = groupTimes[i];
       const newTime = currentGroupTime + totalLineTime;
-      
+
       // Bonus si ya hay planes de la misma línea (mantener líneas juntas)
       const lineBonus = groupLines[i].has(line) ? -100 : 0;
-      
+
       // Penalty severo por tiempo extra
       let overtimePenalty = 0;
       if (newTime > productiveMinutes) {
         overtimePenalty = (newTime - productiveMinutes) * 3; // 3x penalty por overtime
       }
-      
+
       // Bonus por balance (preferir grupos con menos tiempo)
       const balanceBonus = -currentGroupTime * 0.1;
-      
+
       // Calcular puntuación final (menor es mejor)
       const score = newTime + overtimePenalty + lineBonus + balanceBonus;
-      
 
-      
+
+
       if (score < bestScore) {
         bestScore = score;
         bestGroupIndex = i;
       }
     }
-    
+
     // Asignar todos los planes de la línea al mejor grupo
     linePlans.forEach(plan => {
       visualGroups.planAssignments.set(plan.lot_no, bestGroupIndex);
     });
-    
+
     // Actualizar estadísticas del grupo
     groupTimes[bestGroupIndex] += totalLineTime;
     if (!groupLines[bestGroupIndex].has(line)) {
       groupLines[bestGroupIndex].set(line, 0);
     }
     groupLines[bestGroupIndex].set(line, groupLines[bestGroupIndex].get(line) + totalLineTime);
-    
+
 
   });
-  
+
   // Mostrar reporte de distribución
   const groupsWithOvertime = groupTimes.filter(time => time > productiveMinutes).length;
   const totalTime = groupTimes.reduce((sum, time) => sum + time, 0);
   const avgTimePerGroup = totalTime / groupCount;
-  
+
   // Resultado del auto-acomodo
-  
+
   // Re-renderizar tabla con nueva distribución
   renderTableWithVisualGroups(plans);
-  
+
   // Recalcular tiempos después de la redistribución
   calculateGroupTimes();
-  
+
   // Feedback visual mejorado
   const autoBtn = document.getElementById('auto-arrange-btn');
   const originalText = autoBtn.textContent;
-  
+
   if (groupsWithOvertime === 0) {
     autoBtn.textContent = '✅ Sin Tiempo Extra';
     autoBtn.style.backgroundColor = '#27ae60';
@@ -2446,7 +2463,7 @@ function autoArrangePlans() {
     autoBtn.textContent = `⚠️ ${groupsWithOvertime} con Extra`;
     autoBtn.style.backgroundColor = '#f39c12';
   }
-  
+
   setTimeout(() => {
     autoBtn.textContent = originalText;
     autoBtn.style.backgroundColor = '#27ae60'; // Verde original
@@ -2465,7 +2482,7 @@ window.toggleAllReschedule = toggleAllReschedule;
 function calculateAndUpdateTimes() {
   const tbody = document.getElementById('plan-tableBody');
   const rows = Array.from(tbody.querySelectorAll('tr'));
-  
+
   // Obtener datos actuales
   const plans = rows.map(row => {
     const cells = row.querySelectorAll('td');
@@ -2476,19 +2493,19 @@ function calculateAndUpdateTimes() {
       plan_count: parseInt(cells[13]?.textContent) || 0
     };
   });
-  
+
   // Calcular tiempos
   calculatePlanningTimes(plans);
-  
+
   // Actualizar filas con nueva información
   rows.forEach((row, index) => {
     const lotNo = row.dataset.lot;
     const calc = planningCalculations.get(lotNo);
-    
+
     if (calc) {
       // Agregar celdas de planeación si no existen
       let cells = row.querySelectorAll('td');
-      
+
       // Tiempo de producción
       if (cells.length >= 17) {
         cells[16].textContent = minutesToTime(calc.productionTime);
@@ -2499,7 +2516,7 @@ function calculateAndUpdateTimes() {
         timeCell.className = 'tiempo-cell';
         row.appendChild(timeCell);
       }
-      
+
       // Hora inicio
       if (cells.length >= 18) {
         cells[17].textContent = calc.startTime;
@@ -2510,7 +2527,7 @@ function calculateAndUpdateTimes() {
         startCell.className = 'tiempo-cell';
         row.appendChild(startCell);
       }
-      
+
       // Hora fin
       if (cells.length >= 19) {
         cells[18].textContent = calc.endTime;
@@ -2521,7 +2538,7 @@ function calculateAndUpdateTimes() {
         endCell.className = 'tiempo-cell';
         row.appendChild(endCell);
       }
-      
+
       // Número de grupo
       if (cells.length >= 20) {
         cells[19].textContent = calc.groupNumber;
@@ -2534,20 +2551,20 @@ function calculateAndUpdateTimes() {
         groupCell.style.fontWeight = 'bold';
         row.appendChild(groupCell);
       }
-      
+
       // Indicador de tiempo extra en la última columna (Turno)
       if (cells.length >= 22) {
-        cells[21].innerHTML = calc.isOvertime ? 
-          '<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">EXTRA</span>' : 
+        cells[21].innerHTML = calc.isOvertime ?
+          '<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">EXTRA</span>' :
           '<span style="background:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">NORMAL</span>';
       } else {
         const extraCell = document.createElement('td');
-        extraCell.innerHTML = calc.isOvertime ? 
-          '<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">EXTRA</span>' : 
+        extraCell.innerHTML = calc.isOvertime ?
+          '<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">EXTRA</span>' :
           '<span style="background:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">NORMAL</span>';
         row.appendChild(extraCell);
       }
-      
+
       // Resaltar fila si está en tiempo extra
       if (calc.isOvertime) {
         row.style.backgroundColor = '#8e2e2e';
@@ -2560,190 +2577,495 @@ function calculateAndUpdateTimes() {
   });
 }
 
+// Función para crear modales dinámicamente en el body
+function createModalsInBody() {
+  console.log('🏗️ Creando modales dinámicamente en el body...');
+
+  // Verificar que los estilos CSS estén cargados
+  const testDiv = document.createElement('div');
+  testDiv.className = 'modal-overlay';
+  testDiv.style.display = 'none';
+  document.body.appendChild(testDiv);
+  const computedStyle = window.getComputedStyle(testDiv);
+  console.log('🎨 Estilos CSS de modal-overlay:', {
+    position: computedStyle.position,
+    zIndex: computedStyle.zIndex,
+    display: computedStyle.display
+  });
+  document.body.removeChild(testDiv);
+
+  // Modal de Nuevo Plan
+  if (!document.getElementById('plan-modal')) {
+    console.log('📦 Creando modal plan-modal');
+    const planModal = document.createElement('div');
+    planModal.id = 'plan-modal';
+    planModal.className = 'modal-overlay';
+
+    // IMPORTANTE: Agregar estilos inline como fallback
+    planModal.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    planModal.innerHTML = `
+      <div id="plan-modal-content" style="background: #34334E; border-radius: 8px; padding: 30px; max-width: 500px; color: lightgray;">
+        <h3 style="margin: 0 0 20px 0; color: #ecf0f1; font-size: 20px;">Registrar Plan</h3>
+        <form id="plan-form" style="display: flex; flex-direction: column; gap: 15px;">
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Fecha:</label>
+          <input type="date" name="working_date" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Part No:</label>
+          <input type="text" name="part_no" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Line:</label>
+          <input type="text" name="line" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Turno:</label>
+          <select name="turno" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+            <option value="DIA" selected>DIA</option>
+            <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
+            <option value="NOCHE">NOCHE</option>
+          </select>
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Plan Count:</label>
+          <input type="number" name="plan_count" value="0" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">WO Code:</label>
+          <input type="text" name="wo_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">PO Code:</label>
+          <input type="text" name="po_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <div class="form-actions" style="display: flex; gap: 10px; margin-top: 10px;">
+            <button type="submit" class="plan-btn plan-btn-add" style="flex: 1; background: #27ae60; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Registrar</button>
+            <button type="button" id="plan-closeModalBtn" class="plan-btn" style="flex: 1; background: #666; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(planModal);
+  }
+
+  // Modal de Editar Plan
+  if (!document.getElementById('plan-editModal')) {
+    console.log('📦 Creando modal plan-editModal');
+    const editModal = document.createElement('div');
+    editModal.id = 'plan-editModal';
+    editModal.className = 'modal-overlay';
+
+    // IMPORTANTE: Agregar estilos inline como fallback
+    editModal.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    editModal.innerHTML = `
+      <div id="plan-modal-content" style="background: #34334E; border-radius: 8px; padding: 30px; max-width: 500px; color: lightgray;">
+        <h3 style="margin: 0 0 20px 0; color: #ecf0f1; font-size: 20px;">Editar Plan</h3>
+        <form id="plan-editForm" style="display: flex; flex-direction: column; gap: 15px;">
+          <input type="hidden" name="lot_no">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Turno:</label>
+          <select name="turno" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+            <option value="DIA">DIA</option>
+            <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
+            <option value="NOCHE">NOCHE</option>
+          </select>
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Plan Count:</label>
+          <input type="number" name="plan_count" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">WO Code:</label>
+          <input type="text" name="wo_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">PO Code:</label>
+          <input type="text" name="po_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Line:</label>
+          <input type="text" name="line" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+
+          <div class="form-actions-with-gap" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <div style="display: flex; gap: 10px;">
+              <button type="submit" class="plan-btn plan-btn-add" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Guardar</button>
+              <button type="button" class="plan-btn" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px;">Cerrar</button>
+            </div>
+            <button type="button" id="plan-cancelBtn" class="plan-btn plan-btn-danger" style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Cancelar plan</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(editModal);
+  }
+
+  // Modal de Reprogramar
+  if (!document.getElementById('reschedule-modal')) {
+    console.log('📦 Creando modal reschedule-modal');
+    const rescheduleModal = document.createElement('div');
+    rescheduleModal.id = 'reschedule-modal';
+    rescheduleModal.className = 'modal-overlay';
+
+    // IMPORTANTE: Agregar estilos inline como fallback
+    rescheduleModal.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    rescheduleModal.innerHTML = `
+      <div class="modal-content" style="background: #34334E; border-radius: 8px; width: 90%; max-width: 1200px; max-height: 90%; padding: 20px; color: lightgray; overflow: auto;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h3 class="reschedule-title" style="margin: 0; color: #9b59b6;">Reprogramar Planes</h3>
+          <button id="reschedule-closeModalBtn" class="btn-close-line" style="background: #666; border: none; color: white; font-size: 24px; cursor: pointer; width: 30px; height: 30px; border-radius: 4px;">&times;</button>
+        </div>
+
+        <div class="reschedule-filters" style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
+          <label style="font-size: 11px; color: #ecf0f1;">Fecha Desde:</label>
+          <input type="date" id="reschedule-date-from" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px; border-radius: 4px;">
+          
+          <label style="font-size: 11px; color: #ecf0f1;">Fecha Hasta:</label>
+          <input type="date" id="reschedule-date-to" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px; border-radius: 4px;">
+          
+          <label style="font-size: 11px; color: #ecf0f1;">Nueva Fecha:</label>
+          <input type="date" id="reschedule-new-date" class="plan-input" required style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px; border-radius: 4px;">
+          
+          <button id="reschedule-search-btn" class="plan-btn reschedule-search-btn" style="background-color: #8e44ad; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">Buscar Pendientes</button>
+          <button id="reschedule-submit-btn" class="plan-btn plan-btn-add" style="background-color: #8e44ad; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">Reprogramar Seleccionados</button>
+        </div>
+
+        <div class="modal-table-container" style="overflow-x: auto; margin-bottom: 20px;">
+          <table class="modal-table" style="width: 100%; border-collapse: collapse; background: #2B2D3E;">
+            <thead>
+              <tr style="background: #1e1e2e;">
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;"><input type="checkbox" id="reschedule-select-all"></th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">LOT NO</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Fecha Actual</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Part No</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Line</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Plan Count</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Input</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Pendiente</th>
+                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="reschedule-tableBody" style="color: lightgray;"></tbody>
+          </table>
+        </div>
+
+        <div class="modal-status" style="padding: 10px; text-align: center; color: #95a5a6; font-size: 12px;">
+          <span id="reschedule-status">Seleccione una fecha para buscar planes con input pendiente</span>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(rescheduleModal);
+  }
+
+  console.log('✅ Modales creados dinámicamente en el body');
+}
+
 // Función de inicialización de event listeners usando event delegation
 function initializePlanEventListeners() {
-  // Usar event delegation en document.body para capturar clicks incluso en contenido dinámico
-  if (!document.body.dataset.planListenersAttached) {
-    document.body.addEventListener('click', function(e) {
-      const target = e.target;
-      
-      // ========== BOTONES DE MODALES ==========
-      
-      // Abrir modal Nuevo Plan
-      if (target.id === 'plan-openModalBtn' || target.closest('#plan-openModalBtn')) {
-        e.preventDefault();
-        const modal = document.getElementById('plan-modal');
-        if (modal) modal.style.display = 'flex';
-        return;
-      }
-      
-      // Cerrar modal Nuevo Plan
-      if (target.id === 'plan-closeModalBtn' || target.closest('#plan-closeModalBtn')) {
-        e.preventDefault();
-        const modal = document.getElementById('plan-modal');
-        if (modal) modal.style.display = 'none';
-        return;
-      }
-      
-      // Abrir modal Work Orders
-      if (target.id === 'wo-openModalBtn' || target.closest('#wo-openModalBtn')) {
-        e.preventDefault();
-        if (typeof createWorkOrdersModal === 'function') createWorkOrdersModal();
-        const modal = document.getElementById('wo-modal');
-        if (modal) {
-          modal.style.display = 'flex';
-          if (typeof loadWorkOrders === 'function') loadWorkOrders();
-        }
-        return;
-      }
-      
-      // Abrir modal Reprogramar
-      if (target.id === 'reschedule-openModalBtn' || target.closest('#reschedule-openModalBtn')) {
-        e.preventDefault();
-        const modal = document.getElementById('reschedule-modal');
-        if (modal) {
-          modal.style.display = 'flex';
-          if (typeof setDefaultRescheduleDates === 'function') setDefaultRescheduleDates();
-        }
-        return;
-      }
-      
-      // Cerrar modal Reprogramar
-      if (target.id === 'reschedule-closeModalBtn' || target.closest('#reschedule-closeModalBtn')) {
-        e.preventDefault();
-        const modal = document.getElementById('reschedule-modal');
-        if (modal) modal.style.display = 'none';
-        return;
-      }
-      
-      // Botón Buscar Pendientes del modal Reprogramar
-      if (target.id === 'reschedule-search-btn' || target.closest('#reschedule-search-btn')) {
-        e.preventDefault();
-        if (typeof loadPendingPlans === 'function') loadPendingPlans();
-        return;
-      }
-      
-      // Botón Reprogramar Seleccionados
-      if (target.id === 'reschedule-submit-btn' || target.closest('#reschedule-submit-btn')) {
-        e.preventDefault();
-        if (typeof reschedulePendingPlans === 'function') reschedulePendingPlans();
-        return;
-      }
-      
-      // ========== MODAL DE EDICIÓN ==========
-      
-      // Botón Cerrar modal Editar (el botón "Cerrar" dentro del form)
-      if (target.closest('#plan-editForm button[type="button"]') && 
-          target.textContent.includes('Cerrar')) {
-        e.preventDefault();
-        const modal = document.getElementById('plan-editModal');
-        if (modal) modal.style.display = 'none';
-        return;
-      }
-      
-      // Botón Cancelar Plan (botón rojo)
-      if (target.id === 'plan-cancelBtn' || target.closest('#plan-cancelBtn')) {
-        e.preventDefault();
-        if (typeof handleCancelPlan === 'function') handleCancelPlan();
-        return;
-      }
-      
-      // ========== BOTONES DE ACCIONES ==========
-      
-      // Auto acomodo
-      if (target.id === 'auto-arrange-btn' || target.closest('#auto-arrange-btn')) {
-        e.preventDefault();
-        autoArrangePlans();
-        return;
-      }
-      
-      // Exportar a Excel
-      if (target.id === 'export-excel-btn' || target.closest('#export-excel-btn')) {
-        e.preventDefault();
-        exportarExcel();
-        return;
-      }
-      
-      // Guardar secuencias
-      if (target.id === 'save-sequences-btn' || target.closest('#save-sequences-btn')) {
-        e.preventDefault();
-        saveGroupSequences();
-        return;
-      }
-      
-      // Calcular tiempos
-      if (target.id === 'calc-times-btn' || target.closest('#calc-times-btn')) {
-        e.preventDefault();
-        reloadTableWithCurrentData();
-        return;
-      }
-    });
-    
-    // ========== EVENT LISTENERS DE SUBMIT ==========
-    
-    // Listener para submit del formulario de edición
-    document.body.addEventListener('submit', function(e) {
-      // Submit del form de editar plan
-      if (e.target.id === 'plan-editForm') {
-        e.preventDefault();
-        if (typeof window.handleEditPlanSubmit === 'function') {
-          window.handleEditPlanSubmit(e.target);
-        }
-        return;
-      }
-      
-      // Submit del form de nuevo plan
-      if (e.target.id === 'plan-form') {
-        e.preventDefault();
-        if (typeof window.handleNewPlanSubmit === 'function') {
-          window.handleNewPlanSubmit(e.target);
-        }
-        return;
-      }
-    });
-    
-    // Listener para cambio en número de grupos
-    document.body.addEventListener('change', function(e) {
-      const target = e.target;
-      
-      // Selector de número de grupos
-      if (target.id === 'groups-count') {
-        reloadTableWithCurrentData();
-        return;
-      }
-      
-      // Checkbox "Seleccionar todos" del modal Reprogramar
-      if (target.id === 'reschedule-select-all') {
-        if (typeof toggleAllReschedule === 'function') toggleAllReschedule(target);
-        return;
-      }
-    });
-    
-    // ========== EVENT LISTENER DE DOBLE CLICK ==========
-    // Doble click en filas de la tabla para editar
-    document.body.addEventListener('dblclick', function(e) {
-      // Verificar si el doble click fue en una fila de la tabla de planes
-      const row = e.target.closest('tr.plan-row');
-      if (!row) {
-        return;
-      }
-      
-      const lotNo = row.dataset.lot;
-      
-      if (lotNo && typeof openEditModal === 'function') {
-        openEditModal(lotNo);
-      }
-    });
-    
-    document.body.dataset.planListenersAttached = 'true';
+  console.log('🔧 initializePlanEventListeners llamada');
+
+  // IMPORTANTE: Siempre crear modales dinámicamente en el body
+  // Esto asegura que los modales siempre estén al nivel correcto del DOM
+  createModalsInBody();
+
+  // IMPORTANTE: Usar protección para evitar agregar listeners duplicados
+  // Solo agregar listeners una vez, ya que están en document.body
+  if (document.body.dataset.planListenersAttached === 'true') {
+    console.log('✅ Listeners ya están configurados, saltando re-inicialización de listeners');
+    console.log('ℹ️ Los modales fueron creados/verificados en el body');
+    return;
   }
+
+  console.log('📝 Configurando event listeners con event delegation...');
+
+  // ========== EVENT LISTENER DE CLICKS (Event Delegation) ==========
+  document.body.addEventListener('click', function (e) {
+    const target = e.target;
+
+    // ========== BOTONES DE MODALES ==========
+
+    // Abrir modal Nuevo Plan
+    if (target.id === 'plan-openModalBtn' || target.closest('#plan-openModalBtn')) {
+      e.preventDefault();
+      console.log('🎯 Click en plan-openModalBtn detectado');
+
+      // Asegurar que el modal existe antes de abrirlo
+      if (!document.getElementById('plan-modal')) {
+        console.log('⚠️ Modal no existe, creándolo...');
+        createModalsInBody();
+      }
+
+      const modal = document.getElementById('plan-modal');
+      if (modal) {
+        // FORZAR estilos inline para sobrescribir cualquier CSS conflictivo
+        modal.style.cssText = `
+          display: flex !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: rgba(0,0,0,0.6) !important;
+          justify-content: center !important;
+          align-items: center !important;
+          z-index: 10000 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+        `;
+        console.log('✅ Modal plan-modal abierto con estilos forzados');
+      } else {
+        console.error('❌ Modal plan-modal no encontrado después de crearlo');
+      }
+      return;
+    }
+
+    // Cerrar modal Nuevo Plan
+    if (target.id === 'plan-closeModalBtn' || target.closest('#plan-closeModalBtn')) {
+      e.preventDefault();
+      const modal = document.getElementById('plan-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+      }
+      return;
+    }
+
+    // Abrir modal Work Orders
+    if (target.id === 'wo-openModalBtn' || target.closest('#wo-openModalBtn')) {
+      e.preventDefault();
+      console.log('🎯 Click en wo-openModalBtn detectado');
+
+      // Crear modal WO si no existe
+      if (typeof createWorkOrdersModal === 'function') {
+        createWorkOrdersModal();
+        console.log('✅ Modal WO creado/verificado');
+      }
+
+      const modal = document.getElementById('wo-modal');
+      if (modal) {
+        // FORZAR estilos inline para sobrescribir cualquier CSS conflictivo
+        modal.style.cssText = `
+          display: flex !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: rgba(0,0,0,0.6) !important;
+          justify-content: center !important;
+          align-items: center !important;
+          z-index: 10000 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+        `;
+        console.log('✅ Modal wo-modal abierto con estilos forzados');
+        if (typeof loadWorkOrders === 'function') loadWorkOrders();
+      } else {
+        console.error('❌ Modal wo-modal no encontrado después de crearlo');
+      }
+      return;
+    }
+
+    // Abrir modal Reprogramar
+    if (target.id === 'reschedule-openModalBtn' || target.closest('#reschedule-openModalBtn')) {
+      e.preventDefault();
+      console.log('🎯 Click en reschedule-openModalBtn detectado');
+
+      // Asegurar que el modal existe antes de abrirlo
+      if (!document.getElementById('reschedule-modal')) {
+        console.log('⚠️ Modal no existe, creándolo...');
+        createModalsInBody();
+      }
+
+      const modal = document.getElementById('reschedule-modal');
+      if (modal) {
+        // FORZAR estilos inline para sobrescribir cualquier CSS conflictivo
+        modal.style.cssText = `
+          display: flex !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: rgba(0,0,0,0.6) !important;
+          justify-content: center !important;
+          align-items: center !important;
+          z-index: 10000 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+        `;
+
+        console.log('✅ Modal reschedule-modal abierto con estilos forzados');
+        if (typeof setDefaultRescheduleDates === 'function') setDefaultRescheduleDates();
+      } else {
+        console.error('❌ Modal reschedule-modal no encontrado después de crearlo');
+      }
+      return;
+    }
+
+    // Cerrar modal Reprogramar
+    if (target.id === 'reschedule-closeModalBtn' || target.closest('#reschedule-closeModalBtn')) {
+      e.preventDefault();
+      const modal = document.getElementById('reschedule-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+      }
+      return;
+    }
+
+    // Botón Buscar Pendientes del modal Reprogramar
+    if (target.id === 'reschedule-search-btn' || target.closest('#reschedule-search-btn')) {
+      e.preventDefault();
+      if (typeof loadPendingPlans === 'function') loadPendingPlans();
+      return;
+    }
+
+    // Botón Reprogramar Seleccionados
+    if (target.id === 'reschedule-submit-btn' || target.closest('#reschedule-submit-btn')) {
+      e.preventDefault();
+      if (typeof reschedulePendingPlans === 'function') reschedulePendingPlans();
+      return;
+    }
+
+    // ========== MODAL DE EDICIÓN ==========
+
+    // Botón Cerrar modal Editar (el botón "Cerrar" dentro del form)
+    if (target.closest('#plan-editForm button[type="button"]') &&
+      target.textContent.includes('Cerrar')) {
+      e.preventDefault();
+      const modal = document.getElementById('plan-editModal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+      }
+      return;
+    }
+
+    // Botón Cancelar Plan (botón rojo)
+    if (target.id === 'plan-cancelBtn' || target.closest('#plan-cancelBtn')) {
+      e.preventDefault();
+      if (typeof handleCancelPlan === 'function') handleCancelPlan();
+      return;
+    }
+
+    // ========== BOTONES DE ACCIONES ==========
+
+    // Auto acomodo
+    if (target.id === 'auto-arrange-btn' || target.closest('#auto-arrange-btn')) {
+      e.preventDefault();
+      autoArrangePlans();
+      return;
+    }
+
+    // Exportar a Excel
+    if (target.id === 'export-excel-btn' || target.closest('#export-excel-btn')) {
+      e.preventDefault();
+      exportarExcel();
+      return;
+    }
+
+    // Guardar secuencias
+    if (target.id === 'save-sequences-btn' || target.closest('#save-sequences-btn')) {
+      e.preventDefault();
+      saveGroupSequences();
+      return;
+    }
+
+    // Calcular tiempos
+    if (target.id === 'calc-times-btn' || target.closest('#calc-times-btn')) {
+      e.preventDefault();
+      reloadTableWithCurrentData();
+      return;
+    }
+  });
+
+  // ========== EVENT LISTENERS DE SUBMIT ==========
+  document.body.addEventListener('submit', function (e) {
+    // Submit del form de editar plan
+    if (e.target.id === 'plan-editForm') {
+      e.preventDefault();
+      if (typeof window.handleEditPlanSubmit === 'function') {
+        window.handleEditPlanSubmit(e.target);
+      }
+      return;
+    }
+
+    // Submit del form de nuevo plan
+    if (e.target.id === 'plan-form') {
+      e.preventDefault();
+      if (typeof window.handleNewPlanSubmit === 'function') {
+        window.handleNewPlanSubmit(e.target);
+      }
+      return;
+    }
+  });
+
+  // ========== EVENT LISTENER DE CHANGE ==========
+  document.body.addEventListener('change', function (e) {
+    const target = e.target;
+
+    // Selector de número de grupos
+    if (target.id === 'groups-count') {
+      reloadTableWithCurrentData();
+      return;
+    }
+
+    // Checkbox "Seleccionar todos" del modal Reprogramar
+    if (target.id === 'reschedule-select-all') {
+      if (typeof toggleAllReschedule === 'function') toggleAllReschedule(target);
+      return;
+    }
+  });
+
+  // ========== EVENT LISTENER DE DOBLE CLICK ==========
+  document.body.addEventListener('dblclick', function (e) {
+    // Verificar si el doble click fue en una fila de la tabla de planes
+    const row = e.target.closest('tr.plan-row');
+    if (!row) return;
+
+    const lotNo = row.dataset.lot;
+    if (lotNo && typeof openEditModal === 'function') {
+      openEditModal(lotNo);
+    }
+  });
+
+  // Marcar como inicializado
+  document.body.dataset.planListenersAttached = 'true';
+  console.log('✅ Event listeners configurados correctamente');
 }
 
 // Event listeners para nuevos controles
 document.addEventListener('DOMContentLoaded', initializePlanEventListeners);
 
-// Exponer la función globalmente para que pueda ser llamada después de cargar contenido dinámico
+// Exponer funciones globalmente para que puedan ser llamadas después de cargar contenido dinámico
 window.initializePlanEventListeners = initializePlanEventListeners;
+window.createModalsInBody = createModalsInBody;
 
 // También ejecutar inmediatamente si el DOM ya está listo (para scripts defer)
 if (document.readyState === 'interactive' || document.readyState === 'complete') {
@@ -2752,31 +3074,31 @@ if (document.readyState === 'interactive' || document.readyState === 'complete')
 
 // Modificar loadPlans para usar grupos visuales
 const originalLoadPlans = loadPlans;
-loadPlans = async function() {
+loadPlans = async function () {
   try {
     // Mostrar loading en el tbody de la tabla
     showTableBodyLoading('plan-tableBody', 'Cargando planes...', 21);
-    
+
     setDefaultDateFilters();
     const fs = document.getElementById("filter-start")?.value;
     const fe = document.getElementById("filter-end")?.value;
     let url = "/api/plan";
     const params = [];
-    if(fs) params.push(`start=${encodeURIComponent(fs)}`);
-    if(fe) params.push(`end=${encodeURIComponent(fe)}`);
-    if(params.length) url += `?${params.join("&")}`;
-    
+    if (fs) params.push(`start=${encodeURIComponent(fs)}`);
+    if (fe) params.push(`end=${encodeURIComponent(fe)}`);
+    if (params.length) url += `?${params.join("&")}`;
+
     let res = await axios.get(url);
     let data = Array.isArray(res.data) ? res.data.slice() : [];
-    
+
     // Aplicar orden guardado (si existe) antes de renderizar
     data = applySavedOrderToData(data, fs, fe);
 
     // Usar nueva función de renderizado con grupos visuales
     renderTableWithVisualGroups(data);
-    
+
     // ensureOrderToolbar(fs, fe); // Ya no necesario - usamos save-sequences-btn
-  } catch(error) {
+  } catch (error) {
     alert("Error al cargar planes: " + (error.response?.data?.error || error.message));
     // En caso de error, limpiar la tabla
     let tbody = document.getElementById("plan-tableBody");
@@ -2789,15 +3111,15 @@ async function exportarExcel() {
   try {
     const exportBtn = document.getElementById('export-excel-btn');
     const originalText = exportBtn.textContent;
-    
+
     // Mostrar estado de carga
     exportBtn.textContent = 'Generando Excel...';
     exportBtn.disabled = true;
     exportBtn.style.backgroundColor = '#f39c12';
-    
+
     // Recopilar todos los datos organizados por grupos visuales
     const groupedPlansData = [];
-    
+
     // Iterar sobre los grupos visuales en orden
     visualGroups.groups.forEach((group, groupIndex) => {
       if (group.plans && group.plans.length > 0) {
@@ -2807,10 +3129,10 @@ async function exportarExcel() {
           groupTitle: group.title || `GRUPO ${groupIndex + 1}`,
           groupIndex: groupIndex
         });
-        
+
         // Añadir todos los planes del grupo en orden de secuencia
         const sortedPlans = [...group.plans].sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
-        
+
         sortedPlans.forEach(plan => {
           const planData = {
             secuencia: plan.sequence || '',
@@ -2836,45 +3158,45 @@ async function exportarExcel() {
             extra: plan.extra || '',
             groupIndex: groupIndex
           };
-          
+
           groupedPlansData.push(planData);
         });
       }
     });
-    
+
     // Si no hay grupos visuales definidos, usar el método anterior como fallback
     if (groupedPlansData.length === 0) {
       const tbody = document.getElementById('plan-tableBody');
       const rows = Array.from(tbody.querySelectorAll('tr'));
-      
+
       rows.forEach((row, index) => {
         // Saltar filas de separadores de grupos
         if (row.classList.contains('group-spacer')) {
           // Agregar marcador de grupo
-          const groupTitle = row.textContent?.trim() || `GRUPO ${Math.floor(index/5) + 1}`;
+          const groupTitle = row.textContent?.trim() || `GRUPO ${Math.floor(index / 5) + 1}`;
           groupedPlansData.push({
             isGroupHeader: true,
             groupTitle: groupTitle,
-            groupIndex: Math.floor(index/5)
+            groupIndex: Math.floor(index / 5)
           });
           return;
         }
-        
+
         const cells = row.querySelectorAll('td');
         if (cells.length === 0) return;
-        
+
         // Obtener lot_no para determinar el grupo visual
         const lot_no = cells[1]?.textContent?.trim() || '';
-        
+
         // Determinar el grupo visual basado en la posición en visualGroups
-        let grupoVisual = `GRUPO ${Math.floor(index/5) + 1}`;
+        let grupoVisual = `GRUPO ${Math.floor(index / 5) + 1}`;
         if (lot_no && visualGroups.planAssignments.has(lot_no)) {
           const groupIndex = visualGroups.planAssignments.get(lot_no);
           if (visualGroups.groups[groupIndex]) {
             grupoVisual = visualGroups.groups[groupIndex].title || `GRUPO ${groupIndex + 1}`;
           }
         }
-        
+
         // Si no se encuentra en visualGroups, buscar por la sección del DOM
         if (!grupoVisual || grupoVisual.includes('undefined')) {
           // Buscar hacia atrás para encontrar el separador de grupo más cercano
@@ -2890,7 +3212,7 @@ async function exportarExcel() {
             currentRow = currentRow.previousElementSibling;
           }
         }
-        
+
         // Extraer datos de cada celda
         const planData = {
           secuencia: cells[0]?.textContent?.trim() || '',
@@ -2914,17 +3236,17 @@ async function exportarExcel() {
           fin: cells[18]?.textContent?.trim() || '',
           grupo: grupoVisual, // Usar el grupo visual real en lugar del campo de celda
           extra: cells[20]?.textContent?.trim() || '',
-          groupIndex: Math.floor(index/5)
+          groupIndex: Math.floor(index / 5)
         };
-        
+
         groupedPlansData.push(planData);
       });
     }
-    
+
     if (groupedPlansData.length === 0) {
       throw new Error('No hay datos para exportar');
     }
-    
+
     // Enviar datos al backend
     const response = await fetch('/api/plan/export-excel', {
       method: 'POST',
@@ -2935,52 +3257,52 @@ async function exportarExcel() {
         plans: groupedPlansData
       })
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Error al generar el archivo Excel');
     }
-    
+
     // Obtener el archivo como blob
     const blob = await response.blob();
-    
+
     // Crear enlace de descarga
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-    
+
     // Generar nombre del archivo con fecha
     const now = new Date();
-    const dateStr = now.getFullYear().toString() + 
-                   (now.getMonth() + 1).toString().padStart(2, '0') + 
-                   now.getDate().toString().padStart(2, '0') + '_' +
-                   now.getHours().toString().padStart(2, '0') + 
-                   now.getMinutes().toString().padStart(2, '0');
+    const dateStr = now.getFullYear().toString() +
+      (now.getMonth() + 1).toString().padStart(2, '0') +
+      now.getDate().toString().padStart(2, '0') + '_' +
+      now.getHours().toString().padStart(2, '0') +
+      now.getMinutes().toString().padStart(2, '0');
     const filename = `Plan_Produccion_${dateStr}.xlsx`;
-    
+
     link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(downloadUrl);
-    
+
     // Feedback de éxito
     exportBtn.textContent = '✅ Excel Descargado';
     exportBtn.style.backgroundColor = '#27ae60';
-    
+
     setTimeout(() => {
       exportBtn.textContent = originalText;
       exportBtn.style.backgroundColor = '#27ae60';
       exportBtn.disabled = false;
     }, 2000);
-    
+
   } catch (error) {
     // Error al exportar a Excel
-    
+
     const exportBtn = document.getElementById('export-excel-btn');
     exportBtn.textContent = '❌ Error al exportar';
     exportBtn.style.backgroundColor = '#e74c3c';
-    
+
     setTimeout(() => {
       exportBtn.textContent = '📊 Exportar Excel';
       exportBtn.style.backgroundColor = '#27ae60';
@@ -2994,12 +3316,12 @@ setDefaultDateFilters();
 loadPlans();
 
 // Utilidad de depuración: ver grupos y secuencias actuales
-window.debugGroups = function(){
+window.debugGroups = function () {
   try {
     const rows = [...document.querySelectorAll('#plan-tableBody tr.plan-row')];
     const perGroup = {};
-    rows.forEach(r=>{ const gi=parseInt(r.dataset.groupIndex)||0; const lot=r.dataset.lot; (perGroup[gi]=perGroup[gi]||[]).push(lot); });
-    return { visualGroups: visualGroups.groups.map((g,i)=>({g:i+1, lots:g.plans.map(p=>p.lot_no)})), domRows: perGroup };
+    rows.forEach(r => { const gi = parseInt(r.dataset.groupIndex) || 0; const lot = r.dataset.lot; (perGroup[gi] = perGroup[gi] || []).push(lot); });
+    return { visualGroups: visualGroups.groups.map((g, i) => ({ g: i + 1, lots: g.plans.map(p => p.lot_no) })), domRows: perGroup };
   } catch (e) { console.warn(e); }
 }
 
@@ -3007,30 +3329,30 @@ window.debugGroups = function(){
 async function saveGroupSequences() {
   const saveBtn = document.getElementById('save-sequences-btn');
   if (!saveBtn) return;
-  
+
   // Mostrar loading
   saveBtn.textContent = 'Guardando...';
   saveBtn.disabled = true;
-  
+
   try {
     const sequenceData = [];
-    
+
     // Verificar que visualGroups esté disponible
     if (!visualGroups || !visualGroups.groups) {
       throw new Error('No hay grupos de planeación disponibles');
     }
-    
+
     // Recopilar datos de secuencia para cada plan (solo planes activos)
     visualGroups.groups.forEach((group, groupIndex) => {
       if (group && group.plans && Array.isArray(group.plans)) {
         // Filtrar planes que NO están cancelados
         const activePlans = group.plans.filter(plan => plan && plan.lot_no && plan.status !== 'CANCELADO');
-        
+
         activePlans.forEach((plan, planIndex) => {
           const startTime = planningCalculations.get(plan.lot_no)?.startTime || '--';
           const endTime = planningCalculations.get(plan.lot_no)?.endTime || '--';
           const productionTime = planningCalculations.get(plan.lot_no)?.productionTime || 0;
-          
+
           // Convertir startTime (HH:MM) a DATETIME para planned_start
           let plannedStart = null;
           if (startTime !== '--') {
@@ -3040,7 +3362,7 @@ async function saveGroupSequences() {
             const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
             plannedStart = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
           }
-          
+
           // Convertir endTime (HH:MM) a DATETIME para planned_end
           let plannedEnd = null;
           if (endTime !== '--') {
@@ -3050,35 +3372,35 @@ async function saveGroupSequences() {
             const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
             plannedEnd = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
           }
-          
+
           // También enviar solo la fecha para plan_start_date
           let planStartDate = null;
           if (startTime !== '--') {
             planStartDate = getTodayInNuevoLeon(); // Formato: YYYY-MM-DD en Nuevo León
           }
-          
+
           // Calcular effective_minutes (tiempo productivo sin breaks)
           const effectiveMinutes = productionTime; // productionTime ya está en minutos
-          
+
           // Calcular breaks_minutes (estimar breaks que caen durante la producción)
           let breaksMinutes = 0;
           if (startTime !== '--' && endTime !== '--') {
             const startMinutes = timeToMinutes(startTime);
             const endMinutes = timeToMinutes(endTime);
-            
+
             // Verificar breaks que caen durante este plan
             currentConfig.breaks.forEach(breakInfo => {
               const breakStart = timeToMinutes(breakInfo.start);
               const breakEnd = timeToMinutes(breakInfo.end);
               const breakDuration = breakEnd - breakStart;
-              
+
               // Si el break cae durante la producción de este plan
               if (breakStart >= startMinutes && breakStart < endMinutes) {
                 breaksMinutes += breakDuration;
               }
             });
           }
-          
+
           sequenceData.push({
             lot_no: String(plan.lot_no), // Asegurar que sea string
             group_no: groupIndex + 1,
@@ -3092,15 +3414,15 @@ async function saveGroupSequences() {
         });
       }
     });
-    
+
     if (sequenceData.length === 0) {
       throw new Error('No hay planes para guardar');
     }
-    
 
 
 
-    
+
+
     const response = await fetch('/api/plan/save-sequences', {
       method: 'POST',
       headers: {
@@ -3110,16 +3432,16 @@ async function saveGroupSequences() {
         sequences: sequenceData
       })
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       saveBtn.textContent = '✅ Guardado';
       saveBtn.style.backgroundColor = '#27ae60';
-      
+
       // Mostrar mensaje de confirmación
       const message = result.message || 'Secuencias guardadas correctamente';
       showNotification(message, 'success');
-      
+
       // Actualizar localStorage para mantener consistencia
       const currentOrder = [];
       visualGroups.groups.forEach(group => {
@@ -3131,14 +3453,14 @@ async function saveGroupSequences() {
           });
         }
       });
-      
+
       // Guardar en localStorage usando las fechas actuales
       const fs = document.getElementById("filter-start")?.value;
       const fe = document.getElementById("filter-end")?.value;
       const key = orderStorageKey(fs, fe);
       localStorage.setItem(key, JSON.stringify(currentOrder));
       // LocalStorage actualizado con el orden guardado
-      
+
       setTimeout(() => {
         saveBtn.textContent = 'Guardar Orden';
         saveBtn.style.backgroundColor = '#3498db';
@@ -3154,11 +3476,11 @@ async function saveGroupSequences() {
     // Stack trace:
     saveBtn.textContent = '❌ Error';
     saveBtn.style.backgroundColor = '#e74c3c';
-    
+
     // Mostrar mensaje de error más detallado
     const errorMessage = error.message || 'Error desconocido al guardar';
     showNotification('Error al guardar: ' + errorMessage, 'error');
-    
+
     setTimeout(() => {
       saveBtn.textContent = '💾 Guardar Orden';
       saveBtn.style.backgroundColor = '#3498db';
@@ -3174,7 +3496,7 @@ window.saveGroupSequences = saveGroupSequences;
 function updateSequenceNumbers() {
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
-  
+
   // Agrupar filas por grupo
   const rowsByGroup = {};
   planRows.forEach(row => {
@@ -3184,7 +3506,7 @@ function updateSequenceNumbers() {
     }
     rowsByGroup[groupIndex].push(row);
   });
-  
+
   // Actualizar secuencias dentro de cada grupo
   Object.keys(rowsByGroup).forEach(groupIndex => {
     const groupRows = rowsByGroup[groupIndex];
@@ -3193,11 +3515,11 @@ function updateSequenceNumbers() {
       const sequenceCell = row.querySelector('td:first-child');
       if (sequenceCell) {
         sequenceCell.textContent = index + 1;
-        
+
         // Agregar animación sutil para indicar cambio
         sequenceCell.style.transition = 'background-color 0.3s ease';
         sequenceCell.style.backgroundColor = '#27ae60';
-        
+
         setTimeout(() => {
           sequenceCell.style.backgroundColor = '#e74c3c';
         }, 200);
@@ -3210,38 +3532,38 @@ function updateSequenceNumbers() {
 function updateStartDates() {
   visualGroups.groups.forEach((group, groupIndex) => {
     let currentTime = timeToMinutes(currentConfig.shiftStart);
-    
+
     group.plans.forEach((plan, planIndex) => {
       const productionTime = calculateProductionTime(plan.plan_count || 0, plan.uph || 0);
       const startTime = currentTime;
-      
+
       // Verificar breaks que caen durante este plan
       let breaksDuringPlan = 0;
       currentConfig.breaks.forEach(breakInfo => {
         const breakStart = timeToMinutes(breakInfo.start);
         const breakEnd = timeToMinutes(breakInfo.end);
         const breakDuration = breakEnd - breakStart;
-        
+
         if (breakStart >= startTime && breakStart < (startTime + productionTime)) {
           breaksDuringPlan += breakDuration;
         }
       });
-      
+
       // Actualizar fecha de inicio en los cálculos
       planningCalculations.set(plan.lot_no, {
         ...planningCalculations.get(plan.lot_no),
         startTime: minutesToTime(startTime)
       });
-      
+
       // Avanzar tiempo para el siguiente plan
       currentTime += productionTime + breaksDuringPlan;
     });
   });
-  
+
   // Actualizar las celdas de fecha de inicio en la tabla
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
-  
+
   planRows.forEach(row => {
     const lotNo = row.dataset.lot;
     const calculation = planningCalculations.get(lotNo);
@@ -3291,7 +3613,7 @@ function showNotification(message, type = 'info') {
   if (existingNotification) {
     existingNotification.remove();
   }
-  
+
   // Crear nueva notificación
   const notification = document.createElement('div');
   notification.className = 'notification';
@@ -3307,7 +3629,7 @@ function showNotification(message, type = 'info') {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     animation: slideIn 0.3s ease;
   `;
-  
+
   // Establecer color según el tipo
   if (type === 'success') {
     notification.style.backgroundColor = '#27ae60';
@@ -3316,10 +3638,10 @@ function showNotification(message, type = 'info') {
   } else {
     notification.style.backgroundColor = '#3498db';
   }
-  
+
   notification.textContent = message;
   document.body.appendChild(notification);
-  
+
   // Remover después de 4 segundos
   setTimeout(() => {
     if (notification.parentNode) {

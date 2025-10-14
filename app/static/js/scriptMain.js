@@ -955,6 +955,8 @@
             // Función AJAX: Plan Main ASSY
             window.mostrarPlanMainASSY = function() {
                 try {
+                    console.log('📦 Cargando Plan Main ASSY...');
+                    
                     const controlProcesoButton = document.getElementById('Control de proceso');
                     if (controlProcesoButton) {
                         controlProcesoButton.classList.add('active');
@@ -970,21 +972,33 @@
                     if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
                     const containerId = 'plan-main-assy-unique-container';
                     const cont = document.getElementById(containerId);
-                    if (!cont) return console.error('Contenedor no existe:', containerId);
+                    if (!cont) return console.error('❌ Contenedor no existe:', containerId);
                     cont.style.display = 'block';
                     cont.style.opacity = '1';
                     if (typeof window.cargarContenidoDinamico === 'function') {
                         window.cargarContenidoDinamico(containerId, '/plan-main-assy-ajax', () => {
-                            // Inicializar event listeners de plan después de cargar contenido dinámico
-                            if (typeof window.initializePlanEventListeners === 'function') {
-                                window.initializePlanEventListeners();
-                            } else {
-                                console.warn('⚠️ initializePlanEventListeners no disponible');
+                            console.log('📦 Contenido de Plan Main ASSY cargado, inicializando...');
+                            
+                            // Esperar a que los scripts se carguen completamente
+                            function tryInitialize() {
+                                if (typeof window.initializePlanEventListeners === 'function' && typeof window.loadPlans === 'function') {
+                                    console.log('✅ Inicializando event listeners de Plan Main ASSY');
+                                    window.initializePlanEventListeners();
+                                    
+                                    // Cargar datos iniciales
+                                    console.log('📊 Cargando planes iniciales...');
+                                    window.loadPlans();
+                                } else {
+                                    console.log('⏳ Esperando a que plan.js se cargue completamente...');
+                                    setTimeout(tryInitialize, 100);
+                                }
                             }
+                            
+                            tryInitialize();
                         });
                     }
                 } catch (e) {
-                    console.error('Error en mostrarPlanMainASSY:', e);
+                    console.error('❌ Error en mostrarPlanMainASSY:', e);
                 }
             };
 

@@ -1,6 +1,7 @@
 # 📘 Guía de Desarrollo de Módulos para Sistema MES
 
 ## 🎯 Objetivo
+
 Este documento define los estándares y patrones para desarrollar módulos nuevos que sean compatibles con el sistema MES y su arquitectura de carga dinámica vía MaterialTemplate.
 
 ---
@@ -8,7 +9,9 @@ Este documento define los estándares y patrones para desarrollar módulos nuevo
 ## 🏗️ Arquitectura del Sistema
 
 ### Sistema de Carga Dinámica
+
 El sistema MES utiliza una arquitectura de **carga dinámica de contenido** que permite:
+
 - Cargar módulos vía AJAX sin recargar la página
 - Mantener el estado de la aplicación
 - Gestionar múltiples módulos simultáneamente
@@ -67,52 +70,59 @@ app/
 ```html
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Tu Módulo</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/tu-modulo.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="{{ url_for('static', filename='js/tu-modulo.js') }}" defer></script>
-</head>
-<body id="tu-modulo-container">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tu Módulo</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/tu-modulo.css') }}"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script
+      src="{{ url_for('static', filename='js/tu-modulo.js') }}"
+      defer
+    ></script>
+  </head>
+  <body id="tu-modulo-container">
+    <!-- Toolbar / Controles -->
+    <div id="tu-modulo-toolbar">
+      <button id="tu-modulo-btn-accion1" class="btn">Acción 1</button>
+      <button id="tu-modulo-btn-accion2" class="btn">Acción 2</button>
+      <button id="tu-modulo-btn-export" class="btn">Exportar</button>
+    </div>
 
-  <!-- Toolbar / Controles -->
-  <div id="tu-modulo-toolbar">
-    <button id="tu-modulo-btn-accion1" class="btn">Acción 1</button>
-    <button id="tu-modulo-btn-accion2" class="btn">Acción 2</button>
-    <button id="tu-modulo-btn-export" class="btn">Exportar</button>
-  </div>
+    <!-- Contenido Principal -->
+    <div id="tu-modulo-content">
+      <!-- Tu contenido aquí -->
+    </div>
 
-  <!-- Contenido Principal -->
-  <div id="tu-modulo-content">
-    <!-- Tu contenido aquí -->
-  </div>
+    <!-- Script inline para inicialización -->
+    <script>
+      (function () {
+        console.log("📝 Script inline de tu_modulo ejecutándose...");
 
-  <!-- Script inline para inicialización -->
-  <script>
-    (function() {
-      console.log('📝 Script inline de tu_modulo ejecutándose...');
-      
-      function tryInitialize() {
-        if (typeof window.initializeTuModuloEventListeners === 'function') {
-          console.log('✅ Inicializando listeners de tu_modulo');
-          window.initializeTuModuloEventListeners();
-        } else {
-          console.log('⏳ Esperando inicialización de tu_modulo...');
-          setTimeout(tryInitialize, 100);
+        function tryInitialize() {
+          if (typeof window.initializeTuModuloEventListeners === "function") {
+            console.log("✅ Inicializando listeners de tu_modulo");
+            window.initializeTuModuloEventListeners();
+          } else {
+            console.log("⏳ Esperando inicialización de tu_modulo...");
+            setTimeout(tryInitialize, 100);
+          }
         }
-      }
-      
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', tryInitialize);
-      } else {
-        tryInitialize();
-      }
-    })();
-  </script>
 
-</body>
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", tryInitialize);
+        } else {
+          tryInitialize();
+        }
+      })();
+    </script>
+  </body>
 </html>
 ```
 
@@ -133,14 +143,14 @@ let tuModuloConfig = {
  * Cargar datos del módulo
  */
 async function loadTuModuloData() {
-  console.log('📦 Cargando datos de tu_modulo...');
+  console.log("📦 Cargando datos de tu_modulo...");
   try {
-    const response = await axios.get('/api/tu-modulo/data');
+    const response = await axios.get("/api/tu-modulo/data");
     tuModuloData = response.data;
     renderTuModulo(tuModuloData);
   } catch (error) {
-    console.error('❌ Error al cargar datos:', error);
-    showNotification('Error al cargar datos', 'error');
+    console.error("❌ Error al cargar datos:", error);
+    showNotification("Error al cargar datos", "error");
   }
 }
 
@@ -148,51 +158,52 @@ async function loadTuModuloData() {
  * Renderizar contenido del módulo
  */
 function renderTuModulo(data) {
-  console.log('🎨 Renderizando tu_modulo...');
-  const container = document.getElementById('tu-modulo-content');
+  console.log("🎨 Renderizando tu_modulo...");
+  const container = document.getElementById("tu-modulo-content");
   if (!container) return;
-  
+
   // Tu lógica de renderizado aquí
-  container.innerHTML = '...';
+  container.innerHTML = "...";
 }
 
 /**
  * Acción 1 - Ejemplo de función expuesta
  */
 async function tuModuloAccion1() {
-  console.log('🚀 Ejecutando acción 1 de tu_modulo...');
-  
-  const btn = document.getElementById('tu-modulo-btn-accion1');
+  console.log("🚀 Ejecutando acción 1 de tu_modulo...");
+
+  const btn = document.getElementById("tu-modulo-btn-accion1");
   if (!btn) return;
-  
+
   const originalText = btn.textContent;
-  btn.textContent = 'Procesando...';
+  btn.textContent = "Procesando...";
   btn.disabled = true;
-  
+
   try {
     // Tu lógica aquí
-    const response = await axios.post('/api/tu-modulo/accion1', { /* data */ });
-    
+    const response = await axios.post("/api/tu-modulo/accion1", {
+      /* data */
+    });
+
     // Feedback exitoso
-    btn.textContent = '✅ Completado';
-    btn.style.backgroundColor = '#27ae60';
-    showNotification('Acción completada exitosamente', 'success');
-    
+    btn.textContent = "✅ Completado";
+    btn.style.backgroundColor = "#27ae60";
+    showNotification("Acción completada exitosamente", "success");
+
     setTimeout(() => {
       btn.textContent = originalText;
-      btn.style.backgroundColor = '';
+      btn.style.backgroundColor = "";
       btn.disabled = false;
     }, 2000);
-    
   } catch (error) {
-    console.error('❌ Error en acción 1:', error);
-    btn.textContent = '❌ Error';
-    btn.style.backgroundColor = '#e74c3c';
-    showNotification('Error al ejecutar acción', 'error');
-    
+    console.error("❌ Error en acción 1:", error);
+    btn.textContent = "❌ Error";
+    btn.style.backgroundColor = "#e74c3c";
+    showNotification("Error al ejecutar acción", "error");
+
     setTimeout(() => {
       btn.textContent = originalText;
-      btn.style.backgroundColor = '';
+      btn.style.backgroundColor = "";
       btn.disabled = false;
     }, 3000);
   }
@@ -202,7 +213,7 @@ async function tuModuloAccion1() {
  * Exportar datos del módulo
  */
 async function tuModuloExportar() {
-  console.log('📊 Exportando datos de tu_modulo...');
+  console.log("📊 Exportando datos de tu_modulo...");
   // Tu lógica de exportación aquí
 }
 
@@ -213,53 +224,63 @@ async function tuModuloExportar() {
  * IMPORTANTE: Esta función debe poder llamarse múltiples veces sin causar problemas
  */
 function initializeTuModuloEventListeners() {
-  console.log('🔧 Inicializando event listeners de tu_modulo con event delegation...');
-  
+  console.log(
+    "🔧 Inicializando event listeners de tu_modulo con event delegation..."
+  );
+
   // Protección contra inicialización múltiple
   if (!document.body.dataset.tuModuloListenersAttached) {
-    
     // Event delegation para clicks
-    document.body.addEventListener('click', function(e) {
+    document.body.addEventListener("click", function (e) {
       const target = e.target;
-      
+
       // Acción 1
-      if (target.id === 'tu-modulo-btn-accion1' || target.closest('#tu-modulo-btn-accion1')) {
+      if (
+        target.id === "tu-modulo-btn-accion1" ||
+        target.closest("#tu-modulo-btn-accion1")
+      ) {
         e.preventDefault();
-        console.log('🎯 Click en btn-accion1 detectado');
+        console.log("🎯 Click en btn-accion1 detectado");
         tuModuloAccion1();
         return;
       }
-      
+
       // Acción 2
-      if (target.id === 'tu-modulo-btn-accion2' || target.closest('#tu-modulo-btn-accion2')) {
+      if (
+        target.id === "tu-modulo-btn-accion2" ||
+        target.closest("#tu-modulo-btn-accion2")
+      ) {
         e.preventDefault();
-        console.log('🎯 Click en btn-accion2 detectado');
+        console.log("🎯 Click en btn-accion2 detectado");
         tuModuloAccion2();
         return;
       }
-      
+
       // Exportar
-      if (target.id === 'tu-modulo-btn-export' || target.closest('#tu-modulo-btn-export')) {
+      if (
+        target.id === "tu-modulo-btn-export" ||
+        target.closest("#tu-modulo-btn-export")
+      ) {
         e.preventDefault();
-        console.log('🎯 Click en btn-export detectado');
+        console.log("🎯 Click en btn-export detectado");
         tuModuloExportar();
         return;
       }
     });
-    
+
     // Event delegation para cambios (selects, inputs, etc.)
-    document.body.addEventListener('change', function(e) {
-      if (e.target.id === 'tu-modulo-select-filtro') {
-        console.log('🎯 Cambio en filtro detectado');
+    document.body.addEventListener("change", function (e) {
+      if (e.target.id === "tu-modulo-select-filtro") {
+        console.log("🎯 Cambio en filtro detectado");
         loadTuModuloData();
       }
     });
-    
-    document.body.dataset.tuModuloListenersAttached = 'true';
-    console.log('✅ Event delegation configurado para tu_modulo');
+
+    document.body.dataset.tuModuloListenersAttached = "true";
+    console.log("✅ Event delegation configurado para tu_modulo");
   }
-  
-  console.log('✅ Inicialización de event listeners de tu_modulo completada');
+
+  console.log("✅ Inicialización de event listeners de tu_modulo completada");
 }
 
 // ====== Exponer Funciones Globalmente (CRÍTICO) ======
@@ -276,11 +297,16 @@ window.loadTuModuloData = loadTuModuloData;
 // ====== Auto-inicialización ======
 
 // Ejecutar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', initializeTuModuloEventListeners);
+document.addEventListener("DOMContentLoaded", initializeTuModuloEventListeners);
 
 // También ejecutar inmediatamente si el DOM ya está listo (para scripts defer)
-if (document.readyState === 'interactive' || document.readyState === 'complete') {
-  console.log('📦 DOM ya está listo, ejecutando initializeTuModuloEventListeners inmediatamente');
+if (
+  document.readyState === "interactive" ||
+  document.readyState === "complete"
+) {
+  console.log(
+    "📦 DOM ya está listo, ejecutando initializeTuModuloEventListeners inmediatamente"
+  );
   initializeTuModuloEventListeners();
 }
 
@@ -289,12 +315,12 @@ if (document.readyState === 'interactive' || document.readyState === 'complete')
 /**
  * Mostrar notificaciones al usuario
  */
-function showNotification(message, type = 'info') {
-  const existingNotification = document.querySelector('.notification');
+function showNotification(message, type = "info") {
+  const existingNotification = document.querySelector(".notification");
   if (existingNotification) existingNotification.remove();
-  
-  const notification = document.createElement('div');
-  notification.className = 'notification';
+
+  const notification = document.createElement("div");
+  notification.className = "notification";
   notification.style.cssText = `
     position: fixed;
     top: 20px;
@@ -307,14 +333,14 @@ function showNotification(message, type = 'info') {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     animation: slideIn 0.3s ease;
   `;
-  
-  if (type === 'success') notification.style.backgroundColor = '#27ae60';
-  else if (type === 'error') notification.style.backgroundColor = '#e74c3c';
-  else notification.style.backgroundColor = '#3498db';
-  
+
+  if (type === "success") notification.style.backgroundColor = "#27ae60";
+  else if (type === "error") notification.style.backgroundColor = "#e74c3c";
+  else notification.style.backgroundColor = "#3498db";
+
   notification.textContent = message;
   document.body.appendChild(notification);
-  
+
   setTimeout(() => {
     if (notification.parentNode) notification.remove();
   }, 4000);
@@ -364,65 +390,66 @@ def api_tu_modulo_accion1():
 
 ```javascript
 // Agregar función para mostrar tu módulo
-window.mostrarTuModulo = function() {
-    try {
-        console.log('📦 Cargando Tu Módulo...');
-        
-        // Activar botón de navegación
-        const navButton = document.getElementById('tu-categoria');
-        if (navButton) {
-            navButton.classList.add('active');
-            document.querySelectorAll('.nav-button').forEach(btn => {
-                if (btn.id !== 'tu-categoria') btn.classList.remove('active');
-            });
-        }
-        
-        // Ocultar otros contenedores
-        if (typeof window.hideAllMaterialContainers === 'function') {
-            window.hideAllMaterialContainers();
-        }
-        
-        // Mostrar contenedores necesarios
-        const materialContainer = document.getElementById('material-container');
-        const tuCategoriaContent = document.getElementById('tu-categoria-content');
-        
-        if (materialContainer) materialContainer.style.display = 'block';
-        if (tuCategoriaContent) tuCategoriaContent.style.display = 'block';
-        
-        // Obtener contenedor único
-        const containerId = 'tu-modulo-unique-container';
-        const container = document.getElementById(containerId);
-        
-        if (!container) {
-            console.error('❌ Contenedor no existe:', containerId);
-            return;
-        }
-        
-        container.style.display = 'block';
-        container.style.opacity = '1';
-        
-        // Cargar contenido dinámico
-        if (typeof window.cargarContenidoDinamico === 'function') {
-            window.cargarContenidoDinamico(containerId, '/tu-modulo-ajax', () => {
-                // Inicializar event listeners después de cargar
-                console.log('📦 Contenido de Tu Módulo cargado, inicializando listeners...');
-                
-                if (typeof window.initializeTuModuloEventListeners === 'function') {
-                    window.initializeTuModuloEventListeners();
-                } else {
-                    console.warn('⚠️ initializeTuModuloEventListeners no disponible');
-                }
-                
-                // Cargar datos iniciales
-                if (typeof window.loadTuModuloData === 'function') {
-                    window.loadTuModuloData();
-                }
-            });
-        }
-        
-    } catch (e) {
-        console.error('❌ Error en mostrarTuModulo:', e);
+window.mostrarTuModulo = function () {
+  try {
+    console.log("📦 Cargando Tu Módulo...");
+
+    // Activar botón de navegación
+    const navButton = document.getElementById("tu-categoria");
+    if (navButton) {
+      navButton.classList.add("active");
+      document.querySelectorAll(".nav-button").forEach((btn) => {
+        if (btn.id !== "tu-categoria") btn.classList.remove("active");
+      });
     }
+
+    // Ocultar otros contenedores
+    if (typeof window.hideAllMaterialContainers === "function") {
+      window.hideAllMaterialContainers();
+    }
+
+    // Mostrar contenedores necesarios
+    const materialContainer = document.getElementById("material-container");
+    const tuCategoriaContent = document.getElementById("tu-categoria-content");
+
+    if (materialContainer) materialContainer.style.display = "block";
+    if (tuCategoriaContent) tuCategoriaContent.style.display = "block";
+
+    // Obtener contenedor único
+    const containerId = "tu-modulo-unique-container";
+    const container = document.getElementById(containerId);
+
+    if (!container) {
+      console.error("❌ Contenedor no existe:", containerId);
+      return;
+    }
+
+    container.style.display = "block";
+    container.style.opacity = "1";
+
+    // Cargar contenido dinámico
+    if (typeof window.cargarContenidoDinamico === "function") {
+      window.cargarContenidoDinamico(containerId, "/tu-modulo-ajax", () => {
+        // Inicializar event listeners después de cargar
+        console.log(
+          "📦 Contenido de Tu Módulo cargado, inicializando listeners..."
+        );
+
+        if (typeof window.initializeTuModuloEventListeners === "function") {
+          window.initializeTuModuloEventListeners();
+        } else {
+          console.warn("⚠️ initializeTuModuloEventListeners no disponible");
+        }
+
+        // Cargar datos iniciales
+        if (typeof window.loadTuModuloData === "function") {
+          window.loadTuModuloData();
+        }
+      });
+    }
+  } catch (e) {
+    console.error("❌ Error en mostrarTuModulo:", e);
+  }
 };
 ```
 
@@ -431,52 +458,174 @@ window.mostrarTuModulo = function() {
 ## 🚨 Errores Comunes a Evitar
 
 ### ❌ MAL - Event Listeners Directos
+
 ```javascript
 // NO HACER ESTO - No funciona con carga dinámica
-document.getElementById('mi-boton').addEventListener('click', miFuncion);
+document.getElementById("mi-boton").addEventListener("click", miFuncion);
 ```
 
 ### ✅ BIEN - Event Delegation
+
 ```javascript
 // HACER ESTO - Funciona siempre
-document.body.addEventListener('click', function(e) {
-  if (e.target.id === 'mi-boton' || e.target.closest('#mi-boton')) {
+document.body.addEventListener("click", function (e) {
+  if (e.target.id === "mi-boton" || e.target.closest("#mi-boton")) {
     e.preventDefault();
     miFuncion();
   }
 });
 ```
 
+### ❌ MAL - Modales Dentro de Contenedores
+
+```html
+<!-- NO HACER ESTO - Los modales quedan atrapados dentro del contenedor -->
+<div id="mi-modulo-container">
+  <div id="mi-modal" class="modal-overlay">
+    <!-- contenido del modal -->
+  </div>
+</div>
+```
+
+### ✅ BIEN - Mover Modales al Body
+
+```javascript
+// HACER ESTO - Mover modales al body para que se vean correctamente
+function moveModalsToBody() {
+  const modalIds = ["mi-modal", "otro-modal"];
+  modalIds.forEach((modalId) => {
+    const modal = document.getElementById(modalId);
+    if (modal && modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+  });
+}
+
+// Llamar esta función en la inicialización
+function initializeModule() {
+  moveModalsToBody();
+  // ... resto de la inicialización
+}
+```
+
 ### ❌ MAL - Funciones No Expuestas
+
 ```javascript
 // NO HACER ESTO - No accesible desde fuera
 function miFuncion() {
-  console.log('Hola');
+  console.log("Hola");
 }
 ```
 
 ### ✅ BIEN - Funciones Expuestas Globalmente
+
 ```javascript
 // HACER ESTO - Accesible globalmente
 function miFuncion() {
-  console.log('Hola');
+  console.log("Hola");
 }
 window.miFuncion = miFuncion;
 ```
 
 ### ❌ MAL - Inicialización Solo en DOMContentLoaded
+
 ```javascript
 // NO HACER ESTO - No funciona si el DOM ya está listo
-document.addEventListener('DOMContentLoaded', inicializar);
+document.addEventListener("DOMContentLoaded", inicializar);
 ```
 
 ### ✅ BIEN - Inicialización Flexible
+
 ```javascript
 // HACER ESTO - Funciona siempre
-document.addEventListener('DOMContentLoaded', inicializar);
+document.addEventListener("DOMContentLoaded", inicializar);
 
-if (document.readyState === 'interactive' || document.readyState === 'complete') {
+if (
+  document.readyState === "interactive" ||
+  document.readyState === "complete"
+) {
   inicializar();
+}
+```
+
+---
+
+## � Maneejo de Modales en Carga AJAX
+
+### Problema Común
+
+Cuando cargas contenido vía AJAX, los modales quedan dentro del contenedor y no se ven correctamente debido a:
+
+- Problemas de z-index
+- Contenedores con `position: relative` o `overflow: hidden`
+- Modales que no están al nivel del `body`
+
+### Solución: Mover Modales al Body
+
+**1. Crear función para mover modales:**
+
+```javascript
+function moveModalsToBody() {
+  console.log("🔄 Moviendo modales al body...");
+
+  const modalIds = ["mi-modal-1", "mi-modal-2", "mi-modal-3"];
+
+  let movedCount = 0;
+
+  modalIds.forEach((modalId) => {
+    const modal = document.getElementById(modalId);
+    if (modal && modal.parentElement !== document.body) {
+      console.log(`📦 Moviendo modal ${modalId} al body`);
+      document.body.appendChild(modal);
+      movedCount++;
+    }
+  });
+
+  if (movedCount > 0) {
+    console.log(`✅ ${movedCount} modales movidos al body`);
+  }
+}
+
+// Exponer globalmente
+window.moveModalsToBody = moveModalsToBody;
+```
+
+**2. Llamar en la inicialización:**
+
+```javascript
+function initializeModule() {
+  // IMPORTANTE: Mover modales ANTES de inicializar listeners
+  moveModalsToBody();
+
+  // Luego inicializar event listeners
+  initializeEventListeners();
+}
+```
+
+**3. Estilos CSS requeridos para modales:**
+
+```css
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  justify-content: center;
+  align-items: center;
+  z-index: 10000; /* Muy importante */
+}
+
+.modal-content {
+  background: #34334e;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90%;
+  padding: 20px;
+  overflow: auto;
 }
 ```
 
@@ -485,6 +634,7 @@ if (document.readyState === 'interactive' || document.readyState === 'complete')
 ## 🎨 Convenciones de Nombres
 
 ### IDs de Elementos HTML
+
 ```
 [modulo]-[elemento]-[accion]
 
@@ -496,6 +646,7 @@ Ejemplos:
 ```
 
 ### Funciones JavaScript
+
 ```
 [modulo][Accion]
 
@@ -507,6 +658,7 @@ Ejemplos:
 ```
 
 ### Variables Globales
+
 ```
 [modulo][Descripcion]
 
@@ -517,6 +669,7 @@ Ejemplos:
 ```
 
 ### Endpoints API
+
 ```
 /api/[modulo]/[accion]
 
@@ -531,27 +684,31 @@ Ejemplos:
 ## 🔍 Testing y Debugging
 
 ### 1. Verificar Funciones Expuestas
+
 Ejecuta en la consola del navegador:
+
 ```javascript
-console.log('Funciones expuestas:', {
+console.log("Funciones expuestas:", {
   inicializar: typeof window.initializeTuModuloEventListeners,
   accion1: typeof window.tuModuloAccion1,
-  cargarDatos: typeof window.loadTuModuloData
+  cargarDatos: typeof window.loadTuModuloData,
 });
 ```
 
 ### 2. Verificar Event Listeners
+
 ```javascript
-console.log('Listeners:', document.body.dataset.tuModuloListenersAttached);
+console.log("Listeners:", document.body.dataset.tuModuloListenersAttached);
 ```
 
 ### 3. Test Manual de Botones
+
 ```javascript
 // Simular click
-if (typeof window.tuModuloAccion1 === 'function') {
+if (typeof window.tuModuloAccion1 === "function") {
   window.tuModuloAccion1();
 } else {
-  console.error('Función no disponible');
+  console.error("Función no disponible");
 }
 ```
 
@@ -562,17 +719,17 @@ if (typeof window.tuModuloAccion1 === 'function') {
 Usa emojis para facilitar la identificación en la consola:
 
 ```javascript
-console.log('📦 Cargando...');      // Carga de datos
-console.log('🚀 Ejecutando...');    // Ejecución de función
-console.log('✅ Completado');        // Éxito
-console.log('❌ Error:');            // Error
-console.log('⚠️ Advertencia:');     // Advertencia
-console.log('🎯 Click detectado');   // Evento detectado
-console.log('🔧 Configurando...');   // Configuración
-console.log('🎨 Renderizando...');   // Renderizado visual
-console.log('💾 Guardando...');      // Guardado de datos
-console.log('📊 Exportando...');     // Exportación
-console.log('⏳ Esperando...');      // Espera/retry
+console.log("📦 Cargando..."); // Carga de datos
+console.log("🚀 Ejecutando..."); // Ejecución de función
+console.log("✅ Completado"); // Éxito
+console.log("❌ Error:"); // Error
+console.log("⚠️ Advertencia:"); // Advertencia
+console.log("🎯 Click detectado"); // Evento detectado
+console.log("🔧 Configurando..."); // Configuración
+console.log("🎨 Renderizando..."); // Renderizado visual
+console.log("💾 Guardando..."); // Guardado de datos
+console.log("📊 Exportando..."); // Exportación
+console.log("⏳ Esperando..."); // Espera/retry
 ```
 
 ---
@@ -582,6 +739,7 @@ console.log('⏳ Esperando...');      // Espera/retry
 Ver archivo de referencia: `app/static/js/plan.js` líneas 2167-2233
 
 Este archivo contiene un ejemplo completo de:
+
 - Event delegation correctamente implementado
 - Funciones expuestas globalmente
 - Inicialización flexible
@@ -593,12 +751,14 @@ Este archivo contiene un ejemplo completo de:
 ## 📚 Referencias y Archivos Clave
 
 ### Archivos a Estudiar
+
 1. `app/templates/MaterialTemplate.html` - Contenedor principal y función `cargarContenidoDinamico`
 2. `app/static/js/scriptMain.js` - Orquestador de navegación
 3. `app/static/js/plan.js` - Ejemplo de módulo bien implementado
 4. `app/templates/Control de proceso/Control_produccion_assy.html` - Template de referencia
 
 ### Funciones Críticas del Sistema
+
 - `window.cargarContenidoDinamico(containerId, templatePath, callback)` - Carga contenido vía AJAX
 - `window.hideAllMaterialContainers()` - Oculta todos los contenedores
 - `window.hideAllInformacionBasicaContainers()` - Oculta contenedores de info básica
@@ -634,6 +794,100 @@ Este archivo contiene un ejemplo completo de:
 
 ---
 
+---
+
+## 📖 Documentación Adicional
+
+### Problemas Resueltos
+
+- **Modales no visibles en carga AJAX:** Ver `DOCUMENTACION_PROBLEMA_MODALES.md` para análisis completo del problema y solución implementada
+
+### Casos de Estudio
+
+- **Control de Producción ASSY:** Implementación completa de modales dinámicos con event delegation
+
+---
+
 **Última actualización:** Octubre 2025  
-**Versión del documento:** 1.0  
+**Versión del documento:** 1.1  
 **Basado en:** Sistema MES ILSAN LOCAL - Plan Main Module
+
+---
+
+## 🎭 ACTUALIZACIÓN: Mejor Práctica para Modales
+
+### ✅ Solución Definitiva: Crear Modales Dinámicamente en JavaScript
+
+**IMPORTANTE**: NO incluir modales en el HTML. Créalos dinámicamente en JavaScript para evitar problemas de z-index y posicionamiento.
+
+### Implementación
+
+**1. Crear función en tu módulo JS:**
+
+```javascript
+function createModalsInBody() {
+  console.log("🏗️ Creando modales dinámicamente...");
+
+  // Modal 1
+  if (!document.getElementById("mi-modal-1")) {
+    const modal = document.createElement("div");
+    modal.id = "mi-modal-1";
+    modal.className = "modal-overlay";
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>Mi Modal</h3>
+        <form id="mi-form">
+          <!-- Contenido del formulario -->
+          <button type="submit">Guardar</button>
+          <button type="button" id="mi-modal-close">Cerrar</button>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  console.log("✅ Modales creados");
+}
+
+// Exponer globalmente
+window.createModalsInBody = createModalsInBody;
+```
+
+**2. Llamar en initializeEventListeners:**
+
+```javascript
+function initializeEventListeners() {
+  // Crear modales SIEMPRE (antes de verificar si ya se inicializó)
+  createModalsInBody();
+
+  // Protección contra inicialización múltiple
+  if (document.body.dataset.miModuloListenersAttached) {
+    return;
+  }
+
+  // Configurar event listeners...
+  document.body.dataset.miModuloListenersAttached = "true";
+}
+```
+
+**3. En el HTML, solo comentario:**
+
+```html
+<body id="mi-modulo-container">
+  <!-- Contenido principal -->
+
+  <!-- Los modales se crean dinámicamente en JavaScript -->
+</body>
+```
+
+### Ventajas
+
+- ✅ Los modales siempre están al nivel del `body`
+- ✅ No hay problemas de z-index
+- ✅ Funciona perfectamente con carga AJAX
+- ✅ Los modales se recrean si es necesario
+- ✅ Código más limpio y mantenible
+
+### Ejemplo Completo
+
+Ver `app/static/js/plan.js` función `createModalsInBody()` para un ejemplo completo con múltiples modales.

@@ -5,9 +5,6 @@
   <title>Plan Main</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/index-styles.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="{{ url_for('static', filename='js/plan.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/index-functions.js') }}" defer></script>
   <style>
     /* Fallback por si no cargan los estilos */
     body { background: #32323E; color: lightgray; font-family: sans-serif; }
@@ -73,153 +70,92 @@
     </table>
   </div>
 
-  <!-- Modal crear -->
-  <div id="plan-modal" class="modal-overlay">
-    <div id="plan-modal-content">
-      <h3>Registrar Plan</h3>
-      <form id="plan-form">
-        <label>Fecha:</label>
-        <input type="date" name="working_date" required class="plan-input">
-
-        <label>Part No:</label>
-        <input type="text" name="part_no" required class="plan-input">
-
-        <label>Line:</label>
-        <input type="text" name="line" required class="plan-input">
-
-        <label>Turno:</label>
-        <select name="turno" class="plan-input">
-          <option value="DIA" selected>DIA</option>
-          <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
-          <option value="NOCHE">NOCHE</option>
-        </select>
-
-        <label>Plan Count:</label>
-        <input type="number" name="plan_count" value="0" class="plan-input">
-
-        <label>WO Code:</label>
-        <input type="text" name="wo_code" class="plan-input">
-
-        <label>PO Code:</label>
-        <input type="text" name="po_code" class="plan-input">
-
-        <div class="form-actions">
-          <button type="submit" class="plan-btn plan-btn-add">Registrar</button>
-          <button type="button" id="plan-closeModalBtn" class="plan-btn">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal Editar -->
-  <div id="plan-editModal" class="modal-overlay">
-    <div id="plan-modal-content">
-      <h3>Editar Plan</h3>
-      <form id="plan-editForm">
-        <input type="hidden" name="lot_no">
-
-        <label>Turno:</label>
-        <select name="turno" class="plan-input">
-          <option value="DIA">DIA</option>
-          <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
-          <option value="NOCHE">NOCHE</option>
-        </select>
-
-        <label>Plan Count:</label>
-        <input type="number" name="plan_count" class="plan-input">
-
-        <label>WO Code:</label>
-        <input type="text" name="wo_code" class="plan-input">
-
-        <label>PO Code:</label>
-        <input type="text" name="po_code" class="plan-input">
-
-        <label>Line:</label>
-        <input type="text" name="line" class="plan-input">
-
-        <div class="form-actions-with-gap">
-          <div>
-            <button type="submit" class="plan-btn plan-btn-add">Guardar</button>
-            <button type="button" class="plan-btn">Cerrar</button>
-          </div>
-          <button type="button" id="plan-cancelBtn" class="plan-btn plan-btn-danger">Cancelar plan</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal Work Orders será generado dinámicamente por JavaScript -->
-
-  <!-- Modal Reprogramar -->
-  <div id="reschedule-modal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="reschedule-title">Reprogramar Planes</h3>
-        <button id="reschedule-closeModalBtn" class="btn-close-line">&times;</button>
-      </div>
-
-      <div class="reschedule-filters">
-        <label>Fecha Desde:</label>
-        <input type="date" id="reschedule-date-from" class="plan-input">
-        
-        <label>Fecha Hasta:</label>
-        <input type="date" id="reschedule-date-to" class="plan-input">
-        
-        <label>Nueva Fecha:</label>
-        <input type="date" id="reschedule-new-date" class="plan-input" required>
-        
-        <button id="reschedule-search-btn" class="plan-btn reschedule-search-btn">Buscar Pendientes</button>
-        <button id="reschedule-submit-btn" class="plan-btn plan-btn-add">Reprogramar Seleccionados</button>
-      </div>
-
-      <div class="modal-table-container">
-        <table class="modal-table">
-          <thead>
-            <tr>
-              <th>
-                <input type="checkbox" id="reschedule-select-all">
-              </th>
-              <th>LOT NO</th>
-              <th>Fecha Actual</th>
-              <th>Part No</th>
-              <th>Line</th>
-              <th>Plan Count</th>
-              <th>Input</th>
-              <th>Pendiente</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="reschedule-tableBody"></tbody>
-        </table>
-      </div>
-
-      <div class="modal-status">
-        <span id="reschedule-status">Seleccione una fecha para buscar planes con input pendiente</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Script inline para asegurar inicialización de listeners -->
+  <!-- Los modales se crean dinámicamente en JavaScript (ver plan.js - createModalsInBody()) -->
+  
+  <!-- Script inline para cargar dependencias y asegurar inicialización -->
   <script>
-    // Ejecutar inicialización cuando el contenido esté listo
     (function() {
       console.log('📝 Script inline de Control_produccion_assy ejecutándose...');
       
-      function tryInitialize() {
-        if (typeof window.initializePlanEventListeners === 'function') {
-          console.log('✅ Llamando a initializePlanEventListeners desde script inline');
-          window.initializePlanEventListeners();
-        } else {
-          console.log('⏳ initializePlanEventListeners aún no disponible, reintentando en 100ms...');
-          setTimeout(tryInitialize, 100);
+      // Función para cargar un script dinámicamente
+      function loadScript(src) {
+        return new Promise((resolve, reject) => {
+          // Verificar si el script ya está cargado
+          const existingScript = document.querySelector(`script[src="${src}"]`);
+          if (existingScript) {
+            console.log(`✅ Script ya cargado: ${src}`);
+            resolve();
+            return;
+          }
+          
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = () => {
+            console.log(`✅ Script cargado: ${src}`);
+            resolve();
+          };
+          script.onerror = () => {
+            console.error(`❌ Error cargando script: ${src}`);
+            reject(new Error(`Failed to load ${src}`));
+          };
+          document.head.appendChild(script);
+        });
+      }
+      
+      // Función para inicializar el módulo
+      async function initializeModule() {
+        try {
+          // Cargar axios si no está disponible
+          if (typeof axios === 'undefined') {
+            console.log('📦 Cargando axios...');
+            await loadScript('https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js');
+          }
+          
+          // Cargar plan.js si no está disponible
+          if (typeof window.initializePlanEventListeners === 'undefined' || typeof window.loadPlans === 'undefined') {
+            console.log('📦 Cargando plan.js...');
+            await loadScript('{{ url_for("static", filename="js/plan.js") }}');
+          }
+          
+          // Cargar index-functions.js si es necesario
+          if (typeof window.exportarExcel === 'undefined') {
+            console.log('📦 Cargando index-functions.js...');
+            await loadScript('{{ url_for("static", filename="js/index-functions.js") }}');
+          }
+          
+          // Esperar un momento para asegurar que todo esté listo
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // IMPORTANTE: Crear modales dinámicamente en el body primero
+          if (typeof window.createModalsInBody === 'function') {
+            console.log('🏗️ Creando modales en el body...');
+            window.createModalsInBody();
+          }
+          
+          // Inicializar event listeners
+          if (typeof window.initializePlanEventListeners === 'function') {
+            console.log('✅ Inicializando event listeners de Plan Main ASSY');
+            window.initializePlanEventListeners();
+            
+            // Cargar datos iniciales
+            if (typeof window.loadPlans === 'function') {
+              console.log('📊 Cargando planes iniciales...');
+              window.loadPlans();
+            }
+          } else {
+            console.error('❌ initializePlanEventListeners no disponible después de cargar scripts');
+          }
+          
+        } catch (error) {
+          console.error('❌ Error inicializando módulo Plan Main ASSY:', error);
         }
       }
       
-      // Intentar inicializar inmediatamente
+      // Ejecutar inicialización
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', tryInitialize);
+        document.addEventListener('DOMContentLoaded', initializeModule);
       } else {
-        tryInitialize();
+        initializeModule();
       }
     })();
   </script>
