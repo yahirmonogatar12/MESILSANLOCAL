@@ -475,6 +475,9 @@ def get_connection():
     from .config_mysql import get_mysql_connection
     return get_mysql_connection()
 
+# Alias para compatibilidad
+get_db_connection = get_connection
+
 # === FUNCIONES DE USUARIOS ===
 
 def crear_usuario(username, password_hash, area=''):
