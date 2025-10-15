@@ -1,3 +1,9 @@
+import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv()
+
 from app.routes import app
 from app.smt_routes_clean import register_smt_routes
 from app.api_po_wo import registrar_rutas_po_wo

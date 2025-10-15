@@ -5,13 +5,13 @@ Sistema completo de gestión de usuarios, roles y permisos
 
 from flask import Blueprint, request, jsonify, render_template, session, send_file, redirect, url_for, flash
 from .auth_system import AuthSystem
-from .db import get_db_connection
+from .db_mysql import get_db_connection
 from datetime import datetime, timedelta
 import json
 import traceback
 import tempfile
 import os
-import sqlite3
+import mysql.connector
 import pandas as pd
 import io
 import time
@@ -27,9 +27,9 @@ def execute_with_retry(operation, max_retries=3, retry_delay=0.1):
     for attempt in range(max_retries):
         try:
             return operation()
-        except sqlite3.OperationalError as e:
-            if "database is locked" in str(e).lower() and attempt < max_retries - 1:
-                print(f" Intento {attempt + 1}/{max_retries}: Base de datos bloqueada, reintentando en {retry_delay}s...")
+        except mysql.connector.Error as e:
+            if "lock" in str(e).lower() and attempt < max_retries - 1:
+                print(f"⏳ Intento {attempt + 1}/{max_retries}: Base de datos ocupada, reintentando en {retry_delay}s...")
                 time.sleep(retry_delay)
                 retry_delay *= 2  # Backoff exponencial
                 continue
@@ -1661,8 +1661,8 @@ def crear_rol():
             print(f"Error en transacción creando rol: {e}")
             return jsonify({'error': f'Error creando rol: {str(e)}'}), 500
             
-    except sqlite3.OperationalError as e:
-        if "database is locked" in str(e).lower():
+    except mysql.connector.Error as e:
+        if "lock" in str(e).lower():
             print(f"Base de datos bloqueada creando rol: {e}")
             return jsonify({'error': 'Base de datos temporalmente ocupada, inténtalo de nuevo'}), 503
         else:
@@ -1773,8 +1773,8 @@ def eliminar_rol(rol_id):
             print(f"❌ Error en transacción eliminando rol: {e}")
             return jsonify({'error': f'Error eliminando rol: {str(e)}'}), 500
             
-    except sqlite3.OperationalError as e:
-        if "database is locked" in str(e).lower():
+    except mysql.connector.Error as e:
+        if "lock" in str(e).lower():
             print(f"🔒 Base de datos bloqueada eliminando rol {rol_id}: {e}")
             return jsonify({'error': 'Base de datos temporalmente ocupada, inténtalo de nuevo'}), 503
         else:

@@ -7,14 +7,13 @@ import hashlib
 import secrets
 import json
 import os
-import sqlite3
 import threading
 import time
 from functools import wraps
 from flask import session, jsonify, request, redirect, url_for, g, current_app
 from datetime import datetime, timedelta, timezone
 import traceback
-from .db import get_db_connection
+from .db_mysql import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class AuthSystem:
