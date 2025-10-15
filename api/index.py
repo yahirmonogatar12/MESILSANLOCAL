@@ -32,5 +32,5 @@ if 'api_raw' not in app.blueprints:
 def health():
     return {"status": "ok", "message": "ILSAN MES API Running"}, 200
 
-# Para Vercel - exportar la app
-handler = app
+# NO usar 'handler' - Vercel busca 'app' directamente
+# La variable 'app' es suficiente para Vercel
