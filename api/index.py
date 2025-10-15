@@ -32,5 +32,17 @@ if 'api_raw' not in app.blueprints:
 def health():
     return {"status": "ok", "message": "ILSAN MES API Running"}, 200
 
+@app.get("/debug/env")
+def debug_env():
+    """Endpoint temporal para verificar variables de entorno en Vercel"""
+    return {
+        "mysql_host": os.getenv('MYSQL_HOST', 'NOT_SET'),
+        "mysql_port": os.getenv('MYSQL_PORT', 'NOT_SET'),
+        "mysql_database": os.getenv('MYSQL_DATABASE', 'NOT_SET'),
+        "mysql_user": os.getenv('MYSQL_USER', 'NOT_SET'),
+        "mysql_password_set": "YES" if os.getenv('MYSQL_PASSWORD') else "NO",
+        "mysql_password_length": len(os.getenv('MYSQL_PASSWORD', ''))
+    }, 200
+
 # NO usar 'handler' - Vercel busca 'app' directamente
 # La variable 'app' es suficiente para Vercel

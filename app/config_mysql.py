@@ -20,14 +20,18 @@ except ImportError:
 def get_mysql_connection_string():
     """Construir cadena de conexión para MySQL"""
     if not MYSQL_AVAILABLE:
-        print(" MySQL no disponible - retornando None")
+        print("❌ MySQL no disponible - retornando None")
         return None
         
     host = os.getenv('MYSQL_HOST', 'localhost')
     port = int(os.getenv('MYSQL_PORT', '3306'))
     database = os.getenv('MYSQL_DATABASE', '')
-    username = os.getenv('MYSQL_USER', '')
+    # Soportar ambos nombres: MYSQL_USER y MYSQL_USERNAME
+    username = os.getenv('MYSQL_USER') or os.getenv('MYSQL_USERNAME', '')
     password = os.getenv('MYSQL_PASSWORD', '')
+    
+    # Debug: imprimir configuración (sin password)
+    print(f"🔧 MySQL Config: host={host}, port={port}, db={database}, user={username}")
     
     return {
         'host': host,
@@ -47,7 +51,7 @@ def get_mysql_connection_string():
 MYSQL_CONFIG = {
     'host': os.getenv('MYSQL_HOST', 'localhost'),
     'port': int(os.getenv('MYSQL_PORT', '3306')),
-    'user': os.getenv('MYSQL_USER', ''),
+    'user': os.getenv('MYSQL_USER') or os.getenv('MYSQL_USERNAME', ''),
     'passwd': os.getenv('MYSQL_PASSWORD', ''),
     'db': os.getenv('MYSQL_DATABASE', ''),
     'charset': 'utf8mb4',
