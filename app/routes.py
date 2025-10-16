@@ -2338,6 +2338,47 @@ def guardar_control_almacen():
         
     except Exception as e:
         print(f"Error al guardar control de almacén: {str(e)}")
+
+
+@app.route('/obtener_secuencial_lote_interno', methods=['POST'])
+@login_requerido
+def obtener_secuencial_lote_interno():
+    """Obtener el siguiente secuencial para lote interno del día"""
+    try:
+        data = request.get_json()
+        fecha = data.get('fecha', '')  # Formato: DD.MM.YYYY
+        
+        if not fecha:
+            return jsonify({'siguiente_secuencial': 1}), 200
+        
+        # Conectar a la base de datos
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        
+        try:
+            # Obtener el máximo secuencial para esta fecha en control_almacen
+            # Buscar lotes internos que coincidan con el patrón DD.MM.YYYY.XXXX
+            cursor.execute('''
+                SELECT MAX(CAST(SUBSTRING_INDEX(numero_lote_material, '.', -1) AS UNSIGNED)) as max_seq
+                FROM control_almacen
+                WHERE numero_lote_material LIKE %s
+            ''', (f'{fecha}.%',))
+            
+            result = cursor.fetchone()
+            max_seq = result['max_seq'] if result and result['max_seq'] else 0
+            siguiente_secuencial = max_seq + 1
+            
+            conn.close()
+            return jsonify({'siguiente_secuencial': siguiente_secuencial}), 200
+            
+        except Exception as e:
+            print(f"Error consultando secuencial: {e}")
+            conn.close()
+            return jsonify({'siguiente_secuencial': 1}), 200
+            
+    except Exception as e:
+        print(f"Error en obtener_secuencial_lote_interno: {str(e)}")
+        return jsonify({'error': str(e), 'siguiente_secuencial': 1}), 500
         return jsonify({'success': False, 'error': f'Error al guardar: {str(e)}'}), 500
 
 @app.route('/consultar_control_almacen', methods=['GET'])

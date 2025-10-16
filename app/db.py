@@ -323,6 +323,9 @@ def agregar_control_material_almacen(data):
             # Obtener fecha_registro con hora de México
             fecha_registro_mexico = obtener_fecha_hora_mexico()
             
+            # *** NUEVO: Usar lote_interno si fue generado, sino usar numero_lote_material ***
+            numero_lote_final = data.get('lote_interno') or data.get('numero_lote_material')
+            
             params = (
                 data.get('forma_material'),
                 data.get('cliente'),
@@ -332,7 +335,7 @@ def agregar_control_material_almacen(data):
                 fecha_recibo,  # Con hora de México
                 fecha_fabricacion,  # Con hora de México
                 data.get('cantidad_actual', 0),
-                data.get('numero_lote_material'),
+                numero_lote_final,  # Usar lote interno si está disponible
                 data.get('codigo_material_recibido'),
                 data.get('numero_parte'),
                 data.get('cantidad_estandarizada'),
