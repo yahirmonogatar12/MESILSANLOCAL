@@ -16,6 +16,16 @@ import traceback
 from .db_mysql import get_db_connection
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Importar MySQLdb para cursores de diccionario
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+    import MySQLdb
+    MYSQLDB_AVAILABLE = True
+except ImportError:
+    MYSQLDB_AVAILABLE = False
+    print("MySQLdb no disponible para auth_system")
+
 class AuthSystem:
     def __init__(self, app=None):
         self.app = app
@@ -608,7 +618,7 @@ class AuthSystem:
     def verificar_usuario(self, username, password):
         """Verificar credenciales de usuario con protección contra ataques"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         
         try:
             # Verificar si el usuario está bloqueado
@@ -625,7 +635,7 @@ class AuthSystem:
                 return False, "Usuario no encontrado"
             
             # Verificar si está bloqueado
-            if usuario['bloqueado_hasta']:
+            if usuario['bloqueado_hasta'] and isinstance(usuario['bloqueado_hasta'], str):
                 bloqueado_hasta = datetime.fromisoformat(usuario['bloqueado_hasta'])
                 ahora_mexico = AuthSystem.get_mexico_time().replace(tzinfo=None)
                     
