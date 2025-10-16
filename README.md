@@ -31,14 +31,21 @@ Notas:
 
 ## Ejecutar en local
 
-- Método recomendado (runner local):
-  - Ejecuta `run.py` en la carpeta `MESILSANLOCAL`.
-  - Este archivo registra todas las rutas/blueprints necesarios y expone endpoints de health/debug.
+1. **Configurar variables de entorno:**
+   - Copia `.env.example` a `.env` en la carpeta `MESILSANLOCAL`.
+   - Completa los valores de MySQL y `SECRET_KEY`.
 
-- Entrypoint alternativo (Vercel):
-  - `api/index.py` expone la app para despliegue serverless.
+2. **Método recomendado (runner local):**
+   - Ejecuta `run.py` en la carpeta `MESILSANLOCAL`.
+   - Este archivo registra todas las rutas/blueprints necesarios y expone endpoints de health/debug.
 
-La app por defecto inicia en `http://127.0.0.1:5000/` (o 0.0.0.0:5000), con `/` devolviendo estado y `/login` como inicio de sesión.
+3. **Entrypoint alternativo (Vercel):**
+   - `api/index.py` expone la app para despliegue serverless.
+
+La app por defecto inicia en `http://127.0.0.1:5000/` (o 0.0.0.0:5000):
+- `/login` — página de inicio de sesión.
+- `/inicio` — hub/landing page (después de autenticar) con todas las aplicaciones disponibles.
+- `/ILSAN-ELECTRONICS` — módulo MES principal (material, inventarios, BOM, producción).
 
 ## Servicio de Impresión Zebra (opcional)
 
@@ -61,6 +68,46 @@ Scripts .bat para instalar/desinstalar el servicio:
 
 Asegúrate de tener instalados los paquetes necesarios en Windows:
 - `flask`, `flask-cors`, `pywin32`
+
+## Hub de aplicaciones (Landing Page)
+
+Después de autenticarse, todos los usuarios son redirigidos a `/inicio`, un hub centralizado que muestra las aplicaciones disponibles según su rol y permisos.
+
+**Ubicación:**
+- Endpoint: `/inicio` en `app/routes.py` (línea ~300)
+- Template: `app/templates/landing.html`
+
+**Características:**
+- **Filtrado por permisos**: Cada app card se muestra solo si el usuario tiene el permiso correspondiente.
+  - Material Management: requiere permiso `'material'`
+  - Control de Defectos: requiere permiso `'calidad'`
+  - Portal IT: requiere permiso `'admin'`
+  - Admin Panel: requiere permiso `'admin'`
+  
+- **Diseño responsivo**: Cards en grid auto-fit para desktop, stack vertical en móvil.
+- **Animaciones**: Fade-in en cascada (0.1s-0.4s) para cada card.
+- **Badges**: "NUEVO" para recién agregadas, "PROXIMAMENTE" para en desarrollo.
+- **Navbar personalizada**: Muestra nombre del usuario, ícono de avatar, botón logout.
+
+**Apps disponibles en el hub:**
+1. **Material Management** → enlace a `/ILSAN-ELECTRONICS`
+2. **Control de Defectos** → enlace a `/defect-management` (en desarrollo)
+3. **Portal IT** → enlace a `/tickets` (en desarrollo)
+4. **Admin Panel** → enlace a `/admin/panel`
+
+**Cómo agregar una nueva aplicación al hub:**
+
+1. Crear la blueprint o módulo (ej. `app/defect_api.py`)
+2. Crear endpoint raíz (ej. `/defect-management`)
+3. Agregar permiso en `auth_system.py` si es necesario (ej. `'calidad'`)
+4. Agregar usuario-permiso en BD si aplica
+5. Actualizar `landing.html` con un nuevo card (copiar estructura de un card existente y cambiar icono/enlace)
+6. Actualizar endpoint `/inicio` en `routes.py` para incluir la app en el contexto (opcional, si necesita datos dinámicos)
+
+**Flujo de autenticación actualizado:**
+```
+/login → POST (valida credenciales) → /inicio (hub) → [MES|Defects|IT|Admin] → Módulo específico
+```
 
 ## Mapa de módulos y endpoints principales
 

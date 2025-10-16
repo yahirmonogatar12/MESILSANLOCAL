@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ILSAN Hub - Centro de Aplicaciones</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --light-bg: #ecf0f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .navbar-hub {
+            background: rgba(44, 62, 80, 0.95);
+            padding: 1rem 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar-hub .container-fluid {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-hub .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .navbar-hub .brand i {
+            font-size: 1.8rem;
+            color: #3498db;
+        }
+
+        .navbar-hub .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #ecf0f1;
+            font-size: 0.95rem;
+        }
+
+        .navbar-hub .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            border: 2px solid #3498db;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .logout-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+            color: white;
+        }
+
+        /* Main Content */
+        .hub-container {
+            flex: 1;
+            padding: 3rem 1rem;
+        }
+
+        .hub-title {
+            text-align: center;
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .hub-title h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .hub-title p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        /* Aplicaciones Grid */
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .app-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .app-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .app-card.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+            background: #f5f5f5;
+        }
+
+        .app-header {
+            padding: 2rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-height: 120px;
+        }
+
+        .app-header.mes-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        }
+
+        .app-header.defect-header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .app-header.tickets-header {
+            background: linear-gradient(135deg, #f39c12 0%, #d68910 100%);
+        }
+
+        .app-header.admin-header {
+            background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%);
+        }
+
+        .app-icon {
+            font-size: 2.5rem;
+            opacity: 0.9;
+        }
+
+        .app-header-text h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .app-header-text p {
+            font-size: 0.9rem;
+            opacity: 0.85;
+            margin: 0.25rem 0 0 0;
+        }
+
+        .app-body {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-description {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .app-features {
+            list-style: none;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .app-features li {
+            padding: 0.4rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .app-features li i {
+            color: var(--secondary-color);
+            font-size: 0.85rem;
+        }
+
+        .app-footer {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: auto;
+        }
+
+        .app-link {
+            flex: 1;
+            padding: 0.75rem;
+            text-align: center;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .app-link:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+            color: white;
+        }
+
+        .app-link.primary {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .app-link.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .app-link.warning {
+            background: linear-gradient(135deg, #f39c12 0%, #d68910 100%);
+        }
+
+        .app-link.success {
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+        }
+
+        .badge-new {
+            display: inline-block;
+            background: #f39c12;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+        }
+
+        .badge-coming {
+            display: inline-block;
+            background: #95a5a6;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 0.5rem;
+        }
+
+        /* Sección de aplicaciones próximas */
+        .coming-soon-section {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .coming-soon-section h3 {
+            color: white;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.3rem;
+        }
+
+        /* Footer */
+        .hub-footer {
+            background: rgba(44, 62, 80, 0.95);
+            color: #ecf0f1;
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.9rem;
+            margin-top: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hub-title h1 {
+                font-size: 1.8rem;
+            }
+
+            .apps-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                padding: 0 1rem;
+            }
+
+            .navbar-hub .user-info {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .app-header {
+                min-height: 100px;
+                padding: 1.5rem;
+            }
+
+            .app-header-text h2 {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            .app-card {
+                background: #2d3436;
+                color: #ecf0f1;
+            }
+
+            .app-description,
+            .app-features {
+                color: #bdc3c7;
+            }
+
+            .app-features li {
+                color: #bdc3c7;
+            }
+        }
+
+        /* Animaciones */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .app-card {
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        .app-card:nth-child(1) { animation-delay: 0.1s; }
+        .app-card:nth-child(2) { animation-delay: 0.2s; }
+        .app-card:nth-child(3) { animation-delay: 0.3s; }
+        .app-card:nth-child(4) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar-hub">
+        <div class="container-fluid" style="padding: 0 2rem;">
+            <a href="/" class="brand">
+                <i class="fas fa-cube"></i>
+                <span>ILSAN Hub</span>
+            </a>
+            <div class="user-info">
+                <span>👋 Bienvenido, <strong>{{ nombre_usuario }}</strong></span>
+                <div class="user-avatar">
+                    {{ nombre_usuario[0].upper() if nombre_usuario else 'U' }}
+                </div>
+                <a href="/logout" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Salir
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="hub-container">
+        <div class="hub-title">
+            <h1>Centro de Aplicaciones ILSAN</h1>
+            <p>Accede a todas las herramientas disponibles según tu rol y permisos</p>
+        </div>
+
+        <div class="apps-grid">
+            <!-- MES - ILSAN Electronics Manufacturing -->
+            {% if 'material' in permisos %}
+            <div class="app-card">
+                <div class="app-header mes-header">
+                    <i class="fas fa-industry app-icon"></i>
+                    <div class="app-header-text">
+                        <h2>ILSAN MES</h2>
+                        <p>Sistema de Manufactura</p>
+                    </div>
+                </div>
+                <div class="app-body">
+                    <p class="app-description">
+                        Gestión integral de materiales, inventarios, BOM, planeación de producción y módulos SMT/IMD.
+                    </p>
+                    <ul class="app-features">
+                        <li><i class="fas fa-check"></i> Control de materiales</li>
+                        <li><i class="fas fa-check"></i> Gestión de inventarios</li>
+                        <li><i class="fas fa-check"></i> Planeación de producción</li>
+                        <li><i class="fas fa-check"></i> Módulos SMT/IMD</li>
+                    </ul>
+                    <div class="app-footer">
+                        <a href="/ILSAN-ELECTRONICS" class="app-link primary">Acceder</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Defect Management (Calidad) -->
+            {% if 'calidad' in permisos or 'admin' in roles %}
+            <div class="app-card">
+                <div class="app-header defect-header">
+                    <i class="fas fa-exclamation-triangle app-icon"></i>
+                    <div class="app-header-text">
+                        <h2>Defect Management</h2>
+                        <p>Control de Defectos <span class="badge-new">NUEVO</span></p>
+                    </div>
+                </div>
+                <div class="app-body">
+                    <p class="app-description">
+                        Sistema especializado para el departamento de calidad. Registra, clasifica, monitorea y resuelve defectos en tiempo real.
+                    </p>
+                    <ul class="app-features">
+                        <li><i class="fas fa-check"></i> Registro de defectos</li>
+                        <li><i class="fas fa-check"></i> Clasificación y análisis</li>
+                        <li><i class="fas fa-check"></i> Seguimiento de acciones</li>
+                        <li><i class="fas fa-check"></i> Reportes de calidad</li>
+                    </ul>
+                    <div class="app-footer">
+                        <a href="/defect-management" class="app-link danger">Acceder</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Portal de Tickets (TI) -->
+            {% if 'admin' in roles %}
+            <div class="app-card">
+                <div class="app-header tickets-header">
+                    <i class="fas fa-ticket-alt app-icon"></i>
+                    <div class="app-header-text">
+                        <h2>Portal de Tickets</h2>
+                        <p>Comunicación con TI <span class="badge-coming">PROXIMAMENTE</span></p>
+                    </div>
+                </div>
+                <div class="app-body">
+                    <p class="app-description">
+                        Plataforma de comunicación interna para reportar incidencias y solicitudes al departamento de TI.
+                    </p>
+                    <ul class="app-features">
+                        <li><i class="fas fa-check"></i> Crear incidencias</li>
+                        <li><i class="fas fa-check"></i> Seguimiento en tiempo real</li>
+                        <li><i class="fas fa-check"></i> Chat integrado</li>
+                        <li><i class="fas fa-check"></i> Base de conocimiento</li>
+                    </ul>
+                    <div class="app-footer">
+                        <button class="app-link warning" disabled title="Disponible próximamente">Próximamente</button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Panel de Administración -->
+            {% if 'admin' in roles %}
+            <div class="app-card">
+                <div class="app-header admin-header">
+                    <i class="fas fa-cogs app-icon"></i>
+                    <div class="app-header-text">
+                        <h2>Administración</h2>
+                        <p>Configuración del Sistema</p>
+                    </div>
+                </div>
+                <div class="app-body">
+                    <p class="app-description">
+                        Gestión avanzada de usuarios, roles, permisos, auditoría y configuración del sistema completo.
+                    </p>
+                    <ul class="app-features">
+                        <li><i class="fas fa-check"></i> Gestión de usuarios</li>
+                        <li><i class="fas fa-check"></i> Control de roles</li>
+                        <li><i class="fas fa-check"></i> Auditoría del sistema</li>
+                        <li><i class="fas fa-check"></i> Configuración avanzada</li>
+                    </ul>
+                    <div class="app-footer">
+                        <a href="/admin/panel" class="app-link success">Acceder</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sección de próximas aplicaciones -->
+        {% if upcoming_apps %}
+        <div class="coming-soon-section">
+            <h3>🚀 Aplicaciones en desarrollo</h3>
+            <div class="apps-grid">
+                {% for app in upcoming_apps %}
+                <div class="app-card disabled">
+                    <div class="app-header">
+                        <i class="fas fa-{{ app.icon }} app-icon"></i>
+                        <div class="app-header-text">
+                            <h2>{{ app.name }} <span class="badge-coming">PRÓXIMAMENTE</span></h2>
+                            <p>{{ app.description }}</p>
+                        </div>
+                    </div>
+                    <div class="app-body">
+                        <p class="app-description">{{ app.long_description }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="hub-footer">
+        <p>&copy; 2025 ILSAN Electronics. Todos los derechos reservados.</p>
+        <p style="font-size: 0.85rem; opacity: 0.7;">Sistema ILSAN v1.0 | Desarrollado internamente</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

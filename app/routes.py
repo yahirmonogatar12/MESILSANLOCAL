@@ -337,21 +337,9 @@ def login():
             session['permisos'] = permisos
             print(f"🔍 Permisos establecidos en sesión para {user}: {permisos}")
             
-            # NUEVO: Redirigir usuarios administradores al panel de admin
-            if user == "admin" or (isinstance(permisos, dict) and 'sistema' in permisos and 'usuarios' in permisos['sistema']):
-                print(f"🔑 Usuario administrador detectado: {user}, redirigiendo al panel admin")
-                return redirect('/admin/panel')
-            
-            # Redirigir según el usuario (lógica original para usuarios operacionales)
-            elif user.startswith("Materiales") or user == "1111":
-                return redirect(url_for('material'))
-            elif user.startswith("Produccion") or user == "2222":
-                return redirect(url_for('produccion'))
-            elif user.startswith("DDESARROLLO") or user == "3333":
-                return redirect(url_for('desarrollo'))
-            else:
-                # Usuario nuevo - redirigir al material por defecto
-                return redirect(url_for('material'))
+            # Redirigir siempre al hub de aplicaciones (landing page)
+            print(f"✅ Login exitoso para {user}, redirigiendo al hub de aplicaciones")
+            return redirect(url_for('inicio'))
         
         # FALLBACK: Intentar con el sistema antiguo (usuarios.json)
         try:
@@ -386,7 +374,7 @@ def login():
             print(f" Error en fallback JSON: {e}")
         
         # Si llega aquí, login falló
-        print(f"❌ Login fallido: {user}")
+        print(f"❌ Login falló: {user}")
         auth_system.registrar_auditoria(
             usuario=user,
             modulo='sistema',
@@ -398,6 +386,50 @@ def login():
         return render_template('login.html', error="Usuario o contraseña incorrectos. Por favor, intente de nuevo")
     
     return render_template('login.html')
+
+@app.route('/inicio')
+@login_requerido
+def inicio():
+    """Landing page / Hub de aplicaciones"""
+    usuario = session.get('usuario', 'Invitado')
+    nombre_completo = session.get('nombre_completo', usuario)
+    permisos = session.get('permisos', {})
+    
+    # Obtener roles del usuario
+    roles = []
+    try:
+        from .db_mysql import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT DISTINCT r.nombre
+            FROM usuarios_sistema u
+            JOIN usuario_roles ur ON u.id = ur.usuario_id
+            JOIN roles r ON ur.rol_id = r.id
+            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
+        ''', (usuario,))
+        
+        roles = [row[0] for row in cursor.fetchall()]
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ Error obteniendo roles: {e}")
+    
+    # Aplicaciones próximamente disponibles
+    upcoming_apps = [
+        {
+            'name': 'Más Herramientas',
+            'description': 'Expansión futura',
+            'long_description': 'Nuevas aplicaciones serán agregadas pronto.',
+            'icon': 'rocket'
+        }
+    ]
+    
+    return render_template('landing.html',
+                        nombre_usuario=nombre_completo,
+                        permisos=permisos,
+                        roles=roles,
+                        upcoming_apps=upcoming_apps)
 
 @app.route('/ILSAN-ELECTRONICS')
 @login_requerido
