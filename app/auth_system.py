@@ -709,7 +709,7 @@ class AuthSystem:
     def obtener_informacion_usuario(self, username):
         """Obtener información completa del usuario"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         
         try:
             cursor.execute('''
@@ -741,7 +741,7 @@ class AuthSystem:
     def obtener_permisos_usuario(self, username):
         """Obtener todos los permisos de un usuario basado en sus roles"""
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         
         try:
             cursor.execute('''
@@ -1039,9 +1039,9 @@ class AuthSystem:
             cursor = conn.cursor()
             
             cursor.execute('''
-                INSERT OR IGNORE INTO permisos_botones 
+                INSERT IGNORE INTO permisos_botones 
                 (pagina, seccion, boton, descripcion) 
-                VALUES (%s, %s, %s, ?)
+                VALUES (%s, %s, %s, %s)
             ''', (pagina, seccion, nombre_boton, descripcion))
             
             conn.commit()

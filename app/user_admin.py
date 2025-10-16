@@ -16,6 +16,18 @@ import pandas as pd
 import io
 import time
 
+# Importar MySQLdb para cursores de diccionario
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+    import MySQLdb
+    MYSQLDB_AVAILABLE = True
+    print("MySQLdb disponible para user_admin")
+except ImportError as e:
+    MYSQLDB_AVAILABLE = False
+    print(f"MySQLdb no disponible para user_admin: {e}")
+    MySQLdb = None
+
 # Crear Blueprint para las rutas de administración
 user_admin_bp = Blueprint('user_admin', __name__)
 auth_system = AuthSystem()
@@ -1022,7 +1034,10 @@ def obtener_permisos_usuario_actual():
             return jsonify({'error': 'Usuario no autenticado'}), 401
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        if MYSQLDB_AVAILABLE and MySQLdb:
+            cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        else:
+            cursor = conn.cursor()
         
         # Obtener todos los permisos de botones del usuario
         cursor.execute('''
@@ -1041,11 +1056,20 @@ def obtener_permisos_usuario_actual():
         # Organizar permisos para fácil consulta en frontend
         permisos_dict = {}
         for permiso in permisos:
-            pagina = permiso['pagina']
+            if MYSQLDB_AVAILABLE:
+                # DictCursor: acceso por clave
+                pagina = permiso['pagina']
+                seccion = permiso['seccion']
+                boton = permiso['boton']
+            else:
+                # Regular cursor: acceso por índice
+                pagina = permiso[0]
+                seccion = permiso[1]
+                boton = permiso[2]
+                
             if pagina not in permisos_dict:
                 permisos_dict[pagina] = {}
             
-            seccion = permiso['seccion']
             if seccion not in permisos_dict[pagina]:
                 permisos_dict[pagina][seccion] = []
             
