@@ -264,7 +264,7 @@ def login_requerido(f):
         # Verificar si hay usuario en sesión
         if 'usuario' not in session:
             print("No hay usuario en sesión")
-            return redirect(url_for('login'))
+            return redirect(url_for('inicio'))
         
         usuario = session.get('usuario')
         
@@ -274,148 +274,45 @@ def login_requerido(f):
         return f(*args, **kwargs)
     return decorada
 
-@app.route('/')
-def index():
-    return redirect(url_for('login'))
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        user = request.form.get('username', '').strip()
-        pw = request.form.get('password', '')
-        
-        print(f"🔐 Intento de login: {user}")
-        
-        # PRIORIDAD 1: Intentar con el nuevo sistema de BD
-        resultado_auth = auth_system.verificar_usuario(user, pw)
-        
-        # verificar_usuario devuelve (success, message) en lugar de diccionario
-        if isinstance(resultado_auth, tuple):
-            auth_success, auth_message = resultado_auth
-        else:
-            auth_success = resultado_auth.get('success', False) if isinstance(resultado_auth, dict) else False
-            auth_message = resultado_auth.get('message', 'Error desconocido') if isinstance(resultado_auth, dict) else str(resultado_auth)
-        
-        if auth_success:
-            print(f" Login exitoso con sistema BD: {user}")
-            session['usuario'] = user
-            
-            # Obtener información completa del usuario
-            info_usuario = auth_system.obtener_informacion_usuario(user)
-            if info_usuario:
-                session['nombre_completo'] = info_usuario['nombre_completo']
-                session['email'] = info_usuario['email']
-                session['departamento'] = info_usuario['departamento']
-                print(f"✅ Información completa cargada para {user}:")
-                print(f"  - Nombre completo: {info_usuario['nombre_completo']}")
-                print(f"  - Email: {info_usuario['email']}")
-                print(f"  - Departamento: {info_usuario['departamento']}")
-            else:
-                # Fallback si no se puede obtener la información
-                session['nombre_completo'] = user  # Usar username como fallback
-                print(f"⚠️ No se pudo cargar información completa para {user}, usando username como fallback")
-            
-            # Registrar auditoría
-            auth_system.registrar_auditoria(
-                usuario=user,
-                modulo='sistema',
-                accion='login',
-                descripcion='Inicio de sesión exitoso',
-                resultado='EXITOSO'
-            )
-            
-            # Obtener permisos del usuario
-            permisos_resultado = auth_system.obtener_permisos_usuario(user)
-            
-            # Verificar si devuelve tupla (permisos, rol_id) o solo permisos
-            if isinstance(permisos_resultado, tuple):
-                permisos, rol_id = permisos_resultado
-            else:
-                permisos = permisos_resultado
-                rol_id = None
-                
-            session['permisos'] = permisos
-            print(f"🔍 Permisos establecidos en sesión para {user}: {permisos}")
-            
-            # Redirigir siempre al hub de aplicaciones (landing page)
-            print(f"✅ Login exitoso para {user}, redirigiendo al hub de aplicaciones")
-            return redirect(url_for('inicio'))
-        
-        # FALLBACK: Intentar con el sistema antiguo (usuarios.json)
-        try:
-            usuarios_json = cargar_usuarios()
-            if user in usuarios_json and usuarios_json[user] == pw:
-                print(f" Login exitoso con sistema JSON (fallback): {user}")
-                session['usuario'] = user
-                
-                # Para usuarios del sistema JSON, usar el username como nombre completo
-                session['nombre_completo'] = user  # Fallback para usuarios del sistema antiguo
-                session['email'] = ''  # Sin email para usuarios del sistema antiguo
-                session['departamento'] = ''  # Sin departamento para usuarios del sistema antiguo
-                print(f"⚠️ Usuario del sistema JSON (fallback): {user}")
-                
-                # Registrar auditoría del fallback
-                auth_system.registrar_auditoria(
-                    usuario=user,
-                    modulo='sistema', 
-                    accion='login_json',
-                    descripcion='Inicio de sesión con sistema JSON (fallback)',
-                    resultado='EXITOSO'
-                )
-                
-                # Redirigir según el usuario (lógica original)
-                if user.startswith("Materiales") or user == "1111":
-                    return redirect(url_for('material'))
-                elif user.startswith("Produccion") or user == "2222":
-                    return redirect(url_for('produccion'))
-                elif user.startswith("DDESARROLLO") or user == "3333":
-                    return redirect(url_for('desarrollo'))
-        except Exception as e:
-            print(f" Error en fallback JSON: {e}")
-        
-        # Si llega aquí, login falló
-        print(f"❌ Login falló: {user}")
-        auth_system.registrar_auditoria(
-            usuario=user,
-            modulo='sistema',
-            accion='login_failed',
-            descripcion='Intento de login fallido - credenciales incorrectas',
-            resultado='ERROR'
-        )
-        
-        return render_template('login.html', error="Usuario o contraseña incorrectos. Por favor, intente de nuevo")
-    
-    return render_template('login.html')
-
-@app.route('/inicio')
-@login_requerido
-def inicio():
-    """Landing page / Hub de aplicaciones"""
-    usuario = session.get('usuario', 'Invitado')
-    nombre_completo = session.get('nombre_completo', usuario)
-    permisos = session.get('permisos', {})
-    
-    # Obtener roles del usuario
+def render_landing_page(login_error=None, login_username=None):
+    """Renderiza la landing page con o sin sesión activa."""
+    authenticated = 'usuario' in session
+    nombre_completo = None
+    permisos = {}
     roles = []
-    try:
-        from .db_mysql import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT DISTINCT r.nombre
-            FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN roles r ON ur.rol_id = r.id
-            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
-        ''', (usuario,))
-        
-        roles = [row[0] for row in cursor.fetchall()]
-        conn.close()
-    except Exception as e:
-        print(f"⚠️ Error obteniendo roles: {e}")
-    
-    # Aplicaciones próximamente disponibles
+
+    if authenticated:
+        usuario = session.get('usuario')
+        nombre_completo = session.get('nombre_completo', usuario)
+        permisos = session.get('permisos', {})
+
+        try:
+            from .db_mysql import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT DISTINCT r.nombre
+                FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN roles r ON ur.rol_id = r.id
+                WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
+            ''', (usuario,))
+            roles = [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"⚠️ Error obteniendo roles: {e}")
+        finally:
+            try:
+                if 'cursor' in locals() and cursor:
+                    cursor.close()
+            except Exception:
+                pass
+            try:
+                if 'conn' in locals() and conn:
+                    conn.close()
+            except Exception:
+                pass
+
     upcoming_apps = [
         {
             'name': 'Más Herramientas',
@@ -424,12 +321,181 @@ def inicio():
             'icon': 'rocket'
         }
     ]
-    
-    return render_template('landing.html',
-                        nombre_usuario=nombre_completo,
-                        permisos=permisos,
-                        roles=roles,
-                        upcoming_apps=upcoming_apps)
+
+    return render_template(
+        'landing.html',
+        nombre_usuario=nombre_completo,
+        permisos=permisos,
+        roles=roles,
+        upcoming_apps=upcoming_apps,
+        usuario_autenticado=authenticated,
+        login_error=login_error,
+        login_username=login_username
+    )
+
+@app.route('/')
+def index():
+    return redirect(url_for('inicio'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return redirect(url_for('inicio'))
+
+    is_ajax = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in request.headers.get('Accept', '')
+    )
+
+    user = request.form.get('username', '').strip()
+    pw = request.form.get('password', '')
+    print(f"🔐 Intento de login: {user}")
+        
+    # PRIORIDAD 1: Intentar con el nuevo sistema de BD
+    resultado_auth = auth_system.verificar_usuario(user, pw)
+
+    # verificar_usuario devuelve (success, message) en lugar de diccionario
+    if isinstance(resultado_auth, tuple):
+        auth_success, auth_message = resultado_auth
+    else:
+        auth_success = resultado_auth.get('success', False) if isinstance(resultado_auth, dict) else False
+        auth_message = resultado_auth.get('message', 'Error desconocido') if isinstance(resultado_auth, dict) else str(resultado_auth)
+
+    if auth_success:
+        print(f" Login exitoso con sistema BD: {user}")
+        session['usuario'] = user
+
+        # Obtener información completa del usuario
+        info_usuario = auth_system.obtener_informacion_usuario(user)
+        if info_usuario:
+            session['nombre_completo'] = info_usuario['nombre_completo']
+            session['email'] = info_usuario['email']
+            session['departamento'] = info_usuario['departamento']
+            print(f"✅ Información completa cargada para {user}:")
+            print(f"  - Nombre completo: {info_usuario['nombre_completo']}")
+            print(f"  - Email: {info_usuario['email']}")
+            print(f"  - Departamento: {info_usuario['departamento']}")
+        else:
+            # Fallback si no se puede obtener la información
+            session['nombre_completo'] = user  # Usar username como fallback
+            print(f"⚠️ No se pudo cargar información completa para {user}, usando username como fallback")
+
+        # Registrar auditoría
+        auth_system.registrar_auditoria(
+            usuario=user,
+            modulo='sistema',
+            accion='login',
+            descripcion='Inicio de sesión exitoso',
+            resultado='EXITOSO'
+        )
+
+        # Obtener permisos del usuario
+        permisos_resultado = auth_system.obtener_permisos_usuario(user)
+
+        # Verificar si devuelve tupla (permisos, rol_id) o solo permisos
+        if isinstance(permisos_resultado, tuple):
+            permisos, rol_id = permisos_resultado
+        else:
+            permisos = permisos_resultado
+            rol_id = None
+
+        session['permisos'] = permisos
+        print(f"🔍 Permisos establecidos en sesión para {user}: {permisos}")
+
+        # Redirigir siempre al hub de aplicaciones (landing page)
+        print(f"✅ Login exitoso para {user}, redirigiendo al hub de aplicaciones")
+        redirect_url = url_for('inicio')
+        if is_ajax:
+            return jsonify({'success': True, 'redirect': redirect_url})
+        return redirect(redirect_url)
+
+    # FALLBACK: Intentar con el sistema antiguo (usuarios.json)
+    try:
+        usuarios_json = cargar_usuarios()
+        if user in usuarios_json and usuarios_json[user] == pw:
+            print(f" Login exitoso con sistema JSON (fallback): {user}")
+            session['usuario'] = user
+
+            # Para usuarios del sistema JSON, usar el username como nombre completo
+            session['nombre_completo'] = user  # Fallback para usuarios del sistema antiguo
+            session['email'] = ''  # Sin email para usuarios del sistema antiguo
+            session['departamento'] = ''  # Sin departamento para usuarios del sistema antiguo
+            print(f"⚠️ Usuario del sistema JSON (fallback): {user}")
+
+            # Registrar auditoría del fallback
+            auth_system.registrar_auditoria(
+                usuario=user,
+                modulo='sistema', 
+                accion='login_json',
+                descripcion='Inicio de sesión con sistema JSON (fallback)',
+                resultado='EXITOSO'
+            )
+
+            # Redirigir según el usuario (lógica original)
+            redirect_url = url_for('inicio')
+            if user.startswith("Materiales") or user == "1111":
+                redirect_url = url_for('material')
+            elif user.startswith("Produccion") or user == "2222":
+                redirect_url = url_for('produccion')
+            elif user.startswith("DDESARROLLO") or user == "3333":
+                redirect_url = url_for('desarrollo')
+
+            if is_ajax:
+                return jsonify({'success': True, 'redirect': redirect_url})
+            return redirect(redirect_url)
+    except Exception as e:
+        print(f" Error en fallback JSON: {e}")
+
+    # Si llega aquí, login falló
+    print(f"❌ Login falló: {user} ({auth_message})")
+    auth_system.registrar_auditoria(
+        usuario=user,
+        modulo='sistema',
+        accion='login_failed',
+        descripcion='Intento de login fallido - credenciales incorrectas',
+        resultado='ERROR'
+    )
+
+    error_message = "Usuario o contraseña incorrectos. Por favor, intente de nuevo"
+
+    if is_ajax:
+        return jsonify({'success': False, 'message': error_message}), 401
+
+    return render_landing_page(
+        login_error=error_message,
+        login_username=user
+    )
+
+@app.route('/inicio')
+def inicio():
+    """Landing page / Hub de aplicaciones"""
+    return render_landing_page()
+
+@app.route('/calendario')
+@login_requerido
+def calendario():
+    """Página del calendario de producción"""
+    return render_template('calendario.html')
+
+@app.route('/sistemas')
+@login_requerido
+def sistemas():
+    """Redirige al hub de inicio"""
+    return redirect(url_for('inicio'))
+
+@app.route('/soporte')
+@login_requerido
+def soporte():
+    """Página de soporte técnico"""
+    return render_template('soporte.html') if os.path.exists('app/templates/soporte.html') else \
+           f"<h1>Soporte Técnico</h1><p>En construcción. <a href='/inicio'>Volver al inicio</a></p>"
+
+@app.route('/documentacion')
+@login_requerido
+def documentacion():
+    """Página de documentación"""
+    return render_template('documentacion.html') if os.path.exists('app/templates/documentacion.html') else \
+           f"<h1>Documentación</h1><p>En construcción. <a href='/inicio'>Volver al inicio</a></p>"
 
 @app.route('/ILSAN-ELECTRONICS')
 @login_requerido
@@ -528,7 +594,7 @@ def logout():
     # Limpiar sesión completa
     session.clear()
     
-    return redirect(url_for('login'))
+    return redirect(url_for('inicio'))
 
 # =============================
 # FRONT PLAN: Vistas y estáticos
@@ -10840,36 +10906,36 @@ def crear_tabla_plan_smd_runs():
         # Asegurar estado PAUSED disponible
         try:
             execute_query("ALTER TABLE plan_smd_runs MODIFY status ENUM('RUNNING','PAUSED','ENDED') DEFAULT 'RUNNING'")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  (info) Status PAUSED: {str(e)[:60]}")
         # Columnas adicionales para baseline y conteo AOI
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_model VARCHAR(64) NULL")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  (info) aoi_model: {str(e)[:60]}")
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_line_no INT NULL")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  (info) aoi_line_no: {str(e)[:60]}")
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_baseline INT NULL")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  (info) aoi_baseline: {str(e)[:60]}")
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_baseline_shift_date DATE NULL")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  (info) aoi_baseline_shift_date: {str(e)[:60]}")
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_baseline_shift VARCHAR(16) NULL")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  (info) aoi_baseline_shift: {str(e)[:60]}")
         try:
             execute_query("ALTER TABLE plan_smd_runs ADD COLUMN aoi_produced_final INT NULL")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  (info) aoi_produced_final: {str(e)[:60]}")
         print(" Tabla plan_smd_runs creada/verificada")
     except Exception as e:
-        print(f"❌ Error creando tabla plan_smd_runs: {e}")
+        print(f"⚠️  Error creando tabla plan_smd_runs (continuando): {str(e)[:100]}")
 
 crear_tabla_plan_smd_runs()
 
