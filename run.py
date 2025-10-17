@@ -25,4 +25,6 @@ def health():
     return "ok", 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Activar debug y reloader para desarrollo
+    # Usando 'stat' reloader (compatible con Python 3.13 en Windows)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True, reloader_type='stat')
