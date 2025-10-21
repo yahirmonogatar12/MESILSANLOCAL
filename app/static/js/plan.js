@@ -2368,75 +2368,68 @@ function autoArrangePlans() {
     lineGroups[line].sort((a, b) => a.productionTime - b.productionTime);
   });
 
-  // Distribuir manteniendo líneas juntas y evitando tiempo extra
+  // Distribuir manteniendo líneas juntas de forma secuencial
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   visualGroups.planAssignments.clear();
 
-  // Algoritmo mejorado que prioriza mantener líneas juntas y evitar tiempo extra
+  // Algoritmo mejorado: asignación secuencial de líneas a grupos
   const productiveMinutes = (currentConfig.productiveHours || 9) * 60; // 9 horas productivas = 540 min
   const groupTimes = new Array(groupCount).fill(0);
   const groupLines = new Array(groupCount).fill().map(() => new Map()); // Líneas y sus tiempos por grupo
 
-  // Auto-acomodo iniciado
+  // Auto-acomodo iniciado (modo secuencial)
 
-  // Ordenar líneas por tiempo total (líneas más pesadas primero para mejor distribución)
+  // Ordenar líneas con orden específico: M1, M2, M3, M4, D1, D2, D3, H1, etc.
   const sortedLines = Object.keys(lineGroups).sort((a, b) => {
-    const timeA = lineGroups[a].reduce((sum, plan) => sum + plan.productionTime, 0);
-    const timeB = lineGroups[b].reduce((sum, plan) => sum + plan.productionTime, 0);
-    return timeB - timeA; // Mayor a menor
+    // Extraer letra y número de cada línea
+    const matchA = a.match(/^([A-Z]+)(\d+)$/);
+    const matchB = b.match(/^([A-Z]+)(\d+)$/);
+    
+    if (!matchA || !matchB) {
+      return a.localeCompare(b); // Fallback para formatos no estándar
+    }
+    
+    const [, letterA, numA] = matchA;
+    const [, letterB, numB] = matchB;
+    
+    // Orden de prioridad de letras: M, D, H, luego alfabético
+    const letterOrder = { 'M': 1, 'D': 2, 'H': 3 };
+    const orderA = letterOrder[letterA] || 99;
+    const orderB = letterOrder[letterB] || 99;
+    
+    // Primero comparar por letra (M antes que D antes que H)
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    
+    // Si la letra es igual, ordenar por número
+    return parseInt(numA) - parseInt(numB);
   });
+  
+  console.log('📋 Orden de líneas para auto-acomodo:', sortedLines.join(', '));
 
-  // Procesar línea por línea manteniendo planes juntos
-  sortedLines.forEach(line => {
+  // Asignar cada línea a un grupo de forma secuencial (round-robin)
+  sortedLines.forEach((line, lineIndex) => {
     const linePlans = lineGroups[line];
     const totalLineTime = linePlans.reduce((sum, plan) => sum + plan.productionTime, 0);
 
+    // Asignación secuencial: M1 -> Grupo 0, M2 -> Grupo 1, M3 -> Grupo 2, etc.
+    // Si hay más líneas que grupos, se hace round-robin (M7 -> Grupo 0, M8 -> Grupo 1, etc.)
+    const groupIndex = lineIndex % groupCount;
 
+    console.log(`📌 Auto-acomodo: Línea ${line} → Grupo ${groupIndex + 1} (${totalLineTime.toFixed(1)} min)`);
 
-    // Buscar el mejor grupo para toda la línea
-    let bestGroupIndex = 0;
-    let bestScore = Infinity;
-
-    for (let i = 0; i < groupCount; i++) {
-      const currentGroupTime = groupTimes[i];
-      const newTime = currentGroupTime + totalLineTime;
-
-      // Bonus si ya hay planes de la misma línea (mantener líneas juntas)
-      const lineBonus = groupLines[i].has(line) ? -100 : 0;
-
-      // Penalty severo por tiempo extra
-      let overtimePenalty = 0;
-      if (newTime > productiveMinutes) {
-        overtimePenalty = (newTime - productiveMinutes) * 3; // 3x penalty por overtime
-      }
-
-      // Bonus por balance (preferir grupos con menos tiempo)
-      const balanceBonus = -currentGroupTime * 0.1;
-
-      // Calcular puntuación final (menor es mejor)
-      const score = newTime + overtimePenalty + lineBonus + balanceBonus;
-
-
-
-      if (score < bestScore) {
-        bestScore = score;
-        bestGroupIndex = i;
-      }
-    }
-
-    // Asignar todos los planes de la línea al mejor grupo
+    // Asignar todos los planes de la línea al grupo correspondiente
     linePlans.forEach(plan => {
-      visualGroups.planAssignments.set(plan.lot_no, bestGroupIndex);
+      visualGroups.planAssignments.set(plan.lot_no, groupIndex);
     });
 
     // Actualizar estadísticas del grupo
-    groupTimes[bestGroupIndex] += totalLineTime;
-    if (!groupLines[bestGroupIndex].has(line)) {
-      groupLines[bestGroupIndex].set(line, 0);
+    groupTimes[groupIndex] += totalLineTime;
+    if (!groupLines[groupIndex].has(line)) {
+      groupLines[groupIndex].set(line, 0);
     }
-    groupLines[bestGroupIndex].set(line, groupLines[bestGroupIndex].get(line) + totalLineTime);
-
-
+    groupLines[groupIndex].set(line, groupLines[groupIndex].get(line) + totalLineTime);
   });
 
   // Mostrar reporte de distribución
