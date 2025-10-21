@@ -683,16 +683,44 @@
     pointer-events: none;
     opacity: 0.8;
     animation: dropPulse 1s infinite;
+    height: 8px !important; /* Aumentado de ~2px a 8px */
+    min-height: 8px !important;
+    background-color: #3498db;
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.8);
+    position: relative;
+    z-index: 100;
+}
+
+.drop-indicator td {
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 0 !important;
+}
+
+/* Hacer el indicador aún más visible con un pseudo-elemento */
+.drop-indicator td::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -4px;
+    bottom: -4px;
+    background-color: rgba(52, 152, 219, 0.2);
+    border: 2px dashed #3498db;
+    border-radius: 4px;
+    pointer-events: none;
 }
 
 @keyframes dropPulse {
     0%, 100% { 
         background-color: #3498db; 
-        box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        box-shadow: 0 0 8px rgba(52, 152, 219, 0.6);
+        transform: scaleY(1);
     }
     50% { 
         background-color: #2980b9; 
-        box-shadow: 0 0 10px rgba(52, 152, 219, 0.8);
+        box-shadow: 0 0 15px rgba(52, 152, 219, 1);
+        transform: scaleY(1.2);
     }
 }
 

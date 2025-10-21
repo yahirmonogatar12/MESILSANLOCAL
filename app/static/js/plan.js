@@ -1,6 +1,6 @@
-Ôªø// ====== Variables Globales para Planeaci√≥n ======
+// ====== Variables Globales para PlaneaciÛn ======
 
-// Funci√≥n helper para obtener fecha en zona horaria de Nuevo Le√≥n, M√©xico (America/Monterrey)
+// FunciÛn helper para obtener fecha en zona horaria de Nuevo LeÛn, MÈxico (America/Monterrey)
 function getTodayInNuevoLeon() {
   // Crear fecha en zona horaria de Monterrey
   const options = { timeZone: 'America/Monterrey', year: 'numeric', month: '2-digit', day: '2-digit' };
@@ -8,7 +8,7 @@ function getTodayInNuevoLeon() {
   return formatter.format(new Date());
 }
 
-// Funci√≥n helper para obtener Date object ajustado a Nuevo Le√≥n
+// FunciÛn helper para obtener Date object ajustado a Nuevo LeÛn
 function getDateInNuevoLeon(daysOffset = 0) {
   const dateStr = getTodayInNuevoLeon();
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -23,10 +23,10 @@ function getDateInNuevoLeon(daysOffset = 0) {
   return `${y}-${m}-${d}`;
 }
 
-// Variables globales para planeaci√≥n integrada
+// Variables globales para planeaciÛn integrada
 let planningData = [];
 
-// ‚≠ê NUEVO: Almacenar copia original de los planes cargados desde la BD
+// ? NUEVO: Almacenar copia original de los planes cargados desde la BD
 // Esta copia NUNCA se modifica y se usa para recuperar datos completos (incluyendo status)
 let originalPlansData = [];
 
@@ -46,7 +46,7 @@ let currentConfig = {
   }
 };
 
-// Datos calculados de planeaci√≥n por fila
+// Datos calculados de planeaciÛn por fila
 let planningCalculations = new Map();
 
 // Estructura de grupos visibles
@@ -125,7 +125,7 @@ function hideTableLoading(containerId) {
   }
 }
 
-// Funci√≥n para mostrar modal de √©xito
+// FunciÛn para mostrar modal de Èxito
 function showSuccessModal(message) {
   // Crear modal si no existe
   let modal = document.getElementById('success-modal');
@@ -147,8 +147,8 @@ function showSuccessModal(message) {
 
     modal.innerHTML = `
       <div style="background: #2A2D3E; border-radius: 12px; padding: 30px; color: #E0E0E0; text-align: center; max-width: 400px; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-        <div style="font-size: 48px; color: #28a745; margin-bottom: 15px;">‚úÖ</div>
-        <h3 style="margin: 0 0 15px 0; color: #28a745;">¬°√âxito!</h3>
+        <div style="font-size: 48px; color: #28a745; margin-bottom: 15px;">?</div>
+        <h3 style="margin: 0 0 15px 0; color: #28a745;">°…xito!</h3>
         <p id="success-message" style="margin: 0 0 25px 0; line-height: 1.4;"></p>
         <button onclick="hideSuccessModal()" style="background: #28a745; color: white; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
           OK
@@ -164,7 +164,7 @@ function showSuccessModal(message) {
   modal.style.display = 'flex';
 }
 
-// Funci√≥n para ocultar modal de √©xito
+// FunciÛn para ocultar modal de Èxito
 function hideSuccessModal() {
   const modal = document.getElementById('success-modal');
   if (modal) {
@@ -172,7 +172,7 @@ function hideSuccessModal() {
   }
 }
 
-// Agregar estado de carga a un bot√≥n
+// Agregar estado de carga a un botÛn
 function setButtonLoading(buttonId, loading = true, originalText = '') {
   const button = document.getElementById(buttonId);
   if (!button) return;
@@ -192,7 +192,7 @@ function setButtonLoading(buttonId, loading = true, originalText = '') {
 // Abrir modal
 // ========= LISTENERS DE MODALES (Ahora manejados por Event Delegation) =========
 // NOTA: Estos listeners fueron movidos a initializePlanEventListeners() usando event delegation
-// para que funcionen con contenido cargado din√°micamente
+// para que funcionen con contenido cargado din·micamente
 
 /* REMOVIDO - Ahora manejado por event delegation
 document.getElementById("plan-openModalBtn").addEventListener("click", () => {
@@ -210,7 +210,7 @@ document.getElementById("plan-closeModalBtn").addEventListener("click", () => {
 /* REMOVIDO - Ahora manejado por event delegation y handleNewPlanSubmit()
 // Registrar plan
 document.getElementById("plan-form").addEventListener("submit", async function(e){
-  ...c√≥digo movido a handleNewPlanSubmit()...
+  ...cÛdigo movido a handleNewPlanSubmit()...
 });
 */
 
@@ -257,7 +257,7 @@ async function loadPlans() {
     let res = await axios.get(url);
     let data = Array.isArray(res.data) ? res.data.slice() : [];
 
-    // ‚≠ê IMPORTANTE: Guardar copia profunda de los datos originales
+    // ? IMPORTANTE: Guardar copia profunda de los datos originales
     // Esta copia se usa para recuperar datos completos cuando se reorganizan planes
     originalPlansData = data.map(plan => ({ ...plan }));
 
@@ -333,7 +333,7 @@ function enableRowDragDrop(tbody, fs, fe) {
     // IMPORTANTE: Sincronizar visualGroups con el orden actual de la tabla
     syncVisualGroupsWithTableOrder();
 
-    // Recalcular tiempos autom√°ticamente despu√©s del drag
+    // Recalcular tiempos autom·ticamente despuÈs del drag
     setTimeout(calculateAndUpdateTimes, 100);
   });
   tbody.addEventListener('dragover', (e) => {
@@ -362,7 +362,7 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-// Funci√≥n para sincronizar visualGroups con el orden actual de la tabla HTML
+// FunciÛn para sincronizar visualGroups con el orden actual de la tabla HTML
 function syncVisualGroupsWithTableOrder() {
   const tbody = document.getElementById('plan-tableBody');
   if (!tbody) {
@@ -374,13 +374,13 @@ function syncVisualGroupsWithTableOrder() {
     return;
   }
 
-  // Obtener n√∫mero de grupos actual
+  // Obtener n˙mero de grupos actual
   const groupCount = parseInt(document.getElementById('groups-count')?.value) || 6;
 
-  // ‚≠ê IMPORTANTE: Usar originalPlansData (copia inmutable de BD) como fuente de verdad
+  // ? IMPORTANTE: Usar originalPlansData (copia inmutable de BD) como fuente de verdad
   // Esta copia siempre tiene los datos completos incluyendo status
 
-  // Guardar tambi√©n el estado actual de visualGroups por si originalPlansData est√° vac√≠o
+  // Guardar tambiÈn el estado actual de visualGroups por si originalPlansData est· vacÌo
   const visualGroupsBackup = [];
   if (visualGroups && visualGroups.groups) {
     visualGroups.groups.forEach(group => {
@@ -397,7 +397,7 @@ function syncVisualGroupsWithTableOrder() {
   // Reinicializar grupos
   initializeVisualGroups(groupCount);
 
-  // Reconstruir los grupos bas√°ndose en el orden visual actual
+  // Reconstruir los grupos bas·ndose en el orden visual actual
   rows.forEach((row, rowIndex) => {
     const lotNo = row.dataset.lot;
     if (!lotNo) return;
@@ -405,12 +405,12 @@ function syncVisualGroupsWithTableOrder() {
     // Buscar el plan en originalPlansData PRIMERO (fuente de verdad)
     let planData = originalPlansData.find(p => p.lot_no === lotNo);
 
-    // Si no est√° en originalPlansData, buscar en el backup de visualGroups
+    // Si no est· en originalPlansData, buscar en el backup de visualGroups
     if (!planData) {
       planData = visualGroupsBackup.find(p => p.lot_no === lotNo);
     }
 
-    // Si a√∫n no encontramos el plan, crear un objeto desde la tabla HTML
+    // Si a˙n no encontramos el plan, crear un objeto desde la tabla HTML
     if (!planData) {
       const cells = row.querySelectorAll('td');
       planData = {
@@ -433,7 +433,7 @@ function syncVisualGroupsWithTableOrder() {
       };
     }
 
-    // Determinar a qu√© grupo pertenece (distribuci√≥n por filas)
+    // Determinar a quÈ grupo pertenece (distribuciÛn por filas)
     const groupIndex = rowIndex % groupCount;
 
     // Agregar plan al grupo correspondiente (preservando todos los campos)
@@ -506,11 +506,11 @@ function applySavedOrderToData(data, fs, fe) {
 }
 
 function ensureOrderToolbar(fs, fe) {
-  // Esta funci√≥n ya no es necesaria porque usamos el bot√≥n save-sequences-btn del toolbar principal
-  // El bot√≥n "üíæ Guardar Orden" maneja tanto grupos como secuencias correctamente
+  // Esta funciÛn ya no es necesaria porque usamos el botÛn save-sequences-btn del toolbar principal
+  // El botÛn "?? Guardar Orden" maneja tanto grupos como secuencias correctamente
 }
 
-// Estilos m√≠nimos para drag
+// Estilos mÌnimos para drag
 (function injectDragStyles() {
   const style = document.createElement('style');
   style.textContent = `
@@ -523,10 +523,10 @@ function ensureOrderToolbar(fs, fe) {
 
 // ============================================================
 // NOTA: El evento de doble click ahora usa event delegation
-// Ver initializePlanEventListeners() m√°s abajo
+// Ver initializePlanEventListeners() m·s abajo
 // ============================================================
 /*
-// C√ìDIGO ANTIGUO - Reemplazado por event delegation
+// C”DIGO ANTIGUO - Reemplazado por event delegation
 const planTableEl = document.getElementById('plan-table');
 if (planTableEl) {
   planTableEl.addEventListener('dblclick', (e) => {
@@ -575,16 +575,16 @@ async function openEditModal(lotNo) {
     form.po_code.value = plan.po_code || "";
     form.line.value = plan.line;
 
-    // Peque√±a pausa para mejor UX (m√≠nimo 500ms para que se vea el loading)
+    // PequeÒa pausa para mejor UX (mÌnimo 500ms para que se vea el loading)
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Ocultar loading y mostrar formulario con animaci√≥n suave
+    // Ocultar loading y mostrar formulario con animaciÛn suave
     hideTableLoading('plan-modal-content');
     form.style.display = "block";
     form.style.opacity = "0";
     form.style.transform = "translateY(10px)";
 
-    // Animaci√≥n de entrada
+    // AnimaciÛn de entrada
     setTimeout(() => {
       form.style.transition = "all 0.3s ease";
       form.style.opacity = "1";
@@ -598,11 +598,11 @@ async function openEditModal(lotNo) {
   }
 }
 
-// Guardar edici√≥n
+// Guardar ediciÛn
 // ========= PLAN EDIT FORM HANDLERS (Ahora manejados por Event Delegation) =========
 
 /**
- * Manejar submit del formulario de edici√≥n de plan
+ * Manejar submit del formulario de ediciÛn de plan
  */
 async function handleEditPlanSubmit(form) {
   const data = Object.fromEntries(new FormData(form));
@@ -610,7 +610,7 @@ async function handleEditPlanSubmit(form) {
   const originalText = submitBtn?.textContent || 'Guardar';
 
   try {
-    // Cambiar el bot√≥n a estado de carga
+    // Cambiar el botÛn a estado de carga
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = 'Actualizando...';
@@ -642,7 +642,7 @@ async function handleEditPlanSubmit(form) {
               let rawResponse = null;
               try {
                 const timeoutPromise = new Promise((_, reject) => {
-                  setTimeout(() => reject(new Error('Timeout: La petici√≥n tard√≥ m√°s de 5 segundos')), 5000);
+                  setTimeout(() => reject(new Error('Timeout: La peticiÛn tardÛ m·s de 5 segundos')), 5000);
                 });
 
                 const axiosPromise = axios.get(`/api/raw/search?part_no=${encodeURIComponent(partNo)}`, {
@@ -673,7 +673,7 @@ async function handleEditPlanSubmit(form) {
                   data.part_no = partNo;
                 }
               } else {
-                // Actualizar al menos el part_no aunque falle la b√∫squeda en RAW
+                // Actualizar al menos el part_no aunque falle la b˙squeda en RAW
                 data.part_no = partNo;
               }
             }
@@ -688,7 +688,7 @@ async function handleEditPlanSubmit(form) {
 
     const updateResponse = await axios.post("/api/plan/update", data);
 
-    // Mostrar modal de √©xito
+    // Mostrar modal de Èxito
     showSuccessModal(`Plan ${data.lot_no} actualizado exitosamente`);
 
     document.getElementById("plan-editModal").style.display = "none";
@@ -697,7 +697,7 @@ async function handleEditPlanSubmit(form) {
     console.error('Error en handleEditPlanSubmit:', error);
     alert("Error actualizando plan: " + (error.response?.data?.error || error.message));
   } finally {
-    // Restaurar bot√≥n
+    // Restaurar botÛn
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
@@ -709,7 +709,7 @@ async function handleEditPlanSubmit(form) {
 }
 
 /**
- * Manejar cancelaci√≥n de plan
+ * Manejar cancelaciÛn de plan
  */
 async function handleCancelPlan() {
   const form = document.getElementById("plan-editForm");
@@ -717,13 +717,13 @@ async function handleCancelPlan() {
 
   const lot = form.lot_no.value;
   if (!lot) return;
-  if (!confirm(`¬øCancelar plan ${lot}?`)) return;
+  if (!confirm(`øCancelar plan ${lot}?`)) return;
 
   const cancelBtn = document.getElementById("plan-cancelBtn");
   const originalText = cancelBtn?.textContent || 'Cancelar plan';
 
   try {
-    // Cambiar el bot√≥n a estado de carga
+    // Cambiar el botÛn a estado de carga
     if (cancelBtn) {
       cancelBtn.disabled = true;
       cancelBtn.innerHTML = 'Cancelando...';
@@ -735,7 +735,7 @@ async function handleCancelPlan() {
 
     await axios.post("/api/plan/update", { lot_no: lot, status: "CANCELADO" });
 
-    // Mostrar modal de √©xito
+    // Mostrar modal de Èxito
     showSuccessModal(`Plan ${lot} cancelado exitosamente`);
 
     document.getElementById("plan-editModal").style.display = "none";
@@ -743,7 +743,7 @@ async function handleCancelPlan() {
   } catch (error) {
     alert("Error cancelando plan: " + (error.response?.data?.error || error.message));
   } finally {
-    // Restaurar bot√≥n
+    // Restaurar botÛn
     if (cancelBtn) {
       cancelBtn.disabled = false;
       cancelBtn.innerHTML = originalText;
@@ -772,7 +772,7 @@ async function handleNewPlanSubmit(form) {
 
     await axios.post("/api/plan", data);
 
-    // Mostrar modal de √©xito
+    // Mostrar modal de Èxito
     showSuccessModal('Plan registrado exitosamente');
 
     document.getElementById("plan-modal").style.display = "none";
@@ -796,24 +796,24 @@ window.handleCancelPlan = handleCancelPlan;
 window.handleNewPlanSubmit = handleNewPlanSubmit;
 
 /* REMOVIDO - Ahora manejado por event delegation y handleEditPlanSubmit()
-[C√≥digo del event listener de plan-editForm submit movido a handleEditPlanSubmit()]
+[CÛdigo del event listener de plan-editForm submit movido a handleEditPlanSubmit()]
 */
 
 /* REMOVIDO - Ahora manejado por event delegation y handleCancelPlan()
-[C√≥digo del event listener de plan-cancelBtn movido a handleCancelPlan()]
+[CÛdigo del event listener de plan-cancelBtn movido a handleCancelPlan()]
 */
 
 
 // ========= WORK ORDERS FUNCTIONALITY =========
 
-// Crear modal de Work Orders din√°micamente
+// Crear modal de Work Orders din·micamente
 function createWorkOrdersModal() {
   // Verificar si ya existe
   if (document.getElementById('wo-modal')) {
     return;
   }
 
-  console.log('üì¶ Creando modal wo-modal con estilos');
+  console.log('?? Creando modal wo-modal con estilos');
 
   const woModal = document.createElement('div');
   woModal.id = 'wo-modal';
@@ -842,7 +842,7 @@ function createWorkOrdersModal() {
 
       <div class="modal-filters" style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
         <label style="font-size: 11px; color: #ecf0f1;">Buscar WO/PO:</label>
-        <input type="text" id="wo-search-input" class="plan-input" placeholder="Buscar por c√≥digo WO o PO..." style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 180px;">
+        <input type="text" id="wo-search-input" class="plan-input" placeholder="Buscar por cÛdigo WO o PO..." style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 180px;">
         
         <label style="font-size: 11px; color: #ecf0f1;">Fecha Op. Desde:</label>
         <input type="date" id="wo-filter-desde" class="plan-input" title="Filtrar WOs desde esta fecha" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
@@ -862,8 +862,8 @@ function createWorkOrdersModal() {
         <button id="wo-reload-btn" class="plan-btn" style="background-color: #2980b9; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Recargar</button>
         <button id="wo-import-selected-btn" class="plan-btn plan-btn-add" style="background-color: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Importar Seleccionados</button>
         
-        <label style="font-size: 11px; color: #ecf0f1;">Fecha de Importaci√≥n:</label>
-        <input type="date" id="wo-filter-date" class="plan-input" title="Fecha a la que se importar√°n los planes seleccionados" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
+        <label style="font-size: 11px; color: #ecf0f1;">Fecha de ImportaciÛn:</label>
+        <input type="date" id="wo-filter-date" class="plan-input" title="Fecha a la que se importar·n los planes seleccionados" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
       </div>
 
       <div class="modal-table-container" style="overflow-x: auto; margin-bottom: 20px;">
@@ -880,7 +880,7 @@ function createWorkOrdersModal() {
               <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Fecha Op.</th>
               <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Estado</th>
               <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Modificador</th>
-              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Acci√≥n</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">AcciÛn</th>
             </tr>
           </thead>
           <tbody id="wo-tableBody" style="color: lightgray;"></tbody>
@@ -896,10 +896,10 @@ function createWorkOrdersModal() {
   // Insertar el modal en el body
   document.body.appendChild(woModal);
 
-  // Configurar event listeners despu√©s de crear el modal
+  // Configurar event listeners despuÈs de crear el modal
   setupWorkOrdersModalEvents();
 }
-// Exponer funci√≥n globalmente
+// Exponer funciÛn globalmente
 window.createWorkOrdersModal = createWorkOrdersModal;
 
 // Configurar event listeners del modal WO
@@ -912,13 +912,13 @@ function setupWorkOrdersModalEvents() {
     });
   }
 
-  // Bot√≥n de recarga
+  // BotÛn de recarga
   const reloadBtn = document.getElementById('wo-reload-btn');
   if (reloadBtn) {
     reloadBtn.addEventListener('click', loadWorkOrders);
   }
 
-  // Input de b√∫squeda - filtrar en tiempo real
+  // Input de b˙squeda - filtrar en tiempo real
   const searchInput = document.getElementById('wo-search-input');
   if (searchInput) {
     searchInput.addEventListener('input', filterWorkOrdersTable);
@@ -938,13 +938,13 @@ function setupWorkOrdersModalEvents() {
     });
   }
 
-  // Bot√≥n "Importar Seleccionados"
+  // BotÛn "Importar Seleccionados"
   const importBtn = document.getElementById('wo-import-selected-btn');
   if (importBtn) {
     importBtn.addEventListener('click', importAllSelectedWOs);
   }
 
-  // Delegaci√≥n de eventos para botones de importaci√≥n individual
+  // DelegaciÛn de eventos para botones de importaciÛn individual
   const tbody = document.getElementById('wo-tableBody');
   if (tbody) {
     tbody.addEventListener('click', function (e) {
@@ -974,34 +974,34 @@ function setupWorkOrdersModalEvents() {
 
   if (filterDesde) {
     filterDesde.addEventListener('change', function () {
-      loadWorkOrders(); // Recargar autom√°ticamente al cambiar fecha desde
+      loadWorkOrders(); // Recargar autom·ticamente al cambiar fecha desde
     });
   }
 
   if (filterHasta) {
     filterHasta.addEventListener('change', function () {
-      loadWorkOrders(); // Recargar autom√°ticamente al cambiar fecha hasta
+      loadWorkOrders(); // Recargar autom·ticamente al cambiar fecha hasta
     });
   }
 
   if (filterEstado) {
     filterEstado.addEventListener('change', function () {
-      loadWorkOrders(); // Recargar autom√°ticamente al cambiar estado
+      loadWorkOrders(); // Recargar autom·ticamente al cambiar estado
     });
   }
 
-  // Establecer fecha de importaci√≥n por defecto (hoy en Nuevo Le√≥n)
+  // Establecer fecha de importaciÛn por defecto (hoy en Nuevo LeÛn)
   if (filterDate && !filterDate.value) {
     filterDate.value = getTodayInNuevoLeon();
   }
 
-  // Establecer rango de fechas por defecto (d√≠a actual en Nuevo Le√≥n)
+  // Establecer rango de fechas por defecto (dÌa actual en Nuevo LeÛn)
   if (filterDesde && !filterDesde.value) {
-    filterDesde.value = getTodayInNuevoLeon(); // D√≠a actual
+    filterDesde.value = getTodayInNuevoLeon(); // DÌa actual
   }
 
   if (filterHasta && !filterHasta.value) {
-    filterHasta.value = getTodayInNuevoLeon(); // D√≠a actual
+    filterHasta.value = getTodayInNuevoLeon(); // DÌa actual
   }
 }
 
@@ -1026,7 +1026,7 @@ async function loadWorkOrders() {
     const hasta = document.getElementById("wo-filter-hasta")?.value || "";
     const estado = document.getElementById("wo-filter-estado")?.value || "";
 
-    // Construir URL con par√°metros
+    // Construir URL con par·metros
     let url = "/api/work-orders";
     const params = [];
     if (desde) params.push(`desde=${desde}`);
@@ -1043,7 +1043,7 @@ async function loadWorkOrders() {
     renderWorkOrdersTable(workOrders);
     updateWOStatus(`${workOrders.length} work orders encontrados`);
 
-    // Limpiar el campo de b√∫squeda al recargar
+    // Limpiar el campo de b˙squeda al recargar
     const searchInput = document.getElementById('wo-search-input');
     if (searchInput) searchInput.value = '';
 
@@ -1057,13 +1057,13 @@ async function loadWorkOrders() {
   }
 }
 
-// Exponer funci√≥n globalmente
+// Exponer funciÛn globalmente
 window.loadWorkOrders = loadWorkOrders;
 
 // Variable global para almacenar todos los WOs cargados (para filtrado)
 let allWorkOrders = [];
 
-// Funci√≥n para filtrar WOs en el frontend
+// FunciÛn para filtrar WOs en el frontend
 function filterWorkOrdersTable() {
   const searchInput = document.getElementById('wo-search-input');
   if (!searchInput) return;
@@ -1071,12 +1071,12 @@ function filterWorkOrdersTable() {
   const searchTerm = searchInput.value.toLowerCase().trim();
 
   if (!searchTerm) {
-    // Si no hay b√∫squeda, mostrar todos
+    // Si no hay b˙squeda, mostrar todos
     renderWorkOrdersTable(allWorkOrders);
     return;
   }
 
-  // Filtrar WOs por c√≥digo WO, c√≥digo PO, o modelo
+  // Filtrar WOs por cÛdigo WO, cÛdigo PO, o modelo
   const filtered = allWorkOrders.filter(wo => {
     const woCode = (wo.codigo_wo || '').toLowerCase();
     const poCode = (wo.codigo_po || '').toLowerCase();
@@ -1093,12 +1093,12 @@ function filterWorkOrdersTable() {
   updateWOStatus(`${filtered.length} de ${allWorkOrders.length} work orders`);
 }
 
-// Exponer funci√≥n globalmente
+// Exponer funciÛn globalmente
 window.filterWorkOrdersTable = filterWorkOrdersTable;
 
 // Renderizar tabla de Work Orders
 function renderWorkOrdersTable(workOrders) {
-  // NO sobrescribir allWorkOrders aqu√≠, se maneja en loadWorkOrders
+  // NO sobrescribir allWorkOrders aquÌ, se maneja en loadWorkOrders
   const tbody = document.getElementById("wo-tableBody");
   tbody.innerHTML = "";
 
@@ -1128,14 +1128,14 @@ function renderWorkOrdersTable(workOrders) {
       row.style.backgroundColor = "#3a3a3a";
       row.style.opacity = "0.6";
       row.style.cursor = "not-allowed";
-      row.title = `‚ö†Ô∏è WO ya importada como LOT NO: ${wo.lot_no_existente || 'N/A'}`;
+      row.title = `?? WO ya importada como LOT NO: ${wo.lot_no_existente || 'N/A'}`;
     }
 
     row.innerHTML = `
       <td style="padding:6px; text-align:center;">
         <input type="checkbox" class="wo-checkbox" value="${wo.id}" 
                ${wo.estado === 'CERRADA' || yaImportado ? 'disabled' : ''}>
-        ${yaImportado ? '<div style="color:#e74c3c; font-size:9px; font-weight:bold; margin-top:2px;">‚úì IMPORTADO</div>' : ''}
+        ${yaImportado ? '<div style="color:#e74c3c; font-size:9px; font-weight:bold; margin-top:2px;">? IMPORTADO</div>' : ''}
       </td>
       <td style="padding:6px; font-size:10px;">${wo.codigo_wo || ''}</td>
       <td style="padding:6px; font-size:10px;">${wo.codigo_po || ''}</td>
@@ -1150,7 +1150,7 @@ function renderWorkOrdersTable(workOrders) {
       <td style="padding:6px; font-size:10px;">${wo.modificador || ''}</td>
       <td style="padding:6px; text-align:center;">
         ${yaImportado ?
-        `<span style="padding:2px 6px; font-size:9px; background:#555; color:#999; border-radius:3px;">üîí Bloqueado</span>` :
+        `<span style="padding:2px 6px; font-size:9px; background:#555; color:#999; border-radius:3px;">?? Bloqueado</span>` :
         `<button class="plan-btn wo-import-single-btn" data-wo-id="${wo.id}"
                   style="padding:2px 6px; font-size:9px; background:#27ae60;"
                   ${wo.estado === 'CERRADA' ? 'disabled' : ''}>
@@ -1177,16 +1177,16 @@ async function importSingleWO(woId, button) {
   const originalText = button.textContent;
 
   try {
-    // Obtener fecha de importaci√≥n
+    // Obtener fecha de importaciÛn
     const importDateInput = document.getElementById('wo-filter-date');
     const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
 
     if (!importDate) {
-      alert('‚ö†Ô∏è Por favor seleccione una fecha de importaci√≥n');
+      alert('?? Por favor seleccione una fecha de importaciÛn');
       return;
     }
 
-    // Mostrar estado de carga en el bot√≥n
+    // Mostrar estado de carga en el botÛn
     button.textContent = 'Importando...';
     button.disabled = true;
     button.classList.add('loading');
@@ -1200,16 +1200,16 @@ async function importSingleWO(woId, button) {
 
     if (response.data.success) {
       const plan = response.data.plans[0];
-      alert(`‚úÖ WO importado exitosamente como Plan: ${plan.lot_no}`);
+      alert(`? WO importado exitosamente como Plan: ${plan.lot_no}`);
       loadPlans(); // Recargar tabla principal
       loadWorkOrders(); // Recargar WOs
     } else {
-      alert("‚ùå Error en importaci√≥n: " + (response.data.errors || []).join(", "));
+      alert("? Error en importaciÛn: " + (response.data.errors || []).join(", "));
     }
   } catch (error) {
-    alert("‚ùå Error importando WO: " + (error.response?.data?.error || error.message));
+    alert("? Error importando WO: " + (error.response?.data?.error || error.message));
   } finally {
-    // Restaurar bot√≥n
+    // Restaurar botÛn
     button.textContent = originalText;
     button.disabled = false;
     button.classList.remove('loading');
@@ -1222,22 +1222,22 @@ async function importAllSelectedWOs() {
   const selectedCheckboxes = document.querySelectorAll(".wo-checkbox:checked");
 
   if (selectedCheckboxes.length === 0) {
-    alert("‚ö†Ô∏è Seleccione al menos un Work Order para importar");
+    alert("?? Seleccione al menos un Work Order para importar");
     return;
   }
 
-  // Obtener fecha de importaci√≥n
+  // Obtener fecha de importaciÛn
   const importDateInput = document.getElementById('wo-filter-date');
   const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
 
   if (!importDate) {
-    alert('‚ö†Ô∏è Por favor seleccione una fecha de importaci√≥n');
+    alert('?? Por favor seleccione una fecha de importaciÛn');
     return;
   }
 
   const woIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
 
-  if (!confirm(`¬øImportar ${woIds.length} Work Order(s) como planes para el ${importDate}?`)) {
+  if (!confirm(`øImportar ${woIds.length} Work Order(s) como planes para el ${importDate}?`)) {
     return;
   }
 
@@ -1246,7 +1246,7 @@ async function importAllSelectedWOs() {
     showTableLoading('wo-modal-content', `Importando ${woIds.length} Work Orders...`);
     updateWOStatus("Importando work orders...");
 
-    // Deshabilitar bot√≥n de importar
+    // Deshabilitar botÛn de importar
     setButtonLoading('wo-import-selected-btn', true, 'Importando...');
 
     const response = await axios.post("/api/work-orders/import", {
@@ -1256,10 +1256,10 @@ async function importAllSelectedWOs() {
 
     if (response.data.success) {
       const { imported, errors } = response.data;
-      let message = `‚úÖ ${imported} Work Orders importados exitosamente`;
+      let message = `? ${imported} Work Orders importados exitosamente`;
 
       if (errors && errors.length > 0) {
-        message += `\n\n‚ö†Ô∏è WOs no importados:\n`;
+        message += `\n\n?? WOs no importados:\n`;
         errors.forEach((error, index) => {
           message += `${index + 1}. ${error}\n`;
         });
@@ -1273,10 +1273,10 @@ async function importAllSelectedWOs() {
       document.getElementById("wo-select-all").checked = false;
 
     } else {
-      alert("‚ùå Error en importaci√≥n: " + (response.data.errors || []).join(", "));
+      alert("? Error en importaciÛn: " + (response.data.errors || []).join(", "));
     }
   } catch (error) {
-    alert("‚ùå Error importando WOs: " + (error.response?.data?.error || error.message));
+    alert("? Error importando WOs: " + (error.response?.data?.error || error.message));
   } finally {
     // Ocultar loading y restaurar botones
     hideTableLoading('wo-modal-content');
@@ -1318,17 +1318,17 @@ function setDefaultRescheduleDates() {
   const newDate = document.getElementById("reschedule-new-date");
 
   if (dateFrom && !dateFrom.value) {
-    dateFrom.value = getDateInNuevoLeon(-7); // Una semana atr√°s en Nuevo Le√≥n
+    dateFrom.value = getDateInNuevoLeon(-7); // Una semana atr·s en Nuevo LeÛn
   }
   if (dateTo && !dateTo.value) {
-    dateTo.value = getTodayInNuevoLeon(); // Hoy en Nuevo Le√≥n
+    dateTo.value = getTodayInNuevoLeon(); // Hoy en Nuevo LeÛn
   }
   if (newDate && !newDate.value) {
-    newDate.value = getTodayInNuevoLeon(); // Hoy en Nuevo Le√≥n
+    newDate.value = getTodayInNuevoLeon(); // Hoy en Nuevo LeÛn
   }
 }
 
-// Exponer funci√≥n globalmente
+// Exponer funciÛn globalmente
 window.setDefaultRescheduleDates = setDefaultRescheduleDates;
 
 // Cargar planes pendientes
@@ -1337,7 +1337,7 @@ async function loadPendingPlans() {
   const dateToInput = document.getElementById("reschedule-date-to");
 
   if (!dateFromInput || !dateToInput) {
-    console.error('‚ùå Elementos de fecha no encontrados');
+    console.error('? Elementos de fecha no encontrados');
     alert("Error: Elementos de fecha no disponibles");
     return;
   }
@@ -1346,7 +1346,7 @@ async function loadPendingPlans() {
   const dateTo = dateToInput.value;
 
   if (!dateFrom || !dateTo) {
-    alert("‚ö†Ô∏è Seleccione el rango de fechas para buscar");
+    alert("?? Seleccione el rango de fechas para buscar");
     return;
   }
 
@@ -1362,7 +1362,7 @@ async function loadPendingPlans() {
     updateRescheduleStatus(`${pendingPlans.length} planes con input pendiente encontrados`);
 
   } catch (error) {
-    console.error('‚ùå Error al cargar planes pendientes:', error);
+    console.error('? Error al cargar planes pendientes:', error);
     alert("Error al cargar planes pendientes: " + (error.response?.data?.error || error.message));
     updateRescheduleStatus("Error al cargar planes");
   }
@@ -1407,7 +1407,7 @@ function renderPendingPlans(plans) {
   });
 }
 
-// Toggle selecci√≥n de todos los planes pendientes
+// Toggle selecciÛn de todos los planes pendientes
 function toggleAllReschedule(masterCheckbox) {
   const checkboxes = document.querySelectorAll(".reschedule-checkbox");
   checkboxes.forEach(cb => {
@@ -1421,7 +1421,7 @@ async function reschedulePendingPlans() {
   const newDateInput = document.getElementById("reschedule-new-date");
 
   if (!newDateInput) {
-    console.error('‚ùå Elemento reschedule-new-date no encontrado');
+    console.error('? Elemento reschedule-new-date no encontrado');
     alert("Error: Elemento de fecha no disponible");
     return;
   }
@@ -1429,37 +1429,37 @@ async function reschedulePendingPlans() {
   const newDate = newDateInput.value;
 
   if (selectedCheckboxes.length === 0) {
-    alert("‚ö†Ô∏è Seleccione al menos un plan para reprogramar");
+    alert("?? Seleccione al menos un plan para reprogramar");
     return;
   }
 
   if (!newDate) {
-    alert("‚ö†Ô∏è Seleccione la nueva fecha de trabajo");
+    alert("?? Seleccione la nueva fecha de trabajo");
     return;
   }
 
   const lotNos = Array.from(selectedCheckboxes).map(cb => cb.value);
 
-  if (!confirm(`¬øReprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
+  if (!confirm(`øReprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
     return;
   }
 
   try {
     updateRescheduleStatus("Reprogramando planes...");
 
-    // Enviar solicitud de reprogramaci√≥n
+    // Enviar solicitud de reprogramaciÛn
     const response = await axios.post('/api/plan/reschedule', {
       lot_nos: lotNos,
       new_working_date: newDate
     });
 
-    // Mostrar modal de √©xito
+    // Mostrar modal de Èxito
     showSuccessModal(`${lotNos.length} plan(es) reprogramado(s) exitosamente para ${newDate}`);
 
     // Recargar la lista de pendientes
     loadPendingPlans();
 
-    // Recargar planes principales si est√° en la misma fecha
+    // Recargar planes principales si est· en la misma fecha
     const currentStartInput = document.getElementById("filter-start");
     const currentEndInput = document.getElementById("filter-end");
 
@@ -1472,9 +1472,9 @@ async function reschedulePendingPlans() {
     }
 
   } catch (error) {
-    console.error('‚ùå Error al reprogramar planes:', error);
+    console.error('? Error al reprogramar planes:', error);
     alert("Error al reprogramar planes: " + (error.response?.data?.error || error.message));
-    updateRescheduleStatus("Error en reprogramaci√≥n");
+    updateRescheduleStatus("Error en reprogramaciÛn");
   }
 }
 
@@ -1488,7 +1488,7 @@ function updateRescheduleStatus(message) {
 
 // ========= INITIALIZATION =========
 
-// ====== FUNCIONALIDAD DE PLANEACI√ìN INTEGRADA ======
+// ====== FUNCIONALIDAD DE PLANEACI”N INTEGRADA ======
 
 // Inicializar grupos visuales
 function initializeVisualGroups(groupCount) {
@@ -1514,13 +1514,13 @@ function renderTableWithVisualGroups(data) {
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   initializeVisualGroups(groupCount);
 
-  // Verificar si los datos tienen informaci√≥n de grupos guardada
+  // Verificar si los datos tienen informaciÛn de grupos guardada
   const hasGroupData = data.some(plan => plan.group_no != null && plan.sequence != null);
 
   if (hasGroupData) {
 
 
-    // Asignar planes bas√°ndose en group_no y sequence de la base de datos
+    // Asignar planes bas·ndose en group_no y sequence de la base de datos
     data.forEach((plan) => {
       if (plan.group_no != null && plan.sequence != null) {
         const groupIndex = plan.group_no - 1; // Convertir de 1-indexed a 0-indexed
@@ -1528,13 +1528,13 @@ function renderTableWithVisualGroups(data) {
           visualGroups.groups[groupIndex].plans.push(plan);
           visualGroups.planAssignments.set(plan.lot_no, groupIndex);
         } else {
-          // Si el group_no est√° fuera del rango actual, asignar al √∫ltimo grupo
+          // Si el group_no est· fuera del rango actual, asignar al ˙ltimo grupo
           const fallbackGroup = groupCount - 1;
           visualGroups.groups[fallbackGroup].plans.push(plan);
           visualGroups.planAssignments.set(plan.lot_no, fallbackGroup);
         }
       } else {
-        // Para planes sin grupo asignado, usar distribuci√≥n autom√°tica
+        // Para planes sin grupo asignado, usar distribuciÛn autom·tica
         const assignedGroup = data.indexOf(plan) % groupCount;
         visualGroups.groups[assignedGroup].plans.push(plan);
         visualGroups.planAssignments.set(plan.lot_no, assignedGroup);
@@ -1557,7 +1557,7 @@ function renderTableWithVisualGroups(data) {
     data.forEach((plan, index) => {
       let assignedGroup = visualGroups.planAssignments.get(plan.lot_no);
       if (assignedGroup === undefined) {
-        // Asignar autom√°ticamente si no tiene asignaci√≥n previa
+        // Asignar autom·ticamente si no tiene asignaciÛn previa
         assignedGroup = index % groupCount;
         visualGroups.planAssignments.set(plan.lot_no, assignedGroup);
       }
@@ -1590,7 +1590,7 @@ function renderTableWithVisualGroups(data) {
     dropZoneRow.innerHTML = `
       <td colspan="21" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
-          ${group.plans.length === 0 ? 'Arrastra planes aqu√≠ para asignarlos a este grupo' : ''}
+          ${group.plans.length === 0 ? 'Arrastra planes aquÌ para asignarlos a este grupo' : ''}
         </div>
       </td>
     `;
@@ -1667,7 +1667,7 @@ function setupGroupDragDrop() {
   let dropIndicator = null;
   let isDraggingOverDropZone = false;
 
-  // Crear indicador visual de inserci√≥n
+  // Crear indicador visual de inserciÛn
   function createDropIndicator() {
     const indicator = document.createElement('tr');
     indicator.className = 'drop-indicator';
@@ -1725,7 +1725,7 @@ function setupGroupDragDrop() {
     const allZones = tbody.querySelectorAll('.group-drop-zone');
     allZones.forEach(z => { z.style.backgroundColor = '#34495e'; z.style.borderColor = '#20688C'; });
 
-    // L√≥gica para reordenamiento dentro del grupo
+    // LÛgica para reordenamiento dentro del grupo
     const targetRow = e.target.closest('.plan-row');
     if (!targetRow || targetRow === draggedElement) {
       clearDropIndicator();
@@ -1742,7 +1742,7 @@ function setupGroupDragDrop() {
       // Crear nuevo indicador
       dropIndicator = createDropIndicator();
 
-      // Determinar d√≥nde insertar el indicador
+      // Determinar dÛnde insertar el indicador
       const rect = targetRow.getBoundingClientRect();
       const midpoint = rect.top + rect.height / 2;
 
@@ -1750,7 +1750,7 @@ function setupGroupDragDrop() {
         // Insertar antes de la fila target
         targetRow.parentNode.insertBefore(dropIndicator, targetRow);
       } else {
-        // Insertar despu√©s de la fila target
+        // Insertar despuÈs de la fila target
         const nextSibling = targetRow.nextSibling;
         // Verificar que el siguiente elemento no sea un header de grupo o drop zone
         if (nextSibling &&
@@ -1789,10 +1789,10 @@ function setupGroupDragDrop() {
       const targetGroupIndex = parseInt(dropZone.dataset.groupIndex);
       const lotNo = draggedElement.dataset.lot;
 
-      // Actualizar asignaci√≥n
+      // Actualizar asignaciÛn
       visualGroups.planAssignments.set(lotNo, targetGroupIndex);
 
-      // Recargar tabla con nueva asignaci√≥n
+      // Recargar tabla con nueva asignaciÛn
       reloadTableWithCurrentData();
 
       // Actualizar secuencias y fechas de inicio
@@ -1808,7 +1808,7 @@ function setupGroupDragDrop() {
       const dropZoneContent = dropZone.querySelector('.drop-zone-content');
       const originalText = dropZoneContent.innerHTML;
 
-      dropZoneContent.innerHTML = `‚úÖ Plan ${lotNo.split('-')[2]} movido aqu√≠`;
+      dropZoneContent.innerHTML = `? Plan ${lotNo.split('-')[2]} movido aquÌ`;
       dropZoneContent.classList.add('drop-zone-success');
 
       setTimeout(() => {
@@ -1836,7 +1836,7 @@ function setupGroupDragDrop() {
   });
 }
 
-// Funci√≥n para reordenar planes dentro del mismo grupo
+// FunciÛn para reordenar planes dentro del mismo grupo
 function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
   const lotNo = draggedRow.dataset.lot;
   const targetLotNo = targetRow.dataset.lot;
@@ -1850,7 +1850,7 @@ function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
     return;
   }
 
-  // Encontrar √≠ndices de los planes
+  // Encontrar Ìndices de los planes
   const draggedIndex = currentGroup.plans.findIndex(plan => plan.lot_no === lotNo);
   const targetIndex = currentGroup.plans.findIndex(plan => plan.lot_no === targetLotNo);
 
@@ -1861,7 +1861,7 @@ function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
 
 
 
-  // Determinar la nueva posici√≥n basada en la posici√≥n del mouse
+  // Determinar la nueva posiciÛn basada en la posiciÛn del mouse
   const rect = targetRow.getBoundingClientRect();
   const midpoint = rect.top + rect.height / 2;
   let newIndex;
@@ -1870,7 +1870,7 @@ function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
     // Insertar antes del target
     newIndex = targetIndex;
   } else {
-    // Insertar despu√©s del target
+    // Insertar despuÈs del target
     newIndex = targetIndex + 1;
   }
 
@@ -1923,7 +1923,7 @@ function calculateGroupTimes() {
     let currentTime = timeToMinutes(currentConfig.shiftStart);
     const groupStartTime = currentTime;
 
-    // Filtrar planes que NO est√°n cancelados
+    // Filtrar planes que NO est·n cancelados
     const activePlans = group.plans.filter(plan => plan.status !== 'CANCELADO');
 
     activePlans.forEach((plan, planIndex) => {
@@ -1938,7 +1938,7 @@ function calculateGroupTimes() {
         const breakEnd = timeToMinutes(breakInfo.end);
         const breakDuration = breakEnd - breakStart;
 
-        // Si el break cae durante la producci√≥n de este plan
+        // Si el break cae durante la producciÛn de este plan
         if (breakStart >= startTime && breakStart < plannedEndTime) {
           breaksDuringPlan += breakDuration;
         }
@@ -1947,13 +1947,13 @@ function calculateGroupTimes() {
       // Tiempo real de fin (incluyendo breaks)
       const actualEndTime = plannedEndTime + breaksDuringPlan;
 
-      // Actualizar c√°lculos individuales
+      // Actualizar c·lculos individuales
       planningCalculations.set(plan.lot_no, {
         groupNumber: groupIndex + 1,
         productionTime: productionTime,
         startTime: minutesToTime(startTime),
         endTime: minutesToTime(actualEndTime), // Incluye breaks
-        isOvertime: false, // Se calcular√° despu√©s
+        isOvertime: false, // Se calcular· despuÈs
         totalGroupTime: totalProductiveMinutes + productionTime
       });
 
@@ -1965,7 +1965,7 @@ function calculateGroupTimes() {
     group.plans.filter(plan => plan.status === 'CANCELADO').forEach(plan => {
       planningCalculations.set(plan.lot_no, {
         groupNumber: groupIndex + 1,
-        productionTime: 0, // Sin tiempo de producci√≥n
+        productionTime: 0, // Sin tiempo de producciÛn
         startTime: '--',
         endTime: '--',
         isOvertime: false,
@@ -1974,7 +1974,7 @@ function calculateGroupTimes() {
       });
     });
 
-    // Determinar si el grupo est√° en overtime (m√°s de 9 horas productivas)
+    // Determinar si el grupo est· en overtime (m·s de 9 horas productivas)
     const productiveMinutes = (currentConfig.productiveHours || 9) * 60; // 9 horas = 540 min
     group.totalTime = totalProductiveMinutes; // Solo tiempo productivo de planes activos
     group.isOvertime = totalProductiveMinutes > productiveMinutes;
@@ -1993,7 +1993,7 @@ function calculateGroupTimes() {
     updateGroupUI(groupIndex, group);
   });
 
-  // Actualizar filas de planes con c√°lculos
+  // Actualizar filas de planes con c·lculos
   updatePlanRows();
 }
 
@@ -2018,7 +2018,7 @@ function updateGroupUI(groupIndex, group) {
   }
 }
 
-// Actualizar filas de planes con c√°lculos
+// Actualizar filas de planes con c·lculos
 function updatePlanRows() {
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
@@ -2030,7 +2030,7 @@ function updatePlanRows() {
     if (calc) {
       const cells = row.querySelectorAll('td');
 
-      // Si el plan est√° cancelado, mostrar tiempos como -- y marcar como cancelado
+      // Si el plan est· cancelado, mostrar tiempos como -- y marcar como cancelado
       if (calc.isCancelled) {
         if (cells[17]) cells[17].textContent = '--'; // Tiempo Productivo
         if (cells[18]) cells[18].textContent = '--'; // Inicio
@@ -2043,7 +2043,7 @@ function updatePlanRows() {
         row.style.color = '#ccc';
         row.style.textDecoration = 'line-through';
       } else {
-        // Plan activo - mostrar c√°lculos normales
+        // Plan activo - mostrar c·lculos normales
         if (cells[17]) cells[17].textContent = minutesToTime(calc.productionTime);
         if (cells[18]) cells[18].textContent = calc.startTime;
         if (cells[19]) cells[19].textContent = calc.endTime;
@@ -2056,7 +2056,7 @@ function updatePlanRows() {
             '<span class="status-normal">NORMAL</span>';
         }
 
-        // Resaltar fila si est√° en tiempo extra
+        // Resaltar fila si est· en tiempo extra
         if (calc.isOvertime) {
           row.style.backgroundColor = '#8e2e2e';
           row.style.color = '#fff';
@@ -2106,7 +2106,7 @@ function renderCurrentVisualGroups() {
     dropZoneRow.innerHTML = `
       <td colspan="21" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
-          ${group.plans.length === 0 ? 'Arrastra planes aqu√≠ para asignarlos a este grupo' : ''}
+          ${group.plans.length === 0 ? 'Arrastra planes aquÌ para asignarlos a este grupo' : ''}
         </div>
       </td>
     `;
@@ -2185,10 +2185,10 @@ function reloadTableWithCurrentData() {
 
     if (!lotNo) return; // Skip si no tiene lot_no
 
-    // ‚≠ê BUSCAR PRIMERO en originalPlansData para preservar todos los campos (especialmente status)
+    // ? BUSCAR PRIMERO en originalPlansData para preservar todos los campos (especialmente status)
     let planData = originalPlansData.find(p => p.lot_no === lotNo);
 
-    // Si no est√° en originalPlansData, reconstruir desde HTML (con √≠ndices corregidos)
+    // Si no est· en originalPlansData, reconstruir desde HTML (con Ìndices corregidos)
     if (!planData) {
       planData = {
         lot_no: lotNo,
@@ -2206,7 +2206,7 @@ function reloadTableWithCurrentData() {
         plan_count: parseInt(cells[13]?.textContent?.trim()) || 0,
         produced: parseInt(cells[14]?.textContent?.trim()) || 0,
         output: parseInt(cells[15]?.textContent?.trim()) || 0,
-        status: cells[16]?.textContent?.trim() || 'PLAN' // ‚≠ê CORREGIDO: cells[16] no cells[15]
+        status: cells[16]?.textContent?.trim() || 'PLAN' // ? CORREGIDO: cells[16] no cells[15]
       };
     }
 
@@ -2221,7 +2221,7 @@ function reloadTableWithCurrentData() {
   // Re-renderizar con datos actuales
   renderTableWithVisualGroups(currentData);
 
-  // Actualizar fechas de inicio despu√©s del renderizado
+  // Actualizar fechas de inicio despuÈs del renderizado
   setTimeout(() => {
     // Ya no necesitamos updateStartDates
   }, 100);
@@ -2245,14 +2245,14 @@ function calculateProductionTime(planCount, uph) {
   return Math.round((planCount / uph) * 60); // minutos
 }
 
-// Agrupar planes en N grupos seg√∫n la selecci√≥n
+// Agrupar planes en N grupos seg˙n la selecciÛn
 function groupPlansIntoNGroups(plans, groupCount) {
   const groups = [];
   for (let i = 0; i < groupCount; i++) {
     groups.push([]);
   }
 
-  // Distribuir planes por l√≠neas en grupos
+  // Distribuir planes por lÌneas en grupos
   const lineGroups = {};
   plans.forEach(plan => {
     const line = plan.line;
@@ -2260,7 +2260,7 @@ function groupPlansIntoNGroups(plans, groupCount) {
     lineGroups[line].push(plan);
   });
 
-  // Asignar l√≠neas a grupos de manera balanceada
+  // Asignar lÌneas a grupos de manera balanceada
   const lines = Object.keys(lineGroups);
   lines.forEach((line, index) => {
     const groupIndex = index % groupCount;
@@ -2270,7 +2270,7 @@ function groupPlansIntoNGroups(plans, groupCount) {
   return groups;
 }
 
-// Calcular tiempos de planeaci√≥n para cada fila
+// Calcular tiempos de planeaciÛn para cada fila
 function calculatePlanningTimes(plans) {
   planningCalculations.clear();
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
@@ -2285,7 +2285,7 @@ function calculatePlanningTimes(plans) {
       const startTime = currentTime;
       const endTime = currentTime + productionTime;
 
-      // Calcular si est√° en tiempo extra (termina despu√©s de 17:30)
+      // Calcular si est· en tiempo extra (termina despuÈs de 17:30)
       const shiftEndMinutes = timeToMinutes(currentConfig.shiftEnd || '17:30');
       const isOvertime = endTime > shiftEndMinutes;
 
@@ -2304,7 +2304,7 @@ function calculatePlanningTimes(plans) {
   });
 }
 
-// Auto acomodo de planes por optimizaci√≥n distribuida
+// Auto acomodo de planes por optimizaciÛn distribuida
 function autoArrangePlans() {
   const tbody = document.getElementById('plan-tableBody');
   const planRows = Array.from(tbody.querySelectorAll('.plan-row'));
@@ -2313,7 +2313,7 @@ function autoArrangePlans() {
     // Feedback visual en lugar de alert
     const autoBtn = document.getElementById('auto-arrange-btn');
     const originalText = autoBtn.textContent;
-    autoBtn.textContent = '‚ö†Ô∏è Sin planes';
+    autoBtn.textContent = '?? Sin planes';
     autoBtn.style.backgroundColor = '#e67e22';
 
     setTimeout(() => {
@@ -2350,11 +2350,12 @@ function autoArrangePlans() {
       process: cells[10]?.textContent?.trim() || 'MAIN',
       ct: cells[11]?.textContent?.trim() || '0',
       produced: parseInt(cells[14]?.textContent) || 0,
-      status: cells[15]?.textContent?.trim() || 'PLAN'
+      output: parseInt(cells[15]?.textContent) || 0,
+      status: cells[16]?.textContent?.trim() || 'PLAN'
     };
   });
 
-  // Agrupar planes por l√≠nea primero
+  // Agrupar planes por lÌnea primero
   const lineGroups = {};
   plans.forEach(plan => {
     if (!lineGroups[plan.line]) {
@@ -2363,36 +2364,36 @@ function autoArrangePlans() {
     lineGroups[plan.line].push(plan);
   });
 
-  // Ordenar planes dentro de cada l√≠nea por tiempo de producci√≥n (menor a mayor)
+  // Ordenar planes dentro de cada lÌnea por tiempo de producciÛn (menor a mayor)
   Object.keys(lineGroups).forEach(line => {
     lineGroups[line].sort((a, b) => a.productionTime - b.productionTime);
   });
 
-  // Distribuir manteniendo l√≠neas juntas de forma secuencial
+  // Distribuir manteniendo lÌneas juntas de forma secuencial
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   visualGroups.planAssignments.clear();
 
-  // Algoritmo mejorado: asignaci√≥n secuencial de l√≠neas a grupos
+  // Algoritmo mejorado: asignaciÛn secuencial de lÌneas a grupos
   const productiveMinutes = (currentConfig.productiveHours || 9) * 60; // 9 horas productivas = 540 min
   const groupTimes = new Array(groupCount).fill(0);
-  const groupLines = new Array(groupCount).fill().map(() => new Map()); // L√≠neas y sus tiempos por grupo
+  const groupLines = new Array(groupCount).fill().map(() => new Map()); // LÌneas y sus tiempos por grupo
 
   // Auto-acomodo iniciado (modo secuencial)
 
-  // Ordenar l√≠neas con orden espec√≠fico: M1, M2, M3, M4, D1, D2, D3, H1, etc.
+  // Ordenar lÌneas con orden especÌfico: M1, M2, M3, M4, D1, D2, D3, H1, etc.
   const sortedLines = Object.keys(lineGroups).sort((a, b) => {
-    // Extraer letra y n√∫mero de cada l√≠nea
+    // Extraer letra y n˙mero de cada lÌnea
     const matchA = a.match(/^([A-Z]+)(\d+)$/);
     const matchB = b.match(/^([A-Z]+)(\d+)$/);
     
     if (!matchA || !matchB) {
-      return a.localeCompare(b); // Fallback para formatos no est√°ndar
+      return a.localeCompare(b); // Fallback para formatos no est·ndar
     }
     
     const [, letterA, numA] = matchA;
     const [, letterB, numB] = matchB;
     
-    // Orden de prioridad de letras: M, D, H, luego alfab√©tico
+    // Orden de prioridad de letras: M, D, H, luego alfabÈtico
     const letterOrder = { 'M': 1, 'D': 2, 'H': 3 };
     const orderA = letterOrder[letterA] || 99;
     const orderB = letterOrder[letterB] || 99;
@@ -2402,29 +2403,29 @@ function autoArrangePlans() {
       return orderA - orderB;
     }
     
-    // Si la letra es igual, ordenar por n√∫mero
+    // Si la letra es igual, ordenar por n˙mero
     return parseInt(numA) - parseInt(numB);
   });
   
-  console.log('üìã Orden de l√≠neas para auto-acomodo:', sortedLines.join(', '));
+  console.log('?? Orden de lÌneas para auto-acomodo:', sortedLines.join(', '));
 
-  // Asignar cada l√≠nea a un grupo de forma secuencial (round-robin)
+  // Asignar cada lÌnea a un grupo de forma secuencial (round-robin)
   sortedLines.forEach((line, lineIndex) => {
     const linePlans = lineGroups[line];
     const totalLineTime = linePlans.reduce((sum, plan) => sum + plan.productionTime, 0);
 
-    // Asignaci√≥n secuencial: M1 -> Grupo 0, M2 -> Grupo 1, M3 -> Grupo 2, etc.
-    // Si hay m√°s l√≠neas que grupos, se hace round-robin (M7 -> Grupo 0, M8 -> Grupo 1, etc.)
+    // AsignaciÛn secuencial: M1 -> Grupo 0, M2 -> Grupo 1, M3 -> Grupo 2, etc.
+    // Si hay m·s lÌneas que grupos, se hace round-robin (M7 -> Grupo 0, M8 -> Grupo 1, etc.)
     const groupIndex = lineIndex % groupCount;
 
-    console.log(`üìå Auto-acomodo: L√≠nea ${line} ‚Üí Grupo ${groupIndex + 1} (${totalLineTime.toFixed(1)} min)`);
+    console.log(`?? Auto-acomodo: LÌnea ${line} ? Grupo ${groupIndex + 1} (${totalLineTime.toFixed(1)} min)`);
 
-    // Asignar todos los planes de la l√≠nea al grupo correspondiente
+    // Asignar todos los planes de la lÌnea al grupo correspondiente
     linePlans.forEach(plan => {
       visualGroups.planAssignments.set(plan.lot_no, groupIndex);
     });
 
-    // Actualizar estad√≠sticas del grupo
+    // Actualizar estadÌsticas del grupo
     groupTimes[groupIndex] += totalLineTime;
     if (!groupLines[groupIndex].has(line)) {
       groupLines[groupIndex].set(line, 0);
@@ -2432,17 +2433,17 @@ function autoArrangePlans() {
     groupLines[groupIndex].set(line, groupLines[groupIndex].get(line) + totalLineTime);
   });
 
-  // Mostrar reporte de distribuci√≥n
+  // Mostrar reporte de distribuciÛn
   const groupsWithOvertime = groupTimes.filter(time => time > productiveMinutes).length;
   const totalTime = groupTimes.reduce((sum, time) => sum + time, 0);
   const avgTimePerGroup = totalTime / groupCount;
 
   // Resultado del auto-acomodo
 
-  // Re-renderizar tabla con nueva distribuci√≥n
+  // Re-renderizar tabla con nueva distribuciÛn
   renderTableWithVisualGroups(plans);
 
-  // Recalcular tiempos despu√©s de la redistribuci√≥n
+  // Recalcular tiempos despuÈs de la redistribuciÛn
   calculateGroupTimes();
 
   // Feedback visual mejorado
@@ -2450,10 +2451,10 @@ function autoArrangePlans() {
   const originalText = autoBtn.textContent;
 
   if (groupsWithOvertime === 0) {
-    autoBtn.textContent = '‚úÖ Sin Tiempo Extra';
+    autoBtn.textContent = '? Sin Tiempo Extra';
     autoBtn.style.backgroundColor = '#27ae60';
   } else {
-    autoBtn.textContent = `‚ö†Ô∏è ${groupsWithOvertime} con Extra`;
+    autoBtn.textContent = `?? ${groupsWithOvertime} con Extra`;
     autoBtn.style.backgroundColor = '#f39c12';
   }
 
@@ -2463,10 +2464,10 @@ function autoArrangePlans() {
   }, 3000);
 }
 
-// Exponer funci√≥n globalmente
+// Exponer funciÛn globalmente
 window.autoArrangePlans = autoArrangePlans;
 
-// Exponer funciones de reprogramaci√≥n globalmente
+// Exponer funciones de reprogramaciÛn globalmente
 window.loadPendingPlans = loadPendingPlans;
 window.reschedulePendingPlans = reschedulePendingPlans;
 window.toggleAllReschedule = toggleAllReschedule;
@@ -2490,16 +2491,16 @@ function calculateAndUpdateTimes() {
   // Calcular tiempos
   calculatePlanningTimes(plans);
 
-  // Actualizar filas con nueva informaci√≥n
+  // Actualizar filas con nueva informaciÛn
   rows.forEach((row, index) => {
     const lotNo = row.dataset.lot;
     const calc = planningCalculations.get(lotNo);
 
     if (calc) {
-      // Agregar celdas de planeaci√≥n si no existen
+      // Agregar celdas de planeaciÛn si no existen
       let cells = row.querySelectorAll('td');
 
-      // Tiempo de producci√≥n
+      // Tiempo de producciÛn
       if (cells.length >= 17) {
         cells[16].textContent = minutesToTime(calc.productionTime);
         cells[16].className = 'tiempo-cell';
@@ -2532,7 +2533,7 @@ function calculateAndUpdateTimes() {
         row.appendChild(endCell);
       }
 
-      // N√∫mero de grupo
+      // N˙mero de grupo
       if (cells.length >= 20) {
         cells[19].textContent = calc.groupNumber;
         cells[19].style.textAlign = 'center';
@@ -2545,7 +2546,7 @@ function calculateAndUpdateTimes() {
         row.appendChild(groupCell);
       }
 
-      // Indicador de tiempo extra en la √∫ltima columna (Turno)
+      // Indicador de tiempo extra en la ˙ltima columna (Turno)
       if (cells.length >= 22) {
         cells[21].innerHTML = calc.isOvertime ?
           '<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">EXTRA</span>' :
@@ -2558,7 +2559,7 @@ function calculateAndUpdateTimes() {
         row.appendChild(extraCell);
       }
 
-      // Resaltar fila si est√° en tiempo extra
+      // Resaltar fila si est· en tiempo extra
       if (calc.isOvertime) {
         row.style.backgroundColor = '#8e2e2e';
         row.style.color = '#fff';
@@ -2570,17 +2571,17 @@ function calculateAndUpdateTimes() {
   });
 }
 
-// Funci√≥n para crear modales din√°micamente en el body
+// FunciÛn para crear modales din·micamente en el body
 function createModalsInBody() {
-  console.log('üèóÔ∏è Creando modales din√°micamente en el body...');
+  console.log('??? Creando modales din·micamente en el body...');
 
-  // Verificar que los estilos CSS est√©n cargados
+  // Verificar que los estilos CSS estÈn cargados
   const testDiv = document.createElement('div');
   testDiv.className = 'modal-overlay';
   testDiv.style.display = 'none';
   document.body.appendChild(testDiv);
   const computedStyle = window.getComputedStyle(testDiv);
-  console.log('üé® Estilos CSS de modal-overlay:', {
+  console.log('?? Estilos CSS de modal-overlay:', {
     position: computedStyle.position,
     zIndex: computedStyle.zIndex,
     display: computedStyle.display
@@ -2589,7 +2590,7 @@ function createModalsInBody() {
 
   // Modal de Nuevo Plan
   if (!document.getElementById('plan-modal')) {
-    console.log('üì¶ Creando modal plan-modal');
+    console.log('?? Creando modal plan-modal');
     const planModal = document.createElement('div');
     planModal.id = 'plan-modal';
     planModal.className = 'modal-overlay';
@@ -2632,10 +2633,10 @@ function createModalsInBody() {
           <input type="number" name="plan_count" value="0" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
 
           <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">WO Code:</label>
-          <input type="text" name="wo_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <input type="text" name="wo_code" value="SIN-WO" placeholder="SIN-WO" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
 
           <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">PO Code:</label>
-          <input type="text" name="po_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <input type="text" name="po_code" value="SIN-PO" placeholder="SIN-PO" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
 
           <div class="form-actions" style="display: flex; gap: 10px; margin-top: 10px;">
             <button type="submit" class="plan-btn plan-btn-add" style="flex: 1; background: #27ae60; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Registrar</button>
@@ -2649,7 +2650,7 @@ function createModalsInBody() {
 
   // Modal de Editar Plan
   if (!document.getElementById('plan-editModal')) {
-    console.log('üì¶ Creando modal plan-editModal');
+    console.log('?? Creando modal plan-editModal');
     const editModal = document.createElement('div');
     editModal.id = 'plan-editModal';
     editModal.className = 'modal-overlay';
@@ -2708,7 +2709,7 @@ function createModalsInBody() {
 
   // Modal de Reprogramar
   if (!document.getElementById('reschedule-modal')) {
-    console.log('üì¶ Creando modal reschedule-modal');
+    console.log('?? Creando modal reschedule-modal');
     const rescheduleModal = document.createElement('div');
     rescheduleModal.id = 'reschedule-modal';
     rescheduleModal.className = 'modal-overlay';
@@ -2775,26 +2776,26 @@ function createModalsInBody() {
     document.body.appendChild(rescheduleModal);
   }
 
-  console.log('‚úÖ Modales creados din√°micamente en el body');
+  console.log('? Modales creados din·micamente en el body');
 }
 
-// Funci√≥n de inicializaci√≥n de event listeners usando event delegation
+// FunciÛn de inicializaciÛn de event listeners usando event delegation
 function initializePlanEventListeners() {
-  console.log('üîß initializePlanEventListeners llamada');
+  console.log('?? initializePlanEventListeners llamada');
 
-  // IMPORTANTE: Siempre crear modales din√°micamente en el body
-  // Esto asegura que los modales siempre est√©n al nivel correcto del DOM
+  // IMPORTANTE: Siempre crear modales din·micamente en el body
+  // Esto asegura que los modales siempre estÈn al nivel correcto del DOM
   createModalsInBody();
 
-  // IMPORTANTE: Usar protecci√≥n para evitar agregar listeners duplicados
-  // Solo agregar listeners una vez, ya que est√°n en document.body
+  // IMPORTANTE: Usar protecciÛn para evitar agregar listeners duplicados
+  // Solo agregar listeners una vez, ya que est·n en document.body
   if (document.body.dataset.planListenersAttached === 'true') {
-    console.log('‚úÖ Listeners ya est√°n configurados, saltando re-inicializaci√≥n de listeners');
-    console.log('‚ÑπÔ∏è Los modales fueron creados/verificados en el body');
+    console.log('? Listeners ya est·n configurados, saltando re-inicializaciÛn de listeners');
+    console.log('?? Los modales fueron creados/verificados en el body');
     return;
   }
 
-  console.log('üìù Configurando event listeners con event delegation...');
+  console.log('?? Configurando event listeners con event delegation...');
 
   // ========== EVENT LISTENER DE CLICKS (Event Delegation) ==========
   document.body.addEventListener('click', function (e) {
@@ -2805,11 +2806,11 @@ function initializePlanEventListeners() {
     // Abrir modal Nuevo Plan
     if (target.id === 'plan-openModalBtn' || target.closest('#plan-openModalBtn')) {
       e.preventDefault();
-      console.log('üéØ Click en plan-openModalBtn detectado');
+      console.log('?? Click en plan-openModalBtn detectado');
 
       // Asegurar que el modal existe antes de abrirlo
       if (!document.getElementById('plan-modal')) {
-        console.log('‚ö†Ô∏è Modal no existe, cre√°ndolo...');
+        console.log('?? Modal no existe, cre·ndolo...');
         createModalsInBody();
       }
 
@@ -2830,9 +2831,9 @@ function initializePlanEventListeners() {
           opacity: 1 !important;
           visibility: visible !important;
         `;
-        console.log('‚úÖ Modal plan-modal abierto con estilos forzados');
+        console.log('? Modal plan-modal abierto con estilos forzados');
       } else {
-        console.error('‚ùå Modal plan-modal no encontrado despu√©s de crearlo');
+        console.error('? Modal plan-modal no encontrado despuÈs de crearlo');
       }
       return;
     }
@@ -2851,12 +2852,12 @@ function initializePlanEventListeners() {
     // Abrir modal Work Orders
     if (target.id === 'wo-openModalBtn' || target.closest('#wo-openModalBtn')) {
       e.preventDefault();
-      console.log('üéØ Click en wo-openModalBtn detectado');
+      console.log('?? Click en wo-openModalBtn detectado');
 
       // Crear modal WO si no existe
       if (typeof createWorkOrdersModal === 'function') {
         createWorkOrdersModal();
-        console.log('‚úÖ Modal WO creado/verificado');
+        console.log('? Modal WO creado/verificado');
       }
 
       const modal = document.getElementById('wo-modal');
@@ -2876,10 +2877,10 @@ function initializePlanEventListeners() {
           opacity: 1 !important;
           visibility: visible !important;
         `;
-        console.log('‚úÖ Modal wo-modal abierto con estilos forzados');
+        console.log('? Modal wo-modal abierto con estilos forzados');
         if (typeof loadWorkOrders === 'function') loadWorkOrders();
       } else {
-        console.error('‚ùå Modal wo-modal no encontrado despu√©s de crearlo');
+        console.error('? Modal wo-modal no encontrado despuÈs de crearlo');
       }
       return;
     }
@@ -2887,11 +2888,11 @@ function initializePlanEventListeners() {
     // Abrir modal Reprogramar
     if (target.id === 'reschedule-openModalBtn' || target.closest('#reschedule-openModalBtn')) {
       e.preventDefault();
-      console.log('üéØ Click en reschedule-openModalBtn detectado');
+      console.log('?? Click en reschedule-openModalBtn detectado');
 
       // Asegurar que el modal existe antes de abrirlo
       if (!document.getElementById('reschedule-modal')) {
-        console.log('‚ö†Ô∏è Modal no existe, cre√°ndolo...');
+        console.log('?? Modal no existe, cre·ndolo...');
         createModalsInBody();
       }
 
@@ -2913,10 +2914,10 @@ function initializePlanEventListeners() {
           visibility: visible !important;
         `;
 
-        console.log('‚úÖ Modal reschedule-modal abierto con estilos forzados');
+        console.log('? Modal reschedule-modal abierto con estilos forzados');
         if (typeof setDefaultRescheduleDates === 'function') setDefaultRescheduleDates();
       } else {
-        console.error('‚ùå Modal reschedule-modal no encontrado despu√©s de crearlo');
+        console.error('? Modal reschedule-modal no encontrado despuÈs de crearlo');
       }
       return;
     }
@@ -2932,23 +2933,23 @@ function initializePlanEventListeners() {
       return;
     }
 
-    // Bot√≥n Buscar Pendientes del modal Reprogramar
+    // BotÛn Buscar Pendientes del modal Reprogramar
     if (target.id === 'reschedule-search-btn' || target.closest('#reschedule-search-btn')) {
       e.preventDefault();
       if (typeof loadPendingPlans === 'function') loadPendingPlans();
       return;
     }
 
-    // Bot√≥n Reprogramar Seleccionados
+    // BotÛn Reprogramar Seleccionados
     if (target.id === 'reschedule-submit-btn' || target.closest('#reschedule-submit-btn')) {
       e.preventDefault();
       if (typeof reschedulePendingPlans === 'function') reschedulePendingPlans();
       return;
     }
 
-    // ========== MODAL DE EDICI√ìN ==========
+    // ========== MODAL DE EDICI”N ==========
 
-    // Bot√≥n Cerrar modal Editar (el bot√≥n "Cerrar" dentro del form)
+    // BotÛn Cerrar modal Editar (el botÛn "Cerrar" dentro del form)
     if (target.closest('#plan-editForm button[type="button"]') &&
       target.textContent.includes('Cerrar')) {
       e.preventDefault();
@@ -2960,7 +2961,7 @@ function initializePlanEventListeners() {
       return;
     }
 
-    // Bot√≥n Cancelar Plan (bot√≥n rojo)
+    // BotÛn Cancelar Plan (botÛn rojo)
     if (target.id === 'plan-cancelBtn' || target.closest('#plan-cancelBtn')) {
       e.preventDefault();
       if (typeof handleCancelPlan === 'function') handleCancelPlan();
@@ -3023,7 +3024,7 @@ function initializePlanEventListeners() {
   document.body.addEventListener('change', function (e) {
     const target = e.target;
 
-    // Selector de n√∫mero de grupos
+    // Selector de n˙mero de grupos
     if (target.id === 'groups-count') {
       reloadTableWithCurrentData();
       return;
@@ -3050,17 +3051,17 @@ function initializePlanEventListeners() {
 
   // Marcar como inicializado
   document.body.dataset.planListenersAttached = 'true';
-  console.log('‚úÖ Event listeners configurados correctamente');
+  console.log('? Event listeners configurados correctamente');
 }
 
 // Event listeners para nuevos controles
 document.addEventListener('DOMContentLoaded', initializePlanEventListeners);
 
-// Exponer funciones globalmente para que puedan ser llamadas despu√©s de cargar contenido din√°mico
+// Exponer funciones globalmente para que puedan ser llamadas despuÈs de cargar contenido din·mico
 window.initializePlanEventListeners = initializePlanEventListeners;
 window.createModalsInBody = createModalsInBody;
 
-// Tambi√©n ejecutar inmediatamente si el DOM ya est√° listo (para scripts defer)
+// TambiÈn ejecutar inmediatamente si el DOM ya est· listo (para scripts defer)
 if (document.readyState === 'interactive' || document.readyState === 'complete') {
   initializePlanEventListeners();
 }
@@ -3087,7 +3088,7 @@ loadPlans = async function () {
     // Aplicar orden guardado (si existe) antes de renderizar
     data = applySavedOrderToData(data, fs, fe);
 
-    // Usar nueva funci√≥n de renderizado con grupos visuales
+    // Usar nueva funciÛn de renderizado con grupos visuales
     renderTableWithVisualGroups(data);
 
     // ensureOrderToolbar(fs, fe); // Ya no necesario - usamos save-sequences-btn
@@ -3099,7 +3100,7 @@ loadPlans = async function () {
   }
 };
 
-// Funci√≥n para exportar a Excel
+// FunciÛn para exportar a Excel
 async function exportarExcel() {
   try {
     const exportBtn = document.getElementById('export-excel-btn');
@@ -3116,14 +3117,14 @@ async function exportarExcel() {
     // Iterar sobre los grupos visuales en orden
     visualGroups.groups.forEach((group, groupIndex) => {
       if (group.plans && group.plans.length > 0) {
-        // A√±adir marcador de grupo
+        // AÒadir marcador de grupo
         groupedPlansData.push({
           isGroupHeader: true,
           groupTitle: group.title || `GRUPO ${groupIndex + 1}`,
           groupIndex: groupIndex
         });
 
-        // A√±adir todos los planes del grupo en orden de secuencia
+        // AÒadir todos los planes del grupo en orden de secuencia
         const sortedPlans = [...group.plans].sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
 
         sortedPlans.forEach(plan => {
@@ -3157,7 +3158,7 @@ async function exportarExcel() {
       }
     });
 
-    // Si no hay grupos visuales definidos, usar el m√©todo anterior como fallback
+    // Si no hay grupos visuales definidos, usar el mÈtodo anterior como fallback
     if (groupedPlansData.length === 0) {
       const tbody = document.getElementById('plan-tableBody');
       const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -3181,7 +3182,7 @@ async function exportarExcel() {
         // Obtener lot_no para determinar el grupo visual
         const lot_no = cells[1]?.textContent?.trim() || '';
 
-        // Determinar el grupo visual basado en la posici√≥n en visualGroups
+        // Determinar el grupo visual basado en la posiciÛn en visualGroups
         let grupoVisual = `GRUPO ${Math.floor(index / 5) + 1}`;
         if (lot_no && visualGroups.planAssignments.has(lot_no)) {
           const groupIndex = visualGroups.planAssignments.get(lot_no);
@@ -3190,9 +3191,9 @@ async function exportarExcel() {
           }
         }
 
-        // Si no se encuentra en visualGroups, buscar por la secci√≥n del DOM
+        // Si no se encuentra en visualGroups, buscar por la secciÛn del DOM
         if (!grupoVisual || grupoVisual.includes('undefined')) {
-          // Buscar hacia atr√°s para encontrar el separador de grupo m√°s cercano
+          // Buscar hacia atr·s para encontrar el separador de grupo m·s cercano
           let currentRow = row.previousElementSibling;
           while (currentRow) {
             if (currentRow.classList.contains('group-spacer')) {
@@ -3279,8 +3280,8 @@ async function exportarExcel() {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(downloadUrl);
 
-    // Feedback de √©xito
-    exportBtn.textContent = '‚úÖ Excel Descargado';
+    // Feedback de Èxito
+    exportBtn.textContent = '? Excel Descargado';
     exportBtn.style.backgroundColor = '#27ae60';
 
     setTimeout(() => {
@@ -3293,11 +3294,11 @@ async function exportarExcel() {
     // Error al exportar a Excel
 
     const exportBtn = document.getElementById('export-excel-btn');
-    exportBtn.textContent = '‚ùå Error al exportar';
+    exportBtn.textContent = '? Error al exportar';
     exportBtn.style.backgroundColor = '#e74c3c';
 
     setTimeout(() => {
-      exportBtn.textContent = 'üìä Exportar Excel';
+      exportBtn.textContent = '?? Exportar Excel';
       exportBtn.style.backgroundColor = '#27ae60';
       exportBtn.disabled = false;
     }, 3000);
@@ -3308,7 +3309,7 @@ async function exportarExcel() {
 setDefaultDateFilters();
 loadPlans();
 
-// Utilidad de depuraci√≥n: ver grupos y secuencias actuales
+// Utilidad de depuraciÛn: ver grupos y secuencias actuales
 window.debugGroups = function () {
   try {
     const rows = [...document.querySelectorAll('#plan-tableBody tr.plan-row')];
@@ -3318,7 +3319,7 @@ window.debugGroups = function () {
   } catch (e) { console.warn(e); }
 }
 
-// Funci√≥n para guardar el orden actual de los grupos
+// FunciÛn para guardar el orden actual de los grupos
 async function saveGroupSequences() {
   const saveBtn = document.getElementById('save-sequences-btn');
   if (!saveBtn) return;
@@ -3330,15 +3331,15 @@ async function saveGroupSequences() {
   try {
     const sequenceData = [];
 
-    // Verificar que visualGroups est√© disponible
+    // Verificar que visualGroups estÈ disponible
     if (!visualGroups || !visualGroups.groups) {
-      throw new Error('No hay grupos de planeaci√≥n disponibles');
+      throw new Error('No hay grupos de planeaciÛn disponibles');
     }
 
     // Recopilar datos de secuencia para cada plan (solo planes activos)
     visualGroups.groups.forEach((group, groupIndex) => {
       if (group && group.plans && Array.isArray(group.plans)) {
-        // Filtrar planes que NO est√°n cancelados
+        // Filtrar planes que NO est·n cancelados
         const activePlans = group.plans.filter(plan => plan && plan.lot_no && plan.status !== 'CANCELADO');
 
         activePlans.forEach((plan, planIndex) => {
@@ -3349,7 +3350,7 @@ async function saveGroupSequences() {
           // Convertir startTime (HH:MM) a DATETIME para planned_start
           let plannedStart = null;
           if (startTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Le√≥n
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo LeÛn
             const [year, month, day] = todayStr.split('-').map(Number);
             const [hours, minutes] = startTime.split(':').map(Number);
             const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
@@ -3359,23 +3360,23 @@ async function saveGroupSequences() {
           // Convertir endTime (HH:MM) a DATETIME para planned_end
           let plannedEnd = null;
           if (endTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Le√≥n
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo LeÛn
             const [year, month, day] = todayStr.split('-').map(Number);
             const [hours, minutes] = endTime.split(':').map(Number);
             const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
             plannedEnd = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
           }
 
-          // Tambi√©n enviar solo la fecha para plan_start_date
+          // TambiÈn enviar solo la fecha para plan_start_date
           let planStartDate = null;
           if (startTime !== '--') {
-            planStartDate = getTodayInNuevoLeon(); // Formato: YYYY-MM-DD en Nuevo Le√≥n
+            planStartDate = getTodayInNuevoLeon(); // Formato: YYYY-MM-DD en Nuevo LeÛn
           }
 
           // Calcular effective_minutes (tiempo productivo sin breaks)
-          const effectiveMinutes = productionTime; // productionTime ya est√° en minutos
+          const effectiveMinutes = productionTime; // productionTime ya est· en minutos
 
-          // Calcular breaks_minutes (estimar breaks que caen durante la producci√≥n)
+          // Calcular breaks_minutes (estimar breaks que caen durante la producciÛn)
           let breaksMinutes = 0;
           if (startTime !== '--' && endTime !== '--') {
             const startMinutes = timeToMinutes(startTime);
@@ -3387,7 +3388,7 @@ async function saveGroupSequences() {
               const breakEnd = timeToMinutes(breakInfo.end);
               const breakDuration = breakEnd - breakStart;
 
-              // Si el break cae durante la producci√≥n de este plan
+              // Si el break cae durante la producciÛn de este plan
               if (breakStart >= startMinutes && breakStart < endMinutes) {
                 breaksMinutes += breakDuration;
               }
@@ -3428,10 +3429,10 @@ async function saveGroupSequences() {
 
     if (response.ok) {
       const result = await response.json();
-      saveBtn.textContent = '‚úÖ Guardado';
+      saveBtn.textContent = '? Guardado';
       saveBtn.style.backgroundColor = '#27ae60';
 
-      // Mostrar mensaje de confirmaci√≥n
+      // Mostrar mensaje de confirmaciÛn
       const message = result.message || 'Secuencias guardadas correctamente';
       showNotification(message, 'success');
 
@@ -3467,25 +3468,25 @@ async function saveGroupSequences() {
   } catch (error) {
     // Error completo al guardar secuencias
     // Stack trace:
-    saveBtn.textContent = '‚ùå Error';
+    saveBtn.textContent = '? Error';
     saveBtn.style.backgroundColor = '#e74c3c';
 
-    // Mostrar mensaje de error m√°s detallado
+    // Mostrar mensaje de error m·s detallado
     const errorMessage = error.message || 'Error desconocido al guardar';
     showNotification('Error al guardar: ' + errorMessage, 'error');
 
     setTimeout(() => {
-      saveBtn.textContent = 'üíæ Guardar Orden';
+      saveBtn.textContent = '?? Guardar Orden';
       saveBtn.style.backgroundColor = '#3498db';
       saveBtn.disabled = false;
     }, 3000);
   }
 }
 
-// Exponer funci√≥n globalmente
+// Exponer funciÛn globalmente
 window.saveGroupSequences = saveGroupSequences;
 
-// Funci√≥n para actualizar las secuencias en tiempo real cuando se mueven planes
+// FunciÛn para actualizar las secuencias en tiempo real cuando se mueven planes
 function updateSequenceNumbers() {
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
@@ -3509,7 +3510,7 @@ function updateSequenceNumbers() {
       if (sequenceCell) {
         sequenceCell.textContent = index + 1;
 
-        // Agregar animaci√≥n sutil para indicar cambio
+        // Agregar animaciÛn sutil para indicar cambio
         sequenceCell.style.transition = 'background-color 0.3s ease';
         sequenceCell.style.backgroundColor = '#27ae60';
 
@@ -3521,7 +3522,7 @@ function updateSequenceNumbers() {
   });
 }
 
-// Funci√≥n para recalcular fechas de inicio despu√©s de mover planes
+// FunciÛn para recalcular fechas de inicio despuÈs de mover planes
 function updateStartDates() {
   visualGroups.groups.forEach((group, groupIndex) => {
     let currentTime = timeToMinutes(currentConfig.shiftStart);
@@ -3542,7 +3543,7 @@ function updateStartDates() {
         }
       });
 
-      // Actualizar fecha de inicio en los c√°lculos
+      // Actualizar fecha de inicio en los c·lculos
       planningCalculations.set(plan.lot_no, {
         ...planningCalculations.get(plan.lot_no),
         startTime: minutesToTime(startTime)
@@ -3569,14 +3570,14 @@ function updateStartDates() {
   });
 }
 
-// Configurar event listeners de modales (estos siempre est√°n en el HTML)
-// ========= EVENT LISTENERS DIN√ÅMICOS PARA MODALES =========
-// NOTA: Los event listeners del modal de Reprogramar ahora est√°n en event delegation
-// Ver secci√≥n "EVENT DELEGATION: CLICK" para los botones reschedule-search-btn y reschedule-submit-btn
-// Ver secci√≥n "EVENT DELEGATION: CHANGE" para el checkbox reschedule-select-all
+// Configurar event listeners de modales (estos siempre est·n en el HTML)
+// ========= EVENT LISTENERS DIN¡MICOS PARA MODALES =========
+// NOTA: Los event listeners del modal de Reprogramar ahora est·n en event delegation
+// Ver secciÛn "EVENT DELEGATION: CLICK" para los botones reschedule-search-btn y reschedule-submit-btn
+// Ver secciÛn "EVENT DELEGATION: CHANGE" para el checkbox reschedule-select-all
 
 // Los event listeners del modal WO se configuran en setupWorkOrdersModalEvents()
-// cuando se crea el modal din√°micamente
+// cuando se crea el modal din·micamente
 
 /* REMOVIDO - Ahora manejado por event delegation
 document.addEventListener('DOMContentLoaded', function() {
@@ -3599,15 +3600,15 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 */
 
-// Funci√≥n para mostrar notificaciones
+// FunciÛn para mostrar notificaciones
 function showNotification(message, type = 'info') {
-  // Remover notificaci√≥n existente si la hay
+  // Remover notificaciÛn existente si la hay
   const existingNotification = document.querySelector('.notification');
   if (existingNotification) {
     existingNotification.remove();
   }
 
-  // Crear nueva notificaci√≥n
+  // Crear nueva notificaciÛn
   const notification = document.createElement('div');
   notification.className = 'notification';
   notification.style.cssText = `
@@ -3623,7 +3624,7 @@ function showNotification(message, type = 'info') {
     animation: slideIn 0.3s ease;
   `;
 
-  // Establecer color seg√∫n el tipo
+  // Establecer color seg˙n el tipo
   if (type === 'success') {
     notification.style.backgroundColor = '#27ae60';
   } else if (type === 'error') {
@@ -3635,7 +3636,7 @@ function showNotification(message, type = 'info') {
   notification.textContent = message;
   document.body.appendChild(notification);
 
-  // Remover despu√©s de 4 segundos
+  // Remover despuÈs de 4 segundos
   setTimeout(() => {
     if (notification.parentNode) {
       notification.remove();

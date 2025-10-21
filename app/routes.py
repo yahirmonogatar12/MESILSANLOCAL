@@ -674,8 +674,13 @@ def api_plan_list():
         where = []
         params = []
         if start:
-            where.append('DATE(working_date) >= %s')
-            params.append(start)
+            # Si solo viene start sin end, filtrar por fecha exacta
+            if not end:
+                where.append('DATE(working_date) = %s')
+                params.append(start)
+            else:
+                where.append('DATE(working_date) >= %s')
+                params.append(start)
         if end:
             where.append('DATE(working_date) <= %s')
             params.append(end)
@@ -727,22 +732,68 @@ def api_plan_create():
         line = data.get('line')
         turno = (data.get('turno') or 'DIA').strip().upper()
         plan_count = int(data.get('plan_count') or 0)
-        wo_code = data.get('wo_code')
-        po_code = data.get('po_code')
+        
+        # 🔧 Si no se especifica WO o PO, usar valores por defecto
+        wo_code = data.get('wo_code') or ''
+        po_code = data.get('po_code') or ''
+        
+        # Si están vacíos, asignar valores por defecto
+        if not wo_code or wo_code.strip() == '':
+            wo_code = 'SIN-WO'
+        if not po_code or po_code.strip() == '':
+            po_code = 'SIN-PO'
+        
         if not (working_date and part_no and line):
             return jsonify({'error': 'Parámetros requeridos'}), 400
         fecha = _fp_safe_date(working_date) or datetime.utcnow().date()
         routing = {'DIA': 1, 'TIEMPO EXTRA': 2, 'NOCHE': 3}.get(turno, 1)
         lot_no = _fp_generate_lot_no(datetime.combine(fecha, datetime.min.time()))
-        # Insert básico
+        
+        # 🔍 Buscar información adicional en raw (CT, UPH, MODEL, PROJECT) basándose en part_no
+        raw_data_query = """
+            SELECT part_no, model, project, c_t as ct, uph
+            FROM raw
+            WHERE part_no = %s OR part_no LIKE %s OR model = %s OR model LIKE %s
+            ORDER BY id DESC
+            LIMIT 1
+        """
+        raw_params = (part_no, f"%{part_no}%", part_no, f"%{part_no}%")
+        
+        raw_data = execute_query(raw_data_query, raw_params, fetch='one')
+        
+        # Extraer datos de raw o usar valores por defecto
+        if raw_data:
+            model_code = raw_data.get('model') or part_no
+            project = raw_data.get('project') or ''
+            
+            # Normalizar CT y UPH
+            try:
+                ct = float(raw_data.get('ct') or 0)
+            except:
+                ct = 0.0
+            try:
+                uph_raw = raw_data.get('uph')
+                if uph_raw and str(uph_raw).strip().replace('.', '').isdigit():
+                    uph = int(float(str(uph_raw).strip()))
+                else:
+                    uph = 0
+            except:
+                uph = 0
+        else:
+            # Si no hay datos en raw, usar valores por defecto
+            model_code = part_no
+            project = ''
+            ct = 0.0
+            uph = 0
+        
+        # Insert con datos completos
         sql = (
             "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, created_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s,0),COALESCE(%s,0),%s,'PLAN',NOW())"
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',NOW())"
         )
-        # Model/project/ct/uph opcionales (dejar vacíos)
-        params = (lot_no, wo_code, po_code, fecha, line, '', part_no, '', 'MAIN', plan_count, 0, 0, routing)
+        params = (lot_no, wo_code, po_code, fecha, line, model_code, part_no, project, 'MAIN', plan_count, ct, uph, routing)
         execute_query(sql, params)
-        return jsonify({'success': True, 'lot_no': lot_no})
+        return jsonify({'success': True, 'lot_no': lot_no, 'model_code': model_code, 'ct': ct, 'uph': uph, 'project': project})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
