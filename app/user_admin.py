@@ -50,6 +50,17 @@ def execute_with_retry(operation, max_retries=3, retry_delay=0.1):
         except Exception as e:
             raise
 
+def get_dict_cursor(conn):
+    """
+    Obtener un cursor que devuelve diccionarios en lugar de tuplas.
+    Compatible con MySQLdb y mysql.connector.
+    """
+    if MYSQLDB_AVAILABLE and MySQLdb is not None:
+        return conn.cursor(MySQLdb.cursors.DictCursor)
+    else:
+        # Fallback para mysql.connector
+        return conn.cursor(dictionary=True)
+
 @user_admin_bp.route('/panel')
 @auth_system.login_requerido_avanzado
 @auth_system.requiere_permiso('sistema', 'usuarios')
@@ -84,7 +95,7 @@ def listar_usuarios():
     """Obtener lista completa de usuarios con sus roles"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT 
@@ -101,7 +112,7 @@ def listar_usuarios():
         
         usuarios = []
         for row in cursor.fetchall():
-            usuario = dict(row)
+            usuario = row
             
             # Corregir acceso a roles
             roles_str = usuario.get('roles', '') or ''
@@ -149,7 +160,7 @@ def obtener_usuario(username):
     """Obtener datos detallados de un usuario"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT * FROM usuarios_sistema WHERE username = %s
@@ -167,14 +178,13 @@ def obtener_usuario(username):
             WHERE ur.usuario_id = %s
         ''', (usuario['id'],))
         
-        roles = [dict(row) for row in cursor.fetchall()]
+        roles = cursor.fetchall()
         
         conn.close()
         
-        usuario_dict = dict(usuario)
-        usuario_dict['roles'] = roles
+        usuario['roles'] = roles
         
-        return jsonify(usuario_dict)
+        return jsonify(usuario)
         
     except Exception as e:
         print(f"Error obteniendo usuario: {e}")
@@ -212,7 +222,7 @@ def guardar_usuario():
             return jsonify({'error': 'Nombre completo es requerido'}), 400
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Verificar si es nuevo o actualización
         cursor.execute('SELECT id FROM usuarios_sistema WHERE username = %s', (data['username'],))
@@ -222,7 +232,7 @@ def guardar_usuario():
         if existe:
             # Obtener datos anteriores para auditoría
             cursor.execute('SELECT * FROM usuarios_sistema WHERE id = %s', (existe['id'],))
-            datos_antes = dict(cursor.fetchone())
+            datos_antes = cursor.fetchone()
         
         if existe:
             # Actualizar usuario existente
@@ -357,11 +367,11 @@ def cambiar_estado_usuario():
             return jsonify({'error': 'No puede desactivar su propio usuario'}), 400
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Obtener datos antes del cambio
         cursor.execute('SELECT * FROM usuarios_sistema WHERE username = %s', (username,))
-        datos_antes = dict(cursor.fetchone())
+        datos_antes = cursor.fetchone()
         
         cursor.execute('''
             UPDATE usuarios_sistema 
@@ -412,7 +422,7 @@ def desbloquear_usuario():
         usuario_actual = session.get('usuario')
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             UPDATE usuarios_sistema 
@@ -469,7 +479,7 @@ def borrar_usuario(username):
             return jsonify({'error': 'No puede eliminar su propio usuario'}), 400
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Verificar que el usuario existe
         cursor.execute('SELECT * FROM usuarios_sistema WHERE username = %s', (username,))
@@ -487,7 +497,7 @@ def borrar_usuario(username):
             JOIN usuario_roles ur ON r.id = ur.rol_id
             WHERE ur.usuario_id = %s
         ''', (datos_usuario['id'],))
-        roles_usuario = [row[0] for row in cursor.fetchall()]
+        roles_usuario = [row['nombre'] for row in cursor.fetchall()]
         
         # Eliminar en orden para respetar las foreign keys
         
@@ -550,7 +560,7 @@ def listar_roles():
     """Obtener lista de roles disponibles"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT r.*, COUNT(ur.usuario_id) as total_usuarios
@@ -560,13 +570,15 @@ def listar_roles():
             ORDER BY r.nivel DESC, r.nombre
         ''')
         
-        roles = [dict(row) for row in cursor.fetchall()]
+        roles = cursor.fetchall()
         conn.close()
         
         return jsonify(roles)
         
     except Exception as e:
         print(f"Error listando roles: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @user_admin_bp.route('/obtener_permisos_rol/<int:rol_id>')
@@ -576,7 +588,7 @@ def obtener_permisos_rol(rol_id):
     """Obtener permisos de un rol específico"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT p.modulo, p.accion, p.descripcion
@@ -586,7 +598,7 @@ def obtener_permisos_rol(rol_id):
             ORDER BY p.modulo, p.accion
         ''', (rol_id,))
         
-        permisos = [dict(row) for row in cursor.fetchall()]
+        permisos = cursor.fetchall()
         conn.close()
         
         return jsonify(permisos)
@@ -604,7 +616,7 @@ def listar_permisos_dropdowns():
     """Obtener lista de todos los permisos de dropdowns disponibles agrupados por lista"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion, pb.activo
@@ -637,6 +649,8 @@ def listar_permisos_dropdowns():
         
     except Exception as e:
         print(f"Error listando permisos de dropdowns: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @user_admin_bp.route('/obtener_permisos_dropdowns_rol/<int:rol_id>')
@@ -646,7 +660,7 @@ def obtener_permisos_dropdowns_rol(rol_id):
     """Obtener permisos de dropdowns de un rol específico"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion
@@ -656,13 +670,15 @@ def obtener_permisos_dropdowns_rol(rol_id):
             ORDER BY pb.pagina, pb.seccion, pb.boton
         ''', (rol_id,))
         
-        permisos = [dict(row) for row in cursor.fetchall()]
+        permisos = cursor.fetchall()
         conn.close()
         
         return jsonify(permisos)
         
     except Exception as e:
         print(f"Error obteniendo permisos de dropdowns del rol: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @user_admin_bp.route('/actualizar_permisos_dropdowns_rol', methods=['POST'])
@@ -679,7 +695,7 @@ def actualizar_permisos_dropdowns_rol():
             return jsonify({'success': False, 'error': 'ID de rol requerido'}), 400
             
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Eliminar permisos actuales del rol
         cursor.execute('DELETE FROM rol_permisos_botones WHERE rol_id = %s', (rol_id,))
@@ -778,7 +794,7 @@ def sincronizar_permisos_dropdowns():
         
         # Sincronizar con la base de datos
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Obtener permisos actuales
         cursor.execute('SELECT id, pagina, seccion, boton FROM permisos_botones WHERE activo = 1')
@@ -856,7 +872,7 @@ def listar_permisos_botones():
     """Obtener lista de todos los permisos de botones disponibles"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT * FROM permisos_botones 
@@ -864,7 +880,7 @@ def listar_permisos_botones():
             ORDER BY pagina, seccion, boton
         ''')
         
-        permisos = [dict(row) for row in cursor.fetchall()]
+        permisos = cursor.fetchall()
         conn.close()
         
         return jsonify(permisos)
@@ -880,7 +896,7 @@ def obtener_permisos_botones_rol(rol_id):
     """Obtener permisos de botones de un rol específico"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('''
             SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion
@@ -890,7 +906,7 @@ def obtener_permisos_botones_rol(rol_id):
             ORDER BY pb.pagina, pb.seccion, pb.boton
         ''', (rol_id,))
         
-        permisos = [dict(row) for row in cursor.fetchall()]
+        permisos = cursor.fetchall()
         conn.close()
         
         return jsonify(permisos)
@@ -914,7 +930,7 @@ def actualizar_permisos_botones_rol():
             return jsonify({'error': 'ID de rol requerido'}), 400
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Obtener nombre del rol para auditoría
         cursor.execute('SELECT nombre FROM roles WHERE id = %s', (rol_id,))
@@ -929,7 +945,7 @@ def actualizar_permisos_botones_rol():
             JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
             WHERE rpb.rol_id = %s
         ''', (rol_id,))
-        permisos_anteriores = [dict(row) for row in cursor.fetchall()]
+        permisos_anteriores = cursor.fetchall()
         
         # Eliminar permisos existentes
         cursor.execute('DELETE FROM rol_permisos_botones WHERE rol_id = %s', (rol_id,))
@@ -948,7 +964,7 @@ def actualizar_permisos_botones_rol():
             JOIN rol_permisos_botones rpb ON pb.id = rpb.permiso_boton_id
             WHERE rpb.rol_id = %s
         ''', (rol_id,))
-        permisos_nuevos = [dict(row) for row in cursor.fetchall()]
+        permisos_nuevos = cursor.fetchall()
         
         conn.commit()
         
@@ -1000,7 +1016,7 @@ def verificar_permiso_dropdown():
             return jsonify({'tiene_permiso': False, 'error': 'Usuario no autenticado'}), 401
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Verificar si el usuario tiene el permiso específico
         cursor.execute('''
@@ -1034,10 +1050,7 @@ def obtener_permisos_usuario_actual():
             return jsonify({'error': 'Usuario no autenticado'}), 401
         
         conn = get_db_connection()
-        if MYSQLDB_AVAILABLE and MySQLdb:
-            cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-        else:
-            cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Obtener todos los permisos de botones del usuario
         cursor.execute('''
@@ -1103,7 +1116,7 @@ def buscar_auditoria():
         limite = int(request.args.get('limite', 100))
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         query = '''
             SELECT * FROM auditoria WHERE 1=1
@@ -1138,7 +1151,7 @@ def buscar_auditoria():
         params.append(limite)
         
         cursor.execute(query, params)
-        registros = [dict(row) for row in cursor.fetchall()]
+        registros = cursor.fetchall()
         
         # Obtener estadísticas
         cursor.execute('''
@@ -1151,7 +1164,7 @@ def buscar_auditoria():
             WHERE DATE(fecha_hora) = DATE('now')
         ''')
         
-        stats = dict(cursor.fetchone())
+        stats = cursor.fetchone()
         
         conn.close()
         
@@ -1172,7 +1185,7 @@ def detalle_auditoria(id):
     """Obtener detalles completos de un registro de auditoría"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         cursor.execute('SELECT * FROM auditoria WHERE id = %s', (id,))
         registro = cursor.fetchone()
@@ -1210,7 +1223,7 @@ def estadisticas_auditoria():
     """Obtener estadísticas de auditoría para dashboard"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Acciones hoy
         cursor.execute('''
@@ -1254,7 +1267,7 @@ def estadisticas_auditoria():
             GROUP BY modulo
             ORDER BY total DESC
         ''')
-        actividad_modulos = [dict(row) for row in cursor.fetchall()]
+        actividad_modulos = cursor.fetchall()
         
         # Usuarios más activos (últimos 7 días)
         cursor.execute('''
@@ -1265,7 +1278,7 @@ def estadisticas_auditoria():
             ORDER BY total DESC
             LIMIT 10
         ''')
-        usuarios_mas_activos = [dict(row) for row in cursor.fetchall()]
+        usuarios_mas_activos = cursor.fetchall()
         
         conn.close()
         
@@ -1298,7 +1311,7 @@ def exportar_auditoria():
         modulo = request.args.get('modulo', '').strip()
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         query = '''
             SELECT 
@@ -1327,7 +1340,7 @@ def exportar_auditoria():
         query += ' ORDER BY fecha_hora DESC LIMIT 10000'  # Límite para evitar archivos muy grandes
         
         cursor.execute(query, params)
-        datos = [dict(row) for row in cursor.fetchall()]
+        datos = cursor.fetchall()
         
         conn.close()
         
@@ -1369,7 +1382,7 @@ def actividad_reciente():
     """Obtener actividad reciente para dashboard en tiempo real"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Usuarios activos en los últimos 15 minutos
         cursor.execute('''
@@ -1405,7 +1418,7 @@ def actividad_reciente():
             LIMIT 10
         ''')
         
-        ultimas_acciones = [dict(row) for row in cursor.fetchall()]
+        ultimas_acciones = cursor.fetchall()
         
         conn.close()
         
@@ -1428,7 +1441,7 @@ def verificar_permisos_usuario():
             return jsonify({'error': 'Usuario no autenticado'}), 401
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Obtener el rol del usuario
         cursor.execute('''
@@ -1512,7 +1525,7 @@ def test_permisos_debug():
     try:
         # Test con usuario ADMIN hardcodeado
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Obtener información del usuario Yahir
         cursor.execute('SELECT id, username FROM usuarios_sistema WHERE username = %s', ('Yahir',))
@@ -1628,7 +1641,7 @@ def crear_rol():
             return jsonify({'error': 'El nivel debe ser un número entre 1 y 10'}), 400
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Verificar que el nombre no exista
         cursor.execute('SELECT id FROM roles WHERE nombre = %s', (data['nombre'],))
@@ -1672,7 +1685,7 @@ def crear_rol():
                 GROUP BY r.id
             ''', (rol_id,))
             
-            nuevo_rol = dict(cursor.fetchone())
+            nuevo_rol = cursor.fetchone()
             
             return jsonify({
                 'success': True,
@@ -1711,7 +1724,7 @@ def eliminar_rol(rol_id):
     try:
         print(f"🗑️ Iniciando eliminación del rol ID: {rol_id}")
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Verificar que el rol existe
         cursor.execute('SELECT * FROM roles WHERE id = %s', (rol_id,))
@@ -1828,7 +1841,7 @@ def actualizar_rol(rol_id):
             return jsonify({'error': 'No se recibieron datos'}), 400
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = get_dict_cursor(conn)
         
         # Verificar que el rol existe
         cursor.execute('SELECT * FROM roles WHERE id = %s', (rol_id,))
@@ -1905,7 +1918,7 @@ def actualizar_rol(rol_id):
                 GROUP BY r.id
             ''', (rol_id,))
             
-            rol_actualizado = dict(cursor.fetchone())
+            rol_actualizado = cursor.fetchone()
             
             return jsonify({
                 'success': True,
@@ -1929,3 +1942,6 @@ def init_admin_routes(app):
     """Inicializar las rutas de administración en la app"""
     app.register_blueprint(user_admin_bp)
     print(" Rutas de administración de usuarios registradas")
+
+
+
