@@ -3552,23 +3552,24 @@ async function saveGroupSequences() {
           const productionTime = planningCalculations.get(plan.lot_no)?.productionTime || 0;
 
           // Convertir startTime (HH:MM) a DATETIME para planned_start
+          // IMPORTANTE: NO usar toISOString() porque convierte a UTC sumando horas
+          // En su lugar, construir el string directamente en zona horaria local (Nuevo León)
           let plannedStart = null;
           if (startTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon
-            const [year, month, day] = todayStr.split('-').map(Number);
-            const [hours, minutes] = startTime.split(':').map(Number);
-            const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
-            plannedStart = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon (YYYY-MM-DD)
+            const [hours, minutes] = startTime.split(':');
+            // Formato directo: YYYY-MM-DD HH:MM:SS sin conversión a UTC
+            plannedStart = `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
           }
 
           // Convertir endTime (HH:MM) a DATETIME para planned_end
+          // IMPORTANTE: NO usar toISOString() porque convierte a UTC sumando horas
           let plannedEnd = null;
           if (endTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon
-            const [year, month, day] = todayStr.split('-').map(Number);
-            const [hours, minutes] = endTime.split(':').map(Number);
-            const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
-            plannedEnd = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon (YYYY-MM-DD)
+            const [hours, minutes] = endTime.split(':');
+            // Formato directo: YYYY-MM-DD HH:MM:SS sin conversión a UTC
+            plannedEnd = `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
           }
 
           // Tambion enviar solo la fecha para plan_start_date
