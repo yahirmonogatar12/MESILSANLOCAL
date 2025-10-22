@@ -82,7 +82,7 @@
         const existingInstance = bootstrap.Collapse.getInstance(element);
         if (existingInstance) {
             existingInstance.dispose();
-            log(`�️ Instancia previa destruida: ${elementId}`);
+            log(`o️ Instancia previa destruida: ${elementId}`);
         }
         
         // Crear nueva instancia con configuración personalizada

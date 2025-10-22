@@ -1,6 +1,6 @@
-// ====== Variables Globales para Planeación ======
+ï»¿// ====== Variables Globales para Planeacion ======
 
-// Función helper para obtener fecha en zona horaria de Nuevo León, México (America/Monterrey)
+// Funcion helper para obtener fecha en zona horaria de Nuevo Leon, Moxico (America/Monterrey)
 function getTodayInNuevoLeon() {
   // Crear fecha en zona horaria de Monterrey
   const options = { timeZone: 'America/Monterrey', year: 'numeric', month: '2-digit', day: '2-digit' };
@@ -8,7 +8,7 @@ function getTodayInNuevoLeon() {
   return formatter.format(new Date());
 }
 
-// Función helper para obtener Date object ajustado a Nuevo León
+// Funcion helper para obtener Date object ajustado a Nuevo Leon
 function getDateInNuevoLeon(daysOffset = 0) {
   const dateStr = getTodayInNuevoLeon();
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -23,7 +23,7 @@ function getDateInNuevoLeon(daysOffset = 0) {
   return `${y}-${m}-${d}`;
 }
 
-// Variables globales para planeación integrada
+// Variables globales para planeacion integrada
 let planningData = [];
 
 // ? NUEVO: Almacenar copia original de los planes cargados desde la BD
@@ -46,7 +46,7 @@ let currentConfig = {
   }
 };
 
-// Datos calculados de planeación por fila
+// Datos calculados de planeacion por fila
 let planningCalculations = new Map();
 
 // Estructura de grupos visibles
@@ -78,23 +78,164 @@ function showTableLoading(containerId, message = 'Cargando...') {
     container.style.position = 'relative';
   }
 
-  // Crear overlay
+  // Crear overlay mejorado
   const overlay = document.createElement('div');
   overlay.className = 'table-loading-overlay';
   overlay.id = `${containerId}-loading`;
+  overlay.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(26, 27, 38, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+  `;
 
-  // Crear spinner
+  // Crear contenedor del spinner con efecto de pulsaciÃ³n
+  const spinnerContainer = document.createElement('div');
+  spinnerContainer.style.cssText = `
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+  `;
+
+  // Crear spinner principal (cÃ­rculo giratorio)
   const spinner = document.createElement('div');
-  spinner.className = 'loading-spinner';
+  spinner.className = 'loading-spinner-enhanced';
+  spinner.style.cssText = `
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(74, 144, 226, 0.2);
+    border-top-color: #4A90E2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+  `;
 
-  // Crear texto
+  // Crear segundo spinner (efecto de onda)
+  const spinnerOuter = document.createElement('div');
+  spinnerOuter.style.cssText = `
+    width: 80px;
+    height: 80px;
+    border: 3px solid transparent;
+    border-top-color: rgba(74, 144, 226, 0.4);
+    border-radius: 50%;
+    animation: spin 1.5s linear infinite reverse;
+    position: absolute;
+    top: 0;
+    left: 0;
+  `;
+
+  // Crear icono central
+  const icon = document.createElement('div');
+  icon.innerHTML = 'ðŸ“¦';
+  icon.style.cssText = `
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    animation: pulse 1.5s ease-in-out infinite;
+  `;
+
+  spinnerContainer.appendChild(spinnerOuter);
+  spinnerContainer.appendChild(spinner);
+  spinnerContainer.appendChild(icon);
+
+  // Crear texto con estilo mejorado
   const text = document.createElement('div');
-  text.className = 'loading-text';
+  text.className = 'loading-text-enhanced';
+  text.style.cssText = `
+    color: #4A90E2;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 10px;
+    animation: fadeInUp 0.5s ease;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  `;
   text.textContent = message;
 
+  // Crear barra de progreso animada
+  const progressBar = document.createElement('div');
+  progressBar.style.cssText = `
+    width: 200px;
+    height: 4px;
+    background: rgba(74, 144, 226, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 15px;
+  `;
+
+  const progressFill = document.createElement('div');
+  progressFill.style.cssText = `
+    height: 100%;
+    background: linear-gradient(90deg, #4A90E2, #5cb3ff);
+    border-radius: 2px;
+    animation: progressIndeterminate 1.5s ease-in-out infinite;
+  `;
+  progressBar.appendChild(progressFill);
+
+  // Crear subtexto
+  const subtext = document.createElement('div');
+  subtext.style.cssText = `
+    color: #95a5a6;
+    font-size: 12px;
+    margin-top: 15px;
+    animation: fadeInUp 0.7s ease;
+  `;
+  subtext.textContent = 'Por favor espere...';
+
+  // Agregar animaciones CSS si no existen
+  if (!document.getElementById('loading-animations-style')) {
+    const style = document.createElement('style');
+    style.id = 'loading-animations-style';
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes fadeInUp {
+        from { 
+          opacity: 0; 
+          transform: translateY(10px); 
+        }
+        to { 
+          opacity: 1; 
+          transform: translateY(0); 
+        }
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes pulse {
+        0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+      }
+      @keyframes progressIndeterminate {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(300%); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   // Agregar elementos al overlay
-  overlay.appendChild(spinner);
+  overlay.appendChild(spinnerContainer);
   overlay.appendChild(text);
+  overlay.appendChild(progressBar);
+  overlay.appendChild(subtext);
 
   // Agregar overlay al container
   container.appendChild(overlay);
@@ -125,7 +266,7 @@ function hideTableLoading(containerId) {
   }
 }
 
-// Función para mostrar modal de éxito
+// Funcion para mostrar modal de oxito
 function showSuccessModal(message) {
   // Crear modal si no existe
   let modal = document.getElementById('success-modal');
@@ -148,7 +289,7 @@ function showSuccessModal(message) {
     modal.innerHTML = `
       <div style="background: #2A2D3E; border-radius: 12px; padding: 30px; color: #E0E0E0; text-align: center; max-width: 400px; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
         <div style="font-size: 48px; color: #28a745; margin-bottom: 15px;">?</div>
-        <h3 style="margin: 0 0 15px 0; color: #28a745;">¡Éxito!</h3>
+        <h3 style="margin: 0 0 15px 0; color: #28a745;">ooxito!</h3>
         <p id="success-message" style="margin: 0 0 25px 0; line-height: 1.4;"></p>
         <button onclick="hideSuccessModal()" style="background: #28a745; color: white; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
           OK
@@ -164,7 +305,7 @@ function showSuccessModal(message) {
   modal.style.display = 'flex';
 }
 
-// Función para ocultar modal de éxito
+// Funcion para ocultar modal de oxito
 function hideSuccessModal() {
   const modal = document.getElementById('success-modal');
   if (modal) {
@@ -172,7 +313,7 @@ function hideSuccessModal() {
   }
 }
 
-// Agregar estado de carga a un botón
+// Agregar estado de carga a un boton
 function setButtonLoading(buttonId, loading = true, originalText = '') {
   const button = document.getElementById(buttonId);
   if (!button) return;
@@ -192,7 +333,7 @@ function setButtonLoading(buttonId, loading = true, originalText = '') {
 // Abrir modal
 // ========= LISTENERS DE MODALES (Ahora manejados por Event Delegation) =========
 // NOTA: Estos listeners fueron movidos a initializePlanEventListeners() usando event delegation
-// para que funcionen con contenido cargado dinámicamente
+// para que funcionen con contenido cargado dinomicamente
 
 /* REMOVIDO - Ahora manejado por event delegation
 document.getElementById("plan-openModalBtn").addEventListener("click", () => {
@@ -210,7 +351,7 @@ document.getElementById("plan-closeModalBtn").addEventListener("click", () => {
 /* REMOVIDO - Ahora manejado por event delegation y handleNewPlanSubmit()
 // Registrar plan
 document.getElementById("plan-form").addEventListener("submit", async function(e){
-  ...código movido a handleNewPlanSubmit()...
+  ...codigo movido a handleNewPlanSubmit()...
 });
 */
 
@@ -333,7 +474,7 @@ function enableRowDragDrop(tbody, fs, fe) {
     // IMPORTANTE: Sincronizar visualGroups con el orden actual de la tabla
     syncVisualGroupsWithTableOrder();
 
-    // Recalcular tiempos automáticamente después del drag
+    // Recalcular tiempos automoticamente despuos del drag
     setTimeout(calculateAndUpdateTimes, 100);
   });
   tbody.addEventListener('dragover', (e) => {
@@ -362,7 +503,7 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-// Función para sincronizar visualGroups con el orden actual de la tabla HTML
+// Funcion para sincronizar visualGroups con el orden actual de la tabla HTML
 function syncVisualGroupsWithTableOrder() {
   const tbody = document.getElementById('plan-tableBody');
   if (!tbody) {
@@ -374,13 +515,13 @@ function syncVisualGroupsWithTableOrder() {
     return;
   }
 
-  // Obtener número de grupos actual
+  // Obtener nomero de grupos actual
   const groupCount = parseInt(document.getElementById('groups-count')?.value) || 6;
 
   // ? IMPORTANTE: Usar originalPlansData (copia inmutable de BD) como fuente de verdad
   // Esta copia siempre tiene los datos completos incluyendo status
 
-  // Guardar también el estado actual de visualGroups por si originalPlansData está vacío
+  // Guardar tambion el estado actual de visualGroups por si originalPlansData esto vacoo
   const visualGroupsBackup = [];
   if (visualGroups && visualGroups.groups) {
     visualGroups.groups.forEach(group => {
@@ -397,7 +538,7 @@ function syncVisualGroupsWithTableOrder() {
   // Reinicializar grupos
   initializeVisualGroups(groupCount);
 
-  // Reconstruir los grupos basándose en el orden visual actual
+  // Reconstruir los grupos basondose en el orden visual actual
   rows.forEach((row, rowIndex) => {
     const lotNo = row.dataset.lot;
     if (!lotNo) return;
@@ -405,12 +546,12 @@ function syncVisualGroupsWithTableOrder() {
     // Buscar el plan en originalPlansData PRIMERO (fuente de verdad)
     let planData = originalPlansData.find(p => p.lot_no === lotNo);
 
-    // Si no está en originalPlansData, buscar en el backup de visualGroups
+    // Si no esto en originalPlansData, buscar en el backup de visualGroups
     if (!planData) {
       planData = visualGroupsBackup.find(p => p.lot_no === lotNo);
     }
 
-    // Si aún no encontramos el plan, crear un objeto desde la tabla HTML
+    // Si aon no encontramos el plan, crear un objeto desde la tabla HTML
     if (!planData) {
       const cells = row.querySelectorAll('td');
       planData = {
@@ -433,7 +574,7 @@ function syncVisualGroupsWithTableOrder() {
       };
     }
 
-    // Determinar a qué grupo pertenece (distribución por filas)
+    // Determinar a quo grupo pertenece (distribucion por filas)
     const groupIndex = rowIndex % groupCount;
 
     // Agregar plan al grupo correspondiente (preservando todos los campos)
@@ -506,11 +647,11 @@ function applySavedOrderToData(data, fs, fe) {
 }
 
 function ensureOrderToolbar(fs, fe) {
-  // Esta función ya no es necesaria porque usamos el botón save-sequences-btn del toolbar principal
-  // El botón "?? Guardar Orden" maneja tanto grupos como secuencias correctamente
+  // Esta funcion ya no es necesaria porque usamos el boton save-sequences-btn del toolbar principal
+  // El boton "?? Guardar Orden" maneja tanto grupos como secuencias correctamente
 }
 
-// Estilos mínimos para drag
+// Estilos monimos para drag
 (function injectDragStyles() {
   const style = document.createElement('style');
   style.textContent = `
@@ -523,10 +664,10 @@ function ensureOrderToolbar(fs, fe) {
 
 // ============================================================
 // NOTA: El evento de doble click ahora usa event delegation
-// Ver initializePlanEventListeners() más abajo
+// Ver initializePlanEventListeners() mos abajo
 // ============================================================
 /*
-// CÓDIGO ANTIGUO - Reemplazado por event delegation
+// CoDIGO ANTIGUO - Reemplazado por event delegation
 const planTableEl = document.getElementById('plan-table');
 if (planTableEl) {
   planTableEl.addEventListener('dblclick', (e) => {
@@ -575,16 +716,16 @@ async function openEditModal(lotNo) {
     form.po_code.value = plan.po_code || "";
     form.line.value = plan.line;
 
-    // Pequeña pausa para mejor UX (mínimo 500ms para que se vea el loading)
+    // Pequeoa pausa para mejor UX (monimo 500ms para que se vea el loading)
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Ocultar loading y mostrar formulario con animación suave
+    // Ocultar loading y mostrar formulario con animacion suave
     hideTableLoading('plan-modal-content');
     form.style.display = "block";
     form.style.opacity = "0";
     form.style.transform = "translateY(10px)";
 
-    // Animación de entrada
+    // Animacion de entrada
     setTimeout(() => {
       form.style.transition = "all 0.3s ease";
       form.style.opacity = "1";
@@ -598,11 +739,11 @@ async function openEditModal(lotNo) {
   }
 }
 
-// Guardar edición
+// Guardar edicion
 // ========= PLAN EDIT FORM HANDLERS (Ahora manejados por Event Delegation) =========
 
 /**
- * Manejar submit del formulario de edición de plan
+ * Manejar submit del formulario de edicion de plan
  */
 async function handleEditPlanSubmit(form) {
   const data = Object.fromEntries(new FormData(form));
@@ -610,7 +751,7 @@ async function handleEditPlanSubmit(form) {
   const originalText = submitBtn?.textContent || 'Guardar';
 
   try {
-    // Cambiar el botón a estado de carga
+    // Cambiar el boton a estado de carga
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = 'Actualizando...';
@@ -642,7 +783,7 @@ async function handleEditPlanSubmit(form) {
               let rawResponse = null;
               try {
                 const timeoutPromise = new Promise((_, reject) => {
-                  setTimeout(() => reject(new Error('Timeout: La petición tardó más de 5 segundos')), 5000);
+                  setTimeout(() => reject(new Error('Timeout: La peticion tardo mos de 5 segundos')), 5000);
                 });
 
                 const axiosPromise = axios.get(`/api/raw/search?part_no=${encodeURIComponent(partNo)}`, {
@@ -673,7 +814,7 @@ async function handleEditPlanSubmit(form) {
                   data.part_no = partNo;
                 }
               } else {
-                // Actualizar al menos el part_no aunque falle la búsqueda en RAW
+                // Actualizar al menos el part_no aunque falle la bosqueda en RAW
                 data.part_no = partNo;
               }
             }
@@ -688,7 +829,7 @@ async function handleEditPlanSubmit(form) {
 
     const updateResponse = await axios.post("/api/plan/update", data);
 
-    // Mostrar modal de éxito
+    // Mostrar modal de oxito
     showSuccessModal(`Plan ${data.lot_no} actualizado exitosamente`);
 
     document.getElementById("plan-editModal").style.display = "none";
@@ -697,7 +838,7 @@ async function handleEditPlanSubmit(form) {
     console.error('Error en handleEditPlanSubmit:', error);
     alert("Error actualizando plan: " + (error.response?.data?.error || error.message));
   } finally {
-    // Restaurar botón
+    // Restaurar boton
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
@@ -709,7 +850,7 @@ async function handleEditPlanSubmit(form) {
 }
 
 /**
- * Manejar cancelación de plan
+ * Manejar cancelacion de plan
  */
 async function handleCancelPlan() {
   const form = document.getElementById("plan-editForm");
@@ -717,13 +858,13 @@ async function handleCancelPlan() {
 
   const lot = form.lot_no.value;
   if (!lot) return;
-  if (!confirm(`¿Cancelar plan ${lot}?`)) return;
+  if (!confirm(`oCancelar plan ${lot}?`)) return;
 
   const cancelBtn = document.getElementById("plan-cancelBtn");
   const originalText = cancelBtn?.textContent || 'Cancelar plan';
 
   try {
-    // Cambiar el botón a estado de carga
+    // Cambiar el boton a estado de carga
     if (cancelBtn) {
       cancelBtn.disabled = true;
       cancelBtn.innerHTML = 'Cancelando...';
@@ -735,7 +876,7 @@ async function handleCancelPlan() {
 
     await axios.post("/api/plan/update", { lot_no: lot, status: "CANCELADO" });
 
-    // Mostrar modal de éxito
+    // Mostrar modal de oxito
     showSuccessModal(`Plan ${lot} cancelado exitosamente`);
 
     document.getElementById("plan-editModal").style.display = "none";
@@ -743,7 +884,7 @@ async function handleCancelPlan() {
   } catch (error) {
     alert("Error cancelando plan: " + (error.response?.data?.error || error.message));
   } finally {
-    // Restaurar botón
+    // Restaurar boton
     if (cancelBtn) {
       cancelBtn.disabled = false;
       cancelBtn.innerHTML = originalText;
@@ -772,7 +913,7 @@ async function handleNewPlanSubmit(form) {
 
     await axios.post("/api/plan", data);
 
-    // Mostrar modal de éxito
+    // Mostrar modal de oxito
     showSuccessModal('Plan registrado exitosamente');
 
     document.getElementById("plan-modal").style.display = "none";
@@ -796,17 +937,17 @@ window.handleCancelPlan = handleCancelPlan;
 window.handleNewPlanSubmit = handleNewPlanSubmit;
 
 /* REMOVIDO - Ahora manejado por event delegation y handleEditPlanSubmit()
-[Código del event listener de plan-editForm submit movido a handleEditPlanSubmit()]
+[Codigo del event listener de plan-editForm submit movido a handleEditPlanSubmit()]
 */
 
 /* REMOVIDO - Ahora manejado por event delegation y handleCancelPlan()
-[Código del event listener de plan-cancelBtn movido a handleCancelPlan()]
+[Codigo del event listener de plan-cancelBtn movido a handleCancelPlan()]
 */
 
 
 // ========= WORK ORDERS FUNCTIONALITY =========
 
-// Crear modal de Work Orders dinámicamente
+// Crear modal de Work Orders dinomicamente
 function createWorkOrdersModal() {
   // Verificar si ya existe
   if (document.getElementById('wo-modal')) {
@@ -837,12 +978,12 @@ function createWorkOrdersModal() {
     <div class="modal-content" id="wo-modal-content" style="background: #34334E; border-radius: 8px; width: 90%; max-width: 1200px; max-height: 90%; padding: 20px; color: lightgray; overflow: auto;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="margin: 0; color: #ecf0f1;">Work Orders - Importar como Planes</h3>
-        <button id="wo-closeModalBtn" class="plan-btn modal-close-btn" style="background: #666; border: none; color: white; font-size: 24px; cursor: pointer; width: 30px; height: 30px; border-radius: 4px;"></button>
+        <button id="wo-closeModalBtn" class="plan-btn modal-close-btn" style="background: #666; border: none; color: white; font-size: 24px; cursor: pointer; width: 30px; height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1;">Ã—</button>
       </div>
 
       <div class="modal-filters" style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
         <label style="font-size: 11px; color: #ecf0f1;">Buscar WO/PO:</label>
-        <input type="text" id="wo-search-input" class="plan-input" placeholder="Buscar por código WO o PO..." style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 180px;">
+        <input type="text" id="wo-search-input" class="plan-input" placeholder="Buscar por codigo WO o PO..." style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 180px;">
         
         <label style="font-size: 11px; color: #ecf0f1;">Fecha Op. Desde:</label>
         <input type="date" id="wo-filter-desde" class="plan-input" title="Filtrar WOs desde esta fecha" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
@@ -862,8 +1003,8 @@ function createWorkOrdersModal() {
         <button id="wo-reload-btn" class="plan-btn" style="background-color: #2980b9; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Recargar</button>
         <button id="wo-import-selected-btn" class="plan-btn plan-btn-add" style="background-color: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Importar Seleccionados</button>
         
-        <label style="font-size: 11px; color: #ecf0f1;">Fecha de Importación:</label>
-        <input type="date" id="wo-filter-date" class="plan-input" title="Fecha a la que se importarán los planes seleccionados" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
+        <label style="font-size: 11px; color: #ecf0f1;">Fecha de Importacion:</label>
+        <input type="date" id="wo-filter-date" class="plan-input" title="Fecha a la que se importaron los planes seleccionados" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 6px 8px; border-radius: 4px; font-size: 12px; width: 140px;">
       </div>
 
       <div class="modal-table-container" style="overflow-x: auto; margin-bottom: 20px;">
@@ -880,7 +1021,7 @@ function createWorkOrdersModal() {
               <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Fecha Op.</th>
               <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Estado</th>
               <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Modificador</th>
-              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Acción</th>
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #20688C; color: #ecf0f1;">Accion</th>
             </tr>
           </thead>
           <tbody id="wo-tableBody" style="color: lightgray;"></tbody>
@@ -896,10 +1037,10 @@ function createWorkOrdersModal() {
   // Insertar el modal en el body
   document.body.appendChild(woModal);
 
-  // Configurar event listeners después de crear el modal
+  // Configurar event listeners despuos de crear el modal
   setupWorkOrdersModalEvents();
 }
-// Exponer función globalmente
+// Exponer funcion globalmente
 window.createWorkOrdersModal = createWorkOrdersModal;
 
 // Configurar event listeners del modal WO
@@ -912,13 +1053,13 @@ function setupWorkOrdersModalEvents() {
     });
   }
 
-  // Botón de recarga
+  // Boton de recarga
   const reloadBtn = document.getElementById('wo-reload-btn');
   if (reloadBtn) {
     reloadBtn.addEventListener('click', loadWorkOrders);
   }
 
-  // Input de búsqueda - filtrar en tiempo real
+  // Input de bosqueda - filtrar en tiempo real
   const searchInput = document.getElementById('wo-search-input');
   if (searchInput) {
     searchInput.addEventListener('input', filterWorkOrdersTable);
@@ -938,13 +1079,13 @@ function setupWorkOrdersModalEvents() {
     });
   }
 
-  // Botón "Importar Seleccionados"
+  // Boton "Importar Seleccionados"
   const importBtn = document.getElementById('wo-import-selected-btn');
   if (importBtn) {
     importBtn.addEventListener('click', importAllSelectedWOs);
   }
 
-  // Delegación de eventos para botones de importación individual
+  // Delegacion de eventos para botones de importacion individual
   const tbody = document.getElementById('wo-tableBody');
   if (tbody) {
     tbody.addEventListener('click', function (e) {
@@ -974,34 +1115,34 @@ function setupWorkOrdersModalEvents() {
 
   if (filterDesde) {
     filterDesde.addEventListener('change', function () {
-      loadWorkOrders(); // Recargar automáticamente al cambiar fecha desde
+      loadWorkOrders(); // Recargar automoticamente al cambiar fecha desde
     });
   }
 
   if (filterHasta) {
     filterHasta.addEventListener('change', function () {
-      loadWorkOrders(); // Recargar automáticamente al cambiar fecha hasta
+      loadWorkOrders(); // Recargar automoticamente al cambiar fecha hasta
     });
   }
 
   if (filterEstado) {
     filterEstado.addEventListener('change', function () {
-      loadWorkOrders(); // Recargar automáticamente al cambiar estado
+      loadWorkOrders(); // Recargar automoticamente al cambiar estado
     });
   }
 
-  // Establecer fecha de importación por defecto (hoy en Nuevo León)
+  // Establecer fecha de importacion por defecto (hoy en Nuevo Leon)
   if (filterDate && !filterDate.value) {
     filterDate.value = getTodayInNuevoLeon();
   }
 
-  // Establecer rango de fechas por defecto (día actual en Nuevo León)
+  // Establecer rango de fechas por defecto (doa actual en Nuevo Leon)
   if (filterDesde && !filterDesde.value) {
-    filterDesde.value = getTodayInNuevoLeon(); // Día actual
+    filterDesde.value = getTodayInNuevoLeon(); // Doa actual
   }
 
   if (filterHasta && !filterHasta.value) {
-    filterHasta.value = getTodayInNuevoLeon(); // Día actual
+    filterHasta.value = getTodayInNuevoLeon(); // Doa actual
   }
 }
 
@@ -1026,7 +1167,7 @@ async function loadWorkOrders() {
     const hasta = document.getElementById("wo-filter-hasta")?.value || "";
     const estado = document.getElementById("wo-filter-estado")?.value || "";
 
-    // Construir URL con parámetros
+    // Construir URL con parometros
     let url = "/api/work-orders";
     const params = [];
     if (desde) params.push(`desde=${desde}`);
@@ -1043,7 +1184,7 @@ async function loadWorkOrders() {
     renderWorkOrdersTable(workOrders);
     updateWOStatus(`${workOrders.length} work orders encontrados`);
 
-    // Limpiar el campo de búsqueda al recargar
+    // Limpiar el campo de bosqueda al recargar
     const searchInput = document.getElementById('wo-search-input');
     if (searchInput) searchInput.value = '';
 
@@ -1057,13 +1198,13 @@ async function loadWorkOrders() {
   }
 }
 
-// Exponer función globalmente
+// Exponer funcion globalmente
 window.loadWorkOrders = loadWorkOrders;
 
 // Variable global para almacenar todos los WOs cargados (para filtrado)
 let allWorkOrders = [];
 
-// Función para filtrar WOs en el frontend
+// Funcion para filtrar WOs en el frontend
 function filterWorkOrdersTable() {
   const searchInput = document.getElementById('wo-search-input');
   if (!searchInput) return;
@@ -1071,12 +1212,12 @@ function filterWorkOrdersTable() {
   const searchTerm = searchInput.value.toLowerCase().trim();
 
   if (!searchTerm) {
-    // Si no hay búsqueda, mostrar todos
+    // Si no hay bosqueda, mostrar todos
     renderWorkOrdersTable(allWorkOrders);
     return;
   }
 
-  // Filtrar WOs por código WO, código PO, o modelo
+  // Filtrar WOs por codigo WO, codigo PO, o modelo
   const filtered = allWorkOrders.filter(wo => {
     const woCode = (wo.codigo_wo || '').toLowerCase();
     const poCode = (wo.codigo_po || '').toLowerCase();
@@ -1093,12 +1234,12 @@ function filterWorkOrdersTable() {
   updateWOStatus(`${filtered.length} de ${allWorkOrders.length} work orders`);
 }
 
-// Exponer función globalmente
+// Exponer funcion globalmente
 window.filterWorkOrdersTable = filterWorkOrdersTable;
 
 // Renderizar tabla de Work Orders
 function renderWorkOrdersTable(workOrders) {
-  // NO sobrescribir allWorkOrders aquí, se maneja en loadWorkOrders
+  // NO sobrescribir allWorkOrders aquo, se maneja en loadWorkOrders
   const tbody = document.getElementById("wo-tableBody");
   tbody.innerHTML = "";
 
@@ -1177,20 +1318,29 @@ async function importSingleWO(woId, button) {
   const originalText = button.textContent;
 
   try {
-    // Obtener fecha de importación
+    // Verificar si la fila estÃ¡ marcada como ya importada
+    const row = button.closest('tr');
+    if (row && row.style.opacity === '0.6') {
+      alert('âš ï¸ Esta Work Order ya fue importada anteriormente.');
+      return;
+    }
+
+    // Obtener fecha de importaciÃ³n
     const importDateInput = document.getElementById('wo-filter-date');
     const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
 
     if (!importDate) {
-      alert('?? Por favor seleccione una fecha de importación');
+      alert('âš ï¸ Por favor seleccione una fecha de importaciÃ³n');
       return;
     }
 
-    // Mostrar estado de carga en el botón
+    // Mostrar estado de carga en el botÃ³n
     button.textContent = 'Importando...';
     button.disabled = true;
     button.classList.add('loading');
 
+    // Mostrar loading mejorado en la tabla de planes
+    showTableLoading('plan-main-table', 'Importando Work Order...');
     updateWOStatus("Importando Work Order...");
 
     const response = await axios.post("/api/work-orders/import", {
@@ -1199,17 +1349,29 @@ async function importSingleWO(woId, button) {
     });
 
     if (response.data.success) {
-      const plan = response.data.plans[0];
-      alert(`? WO importado exitosamente como Plan: ${plan.lot_no}`);
-      loadPlans(); // Recargar tabla principal
-      loadWorkOrders(); // Recargar WOs
+      const imported = response.data.imported || 0;
+      const errors = response.data.errors || [];
+      
+      if (imported > 0) {
+        const plan = response.data.plans[0];
+        // Ocultar loading con transiciÃ³n suave
+        hideTableLoading('plan-main-table');
+        alert(`âœ… WO importado exitosamente como Plan: ${plan.lot_no}`);
+        loadPlans(); // Recargar tabla principal
+        loadWorkOrders(); // Recargar WOs
+      } else if (errors.length > 0) {
+        hideTableLoading('plan-main-table');
+        alert(`âŒ No se pudo importar:\n\n${errors.join('\n')}`);
+      }
     } else {
-      alert("? Error en importación: " + (response.data.errors || []).join(", "));
+      hideTableLoading('plan-main-table');
+      alert("âŒ Error en importaciÃ³n: " + (response.data.errors || []).join(", "));
     }
   } catch (error) {
-    alert("? Error importando WO: " + (error.response?.data?.error || error.message));
+    hideTableLoading('plan-main-table');
+    alert("âŒ Error importando WO: " + (error.response?.data?.error || error.message));
   } finally {
-    // Restaurar botón
+    // Restaurar boton
     button.textContent = originalText;
     button.disabled = false;
     button.classList.remove('loading');
@@ -1222,32 +1384,63 @@ async function importAllSelectedWOs() {
   const selectedCheckboxes = document.querySelectorAll(".wo-checkbox:checked");
 
   if (selectedCheckboxes.length === 0) {
-    alert("?? Seleccione al menos un Work Order para importar");
+    alert("âš ï¸ Seleccione al menos un Work Order para importar");
     return;
   }
 
-  // Obtener fecha de importación
+  // Obtener fecha de importaciÃ³n
   const importDateInput = document.getElementById('wo-filter-date');
   const importDate = importDateInput ? importDateInput.value : getTodayInNuevoLeon();
 
   if (!importDate) {
-    alert('?? Por favor seleccione una fecha de importación');
+    alert('âš ï¸ Por favor seleccione una fecha de importaciÃ³n');
     return;
   }
 
-  const woIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+  // Filtrar WOs que NO estÃ¡n ya importadas
+  const woIdsToImport = [];
+  const alreadyImported = [];
+  
+  selectedCheckboxes.forEach(cb => {
+    const woId = parseInt(cb.value);
+    const woRow = cb.closest('tr');
+    const isImported = woRow && woRow.style.opacity === '0.6'; // WO ya importada
+    
+    if (isImported) {
+      // Buscar el cÃ³digo WO para el mensaje
+      const woCode = woRow.cells[1]?.textContent || `ID ${woId}`;
+      alreadyImported.push(woCode);
+    } else {
+      woIdsToImport.push(woId);
+    }
+  });
 
-  if (!confirm(`¿Importar ${woIds.length} Work Order(s) como planes para el ${importDate}?`)) {
-    return;
+  // Mostrar advertencia si hay WOs ya importadas seleccionadas
+  if (alreadyImported.length > 0) {
+    const message = `âš ï¸ ${alreadyImported.length} WO(s) ya importada(s) serÃ¡n omitida(s):\n${alreadyImported.join(', ')}\n\nÂ¿Continuar con las ${woIdsToImport.length} WO(s) restantes?`;
+    if (woIdsToImport.length === 0) {
+      alert("âŒ Todas las WOs seleccionadas ya fueron importadas.");
+      return;
+    }
+    if (!confirm(message)) {
+      return;
+    }
+  } else {
+    if (!confirm(`Â¿Importar ${woIdsToImport.length} Work Order(s) como planes para el ${importDate}?`)) {
+      return;
+    }
   }
+
+  const woIds = woIdsToImport;
 
   try {
-    // Mostrar loading en el modal
-    showTableLoading('wo-modal-content', `Importando ${woIds.length} Work Orders...`);
-    updateWOStatus("Importando work orders...");
+    // Mostrar loading mejorado en mÃºltiples lugares
+    showTableLoading('wo-modal-content', `ðŸ“¦ Importando ${woIds.length} Work Order${woIds.length > 1 ? 's' : ''}...`);
+    showTableLoading('plan-main-table', `ðŸ“¦ Procesando ${woIds.length} Work Order${woIds.length > 1 ? 's' : ''}...`);
+    updateWOStatus(`â³ Importando ${woIds.length} work orders...`);
 
-    // Deshabilitar botón de importar
-    setButtonLoading('wo-import-selected-btn', true, 'Importando...');
+    // Deshabilitar boton de importar
+    setButtonLoading('wo-import-selected-btn', true, 'ðŸ“¦ Importando...');
 
     const response = await axios.post("/api/work-orders/import", {
       wo_ids: woIds,
@@ -1256,16 +1449,26 @@ async function importAllSelectedWOs() {
 
     if (response.data.success) {
       const { imported, errors } = response.data;
-      let message = `? ${imported} Work Orders importados exitosamente`;
+      
+      if (imported > 0) {
+        let message = `âœ… ${imported} Work Order(s) importado(s) exitosamente`;
 
-      if (errors && errors.length > 0) {
-        message += `\n\n?? WOs no importados:\n`;
+        if (errors && errors.length > 0) {
+          message += `\n\nâš ï¸ WOs ya importadas (${errors.length}):\n`;
+          errors.forEach((error, index) => {
+            message += `${index + 1}. ${error}\n`;
+          });
+        }
+
+        alert(message);
+      } else if (errors && errors.length > 0) {
+        let message = `âŒ Ninguna WO pudo ser importada:\n\n`;
         errors.forEach((error, index) => {
           message += `${index + 1}. ${error}\n`;
         });
+        alert(message);
       }
-
-      alert(message);
+      
       loadPlans(); // Recargar tabla principal
       loadWorkOrders(); // Recargar WOs
 
@@ -1273,15 +1476,16 @@ async function importAllSelectedWOs() {
       document.getElementById("wo-select-all").checked = false;
 
     } else {
-      alert("? Error en importación: " + (response.data.errors || []).join(", "));
+      alert("âŒ Error en importaciÃ³n: " + (response.data.errors || []).join(", "));
     }
   } catch (error) {
-    alert("? Error importando WOs: " + (error.response?.data?.error || error.message));
+    alert("âŒ Error importando WOs: " + (error.response?.data?.error || error.message));
   } finally {
     // Ocultar loading y restaurar botones
     hideTableLoading('wo-modal-content');
+    hideTableLoading('plan-main-table');
     setButtonLoading('wo-import-selected-btn', false, 'Importar Seleccionados');
-    updateWOStatus("Listo para importar");
+    updateWOStatus("âœ… Listo para importar");
   }
 }
 
@@ -1318,17 +1522,17 @@ function setDefaultRescheduleDates() {
   const newDate = document.getElementById("reschedule-new-date");
 
   if (dateFrom && !dateFrom.value) {
-    dateFrom.value = getDateInNuevoLeon(-7); // Una semana atrás en Nuevo León
+    dateFrom.value = getDateInNuevoLeon(-7); // Una semana atros en Nuevo Leon
   }
   if (dateTo && !dateTo.value) {
-    dateTo.value = getTodayInNuevoLeon(); // Hoy en Nuevo León
+    dateTo.value = getTodayInNuevoLeon(); // Hoy en Nuevo Leon
   }
   if (newDate && !newDate.value) {
-    newDate.value = getTodayInNuevoLeon(); // Hoy en Nuevo León
+    newDate.value = getTodayInNuevoLeon(); // Hoy en Nuevo Leon
   }
 }
 
-// Exponer función globalmente
+// Exponer funcion globalmente
 window.setDefaultRescheduleDates = setDefaultRescheduleDates;
 
 // Cargar planes pendientes
@@ -1407,7 +1611,7 @@ function renderPendingPlans(plans) {
   });
 }
 
-// Toggle selección de todos los planes pendientes
+// Toggle seleccion de todos los planes pendientes
 function toggleAllReschedule(masterCheckbox) {
   const checkboxes = document.querySelectorAll(".reschedule-checkbox");
   checkboxes.forEach(cb => {
@@ -1440,26 +1644,26 @@ async function reschedulePendingPlans() {
 
   const lotNos = Array.from(selectedCheckboxes).map(cb => cb.value);
 
-  if (!confirm(`¿Reprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
+  if (!confirm(`oReprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
     return;
   }
 
   try {
     updateRescheduleStatus("Reprogramando planes...");
 
-    // Enviar solicitud de reprogramación
+    // Enviar solicitud de reprogramacion
     const response = await axios.post('/api/plan/reschedule', {
       lot_nos: lotNos,
       new_working_date: newDate
     });
 
-    // Mostrar modal de éxito
+    // Mostrar modal de oxito
     showSuccessModal(`${lotNos.length} plan(es) reprogramado(s) exitosamente para ${newDate}`);
 
     // Recargar la lista de pendientes
     loadPendingPlans();
 
-    // Recargar planes principales si está en la misma fecha
+    // Recargar planes principales si esto en la misma fecha
     const currentStartInput = document.getElementById("filter-start");
     const currentEndInput = document.getElementById("filter-end");
 
@@ -1474,7 +1678,7 @@ async function reschedulePendingPlans() {
   } catch (error) {
     console.error('? Error al reprogramar planes:', error);
     alert("Error al reprogramar planes: " + (error.response?.data?.error || error.message));
-    updateRescheduleStatus("Error en reprogramación");
+    updateRescheduleStatus("Error en reprogramacion");
   }
 }
 
@@ -1488,7 +1692,7 @@ function updateRescheduleStatus(message) {
 
 // ========= INITIALIZATION =========
 
-// ====== FUNCIONALIDAD DE PLANEACIÓN INTEGRADA ======
+// ====== FUNCIONALIDAD DE PLANEACIoN INTEGRADA ======
 
 // Inicializar grupos visuales
 function initializeVisualGroups(groupCount) {
@@ -1514,13 +1718,13 @@ function renderTableWithVisualGroups(data) {
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   initializeVisualGroups(groupCount);
 
-  // Verificar si los datos tienen información de grupos guardada
+  // Verificar si los datos tienen informacion de grupos guardada
   const hasGroupData = data.some(plan => plan.group_no != null && plan.sequence != null);
 
   if (hasGroupData) {
 
 
-    // Asignar planes basándose en group_no y sequence de la base de datos
+    // Asignar planes basondose en group_no y sequence de la base de datos
     data.forEach((plan) => {
       if (plan.group_no != null && plan.sequence != null) {
         const groupIndex = plan.group_no - 1; // Convertir de 1-indexed a 0-indexed
@@ -1528,13 +1732,13 @@ function renderTableWithVisualGroups(data) {
           visualGroups.groups[groupIndex].plans.push(plan);
           visualGroups.planAssignments.set(plan.lot_no, groupIndex);
         } else {
-          // Si el group_no está fuera del rango actual, asignar al último grupo
+          // Si el group_no esto fuera del rango actual, asignar al oltimo grupo
           const fallbackGroup = groupCount - 1;
           visualGroups.groups[fallbackGroup].plans.push(plan);
           visualGroups.planAssignments.set(plan.lot_no, fallbackGroup);
         }
       } else {
-        // Para planes sin grupo asignado, usar distribución automática
+        // Para planes sin grupo asignado, usar distribucion automotica
         const assignedGroup = data.indexOf(plan) % groupCount;
         visualGroups.groups[assignedGroup].plans.push(plan);
         visualGroups.planAssignments.set(plan.lot_no, assignedGroup);
@@ -1557,7 +1761,7 @@ function renderTableWithVisualGroups(data) {
     data.forEach((plan, index) => {
       let assignedGroup = visualGroups.planAssignments.get(plan.lot_no);
       if (assignedGroup === undefined) {
-        // Asignar automáticamente si no tiene asignación previa
+        // Asignar automoticamente si no tiene asignacion previa
         assignedGroup = index % groupCount;
         visualGroups.planAssignments.set(plan.lot_no, assignedGroup);
       }
@@ -1590,7 +1794,7 @@ function renderTableWithVisualGroups(data) {
     dropZoneRow.innerHTML = `
       <td colspan="21" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
-          ${group.plans.length === 0 ? 'Arrastra planes aquí para asignarlos a este grupo' : ''}
+          ${group.plans.length === 0 ? 'Arrastra planes aquo para asignarlos a este grupo' : ''}
         </div>
       </td>
     `;
@@ -1667,7 +1871,7 @@ function setupGroupDragDrop() {
   let dropIndicator = null;
   let isDraggingOverDropZone = false;
 
-  // Crear indicador visual de inserción
+  // Crear indicador visual de insercion
   function createDropIndicator() {
     const indicator = document.createElement('tr');
     indicator.className = 'drop-indicator';
@@ -1725,7 +1929,7 @@ function setupGroupDragDrop() {
     const allZones = tbody.querySelectorAll('.group-drop-zone');
     allZones.forEach(z => { z.style.backgroundColor = '#34495e'; z.style.borderColor = '#20688C'; });
 
-    // Lógica para reordenamiento dentro del grupo
+    // Logica para reordenamiento dentro del grupo
     const targetRow = e.target.closest('.plan-row');
     if (!targetRow || targetRow === draggedElement) {
       clearDropIndicator();
@@ -1742,7 +1946,7 @@ function setupGroupDragDrop() {
       // Crear nuevo indicador
       dropIndicator = createDropIndicator();
 
-      // Determinar dónde insertar el indicador
+      // Determinar donde insertar el indicador
       const rect = targetRow.getBoundingClientRect();
       const midpoint = rect.top + rect.height / 2;
 
@@ -1750,7 +1954,7 @@ function setupGroupDragDrop() {
         // Insertar antes de la fila target
         targetRow.parentNode.insertBefore(dropIndicator, targetRow);
       } else {
-        // Insertar después de la fila target
+        // Insertar despuos de la fila target
         const nextSibling = targetRow.nextSibling;
         // Verificar que el siguiente elemento no sea un header de grupo o drop zone
         if (nextSibling &&
@@ -1789,10 +1993,10 @@ function setupGroupDragDrop() {
       const targetGroupIndex = parseInt(dropZone.dataset.groupIndex);
       const lotNo = draggedElement.dataset.lot;
 
-      // Actualizar asignación
+      // Actualizar asignacion
       visualGroups.planAssignments.set(lotNo, targetGroupIndex);
 
-      // Recargar tabla con nueva asignación
+      // Recargar tabla con nueva asignacion
       reloadTableWithCurrentData();
 
       // Actualizar secuencias y fechas de inicio
@@ -1808,7 +2012,7 @@ function setupGroupDragDrop() {
       const dropZoneContent = dropZone.querySelector('.drop-zone-content');
       const originalText = dropZoneContent.innerHTML;
 
-      dropZoneContent.innerHTML = `? Plan ${lotNo.split('-')[2]} movido aquí`;
+      dropZoneContent.innerHTML = `? Plan ${lotNo.split('-')[2]} movido aquo`;
       dropZoneContent.classList.add('drop-zone-success');
 
       setTimeout(() => {
@@ -1836,7 +2040,7 @@ function setupGroupDragDrop() {
   });
 }
 
-// Función para reordenar planes dentro del mismo grupo
+// Funcion para reordenar planes dentro del mismo grupo
 function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
   const lotNo = draggedRow.dataset.lot;
   const targetLotNo = targetRow.dataset.lot;
@@ -1850,7 +2054,7 @@ function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
     return;
   }
 
-  // Encontrar índices de los planes
+  // Encontrar ondices de los planes
   const draggedIndex = currentGroup.plans.findIndex(plan => plan.lot_no === lotNo);
   const targetIndex = currentGroup.plans.findIndex(plan => plan.lot_no === targetLotNo);
 
@@ -1861,7 +2065,7 @@ function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
 
 
 
-  // Determinar la nueva posición basada en la posición del mouse
+  // Determinar la nueva posicion basada en la posicion del mouse
   const rect = targetRow.getBoundingClientRect();
   const midpoint = rect.top + rect.height / 2;
   let newIndex;
@@ -1870,7 +2074,7 @@ function reorderWithinGroup(draggedRow, targetRow, groupIndex, clientY) {
     // Insertar antes del target
     newIndex = targetIndex;
   } else {
-    // Insertar después del target
+    // Insertar despuos del target
     newIndex = targetIndex + 1;
   }
 
@@ -1923,7 +2127,7 @@ function calculateGroupTimes() {
     let currentTime = timeToMinutes(currentConfig.shiftStart);
     const groupStartTime = currentTime;
 
-    // Filtrar planes que NO están cancelados
+    // Filtrar planes que NO eston cancelados
     const activePlans = group.plans.filter(plan => plan.status !== 'CANCELADO');
 
     activePlans.forEach((plan, planIndex) => {
@@ -1938,7 +2142,7 @@ function calculateGroupTimes() {
         const breakEnd = timeToMinutes(breakInfo.end);
         const breakDuration = breakEnd - breakStart;
 
-        // Si el break cae durante la producción de este plan
+        // Si el break cae durante la produccion de este plan
         if (breakStart >= startTime && breakStart < plannedEndTime) {
           breaksDuringPlan += breakDuration;
         }
@@ -1947,13 +2151,13 @@ function calculateGroupTimes() {
       // Tiempo real de fin (incluyendo breaks)
       const actualEndTime = plannedEndTime + breaksDuringPlan;
 
-      // Actualizar cálculos individuales
+      // Actualizar colculos individuales
       planningCalculations.set(plan.lot_no, {
         groupNumber: groupIndex + 1,
         productionTime: productionTime,
         startTime: minutesToTime(startTime),
         endTime: minutesToTime(actualEndTime), // Incluye breaks
-        isOvertime: false, // Se calculará después
+        isOvertime: false, // Se calcularo despuos
         totalGroupTime: totalProductiveMinutes + productionTime
       });
 
@@ -1965,7 +2169,7 @@ function calculateGroupTimes() {
     group.plans.filter(plan => plan.status === 'CANCELADO').forEach(plan => {
       planningCalculations.set(plan.lot_no, {
         groupNumber: groupIndex + 1,
-        productionTime: 0, // Sin tiempo de producción
+        productionTime: 0, // Sin tiempo de produccion
         startTime: '--',
         endTime: '--',
         isOvertime: false,
@@ -1974,7 +2178,7 @@ function calculateGroupTimes() {
       });
     });
 
-    // Determinar si el grupo está en overtime (más de 9 horas productivas)
+    // Determinar si el grupo esto en overtime (mos de 9 horas productivas)
     const productiveMinutes = (currentConfig.productiveHours || 9) * 60; // 9 horas = 540 min
     group.totalTime = totalProductiveMinutes; // Solo tiempo productivo de planes activos
     group.isOvertime = totalProductiveMinutes > productiveMinutes;
@@ -1993,7 +2197,7 @@ function calculateGroupTimes() {
     updateGroupUI(groupIndex, group);
   });
 
-  // Actualizar filas de planes con cálculos
+  // Actualizar filas de planes con colculos
   updatePlanRows();
 }
 
@@ -2018,7 +2222,7 @@ function updateGroupUI(groupIndex, group) {
   }
 }
 
-// Actualizar filas de planes con cálculos
+// Actualizar filas de planes con colculos
 function updatePlanRows() {
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
@@ -2030,7 +2234,7 @@ function updatePlanRows() {
     if (calc) {
       const cells = row.querySelectorAll('td');
 
-      // Si el plan está cancelado, mostrar tiempos como -- y marcar como cancelado
+      // Si el plan esto cancelado, mostrar tiempos como -- y marcar como cancelado
       if (calc.isCancelled) {
         if (cells[17]) cells[17].textContent = '--'; // Tiempo Productivo
         if (cells[18]) cells[18].textContent = '--'; // Inicio
@@ -2043,7 +2247,7 @@ function updatePlanRows() {
         row.style.color = '#ccc';
         row.style.textDecoration = 'line-through';
       } else {
-        // Plan activo - mostrar cálculos normales
+        // Plan activo - mostrar colculos normales
         if (cells[17]) cells[17].textContent = minutesToTime(calc.productionTime);
         if (cells[18]) cells[18].textContent = calc.startTime;
         if (cells[19]) cells[19].textContent = calc.endTime;
@@ -2056,7 +2260,7 @@ function updatePlanRows() {
             '<span class="status-normal">NORMAL</span>';
         }
 
-        // Resaltar fila si está en tiempo extra
+        // Resaltar fila si esto en tiempo extra
         if (calc.isOvertime) {
           row.style.backgroundColor = '#8e2e2e';
           row.style.color = '#fff';
@@ -2106,7 +2310,7 @@ function renderCurrentVisualGroups() {
     dropZoneRow.innerHTML = `
       <td colspan="21" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
-          ${group.plans.length === 0 ? 'Arrastra planes aquí para asignarlos a este grupo' : ''}
+          ${group.plans.length === 0 ? 'Arrastra planes aquo para asignarlos a este grupo' : ''}
         </div>
       </td>
     `;
@@ -2188,7 +2392,7 @@ function reloadTableWithCurrentData() {
     // ? BUSCAR PRIMERO en originalPlansData para preservar todos los campos (especialmente status)
     let planData = originalPlansData.find(p => p.lot_no === lotNo);
 
-    // Si no está en originalPlansData, reconstruir desde HTML (con índices corregidos)
+    // Si no esto en originalPlansData, reconstruir desde HTML (con ondices corregidos)
     if (!planData) {
       planData = {
         lot_no: lotNo,
@@ -2221,7 +2425,7 @@ function reloadTableWithCurrentData() {
   // Re-renderizar con datos actuales
   renderTableWithVisualGroups(currentData);
 
-  // Actualizar fechas de inicio después del renderizado
+  // Actualizar fechas de inicio despuos del renderizado
   setTimeout(() => {
     // Ya no necesitamos updateStartDates
   }, 100);
@@ -2245,14 +2449,14 @@ function calculateProductionTime(planCount, uph) {
   return Math.round((planCount / uph) * 60); // minutos
 }
 
-// Agrupar planes en N grupos según la selección
+// Agrupar planes en N grupos segon la seleccion
 function groupPlansIntoNGroups(plans, groupCount) {
   const groups = [];
   for (let i = 0; i < groupCount; i++) {
     groups.push([]);
   }
 
-  // Distribuir planes por líneas en grupos
+  // Distribuir planes por loneas en grupos
   const lineGroups = {};
   plans.forEach(plan => {
     const line = plan.line;
@@ -2260,7 +2464,7 @@ function groupPlansIntoNGroups(plans, groupCount) {
     lineGroups[line].push(plan);
   });
 
-  // Asignar líneas a grupos de manera balanceada
+  // Asignar loneas a grupos de manera balanceada
   const lines = Object.keys(lineGroups);
   lines.forEach((line, index) => {
     const groupIndex = index % groupCount;
@@ -2270,7 +2474,7 @@ function groupPlansIntoNGroups(plans, groupCount) {
   return groups;
 }
 
-// Calcular tiempos de planeación para cada fila
+// Calcular tiempos de planeacion para cada fila
 function calculatePlanningTimes(plans) {
   planningCalculations.clear();
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
@@ -2285,7 +2489,7 @@ function calculatePlanningTimes(plans) {
       const startTime = currentTime;
       const endTime = currentTime + productionTime;
 
-      // Calcular si está en tiempo extra (termina después de 17:30)
+      // Calcular si esto en tiempo extra (termina despuos de 17:30)
       const shiftEndMinutes = timeToMinutes(currentConfig.shiftEnd || '17:30');
       const isOvertime = endTime > shiftEndMinutes;
 
@@ -2304,7 +2508,7 @@ function calculatePlanningTimes(plans) {
   });
 }
 
-// Auto acomodo de planes por optimización distribuida
+// Auto acomodo de planes por optimizacion distribuida
 function autoArrangePlans() {
   const tbody = document.getElementById('plan-tableBody');
   const planRows = Array.from(tbody.querySelectorAll('.plan-row'));
@@ -2355,7 +2559,7 @@ function autoArrangePlans() {
     };
   });
 
-  // Agrupar planes por línea primero
+  // Agrupar planes por lonea primero
   const lineGroups = {};
   plans.forEach(plan => {
     if (!lineGroups[plan.line]) {
@@ -2364,36 +2568,36 @@ function autoArrangePlans() {
     lineGroups[plan.line].push(plan);
   });
 
-  // Ordenar planes dentro de cada línea por tiempo de producción (menor a mayor)
+  // Ordenar planes dentro de cada lonea por tiempo de produccion (menor a mayor)
   Object.keys(lineGroups).forEach(line => {
     lineGroups[line].sort((a, b) => a.productionTime - b.productionTime);
   });
 
-  // Distribuir manteniendo líneas juntas de forma secuencial
+  // Distribuir manteniendo loneas juntas de forma secuencial
   const groupCount = parseInt(document.getElementById('groups-count').value) || 6;
   visualGroups.planAssignments.clear();
 
-  // Algoritmo mejorado: asignación secuencial de líneas a grupos
+  // Algoritmo mejorado: asignacion secuencial de loneas a grupos
   const productiveMinutes = (currentConfig.productiveHours || 9) * 60; // 9 horas productivas = 540 min
   const groupTimes = new Array(groupCount).fill(0);
-  const groupLines = new Array(groupCount).fill().map(() => new Map()); // Líneas y sus tiempos por grupo
+  const groupLines = new Array(groupCount).fill().map(() => new Map()); // Loneas y sus tiempos por grupo
 
   // Auto-acomodo iniciado (modo secuencial)
 
-  // Ordenar líneas con orden específico: M1, M2, M3, M4, D1, D2, D3, H1, etc.
+  // Ordenar loneas con orden especofico: M1, M2, M3, M4, D1, D2, D3, H1, etc.
   const sortedLines = Object.keys(lineGroups).sort((a, b) => {
-    // Extraer letra y número de cada línea
+    // Extraer letra y nomero de cada lonea
     const matchA = a.match(/^([A-Z]+)(\d+)$/);
     const matchB = b.match(/^([A-Z]+)(\d+)$/);
     
     if (!matchA || !matchB) {
-      return a.localeCompare(b); // Fallback para formatos no estándar
+      return a.localeCompare(b); // Fallback para formatos no estondar
     }
     
     const [, letterA, numA] = matchA;
     const [, letterB, numB] = matchB;
     
-    // Orden de prioridad de letras: M, D, H, luego alfabético
+    // Orden de prioridad de letras: M, D, H, luego alfabotico
     const letterOrder = { 'M': 1, 'D': 2, 'H': 3 };
     const orderA = letterOrder[letterA] || 99;
     const orderB = letterOrder[letterB] || 99;
@@ -2403,29 +2607,29 @@ function autoArrangePlans() {
       return orderA - orderB;
     }
     
-    // Si la letra es igual, ordenar por número
+    // Si la letra es igual, ordenar por nomero
     return parseInt(numA) - parseInt(numB);
   });
   
-  console.log('?? Orden de líneas para auto-acomodo:', sortedLines.join(', '));
+  console.log('?? Orden de loneas para auto-acomodo:', sortedLines.join(', '));
 
-  // Asignar cada línea a un grupo de forma secuencial (round-robin)
+  // Asignar cada lonea a un grupo de forma secuencial (round-robin)
   sortedLines.forEach((line, lineIndex) => {
     const linePlans = lineGroups[line];
     const totalLineTime = linePlans.reduce((sum, plan) => sum + plan.productionTime, 0);
 
-    // Asignación secuencial: M1 -> Grupo 0, M2 -> Grupo 1, M3 -> Grupo 2, etc.
-    // Si hay más líneas que grupos, se hace round-robin (M7 -> Grupo 0, M8 -> Grupo 1, etc.)
+    // Asignacion secuencial: M1 -> Grupo 0, M2 -> Grupo 1, M3 -> Grupo 2, etc.
+    // Si hay mos loneas que grupos, se hace round-robin (M7 -> Grupo 0, M8 -> Grupo 1, etc.)
     const groupIndex = lineIndex % groupCount;
 
-    console.log(`?? Auto-acomodo: Línea ${line} ? Grupo ${groupIndex + 1} (${totalLineTime.toFixed(1)} min)`);
+    console.log(`?? Auto-acomodo: Lonea ${line} ? Grupo ${groupIndex + 1} (${totalLineTime.toFixed(1)} min)`);
 
-    // Asignar todos los planes de la línea al grupo correspondiente
+    // Asignar todos los planes de la lonea al grupo correspondiente
     linePlans.forEach(plan => {
       visualGroups.planAssignments.set(plan.lot_no, groupIndex);
     });
 
-    // Actualizar estadísticas del grupo
+    // Actualizar estadosticas del grupo
     groupTimes[groupIndex] += totalLineTime;
     if (!groupLines[groupIndex].has(line)) {
       groupLines[groupIndex].set(line, 0);
@@ -2433,17 +2637,17 @@ function autoArrangePlans() {
     groupLines[groupIndex].set(line, groupLines[groupIndex].get(line) + totalLineTime);
   });
 
-  // Mostrar reporte de distribución
+  // Mostrar reporte de distribucion
   const groupsWithOvertime = groupTimes.filter(time => time > productiveMinutes).length;
   const totalTime = groupTimes.reduce((sum, time) => sum + time, 0);
   const avgTimePerGroup = totalTime / groupCount;
 
   // Resultado del auto-acomodo
 
-  // Re-renderizar tabla con nueva distribución
+  // Re-renderizar tabla con nueva distribucion
   renderTableWithVisualGroups(plans);
 
-  // Recalcular tiempos después de la redistribución
+  // Recalcular tiempos despuos de la redistribucion
   calculateGroupTimes();
 
   // Feedback visual mejorado
@@ -2464,10 +2668,10 @@ function autoArrangePlans() {
   }, 3000);
 }
 
-// Exponer función globalmente
+// Exponer funcion globalmente
 window.autoArrangePlans = autoArrangePlans;
 
-// Exponer funciones de reprogramación globalmente
+// Exponer funciones de reprogramacion globalmente
 window.loadPendingPlans = loadPendingPlans;
 window.reschedulePendingPlans = reschedulePendingPlans;
 window.toggleAllReschedule = toggleAllReschedule;
@@ -2491,16 +2695,16 @@ function calculateAndUpdateTimes() {
   // Calcular tiempos
   calculatePlanningTimes(plans);
 
-  // Actualizar filas con nueva información
+  // Actualizar filas con nueva informacion
   rows.forEach((row, index) => {
     const lotNo = row.dataset.lot;
     const calc = planningCalculations.get(lotNo);
 
     if (calc) {
-      // Agregar celdas de planeación si no existen
+      // Agregar celdas de planeacion si no existen
       let cells = row.querySelectorAll('td');
 
-      // Tiempo de producción
+      // Tiempo de produccion
       if (cells.length >= 17) {
         cells[16].textContent = minutesToTime(calc.productionTime);
         cells[16].className = 'tiempo-cell';
@@ -2533,7 +2737,7 @@ function calculateAndUpdateTimes() {
         row.appendChild(endCell);
       }
 
-      // Número de grupo
+      // Nomero de grupo
       if (cells.length >= 20) {
         cells[19].textContent = calc.groupNumber;
         cells[19].style.textAlign = 'center';
@@ -2546,7 +2750,7 @@ function calculateAndUpdateTimes() {
         row.appendChild(groupCell);
       }
 
-      // Indicador de tiempo extra en la última columna (Turno)
+      // Indicador de tiempo extra en la oltima columna (Turno)
       if (cells.length >= 22) {
         cells[21].innerHTML = calc.isOvertime ?
           '<span style="background:#e74c3c; color:white; padding:2px 6px; border-radius:3px; font-size:9px;">EXTRA</span>' :
@@ -2559,7 +2763,7 @@ function calculateAndUpdateTimes() {
         row.appendChild(extraCell);
       }
 
-      // Resaltar fila si está en tiempo extra
+      // Resaltar fila si esto en tiempo extra
       if (calc.isOvertime) {
         row.style.backgroundColor = '#8e2e2e';
         row.style.color = '#fff';
@@ -2571,11 +2775,11 @@ function calculateAndUpdateTimes() {
   });
 }
 
-// Función para crear modales dinámicamente en el body
+// Funcion para crear modales dinomicamente en el body
 function createModalsInBody() {
-  console.log('??? Creando modales dinámicamente en el body...');
+  console.log('??? Creando modales dinomicamente en el body...');
 
-  // Verificar que los estilos CSS estén cargados
+  // Verificar que los estilos CSS eston cargados
   const testDiv = document.createElement('div');
   testDiv.className = 'modal-overlay';
   testDiv.style.display = 'none';
@@ -2776,21 +2980,21 @@ function createModalsInBody() {
     document.body.appendChild(rescheduleModal);
   }
 
-  console.log('? Modales creados dinámicamente en el body');
+  console.log('? Modales creados dinomicamente en el body');
 }
 
-// Función de inicialización de event listeners usando event delegation
+// Funcion de inicializacion de event listeners usando event delegation
 function initializePlanEventListeners() {
   console.log('?? initializePlanEventListeners llamada');
 
-  // IMPORTANTE: Siempre crear modales dinámicamente en el body
-  // Esto asegura que los modales siempre estén al nivel correcto del DOM
+  // IMPORTANTE: Siempre crear modales dinomicamente en el body
+  // Esto asegura que los modales siempre eston al nivel correcto del DOM
   createModalsInBody();
 
-  // IMPORTANTE: Usar protección para evitar agregar listeners duplicados
-  // Solo agregar listeners una vez, ya que están en document.body
+  // IMPORTANTE: Usar proteccion para evitar agregar listeners duplicados
+  // Solo agregar listeners una vez, ya que eston en document.body
   if (document.body.dataset.planListenersAttached === 'true') {
-    console.log('? Listeners ya están configurados, saltando re-inicialización de listeners');
+    console.log('? Listeners ya eston configurados, saltando re-inicializacion de listeners');
     console.log('?? Los modales fueron creados/verificados en el body');
     return;
   }
@@ -2810,7 +3014,7 @@ function initializePlanEventListeners() {
 
       // Asegurar que el modal existe antes de abrirlo
       if (!document.getElementById('plan-modal')) {
-        console.log('?? Modal no existe, creándolo...');
+        console.log('?? Modal no existe, creondolo...');
         createModalsInBody();
       }
 
@@ -2833,7 +3037,7 @@ function initializePlanEventListeners() {
         `;
         console.log('? Modal plan-modal abierto con estilos forzados');
       } else {
-        console.error('? Modal plan-modal no encontrado después de crearlo');
+        console.error('? Modal plan-modal no encontrado despuos de crearlo');
       }
       return;
     }
@@ -2880,7 +3084,7 @@ function initializePlanEventListeners() {
         console.log('? Modal wo-modal abierto con estilos forzados');
         if (typeof loadWorkOrders === 'function') loadWorkOrders();
       } else {
-        console.error('? Modal wo-modal no encontrado después de crearlo');
+        console.error('? Modal wo-modal no encontrado despuos de crearlo');
       }
       return;
     }
@@ -2892,7 +3096,7 @@ function initializePlanEventListeners() {
 
       // Asegurar que el modal existe antes de abrirlo
       if (!document.getElementById('reschedule-modal')) {
-        console.log('?? Modal no existe, creándolo...');
+        console.log('?? Modal no existe, creondolo...');
         createModalsInBody();
       }
 
@@ -2917,7 +3121,7 @@ function initializePlanEventListeners() {
         console.log('? Modal reschedule-modal abierto con estilos forzados');
         if (typeof setDefaultRescheduleDates === 'function') setDefaultRescheduleDates();
       } else {
-        console.error('? Modal reschedule-modal no encontrado después de crearlo');
+        console.error('? Modal reschedule-modal no encontrado despuos de crearlo');
       }
       return;
     }
@@ -2933,23 +3137,23 @@ function initializePlanEventListeners() {
       return;
     }
 
-    // Botón Buscar Pendientes del modal Reprogramar
+    // Boton Buscar Pendientes del modal Reprogramar
     if (target.id === 'reschedule-search-btn' || target.closest('#reschedule-search-btn')) {
       e.preventDefault();
       if (typeof loadPendingPlans === 'function') loadPendingPlans();
       return;
     }
 
-    // Botón Reprogramar Seleccionados
+    // Boton Reprogramar Seleccionados
     if (target.id === 'reschedule-submit-btn' || target.closest('#reschedule-submit-btn')) {
       e.preventDefault();
       if (typeof reschedulePendingPlans === 'function') reschedulePendingPlans();
       return;
     }
 
-    // ========== MODAL DE EDICIÓN ==========
+    // ========== MODAL DE EDICIoN ==========
 
-    // Botón Cerrar modal Editar (el botón "Cerrar" dentro del form)
+    // Boton Cerrar modal Editar (el boton "Cerrar" dentro del form)
     if (target.closest('#plan-editForm button[type="button"]') &&
       target.textContent.includes('Cerrar')) {
       e.preventDefault();
@@ -2961,7 +3165,7 @@ function initializePlanEventListeners() {
       return;
     }
 
-    // Botón Cancelar Plan (botón rojo)
+    // Boton Cancelar Plan (boton rojo)
     if (target.id === 'plan-cancelBtn' || target.closest('#plan-cancelBtn')) {
       e.preventDefault();
       if (typeof handleCancelPlan === 'function') handleCancelPlan();
@@ -3024,7 +3228,7 @@ function initializePlanEventListeners() {
   document.body.addEventListener('change', function (e) {
     const target = e.target;
 
-    // Selector de número de grupos
+    // Selector de nomero de grupos
     if (target.id === 'groups-count') {
       reloadTableWithCurrentData();
       return;
@@ -3057,11 +3261,11 @@ function initializePlanEventListeners() {
 // Event listeners para nuevos controles
 document.addEventListener('DOMContentLoaded', initializePlanEventListeners);
 
-// Exponer funciones globalmente para que puedan ser llamadas después de cargar contenido dinámico
+// Exponer funciones globalmente para que puedan ser llamadas despuos de cargar contenido dinomico
 window.initializePlanEventListeners = initializePlanEventListeners;
 window.createModalsInBody = createModalsInBody;
 
-// También ejecutar inmediatamente si el DOM ya está listo (para scripts defer)
+// Tambion ejecutar inmediatamente si el DOM ya esto listo (para scripts defer)
 if (document.readyState === 'interactive' || document.readyState === 'complete') {
   initializePlanEventListeners();
 }
@@ -3088,7 +3292,7 @@ loadPlans = async function () {
     // Aplicar orden guardado (si existe) antes de renderizar
     data = applySavedOrderToData(data, fs, fe);
 
-    // Usar nueva función de renderizado con grupos visuales
+    // Usar nueva funcion de renderizado con grupos visuales
     renderTableWithVisualGroups(data);
 
     // ensureOrderToolbar(fs, fe); // Ya no necesario - usamos save-sequences-btn
@@ -3100,7 +3304,7 @@ loadPlans = async function () {
   }
 };
 
-// Función para exportar a Excel
+// Funcion para exportar a Excel
 async function exportarExcel() {
   try {
     const exportBtn = document.getElementById('export-excel-btn');
@@ -3117,14 +3321,14 @@ async function exportarExcel() {
     // Iterar sobre los grupos visuales en orden
     visualGroups.groups.forEach((group, groupIndex) => {
       if (group.plans && group.plans.length > 0) {
-        // Añadir marcador de grupo
+        // Aoadir marcador de grupo
         groupedPlansData.push({
           isGroupHeader: true,
           groupTitle: group.title || `GRUPO ${groupIndex + 1}`,
           groupIndex: groupIndex
         });
 
-        // Añadir todos los planes del grupo en orden de secuencia
+        // Aoadir todos los planes del grupo en orden de secuencia
         const sortedPlans = [...group.plans].sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
 
         sortedPlans.forEach(plan => {
@@ -3158,7 +3362,7 @@ async function exportarExcel() {
       }
     });
 
-    // Si no hay grupos visuales definidos, usar el método anterior como fallback
+    // Si no hay grupos visuales definidos, usar el motodo anterior como fallback
     if (groupedPlansData.length === 0) {
       const tbody = document.getElementById('plan-tableBody');
       const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -3182,7 +3386,7 @@ async function exportarExcel() {
         // Obtener lot_no para determinar el grupo visual
         const lot_no = cells[1]?.textContent?.trim() || '';
 
-        // Determinar el grupo visual basado en la posición en visualGroups
+        // Determinar el grupo visual basado en la posicion en visualGroups
         let grupoVisual = `GRUPO ${Math.floor(index / 5) + 1}`;
         if (lot_no && visualGroups.planAssignments.has(lot_no)) {
           const groupIndex = visualGroups.planAssignments.get(lot_no);
@@ -3191,9 +3395,9 @@ async function exportarExcel() {
           }
         }
 
-        // Si no se encuentra en visualGroups, buscar por la sección del DOM
+        // Si no se encuentra en visualGroups, buscar por la seccion del DOM
         if (!grupoVisual || grupoVisual.includes('undefined')) {
-          // Buscar hacia atrás para encontrar el separador de grupo más cercano
+          // Buscar hacia atros para encontrar el separador de grupo mos cercano
           let currentRow = row.previousElementSibling;
           while (currentRow) {
             if (currentRow.classList.contains('group-spacer')) {
@@ -3280,7 +3484,7 @@ async function exportarExcel() {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(downloadUrl);
 
-    // Feedback de éxito
+    // Feedback de oxito
     exportBtn.textContent = '? Excel Descargado';
     exportBtn.style.backgroundColor = '#27ae60';
 
@@ -3309,7 +3513,7 @@ async function exportarExcel() {
 setDefaultDateFilters();
 loadPlans();
 
-// Utilidad de depuración: ver grupos y secuencias actuales
+// Utilidad de depuracion: ver grupos y secuencias actuales
 window.debugGroups = function () {
   try {
     const rows = [...document.querySelectorAll('#plan-tableBody tr.plan-row')];
@@ -3319,7 +3523,7 @@ window.debugGroups = function () {
   } catch (e) { console.warn(e); }
 }
 
-// Función para guardar el orden actual de los grupos
+// Funcion para guardar el orden actual de los grupos
 async function saveGroupSequences() {
   const saveBtn = document.getElementById('save-sequences-btn');
   if (!saveBtn) return;
@@ -3331,15 +3535,15 @@ async function saveGroupSequences() {
   try {
     const sequenceData = [];
 
-    // Verificar que visualGroups esté disponible
+    // Verificar que visualGroups esto disponible
     if (!visualGroups || !visualGroups.groups) {
-      throw new Error('No hay grupos de planeación disponibles');
+      throw new Error('No hay grupos de planeacion disponibles');
     }
 
     // Recopilar datos de secuencia para cada plan (solo planes activos)
     visualGroups.groups.forEach((group, groupIndex) => {
       if (group && group.plans && Array.isArray(group.plans)) {
-        // Filtrar planes que NO están cancelados
+        // Filtrar planes que NO eston cancelados
         const activePlans = group.plans.filter(plan => plan && plan.lot_no && plan.status !== 'CANCELADO');
 
         activePlans.forEach((plan, planIndex) => {
@@ -3350,7 +3554,7 @@ async function saveGroupSequences() {
           // Convertir startTime (HH:MM) a DATETIME para planned_start
           let plannedStart = null;
           if (startTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo León
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon
             const [year, month, day] = todayStr.split('-').map(Number);
             const [hours, minutes] = startTime.split(':').map(Number);
             const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
@@ -3360,23 +3564,23 @@ async function saveGroupSequences() {
           // Convertir endTime (HH:MM) a DATETIME para planned_end
           let plannedEnd = null;
           if (endTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo León
+            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon
             const [year, month, day] = todayStr.split('-').map(Number);
             const [hours, minutes] = endTime.split(':').map(Number);
             const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
             plannedEnd = dateTime.toISOString().slice(0, 19).replace('T', ' '); // Formato: YYYY-MM-DD HH:MM:SS
           }
 
-          // También enviar solo la fecha para plan_start_date
+          // Tambion enviar solo la fecha para plan_start_date
           let planStartDate = null;
           if (startTime !== '--') {
-            planStartDate = getTodayInNuevoLeon(); // Formato: YYYY-MM-DD en Nuevo León
+            planStartDate = getTodayInNuevoLeon(); // Formato: YYYY-MM-DD en Nuevo Leon
           }
 
           // Calcular effective_minutes (tiempo productivo sin breaks)
-          const effectiveMinutes = productionTime; // productionTime ya está en minutos
+          const effectiveMinutes = productionTime; // productionTime ya esto en minutos
 
-          // Calcular breaks_minutes (estimar breaks que caen durante la producción)
+          // Calcular breaks_minutes (estimar breaks que caen durante la produccion)
           let breaksMinutes = 0;
           if (startTime !== '--' && endTime !== '--') {
             const startMinutes = timeToMinutes(startTime);
@@ -3388,7 +3592,7 @@ async function saveGroupSequences() {
               const breakEnd = timeToMinutes(breakInfo.end);
               const breakDuration = breakEnd - breakStart;
 
-              // Si el break cae durante la producción de este plan
+              // Si el break cae durante la produccion de este plan
               if (breakStart >= startMinutes && breakStart < endMinutes) {
                 breaksMinutes += breakDuration;
               }
@@ -3432,7 +3636,7 @@ async function saveGroupSequences() {
       saveBtn.textContent = '? Guardado';
       saveBtn.style.backgroundColor = '#27ae60';
 
-      // Mostrar mensaje de confirmación
+      // Mostrar mensaje de confirmacion
       const message = result.message || 'Secuencias guardadas correctamente';
       showNotification(message, 'success');
 
@@ -3471,7 +3675,7 @@ async function saveGroupSequences() {
     saveBtn.textContent = '? Error';
     saveBtn.style.backgroundColor = '#e74c3c';
 
-    // Mostrar mensaje de error más detallado
+    // Mostrar mensaje de error mos detallado
     const errorMessage = error.message || 'Error desconocido al guardar';
     showNotification('Error al guardar: ' + errorMessage, 'error');
 
@@ -3483,10 +3687,10 @@ async function saveGroupSequences() {
   }
 }
 
-// Exponer función globalmente
+// Exponer funcion globalmente
 window.saveGroupSequences = saveGroupSequences;
 
-// Función para actualizar las secuencias en tiempo real cuando se mueven planes
+// Funcion para actualizar las secuencias en tiempo real cuando se mueven planes
 function updateSequenceNumbers() {
   const tbody = document.getElementById("plan-tableBody");
   const planRows = tbody.querySelectorAll('.plan-row');
@@ -3510,7 +3714,7 @@ function updateSequenceNumbers() {
       if (sequenceCell) {
         sequenceCell.textContent = index + 1;
 
-        // Agregar animación sutil para indicar cambio
+        // Agregar animacion sutil para indicar cambio
         sequenceCell.style.transition = 'background-color 0.3s ease';
         sequenceCell.style.backgroundColor = '#27ae60';
 
@@ -3522,7 +3726,7 @@ function updateSequenceNumbers() {
   });
 }
 
-// Función para recalcular fechas de inicio después de mover planes
+// Funcion para recalcular fechas de inicio despuos de mover planes
 function updateStartDates() {
   visualGroups.groups.forEach((group, groupIndex) => {
     let currentTime = timeToMinutes(currentConfig.shiftStart);
@@ -3543,7 +3747,7 @@ function updateStartDates() {
         }
       });
 
-      // Actualizar fecha de inicio en los cálculos
+      // Actualizar fecha de inicio en los colculos
       planningCalculations.set(plan.lot_no, {
         ...planningCalculations.get(plan.lot_no),
         startTime: minutesToTime(startTime)
@@ -3570,14 +3774,14 @@ function updateStartDates() {
   });
 }
 
-// Configurar event listeners de modales (estos siempre están en el HTML)
-// ========= EVENT LISTENERS DINÁMICOS PARA MODALES =========
-// NOTA: Los event listeners del modal de Reprogramar ahora están en event delegation
-// Ver sección "EVENT DELEGATION: CLICK" para los botones reschedule-search-btn y reschedule-submit-btn
-// Ver sección "EVENT DELEGATION: CHANGE" para el checkbox reschedule-select-all
+// Configurar event listeners de modales (estos siempre eston en el HTML)
+// ========= EVENT LISTENERS DINoMICOS PARA MODALES =========
+// NOTA: Los event listeners del modal de Reprogramar ahora eston en event delegation
+// Ver seccion "EVENT DELEGATION: CLICK" para los botones reschedule-search-btn y reschedule-submit-btn
+// Ver seccion "EVENT DELEGATION: CHANGE" para el checkbox reschedule-select-all
 
 // Los event listeners del modal WO se configuran en setupWorkOrdersModalEvents()
-// cuando se crea el modal dinámicamente
+// cuando se crea el modal dinomicamente
 
 /* REMOVIDO - Ahora manejado por event delegation
 document.addEventListener('DOMContentLoaded', function() {
@@ -3600,15 +3804,15 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 */
 
-// Función para mostrar notificaciones
+// Funcion para mostrar notificaciones
 function showNotification(message, type = 'info') {
-  // Remover notificación existente si la hay
+  // Remover notificacion existente si la hay
   const existingNotification = document.querySelector('.notification');
   if (existingNotification) {
     existingNotification.remove();
   }
 
-  // Crear nueva notificación
+  // Crear nueva notificacion
   const notification = document.createElement('div');
   notification.className = 'notification';
   notification.style.cssText = `
@@ -3624,7 +3828,7 @@ function showNotification(message, type = 'info') {
     animation: slideIn 0.3s ease;
   `;
 
-  // Establecer color según el tipo
+  // Establecer color segon el tipo
   if (type === 'success') {
     notification.style.backgroundColor = '#27ae60';
   } else if (type === 'error') {
@@ -3636,7 +3840,7 @@ function showNotification(message, type = 'info') {
   notification.textContent = message;
   document.body.appendChild(notification);
 
-  // Remover después de 4 segundos
+  // Remover despuos de 4 segundos
   setTimeout(() => {
     if (notification.parentNode) {
       notification.remove();
