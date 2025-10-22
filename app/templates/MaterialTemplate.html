@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -1255,21 +1255,21 @@
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
-    console.log('Fetch successful, status:', response.status);
+    // // // // // // // console.log('Fetch successful, status:', response.status);
     return response.text();
 })
 .then(html => {
-    console.log('HTML received, length:', html.length);
+    // // // // // // // console.log('HTML received, length:', html.length);
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
     const sidebar = tempDiv.querySelector('.app-sidebar');
     if (sidebar) {
-        console.log('Sidebar found, sections:', sidebar.querySelectorAll('.sidebar-section').length);
+        // // // // // // // console.log('Sidebar found, sections:', sidebar.querySelectorAll('.sidebar-section').length);
         convertSidebarToMobileFormat(sidebar);
         mobileListsTitle.textContent = title;
-        console.log('Conversion completed, content set');
+        // // // // // // // console.log('Conversion completed, content set');
     } else {
-        console.log('No sidebar found in HTML');
+        // // // // // // console.log('No sidebar found in HTML');
         mobileListsContent.innerHTML = `
             <div style="text-align: center; padding: 40px; color: white;">
                 <p>No se encontraron listas para esta sección</p>
@@ -1955,7 +1955,7 @@
             
             // Función para ocultar todo el contenido
             function hideAllContent() {
-                console.log(' hideAllContent ejecutándose...');
+                // // // // // // // console.log(' hideAllContent ejecutándose...');
                 
                 // Ocultar todos los contenedores principales
                 informacionBasicaContent.style.display = 'none';
@@ -1996,7 +1996,7 @@
                     if (container && container.innerHTML.trim() !== '') {
                         // Solo limpiar si tiene contenido, mantener un placeholder
                         container.innerHTML = '<!-- El contenido se cargará dinámicamente con JavaScript -->';
-                        console.log(`🧹 Contenido limpiado de: ${containerId}`);
+                        // console.log(`🧹 Contenido limpiado de: ${containerId}`);
                     }
                 });
                 
@@ -2007,7 +2007,7 @@
                     const embarqueContainer = materialArea.querySelector('#embarque-main-container-unique');
                     if (embarqueContainer) {
                         embarqueContainer.remove();
-                        console.log('🧹 Control de Embarque removido del DOM');
+                        // // // // // // console.log('🧹 Control de Embarque removido del DOM');
                     }
                 }
                 
@@ -2015,16 +2015,16 @@
                 hideAllInformacionBasicaContainers();
                 
                 // Cerrar Control de Embarque cuando se cambie a otra sección
-                console.log(' Intentando cerrar Control de Embarque...');
+                // // // // // // // console.log(' Intentando cerrar Control de Embarque...');
                 if (typeof window.cerrarControlEmbarque === 'function') {
                     try {
                         window.cerrarControlEmbarque();
-                        console.log(' Control de Embarque cerrado exitosamente');
+                        // // // // // // // console.log(' Control de Embarque cerrado exitosamente');
                     } catch (error) {
                         console.error('❌ Error cerrando Control de Embarque:', error);
                     }
                 } else {
-                    console.log(' Función cerrarControlEmbarque no disponible');
+                    // // // // // // // console.log(' Función cerrarControlEmbarque no disponible');
                 }
             }
             
@@ -2455,13 +2455,13 @@ function hideAllMaterialContainers() {
                         embarqueContainer.style.display = 'block';
                         embarqueContainer.style.visibility = 'visible';
                         embarqueContainer.style.opacity = '1';
-                        console.log('Control de Embarque cargado y mostrado correctamente');
+                        // // // // // // console.log('Control de Embarque cargado y mostrado correctamente');
                     }
                     
                     // Inicializar el módulo de Control de Embarque
                     if (typeof window.initControlEmbarque === 'function') {
                         window.initControlEmbarque();
-                        console.log('Módulo Control de Embarque inicializado');
+                        // // // // // // console.log('Módulo Control de Embarque inicializado');
                     } else {
                         console.warn('Función initControlEmbarque no encontrada');
                     }
@@ -2488,13 +2488,13 @@ function hideAllMaterialContainers() {
                         planContainer.style.display = 'block';
                         planContainer.style.visibility = 'visible';
                         planContainer.style.opacity = '1';
-                        console.log('Crear Plan de Producción cargado y mostrado correctamente');
+                        // // // // // // console.log('Crear Plan de Producción cargado y mostrado correctamente');
                     }
                     
                     // Inicializar el módulo de Crear Plan de Producción
                     if (typeof window.initCrearPlanProduccion === 'function') {
                         window.initCrearPlanProduccion();
-                        console.log('Módulo Crear Plan de Producción inicializado');
+                        // // // // // // console.log('Módulo Crear Plan de Producción inicializado');
                     } else {
                         console.warn('Función initCrearPlanProduccion no encontrada');
                     }
@@ -2521,13 +2521,13 @@ function hideAllMaterialContainers() {
                         planSMTContainer.style.display = 'block';
                         planSMTContainer.style.visibility = 'visible';
                         planSMTContainer.style.opacity = '1';
-                        console.log('PLAN SMT cargado y mostrado correctamente');
+                        // // // // // // console.log('PLAN SMT cargado y mostrado correctamente');
                     }
                     
                     // Inicializar el módulo de PLAN SMT
                     if (typeof window.initPlanSMT === 'function') {
                         window.initPlanSMT();
-                        console.log('Módulo PLAN SMT inicializado');
+                        // // // // // // console.log('Módulo PLAN SMT inicializado');
                     } else {
                         console.warn('Función initPlanSMT no encontrada');
                     }
@@ -2541,7 +2541,7 @@ function hideAllMaterialContainers() {
             
             // Función AJAX para Control de Embarque con sufijo único
             window.mostrarControlembarque = function() {
-                console.log('🚀 Iniciando carga AJAX de Control de Embarque...');
+                // // // // // // console.log('🚀 Iniciando carga AJAX de Control de Embarque...');
                 
                 try {
                     hideAllMaterialContainers();
@@ -2554,7 +2554,7 @@ function hideAllMaterialContainers() {
                     
                     // Cargar contenido dinámicamente usando la ruta AJAX
                     cargarContenidoDinamico('embarque-unique-container', '/Control de embarque', () => {
-                        console.log(' Control de Embarque AJAX cargado exitosamente');
+                        // // // // // // // console.log(' Control de Embarque AJAX cargado exitosamente');
                         
                         // Verificar que el contenedor específico esté visible
                         const embarqueContainer = document.querySelector('#embarque-unique-container');
@@ -2567,11 +2567,11 @@ function hideAllMaterialContainers() {
                             const mainContainer = document.querySelector('#embarque-main-container-unique-embarque');
                             if (mainContainer) {
                                 mainContainer.style.display = 'block';
-                                console.log(' Contenedor principal de Control de Embarque AJAX inicializado');
+                                // // // // // // // console.log(' Contenedor principal de Control de Embarque AJAX inicializado');
                             }
                             
                             // Auto-inicialización ya está incluida en el template
-                            console.log(' Control de Embarque AJAX completamente funcional');
+                            // // // // // // // console.log(' Control de Embarque AJAX completamente funcional');
                         } else {
                             console.error('❌ No se encontró el contenedor embarque-unique-container');
                         }
@@ -2602,7 +2602,7 @@ function hideAllMaterialContainers() {
             
             // Función AJAX para Inventario IMD Terminado
             window.mostrarInventarioIMDTerminado = function() {
-                console.log('🚀 Iniciando carga AJAX de Inventario IMD Terminado...');
+                // // // // // // console.log('🚀 Iniciando carga AJAX de Inventario IMD Terminado...');
                 
                 try {
                     hideAllMaterialContainers();
@@ -2619,7 +2619,7 @@ function hideAllMaterialContainers() {
                     
                     if (!imdContainer) {
                         // Si no existe, crearlo dentro del área de control de proceso
-                        console.log('🔧 Creando contenedor inventario-imd-terminado-unique-container');
+                        // // // // // // console.log('🔧 Creando contenedor inventario-imd-terminado-unique-container');
                         imdContainer = document.createElement('div');
                         imdContainer.id = 'inventario-imd-terminado-unique-container';
                         imdContainer.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1001; width: 100%; min-height: 400px; padding: 5px;';
@@ -2645,7 +2645,7 @@ function hideAllMaterialContainers() {
                     
                     // Cargar contenido dinámicamente usando la versión AJAX
                     cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_proceso/inventario_imd_terminado', () => {
-                        console.log(' Inventario IMD Terminado AJAX cargado exitosamente');
+                        // // // // // // // console.log(' Inventario IMD Terminado AJAX cargado exitosamente');
                         
                         // Verificar que el contenedor específico esté visible
                         const inventarioContainer = document.querySelector('#inventario-imd-terminado-unique-container');
@@ -2654,8 +2654,8 @@ function hideAllMaterialContainers() {
                             inventarioContainer.style.visibility = 'visible';
                             inventarioContainer.style.opacity = '1';
                             
-                            console.log(' Contenedor de Inventario IMD Terminado inicializado');
-                            console.log(' Inventario IMD Terminado AJAX completamente funcional');
+                            // // // // // // // console.log(' Contenedor de Inventario IMD Terminado inicializado');
+                            // // // // // // // console.log(' Inventario IMD Terminado AJAX completamente funcional');
                         } else {
                             console.error('❌ No se encontró el contenedor inventario-imd-terminado-unique-container');
                         }
@@ -2737,10 +2737,10 @@ function hideAllMaterialContainers() {
                 cargarContenidoDinamico('control-salida-container', '/control-salida-ajax', () => {
                     // 🚀 INICIALIZACIÓN PRINCIPAL DE CONTROL DE SALIDA
                     if (typeof window.inicializarControlSalidaModule === 'function') {
-                        console.log('🔧 Ejecutando inicializarControlSalidaModule...');
+                        // // // // // // console.log('🔧 Ejecutando inicializarControlSalidaModule...');
                         window.inicializarControlSalidaModule();
                     } else if (typeof inicializarControlSalida === 'function') {
-                        console.log('🔧 Ejecutando inicializarControlSalida...');
+                        // // // // // // console.log('🔧 Ejecutando inicializarControlSalida...');
                         inicializarControlSalida();
                     } else {
                         console.warn(' Funciones de inicialización de Control de Salida no disponibles');
@@ -2748,7 +2748,7 @@ function hideAllMaterialContainers() {
 
                     // 🔧 RECONEXIÓN DE EVENT LISTENERS (MANTENER COMPATIBILIDAD)
                     setTimeout(() => {
-                        console.log('🔧 Reconectando event listeners adicionales...');
+                        // // // // // // console.log('🔧 Reconectando event listeners adicionales...');
                         
                         // Reconectar evento de escaneo (respaldo)
                         const codigoInput = document.getElementById('salida_codigo_material_recibido');
@@ -2757,7 +2757,7 @@ function hideAllMaterialContainers() {
                             if (!codigoInput.dataset.listenerAdded) {
                                 codigoInput.addEventListener('keydown', procesarEscaneoRapido);
                                 codigoInput.dataset.listenerAdded = 'true';
-                                console.log(' Event listener de escaneo reconectado (respaldo)');
+                                // // // // // // // console.log(' Event listener de escaneo reconectado (respaldo)');
                             }
                         }
                         
@@ -2768,7 +2768,7 @@ function hideAllMaterialContainers() {
                             if (!verificacionInput.dataset.listenerAdded) {
                                 verificacionInput.addEventListener('keydown', procesarVerificacion);
                                 verificacionInput.dataset.listenerAdded = 'true';
-                                console.log(' Event listener de verificación reconectado (respaldo)');
+                                // // // // // // // console.log(' Event listener de verificación reconectado (respaldo)');
                             }
                         }
                         
@@ -2779,7 +2779,7 @@ function hideAllMaterialContainers() {
                             if (!btnGuardar.dataset.listenerAdded) {
                                 btnGuardar.addEventListener('click', procesarSalidaManual);
                                 btnGuardar.dataset.listenerAdded = 'true';
-                                console.log(' Event listener de botón guardar reconectado (respaldo)');
+                                // // // // // // // console.log(' Event listener de botón guardar reconectado (respaldo)');
                             }
                         }
                     }, 500);
@@ -2973,7 +2973,7 @@ function hideAllMaterialContainers() {
                     link.rel = 'stylesheet';
                     link.href = '/static/css/historial-smt.css';
                     document.head.appendChild(link);
-                    console.log(' Estilos SMT cargados dinámicamente');
+                    // // // // // // // console.log(' Estilos SMT cargados dinámicamente');
                 }
                 
                 // Cargar contenido dinámicamente
@@ -2984,7 +2984,7 @@ function hideAllMaterialContainers() {
                         initHistorialCambioSMT();
                     }
                     
-                    console.log(' Historial de cambio de material SMT cargado correctamente');
+                    // // // // // // // console.log(' Historial de cambio de material SMT cargado correctamente');
                 });
             };
             
@@ -3074,7 +3074,7 @@ function hideAllMaterialContainers() {
                 // Cargar contenido dinámicamente del sidebar de control de proceso
                 cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso')
                     .then(() => {
-                        console.log(' Contenido de Control de Proceso cargado exitosamente');
+                        // // // // // // // console.log(' Contenido de Control de Proceso cargado exitosamente');
                     })
                     .catch(error => {
                         console.error('Error cargando Control de Proceso:', error);
@@ -3118,7 +3118,7 @@ function hideAllMaterialContainers() {
                 // Cargar contenido dinámicamente del sidebar de control de resultados
                 cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
                     .then(() => {
-                        console.log(' Contenido de Control de Resultados cargado exitosamente');
+                        // // // // // // // console.log(' Contenido de Control de Resultados cargado exitosamente');
                         
                         // Asegurar que el área de contenido esté visible
                         controlResultadosContentArea.style.display = 'block';
@@ -3526,7 +3526,7 @@ function hideAllMaterialContainers() {
 
         // 🔧 FUNCIÓN PARA CONSULTAR ESPECIFICACIÓN POR NÚMERO DE PARTE
         async function consultarEspecificacionPorNumeroParte(numeroParte) {
-            console.log('� Consultando especificación para número de parte:', numeroParte);
+            // // // // // // console.log('o Consultando especificación para número de parte:', numeroParte);
             
             try {
                 const response = await fetch(`/consultar_especificacion_por_numero_parte?numero_parte=${encodeURIComponent(numeroParte)}`, {
@@ -3536,24 +3536,24 @@ function hideAllMaterialContainers() {
                     }
                 });
                 
-                console.log('📡 Respuesta del servidor:', response.status);
+                // // // // // // console.log('📡 Respuesta del servidor:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`Error HTTP: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                console.log('📦 Datos recibidos:', data);
+                // // // // // // console.log('📦 Datos recibidos:', data);
                 
                 if (data.success && data.especificacion) {
-                    console.log(` Especificación encontrada desde campo '${data.campo_origen}':`, data.especificacion);
+                    // console.log(` Especificación encontrada desde campo '${data.campo_origen}':`, data.especificacion);
                     return data.especificacion;
                 } else {
-                    console.log('❌ No se encontró especificación:', data.error || 'Sin especificación disponible');
+                    // // // // // // console.log('❌ No se encontró especificación:', data.error || 'Sin especificación disponible');
                     
                     // Si tenemos información del material, mostrarla para debug
                     if (data.campos_disponibles) {
-                        console.log('� Campos disponibles en el material:', data.campos_disponibles);
+                        // // // // // // console.log('o Campos disponibles en el material:', data.campos_disponibles);
                     }
                     
                     return null;
@@ -3567,7 +3567,7 @@ function hideAllMaterialContainers() {
 
         // 🔧 FUNCIÓN MEJORADA PARA CONSULTAR ESPECIFICACIÓN DESDE HISTORIAL DE SALIDAS
         async function consultarEspecificacionDesdeHistorial(numeroParte) {
-            console.log('📡 Consultando especificación desde historial para número de parte:', numeroParte);
+            // // // // // // console.log('📡 Consultando especificación desde historial para número de parte:', numeroParte);
             
             try {
                 // Consultar historial de salidas directamente
@@ -3580,22 +3580,22 @@ function hideAllMaterialContainers() {
                 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('📦 Datos de historial recibidos:', data);
+                    // // // // // // console.log('📦 Datos de historial recibidos:', data);
                     
                     if (data.success && data.salidas && data.salidas.length > 0) {
                         // Buscar la especificación más reciente en el historial
                         for (const salida of data.salidas) {
                             if (salida.especificacion_material && salida.especificacion_material.trim()) {
-                                console.log(` Especificación encontrada en historial:`, salida.especificacion_material);
+                                // console.log(` Especificación encontrada en historial:`, salida.especificacion_material);
                                 return salida.especificacion_material.trim();
                             }
                         }
-                        console.log(' No se encontró especificación en ninguna salida del historial');
+                        // // // // // // // console.log(' No se encontró especificación en ninguna salida del historial');
                     } else {
-                        console.log(' No hay historial de salidas para este número de parte');
+                        // // // // // // // console.log(' No hay historial de salidas para este número de parte');
                     }
                 } else {
-                    console.log('❌ Error al consultar historial:', response.status);
+                    // // // // // // console.log('❌ Error al consultar historial:', response.status);
                 }
                 
                 return null;
@@ -3608,7 +3608,7 @@ function hideAllMaterialContainers() {
 
         // Función para rellenar campos del material
         function rellenarCamposMaterial(material) {
-            console.log('🔍 RELLENANDO CAMPOS - Material recibido:', material);
+            // // // // // // console.log('🔍 RELLENANDO CAMPOS - Material recibido:', material);
             
             const campos = [
                 'salida_codigo_material_original',
@@ -3640,17 +3640,17 @@ function hideAllMaterialContainers() {
                     for (const prop of propiedadesPosibles) {
                         if (material[prop] !== undefined && material[prop] !== null && material[prop] !== '') {
                             numeroLote = material[prop];
-                            console.log(` Número de lote encontrado en propiedad '${prop}':`, numeroLote);
+                            // console.log(` Número de lote encontrado en propiedad '${prop}':`, numeroLote);
                             break;
                         }
                     }
                     
                     if (numeroLote && campo) {
                         campo.value = numeroLote;
-                        console.log(' Campo número de lote rellenado:', numeroLote);
+                        // // // // // // // console.log(' Campo número de lote rellenado:', numeroLote);
                     } else {
-                        console.log(' No se encontró número de lote en ninguna propiedad');
-                        console.log(' Propiedades disponibles en material:', Object.keys(material));
+                        // // // // // // // console.log(' No se encontró número de lote en ninguna propiedad');
+                        // // // // // // // console.log(' Propiedades disponibles en material:', Object.keys(material));
                     }
                 }
                 // 🔧 MANEJO ESPECIAL PARA ESPECIFICACIÓN
@@ -3669,25 +3669,25 @@ function hideAllMaterialContainers() {
                     for (const prop of propiedadesEspecificacion) {
                         if (material[prop] !== undefined && material[prop] !== null && material[prop] !== '') {
                             especificacion = material[prop];
-                            console.log(` Especificación encontrada en propiedad '${prop}':`, especificacion);
+                            // console.log(` Especificación encontrada en propiedad '${prop}':`, especificacion);
                             break;
                         }
                     }
                     
                     if (especificacion && campo) {
                         campo.value = especificacion;
-                        console.log(' Campo especificación rellenado:', especificacion);
+                        // // // // // // // console.log(' Campo especificación rellenado:', especificacion);
                     } else {
-                        console.log(' No se encontró especificación directamente');
+                        // // // // // // // console.log(' No se encontró especificación directamente');
                         
                         // Si no encontramos especificación, intentar consultarla desde historial primero
                         if (material.numero_parte) {
-                            console.log('🔍 Intentando consultar especificación desde historial por número de parte...');
+                            // // // // // // console.log('🔍 Intentando consultar especificación desde historial por número de parte...');
                             consultarEspecificacionDesdeHistorial(material.numero_parte)
                                 .then(especificacionHistorial => {
                                     if (especificacionHistorial && campo) {
                                         campo.value = especificacionHistorial;
-                                        console.log(' Especificación desde historial rellenada:', especificacionHistorial);
+                                        // // // // // // // console.log(' Especificación desde historial rellenada:', especificacionHistorial);
                                         
                                         // Actualizar el material actual con la especificación encontrada
                                         if (materialActual) {
@@ -3696,12 +3696,12 @@ function hideAllMaterialContainers() {
                                         }
                                     } else {
                                         // Si no hay en historial, intentar consulta directa a BD como fallback
-                                        console.log('🔍 No hay especificación en historial, intentando consulta directa...');
+                                        // // // // // // console.log('🔍 No hay especificación en historial, intentando consulta directa...');
                                         consultarEspecificacionPorNumeroParte(material.numero_parte)
                                             .then(especificacionConsultada => {
                                                 if (especificacionConsultada && campo) {
                                                     campo.value = especificacionConsultada;
-                                                    console.log(' Especificación desde BD directa rellenada:', especificacionConsultada);
+                                                    // // // // // // // console.log(' Especificación desde BD directa rellenada:', especificacionConsultada);
                                                     
                                                     // Actualizar el material actual con la especificación encontrada
                                                     if (materialActual) {
@@ -3723,11 +3723,11 @@ function hideAllMaterialContainers() {
             });
             
             // 🔍 DEBUG: Mostrar información completa del material
-            console.log('📊 INFORMACIÓN COMPLETA DEL MATERIAL:');
-            console.log('- Código material:', material.codigo_material || 'N/A');
-            console.log('- Número parte:', material.numero_parte || 'N/A');
-            console.log('- Cantidad actual:', material.cantidad_actual || 'N/A');
-            console.log('- Número lote (todas las propiedades):');
+            // // // // // // console.log('📊 INFORMACIÓN COMPLETA DEL MATERIAL:');
+            // // // // // // console.log('- Código material:', material.codigo_material || 'N/A');
+            // // // // // // console.log('- Número parte:', material.numero_parte || 'N/A');
+            // // // // // // console.log('- Cantidad actual:', material.cantidad_actual || 'N/A');
+            // // // // // // console.log('- Número lote (todas las propiedades):');
             
             const propiedadesLote = [
                 'numero_lote_material',
@@ -3740,7 +3740,7 @@ function hideAllMaterialContainers() {
             
             propiedadesLote.forEach(prop => {
                 if (material.hasOwnProperty(prop)) {
-                    console.log(`  • ${prop}:`, material[prop]);
+                    // console.log(`  • ${prop}:`, material[prop]);
                 }
             });
         }
@@ -3777,13 +3777,13 @@ function hideAllMaterialContainers() {
                 for (const prop of propiedadesLote) {
                     if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                         numeroLote = materialActual[prop];
-                        console.log(` Usando número de lote de propiedad '${prop}':`, numeroLote);
+                        // console.log(` Usando número de lote de propiedad '${prop}':`, numeroLote);
                         break;
                     }
                 }
                 
                 if (!numeroLote) {
-                    console.log(' ADVERTENCIA: No se encontró número de lote en el material');
+                    // // // // // // // console.log(' ADVERTENCIA: No se encontró número de lote en el material');
                 }
 
                 const salidaResponse = await fetch('/procesar_salida_material', {
@@ -3827,11 +3827,11 @@ function hideAllMaterialContainers() {
 
         // Nueva función para procesamiento manual NEUTRALIZADA para salida rápida
         async function procesarSalidaManual() {
-            console.log('🔧 procesarSalidaManual llamada desde MaterialTemplate');
+            // // // // // // console.log('🔧 procesarSalidaManual llamada desde MaterialTemplate');
             
             // OVERRIDE: Si está en modo salida rápida, usar la función específica
             if (window.SALIDA_RAPIDA_ACTIVA && window.guardarSalida) {
-                console.log(' Detectado modo salida rápida, usando función específica');
+                // // // // // // // console.log(' Detectado modo salida rápida, usando función específica');
                 window.guardarSalida();
                 return;
             }
@@ -3849,7 +3849,7 @@ function hideAllMaterialContainers() {
             }
             
             // ELIMINADO: validación de verificación para permitir salida directa
-            console.log('⚡ Procesando salida manual SIN verificación desde MaterialTemplate');
+            // // // // // // console.log('⚡ Procesando salida manual SIN verificación desde MaterialTemplate');
             
             try {
                 const modelo = document.getElementById('salida_modelo')?.value || 'SIN_MODELO';
@@ -3874,13 +3874,13 @@ function hideAllMaterialContainers() {
                 for (const prop of propiedadesLote) {
                     if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                         numeroLote = materialActual[prop];
-                        console.log(` Usando número de lote de propiedad '${prop}':`, numeroLote);
+                        // console.log(` Usando número de lote de propiedad '${prop}':`, numeroLote);
                         break;
                     }
                 }
                 
                 if (!numeroLote) {
-                    console.log(' ADVERTENCIA: No se encontró número de lote en el material');
+                    // // // // // // // console.log(' ADVERTENCIA: No se encontró número de lote en el material');
                 }
 
                 const salidaResponse = await fetch('/procesar_salida_material', {
@@ -3956,16 +3956,16 @@ function hideAllMaterialContainers() {
 
         // 🔧 FUNCIÓN DE DEBUGGING PARA NÚMERO DE LOTE
         window.debugNumeroLote = function() {
-            console.log('🧪 VERIFICANDO NÚMERO DE LOTE DESDE BASE DE DATOS:');
-            console.log('================================================');
+            // // // // // // console.log('🧪 VERIFICANDO NÚMERO DE LOTE DESDE BASE DE DATOS:');
+            // // // // // // console.log('================================================');
             
             if (!materialActual) {
-                console.log('❌ No hay material actual cargado');
-                console.log('💡 Primero escanee un código de material');
+                // // // // // // console.log('❌ No hay material actual cargado');
+                // // // // // // console.log('💡 Primero escanee un código de material');
                 return { error: 'No hay material cargado' };
             }
             
-            console.log('📦 Material actual completo:', materialActual);
+            // // // // // // console.log('📦 Material actual completo:', materialActual);
             
             // Verificar todas las propiedades posibles de número de lote
             const propiedadesLote = [
@@ -3977,21 +3977,21 @@ function hideAllMaterialContainers() {
                 'numeroLote'
             ];
             
-            console.log('🔍 Buscando número de lote en todas las propiedades:');
+            // // // // // // console.log('🔍 Buscando número de lote en todas las propiedades:');
             const resultados = {};
             
             propiedadesLote.forEach(prop => {
                 const valor = materialActual[prop];
                 resultados[prop] = valor;
-                console.log(`  • ${prop}:`, valor || 'NO ENCONTRADO');
+                // console.log(`  • ${prop}:`, valor || 'NO ENCONTRADO');
             });
             
             // Verificar que el campo visual muestre el número de lote
             const campoLote = document.getElementById('salida_numero_lote_material');
             if (campoLote) {
-                console.log(' Campo visual número de lote:', campoLote.value || 'VACÍO');
+                // // // // // // // console.log(' Campo visual número de lote:', campoLote.value || 'VACÍO');
             } else {
-                console.log('❌ Campo visual de número de lote no encontrado');
+                // // // // // // console.log('❌ Campo visual de número de lote no encontrado');
             }
             
             // Buscar el mejor número de lote disponible
@@ -3999,14 +3999,14 @@ function hideAllMaterialContainers() {
             for (const prop of propiedadesLote) {
                 if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                     mejorLote = materialActual[prop];
-                    console.log(` MEJOR NÚMERO DE LOTE ENCONTRADO: '${mejorLote}' (de propiedad '${prop}')`);
+                    // console.log(` MEJOR NÚMERO DE LOTE ENCONTRADO: '${mejorLote}' (de propiedad '${prop}')`);
                     break;
                 }
             }
             
             if (!mejorLote) {
-                console.log(' NO SE ENCONTRÓ NÚMERO DE LOTE EN NINGUNA PROPIEDAD');
-                console.log(' Todas las propiedades del material:', Object.keys(materialActual));
+                // // // // // // // console.log(' NO SE ENCONTRÓ NÚMERO DE LOTE EN NINGUNA PROPIEDAD');
+                // // // // // // // console.log(' Todas las propiedades del material:', Object.keys(materialActual));
             }
             
             return {
@@ -4019,16 +4019,16 @@ function hideAllMaterialContainers() {
         
         // 🔧 FUNCIÓN PARA FORZAR RELLENADO CON DEBUGGING
         window.forzarRellenadoLote = function() {
-            console.log('🔧 FORZANDO RELLENADO DE NÚMERO DE LOTE...');
+            // // // // // // console.log('🔧 FORZANDO RELLENADO DE NÚMERO DE LOTE...');
             
             if (!materialActual) {
-                console.log('❌ No hay material cargado');
+                // // // // // // console.log('❌ No hay material cargado');
                 return false;
             }
             
             const campoLote = document.getElementById('salida_numero_lote_material');
             if (!campoLote) {
-                console.log('❌ Campo de número de lote no encontrado');
+                // // // // // // console.log('❌ Campo de número de lote no encontrado');
                 return false;
             }
             
@@ -4046,32 +4046,32 @@ function hideAllMaterialContainers() {
                 const valor = materialActual[prop];
                 if (valor !== undefined && valor !== null && valor !== '') {
                     campoLote.value = valor;
-                    console.log(` Número de lote forzado: '${valor}' (de propiedad '${prop}')`);
+                    // console.log(` Número de lote forzado: '${valor}' (de propiedad '${prop}')`);
                     return true;
                 }
             }
             
-            console.log(' No se pudo forzar - no hay número de lote disponible');
+            // // // // // // // console.log(' No se pudo forzar - no hay número de lote disponible');
             return false;
         };
         
         // 🔧 FUNCIÓN PARA DEBUGGING DE TABLA HISTORIAL
         window.debugTablaHistorial = function() {
-            console.log('🧪 DEBUGGING TABLA HISTORIAL DE SALIDAS:');
-            console.log('=====================================');
+            // // // // // // console.log('🧪 DEBUGGING TABLA HISTORIAL DE SALIDAS:');
+            // // // // // // console.log('=====================================');
             
             // Intentar obtener los datos más recientes de la tabla
             const tabla = document.getElementById('salida_tablaSalidas');
             if (!tabla) {
-                console.log('❌ Tabla de salidas no encontrada');
+                // // // // // // console.log('❌ Tabla de salidas no encontrada');
                 return { error: 'Tabla no encontrada' };
             }
             
             const filas = tabla.querySelectorAll('tbody tr');
-            console.log(`📊 Filas encontradas en tabla: ${filas.length}`);
+            // console.log(`📊 Filas encontradas en tabla: ${filas.length}`);
             
             if (filas.length === 0) {
-                console.log(' No hay filas en la tabla');
+                // // // // // // // console.log(' No hay filas en la tabla');
                 return { filas: 0 };
             }
             
@@ -4081,13 +4081,13 @@ function hideAllMaterialContainers() {
                 const celdas = fila.querySelectorAll('td');
                 if (celdas.length > 1 && !celdas[0].textContent.includes('No hay dato')) {
                     filaConDatos = fila;
-                    console.log(` Fila ${index + 1} tiene datos reales`);
+                    // console.log(` Fila ${index + 1} tiene datos reales`);
                     return false; // Equivalente a break
                 }
             });
             
             if (!filaConDatos) {
-                console.log(' No se encontraron filas con datos reales');
+                // // // // // // // console.log(' No se encontraron filas con datos reales');
                 return { sinDatos: true };
             }
             
@@ -4095,11 +4095,11 @@ function hideAllMaterialContainers() {
             
             const numeroLote = celdas[7]?.textContent || '';
             if (!numeroLote || numeroLote === '') {
-                console.log('❌ EL NÚMERO DE LOTE ESTÁ VACÍO EN LA TABLA');
-                console.log('💡 Esto indica que el servidor no está enviando el número de lote');
-                console.log('💡 O que está en una propiedad diferente a las que buscamos');
+                // // // // // // console.log('❌ EL NÚMERO DE LOTE ESTÁ VACÍO EN LA TABLA');
+                // // // // // // console.log('💡 Esto indica que el servidor no está enviando el número de lote');
+                // // // // // // console.log('💡 O que está en una propiedad diferente a las que buscamos');
             } else {
-                console.log(' NÚMERO DE LOTE ENCONTRADO EN TABLA:', numeroLote);
+                // // // // // // // console.log(' NÚMERO DE LOTE ENCONTRADO EN TABLA:', numeroLote);
             }
             
             return {
@@ -4111,7 +4111,7 @@ function hideAllMaterialContainers() {
         
         // 🔧 FUNCIÓN PARA INTERCEPTAR RESPUESTA DEL SERVIDOR
         window.debugRespuestaServidor = function() {
-            console.log('🔍 INTERCEPTANDO PRÓXIMA CONSULTA AL SERVIDOR...');
+            // // // // // // console.log('🔍 INTERCEPTANDO PRÓXIMA CONSULTA AL SERVIDOR...');
             
             // Interceptar fetch temporalmente
             const originalFetch = window.fetch;
@@ -4121,18 +4121,18 @@ function hideAllMaterialContainers() {
                 const [url] = args;
                 
                 if (interceptorActivo && url.includes('consultar_historial_salidas')) {
-                    console.log(' INTERCEPTADO - Consulta al historial de salidas');
+                    // // // // // // // console.log(' INTERCEPTADO - Consulta al historial de salidas');
                     
                     return originalFetch.apply(this, args)
                         .then(response => {
                             return response.clone().json().then(data => {
-                                console.log('📥 RESPUESTA COMPLETA DEL SERVIDOR:');
-                                console.log(data);
+                                // // // // // // console.log('📥 RESPUESTA COMPLETA DEL SERVIDOR:');
+                                // console.log(data);
                                 
                                 if (data.salidas && data.salidas.length > 0) {
-                                    console.log('� ANALIZANDO PRIMERA SALIDA:');
+                                    // // // // // // console.log('o ANALIZANDO PRIMERA SALIDA:');
                                     const primeraSalida = data.salidas[0];
-                                    console.log('�📦 Objeto completo primera salida:', primeraSalida);
+                                    // // // // // // console.log('o📦 Objeto completo primera salida:', primeraSalida);
                                     
                                     // Buscar especificación en todas las propiedades posibles
                                     const propiedadesEspec = [
@@ -4144,12 +4144,12 @@ function hideAllMaterialContainers() {
                                         'descripcion'
                                     ];
                                     
-                                    console.log('🔍 PROPIEDADES DE ESPECIFICACIÓN:');
+                                    // // // // // // console.log('🔍 PROPIEDADES DE ESPECIFICACIÓN:');
                                     propiedadesEspec.forEach(prop => {
                                         if (primeraSalida.hasOwnProperty(prop)) {
-                                            console.log(`   ${prop}:`, primeraSalida[prop]);
+                                            // console.log(`   ${prop}:`, primeraSalida[prop]);
                                         } else {
-                                            console.log(`  ❌ ${prop}: NO ENCONTRADO`);
+                                            // console.log(`  ❌ ${prop}: NO ENCONTRADO`);
                                         }
                                     });
                                     
@@ -4163,20 +4163,20 @@ function hideAllMaterialContainers() {
                                         'numeroLote'
                                     ];
                                     
-                                    console.log('🔍 PROPIEDADES DE NÚMERO DE LOTE:');
+                                    // // // // // // console.log('🔍 PROPIEDADES DE NÚMERO DE LOTE:');
                                     propiedadesLote.forEach(prop => {
                                         if (primeraSalida.hasOwnProperty(prop)) {
-                                            console.log(`   ${prop}:`, primeraSalida[prop]);
+                                            // console.log(`   ${prop}:`, primeraSalida[prop]);
                                         } else {
-                                            console.log(`  ❌ ${prop}: NO ENCONTRADO`);
+                                            // console.log(`  ❌ ${prop}: NO ENCONTRADO`);
                                         }
                                     });
                                     
-                                    console.log(' TODAS LAS PROPIEDADES DISPONIBLES:');
-                                    console.log(Object.keys(primeraSalida));
+                                    // // // // // // // console.log(' TODAS LAS PROPIEDADES DISPONIBLES:');
+                                    // console.log(Object.keys(primeraSalida));
                                 } else {
-                                    console.log(' No hay salidas en la respuesta o formato diferente');
-                                    console.log('🔍 Estructura de datos recibida:', Object.keys(data));
+                                    // // // // // // // console.log(' No hay salidas en la respuesta o formato diferente');
+                                    // // // // // // console.log('🔍 Estructura de datos recibida:', Object.keys(data));
                                 }
                                 
                                 // Restaurar fetch original
@@ -4191,46 +4191,46 @@ function hideAllMaterialContainers() {
                 return originalFetch.apply(this, args);
             };
             
-            console.log(' Interceptor activado. Ahora haga una consulta al historial.');
-            console.log('💡 El interceptor se desactivará automáticamente después de la primera consulta');
+            // // // // // // // console.log(' Interceptor activado. Ahora haga una consulta al historial.');
+            // // // // // // console.log('💡 El interceptor se desactivará automáticamente después de la primera consulta');
             
             return 'Interceptor activado - Consulte el historial para ver los datos del servidor';
         };
         
-        console.log(' Funciones de debugging de tabla instaladas');
-        console.log('💡 Comandos disponibles:');
-        console.log('   - debugTablaHistorial() - Ver contenido actual de la tabla');
-        console.log('   - debugRespuestaServidor() - Interceptar próxima respuesta del servidor');
-        console.log('   - debugEspecificacionMaterial() - Verificar especificación del material actual');
-        console.log('   - repararTablaEspecificacion() - Reparar tabla actual con especificación del material');
-        console.log('   - activarEspecificacionAutomatica() - SOLUCIÓN PERMANENTE: Siempre mostrar especificaciones');
-        console.log('   - forzarInterceptorEspecificacion() - FORZAR interceptor sin HISTORIAL_GLOBAL');
-        console.log('   - probarConsultaEspecificacion() - PROBAR consulta por número de parte 0RH5602C622');
+        // // // // // // // console.log(' Funciones de debugging de tabla instaladas');
+        // // // // // // console.log('💡 Comandos disponibles:');
+        // // // // // // // console.log('   - debugTablaHistorial() - Ver contenido actual de la tabla');
+        // // // // // // // console.log('   - debugRespuestaServidor() - Interceptar próxima respuesta del servidor');
+        // // // // // // // console.log('   - debugEspecificacionMaterial() - Verificar especificación del material actual');
+        // // // // // // // console.log('   - repararTablaEspecificacion() - Reparar tabla actual con especificación del material');
+        // // // // // // // console.log('   - activarEspecificacionAutomatica() - SOLUCIÓN PERMANENTE: Siempre mostrar especificaciones');
+        // // // // // // // console.log('   - forzarInterceptorEspecificacion() - FORZAR interceptor sin HISTORIAL_GLOBAL');
+        // // // // // // // console.log('   - probarConsultaEspecificacion() - PROBAR consulta por número de parte 0RH5602C622');
 
         // 🔧 FUNCIÓN DE PRUEBA PARA CONSULTAR ESPECIFICACIÓN
         window.probarConsultaEspecificacion = async function() {
-            console.log('🧪 PROBANDO CONSULTA DE ESPECIFICACIÓN...');
-            console.log('=======================================');
+            // // // // // // console.log('🧪 PROBANDO CONSULTA DE ESPECIFICACIÓN...');
+            // // // // // // console.log('=======================================');
             
             const numeroParte = '0RH5602C622';
-            console.log('🔍 Consultando número de parte:', numeroParte);
+            // // // // // // console.log('🔍 Consultando número de parte:', numeroParte);
             
             try {
                 const especificacion = await consultarEspecificacionPorNumeroParte(numeroParte);
                 
                 if (especificacion) {
-                    console.log(' ESPECIFICACIÓN ENCONTRADA:', especificacion);
+                    // // // // // // // console.log(' ESPECIFICACIÓN ENCONTRADA:', especificacion);
                     
                     // Si estamos en control de salida, rellenar el campo
                     const campoEspecificacion = document.getElementById('salida_especificacion_material');
                     if (campoEspecificacion) {
                         campoEspecificacion.value = especificacion;
-                        console.log(' Campo de especificación actualizado');
+                        // // // // // // // console.log(' Campo de especificación actualizado');
                     }
                     
                     return especificacion;
                 } else {
-                    console.log('❌ No se pudo obtener especificación');
+                    // // // // // // console.log('❌ No se pudo obtener especificación');
                     return null;
                 }
             } catch (error) {
@@ -4241,7 +4241,7 @@ function hideAllMaterialContainers() {
         
         // 🔧 FUNCIÓN SIMPLE PARA FORZAR INTERCEPTOR
         window.forzarInterceptorEspecificacion = function() {
-            console.log('🚀 FORZANDO INTERCEPTOR DE ESPECIFICACIÓN...');
+            // // // // // // console.log('🚀 FORZANDO INTERCEPTOR DE ESPECIFICACIÓN...');
             
             // Resetear bandera si ya existe
             window.fetchInterceptorEspecificacion = false;
@@ -4252,14 +4252,14 @@ function hideAllMaterialContainers() {
                 const [url] = args;
                 
                 if (url.includes('consultar_historial_salidas')) {
-                    console.log(' INTERCEPTANDO CONSULTA DE HISTORIAL:', url);
+                    // // // // // // // console.log(' INTERCEPTANDO CONSULTA DE HISTORIAL:', url);
                     
                     return originalFetch.apply(this, args)
                         .then(response => {
                             const contentType = response.headers.get('content-type');
                             if (contentType && contentType.includes('application/json')) {
                                 return response.json().then(data => {
-                                    console.log('📦 DATOS ORIGINALES DEL SERVIDOR:', data);
+                                    // // // // // // console.log('📦 DATOS ORIGINALES DEL SERVIDOR:', data);
                                     
                                     if (data.success && Array.isArray(data.salidas)) {
                                         let especificacionUsada = null;
@@ -4284,10 +4284,10 @@ function hideAllMaterialContainers() {
                                         data.salidas.forEach((salida, index) => {
                                             salida.especificacion_material = especFinal;
                                             salida.especificacion = especFinal;
-                                            console.log(` Fila ${index + 1} - Especificación: ${especFinal}`);
+                                            // console.log(` Fila ${index + 1} - Especificación: ${especFinal}`);
                                         });
                                         
-                                        console.log(' ESPECIFICACIONES APLICADAS A TODAS LAS FILAS');
+                                        // // // // // // // console.log(' ESPECIFICACIONES APLICADAS A TODAS LAS FILAS');
                                     }
                                     
                                     return new Response(JSON.stringify(data), {
@@ -4305,24 +4305,24 @@ function hideAllMaterialContainers() {
             };
             
             window.fetchInterceptorEspecificacion = true;
-            console.log(' INTERCEPTOR FORZADO ACTIVADO');
-            console.log('💡 Próxima consulta de historial será interceptada');
+            // // // // // // // console.log(' INTERCEPTOR FORZADO ACTIVADO');
+            // // // // // // console.log('💡 Próxima consulta de historial será interceptada');
             return true;
         };
         
         // 🔧 FUNCIÓN PARA REPARAR TABLA ACTUAL CON ESPECIFICACIÓN
         window.repararTablaEspecificacion = function() {
             if (!materialActual) {
-                console.log('❌ No hay material cargado');
+                // // // // // // console.log('❌ No hay material cargado');
                 return false;
             }
             
             const especificacion = materialActual.especificacion || materialActual.especificacion_material || 'Sin especificación';
-            console.log('🔧 REPARANDO TABLA CON ESPECIFICACIÓN:', especificacion);
+            // // // // // // console.log('🔧 REPARANDO TABLA CON ESPECIFICACIÓN:', especificacion);
             
             const tabla = document.getElementById('salida_tablaSalidas');
             if (!tabla) {
-                console.log('❌ Tabla no encontrada');
+                // // // // // // console.log('❌ Tabla no encontrada');
                 return false;
             }
             
@@ -4341,25 +4341,25 @@ function hideAllMaterialContainers() {
                         celdaEspecificacion.style.color = '#27ae60'; // Verde para indicar que fue reparado
                         celdaEspecificacion.title = 'Especificación reparada desde material actual';
                         reparadas++;
-                        console.log(` Fila ${index + 1} reparada con especificación`);
+                        // console.log(` Fila ${index + 1} reparada con especificación`);
                     }
                 }
             });
             
-            console.log(` REPARACIÓN COMPLETADA: ${reparadas} filas reparadas`);
+            // console.log(` REPARACIÓN COMPLETADA: ${reparadas} filas reparadas`);
             return reparadas > 0;
         };
         
         // 🔧 FUNCIÓN PARA ACTIVAR ESPECIFICACIÓN AUTOMÁTICA PERMANENTE
         window.activarEspecificacionAutomatica = function() {
-            console.log('🔧 ACTIVANDO ESPECIFICACIÓN AUTOMÁTICA PERMANENTE...');
+            // // // // // // console.log('🔧 ACTIVANDO ESPECIFICACIÓN AUTOMÁTICA PERMANENTE...');
             
             // MÉTODO 1: Interceptar HISTORIAL_GLOBAL si está disponible
             if (typeof window.HISTORIAL_GLOBAL !== 'undefined' && window.HISTORIAL_GLOBAL.actualizarTabla) {
                 const originalUpdateTable = window.HISTORIAL_GLOBAL.actualizarTabla;
                 
                 window.HISTORIAL_GLOBAL.actualizarTabla = function(salidas) {
-                    console.log(' INTERCEPTANDO ACTUALIZACIÓN - Agregando especificaciones automáticamente');
+                    // // // // // // // console.log(' INTERCEPTANDO ACTUALIZACIÓN - Agregando especificaciones automáticamente');
                     
                     // Agregar especificación a cada salida usando el material actual si existe
                     salidas.forEach((salida, index) => {
@@ -4371,7 +4371,7 @@ function hideAllMaterialContainers() {
                                 const especificacion = materialActual.especificacion || materialActual.especificacion_material;
                                 salida.especificacion_material = especificacion;
                                 salida.especificacion = especificacion;
-                                console.log(` Especificación agregada a fila ${index + 1}:`, especificacion);
+                                // console.log(` Especificación agregada a fila ${index + 1}:`, especificacion);
                             } else {
                                 // Si no hay material actual, buscar en la primera salida que tenga especificación
                                 const salidaConEspec = salidas.find(s => s.especificacion || s.especificacion_material);
@@ -4379,7 +4379,7 @@ function hideAllMaterialContainers() {
                                     const especificacion = salidaConEspec.especificacion || salidaConEspec.especificacion_material;
                                     salida.especificacion_material = especificacion;
                                     salida.especificacion = especificacion;
-                                    console.log(` Especificación copiada a fila ${index + 1}:`, especificacion);
+                                    // console.log(` Especificación copiada a fila ${index + 1}:`, especificacion);
                                 } else {
                                     // Último recurso: especificación por defecto
                                     salida.especificacion_material = 'Especificación no disponible';
@@ -4393,14 +4393,14 @@ function hideAllMaterialContainers() {
                     return originalUpdateTable.call(this, salidas);
                 };
                 
-                console.log(' ESPECIFICACIÓN AUTOMÁTICA ACTIVADA PERMANENTEMENTE (HISTORIAL_GLOBAL)');
-                console.log('💡 Todas las futuras consultas al historial mostrarán especificaciones');
+                // // // // // // // console.log(' ESPECIFICACIÓN AUTOMÁTICA ACTIVADA PERMANENTEMENTE (HISTORIAL_GLOBAL)');
+                // // // // // // console.log('💡 Todas las futuras consultas al historial mostrarán especificaciones');
                 return true;
             }
             
             // MÉTODO 2: Interceptar fetch para modificar respuestas del servidor
             if (!window.fetchInterceptorEspecificacion) {
-                console.log('🔧 HISTORIAL_GLOBAL no disponible - Activando interceptor fetch...');
+                // // // // // // console.log('🔧 HISTORIAL_GLOBAL no disponible - Activando interceptor fetch...');
                 
                 const originalFetch = window.fetch;
                 
@@ -4412,7 +4412,7 @@ function hideAllMaterialContainers() {
                         return originalFetch.apply(this, args)
                             .then(response => {
                                 return response.clone().json().then(data => {
-                                    console.log('🔍 Interceptando respuesta del servidor:', data);
+                                    // // // // // // console.log('🔍 Interceptando respuesta del servidor:', data);
                                     
                                     // Modificar datos antes de devolver
                                     if (data.success && Array.isArray(data.salidas)) {
@@ -4421,10 +4421,10 @@ function hideAllMaterialContainers() {
                                                 salida.especificacion_material = materialActual.especificacion || 
                                                                                materialActual.especificacion_material || 
                                                                                'Especificación desde material';
-                                                console.log(` Especificación añadida a fila ${index + 1}:`, salida.especificacion_material);
+                                                // console.log(` Especificación añadida a fila ${index + 1}:`, salida.especificacion_material);
                                             }
                                         });
-                                        console.log(' Especificaciones añadidas a respuesta del servidor');
+                                        // // // // // // // console.log(' Especificaciones añadidas a respuesta del servidor');
                                     }
                                     
                                     // Devolver respuesta modificada
@@ -4442,27 +4442,27 @@ function hideAllMaterialContainers() {
                 };
                 
                 window.fetchInterceptorEspecificacion = true;
-                console.log(' ESPECIFICACIÓN AUTOMÁTICA ACTIVADA (Interceptor fetch)');
-                console.log('💡 Las consultas al historial serán interceptadas y modificadas');
+                // // // // // // // console.log(' ESPECIFICACIÓN AUTOMÁTICA ACTIVADA (Interceptor fetch)');
+                // // // // // // console.log('💡 Las consultas al historial serán interceptadas y modificadas');
                 return true;
             }
             
-            console.log(' Interceptor ya estaba activo');
+            // // // // // // // console.log(' Interceptor ya estaba activo');
             return true;
         };
         
         // 🔧 FUNCIÓN PARA DEBUGGING DE ESPECIFICACIÓN
         window.debugEspecificacionMaterial = function() {
-            console.log('🧪 VERIFICANDO ESPECIFICACIÓN DE MATERIAL:');
-            console.log('=========================================');
+            // // // // // // console.log('🧪 VERIFICANDO ESPECIFICACIÓN DE MATERIAL:');
+            // // // // // // console.log('=========================================');
             
             if (!materialActual) {
-                console.log('❌ No hay material actual cargado');
-                console.log('💡 Primero escanee un código de material');
+                // // // // // // console.log('❌ No hay material actual cargado');
+                // // // // // // console.log('💡 Primero escanee un código de material');
                 return { error: 'No hay material cargado' };
             }
             
-            console.log('📦 Material actual completo:', materialActual);
+            // // // // // // console.log('📦 Material actual completo:', materialActual);
             
             // Verificar todas las propiedades posibles de especificación
             const propiedadesEspecificacion = [
@@ -4474,21 +4474,21 @@ function hideAllMaterialContainers() {
                 'descripcion'
             ];
             
-            console.log('🔍 Buscando especificación en todas las propiedades:');
+            // // // // // // console.log('🔍 Buscando especificación en todas las propiedades:');
             const resultados = {};
             
             propiedadesEspecificacion.forEach(prop => {
                 const valor = materialActual[prop];
                 resultados[prop] = valor;
-                console.log(`  • ${prop}:`, valor || 'NO ENCONTRADO');
+                // console.log(`  • ${prop}:`, valor || 'NO ENCONTRADO');
             });
             
             // Verificar que el campo visual muestre la especificación
             const campoEspecificacion = document.getElementById('salida_especificacion_material');
             if (campoEspecificacion) {
-                console.log(' Campo visual especificación:', campoEspecificacion.value || 'VACÍO');
+                // // // // // // // console.log(' Campo visual especificación:', campoEspecificacion.value || 'VACÍO');
             } else {
-                console.log('❌ Campo visual de especificación no encontrado');
+                // // // // // // console.log('❌ Campo visual de especificación no encontrado');
             }
             
             // Buscar la mejor especificación disponible
@@ -4496,14 +4496,14 @@ function hideAllMaterialContainers() {
             for (const prop of propiedadesEspecificacion) {
                 if (materialActual[prop] !== undefined && materialActual[prop] !== null && materialActual[prop] !== '') {
                     mejorEspecificacion = materialActual[prop];
-                    console.log(` MEJOR ESPECIFICACIÓN ENCONTRADA: '${mejorEspecificacion}' (de propiedad '${prop}')`);
+                    // console.log(` MEJOR ESPECIFICACIÓN ENCONTRADA: '${mejorEspecificacion}' (de propiedad '${prop}')`);
                     break;
                 }
             }
             
             if (!mejorEspecificacion) {
-                console.log(' NO SE ENCONTRÓ ESPECIFICACIÓN EN NINGUNA PROPIEDAD');
-                console.log(' Todas las propiedades del material:', Object.keys(materialActual));
+                // // // // // // // console.log(' NO SE ENCONTRÓ ESPECIFICACIÓN EN NINGUNA PROPIEDAD');
+                // // // // // // // console.log(' Todas las propiedades del material:', Object.keys(materialActual));
             }
             
             return {
@@ -4548,39 +4548,39 @@ function hideAllMaterialContainers() {
 
         // Funciones dummy para evitar errores
         function mostrarRegistroSalida() {
-            console.log('Mostrando registro de salida');
+            // // // // // // console.log('Mostrando registro de salida');
         }
         
         function mostrarHistorialSalida() {
-            console.log('Mostrando historial de salida');
+            // // // // // // console.log('Mostrando historial de salida');
         }
         
         function cargarModelosBOM() {
-            console.log('Cargando modelos BOM');
+            // // // // // // console.log('Cargando modelos BOM');
         }
         
         function filtrarModelosSalida() {
-            console.log('Filtrando modelos');
+            // // // // // // console.log('Filtrando modelos');
         }
         
         function mostrarDropdownSalida() {
-            console.log('Mostrando dropdown');
+            // // // // // // console.log('Mostrando dropdown');
         }
         
         function actualizarCantidadesPlan() {
-            console.log('Actualizando cantidades plan');
+            // // // // // // console.log('Actualizando cantidades plan');
         }
         
         function consultarSalidas() {
-            console.log('Consultando salidas');
+            // // // // // // console.log('Consultando salidas');
         }
         
         function limpiarFiltros() {
-            console.log('Limpiando filtros');
+            // // // // // // console.log('Limpiando filtros');
         }
         
         function exportarExcel() {
-            console.log('Exportando Excel');
+            // // // // // // console.log('Exportando Excel');
         }
         
         // ===============================================
@@ -4594,7 +4594,7 @@ function hideAllMaterialContainers() {
 <!-- ===================================================================== -->
 <script>
 (function() {
-    console.log('🚀 INICIANDO SISTEMA GLOBAL DE HISTORIAL DE SALIDA');
+    // // // // // // console.log('🚀 INICIANDO SISTEMA GLOBAL DE HISTORIAL DE SALIDA');
     
     // ===================================================================
     // 🔥 OBJETO GLOBAL PERSISTENTE PARA HISTORIAL DE SALIDA
@@ -4605,7 +4605,7 @@ function hideAllMaterialContainers() {
         
         // Función principal para mostrar historial
         mostrar: function() {
-            console.log('🔥 EJECUTANDO HISTORIAL_GLOBAL.mostrar()');
+            // // // // // // console.log('🔥 EJECUTANDO HISTORIAL_GLOBAL.mostrar()');
             
             try {
                 // Buscar elementos cada vez (por si fueron recreados por AJAX)
@@ -4616,7 +4616,7 @@ function hideAllMaterialContainers() {
                     btnRegistro: document.getElementById('btnRegistroSalida')
                 };
                 
-                console.log('📊 Elementos encontrados:', {
+                // // // // // // console.log('📊 Elementos encontrados:', {
                     historial: !!elementos.historial,
                     registro: !!elementos.registro,
                     btnHistorial: !!elementos.btnHistorial,
@@ -4625,7 +4625,7 @@ function hideAllMaterialContainers() {
                 
                 if (!elementos.historial) {
                     console.error('❌ historialSection NO ENCONTRADO');
-                    console.log('🔍 Intentando encontrar en toda la página...');
+                    // // // // // // console.log('🔍 Intentando encontrar en toda la página...');
                     
                     // Buscar en todo el documento
                     const todosLosElementos = document.querySelectorAll('*');
@@ -4637,7 +4637,7 @@ function hideAllMaterialContainers() {
                         }
                     });
                     
-                    console.log('🔍 Elementos con "historial" encontrados:', historialEncontrados);
+                    // // // // // // console.log('🔍 Elementos con "historial" encontrados:', historialEncontrados);
                     
                     alert('ERROR: No se encontró la sección de historial.\n\nAsegúrate de estar en la sección "Control de Salida"');
                     return 'Error: Debes estar en Control de Salida';
@@ -4650,7 +4650,7 @@ function hideAllMaterialContainers() {
                 }
                 
                 // CAMBIOS DIRECTOS Y SIMPLES
-                console.log('🔧 Aplicando cambios de visibilidad...');
+                // // // // // // console.log('🔧 Aplicando cambios de visibilidad...');
                 
                 // Ocultar registro
                 elementos.registro.style.display = 'none';
@@ -4680,8 +4680,8 @@ function hideAllMaterialContainers() {
                     elementos.btnRegistro.style.color = '#2c3e50';
                 }
                 
-                console.log(' HISTORIAL MOSTRADO EXITOSAMENTE');
-                console.log('📊 Estado final:', {
+                // // // // // // // console.log(' HISTORIAL MOSTRADO EXITOSAMENTE');
+                // // // // // // console.log('📊 Estado final:', {
                     historialDisplay: elementos.historial.style.display,
                     registroDisplay: elementos.registro.style.display
                 });
@@ -4706,7 +4706,7 @@ function hideAllMaterialContainers() {
         
         // Función para mostrar registro de salida
         mostrarRegistro: function() {
-            console.log(' EJECUTANDO HISTORIAL_GLOBAL.mostrarRegistro()');
+            // // // // // // // console.log(' EJECUTANDO HISTORIAL_GLOBAL.mostrarRegistro()');
             
             try {
                 const elementos = {
@@ -4742,7 +4742,7 @@ function hideAllMaterialContainers() {
                     elementos.btnHistorial.style.fontWeight = 'normal';
                 }
                 
-                console.log(' REGISTRO MOSTRADO EXITOSAMENTE');
+                // // // // // // // console.log(' REGISTRO MOSTRADO EXITOSAMENTE');
                 
                 // Scroll al registro
                 setTimeout(() => {
@@ -4763,7 +4763,7 @@ function hideAllMaterialContainers() {
         
         // Función para consultar salidas - OPTIMIZADA PARA VELOCIDAD
         consultar: function() {
-            console.log('� EJECUTANDO CONSULTA ULTRA-RÁPIDA...');
+            // // // // // // console.log('o EJECUTANDO CONSULTA ULTRA-RÁPIDA...');
             
             try {
                 const codigoFiltro = document.getElementById('salida_filtro_codigo')?.value?.trim() || '';
@@ -4793,7 +4793,7 @@ function hideAllMaterialContainers() {
                     url += '?' + params.toString();
                 }
 
-                console.log('Consultando URL optimizada:', url);
+                // // // // // // console.log('Consultando URL optimizada:', url);
 
                 return fetch(url, {
                     method: 'GET',
@@ -4804,7 +4804,7 @@ function hideAllMaterialContainers() {
                     }
                 })
                     .then(response => {
-                        console.log('📡 Respuesta recibida:', {
+                        // // // // // // console.log('📡 Respuesta recibida:', {
                             status: response.status,
                             statusText: response.statusText,
                             headers: Object.fromEntries(response.headers.entries())
@@ -4816,7 +4816,7 @@ function hideAllMaterialContainers() {
                         
                         // 🔍 VERIFICAR SI LA RESPUESTA ES HTML (PÁGINA DE LOGIN) EN LUGAR DE JSON
                         const contentType = response.headers.get('content-type');
-                        console.log('📄 Content-Type:', contentType);
+                        // // // // // // console.log('📄 Content-Type:', contentType);
                         
                         if (contentType && contentType.includes('text/html')) {
                             console.error('❌ La respuesta es HTML (página de login) - Usuario no autenticado');
@@ -4826,7 +4826,7 @@ function hideAllMaterialContainers() {
                         return response.json();
                     })
                     .then(responseData => {
-                        console.log('📥 Respuesta recibida:', responseData);
+                        // // // // // // console.log('📥 Respuesta recibida:', responseData);
                         
                         // Manejar nueva estructura de respuesta con contador
                         let salidas = responseData;
@@ -4897,7 +4897,7 @@ function hideAllMaterialContainers() {
             });
 
             tbody.innerHTML = html;
-            console.log(' Tabla actualizada con', salidas.length, 'registros');
+            // // // // // // // console.log(' Tabla actualizada con', salidas.length, 'registros');
         },
         
         // Función para actualizar contador de resultados
@@ -5004,7 +5004,7 @@ function hideAllMaterialContainers() {
         
         // Función para instalar el onclick
         instalar: function() {
-            console.log('🔧 INSTALANDO ONCLICK GLOBAL...');
+            // // // // // // console.log('🔧 INSTALANDO ONCLICK GLOBAL...');
             
             const btnHistorial = document.getElementById('btnHistorialSalida');
             const btnRegistro = document.getElementById('btnRegistroSalida');
@@ -5013,7 +5013,7 @@ function hideAllMaterialContainers() {
                                document.querySelector('button:contains("Consultar")');
             
             if (!btnHistorial) {
-                console.log('⏳ Botón historial no encontrado en esta página');
+                // // // // // // console.log('⏳ Botón historial no encontrado en esta página');
                 return 'Botón historial no encontrado - Navega a Control de Salida';
             }
             
@@ -5023,7 +5023,7 @@ function hideAllMaterialContainers() {
             btnHistorial.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log(' CLICK HISTORIAL INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                // // // // // // // console.log(' CLICK HISTORIAL INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
                 this.mostrar();
                 return false;
             };
@@ -5035,11 +5035,11 @@ function hideAllMaterialContainers() {
                 btnRegistro.onclick = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log(' CLICK REGISTRO INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                    // // // // // // // console.log(' CLICK REGISTRO INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
                     this.mostrarRegistro();
                     return false;
                 };
-                console.log(' Onclick registro instalado');
+                // // // // // // // console.log(' Onclick registro instalado');
             }
             
             // BUSCAR E INSTALAR BOTÓN CONSULTAR
@@ -5051,16 +5051,16 @@ function hideAllMaterialContainers() {
                     btn.onclick = (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log(' CLICK CONSULTAR INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
+                        // // // // // // // console.log(' CLICK CONSULTAR INTERCEPTADO - Ejecutando HISTORIAL_GLOBAL');
                         this.consultar();
                         return false;
                     };
-                    console.log(' Onclick consultar instalado en:', btn.textContent);
+                    // // // // // // // console.log(' Onclick consultar instalado en:', btn.textContent);
                 }
             });
             
             this.instalado = true;
-            console.log(' ONCLICK GLOBAL INSTALADO EXITOSAMENTE');
+            // // // // // // // console.log(' ONCLICK GLOBAL INSTALADO EXITOSAMENTE');
             return ' TODOS LOS ONCLICKS INSTALADOS';
         },
         
@@ -5110,13 +5110,13 @@ function hideAllMaterialContainers() {
                 };
             }
             
-            console.log('📊 Estado completo HISTORIAL_GLOBAL:', estado);
+            // // // // // // console.log('📊 Estado completo HISTORIAL_GLOBAL:', estado);
             return estado;
         },
         
         // Auto-instalación inteligente
         autoInstalar: function() {
-            console.log('🤖 AUTO-INSTALACIÓN INTELIGENTE...');
+            // // // // // // console.log('🤖 AUTO-INSTALACIÓN INTELIGENTE...');
             
             // Verificar si estamos en la página correcta
             const btn = document.getElementById('btnHistorialSalida');
@@ -5142,7 +5142,7 @@ function hideAllMaterialContainers() {
     
     // Función principal que siempre funciona
     window.debugHistorial = function() {
-        console.log('🐛 DEBUG HISTORIAL GLOBAL');
+        // // // // // // console.log('🐛 DEBUG HISTORIAL GLOBAL');
         return window.HISTORIAL_GLOBAL.verificar();
     };
     
@@ -5181,7 +5181,7 @@ function hideAllMaterialContainers() {
     
     // 🧪 FUNCIÓN DE TEST SIMPLE PARA AUTO-ENTER (DISPONIBLE GLOBALMENTE)
     window.testAutoEnterSimple = function() {
-        console.log('🧪 PROBANDO AUTO-ENTER SIMPLE DESDE MATERIAL TEMPLATE...');
+        // // // // // // console.log('🧪 PROBANDO AUTO-ENTER SIMPLE DESDE MATERIAL TEMPLATE...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         if (!codigoInput) {
@@ -5195,7 +5195,7 @@ function hideAllMaterialContainers() {
         
         // Simular escaneo de código largo
         const codigoPrueba = 'H5602C622.20250728026';
-        console.log(' Escribiendo código de prueba:', codigoPrueba);
+        // // // // // // // console.log(' Escribiendo código de prueba:', codigoPrueba);
         
         // Escribir caracter por caracter para simular escaneo real
         let i = 0;
@@ -5207,21 +5207,21 @@ function hideAllMaterialContainers() {
                 const inputEvent = new Event('input', { bubbles: true });
                 codigoInput.dispatchEvent(inputEvent);
                 
-                console.log(` Caracter ${i+1}/${codigoPrueba.length}: "${codigoPrueba[i]}" - Longitud total: ${codigoInput.value.length}`);
+                // console.log(` Caracter ${i+1}/${codigoPrueba.length}: "${codigoPrueba[i]}" - Longitud total: ${codigoInput.value.length}`);
                 
                 i++;
                 setTimeout(escribirCaracter, 50); // 50ms entre caracteres
             } else {
-                console.log(' Código escrito completo, debería activar auto-Enter');
-                console.log('🔍 Valor final del campo:', codigoInput.value);
+                // // // // // // // console.log(' Código escrito completo, debería activar auto-Enter');
+                // // // // // // console.log('🔍 Valor final del campo:', codigoInput.value);
                 
                 // Verificar si hay listeners configurados
                 const listeners = codigoInput.cloneNode().outerHTML.includes('addEventListener');
-                console.log('👂 ¿Listeners configurados?', listeners ? 'Sí' : 'No');
+                // // // // // // console.log('👂 ¿Listeners configurados?', listeners ? 'Sí' : 'No');
                 
                 // Test manual adicional: disparar Enter
                 setTimeout(() => {
-                    console.log('🧪 Disparando Enter manual como test adicional...');
+                    // // // // // // console.log('🧪 Disparando Enter manual como test adicional...');
                     const enterEvent = new KeyboardEvent('keydown', {
                         key: 'Enter',
                         keyCode: 13,
@@ -5239,7 +5239,7 @@ function hideAllMaterialContainers() {
 
     // 🚀 FUNCIÓN ULTRA-SIMPLE PARA AUTO-ENTER (DISPONIBLE GLOBALMENTE)
     window.configurarEventListenersEscaneo = function() {
-        console.log(' Configurando Auto-Enter ULTRA-SIMPLE desde MaterialTemplate...');
+        // // // // // // // console.log(' Configurando Auto-Enter ULTRA-SIMPLE desde MaterialTemplate...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         const verificacionInput = document.getElementById('salida_verificacion_codigo');
@@ -5248,11 +5248,11 @@ function hideAllMaterialContainers() {
             // MÉTODO 1: Auto-Enter basado en longitud del código
             codigoInput.addEventListener('input', function(e) {
                 const codigo = e.target.value.trim();
-                console.log(' Input detectado:', codigo, 'Longitud:', codigo.length);
+                // // // // // // // console.log(' Input detectado:', codigo, 'Longitud:', codigo.length);
                 
                 // Si tiene 8+ caracteres, activar auto-Enter
                 if (codigo.length >= 8) {
-                    console.log('🚀 AUTO-ENTER activado para código:', codigo);
+                    // // // // // // console.log('🚀 AUTO-ENTER activado para código:', codigo);
                     setTimeout(() => {
                         // Simular presionar Enter
                         const enterEvent = new KeyboardEvent('keydown', {
@@ -5278,13 +5278,13 @@ function hideAllMaterialContainers() {
                         } else if (typeof procesarEscaneoRapido === 'function') {
                             procesarEscaneoRapido(e);
                         } else {
-                            console.log(' procesarEscaneoRapido no disponible');
+                            // // // // // // // console.log(' procesarEscaneoRapido no disponible');
                         }
                     }
                 }
             });
             
-            console.log(' Auto-Enter configurado para campo CÓDIGO');
+            // // // // // // // console.log(' Auto-Enter configurado para campo CÓDIGO');
         } else {
             console.error('❌ Campo código no encontrado');
         }
@@ -5293,11 +5293,11 @@ function hideAllMaterialContainers() {
             // MÉTODO 1: Auto-Enter basado en longitud del código
             verificacionInput.addEventListener('input', function(e) {
                 const codigo = e.target.value.trim();
-                console.log(' Input verificación detectado:', codigo, 'Longitud:', codigo.length);
+                // // // // // // // console.log(' Input verificación detectado:', codigo, 'Longitud:', codigo.length);
                 
                 // Si tiene 8+ caracteres, activar auto-Enter
                 if (codigo.length >= 8) {
-                    console.log('🚀 AUTO-ENTER activado para verificación:', codigo);
+                    // // // // // // console.log('🚀 AUTO-ENTER activado para verificación:', codigo);
                     setTimeout(() => {
                         // Simular presionar Enter
                         const enterEvent = new KeyboardEvent('keydown', {
@@ -5324,18 +5324,18 @@ function hideAllMaterialContainers() {
                         } else if (typeof procesarVerificacion === 'function') {
                             procesarVerificacion(e);
                         } else {
-                            console.log(' procesarVerificacion no disponible');
+                            // // // // // // // console.log(' procesarVerificacion no disponible');
                         }
                     }
                 }
             });
             
-            console.log(' Auto-Enter configurado para campo VERIFICACIÓN');
+            // // // // // // // console.log(' Auto-Enter configurado para campo VERIFICACIÓN');
         } else {
             console.error('❌ Campo verificación no encontrado');
         }
         
-        console.log(' AUTO-ENTER ULTRA-SIMPLE CONFIGURADO EXITOSAMENTE desde MaterialTemplate');
+        // // // // // // // console.log(' AUTO-ENTER ULTRA-SIMPLE CONFIGURADO EXITOSAMENTE desde MaterialTemplate');
     };
 
     //  OBSERVADOR PARA DETECTAR CAMBIOS EN EL DOM (AJAX RELOADS) - GLOBAL
@@ -5354,7 +5354,7 @@ function hideAllMaterialContainers() {
                             (node.querySelector && node.querySelector('[id*="codigo"], [id*="cantidad"], input') ||
                              node.id && (node.id.includes('codigo') || node.id.includes('cantidad')))) {
                             
-                            console.log(' DOM cambió (AJAX), reinstalando listeners de auto-Enter...');
+                            // // // // // // // console.log(' DOM cambió (AJAX), reinstalando listeners de auto-Enter...');
                             
                             // Reinstalar listeners después de un breve delay
                             setTimeout(() => {
@@ -5376,12 +5376,12 @@ function hideAllMaterialContainers() {
         };
         
         window.controlSalidaObserver.observe(targetNode, config);
-        console.log('👁️ Observador AJAX activado para auto-Enter desde MaterialTemplate');
+        // // // // // // console.log('👁️ Observador AJAX activado para auto-Enter desde MaterialTemplate');
     };
     
     // 🧪 FUNCIÓN ADICIONAL PARA VERIFICAR ESTADO DEL AUTO-ENTER
     window.verificarAutoEnter = function() {
-        console.log('🔍 VERIFICANDO ESTADO DEL AUTO-ENTER...');
+        // // // // // // console.log('🔍 VERIFICANDO ESTADO DEL AUTO-ENTER...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         const verificacionInput = document.getElementById('salida_verificacion_codigo');
@@ -5398,10 +5398,10 @@ function hideAllMaterialContainers() {
         console.table(estado);
         
         if (estado.campoCodigoEncontrado && estado.funcionConfiguracionDisponible) {
-            console.log(' Todo parece estar bien configurado');
+            // // // // // // // console.log(' Todo parece estar bien configurado');
             return ' Auto-Enter configurado correctamente';
         } else {
-            console.log('❌ Faltan elementos para auto-Enter');
+            // // // // // // console.log('❌ Faltan elementos para auto-Enter');
             return '❌ Configuración incompleta';
         }
     };
@@ -5420,7 +5420,7 @@ function hideAllMaterialContainers() {
             
             const campo = document.getElementById(campoId);
             if (!campo) {
-                console.log(' Campo no encontrado:', campoId);
+                // // // // // // // console.log(' Campo no encontrado:', campoId);
                 return false;
             }
             
@@ -5451,7 +5451,7 @@ function hideAllMaterialContainers() {
             campo.addEventListener('keydown', (e) => this._onKeydown(e, campoId));
             campo.addEventListener('blur', (e) => this._onBlur(e, campoId));
             
-            console.log(' Enter automático configurado para:', campoId);
+            // // // // // // // console.log(' Enter automático configurado para:', campoId);
             return true;
         },
         
@@ -5464,7 +5464,7 @@ function hideAllMaterialContainers() {
             const valorActual = event.target.value;
             const tiempoDiferencia = tiempoActual - campoData.ultimoTiempo;
             
-            console.log(' Input detectado en', campoId, ':', {
+            // // // // // // // console.log(' Input detectado en', campoId, ':', {
                 valor: valorActual,
                 longitud: valorActual.length,
                 tiempoDiferencia: tiempoDiferencia,
@@ -5485,7 +5485,7 @@ function hideAllMaterialContainers() {
             
             // Si detectamos escaneo
             if (esEscaneoRapido || esTextoLargo || esMuchoTextoDeUnaVez) {
-                console.log(' ESCANEO DETECTADO en', campoId, '- Programando Enter automático...');
+                // // // // // // // console.log(' ESCANEO DETECTADO en', campoId, '- Programando Enter automático...');
                 
                 // Programar Enter automático
                 const timer = setTimeout(() => {
@@ -5506,7 +5506,7 @@ function hideAllMaterialContainers() {
         _onKeydown: function(event, campoId) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                console.log('🔍 ENTER MANUAL DETECTADO en', campoId);
+                // // // // // // console.log('🔍 ENTER MANUAL DETECTADO en', campoId);
                 
                 // Limpiar timer de escaneo
                 const timer = window.ENTER_AUTOMATICO_GLOBAL.timers.get(campoId);
@@ -5527,7 +5527,7 @@ function hideAllMaterialContainers() {
             
             const codigo = event.target.value.trim();
             if (codigo.length >= campoData.config.longitudMinima) {
-                console.log('👁️ CAMPO PERDIÓ FOCO con código largo en', campoId, ':', codigo);
+                // // // // // // console.log('👁️ CAMPO PERDIÓ FOCO con código largo en', campoId, ':', codigo);
                 setTimeout(() => {
                     window.ENTER_AUTOMATICO_GLOBAL._procesarEnterAutomatico(campoId);
                 }, 100);
@@ -5543,7 +5543,7 @@ function hideAllMaterialContainers() {
 
             
             if (!codigo || codigo.length < 5) {
-                console.log(' Código muy corto, no se procesa');
+                // // // // // // // console.log(' Código muy corto, no se procesa');
                 return;
             }
             
@@ -5563,7 +5563,7 @@ function hideAllMaterialContainers() {
             // PASO 2: Ejecutar función de búsqueda específica
             setTimeout(() => {
                 if (campoData.config.funcionBusqueda) {
-                    console.log('🔍 EJECUTANDO FUNCIÓN DE BÚSQUEDA:', campoData.config.funcionBusqueda.name || 'función anónima');
+                    // // // // // // console.log('🔍 EJECUTANDO FUNCIÓN DE BÚSQUEDA:', campoData.config.funcionBusqueda.name || 'función anónima');
                     try {
                         campoData.config.funcionBusqueda(codigo);
                         this._mostrarMensaje('🚀 Código escaneado - Auto-llenado activado', 'exito');
@@ -5583,7 +5583,7 @@ function hideAllMaterialContainers() {
             // 🛑 DESHABILITADO TEMPORALMENTE PARA CONTROL DE SALIDA
             const currentUrl = window.location.pathname;
             if (currentUrl.includes('control_salida') || currentUrl.includes('salida')) {
-                console.log('🛑 AUTO-BÚSQUEDA DESHABILITADA para Control de Salida (evitar bucle infinito)');
+                // // // // // // console.log('🛑 AUTO-BÚSQUEDA DESHABILITADA para Control de Salida (evitar bucle infinito)');
                 this._mostrarMensaje(' Código escaneado - Manual mode activo', 'info');
                 return;
             }
@@ -5598,7 +5598,7 @@ function hideAllMaterialContainers() {
             
             for (const nombreFuncion of funcionesBusqueda) {
                 if (typeof window[nombreFuncion] === 'function') {
-                    console.log('🔍 FUNCIÓN ENCONTRADA:', nombreFuncion);
+                    // // // // // // console.log('🔍 FUNCIÓN ENCONTRADA:', nombreFuncion);
                     try {
                         window[nombreFuncion](codigo);
                         this._mostrarMensaje('🚀 Código escaneado - Auto-llenado activado', 'exito');
@@ -5609,7 +5609,7 @@ function hideAllMaterialContainers() {
                 }
             }
             
-            console.log(' No se encontró función de búsqueda automática');
+            // // // // // // // console.log(' No se encontró función de búsqueda automática');
             this._mostrarMensaje(' Código escaneado - Enter automático aplicado', 'info');
         },
         
@@ -5624,17 +5624,17 @@ function hideAllMaterialContainers() {
                 mostrarInfo(mensaje);
             } else {
                 // Fallback simple
-                console.log('💬', mensaje);
+                // // // // // // console.log('💬', mensaje);
             }
         },
         
         // Auto-instalar en Control de Salida
         autoInstalarSalida: function() {
-            console.log('� AUTO-INSTALACIÓN DESHABILITADA para Control de Salida (evitar bucle infinito)');
-            console.log(' Control de Salida usa su propio sistema de event listeners');
+            // // // // // // console.log('o AUTO-INSTALACIÓN DESHABILITADA para Control de Salida (evitar bucle infinito)');
+            // // // // // // // console.log(' Control de Salida usa su propio sistema de event listeners');
             return; // DESHABILITADO TEMPORALMENTE
             
-            console.log('�🚀 AUTO-INSTALACIÓN ENTER AUTOMÁTICO PARA CONTROL DE SALIDA');
+            // // // // // // console.log('o🚀 AUTO-INSTALACIÓN ENTER AUTOMÁTICO PARA CONTROL DE SALIDA');
             
             // Configurar campo principal
             this.configurar('salida_codigo_material_recibido', {
@@ -5652,12 +5652,12 @@ function hideAllMaterialContainers() {
             });
             
             this.activo = true;
-            console.log(' ENTER AUTOMÁTICO INSTALADO PARA CONTROL DE SALIDA');
+            // // // // // // // console.log(' ENTER AUTOMÁTICO INSTALADO PARA CONTROL DE SALIDA');
         },
         
         // Verificar y reparar configuración
         verificar: function() {
-            console.log('🔍 VERIFICANDO ENTER AUTOMÁTICO GLOBAL...');
+            // // // // // // console.log('🔍 VERIFICANDO ENTER AUTOMÁTICO GLOBAL...');
             
             let reparaciones = 0;
             
@@ -5665,11 +5665,11 @@ function hideAllMaterialContainers() {
             this.campos.forEach((campoData, campoId) => {
                 const elemento = document.getElementById(campoId);
                 if (!elemento) {
-                    console.log(' Campo perdido:', campoId, '- Eliminando configuración');
+                    // // // // // // // console.log(' Campo perdido:', campoId, '- Eliminando configuración');
                     this.campos.delete(campoId);
                     reparaciones++;
                 } else if (elemento !== campoData.elemento) {
-                    console.log('🔧 Elemento cambiado para:', campoId, '- Reconfigurando');
+                    // // // // // // console.log('🔧 Elemento cambiado para:', campoId, '- Reconfigurando');
                     this.configurar(campoId, campoData.config);
                     reparaciones++;
                 }
@@ -5677,12 +5677,12 @@ function hideAllMaterialContainers() {
             
             // Auto-instalar para Control de Salida si detectamos que estamos en esa página
             if (document.getElementById('salida_codigo_material_recibido') && !this.campos.has('salida_codigo_material_recibido')) {
-                console.log(' Control de Salida detectado - AUTO-INSTALACIÓN DESHABILITADA (evitar bucle infinito)');
+                // // // // // // // console.log(' Control de Salida detectado - AUTO-INSTALACIÓN DESHABILITADA (evitar bucle infinito)');
                 // this.autoInstalarSalida(); // DESHABILITADO TEMPORALMENTE
                 // reparaciones++;
             }
         
-            console.log(' Verificación completada -', reparaciones, 'reparaciones realizadas');
+            // // // // // // // console.log(' Verificación completada -', reparaciones, 'reparaciones realizadas');
             return {
                 activo: this.activo,
                 camposConfigurados: this.campos.size,
@@ -5697,7 +5697,7 @@ function hideAllMaterialContainers() {
     
     // Función global para testing
     window.testEnterAutomaticoEscaneo = function() {
-        console.log('🧪 PROBANDO ENTER AUTOMÁTICO GLOBAL...');
+        // // // // // // console.log('🧪 PROBANDO ENTER AUTOMÁTICO GLOBAL...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         if (!codigoInput) {
@@ -5710,7 +5710,7 @@ function hideAllMaterialContainers() {
         
         // Simular escaneo
         const codigoPrueba = 'H5602C622.20250728026';
-        console.log(' Simulando escaneo del código:', codigoPrueba);
+        // // // // // // // console.log(' Simulando escaneo del código:', codigoPrueba);
         
         codigoInput.value = codigoPrueba;
         const inputEvent = new Event('input', { bubbles: true });
@@ -5721,7 +5721,7 @@ function hideAllMaterialContainers() {
     
     // Función global para forzar auto-llenado
     window.forzarAutoLlenado = function() {
-        console.log('🔧 FORZANDO AUTO-LLENADO...');
+        // // // // // // console.log('🔧 FORZANDO AUTO-LLENADO...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         if (!codigoInput) {
@@ -5734,7 +5734,7 @@ function hideAllMaterialContainers() {
         }
         
         if (typeof buscarMaterialPorCodigo === 'function') {
-            console.log('🔍 Ejecutando buscarMaterialPorCodigo para:', codigo);
+            // // // // // // console.log('🔍 Ejecutando buscarMaterialPorCodigo para:', codigo);
             buscarMaterialPorCodigo(codigo);
             return ' Auto-llenado forzado ejecutado';
         } else {
@@ -5751,7 +5751,7 @@ function hideAllMaterialContainers() {
     setTimeout(() => window.ENTER_AUTOMATICO_GLOBAL.verificar(), 2000);
     setTimeout(() => window.ENTER_AUTOMATICO_GLOBAL.verificar(), 5000);
     
-    console.log('💡 Funciones disponibles: testEnterAutomaticoEscaneo(), forzarAutoLlenado()');
+    // // // // // // console.log('💡 Funciones disponibles: testEnterAutomaticoEscaneo(), forzarAutoLlenado()');
 
     // ===================================================================
     //  AUTO-INSTALACIÓN Y MONITOREO
@@ -5790,7 +5790,7 @@ function hideAllMaterialContainers() {
                     this.id.includes('material') ||
                     this.id.includes('container')
                 )) {
-                    console.log(' Contenido AJAX actualizado, reinstalando sistemas globales...');
+                    // // // // // // // // console.log(' Contenido AJAX actualizado, reinstalando sistemas globales...');
                     setTimeout(() => {
                         window.HISTORIAL_GLOBAL.autoInstalar();
                         window.ENTER_AUTOMATICO_GLOBAL.verificar();
@@ -5804,8 +5804,8 @@ function hideAllMaterialContainers() {
     // Auto-test cuando se carga MaterialTemplate
     setTimeout(() => {
         if (document.getElementById('salida_codigo_material_recibido')) {
-            console.log(' Control de Salida detectado - Auto-test disponible');
-            console.log('💡 Ejecute: testAutoEnterSimple() para probar');
+            // // // // // // // console.log(' Control de Salida detectado - Auto-test disponible');
+            // // // // // // console.log('💡 Ejecute: testAutoEnterSimple() para probar');
         }
     }, 1000);
 
@@ -5817,7 +5817,7 @@ function hideAllMaterialContainers() {
     // Cargar modelos únicos de BOM para Control de Modelos
     async function cargarModelosControl() {
         try {
-            console.log('Cargando modelos desde /listar_modelos_bom para Control de Modelos...');
+            // // // // // // console.log('Cargando modelos desde /listar_modelos_bom para Control de Modelos...');
             const response = await fetch('/listar_modelos_bom', {
                 method: 'GET',
                 headers: {
@@ -5830,12 +5830,12 @@ function hideAllMaterialContainers() {
             }
             
             const modelos = await response.json();
-            console.log('Modelos recibidos para Control de Modelos:', modelos);
+            // // // // // // console.log('Modelos recibidos para Control de Modelos:', modelos);
             
             if (Array.isArray(modelos) && modelos.length > 0) {
                 // Si hay modelos en la base de datos BOM, usarlos
                 modelosControlBOM = modelos.map(item => item.modelo || item).filter(modelo => modelo && modelo.trim() !== '');
-                console.log('Modelos procesados para Control de Modelos:', modelosControlBOM);
+                // // // // // // console.log('Modelos procesados para Control de Modelos:', modelosControlBOM);
                 llenarDropdownModelosControl();
                 actualizarContadorModelos();
                 ocultarContainerSinDatos();
@@ -5892,7 +5892,7 @@ function hideAllMaterialContainers() {
             });
         }
         
-        console.log(` ${modelosControlBOM.length} modelos cargados en dropdown Control de Modelos`);
+        // console.log(` ${modelosControlBOM.length} modelos cargados en dropdown Control de Modelos`);
     }
 
     // Función para filtrar modelos en el dropdown de Control de Modelos
@@ -5925,7 +5925,7 @@ function hideAllMaterialContainers() {
 
     // Función para mostrar dropdown de Control de Modelos
     function mostrarDropdownControl() {
-        console.log('=== mostrarDropdownControl() llamada ===');
+        // // // // // // console.log('=== mostrarDropdownControl() llamada ===');
         const dropdownList = document.getElementById('modeloDropdownList');
         const searchInput = document.getElementById('modeloSelector');
         
@@ -5939,8 +5939,8 @@ function hideAllMaterialContainers() {
             return;
         }
         
-        console.log('Elementos encontrados OK');
-        console.log('Modelos disponibles:', modelosControlBOM.length);
+        // // // // // // console.log('Elementos encontrados OK');
+        // // // // // // console.log('Modelos disponibles:', modelosControlBOM.length);
         
         // Forzar configuración del dropdown
         dropdownList.style.display = 'block';
@@ -5950,20 +5950,20 @@ function hideAllMaterialContainers() {
         if (searchInput.value.trim() === '') {
             // Si el input está vacío, mostrar todos los modelos
             const items = dropdownList.querySelectorAll('.bom-dropdown-item');
-            console.log('Items en dropdown:', items.length);
+            // // // // // // console.log('Items en dropdown:', items.length);
             items.forEach(item => {
                 item.classList.remove('hidden');
             });
             
             // Si no hay items, llenar el dropdown
             if (items.length === 0 && modelosControlBOM.length > 0) {
-                console.log('Dropdown vacío, llenando con modelos...');
+                // // // // // // console.log('Dropdown vacío, llenando con modelos...');
                 llenarDropdownModelosControl();
             }
         }
         
-        console.log('Dropdown configurado - display:', dropdownList.style.display);
-        console.log('=== fin mostrarDropdownControl() ===');
+        // // // // // // console.log('Dropdown configurado - display:', dropdownList.style.display);
+        // // // // // // console.log('=== fin mostrarDropdownControl() ===');
     }
 
     // Función para seleccionar un modelo del dropdown de Control de Modelos
@@ -5974,7 +5974,7 @@ function hideAllMaterialContainers() {
         searchInput.value = modelo;
         dropdownList.style.display = 'none';
         
-        console.log('Modelo seleccionado para Control de Modelos:', modelo);
+        // // // // // // console.log('Modelo seleccionado para Control de Modelos:', modelo);
     }
 
     // Función para cargar modelo seleccionado
@@ -6108,3 +6108,4 @@ function hideAllMaterialContainers() {
 
 </body>
 </html>
+
