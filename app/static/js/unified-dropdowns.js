@@ -193,7 +193,7 @@
         
         // Crear instancia de Bootstrap Collapse
         if (!targetElement) {
-            console.error(`Target element not found for dropdown: ${dropdownId}, selector: ${targetSelector}`);
+            // console.error(`Target element not found for dropdown: ${dropdownId}, selector: ${targetSelector}`);
             return;
         }
         const collapseInstance = new bootstrap.Collapse(targetElement, {
@@ -206,11 +206,11 @@
         if (targetElement && !targetElement.classList.contains('collapsed-by-user')) {
             setTimeout(() => {
                 if (!targetElement) {
-                    console.error(`Target element became null for dropdown: ${dropdownId}`);
+                    // console.error(`Target element became null for dropdown: ${dropdownId}`);
                     return;
                 }
                 if (!collapseInstance._element) {
-                    console.error(`Collapse instance element is null for ${dropdownId}`);
+                    // console.error(`Collapse instance element is null for ${dropdownId}`);
                     return;
                 }
                 if (!targetElement.classList.contains('show')) {
