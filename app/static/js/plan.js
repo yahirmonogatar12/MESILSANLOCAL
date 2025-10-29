@@ -288,8 +288,13 @@ function showSuccessModal(message) {
 
     modal.innerHTML = `
       <div style="background: #2A2D3E; border-radius: 12px; padding: 30px; color: #E0E0E0; text-align: center; max-width: 400px; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-        <div style="font-size: 48px; color: #28a745; margin-bottom: 15px;">?</div>
-        <h3 style="margin: 0 0 15px 0; color: #28a745;">ooxito!</h3>
+        <div style="margin-bottom: 15px;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="#28a745"/>
+            <path d="M8 12.5L10.5 15L16 9.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3 style="margin: 0 0 15px 0; color: #28a745;">Éxito!</h3>
         <p id="success-message" style="margin: 0 0 25px 0; line-height: 1.4;"></p>
         <button onclick="hideSuccessModal()" style="background: #28a745; color: white; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
           OK
@@ -858,7 +863,7 @@ async function handleCancelPlan() {
 
   const lot = form.lot_no.value;
   if (!lot) return;
-  if (!confirm(`oCancelar plan ${lot}?`)) return;
+  if (!confirm(`Cancelar plan ${lot}?`)) return;
 
   const cancelBtn = document.getElementById("plan-cancelBtn");
   const originalText = cancelBtn?.textContent || 'Cancelar plan';
@@ -900,6 +905,12 @@ async function handleCancelPlan() {
  */
 async function handleNewPlanSubmit(form) {
   const data = Object.fromEntries(new FormData(form));
+  
+  // 🎯 Renombrar target_group a group_no para enviarlo al backend
+  if (data.target_group && data.target_group !== '0') {
+    data.group_no = parseInt(data.target_group); // El backend espera group_no
+  }
+  delete data.target_group; // Eliminar campo temporal
 
   const submitBtn = form.querySelector('button[type="submit"]');
   const originalText = submitBtn?.textContent || 'Registrar';
@@ -911,14 +922,22 @@ async function handleNewPlanSubmit(form) {
       submitBtn.style.cursor = 'not-allowed';
     }
 
-    await axios.post("/api/plan", data);
+    // Crear el plan en el backend (ahora incluye group_no)
+    const response = await axios.post("/api/plan", data);
+    const newPlan = response.data;
 
-    // Mostrar modal de oxito
+    // Mostrar modal de éxito
     showSuccessModal('Plan registrado exitosamente');
 
     document.getElementById("plan-modal").style.display = "none";
     form.reset();
-    loadPlans();
+    
+    // Recargar planes - ahora el plan ya viene con su grupo asignado desde la BD
+    await loadPlans();
+    
+    // Ya no necesitamos mover manualmente porque el plan ya tiene group_no en la BD
+    // El renderTableWithVisualGroups() respetará el group_no del backend
+    
   } catch (error) {
     alert("Error registrando plan: " + (error.response?.data?.error || error.message));
   } finally {
@@ -935,6 +954,8 @@ window.openEditModal = openEditModal;
 window.handleEditPlanSubmit = handleEditPlanSubmit;
 window.handleCancelPlan = handleCancelPlan;
 window.handleNewPlanSubmit = handleNewPlanSubmit;
+window.populateGroupSelector = populateGroupSelector;
+window.assignPlanToGroup = assignPlanToGroup;
 
 /* REMOVIDO - Ahora manejado por event delegation y handleEditPlanSubmit()
 [Codigo del event listener de plan-editForm submit movido a handleEditPlanSubmit()]
@@ -1644,7 +1665,7 @@ async function reschedulePendingPlans() {
 
   const lotNos = Array.from(selectedCheckboxes).map(cb => cb.value);
 
-  if (!confirm(`oReprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
+  if (!confirm(`Reprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
     return;
   }
 
@@ -2775,6 +2796,73 @@ function calculateAndUpdateTimes() {
   });
 }
 
+// ====== Función para llenar el selector de grupos dinámicamente ======
+function populateGroupSelector() {
+  const selectElement = document.getElementById('target-group-select');
+  if (!selectElement) {
+    console.warn('Selector de grupos no encontrado');
+    return;
+  }
+
+  // Obtener número de grupos actual
+  const groupCount = parseInt(document.getElementById('groups-count')?.value) || 6;
+  
+  // Limpiar opciones existentes (excepto la primera opción "Automático")
+  selectElement.innerHTML = '<option value="">Automático (al final)</option>';
+  
+  // Agregar una opción por cada grupo
+  for (let i = 1; i <= groupCount; i++) {
+    const option = document.createElement('option');
+    option.value = i;
+    option.textContent = `Grupo ${i}`;
+    selectElement.appendChild(option);
+  }
+  
+  console.log(`Selector de grupos actualizado con ${groupCount} grupos`);
+}
+
+// ====== Función para asignar un plan a un grupo específico ======
+function assignPlanToGroup(lotNo, targetGroupIndex) {
+  console.log(`Asignando plan ${lotNo} al grupo ${targetGroupIndex + 1}`);
+  
+  // Actualizar visualGroups.planAssignments
+  visualGroups.planAssignments.set(lotNo, targetGroupIndex);
+  
+  // Buscar el plan en originalPlansData
+  const planData = originalPlansData.find(p => p.lot_no === lotNo);
+  
+  if (!planData) {
+    console.error(`Plan ${lotNo} no encontrado en originalPlansData`);
+    return;
+  }
+  
+  // Remover el plan de todos los grupos
+  visualGroups.groups.forEach(group => {
+    const index = group.plans.findIndex(p => p.lot_no === lotNo);
+    if (index !== -1) {
+      group.plans.splice(index, 1);
+    }
+  });
+  
+  // Asegurarse de que el grupo destino existe
+  while (visualGroups.groups.length <= targetGroupIndex) {
+    visualGroups.groups.push({ plans: [] });
+  }
+  
+  // Agregar el plan al grupo destino
+  visualGroups.groups[targetGroupIndex].plans.push(planData);
+  
+  console.log(`Plan ${lotNo} asignado al grupo ${targetGroupIndex + 1}`);
+  
+  // Re-renderizar la tabla
+  const allPlans = [];
+  visualGroups.groups.forEach(group => {
+    allPlans.push(...group.plans);
+  });
+  
+  renderTableWithVisualGroups(allPlans);
+}
+
 // Funcion para crear modales dinomicamente en el body
 function createModalsInBody() {
   console.log('??? Creando modales dinomicamente en el body...');
@@ -2814,37 +2902,53 @@ function createModalsInBody() {
     `;
 
     planModal.innerHTML = `
-      <div id="plan-modal-content" style="background: #34334E; border-radius: 8px; padding: 30px; max-width: 500px; color: lightgray;">
-        <h3 style="margin: 0 0 20px 0; color: #ecf0f1; font-size: 20px;">Registrar Plan</h3>
-        <form id="plan-form" style="display: flex; flex-direction: column; gap: 15px;">
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Fecha:</label>
-          <input type="date" name="working_date" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+      <div id="plan-modal-content" style="
+        background: #34334E; 
+        border-radius: 8px; 
+        padding: 20px; 
+        width: 90%;
+        max-width: 500px; 
+        max-height: 90vh;
+        overflow-y: auto;
+        color: lightgray;
+        box-sizing: border-box;
+        margin: 10px;
+      ">
+        <h3 style="margin: 0 0 15px 0; color: #ecf0f1; font-size: clamp(16px, 4vw, 20px); text-align: center;">Registrar Plan</h3>
+        <form id="plan-form" style="display: flex; flex-direction: column; gap: 12px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Fecha:</label>
+          <input type="date" name="working_date" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Part No:</label>
-          <input type="text" name="part_no" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Part No:</label>
+          <input type="text" name="part_no" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Line:</label>
-          <input type="text" name="line" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Line:</label>
+          <input type="text" name="line" required class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Turno:</label>
-          <select name="turno" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Turno:</label>
+          <select name="turno" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
             <option value="DIA" selected>DIA</option>
             <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
             <option value="NOCHE">NOCHE</option>
           </select>
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Plan Count:</label>
-          <input type="number" name="plan_count" value="0" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Plan Count:</label>
+          <input type="number" name="plan_count" value="0" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">WO Code:</label>
-          <input type="text" name="wo_code" value="SIN-WO" placeholder="SIN-WO" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">WO Code:</label>
+          <input type="text" name="wo_code" value="SIN-WO" placeholder="SIN-WO" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">PO Code:</label>
-          <input type="text" name="po_code" value="SIN-PO" placeholder="SIN-PO" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">PO Code:</label>
+          <input type="text" name="po_code" value="SIN-PO" placeholder="SIN-PO" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <div class="form-actions" style="display: flex; gap: 10px; margin-top: 10px;">
-            <button type="submit" class="plan-btn plan-btn-add" style="flex: 1; background: #27ae60; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Registrar</button>
-            <button type="button" id="plan-closeModalBtn" class="plan-btn" style="flex: 1; background: #666; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-size: 13px;">Cancelar</button>
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Asignar a Grupo:</label>
+          <select name="target_group" id="target-group-select" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
+            <option value="">📋 Automático (al final)</option>
+          </select>
+
+          <div class="form-actions" style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+            <button type="submit" class="plan-btn plan-btn-add" style="flex: 1; min-width: 120px; background: #27ae60; color: white; border: none; padding: 12px 10px; border-radius: 4px; cursor: pointer; font-size: clamp(12px, 3vw, 14px); font-weight: 500; touch-action: manipulation;">Registrar</button>
+            <button type="button" id="plan-closeModalBtn" class="plan-btn" style="flex: 1; min-width: 120px; background: #666; color: white; border: none; padding: 12px 10px; border-radius: 4px; cursor: pointer; font-size: clamp(12px, 3vw, 14px); touch-action: manipulation;">Cancelar</button>
           </div>
         </form>
       </div>
@@ -2874,36 +2978,47 @@ function createModalsInBody() {
     `;
 
     editModal.innerHTML = `
-      <div id="plan-modal-content" style="background: #34334E; border-radius: 8px; padding: 30px; max-width: 500px; color: lightgray;">
-        <h3 style="margin: 0 0 20px 0; color: #ecf0f1; font-size: 20px;">Editar Plan</h3>
-        <form id="plan-editForm" style="display: flex; flex-direction: column; gap: 15px;">
+      <div id="plan-modal-content" style="
+        background: #34334E; 
+        border-radius: 8px; 
+        padding: 20px; 
+        width: 90%;
+        max-width: 500px; 
+        max-height: 90vh;
+        overflow-y: auto;
+        color: lightgray;
+        box-sizing: border-box;
+        margin: 10px;
+      ">
+        <h3 style="margin: 0 0 15px 0; color: #ecf0f1; font-size: clamp(16px, 4vw, 20px); text-align: center;">Editar Plan</h3>
+        <form id="plan-editForm" style="display: flex; flex-direction: column; gap: 12px;">
           <input type="hidden" name="lot_no">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Turno:</label>
-          <select name="turno" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Turno:</label>
+          <select name="turno" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
             <option value="DIA">DIA</option>
             <option value="TIEMPO EXTRA">TIEMPO EXTRA</option>
             <option value="NOCHE">NOCHE</option>
           </select>
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Plan Count:</label>
-          <input type="number" name="plan_count" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Plan Count:</label>
+          <input type="number" name="plan_count" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">WO Code:</label>
-          <input type="text" name="wo_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">WO Code:</label>
+          <input type="text" name="wo_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">PO Code:</label>
-          <input type="text" name="po_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">PO Code:</label>
+          <input type="text" name="po_code" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <label style="color: #ecf0f1; font-size: 13px; margin-bottom: -10px;">Line:</label>
-          <input type="text" name="line" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 8px; border-radius: 4px; font-size: 13px;">
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Line:</label>
+          <input type="text" name="line" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
 
-          <div class="form-actions-with-gap" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-            <div style="display: flex; gap: 10px;">
-              <button type="submit" class="plan-btn plan-btn-add" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Guardar</button>
-              <button type="button" class="plan-btn" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px;">Cerrar</button>
+          <div class="form-actions-with-gap" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="submit" class="plan-btn plan-btn-add" style="flex: 1; min-width: 100px; background: #27ae60; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; font-size: clamp(12px, 3vw, 14px); font-weight: 500; touch-action: manipulation;">Guardar</button>
+              <button type="button" class="plan-btn" style="flex: 1; min-width: 100px; background: #666; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; font-size: clamp(12px, 3vw, 14px); touch-action: manipulation;">Cerrar</button>
             </div>
-            <button type="button" id="plan-cancelBtn" class="plan-btn plan-btn-danger" style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;">Cancelar plan</button>
+            <button type="button" id="plan-cancelBtn" class="plan-btn plan-btn-danger" style="width: 100%; background: #e74c3c; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; font-size: clamp(12px, 3vw, 14px); font-weight: 500; touch-action: manipulation;">Cancelar plan</button>
           </div>
         </form>
       </div>
@@ -3010,12 +3125,23 @@ function initializePlanEventListeners() {
     // Abrir modal Nuevo Plan
     if (target.id === 'plan-openModalBtn' || target.closest('#plan-openModalBtn')) {
       e.preventDefault();
-      console.log('?? Click en plan-openModalBtn detectado');
+      console.log('🔵 Click en plan-openModalBtn detectado');
 
       // Asegurar que el modal existe antes de abrirlo
       if (!document.getElementById('plan-modal')) {
-        console.log('?? Modal no existe, creondolo...');
+        console.log('🏗️ Modal no existe, creándolo...');
         createModalsInBody();
+      }
+
+      // Llenar el selector de grupos antes de abrir el modal
+      populateGroupSelector();
+
+      // Llenar el campo de fecha con la fecha de hoy
+      const dateInput = document.querySelector('#plan-form input[name="working_date"]');
+      if (dateInput) {
+        const today = getTodayInNuevoLeon(); // Formato YYYY-MM-DD
+        dateInput.value = today;
+        console.log('📅 Fecha del día establecida:', today);
       }
 
       const modal = document.getElementById('plan-modal');
@@ -3035,9 +3161,9 @@ function initializePlanEventListeners() {
           opacity: 1 !important;
           visibility: visible !important;
         `;
-        console.log('? Modal plan-modal abierto con estilos forzados');
+        console.log('✅ Modal plan-modal abierto con estilos forzados');
       } else {
-        console.error('? Modal plan-modal no encontrado despuos de crearlo');
+        console.error('❌ Modal plan-modal no encontrado después de crearlo');
       }
       return;
     }
