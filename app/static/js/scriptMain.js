@@ -169,13 +169,36 @@
                 
                 // Ocultar todos los contenedores AJAX de Control de Resultados
                 const controlResultadosAjaxContainers = [
-                    'historial-aoi-unique-container'
+                    'historial-aoi-unique-container',
+                    'historial-ict-unique-container'
                 ];
                 
                 controlResultadosAjaxContainers.forEach(containerId => {
                     const container = document.getElementById(containerId);
                     if (container) {
                         container.style.display = 'none';
+                    }
+                });
+                
+                // 🧹 LIMPIAR estilos inline forzados de Control de Resultados
+                const controlResultadosContent = document.getElementById('control-resultados-content');
+                const controlResultadosContentArea = document.getElementById('control-resultados-content-area');
+                
+                if (controlResultadosContent) {
+                    // Remover estilos inline para que vuelva a usar CSS normal
+                    controlResultadosContent.style.cssText = '';
+                }
+                
+                if (controlResultadosContentArea) {
+                    // Remover estilos inline para que vuelva a usar CSS normal
+                    controlResultadosContentArea.style.cssText = '';
+                }
+                
+                // Limpiar estilos de contenedores específicos
+                controlResultadosAjaxContainers.forEach(containerId => {
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.style.cssText = 'display: none;';
                     }
                 });
                 
@@ -3450,6 +3473,101 @@ window.mostrarHistorialAOI = function() {
 
     } catch (error) {
         console.error('Error crítico:', error);
+    }
+};
+
+
+// Función AJAX para Historial ICT - GLOBAL
+window.mostrarHistorialICT = function() {
+    try {
+        const controlResultadosButton = document.getElementById('Control de resultados');
+        if (controlResultadosButton) {
+            controlResultadosButton.classList.add('active');
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                if (btn.id !== 'Control de resultados') {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        if (typeof window.hideAllMaterialContainers === 'function') {
+            window.hideAllMaterialContainers();
+        }
+
+        if (typeof window.limpiarHistorialICT === 'function') {
+            window.limpiarHistorialICT();
+        }
+
+        const controlResultadosContainers = [
+            'control-resultados-info-container',
+            'historial-aoi-unique-container'
+        ];
+
+        controlResultadosContainers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'none';
+            }
+        });
+
+        const materialContainer = document.getElementById('material-container');
+        const controlResultadosContent = document.getElementById('control-resultados-content');
+        const controlResultadosContentArea = document.getElementById('control-resultados-content-area');
+
+        // 🎨 Aplicar estilos específicos SOLO para Historial ICT
+        if (materialContainer) {
+            materialContainer.style.display = 'block';
+        }
+        
+        if (controlResultadosContent) {
+            controlResultadosContent.style.display = 'block';
+            // Solo aplicar width en este contenedor específico
+            controlResultadosContent.style.width = '100%';
+            controlResultadosContent.style.maxWidth = 'none';
+        }
+        
+        if (controlResultadosContentArea) {
+            controlResultadosContentArea.style.display = 'block';
+            // Aplicar estilos de ancho completo solo para este módulo
+            controlResultadosContentArea.style.width = '100%';
+            controlResultadosContentArea.style.maxWidth = 'none';
+            controlResultadosContentArea.style.margin = '0';
+            controlResultadosContentArea.style.paddingRight = '0';
+        }
+
+        const historialICTContainer = document.getElementById('historial-ict-unique-container');
+        if (!historialICTContainer) {
+            console.error('El contenedor Historial ICT no existe en el HTML');
+            return;
+        }
+
+        // 🎨 Estilos para el contenedor ICT
+        historialICTContainer.style.display = 'block';
+        historialICTContainer.style.opacity = '1';
+        historialICTContainer.style.width = '100%';
+        historialICTContainer.style.maxWidth = 'none';
+        historialICTContainer.style.margin = '0';
+        historialICTContainer.style.visibility = 'visible';
+
+        if (typeof window.cargarContenidoDinamico === 'function') {
+            window.cargarContenidoDinamico('historial-ict-unique-container', '/historial-ict-ajax', () => {
+                const intentarInicializarICT = () => {
+                    if (typeof window.initializeIctEventListeners === 'function') {
+                        window.initializeIctEventListeners();
+                    }
+                    if (typeof window.loadIctData === 'function') {
+                        window.loadIctData();
+                    }
+                };
+
+                intentarInicializarICT();
+                // Reintentar por si los scripts externos todavía se están cargando
+                setTimeout(intentarInicializarICT, 200);
+            });
+        }
+
+    } catch (error) {
+        console.error('Error crítico en mostrarHistorialICT:', error);
     }
 };
 

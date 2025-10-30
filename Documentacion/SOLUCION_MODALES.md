@@ -9,7 +9,7 @@ Los modales no se veían correctamente después de navegar entre secciones debid
 ## Solución Implementada
 
 ### 1. Crear Modales Dinámicamente en JavaScript
-- Los modales se crean en `createModalsInBody()` directamente en `document.body`
+- Los modales se crean en `createModalsInBody()` d![1761791618056](image/SOLUCION_MODALES/1761791618056.png)irectamente en `document.body`
 - Se verifican antes de abrir y se recrean si no existen
 
 ### 2. Estilos Inline Forzados

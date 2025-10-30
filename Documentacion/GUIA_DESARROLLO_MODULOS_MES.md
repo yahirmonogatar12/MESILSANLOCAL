@@ -550,7 +550,7 @@ if (
 
 ---
 
-## � Maneejo de Modales en Carga AJAX
+## o Maneejo de Modales en Carga AJAX
 
 ### Problema Común
 
@@ -631,7 +631,7 @@ function initializeModule() {
 
 ---
 
-## 🎨 Convenciones de Nombres
+## Convenciones de Nombres
 
 ### IDs de Elementos HTML
 

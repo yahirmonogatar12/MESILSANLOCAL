@@ -642,11 +642,39 @@ def migrar_tabla_work_orders():
     except Exception as e:
         print(f"❌ Error migrando tabla work_orders: {e}")
 
+def migrar_tabla_plan_main():
+    """Migrar tabla plan_main para agregar columna wo_id"""
+    try:
+        print("🔄 Migrando tabla plan_main...")
+        
+        # Verificar si la columna wo_id ya existe
+        check_query = "SHOW COLUMNS FROM plan_main LIKE 'wo_id'"
+        result = execute_query(check_query, fetch='one')
+        
+        if not result:
+            # Agregar columna wo_id
+            print(" Agregando columna wo_id...")
+            alter_query = """
+            ALTER TABLE plan_main 
+            ADD COLUMN wo_id INT NULL AFTER lot_no,
+            ADD INDEX idx_wo_id (wo_id)
+            """
+            execute_query(alter_query)
+            print("✅ Columna wo_id agregada a plan_main")
+        else:
+            print(" Columna wo_id ya existe en plan_main")
+        
+        print(" Migración de tabla plan_main completada")
+        
+    except Exception as e:
+        print(f"⚠️ Error migrando tabla plan_main: {e}")
+
 # Inicializar tablas al importar el módulo
 try:
     crear_tablas_po_wo()
     migrar_tabla_embarques()  # Migrar campos nuevos PO
     migrar_tabla_work_orders()  # Migrar campos nuevos WO
+    migrar_tabla_plan_main()  # Migrar para agregar wo_id
     print(" Modelos PO → WO inicializados correctamente")
 except Exception as e:
     print(f"❌ Error inicializando modelos PO → WO: {e}")

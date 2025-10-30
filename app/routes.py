@@ -7,7 +7,7 @@ import subprocess
 import threading
 import socket
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, date, time as dt_time, timedelta
 from functools import wraps
 
 def obtener_fecha_hora_mexico():
@@ -477,6 +477,25 @@ def calendario():
     """Página del calendario de producción"""
     return render_template('calendario.html')
 
+@app.route('/defect-management')
+@login_requerido
+def defect_management():
+    """Módulo de Gestión de Defectos (En Desarrollo)"""
+    # TODO: Implementar módulo completo de gestión de defectos
+    return render_template('info.html', 
+                         titulo="Gestión de Defectos",
+                         mensaje="Módulo en desarrollo. Próximamente disponible.",
+                         tipo="warning")
+
+@app.route('/favicon.ico')
+def favicon():
+    """Servir favicon usando un icono existente"""
+    return send_from_directory(
+        os.path.join(app.root_path, 'static', 'icons'),
+        'produccion.png',
+        mimetype='image/png'
+    )
+
 @app.route('/sistemas')
 @login_requerido
 def sistemas():
@@ -786,12 +805,34 @@ def api_plan_create():
             ct = 0.0
             uph = 0
         
+        # 🎯 Obtener group_no si fue especificado (para asignación directa a grupo)
+        group_no = data.get('group_no')
+        sequence = None
+        
+        # Si se especifica grupo, calcular el siguiente sequence para ese grupo
+        if group_no is not None:
+            # Obtener el sequence más alto del grupo
+            seq_query = "SELECT MAX(sequence) as max_seq FROM plan_main WHERE group_no = %s"
+            seq_result = execute_query(seq_query, (int(group_no),), fetch='one')
+            max_seq = seq_result.get('max_seq') if seq_result else None
+            sequence = (max_seq + 1) if max_seq is not None else 1
+        
         # Insert con datos completos
-        sql = (
-            "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, created_at) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',NOW())"
-        )
-        params = (lot_no, wo_code, po_code, fecha, line, model_code, part_no, project, 'MAIN', plan_count, ct, uph, routing)
+        if group_no is not None and sequence is not None:
+            # Si se especifica grupo, incluirlo en el INSERT con sequence
+            sql = (
+                "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, group_no, sequence, created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,NOW())"
+            )
+            params = (lot_no, wo_code, po_code, fecha, line, model_code, part_no, project, 'MAIN', plan_count, ct, uph, routing, int(group_no), sequence)
+        else:
+            # Sin grupo especificado, usar INSERT original
+            sql = (
+                "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',NOW())"
+            )
+            params = (lot_no, wo_code, po_code, fecha, line, model_code, part_no, project, 'MAIN', plan_count, ct, uph, routing)
+        
         execute_query(sql, params)
         return jsonify({'success': True, 'lot_no': lot_no, 'model_code': model_code, 'ct': ct, 'uph': uph, 'project': project})
     except Exception as e:
@@ -1211,10 +1252,15 @@ def api_work_orders_import():
                 errors.append(f'WO id {wo_id} no encontrado')
                 continue
             wo = row
-            # Verificar si ya existe
-            existing = execute_query("SELECT lot_no, status FROM plan_main WHERE wo_code = %s", (wo.get('codigo_wo'),), fetch='one')
+            # Verificar si ya existe (buscar por wo_id para ser más preciso)
+            existing = execute_query(
+                "SELECT lot_no, status FROM plan_main WHERE wo_id = %s OR wo_code = %s", 
+                (wo_id, wo.get('codigo_wo')), 
+                fetch='one'
+            )
             if existing:
-                errors.append(f"WO {wo.get('codigo_wo')} ya importado (LOT: {(existing.get('lot_no') if isinstance(existing, dict) else existing[0])})")
+                lot_existente = existing.get('lot_no') if isinstance(existing, dict) else existing[0]
+                errors.append(f"WO {wo.get('codigo_wo')} ya fue importada como LOT: {lot_existente}")
                 continue
             
             # Obtener part_no y línea del WO
@@ -1280,12 +1326,14 @@ def api_work_orders_import():
             
             lot_no = _fp_generate_lot_no(datetime.combine(fecha_dt, datetime.min.time()))
             
+            # Insertar plan con wo_id para rastrear la importación
             insert_sql = (
-                "INSERT INTO plan_main (lot_no, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, created_at) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',NOW())"
+                "INSERT INTO plan_main (lot_no, wo_id, wo_code, po_code, working_date, line, model_code, part_no, project, process, plan_count, ct, uph, routing, status, created_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',NOW())"
             )
             params = (
                 lot_no,
+                wo_id,  # Agregar wo_id para rastreo
                 wo.get('codigo_wo'),
                 wo.get('codigo_po'),
                 fecha_dt,
@@ -1301,7 +1349,7 @@ def api_work_orders_import():
             )
             execute_query(insert_sql, params)
             imported += 1
-            plans.append({'lot_no': lot_no})
+            plans.append({'lot_no': lot_no, 'wo_code': wo.get('codigo_wo')})
         return jsonify({'success': True, 'imported': imported, 'plans': plans, 'errors': errors})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -4391,6 +4439,16 @@ def historial_aoi():
         print(f"Error al cargar Historial AOI: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route('/historial-ict-ajax')
+@login_requerido
+def historial_ict_ajax():
+    """Ruta AJAX para cargar el Historial ICT"""
+    try:
+        return render_template('Control de resultados/history_ict.html')
+    except Exception as e:
+        print(f"Error al cargar template de Historial ICT: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 @app.route('/historial-aoi-ajax')
 @login_requerido
 def historial_aoi_ajax():
@@ -6842,9 +6900,11 @@ def obtener_permisos_usuario_actual():
         usuario_rol = cursor.fetchone()
         
         if not usuario_rol:
+            conn.close()
             return jsonify({'permisos': {}, 'error': 'Usuario no encontrado o sin roles'}), 404
         
-        rol_nombre = usuario_rol[0]
+        # Acceso compatible con dict o tupla
+        rol_nombre = usuario_rol['nombre'] if isinstance(usuario_rol, dict) else usuario_rol[0]
         
         # Superadmin tiene todos los permisos
         if rol_nombre == 'superadmin':
@@ -6869,7 +6929,15 @@ def obtener_permisos_usuario_actual():
         permisos_jerarquicos = {}
         total_permisos = 0
         
-        for pagina, seccion, boton in permisos:
+        for permiso in permisos:
+            # Acceso compatible con dict o tupla
+            if isinstance(permiso, dict):
+                pagina = permiso['pagina']
+                seccion = permiso['seccion']
+                boton = permiso['boton']
+            else:
+                pagina, seccion, boton = permiso
+            
             if pagina not in permisos_jerarquicos:
                 permisos_jerarquicos[pagina] = {}
             
@@ -11195,10 +11263,10 @@ def api_plan_run_start():
             modelo_info = f" ({existing_plan['modelo']} - {existing_plan['nparte']})" if existing_plan else ""
             return jsonify({
                 'success': False, 
-                'error': f'Ya hay un run activo en la l�nea {linea}: {existing_run["lot_no"]}{modelo_info}. Debe finalizar el run actual antes de iniciar uno nuevo.'
+                'error': f'Ya hay un run activo en la lonea {linea}: {existing_run["lot_no"]}{modelo_info}. Debe finalizar el run actual antes de iniciar uno nuevo.'
             }), 409  # 409 Conflict
 
-        # Verificar que este plan espec�fico no tenga ya un run activo
+        # Verificar que este plan especofico no tenga ya un run activo
         plan_run_active = execute_query(
             "SELECT id, lot_no, status FROM plan_smd_runs WHERE plan_id=%s AND status IN ('RUNNING', 'PAUSED') ORDER BY start_time DESC LIMIT 1", 
             (plan_id,), 
@@ -11210,7 +11278,7 @@ def api_plan_run_start():
                 'error': f'Este plan ya tiene un run activo: {plan_run_active["lot_no"]} (Status: {plan_run_active["status"]}). Debe finalizar el run actual antes de iniciar uno nuevo.'
             }), 409
 
-        # Verificar que el plan no est� ya finalizado
+        # Verificar que el plan no esto ya finalizado
         trazabilidad_actual = execute_query(
             "SELECT estado FROM trazabilidad WHERE lot_no=%s ORDER BY updated_at DESC LIMIT 1", 
             (plan_row.get('lote'),), 
@@ -11219,7 +11287,7 @@ def api_plan_run_start():
         if trazabilidad_actual and trazabilidad_actual.get('estado') == 'FINALIZADO':
             return jsonify({
                 'success': False, 
-                'error': f'Este plan ya est� finalizado (LOT: {plan_row.get("lote")}). No se puede reiniciar un plan finalizado.'
+                'error': f'Este plan ya esto finalizado (LOT: {plan_row.get("lote")}). No se puede reiniciar un plan finalizado.'
             }), 409
 
         # Usar LOT NO ya definido en el plan; no generar uno nuevo
@@ -11281,7 +11349,7 @@ def api_plan_run_start():
                     VALUES (%s, 'INICIADO', NOW())
                 """, (lot_no,))
             except Exception:
-                # Si falla (probablemente duplicado), actualizar el m�s reciente
+                # Si falla (probablemente duplicado), actualizar el mos reciente
                 execute_query("""
                     UPDATE trazabilidad SET estado='INICIADO', updated_at=NOW() 
                     WHERE lot_no=%s AND updated_at = (
@@ -11310,7 +11378,7 @@ def api_plan_run_end():
             return jsonify({'success': False, 'error': 'Run no encontrado'}), 404
         if plan_id_req is not None and str(run.get('plan_id')) != str(plan_id_req):
             return jsonify({'success': False, 'error': 'El run no corresponde al plan indicado'}), 400
-        # Cerrar el run si est� RUNNING
+        # Cerrar el run si esto RUNNING
         update = "UPDATE plan_smd_runs SET status='ENDED', end_time=NOW() WHERE id=%s AND status='RUNNING'"
         execute_query(update, (run_id,))
         run = execute_query("SELECT * FROM plan_smd_runs WHERE id=%s", (run_id,), fetch='one')
@@ -11361,7 +11429,7 @@ def api_plan_run_end():
                         VALUES (%s, 'FINALIZADO', NOW())
                     """, (run['lot_no'],))
                 except Exception:
-                    # Si falla (probablemente duplicado), actualizar el m�s reciente
+                    # Si falla (probablemente duplicado), actualizar el mos reciente
                     execute_query("""
                         UPDATE trazabilidad SET estado='FINALIZADO', updated_at=NOW() 
                         WHERE lot_no=%s AND updated_at = (
@@ -11393,7 +11461,7 @@ def api_plan_run_pause():
                         VALUES (%s, 'PAUSA', NOW())
                     """, (run['lot_no'],))
                 except Exception:
-                    # Si falla (probablemente duplicado), actualizar el m�s reciente
+                    # Si falla (probablemente duplicado), actualizar el mos reciente
                     execute_query("""
                         UPDATE trazabilidad SET estado='PAUSA', updated_at=NOW() 
                         WHERE lot_no=%s AND updated_at = (
@@ -11446,9 +11514,9 @@ def api_plan_run_status():
         elif linea and linea.strip():
             row = execute_query("SELECT * FROM plan_smd_runs WHERE linea=%s AND status='RUNNING' ORDER BY start_time DESC LIMIT 1", (linea.strip(),), fetch='one')
         else:
-            error_msg = 'Par�metros insuficientes. Se requiere run_id o linea.'
+            error_msg = 'Parometros insuficientes. Se requiere run_id o linea.'
             if linea == '':
-                error_msg = 'Par�metro linea est� vac�o'
+                error_msg = 'Parometro linea esto vacoo'
             return jsonify({'success': False, 'error': error_msg}), 400
 
         if not row:
@@ -11499,13 +11567,13 @@ crear_tabla_trazabilidad()
 
 
 ###############################################
-# Metal Mask: p�ginas y API (integraci�n)
+# Metal Mask: poginas y API (integracion)
 ###############################################
 
 def init_metal_mask_tables():
     """Crea/ajusta tablas usadas por Metal Mask si no existen."""
     try:
-        # Tabla principal de masks con nombres de columnas en ingl�s (usadas por el frontend)
+        # Tabla principal de masks con nombres de columnas en inglos (usadas por el frontend)
         execute_query(
             """
             CREATE TABLE IF NOT EXISTS masks (
@@ -11530,14 +11598,14 @@ def init_metal_mask_tables():
             """
         )
 
-        # Asegurar valores del ENUM en caso de historiales previos (migraci�n suave)
+        # Asegurar valores del ENUM en caso de historiales previos (migracion suave)
         try:
             execute_query("ALTER TABLE masks MODIFY COLUMN disuse ENUM('Use','Disuse','Uso','Desuso','Scrap') DEFAULT 'Uso'")
             execute_query("UPDATE masks SET disuse='Uso' WHERE disuse='Use'")
             execute_query("UPDATE masks SET disuse='Desuso' WHERE disuse='Disuse'")
             execute_query("ALTER TABLE masks MODIFY COLUMN disuse ENUM('Uso','Desuso','Scrap') DEFAULT 'Uso'")
         except Exception as _:
-            # Si falla (p.ej. por no existir la tabla/columna a�n), continuar
+            # Si falla (p.ej. por no existir la tabla/columna aon), continuar
             pass
 
         # Tabla de cajas de almacenamiento
@@ -11566,7 +11634,7 @@ def init_metal_mask_tables():
 init_metal_mask_tables()
 
 
-# P�ginas nuevas (HTML integrados)
+# Poginas nuevas (HTML integrados)
 @app.route('/control/metal-mask')
 @login_requerido
 def pagina_control_metal_mask():
@@ -11606,7 +11674,7 @@ def api_list_masks():
         sql += " ORDER BY id DESC"
         rows = execute_query(sql, tuple(params) if params else None, fetch='all') or []
 
-        # Normalizaci�n ligera de tipos para JSON
+        # Normalizacion ligera de tipos para JSON
         out = []
         for r in rows:
             r = dict(r)
@@ -11657,7 +11725,7 @@ def api_create_mask():
     except Exception as e:
         msg = str(e)
         if 'Duplicate entry' in msg:
-            return jsonify({'error': 'El N�mero de Gesti�n ya existe'}), 400
+            return jsonify({'error': 'El Nomero de Gestion ya existe'}), 400
         print(f"Error en api_create_mask: {e}")
         return jsonify({'error': msg}), 500
 
@@ -11669,7 +11737,7 @@ def api_update_mask(mask_id: int):
         p = request.get_json(force=True) or {}
         required = p.get('management_no', '').strip()
         if not required:
-            return jsonify({'error': 'N�mero de Gesti�n es requerido'}), 400
+            return jsonify({'error': 'Nomero de Gestion es requerido'}), 400
 
         sql = (
             "UPDATE masks SET management_no=%s, storage_box=%s, pcb_code=%s, side=%s, "
@@ -11697,12 +11765,12 @@ def api_update_mask(mask_id: int):
         )
         affected = execute_query(sql, params)
         if affected == 0:
-            return jsonify({'error': 'M�scara no encontrada'}), 404
+            return jsonify({'error': 'Moscara no encontrada'}), 404
         return jsonify({'success': True, 'message': 'Actualizado'})
     except Exception as e:
         msg = str(e)
         if 'Duplicate entry' in msg:
-            return jsonify({'error': 'El N�mero de Gesti�n ya existe'}), 400
+            return jsonify({'error': 'El Nomero de Gestion ya existe'}), 400
         print(f"Error en api_update_mask: {e}")
         return jsonify({'error': msg}), 500
 
@@ -11756,7 +11824,7 @@ def api_add_storage():
         p = request.get_json(force=True) or {}
         management_no = (p.get('management_no','') or '').strip()
         if not management_no:
-            return jsonify({'error': 'N�mero de Gesti�n es requerido'}), 400
+            return jsonify({'error': 'Nomero de Gestion es requerido'}), 400
         sql = (
             "INSERT INTO storage_boxes (management_no, code, name, location, storage_status, used_status, note, registration_date) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
@@ -11776,7 +11844,7 @@ def api_add_storage():
     except Exception as e:
         msg = str(e)
         if 'Duplicate entry' in msg:
-            return jsonify({'error': f'El N�mero de Gesti�n "{management_no}" ya existe. Por favor use un c�digo/ubicaci�n diferente.'}), 400
+            return jsonify({'error': f'El Nomero de Gestion "{management_no}" ya existe. Por favor use un codigo/ubicacion diferente.'}), 400
         print(f"Error en api_add_storage: {e}")
         return jsonify({'error': msg}), 500
 
@@ -11788,7 +11856,7 @@ def api_update_storage(storage_id: int):
         p = request.get_json(force=True) or {}
         management_no = (p.get('management_no','') or '').strip()
         if not management_no:
-            return jsonify({'error': 'N�mero de Gesti�n es requerido'}), 400
+            return jsonify({'error': 'Nomero de Gestion es requerido'}), 400
         sql = (
             "UPDATE storage_boxes SET management_no=%s, code=%s, name=%s, location=%s, "
             "storage_status=%s, used_status=%s, note=%s, registration_date=%s WHERE id=%s"
@@ -11811,7 +11879,7 @@ def api_update_storage(storage_id: int):
     except Exception as e:
         msg = str(e)
         if 'Duplicate entry' in msg:
-            return jsonify({'error': 'El N�mero de Gesti�n ya existe'}), 400
+            return jsonify({'error': 'El Nomero de Gestion ya existe'}), 400
         print(f"Error en api_update_storage: {e}")
         return jsonify({'error': msg}), 500
 
@@ -11819,14 +11887,14 @@ def api_update_storage(storage_id: int):
 @app.route('/api/bom-smt-data', methods=['GET'])
 @login_requerido
 def api_bom_smt_data():
-    """API para obtener datos del BOM SMT basado en l�nea y modelo"""
+    """API para obtener datos del BOM SMT basado en lonea y modelo"""
     try:
-        # Obtener par�metros
+        # Obtener parometros
         linea = request.args.get('linea', '')
         model_code = request.args.get('model_code', '')
         
         if not linea or not model_code:
-            return jsonify({'success': False, 'error': 'L�nea y modelo son requeridos'}), 400
+            return jsonify({'success': False, 'error': 'Lonea y modelo son requeridos'}), 400
             
         print(f"API BOM SMT - Filtros:")
         print(f"  Linea: {linea}")
@@ -11837,7 +11905,7 @@ def api_bom_smt_data():
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Mapear l�nea SMT a n�mero de l�nea
+        # Mapear lonea SMT a nomero de lonea
         mapeo_lineas = {
             'SMT A': '2',
             'SMT B': '2', 
@@ -11912,7 +11980,7 @@ def api_bom_smt_data():
                     'created_at': str(row[10]) if len(row) > 10 and row[10] else '',
                     'updated_at': str(row[11]) if len(row) > 11 and row[11] else '',
                     'tabla_tipo': row[12] if len(row) > 12 else '',
-                    'status': 'pending'  # Por defecto pendiente, se actualizar� con el mapeo
+                    'status': 'pending'  # Por defecto pendiente, se actualizaro con el mapeo
                 }
                 formatted_data.append(formatted_row)
                 
@@ -12240,3 +12308,330 @@ def crear_datos_prueba_smt():
             'error': str(e),
             'traceback': traceback.format_exc()
         }), 500
+
+# ====== HISTORIAL ICT (FRONT FULL DEFECTS 2) ======
+def _ict_format_row(row):
+    """Convertir campos fecha/hora a cadenas serializables."""
+    if not row:
+        return {}
+
+    formatted = {}
+    for key, value in row.items():
+        if isinstance(value, datetime):
+            formatted[key] = value.isoformat(sep=' ')
+        elif isinstance(value, date):
+            formatted[key] = value.isoformat()
+        elif isinstance(value, dt_time):
+            formatted[key] = value.strftime('%H:%M:%S')
+        elif isinstance(value, timedelta):
+            formatted[key] = str(value)
+        else:
+            formatted[key] = value
+    return formatted
+
+
+@app.route('/historial-ict')
+@app.route('/ict/front-full-defects2')
+@login_requerido
+def ict_front_full_defects2():
+    """Vista principal del historial ICT con defectos detallados."""
+    try:
+        return render_template('Control de resultados/history_ict.html')
+    except Exception as e:
+        print(f"Error al cargar History ICT: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route('/api/ict/data')
+@login_requerido
+def ict_data_api():
+    """Obtener registros recientes del historial ICT con filtros opcionales."""
+    try:
+        fecha = request.args.get('fecha', '').strip()
+        linea = request.args.get('linea', '').strip()
+        resultado = request.args.get('resultado', '').strip()
+        barcode_like = request.args.get('barcode_like', '').strip()
+
+        sql = (
+            "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
+            "ts, fuente_archivo, defect_code, defect_valor "
+            "FROM history_ict WHERE 1=1"
+        )
+        params = []
+
+        if fecha:
+            sql += " AND fecha=%s"
+            params.append(fecha)
+        if linea:
+            sql += " AND linea=%s"
+            params.append(linea)
+        if resultado:
+            sql += " AND resultado=%s"
+            params.append(resultado)
+        if barcode_like:
+            sql += " AND barcode LIKE %s"
+            params.append(f"%{barcode_like}%")
+
+        sql += " ORDER BY ts DESC LIMIT 500"
+        rows = execute_query(sql, tuple(params), fetch='all') or []
+
+        return jsonify([_ict_format_row(row) for row in rows])
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
+@app.route('/api/ict/defects')
+@login_requerido
+def ict_defects_api():
+    """Obtener defectos asociados a un barcode espec��fico."""
+    barcode = request.args.get("barcode", "").strip()
+    if not barcode:
+        return jsonify([])
+
+    try:
+        sql = (
+            "SELECT d.barcode, h.linea, h.ict, d.componente, d.pinref, d.act_value, d.act_unit, "
+            "d.std_value, d.std_unit, d.meas_value, "
+            "d.m_value, d.r_value, d.hlim_pct, d.llim_pct, "
+            "d.hp_value, d.lp_value, d.ws_value, d.ds_value, d.rc_value, "
+            "d.p_flag, d.j_flag, d.resultado_local, d.defecto_tipo, d.ts "
+            "FROM history_ict_defects d "
+            "LEFT JOIN history_ict h ON d.barcode COLLATE utf8mb4_unicode_ci = h.barcode COLLATE utf8mb4_unicode_ci "
+            "AND d.ts = h.ts "
+            "WHERE d.barcode=%s "
+            "ORDER BY d.ts DESC, d.componente LIMIT 1000"
+        )
+
+        rows = execute_query(sql, (barcode,), fetch='all') or []
+        return jsonify([_ict_format_row(row) for row in rows])
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
+@app.route('/api/ict/export')
+@login_requerido
+def export_ict_excel():
+    """Exportar el historial ICT filtrado a un archivo de Excel."""
+    try:
+        fecha = request.args.get("fecha", "").strip()
+        linea = request.args.get("linea", "").strip()
+        resultado = request.args.get("resultado", "").strip()
+        barcode_like = request.args.get("barcode_like", "").strip()
+
+        sql = (
+            "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
+            "fuente_archivo, defect_code, defect_valor "
+            "FROM history_ict WHERE 1=1"
+        )
+        params = []
+
+        if fecha:
+            sql += " AND fecha=%s"
+            params.append(fecha)
+        if linea:
+            sql += " AND linea=%s"
+            params.append(linea)
+        if resultado:
+            sql += " AND resultado=%s"
+            params.append(resultado)
+        if barcode_like:
+            sql += " AND barcode LIKE %s"
+            params.append(f"%{barcode_like}%")
+
+        sql += " ORDER BY ts DESC LIMIT 500"
+        rows = execute_query(sql, tuple(params), fetch='all') or []
+
+        from io import BytesIO
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Historial ICT"
+
+        header_fill = PatternFill(start_color="3f6b6e", end_color="3f6b6e", fill_type="solid")
+        cell_fill = PatternFill(start_color="a1a09c", end_color="a1a09c", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=10)
+        border = Border(
+            left=Side(style='thin', color='000000'),
+            right=Side(style='thin', color='000000'),
+            top=Side(style='thin', color='000000'),
+            bottom=Side(style='thin', color='000000')
+        )
+
+        headers = ["Fecha", "Hora", "L��nea", "ICT", "Resultado", "No Parte", "Barcode", "Fuente", "Defect Code", "Defect Valor"]
+
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+
+        for row_idx, row in enumerate(rows, start=2):
+            formatted = _ict_format_row(row)
+            values = [
+                formatted.get('fecha', ''),
+                formatted.get('hora', ''),
+                formatted.get('linea', ''),
+                formatted.get('ict', ''),
+                formatted.get('resultado', ''),
+                formatted.get('no_parte', ''),
+                formatted.get('barcode', ''),
+                formatted.get('fuente_archivo', ''),
+                formatted.get('defect_code', ''),
+                formatted.get('defect_valor', ''),
+            ]
+
+            for col_num, value in enumerate(values, start=1):
+                cell = ws.cell(row=row_idx, column=col_num, value=value)
+                cell.fill = cell_fill
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border
+
+        for col in range(1, len(headers) + 1):
+            column_letter = ws.cell(row=1, column=col).column_letter
+            ws.column_dimensions[column_letter].width = 16
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f"historial_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
+@app.route('/api/ict/export-defects')
+@login_requerido
+def export_ict_defects_excel():
+    """Exportar detalles de defectos ICT a un archivo de Excel."""
+    barcode = request.args.get("barcode", "").strip()
+    resultado_filter = request.args.get("resultado", "").strip()
+
+    if not barcode:
+        return jsonify({"error": "Barcode requerido"}), 400
+
+    try:
+        sql = (
+            "SELECT d.barcode, h.linea, h.ict, d.componente, d.pinref, d.act_value, d.act_unit, "
+            "d.std_value, d.std_unit, d.meas_value, "
+            "d.m_value, d.r_value, d.hlim_pct, d.llim_pct, "
+            "d.hp_value, d.lp_value, d.ws_value, d.ds_value, d.rc_value, "
+            "d.p_flag, d.j_flag, d.resultado_local, d.defecto_tipo, d.ts, "
+            "DATE(d.ts) AS fecha, TIME(d.ts) AS hora "
+            "FROM history_ict_defects d "
+            "LEFT JOIN history_ict h ON d.barcode COLLATE utf8mb4_unicode_ci = h.barcode COLLATE utf8mb4_unicode_ci "
+            "AND d.ts = h.ts "
+            "WHERE d.barcode=%s "
+        )
+        params = [barcode]
+
+        if resultado_filter:
+            sql += " AND d.resultado_local=%s"
+            params.append(resultado_filter)
+
+        sql += " ORDER BY d.ts DESC, d.componente LIMIT 1000"
+
+        rows = execute_query(sql, tuple(params), fetch='all') or []
+
+        from io import BytesIO
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = f"Parametros {barcode[:20]}"
+
+        header_fill = PatternFill(start_color="3f6b6e", end_color="3f6b6e", fill_type="solid")
+        cell_fill = PatternFill(start_color="a1a09c", end_color="a1a09c", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=10)
+        border = Border(
+            left=Side(style='thin', color='000000'),
+            right=Side(style='thin', color='000000'),
+            top=Side(style='thin', color='000000'),
+            bottom=Side(style='thin', color='000000')
+        )
+
+        headers = [
+            "Fecha", "Hora", "L��nea", "ICT", "Barcode", "Componente", "Pinref",
+            "ACT", "Unit", "STD", "Unit", "MEAS", "M", "R", "HLIM", "LLIM",
+            "H.P", "L.P", "WS", "DS", "RC", "P", "J", "Resultado", "Tipo Defecto"
+        ]
+
+        for col_num, header in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+
+        for row_idx, row in enumerate(rows, start=2):
+            formatted = _ict_format_row(row)
+            hlim = formatted.get('hlim_pct', '')
+            llim = formatted.get('llim_pct', '')
+
+            row_values = [
+                formatted.get('fecha', ''),
+                formatted.get('hora', ''),
+                formatted.get('linea', ''),
+                formatted.get('ict', ''),
+                formatted.get('barcode', ''),
+                formatted.get('componente', ''),
+                formatted.get('pinref', ''),
+                formatted.get('act_value', ''),
+                formatted.get('act_unit', ''),
+                formatted.get('std_value', ''),
+                formatted.get('std_unit', ''),
+                formatted.get('meas_value', ''),
+                formatted.get('m_value', ''),
+                formatted.get('r_value', ''),
+                f"{hlim}%" if hlim else '',
+                f"{llim}%" if llim else '',
+                formatted.get('hp_value', ''),
+                formatted.get('lp_value', ''),
+                formatted.get('ws_value', ''),
+                formatted.get('ds_value', ''),
+                formatted.get('rc_value', ''),
+                formatted.get('p_flag', ''),
+                formatted.get('j_flag', ''),
+                formatted.get('resultado_local', ''),
+                formatted.get('defecto_tipo', '')
+            ]
+
+            for col_num, value in enumerate(row_values, start=1):
+                cell = ws.cell(row=row_idx, column=col_num, value=value)
+                cell.fill = cell_fill
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.border = border
+
+        for col in range(1, len(headers) + 1):
+            column_letter = ws.cell(row=1, column=col).column_letter
+            ws.column_dimensions[column_letter].width = 12
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f"parametros_{barcode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
+

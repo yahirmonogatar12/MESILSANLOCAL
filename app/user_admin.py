@@ -1086,7 +1086,7 @@ def obtener_permisos_usuario_actual():
             if seccion not in permisos_dict[pagina]:
                 permisos_dict[pagina][seccion] = []
             
-            permisos_dict[pagina][seccion].append(permiso['boton'])
+            permisos_dict[pagina][seccion].append(boton)
         
         return jsonify({
             'permisos': permisos_dict,

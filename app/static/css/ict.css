@@ -1,0 +1,830 @@
+/* Estilos del módulo ICT - Tema ILSAN */
+
+/* Variables específicas ICT */
+:root {
+    --ict-ng-row: #8e2323;
+    --ict-ok-row: #456636;
+    --ict-ng-hover: #a82828;
+    --ict-opening-row: #e67e22;
+}
+
+/* Contenedor principal */
+.ict-page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+}
+
+/* ========== HEADER CON ESTADÍSTICAS ========== */
+.page-header {
+    background: linear-gradient(135deg, var(--ilsan-dark-secondary) 0%, #2d2d3f 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.header-content h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ilsan-text-light);
+    font-size: 1.5rem;
+    margin: 0 0 6px 0;
+    font-weight: 700;
+}
+
+.header-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--ilsan-accent-blue);
+}
+
+.header-subtitle {
+    color: var(--ilsan-text-gray);
+    font-size: 0.85rem;
+    margin: 0 0 16px 38px;
+}
+
+/* Tarjetas de estadísticas */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.stat-icon {
+    width: 36px;
+    height: 36px;
+    padding: 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.stat-icon-total {
+    color: var(--ilsan-accent-blue);
+    background: rgba(52, 152, 219, 0.15);
+}
+
+.stat-icon-ok {
+    color: #27ae60;
+    background: rgba(39, 174, 96, 0.15);
+}
+
+.stat-icon-ng {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.15);
+}
+
+.stat-card-ok:hover {
+    border-color: rgba(39, 174, 96, 0.3);
+}
+
+.stat-card-ng:hover {
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    color: var(--ilsan-text-light);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stat-label {
+    color: var(--ilsan-text-gray);
+    font-size: 0.75rem;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ========== TARJETAS (CARDS) ========== */
+.filters-card,
+.results-card {
+    background: var(--ilsan-dark-secondary);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    margin-bottom: 16px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--ilsan-accent-blue);
+}
+
+.card-header h3 {
+    color: var(--ilsan-text-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+}
+
+.record-count {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 10px;
+    border-radius: 16px;
+}
+
+/* ========== FILTROS ========== */
+#ict-filters { 
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 10px;
+    padding: 12px 18px 16px;
+    align-items: flex-end;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-group label {
+    color: var(--ilsan-text-light);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.input-icon {
+    width: 12px;
+    height: 12px;
+    color: var(--ilsan-accent-blue);
+}
+
+.filter-group input,
+.filter-group select {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    width: 160px;
+}
+
+.filter-group select option {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 8px;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.filter-group input::placeholder {
+    color: var(--ilsan-text-gray);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+#ict-filters .btn-primary {
+    width: auto;
+    min-width: 110px;
+    align-self: flex-end;
+    margin-left: 0;
+    padding: 9px 16px;
+}
+
+#btn-consultar {
+    margin-top: 0;
+    align-self: center;
+}
+
+.btn-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Botón exportar Excel */
+.btn-export {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+    white-space: nowrap;
+}
+
+.btn-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
+}
+
+.btn-export:active {
+    transform: translateY(0);
+}
+
+.btn-export svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Contenedor de tabla */
+.table-wrap { 
+    position: relative;
+    max-height: clamp(360px, 60vh, 780px); 
+    min-height: clamp(260px, 45vh, 520px);
+    overflow: auto;
+    border-radius: 0 0 16px 16px;
+}
+
+/* Scrollbar personalizado */
+.table-wrap::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+    background: var(--ilsan-dark-tertiary);
+    border-radius: 10px;
+    margin: 4px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--ilsan-accent-blue), var(--ilsan-accent-dark-blue));
+    border-radius: 10px;
+    border: 2px solid var(--ilsan-dark-tertiary);
+    transition: all 0.3s ease;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--ilsan-accent-dark-blue), var(--ilsan-accent-blue));
+    border-color: var(--ilsan-dark-secondary);
+}
+
+.table-wrap::-webkit-scrollbar-corner {
+    background: var(--ilsan-dark-tertiary);
+}
+
+/* Scrollbar para Firefox */
+.table-wrap {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ilsan-accent-blue) var(--ilsan-dark-tertiary);
+}
+
+/* Indicador de carga local */
+.table-loading {
+    position: absolute;
+    top: var(--thead-height, 0px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(20, 24, 36, 0.92), rgba(28, 32, 48, 0.85));
+    backdrop-filter: blur(2px);
+    color: var(--ilsan-text-light);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    z-index: 20;
+    pointer-events: none;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+}
+
+.table-loading.active {
+    display: flex;
+}
+
+.table-loading span {
+    font-size: 0.85rem;
+}
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 4px solid rgba(52, 152, 219, 0.2);
+    border-top: 4px solid var(--ilsan-accent-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Tablas */
+#ict-table, #ict-defects-table { 
+    width: 100%; 
+    border-collapse: collapse;
+    background-color: var(--ilsan-dark-secondary);
+}
+
+#ict-table th, #ict-table td, 
+#ict-defects-table th, #ict-defects-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+#ict-table thead th, 
+#ict-defects-table thead th { 
+    background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+    color: var(--ilsan-text-light);
+    position: sticky;
+    top: 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
+    z-index: 10;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#ict-table tbody td,
+#ict-defects-table tbody td {
+    color: var(--ilsan-text-secondary);
+    background-color: var(--ilsan-dark-secondary);
+    transition: background-color 0.2s ease;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Columnas específicas con ancho limitado */
+#ict-table td:nth-child(9), /* Defect Code */
+#ict-table td:nth-child(10) { /* Defect Valor */
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+    position: relative;
+}
+
+/* Tooltip simple al hacer hover */
+#ict-table td:nth-child(9):hover,
+#ict-table td:nth-child(10):hover {
+    background-color: var(--ilsan-hover);
+}
+
+#ict-table td:nth-child(9)::after,
+#ict-table td:nth-child(10)::after {
+    content: attr(title);
+    position: absolute;
+    left: 0;
+    top: 100%;
+    background-color: var(--ilsan-dark-header);
+    color: var(--ilsan-text-light);
+    padding: 8px 12px;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    white-space: normal;
+    max-width: 300px;
+    z-index: 1000;
+    font-size: 0.8rem;
+    border: 1px solid var(--ilsan-border);
+    display: none;
+    word-wrap: break-word;
+}
+
+#ict-table td:nth-child(9):hover::after,
+#ict-table td:nth-child(10):hover::after {
+    display: block;
+}
+
+#ict-table tbody tr:nth-child(even) td,
+#ict-defects-table tbody tr:nth-child(even) td {
+    background-color: #44475A;
+}
+
+#ict-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+#ict-table tbody tr:hover td,
+#ict-defects-table tbody tr:hover td {
+    background-color: var(--ilsan-hover);
+}
+
+/* Fila NG (roja, clickeable) */
+.ict-row-ng { 
+    background-color: var(--ict-ng-row) !important;
+    color: #fff !important;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.ict-row-ng:hover {
+    background-color: var(--ict-ng-hover) !important;
+}
+
+.ict-row-ng td {
+    background-color: transparent !important;
+    color: #fff !important;
+}
+
+/* Filas de defectos por tipo de resultado */
+#ict-defects-table tbody tr[data-resultado="NG"] td,
+#ict-defects-table tbody tr[data-resultado="OPENING"] td {
+    background-color: rgba(142, 35, 35, 0.3) !important;
+    color: #ffcccc !important;
+    font-weight: 500;
+}
+
+#ict-defects-table tbody tr[data-resultado="OK"] td {
+    background-color: rgba(69, 102, 54, 0.2) !important;
+    color: #c8e6c9 !important;
+}
+
+#ict-defects-table tbody tr[data-resultado="NG"]:hover td,
+#ict-defects-table tbody tr[data-resultado="OPENING"]:hover td {
+    background-color: rgba(142, 35, 35, 0.5) !important;
+}
+
+#ict-defects-table tbody tr[data-resultado="OK"]:hover td {
+    background-color: rgba(69, 102, 54, 0.35) !important;
+}
+
+/* Animaciones para las tarjetas */
+.filters-card,
+.results-card {
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .stats-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    #ict-container {
+        padding: 16px 16px 32px;
+    }
+    
+    .ict-page {
+        gap: 16px;
+    }
+    
+    .page-header {
+        padding: 20px;
+    }
+    
+    .header-content h1 {
+        font-size: 1.5rem;
+    }
+    
+    .header-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .header-subtitle {
+        font-size: 0.85rem;
+        margin-left: 36px;
+    }
+    
+    .stats-container {
+        grid-template-columns: 1fr;
+    }
+
+    #ict-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        max-width: none;
+        width: 100%;
+    }
+
+    #ict-filters .btn-primary {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .table-wrap {
+        max-height: 40vh;
+    }
+
+    #ict-table th, #ict-table td,
+    #ict-defects-table th, #ict-defects-table td {
+        font-size: 0.75rem;
+        padding: 6px 4px;
+    }
+
+    .modal-content {
+        width: 98%;
+        margin: 2% auto;
+        border-radius: 12px;
+    }
+    
+    .modal-header {
+        padding: 16px;
+    }
+    
+    .modal-title-group {
+        gap: 12px;
+    }
+    
+    .modal-icon {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .modal-header h3 {
+        font-size: 1.2rem;
+    }
+    
+    .modal-filters,
+    .modal-body {
+        padding: 16px;
+    }
+}
+
+/* ============================================
+   MODAL DE DEFECTOS
+   ============================================ */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 15000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(6px);
+}
+
+.modal.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: linear-gradient(135deg, var(--ilsan-dark-secondary) 0%, #2d2d3f 100%);
+    margin: 2% auto;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    width: 95%;
+    max-width: 1800px;
+    max-height: 90vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: slideDown 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes slideDown {
+    from { 
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.modal-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--ilsan-accent-blue);
+}
+
+.modal-title-group > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.modal-header h3 {
+    color: var(--ilsan-text-light);
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.modal-subtitle {
+    color: var(--ilsan-text-gray);
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+#modal-barcode {
+    color: var(--ilsan-accent-blue);
+    font-weight: 600;
+}
+
+.close-modal {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: #e74c3c;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.close-modal svg {
+    width: 16px;
+    height: 16px;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.5);
+    transform: rotate(90deg);
+}
+
+.modal-filters {
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.modal-filters .input-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.modal-filters label {
+    color: var(--ilsan-text-light);
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-filters select {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-filters select option {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 8px;
+}
+
+.modal-filters select:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    background-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.modal-body {
+    padding: 16px 20px 20px;
+    max-height: 65vh;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-body .table-wrap {
+    max-height: none;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
