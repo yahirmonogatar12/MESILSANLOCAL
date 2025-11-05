@@ -40,15 +40,16 @@
         /* Modal de trazabilidad */
         .trazabilidad-modal {
             display: none;
-            position: fixed;
-            z-index: 10000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.7);
+            position: fixed !important;
+            z-index: 15000 !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background-color: rgba(0,0,0,0.8) !important;
             align-items: center;
             justify-content: center;
+            backdrop-filter: blur(6px);
         }
         
         .trazabilidad-modal-content {
@@ -60,6 +61,8 @@
             color: #ecf0f1;
             font-family: 'Segoe UI', sans-serif;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            position: relative !important;
+            z-index: 15001 !important;
         }
         
         .trazabilidad-modal h2 {
@@ -484,132 +487,7 @@
     </div>
 </div>
 
-<!-- Modal de Unidades -->
-<div id="modal-unidades" class="trazabilidad-modal">
-    <div class="trazabilidad-modal-content" style="max-width: 500px; background-color: #32323E; border: 2px solid #20688C; color: #ecf0f1;">
-        <h2 style="color: #ecf0f1; text-align: center; margin-bottom: 20px; font-family: 'LG regular', sans-serif; border-bottom: 2px solid #20688C; padding-bottom: 15px;">Especificar Cantidad de Unidades</h2>
-        <p style="color: #bdc3c7; text-align: center; margin-bottom: 25px; font-family: 'LG regular', sans-serif;">¿Cuántas unidades desea imprimir e ingresar al inventario?</p>
-        
-        <div style="margin-bottom: 25px; padding: 20px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
-            <label for="cantidad-unidades" style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 10px; text-align: center;">Cantidad:</label>
-            <input type="number" id="cantidad-unidades" min="1" max="999" value="1" style="width: 100%; padding: 15px; background: #7B8181; border: 2px solid #3498db; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; text-align: center; font-size: 18px; font-weight: bold;">
-        </div>
-        
-        <!-- *** NUEVA SECCIÓN: ASIGNAR LOTE INTERNO *** -->
-        <div style="margin-bottom: 25px; padding: 20px; background-color: #2D363D; border-radius: 8px; border: 2px solid #5A8A5A;">
-            <label style="color: #5A8A5A; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 10px; text-align: center;">Lote Interno</label>
-            <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
-                <input type="checkbox" id="asignar-lote-interno" style="width: 20px; height: 20px; cursor: pointer;">
-                <label for="asignar-lote-interno" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; cursor: pointer; margin: 0;">Generar lote interno automático (DD.MM.YYYY.XXXX)</label>
-            </div>
-            <div id="lote-interno-preview" style="margin-top: 15px; padding: 10px; background-color: #1F2937; border-radius: 4px; border: 1px solid #5A8A5A; color: #5A8A5A; text-align: center; font-family: monospace; display: none;">
-                <small>Formato: </small><span id="lote-interno-preview-text">DD.MM.YYYY.0001</span>
-            </div>
-        </div>
-        
-        <div style="display: flex; gap: 15px; justify-content: center;">
-            <button class="material-btn" onclick="cerrarModalUnidades()" style="background: #3498db; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Cancelar</button>
-            <button class="material-btn" onclick="procesarImpresionUnidades()" style="background: #3498db; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Imprimir e Iniciar Asignación</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Asignación de Lotes -->
-<div id="modal-asignacion-lotes" class="trazabilidad-modal">
-    <div class="trazabilidad-modal-content" style="max-width: 900px; background-color: #32323E; border: 2px solid #20688C; color: #ecf0f1;">
-        <h2 id="titulo-modal-lotes" style="color: #ecf0f1; text-align: center; margin-bottom: 20px; font-family: 'LG regular', sans-serif; border-bottom: 2px solid #20688C; padding-bottom: 15px;">Asignación de Lotes de Proveedor</h2>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
-            <p style="color: #bdc3c7; font-family: 'LG regular', sans-serif; margin: 0;">Asigne el lote de proveedor a cada etiqueta impresa escaneando:</p>
-            <div style="text-align: right;">
-                <span style="color: #28a745; font-weight: bold; font-family: 'LG regular', sans-serif;">Asignadas: <span id="contador-asignadas">0</span></span> / 
-                <span style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif;">Total: <span id="contador-total">0</span></span>
-            </div>
-        </div>
-        
-        <!-- SECCION: Lote Interno (Se muestra si se usa lote interno) -->
-        <div id="seccion-lote-interno" style="display: none; margin-bottom: 20px; padding: 15px; background-color: #27ae60; border-radius: 8px; border: 2px solid #1e8449;">
-            <p style="color: #ffffff; font-family: 'LG regular', sans-serif; margin: 0;"><strong>Lote Interno Asignado:</strong> <span id="lote-interno-display" style="font-size: 1.1em; font-weight: bold;"></span></p>
-        </div>
-        
-        <div style="background: #2D363D; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #20688C;">
-            <!-- SECCION: Lote Proveedor (Se oculta si se usa lote interno) -->
-            <div id="seccion-lote-proveedor">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
-                    <div>
-                        <label style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">1. Escanear Lote de Proveedor:</label>
-                        <input type="text" id="escaneo-lote-proveedor" placeholder="Escanee el código del proveedor..." 
-                               style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #3498db; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px;"
-                               onkeydown="procesarEscaneoLoteProveedor(event)"
-                               oninput="detectarEscaneoLoteAutomatico(event)">
-                    </div>
-                    <div>
-                        <label style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">2. Escanear Etiqueta Impresa:</label>
-                        <input type="text" id="escaneo-etiqueta-impresa" placeholder="Escanee la etiqueta que se imprimió..." 
-                               style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #636779; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px; cursor: not-allowed;"
-                               onkeydown="procesarEscaneoEtiquetaImpresa(event)" 
-                               oninput="detectarEscaneoEtiquetaAutomatico(event)">
-                    </div>
-                </div>
-            </div>
-            
-            <!-- SECCION: Solo Etiquetas cuando se usa lote interno -->
-            <div id="seccion-solo-etiquetas" style="display: none;">
-                <div>
-                    <label style="color: #27ae60; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">Escanear Etiqueta Impresa:</label>
-                    <input type="text" id="escaneo-etiqueta-impresa-solo" placeholder="Escanee la etiqueta que se imprimió..." 
-                           style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #27ae60; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px;"
-                           onkeydown="procesarEscaneoEtiquetaImpresa(event)" 
-                           oninput="detectarEscaneoEtiquetaAutomatico(event)">
-                </div>
-            </div>
-        </div>
-        
-        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #5A7A8A; border-radius: 6px; background-color: #2D363D;">
-            <table style="width: 100%; border-collapse: collapse; font-family: 'LG regular', sans-serif;">
-                <thead style="background: #33334D; position: sticky; top: 0; border-bottom: 2px solid #20688C;">
-                    <tr>
-                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">#</th>
-                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Etiqueta Impresa</th>
-                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Lote Proveedor</th>
-                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Estado</th>
-                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-asignaciones">
-                    <!-- Se llena dinámicamente -->
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="trazabilidad-buttons" style="margin-top: 25px; position: relative; display: flex; justify-content: center; align-items: center;">
-            <button class="material-btn" onclick="finalizarAsignacionLotes()" id="btn-finalizar-asignacion" style="background: #636779; color: white; padding: 12px 24px; border: 2px solid #5A7A8A; border-radius: 6px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: not-allowed; transition: all 0.3s; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);" disabled>Finalizar Asignación</button>
-            <button class="material-btn" onclick="continuarSinAsignar()" style="position: absolute; right: 0; background: #3498db; color: white; padding: 4px 8px; border: 1px solid #2980b9; border-radius: 3px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 10px; box-shadow: 0 1px 3px rgba(52, 152, 219, 0.4); text-transform: uppercase; letter-spacing: 0.3px;">Continuar Sin Asignar</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Advertencia -->
-<div id="modal-advertencia" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center;">
-    <div style="background: #2D363D; border: 2px solid #3498db; border-radius: 8px; padding: 25px; max-width: 500px; margin: 20px; box-shadow: 0 4px 20px rgba(52, 152, 219, 0.3);">
-        <h3 style="color: #3498db; font-family: 'LG regular', sans-serif; font-weight: bold; margin: 0 0 15px 0; text-align: center; font-size: 18px;">ADVERTENCIA</h3>
-        <div id="mensaje-advertencia" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; margin-bottom: 20px; line-height: 1.5; text-align: center;"></div>
-        <div style="display: flex; gap: 15px; justify-content: center;">
-            <button onclick="cerrarModalAdvertencia()" style="background: #636779; color: white; padding: 10px 20px; border: 1px solid #5A7A8A; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">Cancelar</button>
-            <button onclick="confirmarAdvertencia()" style="background: #3498db; color: white; padding: 10px 20px; border: 1px solid #3498db; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">Continuar</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Proceso Completado -->
-<div id="modal-completado" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; justify-content: center; align-items: center;">
-    <div style="background: #2D363D; border: 2px solid #5A8A5A; border-radius: 8px; padding: 25px; max-width: 500px; margin: 20px; box-shadow: 0 4px 20px rgba(90, 138, 90, 0.3);">
-        <h3 style="color: #5A8A5A; font-family: 'LG regular', sans-serif; font-weight: bold; margin: 0 0 15px 0; text-align: center; font-size: 18px;">PROCESO COMPLETADO</h3>
-        <div id="mensaje-completado" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; margin-bottom: 20px; line-height: 1.5; text-align: center;"></div>
-        <div style="display: flex; justify-content: center;">
-            <button onclick="cerrarModalCompletado()" style="background: #5A8A5A; color: white; padding: 10px 20px; border: 1px solid #4a7c59; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">OK</button>
-        </div>
-    </div>
-</div>
+<!-- Los modales se crean dinámicamente en JavaScript (ver createModalsAlmacen() más abajo) -->
 
 <!-- Modal de Carga -->
 <div id="modal-carga" class="loading-modal">
@@ -3261,6 +3139,213 @@ if (document.readyState === 'loading') {
     <!-- Script para QR automático después de guardar - NO MODIFICA FUNCIONES EXISTENTES -->
     <script>
 
+        // ====== CREACIÓN DINÁMICA DE MODALES ======
+        // Siguiendo el patrón documentado para evitar problemas con appendChild
+        
+        function createModalsAlmacen() {
+            // Modal de Unidades
+            if (!document.getElementById('modal-unidades')) {
+                const modalUnidades = document.createElement('div');
+                modalUnidades.id = 'modal-unidades';
+                modalUnidades.className = 'trazabilidad-modal';
+                modalUnidades.style.cssText = `
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.6);
+                    backdrop-filter: blur(6px);
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 15000;
+                `;
+                
+                modalUnidades.innerHTML = `
+                    <div class="trazabilidad-modal-content" style="max-width: 500px; background-color: #32323E; border: 2px solid #20688C; color: #ecf0f1;">
+                        <h2 style="color: #ecf0f1; text-align: center; margin-bottom: 20px; font-family: 'LG regular', sans-serif; border-bottom: 2px solid #20688C; padding-bottom: 15px;">Especificar Cantidad de Unidades</h2>
+                        <p style="color: #bdc3c7; text-align: center; margin-bottom: 25px; font-family: 'LG regular', sans-serif;">¿Cuántas unidades desea imprimir e ingresar al inventario?</p>
+                        
+                        <div style="margin-bottom: 25px; padding: 20px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
+                            <label for="cantidad-unidades" style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 10px; text-align: center;">Cantidad:</label>
+                            <input type="number" id="cantidad-unidades" min="1" max="999" value="1" style="width: 100%; padding: 15px; background: #7B8181; border: 2px solid #3498db; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; text-align: center; font-size: 18px; font-weight: bold;">
+                        </div>
+                        
+                        <div style="margin-bottom: 25px; padding: 20px; background-color: #2D363D; border-radius: 8px; border: 2px solid #5A8A5A;">
+                            <label style="color: #5A8A5A; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 10px; text-align: center;">Lote Interno</label>
+                            <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
+                                <input type="checkbox" id="asignar-lote-interno" style="width: 20px; height: 20px; cursor: pointer;">
+                                <label for="asignar-lote-interno" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; cursor: pointer; margin: 0;">Generar lote interno automático (DD.MM.YYYY.XXXX)</label>
+                            </div>
+                            <div id="lote-interno-preview" style="margin-top: 15px; padding: 10px; background-color: #1F2937; border-radius: 4px; border: 1px solid #5A8A5A; color: #5A8A5A; text-align: center; font-family: monospace; display: none;">
+                                <small>Formato: </small><span id="lote-interno-preview-text">DD.MM.YYYY.0001</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 15px; justify-content: center;">
+                            <button class="material-btn" id="btn-cancelar-unidades" style="background: #3498db; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Cancelar</button>
+                            <button class="material-btn" id="btn-procesar-unidades" style="background: #3498db; color: white; padding: 12px 20px; border: 2px solid #20688C; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s;">Imprimir e Iniciar Asignación</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modalUnidades);
+            }
+            
+            // Modal de Asignación de Lotes
+            if (!document.getElementById('modal-asignacion-lotes')) {
+                const modalAsignacion = document.createElement('div');
+                modalAsignacion.id = 'modal-asignacion-lotes';
+                modalAsignacion.className = 'trazabilidad-modal';
+                modalAsignacion.style.cssText = `
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.6);
+                    backdrop-filter: blur(6px);
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 15000;
+                `;
+                
+                modalAsignacion.innerHTML = `
+                    <div class="trazabilidad-modal-content" style="max-width: 900px; background-color: #32323E; border: 2px solid #20688C; color: #ecf0f1;">
+                        <h2 id="titulo-modal-lotes" style="color: #ecf0f1; text-align: center; margin-bottom: 20px; font-family: 'LG regular', sans-serif; border-bottom: 2px solid #20688C; padding-bottom: 15px;">Asignación de Lotes de Proveedor</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background-color: #2D363D; border-radius: 8px; border: 1px solid #20688C;">
+                            <p style="color: #bdc3c7; font-family: 'LG regular', sans-serif; margin: 0;">Asigne el lote de proveedor a cada etiqueta impresa escaneando:</p>
+                            <div style="text-align: right;">
+                                <span style="color: #28a745; font-weight: bold; font-family: 'LG regular', sans-serif;">Asignadas: <span id="contador-asignadas">0</span></span> / 
+                                <span style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif;">Total: <span id="contador-total">0</span></span>
+                            </div>
+                        </div>
+                        
+                        <div id="seccion-lote-interno" style="display: none; margin-bottom: 20px; padding: 15px; background-color: #27ae60; border-radius: 8px; border: 2px solid #1e8449;">
+                            <p style="color: #ffffff; font-family: 'LG regular', sans-serif; margin: 0;"><strong>Lote Interno Asignado:</strong> <span id="lote-interno-display" style="font-size: 1.1em; font-weight: bold;"></span></p>
+                        </div>
+                        
+                        <div style="background: #2D363D; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #20688C;">
+                            <div id="seccion-lote-proveedor">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                                    <div>
+                                        <label style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">1. Escanear Lote de Proveedor:</label>
+                                        <input type="text" id="escaneo-lote-proveedor" placeholder="Escanee el código del proveedor..." 
+                                               style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #3498db; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label style="color: #3498db; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">2. Escanear Etiqueta Impresa:</label>
+                                        <input type="text" id="escaneo-etiqueta-impresa" placeholder="Escanee la etiqueta que se imprimió..." 
+                                               style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #636779; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px; cursor: not-allowed;">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="seccion-solo-etiquetas" style="display: none;">
+                                <div>
+                                    <label style="color: #27ae60; font-weight: bold; font-family: 'LG regular', sans-serif; display: block; margin-bottom: 8px;">Escanear Etiqueta Impresa:</label>
+                                    <input type="text" id="escaneo-etiqueta-impresa-solo" placeholder="Escanee la etiqueta que se imprimió..." 
+                                           style="width: 100%; padding: 12px; background: #7B8181; border: 2px solid #27ae60; color: #ffffff; font-family: 'LG regular', sans-serif; border-radius: 4px; font-size: 12px;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #5A7A8A; border-radius: 6px; background-color: #2D363D;">
+                            <table style="width: 100%; border-collapse: collapse; font-family: 'LG regular', sans-serif;">
+                                <thead style="background: #33334D; position: sticky; top: 0; border-bottom: 2px solid #20688C;">
+                                    <tr>
+                                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">#</th>
+                                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Etiqueta Impresa</th>
+                                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Lote Proveedor</th>
+                                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Estado</th>
+                                        <th style="padding: 6px; border: 0.5px solid #5A7A8A; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-weight: bold; font-size: 12px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-asignaciones">
+                                    <!-- Se llena dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="trazabilidad-buttons" style="margin-top: 25px; position: relative; display: flex; justify-content: center; align-items: center;">
+                            <button class="material-btn" id="btn-finalizar-asignacion" style="background: #636779; color: white; padding: 12px 24px; border: 2px solid #5A7A8A; border-radius: 6px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: not-allowed; transition: all 0.3s; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);" disabled>Finalizar Asignación</button>
+                            <button class="material-btn" id="btn-continuar-sin-asignar" style="position: absolute; right: 0; background: #3498db; color: white; padding: 4px 8px; border: 1px solid #2980b9; border-radius: 3px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 10px; box-shadow: 0 1px 3px rgba(52, 152, 219, 0.4); text-transform: uppercase; letter-spacing: 0.3px;">Continuar Sin Asignar</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modalAsignacion);
+            }
+            
+            // Modal de Advertencia
+            if (!document.getElementById('modal-advertencia')) {
+                const modalAdvertencia = document.createElement('div');
+                modalAdvertencia.id = 'modal-advertencia';
+                modalAdvertencia.style.cssText = `
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.7);
+                    z-index: 16000;
+                    justify-content: center;
+                    align-items: center;
+                `;
+                
+                modalAdvertencia.innerHTML = `
+                    <div style="background: #2D363D; border: 2px solid #3498db; border-radius: 8px; padding: 25px; max-width: 500px; margin: 20px; box-shadow: 0 4px 20px rgba(52, 152, 219, 0.3);">
+                        <h3 style="color: #3498db; font-family: 'LG regular', sans-serif; font-weight: bold; margin: 0 0 15px 0; text-align: center; font-size: 18px;">ADVERTENCIA</h3>
+                        <div id="mensaje-advertencia" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; margin-bottom: 20px; line-height: 1.5; text-align: center;"></div>
+                        <div style="display: flex; gap: 15px; justify-content: center;">
+                            <button id="btn-cancelar-advertencia" style="background: #636779; color: white; padding: 10px 20px; border: 1px solid #5A7A8A; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">Cancelar</button>
+                            <button id="btn-confirmar-advertencia" style="background: #3498db; color: white; padding: 10px 20px; border: 1px solid #3498db; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">Continuar</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modalAdvertencia);
+            }
+            
+            // Modal de Proceso Completado
+            if (!document.getElementById('modal-completado')) {
+                const modalCompletado = document.createElement('div');
+                modalCompletado.id = 'modal-completado';
+                modalCompletado.style.cssText = `
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.7);
+                    z-index: 10000;
+                    justify-content: center;
+                    align-items: center;
+                `;
+                
+                modalCompletado.innerHTML = `
+                    <div style="background: #2D363D; border: 2px solid #5A8A5A; border-radius: 8px; padding: 25px; max-width: 500px; margin: 20px; box-shadow: 0 4px 20px rgba(90, 138, 90, 0.3);">
+                        <h3 style="color: #5A8A5A; font-family: 'LG regular', sans-serif; font-weight: bold; margin: 0 0 15px 0; text-align: center; font-size: 18px;">PROCESO COMPLETADO</h3>
+                        <div id="mensaje-completado" style="color: #ecf0f1; font-family: 'LG regular', sans-serif; margin-bottom: 20px; line-height: 1.5; text-align: center;"></div>
+                        <div style="display: flex; justify-content: center;">
+                            <button id="btn-cerrar-completado" style="background: #5A8A5A; color: white; padding: 10px 20px; border: 1px solid #4a7c59; border-radius: 4px; font-family: 'LG regular', sans-serif; font-weight: bold; cursor: pointer;">OK</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modalCompletado);
+            }
+        }
+        
+        // Exponer globalmente
+        window.createModalsAlmacen = createModalsAlmacen;
+        
+        // ====== FIN CREACIÓN DINÁMICA DE MODALES ======
+
         
         // Función para mostrar estado de configuración de impresora al cargar
         function mostrarEstadoImpresora() {
@@ -5386,15 +5471,62 @@ if (document.readyState === 'loading') {
                 return;
             }
             
-            document.getElementById('modal-unidades').style.display = 'flex';
-            document.getElementById('cantidad-unidades').focus();
+            createModalsAlmacen();
+            
+            const modal = document.getElementById('modal-unidades');
+            if (!modal) {
+                return;
+            }
+            
+            const btnCancelar = document.getElementById('btn-cancelar-unidades');
+            const btnProcesar = document.getElementById('btn-procesar-unidades');
+            
+            if (btnCancelar) {
+                btnCancelar.onclick = function() {
+                    cerrarModalUnidades();
+                };
+            }
+            
+            if (btnProcesar) {
+                btnProcesar.onclick = function() {
+                    procesarImpresionUnidades();
+                };
+                // Re-habilitar el botón al abrir el modal (por si quedó deshabilitado)
+                btnProcesar.disabled = false;
+                btnProcesar.style.opacity = '1';
+                btnProcesar.style.cursor = 'pointer';
+            }
+            
+            modal.style.cssText = `
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0,0,0,0.6) !important;
+                backdrop-filter: blur(6px) !important;
+                justify-content: center !important;
+                align-items: center !important;
+                z-index: 15000 !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
+            
+            // Enfocar en el campo de cantidad
+            setTimeout(() => {
+                const inputCantidad = document.getElementById('cantidad-unidades');
+                if (inputCantidad) {
+                    inputCantidad.focus();
+                }
+            }, 100);
         }
         
         function cerrarModalUnidades() {
             document.getElementById('modal-unidades').style.display = 'none';
         }
         
-        function procesarImpresionUnidades() {
+        async function procesarImpresionUnidades() {
             const cantidad = parseInt(document.getElementById('cantidad-unidades').value);
             
             if (!cantidad || cantidad < 1 || cantidad > 999) {
@@ -5402,40 +5534,107 @@ if (document.readyState === 'loading') {
                 return;
             }
             
+            // *** CRÍTICO: Deshabilitar botón para evitar clicks múltiples ***
+            const btnProcesar = document.getElementById('btn-procesar-unidades');
+            if (btnProcesar) {
+                btnProcesar.disabled = true;
+                btnProcesar.style.opacity = '0.5';
+                btnProcesar.style.cursor = 'not-allowed';
+            }
+            
             try {
-                // Cerrar modal de unidades
-                cerrarModalUnidades();
+                const checkboxLoteInterno = document.getElementById('asignar-lote-interno');
+                const usarLoteInterno = checkboxLoteInterno ? checkboxLoteInterno.checked : false;
                 
-                // Procesar impresión directamente
-                
-                // Generar códigos consecutivos para las etiquetas
-                etiquetasImpresas = [];
-                // Usar el número de parte como base para el código consecutivo
-                const codigoBase = document.getElementById('numero_parte_lower')?.value || materialExistente.codigo;
-                
-                
-                // Generar todos los códigos usando el contador ya cargado
-                for (let i = 1; i <= cantidad; i++) {
-                    const codigoConsecutivo = generarCodigoConsecutivo(codigoBase, i);
-                    etiquetasImpresas.push({
-                        numero: i,
-                        codigo: codigoConsecutivo,
-                        loteProveedor: null,
-                        asignado: false
-                    });
+                // *** CRÍTICO: Limpiar variables globales para evitar arrastre de estado anterior ***
+                if (!usarLoteInterno) {
+                    window.loteInternoGenerado = null;
+                    window.loteInternoParaGuardar = null;
                 }
                 
-                
-                //  MEJORADO: Abrir modal inmediatamente después de generar códigos
-                abrirModalAsignacionLotes();
-                
-                //  MEJORADO: Imprimir en segundo plano usando función asíncrona
-                imprimirEnSegundoPlano(cantidad);
+                // Si se usa lote interno, obtener el primer secuencial y pre-calcular todos los lotes
+                if (usarLoteInterno) {
+                    if (typeof window.generarLoteInterno === 'function') {
+                        mostrarIndicadorProceso('Generando lotes internos consecutivos...');
+                        
+                        // Obtener el primer lote para extraer el secuencial base
+                        const primerLote = await window.generarLoteInterno();
+                        
+                        // Extraer componentes del lote (ej: "04.11.2025.0003")
+                        const partesLote = primerLote.split('.');
+                        const fechaBase = partesLote.slice(0, 3).join('.'); // "04.11.2025"
+                        const secuencialBase = parseInt(partesLote[3]); // 3
+                        
+                        // Guardar para referencia
+                        window.loteInternoGenerado = primerLote;
+                        window.loteInternoParaGuardar = primerLote;
+                        
+                        ocultarIndicadorProceso();
+                        
+                        cerrarModalUnidades();
+                        
+                        etiquetasImpresas = [];
+                        const codigoBase = document.getElementById('numero_parte_lower')?.value || materialExistente.codigo;
+                        
+                        // Crear etiquetas con lotes pre-calculados
+                        for (let i = 1; i <= cantidad; i++) {
+                            const codigoConsecutivo = generarCodigoConsecutivo(codigoBase, i);
+                            
+                            // Calcular lote consecutivo para esta etiqueta
+                            const secuencial = String(secuencialBase + (i - 1)).padStart(4, '0');
+                            const loteInterno = `${fechaBase}.${secuencial}`;
+                            
+                            etiquetasImpresas.push({
+                                numero: i,
+                                codigo: codigoConsecutivo,
+                                loteProveedor: null,
+                                loteInterno: loteInterno, // Lote pre-calculado
+                                asignado: false,
+                                usandoLoteInterno: usarLoteInterno
+                            });
+                        }
+                        
+                        abrirModalAsignacionLotes();
+                        imprimirEnSegundoPlano(cantidad);
+                    } else {
+                        alert('Error: No se pudo generar el lote interno');
+                        return;
+                    }
+                } else {
+                    // Sin lote interno: crear etiquetas normales y abrir modal de asignación de lotes de proveedor
+                    cerrarModalUnidades();
+                    
+                    etiquetasImpresas = [];
+                    const codigoBase = document.getElementById('numero_parte_lower')?.value || materialExistente.codigo;
+                    
+                    for (let i = 1; i <= cantidad; i++) {
+                        const codigoConsecutivo = generarCodigoConsecutivo(codigoBase, i);
+                        etiquetasImpresas.push({
+                            numero: i,
+                            codigo: codigoConsecutivo,
+                            loteProveedor: null,
+                            asignado: false,
+                            usandoLoteInterno: false
+                        });
+                    }
+                    
+                    // Abrir modal de asignación de lotes de proveedor
+                    abrirModalAsignacionLotes();
+                    imprimirEnSegundoPlano(cantidad);
+                }
                 
             } catch (error) {
                 console.error('Error en impresión:', error);
                 alert('Error al imprimir etiquetas: ' + error.message);
                 ocultarIndicadorProceso();
+                
+                // Re-habilitar botón en caso de error
+                const btnProcesar = document.getElementById('btn-procesar-unidades');
+                if (btnProcesar) {
+                    btnProcesar.disabled = false;
+                    btnProcesar.style.opacity = '1';
+                    btnProcesar.style.cursor = 'pointer';
+                }
             }
         }
         
@@ -5512,7 +5711,105 @@ if (document.readyState === 'loading') {
             }
         }
         
+        // Nueva función: Imprimir y guardar directamente sin modal de asignación
+        async function imprimirYGuardarDirecto(cantidad) {
+            try {
+                mostrarIndicadorProceso('Imprimiendo etiquetas...');
+                
+                // Imprimir todas las etiquetas
+                for (let i = 0; i < etiquetasImpresas.length; i++) {
+                    const etiqueta = etiquetasImpresas[i];
+                    
+                    try {
+                        await imprimirEtiquetaIndividual(etiqueta.codigo, i + 1, cantidad);
+                    } catch (error) {
+                        console.error(`Error imprimiendo etiqueta ${i + 1}:`, error);
+                        // Continuar con las siguientes etiquetas
+                    }
+                }
+                
+                // Después de imprimir, guardar en inventario
+                mostrarIndicadorProceso('Guardando en inventario...');
+                
+                let exitosas = 0;
+                let fallidas = 0;
+                
+                for (const item of etiquetasImpresas) {
+                    try {
+                        await guardarEntradaInventarioDirecto(item);
+                        exitosas++;
+                    } catch (error) {
+                        console.error('Error guardando entrada:', error);
+                        fallidas++;
+                    }
+                }
+                
+                ocultarIndicadorProceso();
+                
+                // Mostrar resultado
+                const mensaje = `<strong>Etiquetas procesadas:</strong> ${cantidad}<br>` +
+                              `<strong>Guardadas exitosamente:</strong> ${exitosas}<br>` +
+                              (fallidas > 0 ? `<strong>Con errores:</strong> ${fallidas}<br><br>` : '<br>') +
+                              `<span style="color: #5A8A5A; font-weight: bold;">Las etiquetas han sido impresas y registradas en el inventario.</span>`;
+                
+                mostrarModalCompletado(mensaje);
+                
+            } catch (error) {
+                console.error('Error en proceso de impresión y guardado:', error);
+                alert('Error al procesar: ' + error.message);
+                ocultarIndicadorProceso();
+            }
+        }
+        
+        // Función auxiliar para guardar entrada sin lote de proveedor
+        async function guardarEntradaInventarioDirecto(item) {
+            try {
+                const formData = {
+                    forma_material: document.getElementById('forma_material').value,
+                    cliente: document.getElementById('cliente').value,
+                    codigo_material_original: materialExistente.codigo,
+                    codigo_material: document.getElementById('codigoMaterialSelect').value,
+                    material_importacion_local: document.getElementById('material_importacion_local').value,
+                    fecha_recibo: document.getElementById('fecha_recibo').value,
+                    fecha_fabricacion: document.getElementById('fecha_fabricacion').value,
+                    cantidad_actual: document.getElementById('cantidad_actual').value,
+                    numero_lote_material: '', // Sin lote de proveedor en modo manual
+                    codigo_material_recibido: item.codigo,
+                    numero_parte: document.getElementById('numero_parte_lower').value,
+                    cantidad_estandarizada: document.getElementById('cantidad_estandarizada').value,
+                    codigo_material_final: document.getElementById('codigo_material_lower').value,
+                    propiedad_material: document.getElementById('propiedad_material').value,
+                    especificacion: document.getElementById('almacen_especificacion_material').value
+                };
+                
+                const response = await fetch('/guardar_control_almacen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al guardar');
+                }
+                
+            } catch (error) {
+                console.error('Error en guardarEntradaInventarioDirecto:', error);
+                throw error;
+            }
+        }
+        
         function abrirModalAsignacionLotes() {
+            // *** CRÍTICO: Crear modales si no existen ***
+            createModalsAlmacen();
+            
             // *** NUEVO: Detectar si se usa lote interno ***
             const usandoLoteInterno = window.loteInternoParaGuardar !== null && window.loteInternoParaGuardar !== undefined;
             
@@ -5568,22 +5865,75 @@ if (document.readyState === 'loading') {
                 campoEtiqueta.readOnly = false;
             }
             
-            console.log('Modal inicializado:', {
-                usandoLoteInterno: usandoLoteInterno,
-                loteInterno: window.loteInternoParaGuardar,
-                etiquetasCount: etiquetasImpresas.length
-            });
-            
-            // Llenar tabla
             actualizarTablaAsignaciones();
             
-            // Mostrar modal
-            document.getElementById('modal-asignacion-lotes').style.display = 'flex';
+            const modal = document.getElementById('modal-asignacion-lotes');
+            if (!modal) {
+                return;
+            }
             
-            // Enfocar automáticamente en el primer campo para comenzar el escaneo
+            const btnFinalizar = document.getElementById('btn-finalizar-asignacion');
+            const btnContinuar = document.getElementById('btn-continuar-sin-asignar');
+            
+            const inputLoteProveedor = document.getElementById('escaneo-lote-proveedor');
+            const inputEtiquetaImpresa = document.getElementById('escaneo-etiqueta-impresa');
+            const inputEtiquetaSolo = document.getElementById('escaneo-etiqueta-impresa-solo');
+            
+            if (inputLoteProveedor) {
+                inputLoteProveedor.onkeydown = procesarEscaneoLoteProveedor;
+                inputLoteProveedor.oninput = detectarEscaneoLoteAutomatico;
+            }
+            
+            if (inputEtiquetaImpresa) {
+                inputEtiquetaImpresa.onkeydown = procesarEscaneoEtiquetaImpresa;
+                inputEtiquetaImpresa.oninput = detectarEscaneoEtiquetaAutomatico;
+            }
+            
+            if (inputEtiquetaSolo) {
+                inputEtiquetaSolo.onkeydown = procesarEscaneoEtiquetaImpresa;
+                inputEtiquetaSolo.oninput = detectarEscaneoEtiquetaAutomatico;
+            }
+            
+            if (btnFinalizar) {
+                btnFinalizar.onclick = function() {
+                    finalizarAsignacionLotes();
+                };
+            }
+            
+            if (btnContinuar) {
+                btnContinuar.onclick = function() {
+                    continuarSinAsignar();
+                };
+            }
+            
+            // Mostrar modal con estilos forzados
+            modal.style.cssText = `
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0,0,0,0.6) !important;
+                backdrop-filter: blur(6px) !important;
+                justify-content: center !important;
+                align-items: center !important;
+                z-index: 15000 !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
+            
             setTimeout(() => {
-                campoLote.focus();
-                campoLote.select();
+                if (usandoLoteInterno) {
+                    const campoSolo = document.getElementById('escaneo-etiqueta-impresa-solo');
+                    if (campoSolo) {
+                        campoSolo.focus();
+                        campoSolo.select();
+                    }
+                } else if (campoLote) {
+                    campoLote.focus();
+                    campoLote.select();
+                }
             }, 300);
         }
         
@@ -5600,7 +5950,7 @@ if (document.readyState === 'loading') {
                 fila.innerHTML = `
                     <td style="padding: 6px; border: 0.5px solid #5A7A8A; text-align: center; color: #ecf0f1; font-family: 'LG regular', sans-serif; font-size: 11px;">${item.numero}</td>
                     <td style="padding: 6px; border: 0.5px solid #5A7A8A; font-family: 'LG regular', sans-serif; font-size: 10px; color: #ecf0f1;">${item.codigo}</td>
-                    <td style="padding: 6px; border: 0.5px solid #5A7A8A; font-family: 'LG regular', sans-serif; font-size: 10px; color: #ecf0f1;">${item.loteProveedor || '-'}</td>
+                    <td style="padding: 6px; border: 0.5px solid #5A7A8A; font-family: 'LG regular', sans-serif; font-size: 10px; color: #ecf0f1;">${item.loteInterno || item.loteProveedor || '-'}</td>
                     <td style="padding: 6px; border: 0.5px solid #5A7A8A; text-align: center;">
                         <span style="color: ${item.asignado ? '#ffffff' : '#C85A5A'}; font-weight: bold; font-family: 'LG regular', sans-serif; font-size: 10px;">
                              ${item.asignado ? 'ASIGNADO' : 'PENDIENTE'}
@@ -5754,7 +6104,7 @@ if (document.readyState === 'loading') {
             campoLote.style.border = '2px solid #e74c3c';
         }
         
-        function procesarEscaneoEtiquetaImpresa(event) {
+        async function procesarEscaneoEtiquetaImpresa(event) {
             if (event.key === 'Enter' || event.key === 'Tab') {
                 event.preventDefault();
                 const etiquetaEscaneada = event.target.value.trim();
@@ -5804,6 +6154,9 @@ if (document.readyState === 'loading') {
                 // Asignar lote automáticamente
                 asignacionesLotes[indiceEtiqueta].loteProveedor = loteProveedor;
                 asignacionesLotes[indiceEtiqueta].asignado = true;
+                
+                // El lote interno YA está pre-calculado y asignado al inicio
+                // No es necesario generar aquí
                 
                 // Actualizar tabla inmediatamente
                 actualizarTablaAsignaciones();
@@ -5876,12 +6229,6 @@ if (document.readyState === 'loading') {
                         alert('¡Todas las etiquetas han sido asignadas! Puede finalizar el proceso.');
                     }, 500);
                 }
-                
-                console.log('Asignación completada:', {
-                    etiqueta: etiquetaEscaneada,
-                    loteProveedor: loteProveedor,
-                    usandoLoteInterno: usandoLoteInterno
-                });
             }
         }
         
@@ -5931,9 +6278,43 @@ if (document.readyState === 'loading') {
         
         // Funciones para el modal de advertencia
         function mostrarModalAdvertencia(mensaje) {
+            // Asegurar que el modal existe (lo crea si no existe)
+            createModalsAlmacen();
+            
             document.getElementById('mensaje-advertencia').innerHTML = mensaje;
             const modal = document.getElementById('modal-advertencia');
-            modal.style.display = 'flex';
+            
+            // Vincular eventos de los botones programáticamente
+            const btnCancelar = document.getElementById('btn-cancelar-advertencia');
+            const btnConfirmar = document.getElementById('btn-confirmar-advertencia');
+            
+            if (btnCancelar) {
+                btnCancelar.onclick = function() {
+                    cerrarModalAdvertencia();
+                };
+            }
+            
+            if (btnConfirmar) {
+                btnConfirmar.onclick = function() {
+                    confirmarAdvertencia();
+                };
+            }
+            
+            // Forzar estilos con !important para asegurar que aparezca encima
+            modal.style.cssText = `
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0,0,0,0.7) !important;
+                z-index: 16000 !important;
+                justify-content: center !important;
+                align-items: center !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
         }
         
         function cerrarModalAdvertencia() {
@@ -5947,9 +6328,35 @@ if (document.readyState === 'loading') {
         
         // Funciones para el modal de proceso completado
         function mostrarModalCompletado(mensaje) {
+            // Asegurar que el modal existe
+            createModalsAlmacen();
+            
             document.getElementById('mensaje-completado').innerHTML = mensaje;
             const modal = document.getElementById('modal-completado');
-            modal.style.display = 'flex';
+            
+            // Vincular evento del botón programáticamente
+            const btnCerrar = document.getElementById('btn-cerrar-completado');
+            if (btnCerrar) {
+                btnCerrar.onclick = function() {
+                    cerrarModalCompletado();
+                };
+            }
+            
+            // Forzar estilos
+            modal.style.cssText = `
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0,0,0,0.7) !important;
+                z-index: 10000 !important;
+                justify-content: center !important;
+                align-items: center !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
         }
         
         function cerrarModalCompletado() {
@@ -5974,7 +6381,14 @@ if (document.readyState === 'loading') {
             }
         }
         
+        let procesandoFinalizacion = false;
+        
         async function finalizarAsignacionLotes(permitirSinAsignar = false) {
+            
+            if (procesandoFinalizacion) {
+                return;
+            }
+            
             const asignadas = asignacionesLotes.filter(item => item.asignado);
             const sinAsignar = asignacionesLotes.filter(item => !item.asignado);
             
@@ -5984,26 +6398,48 @@ if (document.readyState === 'loading') {
             }
             
             try {
+                procesandoFinalizacion = true;
+                
+                const btnFinalizar = document.getElementById('btn-finalizar-asignacion');
+                if (btnFinalizar) {
+                    btnFinalizar.disabled = true;
+                    btnFinalizar.style.opacity = '0.5';
+                }
+                
                 mostrarIndicadorProceso('Guardando entradas en inventario...');
                 
-                // Procesar solo las etiquetas asignadas
+                // GUARDAR CADA ETIQUETA SECUENCIALMENTE
+                // (El lote interno ya fue generado al escanear cada etiqueta)
                 for (const item of asignadas) {
+                    // Guardar inmediatamente
                     await guardarEntradaInventario(item);
+                    
+                    // Delay para asegurar que la BD se actualice
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
                 
                 ocultarIndicadorProceso();
                 
-                // Mostrar resumen
-                const mensaje = `<strong>Etiquetas asignadas y guardadas:</strong> ${asignadas.length}<br>` +
-                              (sinAsignar.length > 0 ? `<strong>Etiquetas no asignadas:</strong> ${sinAsignar.length}<br><br>` : '<br>') +
-                              `<span style="color: #5A8A5A; font-weight: bold;">Las etiquetas asignadas han sido registradas en el inventario.</span>`;
+                const modalAsignacion = document.getElementById('modal-asignacion-lotes');
                 
-                mostrarModalCompletado(mensaje);
+                if (modalAsignacion) {
+                    modalAsignacion.style.display = 'none';
+                }
+                
+                limpiarFormularioCompleto();
+                
+                const mensaje = `Etiquetas guardadas: ${asignadas.length}\n` +
+                              (sinAsignar.length > 0 ? `Etiquetas no asignadas: ${sinAsignar.length}\n\n` : '\n') +
+                              `Las etiquetas han sido registradas en el inventario correctamente.`;
+                
+                alert(mensaje);
                 
             } catch (error) {
                 console.error('Error al finalizar asignaciones:', error);
                 alert('Error al guardar en inventario: ' + error.message);
                 ocultarIndicadorProceso();
+            } finally {
+                procesandoFinalizacion = false;
             }
         }
         
@@ -6013,14 +6449,15 @@ if (document.readyState === 'loading') {
                 const formData = {
                     forma_material: document.getElementById('forma_material').value,
                     cliente: document.getElementById('cliente').value,
-                    codigo_material_original: materialExistente.codigo, // El código original escaneado
+                    codigo_material_original: materialExistente.codigo,
                     codigo_material: document.getElementById('codigoMaterialSelect').value,
                     material_importacion_local: document.getElementById('material_importacion_local').value,
                     fecha_recibo: document.getElementById('fecha_recibo').value,
                     fecha_fabricacion: document.getElementById('fecha_fabricacion').value,
                     cantidad_actual: document.getElementById('cantidad_actual').value,
-                    numero_lote_material: item.loteProveedor, // El lote del proveedor asignado
-                    codigo_material_recibido: item.codigo, // EL CÓDIGO CONSECUTIVO GENERADO
+                    numero_lote_material: item.loteProveedor,
+                    lote_interno: item.loteInterno || null,
+                    codigo_material_recibido: item.codigo,
                     numero_parte: document.getElementById('numero_parte_lower').value,
                     cantidad_estandarizada: document.getElementById('cantidad_estandarizada').value,
                     codigo_material_final: document.getElementById('codigo_material_lower').value,
@@ -6028,13 +6465,6 @@ if (document.readyState === 'loading') {
                     especificacion: document.getElementById('almacen_especificacion_material').value
                 };
                 
-                console.log('Guardando entrada con código consecutivo:', {
-                    codigo_original: materialExistente.codigo,
-                    codigo_consecutivo: item.codigo,
-                    lote_proveedor: item.loteProveedor
-                });
-                
-                // Enviar al mismo endpoint que usa guardarFormulario
                 const response = await fetch('/guardar_control_almacen', {
                     method: 'POST',
                     headers: {
@@ -6945,7 +7375,7 @@ if (document.readyState === 'loading') {
         // ========== NUEVA FUNCIONALIDAD: LOTE INTERNO AUTOMÁTICO ==========
         
         // Variable global para almacenar el lote interno generado
-        let loteInternoGenerado = null;
+        window.loteInternoGenerado = null;
         
         // Función para generar lote interno basado en fecha y secuencial del día
         async function generarLoteInterno() {
@@ -6973,9 +7403,9 @@ if (document.readyState === 'loading') {
                 
                 const data = await response.json();
                 const secuencial = String(data.siguiente_secuencial).padStart(4, '0');
-                loteInternoGenerado = `${fechaFormato}.${secuencial}`;
+                window.loteInternoGenerado = `${fechaFormato}.${secuencial}`;
                 
-                return loteInternoGenerado;
+                return window.loteInternoGenerado;
             } catch (error) {
                 console.error('Error generando lote interno:', error);
                 // Generar lote local si hay error
@@ -6983,10 +7413,13 @@ if (document.readyState === 'loading') {
                 const dia = String(today.getDate()).padStart(2, '0');
                 const mes = String(today.getMonth() + 1).padStart(2, '0');
                 const anio = today.getFullYear();
-                loteInternoGenerado = `${dia}.${mes}.${anio}.0001`;
-                return loteInternoGenerado;
+                window.loteInternoGenerado = `${dia}.${mes}.${anio}.0001`;
+                return window.loteInternoGenerado;
             }
         }
+        
+        // Exponer la función globalmente para que pueda ser usada en procesarImpresionUnidades
+        window.generarLoteInterno = generarLoteInterno;
         
         // Actualizar preview cuando el checkbox cambia
         const checkboxLoteInterno = document.getElementById('asignar-lote-interno');
@@ -6996,33 +7429,15 @@ if (document.readyState === 'loading') {
         if (checkboxLoteInterno) {
             checkboxLoteInterno.addEventListener('change', async function() {
                 if (this.checked) {
-                    // Generar el lote interno
                     const lote = await generarLoteInterno();
                     previewLoteInternoText.textContent = lote;
                     previewLoteInterno.style.display = 'block';
                 } else {
                     previewLoteInterno.style.display = 'none';
-                    loteInternoGenerado = null;
+                    window.loteInternoGenerado = null;
                 }
             });
         }
-        
-        // Modificar la función procesarImpresionUnidades para incluir el lote interno
-        const procesarImpresionUnidadesOriginal = window.procesarImpresionUnidades;
-        window.procesarImpresionUnidades = function() {
-            // Guardar estado del checkbox antes de procesar
-            const usarLoteInterno = document.getElementById('asignar-lote-interno')?.checked || false;
-            
-            // Guardar el lote en la sesión/variable global
-            if (usarLoteInterno && loteInternoGenerado) {
-                window.loteInternoParaGuardar = loteInternoGenerado;
-            } else {
-                window.loteInternoParaGuardar = null;
-            }
-            
-            // Llamar a la función original
-            procesarImpresionUnidadesOriginal.call(this);
-        };
         
         // ========== FIN LOTE INTERNO ==========
 

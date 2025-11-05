@@ -283,6 +283,37 @@
             padding: 0;
         }
         
+        /* 🎨 SCROLLBAR MODERNO */
+        .auditoria-table-container::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        .auditoria-table-container::-webkit-scrollbar-track {
+            background: #1a1b1e;
+            border-radius: 10px;
+        }
+        
+        .auditoria-table-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #4A90E2 0%, #357ABD 100%);
+            border-radius: 10px;
+            border: 2px solid #1a1b1e;
+        }
+        
+        .auditoria-table-container::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #357ABD 0%, #2d6ba8 100%);
+        }
+        
+        .auditoria-table-container::-webkit-scrollbar-corner {
+            background: #1a1b1e;
+        }
+        
+        /* Firefox */
+        .auditoria-table-container {
+            scrollbar-width: thin;
+            scrollbar-color: #4A90E2 #1a1b1e;
+        }
+        
         .table-responsive-custom {
             min-width: 800px;
         }
@@ -483,6 +514,32 @@
             .modal-body {
                 padding: 12px;
                 overflow-y: auto;
+            }
+            
+            /* 🎨 SCROLLBAR MODERNO para modal en móvil */
+            .modal-body::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            .modal-body::-webkit-scrollbar-track {
+                background: #1a1b1e;
+                border-radius: 8px;
+            }
+            
+            .modal-body::-webkit-scrollbar-thumb {
+                background: linear-gradient(180deg, #4A90E2 0%, #357ABD 100%);
+                border-radius: 8px;
+                border: 2px solid #1a1b1e;
+            }
+            
+            .modal-body::-webkit-scrollbar-thumb:hover {
+                background: linear-gradient(180deg, #357ABD 0%, #2d6ba8 100%);
+            }
+            
+            /* Firefox */
+            .modal-body {
+                scrollbar-width: thin;
+                scrollbar-color: #4A90E2 #1a1b1e;
             }
             
             .modal-body .row {

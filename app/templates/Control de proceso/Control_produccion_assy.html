@@ -8,6 +8,43 @@
   <style>
     /* Fallback por si no cargan los estilos */
     body { background: #32323E; color: lightgray; font-family: sans-serif; }
+    
+    /* Animaciones para notificaciones de conflicto */
+    @keyframes slideInRight {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+    
+    /* Estilo para filas con conflicto */
+    tr.plan-row[style*="background-color: rgb(192, 57, 43)"] {
+      animation: pulseRed 2s infinite;
+    }
+    
+    @keyframes pulseRed {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+      }
+    }
   </style>
   </head>
 <body id="plan-container">

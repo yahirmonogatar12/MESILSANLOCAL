@@ -318,6 +318,77 @@ function hideSuccessModal() {
   }
 }
 
+// Función para mostrar modal de advertencia
+function showWarningModal(message) {
+  // Crear modal si no existe
+  let modal = document.getElementById('warning-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'warning-modal';
+    modal.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 16000;
+      justify-content: center;
+      align-items: center;
+    `;
+
+    modal.innerHTML = `
+      <div style="background: #2D363D; border: 2px solid #e74c3c; border-radius: 12px; padding: 30px; color: #E0E0E0; text-align: center; max-width: 500px; margin: 20px; box-shadow: 0 10px 30px rgba(231, 76, 60, 0.3);">
+        <div style="margin-bottom: 15px;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="#e74c3c"/>
+            <path d="M12 8v4M12 16h.01" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 style="margin: 0 0 15px 0; color: #e74c3c; font-family: 'LG regular', sans-serif; font-weight: bold;">ADVERTENCIA</h3>
+        <p id="warning-message" style="margin: 0 0 25px 0; line-height: 1.6; white-space: pre-line; font-family: 'LG regular', sans-serif;"></p>
+        <button id="btn-close-warning" style="background: #e74c3c; color: white; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; font-family: 'LG regular', sans-serif;">
+          Entendido
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  }
+
+  // Vincular evento del botón
+  const btnClose = document.getElementById('btn-close-warning');
+  if (btnClose) {
+    btnClose.onclick = function() {
+      hideWarningModal();
+    };
+  }
+
+  // Actualizar mensaje y mostrar
+  document.getElementById('warning-message').textContent = message;
+  modal.style.cssText = `
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0,0,0,0.7) !important;
+    z-index: 16000 !important;
+    justify-content: center !important;
+    align-items: center !important;
+  `;
+}
+
+// Función para ocultar modal de advertencia
+function hideWarningModal() {
+  const modal = document.getElementById('warning-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
 // Agregar estado de carga a un boton
 function setButtonLoading(buttonId, loading = true, originalText = '') {
   const button = document.getElementById(buttonId);
@@ -690,7 +761,9 @@ async function openEditModal(lotNo) {
     const modal = document.getElementById("plan-editModal");
     const form = document.getElementById("plan-editForm");
 
+    // CRÍTICO: Limpiar tanto display como visibility
     modal.style.display = "flex";
+    modal.style.visibility = "visible";
 
     // Ocultar el formulario mientras carga
     form.style.display = "none";
@@ -720,6 +793,22 @@ async function openEditModal(lotNo) {
     form.wo_code.value = plan.wo_code || "";
     form.po_code.value = plan.po_code || "";
     form.line.value = plan.line;
+
+    // *** NUEVO: Cambiar botón según estado del plan ***
+    const cancelBtn = document.getElementById('plan-cancelBtn');
+    if (cancelBtn) {
+      if (plan.status === 'CANCELADO') {
+        // Plan cancelado - mostrar botón PLANEAR en verde
+        cancelBtn.textContent = 'Planear';
+        cancelBtn.style.background = '#27ae60'; // Verde
+        cancelBtn.dataset.action = 'reactivar';
+      } else {
+        // Plan activo - mostrar botón CANCELAR en rojo
+        cancelBtn.textContent = 'Cancelar plan';
+        cancelBtn.style.background = '#e74c3c'; // Rojo
+        cancelBtn.dataset.action = 'cancelar';
+      }
+    }
 
     // Pequeoa pausa para mejor UX (monimo 500ms para que se vea el loading)
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -759,9 +848,29 @@ async function handleEditPlanSubmit(form) {
     // Cambiar el boton a estado de carga
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = 'Actualizando...';
+      submitBtn.innerHTML = 'Validando...';
       submitBtn.style.backgroundColor = '#6c757d';
       submitBtn.style.cursor = 'not-allowed';
+    }
+
+    // *** VALIDACIÓN: Verificar conflictos de línea/horario ***
+    const conflicto = validarConflictoLineaHorario(data);
+    if (conflicto) {
+      // Mostrar modal de advertencia con el conflicto
+      showWarningModal(conflicto.mensaje);
+      
+      // Re-habilitar botón
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        submitBtn.style.backgroundColor = '';
+        submitBtn.style.cursor = '';
+      }
+      return; // Detener el guardado
+    }
+
+    if (submitBtn) {
+      submitBtn.innerHTML = 'Actualizando...';
     }
 
     showTableLoading('plan-modal-content', 'Buscando Work Order y datos actualizados en RAW...');
@@ -863,31 +972,45 @@ async function handleCancelPlan() {
 
   const lot = form.lot_no.value;
   if (!lot) return;
-  if (!confirm(`Cancelar plan ${lot}?`)) return;
-
+  
   const cancelBtn = document.getElementById("plan-cancelBtn");
-  const originalText = cancelBtn?.textContent || 'Cancelar plan';
+  const action = cancelBtn?.dataset.action || 'cancelar';
+  
+  // Determinar acción y mensaje según el estado
+  const esCancelar = action === 'cancelar';
+  const confirmMsg = esCancelar 
+    ? `¿Cancelar plan ${lot}?` 
+    : `¿Reactivar plan ${lot}?`;
+  const nuevoEstado = esCancelar ? 'CANCELADO' : 'PLAN';
+  const loadingMsg = esCancelar ? 'Cancelando plan...' : 'Reactivando plan...';
+  const successMsg = esCancelar 
+    ? `Plan ${lot} cancelado exitosamente` 
+    : `Plan ${lot} reactivado exitosamente`;
+  
+  if (!confirm(confirmMsg)) return;
+
+  const originalText = cancelBtn?.textContent || (esCancelar ? 'Cancelar plan' : 'Planear');
 
   try {
     // Cambiar el boton a estado de carga
     if (cancelBtn) {
       cancelBtn.disabled = true;
-      cancelBtn.innerHTML = 'Cancelando...';
+      cancelBtn.innerHTML = esCancelar ? 'Cancelando...' : 'Reactivando...';
       cancelBtn.style.backgroundColor = '#6c757d';
       cancelBtn.style.cursor = 'not-allowed';
     }
 
-    showTableLoading('plan-editModal-content', 'Cancelando plan...');
+    showTableLoading('plan-editModal-content', loadingMsg);
 
-    await axios.post("/api/plan/update", { lot_no: lot, status: "CANCELADO" });
+    await axios.post("/api/plan/update", { lot_no: lot, status: nuevoEstado });
 
-    // Mostrar modal de oxito
-    showSuccessModal(`Plan ${lot} cancelado exitosamente`);
+    // Mostrar modal de éxito
+    showSuccessModal(successMsg);
 
     document.getElementById("plan-editModal").style.display = "none";
     loadPlans();
   } catch (error) {
-    alert("Error cancelando plan: " + (error.response?.data?.error || error.message));
+    alert(`Error ${esCancelar ? 'cancelando' : 'reactivando'} plan: ` + (error.response?.data?.error || error.message));
   } finally {
     // Restaurar boton
     if (cancelBtn) {
@@ -898,6 +1021,107 @@ async function handleCancelPlan() {
     }
     hideTableLoading('plan-editModal-content');
   }
+}
+
+/**
+ * Validar que no haya conflictos de horario en la misma línea
+ * Retorna null si no hay conflicto, o un objeto con información del conflicto
+ */
+function validarConflictoLineaHorario(nuevoPlan) {
+  console.log('🔍 Validando conflictos de línea/horario para:', nuevoPlan);
+  
+  // *** CORRECCIÓN: Obtener planes desde visualGroups ***
+  const todosLosPlanes = [];
+  visualGroups.groups.forEach(group => {
+    todosLosPlanes.push(...group.plans);
+  });
+  
+  // Crear array de planes con sus horarios calculados
+  const planesConHorario = [];
+  
+  todosLosPlanes.forEach(plan => {
+    // Excluir el propio plan si es edición y planes cancelados
+    if (plan.lot_no === nuevoPlan.lot_no || plan.status === 'CANCELADO') {
+      return;
+    }
+    
+    // Obtener cálculos del plan (si ya están calculados)
+    const calc = planningCalculations.get(plan.lot_no);
+    
+    planesConHorario.push({
+      lot_no: plan.lot_no,
+      line: plan.line,
+      fecha: plan.working_date,
+      inicio: calc?.startTime || null,
+      model_code: plan.model_code,
+      group_no: calc?.groupNumber || plan.group_no
+    });
+  });
+  
+  console.log(`📊 Comparando contra ${planesConHorario.length} planes activos`);
+  
+  // Para el nuevo plan, necesitamos calcular su hora de inicio
+  // Buscar en qué grupo estaría y calcular su posición
+  let horaInicioNuevoPlan = nuevoPlan.inicio || currentConfig.shiftStart;
+  
+  // Si el nuevo plan tiene target_group o group_no, calcular su inicio basado en ese grupo
+  const grupoDestino = parseInt(nuevoPlan.target_group || nuevoPlan.group_no || 0);
+  if (grupoDestino > 0 && visualGroups.groups && visualGroups.groups.length >= grupoDestino) {
+    // El nuevo plan iría al inicio del grupo (asumiendo que sería el primer plan)
+    // Por simplicidad, usamos el inicio del turno
+    horaInicioNuevoPlan = currentConfig.shiftStart;
+  }
+  
+  console.log(`🕐 Hora de inicio del nuevo plan: ${horaInicioNuevoPlan}`);
+  
+  // Buscar conflictos: misma línea Y misma hora de inicio
+  for (const planExistente of planesConHorario) {
+    // Comparar línea
+    const mismaLinea = planExistente.line === nuevoPlan.line;
+    
+    // Comparar fecha
+    const mismaFecha = planExistente.fecha === (nuevoPlan.fecha || nuevoPlan.working_date);
+    
+    // Comparar hora de inicio (solo si el plan existente tiene hora calculada)
+    const mismoInicio = planExistente.inicio && planExistente.inicio === horaInicioNuevoPlan;
+    
+    if (mismaLinea && mismaFecha && mismoInicio) {
+      console.log('❌ Conflicto detectado:', {
+        planExistente: {
+          lot_no: planExistente.lot_no,
+          line: planExistente.line,
+          fecha: planExistente.fecha,
+          inicio: planExistente.inicio,
+          model_code: planExistente.model_code,
+          group_no: planExistente.group_no
+        },
+        nuevoPlan: {
+          lot_no: nuevoPlan.lot_no || 'NUEVO',
+          line: nuevoPlan.line,
+          fecha: nuevoPlan.fecha || nuevoPlan.working_date,
+          inicio: horaInicioNuevoPlan,
+          model_code: nuevoPlan.model_code,
+          group_no: grupoDestino
+        }
+      });
+      
+      return {
+        planConflicto: planExistente,
+        mensaje: `⚠️ CONFLICTO DETECTADO\n\n` +
+                `Ya existe un plan en la misma línea y horario:\n\n` +
+                `Línea: ${planExistente.line}\n` +
+                `Fecha: ${planExistente.fecha}\n` +
+                `Hora Inicio: ${planExistente.inicio}\n` +
+                `Modelo: ${planExistente.model_code}\n` +
+                `Lot No: ${planExistente.lot_no}\n` +
+                `Grupo: ${planExistente.group_no || 'Sin asignar'}\n\n` +
+                `No se puede crear/editar un plan con el mismo horario en la misma línea.`
+      };
+    }
+  }
+  
+  console.log('✅ No se detectaron conflictos');
+  return null;
 }
 
 /**
@@ -918,8 +1142,27 @@ async function handleNewPlanSubmit(form) {
   try {
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Guardando...';
+      submitBtn.textContent = 'Validando...';
       submitBtn.style.cursor = 'not-allowed';
+    }
+
+    // *** VALIDACIÓN: Verificar conflictos de línea/horario ***
+    const conflicto = validarConflictoLineaHorario(data);
+    if (conflicto) {
+      // Mostrar modal de advertencia con el conflicto
+      showWarningModal(conflicto.mensaje);
+      
+      // Re-habilitar botón
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        submitBtn.style.cursor = '';
+      }
+      return; // Detener el guardado
+    }
+    
+    if (submitBtn) {
+      submitBtn.textContent = 'Guardando...';
     }
 
     // Crear el plan en el backend (ahora incluye group_no)
@@ -1882,6 +2125,220 @@ function renderTableWithVisualGroups(data) {
 
   // Calcular tiempos para grupos
   calculateGroupTimes();
+  
+  // *** NUEVO: Resaltar conflictos de línea/horario ***
+  // Usar setTimeout para asegurar que calculateGroupTimes() termine primero
+  setTimeout(() => {
+    resaltarConflictosLineaHorario();
+  }, 100);
+}
+
+/**
+ * Función para detectar y resaltar visualmente conflictos de línea/horario
+ * Marca en rojo las filas que tienen la misma línea y horario de inicio
+ */
+function resaltarConflictosLineaHorario() {
+  console.log('🔍 Buscando conflictos de línea/horario para resaltar...');
+  
+  // *** CORRECCIÓN: Obtener planes desde visualGroups en lugar de planningData ***
+  const todosLosPlanes = [];
+  visualGroups.groups.forEach(group => {
+    todosLosPlanes.push(...group.plans);
+  });
+  
+  console.log('📊 Total de planes en grupos:', todosLosPlanes.length);
+  console.log('📊 planningCalculations size:', planningCalculations.size);
+  
+  // Crear mapa de planes con su hora de inicio calculada
+  const planesConHorario = [];
+  
+  todosLosPlanes.forEach(plan => {
+    // Obtener cálculos del plan
+    const calc = planningCalculations.get(plan.lot_no);
+    
+    console.log(`Plan ${plan.lot_no}: line=${plan.line}, status=${plan.status}, calc=`, calc);
+    
+    // Solo considerar planes activos (no cancelados) y con hora de inicio calculada
+    if (plan.status !== 'CANCELADO' && calc && calc.startTime && calc.startTime !== '--') {
+      planesConHorario.push({
+        lot_no: plan.lot_no,
+        line: plan.line,
+        fecha: plan.working_date,
+        inicio: calc.startTime,
+        model_code: plan.model_code,
+        group_no: calc.groupNumber
+      });
+      console.log(`  ✅ Agregado: ${plan.lot_no} - ${plan.line} - ${calc.startTime}`);
+    }
+  });
+  
+  console.log(`📊 Analizando ${planesConHorario.length} planes activos con horario calculado`);
+  
+  // Crear mapa de conflictos: "linea-fecha-hora" -> [lot_no1, lot_no2, ...]
+  const conflictosMap = new Map();
+  
+  planesConHorario.forEach(plan => {
+    // Crear clave única: línea + fecha + hora de inicio
+    const clave = `${plan.line}-${plan.fecha}-${plan.inicio}`;
+    
+    if (!conflictosMap.has(clave)) {
+      conflictosMap.set(clave, []);
+    }
+    conflictosMap.get(clave).push({
+      lot_no: plan.lot_no,
+      model_code: plan.model_code,
+      group_no: plan.group_no
+    });
+  });
+  
+  console.log('🗺️ Mapa de conflictos:', Array.from(conflictosMap.entries()));
+  
+  // Identificar claves con conflictos (más de un plan)
+  const clavesConConflicto = Array.from(conflictosMap.entries())
+    .filter(([clave, planes]) => planes.length > 1);
+  
+  if (clavesConConflicto.length === 0) {
+    console.log('✅ No se encontraron conflictos de línea/horario');
+    return;
+  }
+  
+  console.log(`⚠️ Se encontraron ${clavesConConflicto.length} conflictos`);
+  
+  // Obtener todos los lot_no que tienen conflicto
+  const lotNosConConflicto = new Set();
+  clavesConConflicto.forEach(([clave, planes]) => {
+    const lotNos = planes.map(p => p.lot_no);
+    lotNos.forEach(lotNo => lotNosConConflicto.add(lotNo));
+    
+    // Log detallado del conflicto
+    const [linea, fecha, hora] = clave.split('-');
+    console.log(`⚠️ Conflicto en Línea: ${linea}, Fecha: ${fecha}, Hora: ${hora}`);
+    planes.forEach(p => {
+      console.log(`   - Lot: ${p.lot_no}, Modelo: ${p.model_code}, Grupo: ${p.group_no}`);
+    });
+  });
+  
+  console.log('🎯 Lot numbers con conflicto:', Array.from(lotNosConConflicto));
+  
+  // Resaltar filas con conflicto
+  const tbody = document.getElementById('plan-tableBody');
+  if (!tbody) {
+    console.error('❌ No se encontró plan-tableBody');
+    return;
+  }
+  
+  const rows = tbody.querySelectorAll('tr.plan-row');
+  console.log(`📋 Filas encontradas en tabla: ${rows.length}`);
+  let conflictosResaltados = 0;
+  
+  rows.forEach(row => {
+    const lotNo = row.dataset.lot;
+    
+    if (lotNosConConflicto.has(lotNo)) {
+      // Aplicar estilos de conflicto
+      row.style.backgroundColor = '#c0392b'; // Rojo oscuro
+      row.style.borderLeft = '5px solid #e74c3c'; // Borde rojo brillante
+      row.style.boxShadow = '0 0 10px rgba(231, 76, 60, 0.5)';
+      
+      // CRÍTICO: Asegurar que los eventos sigan funcionando
+      row.style.pointerEvents = 'auto';
+      row.style.cursor = 'pointer';
+      
+      // Resaltar específicamente las celdas de línea y hora de inicio
+      const cells = row.querySelectorAll('td');
+      if (cells.length > 0) {
+        // Columna 5: Line
+        if (cells[5]) {
+          cells[5].style.backgroundColor = '#e74c3c';
+          cells[5].style.fontWeight = 'bold';
+          cells[5].style.color = '#ffffff';
+        }
+        // Columna 18: Inicio (hora de inicio)
+        if (cells[18]) {
+          cells[18].style.backgroundColor = '#e74c3c';
+          cells[18].style.fontWeight = 'bold';
+          cells[18].style.color = '#ffffff';
+        }
+      }
+      
+      // Agregar tooltip/title con información del conflicto
+      const planInfo = planesConHorario.find(p => p.lot_no === lotNo);
+      if (planInfo) {
+        const clave = `${planInfo.line}-${planInfo.fecha}-${planInfo.inicio}`;
+        const planesEnConflicto = conflictosMap.get(clave);
+        const otrosPlanes = planesEnConflicto
+          .filter(p => p.lot_no !== lotNo)
+          .map(p => `${p.lot_no} (${p.model_code}, Grupo ${p.group_no})`)
+          .join('\n');
+        
+        row.title = `⚠️ CONFLICTO: Misma línea (${planInfo.line}) y hora (${planInfo.inicio}) que:\n${otrosPlanes}`;
+      }
+      
+      conflictosResaltados++;
+    }
+  });
+  
+  console.log(`✅ ${conflictosResaltados} filas resaltadas con conflicto`);
+  
+  // Mostrar notificación si hay conflictos
+  if (conflictosResaltados > 0) {
+    mostrarNotificacionConflictos(conflictosResaltados);
+  }
+}
+
+/**
+ * Mostrar notificación temporal sobre conflictos encontrados
+ */
+function mostrarNotificacionConflictos(cantidad) {
+  // Remover notificación previa si existe
+  const notificacionPrevia = document.getElementById('notificacion-conflictos');
+  if (notificacionPrevia) {
+    notificacionPrevia.remove();
+  }
+  
+  // Crear notificación
+  const notificacion = document.createElement('div');
+  notificacion.id = 'notificacion-conflictos';
+  notificacion.style.cssText = `
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: #e74c3c;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+    z-index: 9999;
+    font-family: 'LG regular', sans-serif;
+    font-weight: bold;
+    max-width: 300px;
+    animation: slideInRight 0.3s ease;
+  `;
+  
+  notificacion.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" fill="white" opacity="0.3"/>
+        <path d="M12 8v4M12 16h.01" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div style="font-size: 14px;">⚠️ Conflictos Detectados</div>
+        <div style="font-size: 12px; opacity: 0.9; margin-top: 3px;">
+          ${cantidad} plan(es) con misma línea/horario
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(notificacion);
+  
+  // Auto-ocultar después de 8 segundos
+  setTimeout(() => {
+    if (notificacion.parentElement) {
+      notificacion.style.animation = 'slideOutRight 0.3s ease';
+      setTimeout(() => notificacion.remove(), 300);
+    }
+  }, 8000);
 }
 
 // Configurar drag & drop entre grupos y dentro de grupos
@@ -3368,20 +3825,42 @@ function initializePlanEventListeners() {
   });
 
   // ========== EVENT LISTENER DE DOBLE CLICK ==========
-  document.body.addEventListener('dblclick', function (e) {
+  // Remover listener anterior si existe para evitar duplicados
+  if (document.body.dblclickHandler) {
+    document.body.removeEventListener('dblclick', document.body.dblclickHandler);
+  }
+  
+  // Crear y almacenar el handler
+  document.body.dblclickHandler = function (e) {
+    console.log('🖱️ Doble click detectado en:', e.target);
+    
     // Verificar si el doble click fue en una fila de la tabla de planes
     const row = e.target.closest('tr.plan-row');
-    if (!row) return;
+    
+    if (!row) {
+      console.log('❌ No se encontró tr.plan-row');
+      return;
+    }
+    
+    console.log('✅ Fila encontrada:', row);
 
     const lotNo = row.dataset.lot;
+    console.log('📋 Lot No:', lotNo);
+    
     if (lotNo && typeof openEditModal === 'function') {
+      console.log('✅ Abriendo modal de edición para:', lotNo);
       openEditModal(lotNo);
+    } else {
+      console.log('❌ No se puede abrir modal. lotNo:', lotNo, 'openEditModal existe:', typeof openEditModal === 'function');
     }
-  });
+  };
+  
+  // Agregar el listener
+  document.body.addEventListener('dblclick', document.body.dblclickHandler);
 
   // Marcar como inicializado
   document.body.dataset.planListenersAttached = 'true';
-  console.log('? Event listeners configurados correctamente');
+  console.log('✅ Event listeners configurados correctamente');
 }
 
 // Event listeners para nuevos controles

@@ -147,6 +147,32 @@
             overflow-y: auto;
         }
         
+        /* 🎨 SCROLLBAR MODERNO */
+        .usuarios-table-container::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        .usuarios-table-container::-webkit-scrollbar-track {
+            background: #1a1b1e;
+            border-radius: 10px;
+        }
+        
+        .usuarios-table-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #4A90E2 0%, #357ABD 100%);
+            border-radius: 10px;
+            border: 2px solid #1a1b1e;
+        }
+        
+        .usuarios-table-container::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #357ABD 0%, #2d6ba8 100%);
+        }
+        
+        /* Firefox */
+        .usuarios-table-container {
+            scrollbar-width: thin;
+            scrollbar-color: #4A90E2 #1a1b1e;
+        }
+        
         .user-actions {
             display: flex;
             gap: 5px;

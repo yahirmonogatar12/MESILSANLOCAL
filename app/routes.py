@@ -7,6 +7,7 @@ import subprocess
 import threading
 import socket
 import time
+import MySQLdb
 from datetime import datetime, date, time as dt_time, timedelta
 from functools import wraps
 
@@ -2550,20 +2551,40 @@ def obtener_secuencial_lote_interno():
         
         # Conectar a la base de datos
         conn = get_db_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = conn.cursor()
         
         try:
-            # Obtener el máximo secuencial para esta fecha en control_almacen
+            # Obtener el máximo secuencial para esta fecha en control_material_almacen
             # Buscar lotes internos que coincidan con el patrón DD.MM.YYYY.XXXX
-            cursor.execute('''
-                SELECT MAX(CAST(SUBSTRING_INDEX(numero_lote_material, '.', -1) AS UNSIGNED)) as max_seq
-                FROM control_almacen
+            query = '''
+                SELECT numero_lote_material,
+                       CAST(SUBSTRING_INDEX(numero_lote_material, '.', -1) AS UNSIGNED) as seq
+                FROM control_material_almacen
                 WHERE numero_lote_material LIKE %s
-            ''', (f'{fecha}.%',))
+                ORDER BY seq DESC
+                LIMIT 1
+            '''
+            cursor.execute(query, (f'{fecha}.%',))
             
             result = cursor.fetchone()
-            max_seq = result['max_seq'] if result and result['max_seq'] else 0
+            
+            print(f"DEBUG: Consultando secuencial para fecha: {fecha}")
+            print(f"DEBUG: Resultado de query: {result}")
+            
+            # Si get_db_connection devuelve DictCursor, result será dict
+            # Si no, será tupla
+            if result:
+                if isinstance(result, dict):
+                    max_seq = result.get('seq', 0) or 0
+                else:
+                    # Tupla: (numero_lote_material, seq)
+                    max_seq = result[1] if len(result) > 1 and result[1] else 0
+            else:
+                max_seq = 0
+            
             siguiente_secuencial = max_seq + 1
+            
+            print(f"DEBUG: max_seq encontrado: {max_seq}, siguiente: {siguiente_secuencial}")
             
             conn.close()
             return jsonify({'siguiente_secuencial': siguiente_secuencial}), 200
@@ -2576,7 +2597,6 @@ def obtener_secuencial_lote_interno():
     except Exception as e:
         print(f"Error en obtener_secuencial_lote_interno: {str(e)}")
         return jsonify({'error': str(e), 'siguiente_secuencial': 1}), 500
-        return jsonify({'success': False, 'error': f'Error al guardar: {str(e)}'}), 500
 
 @app.route('/consultar_control_almacen', methods=['GET'])
 @login_requerido
