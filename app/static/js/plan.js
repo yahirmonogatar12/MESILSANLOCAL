@@ -1889,7 +1889,7 @@ async function reschedulePendingPlans() {
   const newDateInput = document.getElementById("reschedule-new-date");
 
   if (!newDateInput) {
-    console.error('? Elemento reschedule-new-date no encontrado');
+    console.error('❌ Elemento reschedule-new-date no encontrado');
     alert("Error: Elemento de fecha no disponible");
     return;
   }
@@ -1897,23 +1897,23 @@ async function reschedulePendingPlans() {
   const newDate = newDateInput.value;
 
   if (selectedCheckboxes.length === 0) {
-    alert("?? Seleccione al menos un plan para reprogramar");
+    alert("⚠️ Seleccione al menos un plan para reprogramar");
     return;
   }
 
   if (!newDate) {
-    alert("?? Seleccione la nueva fecha de trabajo");
+    alert("⚠️ Seleccione la nueva fecha de trabajo");
     return;
   }
 
   const lotNos = Array.from(selectedCheckboxes).map(cb => cb.value);
 
-  if (!confirm(`Reprogramar ${lotNos.length} plan(es) para la fecha ${newDate}?`)) {
+  if (!confirm(`¿Crear ${lotNos.length} nuevo(s) plan(es) con la cantidad pendiente para la fecha ${newDate}?\n\nSe creará un nuevo registro con:\n- Mismo número de lote y parte\n- Cantidad pendiente (plan - producido)\n- Nueva fecha de trabajo`)) {
     return;
   }
 
   try {
-    updateRescheduleStatus("Reprogramando planes...");
+    updateRescheduleStatus("Creando nuevos planes...");
 
     // Enviar solicitud de reprogramacion
     const response = await axios.post('/api/plan/reschedule', {
@@ -1921,13 +1921,14 @@ async function reschedulePendingPlans() {
       new_working_date: newDate
     });
 
-    // Mostrar modal de oxito
-    showSuccessModal(`${lotNos.length} plan(es) reprogramado(s) exitosamente para ${newDate}`);
+    // Mostrar modal de éxito con información detallada
+    const created = response.data.created || 0;
+    showSuccessModal(`✅ ${created} nuevo(s) plan(es) creado(s) exitosamente para ${newDate}\n\nCada plan tiene la cantidad pendiente calculada automáticamente.`);
 
     // Recargar la lista de pendientes
     loadPendingPlans();
 
-    // Recargar planes principales si esto en la misma fecha
+    // Recargar planes principales si están en la misma fecha
     const currentStartInput = document.getElementById("filter-start");
     const currentEndInput = document.getElementById("filter-end");
 
@@ -1940,9 +1941,9 @@ async function reschedulePendingPlans() {
     }
 
   } catch (error) {
-    console.error('? Error al reprogramar planes:', error);
-    alert("Error al reprogramar planes: " + (error.response?.data?.error || error.message));
-    updateRescheduleStatus("Error en reprogramacion");
+    console.error('❌ Error al crear nuevos planes:', error);
+    alert("Error al crear nuevos planes: " + (error.response?.data?.error || error.message));
+    updateRescheduleStatus("Error al crear planes");
   }
 }
 

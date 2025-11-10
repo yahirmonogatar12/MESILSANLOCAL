@@ -1085,53 +1085,192 @@ def api_plan_save_sequences():
 @app.route('/api/plan/pending', methods=['GET'])
 @login_requerido
 def api_plan_pending():
+    """
+    Obtener planes con cantidad pendiente (plan_count > produced_count)
+    Filtra por rango de fechas si se proporcionan start y end.
+    """
     try:
         start = request.args.get('start')
         end = request.args.get('end')
+        
         where = ["status <> 'CANCELADO'"]
         params = []
+        
         if start:
-            where.append('DATE(working_date) >= %s'); params.append(start)
+            where.append('DATE(working_date) >= %s')
+            params.append(start)
+            print(f"📅 Filtro START aplicado: {start}")
+        
         if end:
-            where.append('DATE(working_date) <= %s'); params.append(end)
-        # Pendiente: plan_count - input
+            where.append('DATE(working_date) <= %s')
+            params.append(end)
+            print(f"📅 Filtro END aplicado: {end}")
+        
+        # Solo planes con cantidad pendiente
+        where.append('COALESCE(plan_count, 0) > COALESCE(produced_count, 0)')
+        
         sql = (
-            "SELECT lot_no, working_date, part_no, line, COALESCE(plan_count,0) AS plan_count, COALESCE(produced_count,0) AS input, status "
-            "FROM plan_main WHERE " + ' AND '.join(where)
+            "SELECT lot_no, working_date, part_no, line, "
+            "COALESCE(plan_count,0) AS plan_count, "
+            "COALESCE(produced_count,0) AS input, "
+            "status "
+            "FROM plan_main "
+            "WHERE " + ' AND '.join(where) + " "
+            "ORDER BY working_date, lot_no"
         )
+        
+        print(f"🔍 SQL Query: {sql}")
+        print(f"🔍 Parámetros: {tuple(params) if params else 'Sin parámetros'}")
+        
         rows = execute_query(sql, tuple(params) if params else None, fetch='all')
+        
         data = []
         for r in rows:
-            plan = r['plan_count'] if isinstance(r, dict) else r[4]
-            inp = r['input'] if isinstance(r, dict) else r[5]
-            if plan > inp:
-                data.append({
-                    'lot_no': r['lot_no'] if isinstance(r, dict) else r[0],
-                    'working_date': str((r['working_date'] if isinstance(r, dict) else r[1]) or '')[:10],
-                    'part_no': r['part_no'] if isinstance(r, dict) else r[2],
-                    'line': r['line'] if isinstance(r, dict) else r[3],
-                    'plan_count': plan,
-                    'input': inp,
-                    'status': r['status'] if isinstance(r, dict) else r[6]
-                })
+            data.append({
+                'lot_no': r['lot_no'] if isinstance(r, dict) else r[0],
+                'working_date': str((r['working_date'] if isinstance(r, dict) else r[1]) or '')[:10],
+                'part_no': r['part_no'] if isinstance(r, dict) else r[2],
+                'line': r['line'] if isinstance(r, dict) else r[3],
+                'plan_count': r['plan_count'] if isinstance(r, dict) else r[4],
+                'input': r['input'] if isinstance(r, dict) else r[5],
+                'status': r['status'] if isinstance(r, dict) else r[6]
+            })
+        
+        print(f"✅ Planes pendientes encontrados: {len(data)}")
         return jsonify(data)
+        
     except Exception as e:
+        print(f"❌ Error en api_plan_pending: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plan/reschedule', methods=['POST'])
 @login_requerido
 def api_plan_reschedule():
+    """
+    Reprogramar planes pendientes creando NUEVOS planes con la cantidad restante.
+    NO modifica el plan original, sino que crea un nuevo registro con:
+    - Mismo lot_no, part_no
+    - Nueva working_date
+    - plan_count = plan_count_original - produced_count (cantidad pendiente)
+    
+    Ejemplo: Si plan=500 y produced_count=300, el nuevo plan será de 200 unidades.
+    """
     try:
         data = request.get_json() or {}
         lot_nos = data.get('lot_nos', [])
         new_date = data.get('new_working_date')
+        
         if not (lot_nos and new_date):
             return jsonify({'error': 'Parámetros requeridos'}), 400
+        
+        # Obtener los planes originales con su información completa
         placeholders = ','.join(['%s'] * len(lot_nos))
-        sql = f"UPDATE plan_main SET working_date = %s, updated_at = NOW() WHERE lot_no IN ({placeholders})"
-        execute_query(sql, tuple([new_date] + lot_nos))
-        return jsonify({'success': True, 'updated': len(lot_nos)})
+        sql_select = f"""
+            SELECT lot_no, wo_id, wo_code, po_code, working_date, line, model_code, 
+                   part_no, project, process, plan_count, produced_count, ct, uph, routing, 
+                   status, group_no, sequence
+            FROM plan_main 
+            WHERE lot_no IN ({placeholders})
+        """
+        print(f"🔍 Buscando {len(lot_nos)} planes para reprogramar")
+        planes_originales = execute_query(sql_select, tuple(lot_nos), fetch='all')
+        
+        if not planes_originales:
+            print(f"❌ No se encontraron planes para los lot_nos: {lot_nos}")
+            return jsonify({'error': 'No se encontraron planes para reprogramar'}), 404
+        
+        print(f"✅ Se encontraron {len(planes_originales)} planes")
+        nuevos_planes_creados = 0
+        
+        for plan in planes_originales:
+            lot_no_original = plan['lot_no']
+            plan_count_original = plan['plan_count'] or 0
+            produced_count = plan['produced_count'] or 0
+            
+            # Calcular la cantidad pendiente (plan - produced_count)
+            cantidad_pendiente = plan_count_original - produced_count
+            
+            print(f"📦 Plan {lot_no_original}: plan_count={plan_count_original}, produced={produced_count}, pendiente={cantidad_pendiente}")
+            
+            if cantidad_pendiente <= 0:
+                # Si no hay pendiente, no crear nuevo plan
+                print(f"⏭️ Saltando {lot_no_original} - no hay cantidad pendiente")
+                continue
+            
+            # *** GENERAR NUEVO LOT_NO manteniendo trazabilidad del lote original ***
+            # Formato: LOTE-ORIGINAL-XX (secuencial de reprogramaciones)
+            # Ejemplo: ASSYLINE-251017-003 -> ASSYLINE-251017-003-01, ASSYLINE-251017-003-02, etc.
+            
+            # Obtener el lote base (sin sufijo de reprogramación si ya existe)
+            # Si el lote es ASSYLINE-251017-003-01, el base es ASSYLINE-251017-003
+            if lot_no_original.count('-') >= 3:
+                # Ya tiene sufijo de reprogramación, extraer el base
+                parts = lot_no_original.rsplit('-', 1)
+                lot_no_base = parts[0]
+            else:
+                # Es un lote original sin reprogramar
+                lot_no_base = lot_no_original
+            
+            # Buscar cuántas reprogramaciones existen de este lote base
+            sql_count = """
+                SELECT COUNT(*) as count 
+                FROM plan_main 
+                WHERE lot_no LIKE %s AND lot_no <> %s
+            """
+            pattern = f"{lot_no_base}-%"
+            result = execute_query(sql_count, (pattern, lot_no_base), fetch='one')
+            count = result['count'] if result else 0
+            next_seq = count + 1
+            
+            # Generar nuevo lot_no con sufijo secuencial
+            nuevo_lot_no = f"{lot_no_base}-{next_seq:02d}"
+            print(f"🆕 Nuevo lot_no generado: {nuevo_lot_no} (reprogramación #{next_seq} de {lot_no_base})")
+            
+            # Crear nuevo plan con la cantidad pendiente
+            sql_insert = """
+                INSERT INTO plan_main 
+                (lot_no, wo_id, wo_code, po_code, working_date, line, model_code, 
+                 part_no, project, process, plan_count, ct, uph, routing, status, 
+                 group_no, sequence, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            """
+            
+            print(f"➕ Creando nuevo plan {nuevo_lot_no} con {cantidad_pendiente} unidades para {new_date}")
+            
+            execute_query(sql_insert, (
+                nuevo_lot_no,  # NUEVO lot_no con sufijo secuencial
+                plan.get('wo_id'),
+                plan.get('wo_code'),
+                plan.get('po_code'),
+                new_date,  # Nueva fecha de trabajo
+                plan.get('line'),
+                plan.get('model_code'),
+                plan.get('part_no'),
+                plan.get('project'),
+                plan.get('process'),
+                cantidad_pendiente,  # Cantidad pendiente (plan_count - produced_count)
+                plan.get('ct'),
+                plan.get('uph'),
+                plan.get('routing'),
+                'PLAN',  # Estado inicial del nuevo plan
+                plan.get('group_no'),
+                plan.get('sequence')
+            ))
+            
+            print(f"✅ Nuevo plan creado: {nuevo_lot_no} (trazabilidad: {lot_no_original} -> {nuevo_lot_no})")
+            nuevos_planes_creados += 1
+        
+        print(f"🎉 Total de planes creados: {nuevos_planes_creados}")
+        return jsonify({
+            'success': True, 
+            'created': nuevos_planes_creados,
+            'message': f'{nuevos_planes_creados} nuevo(s) plan(es) creado(s) para {new_date}'
+        })
+        
     except Exception as e:
+        print(f"❌ Error en api_plan_reschedule: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plan/export-excel', methods=['POST'])

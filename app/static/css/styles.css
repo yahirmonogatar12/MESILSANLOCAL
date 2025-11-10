@@ -152,8 +152,8 @@
 /* Columna 2: Lot No */
 #plan-table th:nth-child(2),
 #plan-table td:nth-child(2) {
-    width: 120px;
-    min-width: 120px;
+    width: 140px;
+    min-width: 140px;
     white-space: nowrap;
     overflow: visible;
     text-overflow: clip;
