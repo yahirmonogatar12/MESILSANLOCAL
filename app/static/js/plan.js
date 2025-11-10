@@ -1146,19 +1146,36 @@ async function handleNewPlanSubmit(form) {
       submitBtn.style.cursor = 'not-allowed';
     }
 
-    // *** VALIDACIÓN: Verificar conflictos de línea/horario ***
+    // *** NUEVA LÓGICA: Si hay conflicto, mover al final del grupo con conflicto ***
     const conflicto = validarConflictoLineaHorario(data);
     if (conflicto) {
-      // Mostrar modal de advertencia con el conflicto
-      showWarningModal(conflicto.mensaje);
+      console.log('⚠️ Conflicto detectado, buscando grupo del plan conflictivo...');
       
-      // Re-habilitar botón
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        submitBtn.style.cursor = '';
+      // Buscar en qué grupo está el plan con conflicto
+      const planConflictivo = conflicto.planConflicto;
+      let grupoDestino = null;
+      
+      // Buscar el grupo del plan conflictivo en visualGroups
+      for (let i = 0; i < visualGroups.groups.length; i++) {
+        const group = visualGroups.groups[i];
+        const planEnGrupo = group.plans.find(p => p.lot_no === planConflictivo.lot_no);
+        if (planEnGrupo) {
+          grupoDestino = i + 1; // Los grupos son 1-indexed
+          console.log(`✅ Plan conflictivo ${planConflictivo.lot_no} encontrado en GRUPO ${grupoDestino}`);
+          break;
+        }
       }
-      return; // Detener el guardado
+      
+      if (grupoDestino) {
+        // Asignar el nuevo plan al final de ese grupo
+        data.group_no = grupoDestino;
+        console.log(`📍 Asignando nuevo plan al GRUPO ${grupoDestino} (al final del grupo con conflicto)`);
+        
+        // Mostrar notificación informativa (no bloqueante)
+        console.log(`ℹ️ Plan agregado al final del GRUPO ${grupoDestino} debido a conflicto de horario en línea ${data.line}`);
+      } else {
+        console.warn('⚠️ No se encontró el grupo del plan conflictivo, continuando sin asignación automática');
+      }
     }
     
     if (submitBtn) {
