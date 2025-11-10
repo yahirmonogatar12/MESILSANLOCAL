@@ -7,7 +7,15 @@ import subprocess
 import threading
 import socket
 import time
-import MySQLdb
+
+# Intentar importar MySQLdb, si no está disponible usar PyMySQL como alternativa
+try:
+    import MySQLdb
+except ImportError:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+    import MySQLdb
+
 from datetime import datetime, date, time as dt_time, timedelta
 from functools import wraps
 

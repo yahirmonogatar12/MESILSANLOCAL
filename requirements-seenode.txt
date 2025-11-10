@@ -6,7 +6,9 @@ Flask>=2.3.0,<3.0.0
 Werkzeug>=2.3.0,<3.0.0
 
 # Base de datos
+# PyMySQL como fallback
 pymysql>=1.0.0
+# mysqlclient para mejor rendimiento en Seenode
 mysqlclient>=2.2.0
 gunicorn==21.2.0
 
