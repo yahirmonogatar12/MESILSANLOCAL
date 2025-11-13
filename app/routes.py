@@ -1581,13 +1581,14 @@ def listar_modelos_bom():
 @login_requerido
 def listar_bom():
     """
-    Lista los registros de BOM, opcionalmente filtrados por modelo
+    Lista los registros de BOM, opcionalmente filtrados por modelo y classification
     """
     try:
         data = request.get_json()
         modelo = data.get('modelo', 'todos') if data else 'todos'
+        classification = data.get('classification', None) if data else None
         
-        bom_data = listar_bom_por_modelo(modelo)
+        bom_data = listar_bom_por_modelo(modelo, classification)
         return jsonify(bom_data)
         
     except Exception as e:
@@ -1683,42 +1684,44 @@ def buscar_material_por_numero_parte():
         print(f"❌ ERROR en buscar_material_por_numero_parte (MySQL): {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def exportar_bom_a_excel(modelo=None):
+def exportar_bom_a_excel(modelo=None, classification=None):
     """
-    Función auxiliar para exportar datos de BOM a Excel
+    Función auxiliar para exportar datos de BOM a Excel con filtros opcionales
     """
     try:
         import tempfile
         import os
         
-        # Construir la consulta SQL
+        # Construir la consulta SQL con filtros
+        base_query = """
+            SELECT modelo, codigo_material, numero_parte, side, tipo_material, 
+                   classification, especificacion_material, vender, cantidad_total, 
+                   cantidad_original, ubicacion, posicion_assy, material_sustituto, material_original, 
+                   registrador, fecha_registro
+            FROM bom 
+        """
+        
+        where_clauses = []
+        params = []
+        
         if modelo:
-            query = """
-            SELECT modelo, codigo_material, numero_parte, side, tipo_material, 
-                   classification, especificacion_material, vender, cantidad_total, 
-                   cantidad_original, ubicacion, material_sustituto, material_original, 
-                   registrador, fecha_registro
-            FROM bom 
-            WHERE modelo = %s
-            ORDER BY modelo, codigo_material
-            """
-            params = (modelo,)
-        else:
-            query = """
-            SELECT modelo, codigo_material, numero_parte, side, tipo_material, 
-                   classification, especificacion_material, vender, cantidad_total, 
-                   cantidad_original, ubicacion, material_sustituto, material_original, 
-                   registrador, fecha_registro
-            FROM bom 
-            ORDER BY modelo, codigo_material
-            """
-            params = ()
+            where_clauses.append("modelo = %s")
+            params.append(modelo)
+        
+        if classification and classification != 'TODOS':
+            where_clauses.append("classification = %s")
+            params.append(classification)
+        
+        if where_clauses:
+            base_query += " WHERE " + " AND ".join(where_clauses)
+        
+        base_query += " ORDER BY modelo, codigo_material"
         
         # Ejecutar la consulta
-        result = execute_query(query, params, fetch='all')
+        result = execute_query(base_query, tuple(params) if params else (), fetch='all')
         
         if not result:
-            print(f"No se encontraron datos de BOM para exportar")
+            print(f"No se encontraron datos de BOM para exportar (modelo={modelo}, classification={classification})")
             return None
         
         # Crear DataFrame
@@ -1737,6 +1740,7 @@ def exportar_bom_a_excel(modelo=None):
             'cantidad_total': 'Cantidad Total',
             'cantidad_original': 'Cantidad Original',
             'ubicacion': 'Ubicación',
+            'posicion_assy': 'Posición ASSY',
             'material_sustituto': 'Material Sustituto',
             'material_original': 'Material Original',
             'registrador': 'Registrador',
@@ -1780,26 +1784,36 @@ def exportar_bom_a_excel(modelo=None):
         
     except Exception as e:
         print(f"Error en exportar_bom_a_excel: {e}")
+        traceback.print_exc()
         return None
 
 @app.route('/exportar_excel_bom', methods=['GET'])
 @login_requerido
 def exportar_excel_bom():
     """
-    Exporta datos de BOM a un archivo Excel, filtrados por modelo si se especifica
+    Exporta datos de BOM a un archivo Excel, filtrados por modelo y classification
     """
     try:
-        # Obtener el modelo del parámetro de consulta
+        # Obtener parámetros de consulta
         modelo = request.args.get('modelo', None)
+        classification = request.args.get('classification', None)
         
         if modelo and modelo.strip() and modelo != 'todos':
-            # Exportar solo el modelo específico
-            archivo_temp = exportar_bom_a_excel(modelo)
-            download_name = f'bom_export_{modelo}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+            # Exportar modelo específico con filtro opcional de classification
+            archivo_temp = exportar_bom_a_excel(modelo, classification)
+            
+            # Construir nombre del archivo
+            nombre_base = f'bom_export_{modelo}'
+            if classification and classification != 'TODOS':
+                nombre_base += f'_{classification}'
+            download_name = f'{nombre_base}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         else:
-            # Exportar solo el modelo específico
-            archivo_temp = exportar_bom_a_excel()
-            download_name = f'bom_export_todos_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+            # Exportar todos con filtro opcional
+            archivo_temp = exportar_bom_a_excel(None, classification)
+            nombre_base = 'bom_export_todos'
+            if classification and classification != 'TODOS':
+                nombre_base += f'_{classification}'
+            download_name = f'{nombre_base}_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
         
         if archivo_temp:
             return send_file(
@@ -1813,6 +1827,154 @@ def exportar_excel_bom():
             
     except Exception as e:
         print(f"Error al exportar BOM: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/bom/update', methods=['POST'])
+@login_requerido
+def api_bom_update():
+    """
+    Actualiza un registro de BOM existente
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No se recibieron datos'}), 400
+        
+        # Validar campos requeridos
+        codigo_material = data.get('codigoMaterial')
+        modelo = data.get('modelo')
+        
+        if not codigo_material or not modelo:
+            return jsonify({'error': 'Código de material y modelo son requeridos'}), 400
+        
+        # Construir query de actualización
+        campos_actualizables = {
+            'numero_parte': data.get('numeroParte'),
+            'side': data.get('side'),
+            'tipo_material': data.get('tipoMaterial'),
+            'classification': data.get('classification'),
+            'especificacion_material': data.get('especificacionMaterial'),
+            'vender': data.get('vender'),
+            'cantidad_total': data.get('cantidadTotal'),
+            'cantidad_original': data.get('cantidadOriginal'),
+            'ubicacion': data.get('ubicacion'),
+            'posicion_assy': data.get('posicionAssy')
+        }
+        
+        # Filtrar campos que no son None
+        campos_update = {k: v for k, v in campos_actualizables.items() if v is not None}
+        
+        if not campos_update:
+            return jsonify({'error': 'No hay campos para actualizar'}), 400
+        
+        # Construir query SQL
+        set_clauses = []
+        values = []
+        
+        for campo, valor in campos_update.items():
+            set_clauses.append(f"`{campo}` = %s")
+            values.append(valor)
+        
+        # Agregar condiciones WHERE
+        values.append(codigo_material)
+        values.append(modelo)
+        
+        query = f"""
+            UPDATE bom
+            SET {', '.join(set_clauses)}
+            WHERE codigo_material = %s AND modelo = %s
+        """
+        
+        print(f"🔄 Actualizando BOM: codigo_material={codigo_material}, modelo={modelo}")
+        print(f"📝 Query: {query}")
+        print(f"📊 Values: {values}")
+        
+        # Ejecutar actualización usando execute_query
+        result = execute_query(query, tuple(values), fetch=None)
+        
+        # execute_query retorna el cursor o None
+        if result is not None:
+            return jsonify({
+                'success': True,
+                'message': 'BOM actualizado exitosamente'
+            }), 200
+        else:
+            return jsonify({
+                'success': True,
+                'message': 'BOM actualizado (sin cambios o no encontrado)'
+            }), 200
+        
+    except Exception as e:
+        print(f"Error al actualizar BOM: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/bom/update-posiciones-assy', methods=['POST'])
+def api_bom_update_posiciones_assy():
+    """Actualiza múltiples posiciones ASSY en el BOM de forma optimizada"""
+    try:
+        data = request.get_json()
+        print(f"🔄 Actualizando posiciones ASSY masivamente")
+        
+        if not data or 'cambios' not in data:
+            return jsonify({'error': 'No se proporcionaron cambios'}), 400
+        
+        cambios = data.get('cambios', [])
+        if not cambios:
+            return jsonify({'error': 'Lista de cambios vacía'}), 400
+        
+        print(f"📦 Total de cambios a procesar: {len(cambios)}")
+        
+        # Usar executemany para actualizar todo en una sola transacción
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        try:
+            # Preparar datos para executemany
+            valores = []
+            for cambio in cambios:
+                codigo_material = cambio.get('codigoMaterial')
+                modelo = cambio.get('modelo')
+                posicion_assy = cambio.get('posicionAssy', '')
+                
+                if codigo_material and modelo:
+                    valores.append((posicion_assy, codigo_material, modelo))
+            
+            if not valores:
+                return jsonify({'error': 'No hay valores válidos para actualizar'}), 400
+            
+            # Ejecutar todas las actualizaciones en una sola transacción
+            query = """
+                UPDATE bom 
+                SET posicion_assy = %s
+                WHERE codigo_material = %s AND modelo = %s
+            """
+            
+            cursor.executemany(query, valores)
+            connection.commit()
+            
+            actualizados = cursor.rowcount
+            print(f"✅ Total actualizado en una transacción: {actualizados} registros")
+            
+            cursor.close()
+            connection.close()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Se actualizaron {actualizados} posiciones ASSY correctamente',
+                'actualizados': actualizados
+            }), 200
+            
+        except Exception as e:
+            connection.rollback()
+            cursor.close()
+            connection.close()
+            raise e
+        
+    except Exception as e:
+        print(f"❌ Error al actualizar posiciones ASSY: {e}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/cargar_template_test', methods=['POST'])

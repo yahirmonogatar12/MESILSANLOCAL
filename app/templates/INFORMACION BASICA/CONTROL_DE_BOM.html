@@ -18,6 +18,26 @@
             </div>
         </div>
         
+        <!-- Filtro por Classification -->
+        <div class="bom-filter-container" style="display: flex; align-items: center; gap: 6px; margin-left: 15px;">
+            <label style="font-weight: 600; color: #ffffff; font-size: 0.85em;">Filtrar:</label>
+            <select id="bomClassificationFilter" class="bom-classification-filter" style="
+                padding: 4px 8px;
+                border: 2px solid #3498db;
+                border-radius: 5px;
+                font-size: 0.65em;
+                background: white;
+                cursor: pointer;
+                transition: all 0.2s;
+                min-width: 90px;
+            ">
+                <option value="TODOS">TODOS</option>
+                <option value="IMD">IMD</option>
+                <option value="SMD">SMD</option>
+                <option value="MAIN">MAIN</option>
+            </select>
+        </div>
+        
         <button class="bom-btn consultar" id="btnConsultarBOM">
             Consultar
         </button>
@@ -27,8 +47,8 @@
         <button class="bom-btn eliminar" id="btnEliminarBOM">
             Eliminar
         </button>
-        <button class="bom-btn sustituir" id="btnSustitutoBOM">
-            Registro de mat. sustituto
+        <button class="bom-btn sustituir" id="btnRegistroPosicion">
+            Registro de Posición
         </button>
         <button class="bom-btn exportar" id="btnExportarExcelBOM">
             Exportar al excel
@@ -55,6 +75,7 @@
                     <th class="col-cantidad-total" title="Cantidad total requerida">Cantidad total</th>
                     <th class="col-cantidad-original" title="Cantidad original especificada">Cantidad original</th>
                     <th class="col-ubicacion" title="Ubicación física del material">Ubicación</th>
+                    <th class="col-posicion-assy" title="Posición en el ensamble ASSY">Posición ASSY</th>
                     <th class="col-material-sustituto" title="Estado de material sustituto (solo lectura)">Material sustituto</th>
                     <th class="col-material-original" title="Estado de material original (solo lectura)">Material original</th>
                     <th class="col-registrador" title="Usuario que registró el elemento">Registrador</th>
@@ -92,6 +113,8 @@
     </div>
 </div>
 
+<!-- Los modales se crean dinámicamente en JavaScript -->
+
 <script>
     // ========== EVENT DELEGATION PARA AJAX ==========
     function initializeControlBOMEventListeners() {
@@ -125,10 +148,10 @@
                     return;
                 }
                 
-                // Botón Sustituto
-                if (target.id === 'btnSustitutoBOM' || target.closest('#btnSustitutoBOM')) {
+                // Botón Registro de Posición
+                if (target.id === 'btnRegistroPosicion' || target.closest('#btnRegistroPosicion')) {
                     e.preventDefault();
-                    mostrarSustitutoBOM();
+                    abrirModalRegistroPosicion();
                     return;
                 }
                 
@@ -153,6 +176,42 @@
                     seleccionarModelo(modelo);
                     return;
                 }
+                
+                // Cerrar panel de edición
+                if (target.id === 'closeBOMEditPanel' || target.id === 'bomEditPanelOverlay') {
+                    closeBOMEditPanel();
+                    return;
+                }
+                
+                // Guardar cambios del panel
+                if (target.id === 'saveBOMChanges') {
+                    e.preventDefault();
+                    saveBOMEdit();
+                    return;
+                }
+                
+                // Cerrar modal de posición
+                if (target.id === 'btnCerrarModalPosicion' || target.id === 'btnCancelarModalPosicion') {
+                    e.preventDefault();
+                    cerrarModalRegistroPosicion();
+                    return;
+                }
+                
+                // Guardar posiciones ASSY
+                if (target.id === 'btnGuardarPosicionesAssy') {
+                    e.preventDefault();
+                    guardarPosicionesAssy();
+                    return;
+                }
+            });
+            
+            // Event delegation para doble click en filas de la tabla
+            document.body.addEventListener('dblclick', function(e) {
+                const row = e.target.closest('tr[data-bom-id]');
+                if (row) {
+                    const bomData = JSON.parse(row.dataset.bomData || '{}');
+                    openBOMEditPanel(bomData);
+                }
             });
             
             // Event delegation para input en el buscador
@@ -174,6 +233,11 @@
                 if (e.target.id === 'importarExcelBOM') {
                     importarExcelBOM();
                 }
+                
+                // Filtro por classification
+                if (e.target.id === 'bomClassificationFilter') {
+                    aplicarFiltroClassification();
+                }
             });
             
             document.body.dataset.controlBOMListenersAttached = 'true';
@@ -185,6 +249,9 @@
     
     // Exponer función de inicialización globalmente
     window.initializeControlBOMEventListeners = initializeControlBOMEventListeners;
+
+    // Cache para datos de BOM
+    let bomDataCache = [];
 
     function cargarDatosBOMEnTabla(datos) {
         // Si se pasa un string (modelo), cargar desde servidor
@@ -199,20 +266,33 @@
                 return;
             }
             
+            // Obtener filtro de classification
+            const classificationFilter = document.getElementById('bomClassificationFilter').value;
+            
+            // Construir body de la petición
+            const requestBody = { modelo: modelo };
+            if (classificationFilter && classificationFilter !== 'TODOS') {
+                requestBody.classification = classificationFilter;
+            }
+            
+            console.log('📡 Consultando BOM con filtros:', requestBody);
             
             fetch('/listar_bom', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ modelo: modelo })
+                body: JSON.stringify(requestBody)
             })
             .then(response => response.json())
             .then(data => {
                 
                 // El servidor devuelve directamente un array
                 if (Array.isArray(data)) {
+                    // Guardar en cache
+                    bomDataCache = data;
                     mostrarDatosEnTabla(data);
+                    console.log(`✅ Cargados ${data.length} registros de BOM`);
                 } else if (data.error) {
                     console.error('❌ Error del servidor:', data.error);
                     showCustomAlert('Error al cargar datos de BOM: ' + data.error);
@@ -229,7 +309,25 @@
         }
         
         // Si se pasan datos directamente, mostrarlos
+        bomDataCache = datos;
         mostrarDatosEnTabla(datos);
+    }
+
+    function aplicarFiltroClassification() {
+        const filtro = document.getElementById('bomClassificationFilter').value;
+        const modeloSeleccionado = document.getElementById('bomModeloSearch').value;
+        
+        console.log('🔍 Aplicando filtro:', filtro);
+        
+        // Verificar si hay un modelo seleccionado
+        if (!modeloSeleccionado || modeloSeleccionado.trim() === '' || modeloSeleccionado === 'todos') {
+            console.warn('⚠️ No hay modelo seleccionado, no se puede filtrar');
+            showCustomAlert('Por favor seleccione un modelo antes de aplicar filtros');
+            return;
+        }
+        
+        // Reconsultar desde el servidor con el filtro
+        cargarDatosBOMEnTabla(modeloSeleccionado);
     }
 
     function mostrarDatosEnTabla(datos) {
@@ -237,7 +335,7 @@
         tbody.innerHTML = '';
         
         if (!datos || datos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="15" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
             return;
         }
         
@@ -246,6 +344,9 @@
             
             // Agregar el modelo como data attribute para el filtro
             row.dataset.modelo = item.modelo || '';
+            // Agregar ID de BOM para identificación en edición
+            row.dataset.bomId = item.id || index;
+            row.dataset.bomData = JSON.stringify(item);
             
             // Función para limpiar decimales innecesarios en números
             function limpiarNumero(valor) {
@@ -302,6 +403,7 @@
                 ${crearCelda(limpiarNumero(item.cantidadTotal || '0'))}
                 ${crearCelda(limpiarNumero(item.cantidadOriginal || '0'))}
                 ${crearCelda(item.ubicacion)}
+                ${crearCelda(item.posicionAssy || '')}
                 ${crearCeldaCheckbox(item.materialSustituto, index, 'materialSustituto')}
                 ${crearCeldaCheckbox(item.materialOriginal, index, 'materialOriginal')}
                 ${crearCelda(item.registrador)}
@@ -338,10 +440,23 @@
                 return;
             }
             
-            alert(`Generando archivo Excel de BOM para modelo: ${modeloSeleccionado}, por favor espere...`);
+            // Obtener filtro de classification
+            const classificationFilter = document.getElementById('bomClassificationFilter').value;
             
-            // Enviar el modelo como parámetro en la URL
-            fetch(`/exportar_excel_bom?modelo=${encodeURIComponent(modeloSeleccionado)}`, {
+            let mensaje = `Generando archivo Excel de BOM para modelo: ${modeloSeleccionado}`;
+            if (classificationFilter && classificationFilter !== 'TODOS') {
+                mensaje += ` - Filtro: ${classificationFilter}`;
+            }
+            alert(mensaje + ', por favor espere...');
+            
+            // Construir URL con parámetros
+            let url = `/exportar_excel_bom?modelo=${encodeURIComponent(modeloSeleccionado)}`;
+            if (classificationFilter && classificationFilter !== 'TODOS') {
+                url += `&classification=${encodeURIComponent(classificationFilter)}`;
+            }
+            
+            // Enviar solicitud
+            fetch(url, {
                 method: 'GET',
             })
             .then(response => {
@@ -351,17 +466,24 @@
                 return response.blob();
             })
             .then(blob => {
-                const url = window.URL.createObjectURL(blob);
+                const urlBlob = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.href = url;
-                link.download = `bom_export_${modeloSeleccionado}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
+                link.href = urlBlob;
+                
+                let filename = `bom_export_${modeloSeleccionado}`;
+                if (classificationFilter && classificationFilter !== 'TODOS') {
+                    filename += `_${classificationFilter}`;
+                }
+                filename += `_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
+                
+                link.download = filename;
                 
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 
-                window.URL.revokeObjectURL(url);
-                alert(`Archivo Excel de BOM para modelo ${modeloSeleccionado} descargado exitosamente`);
+                window.URL.revokeObjectURL(urlBlob);
+                alert(`Archivo Excel de BOM descargado exitosamente`);
             })
             .catch(error => {
                 console.error('Error al exportar Excel de BOM:', error);
@@ -870,11 +992,14 @@
     window.showLoadingModal = function() {
         const modal = document.getElementById('loadingModal');
         modal.style.display = 'flex';
+        modal.style.zIndex = '10001'; // Más alto que el modal de posición (10000)
         updateLoadingProgress(0, "Iniciando...", "");
     }
 
     window.hideLoadingModal = function() {
-        document.getElementById('loadingModal').style.display = 'none';
+        const modal = document.getElementById('loadingModal');
+        modal.style.display = 'none';
+        modal.style.zIndex = '2147483647'; // Restaurar z-index original
     }
 
     window.updateLoadingProgress = function(percentage, message, timeEstimate) {
@@ -929,12 +1054,656 @@
         const dropdown = document.getElementById('bomDropdownList');
         if (dropdown) dropdown.style.display = 'none';
         
+        // Cerrar panel de edición si está abierto
+        closeBOMEditPanel();
+        
         // Resetear flag de listeners para permitir reinicialización
         if (document.body.dataset.controlBOMListenersAttached) {
             delete document.body.dataset.controlBOMListenersAttached;
         }
         
         console.log('✅ Limpieza de Control BOM completada');
+    }
+
+    // ========== PANEL DESLIZANTE DE EDICIÓN ==========
+    function openBOMEditPanel(bomData) {
+        console.log('📝 Abriendo panel de edición BOM', bomData);
+        
+        // Remover panel existente si hay uno
+        closeBOMEditPanel();
+        
+        // Crear overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'bomEditPanelOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(2px);
+            z-index: 9998;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        // Crear panel deslizante
+        const panel = document.createElement('div');
+        panel.id = 'bomEditPanel';
+        panel.style.cssText = `
+            position: fixed;
+            top: 0;
+            right: -550px;
+            width: 550px;
+            height: 100%;
+            background-color: #32323E;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            border-left: 2px solid #20688C;
+            z-index: 9999;
+            overflow-y: auto;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        // Crear contenido del panel
+        const panelContent = document.createElement('div');
+        panelContent.style.cssText = `
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        `;
+        
+        // Header del panel
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #20688C;
+        `;
+        header.innerHTML = `
+            <h3 style="margin: 0; color: #ecf0f1; font-size: 1.3em; font-weight: 600; font-family: 'LG regular', sans-serif;">
+                <i class="fas fa-edit" style="margin-right: 10px; color: #3498db;"></i>
+                Editar BOM
+            </h3>
+            <button id="closeBOMEditPanel" style="
+                background-color: #40424F;
+                border: 1px solid #20688C;
+                border-radius: 4px;
+                font-size: 18px;
+                cursor: pointer;
+                color: lightgray;
+                padding: 6px 12px;
+                transition: all 0.3s;
+            " onmouseover="this.style.backgroundColor='#e74c3c'; this.style.color='white';" onmouseout="this.style.backgroundColor='#40424F'; this.style.color='lightgray';">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        // Formulario con campos editables
+        const form = document.createElement('form');
+        form.id = 'bomEditForm';
+        form.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        `;
+        
+        // Función para crear campo de formulario
+        function createFormField(label, fieldName, value, type = 'text', readonly = false) {
+            const fieldGroup = document.createElement('div');
+            fieldGroup.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            `;
+            
+            const labelEl = document.createElement('label');
+            labelEl.textContent = label;
+            labelEl.style.cssText = `
+                font-weight: 600;
+                color: #ecf0f1;
+                font-size: 0.9em;
+                font-family: 'LG regular', sans-serif;
+            `;
+            
+            const input = document.createElement('input');
+            input.type = type;
+            input.name = fieldName;
+            input.value = value || '';
+            input.readOnly = readonly;
+            input.style.cssText = `
+                padding: 10px 12px;
+                border: 1px solid ${readonly ? '#5F6375' : '#34495e'};
+                border-radius: 4px;
+                font-size: 0.95em;
+                background-color: ${readonly ? '#2c3e50' : '#40424F'};
+                color: ${readonly ? '#95a5a6' : 'lightgray'};
+                transition: all 0.3s;
+                font-family: 'LG regular', sans-serif;
+            `;
+            
+            if (!readonly) {
+                input.addEventListener('focus', function() {
+                    this.style.borderColor = '#3498db';
+                    this.style.boxShadow = '0 0 0 3px rgba(52, 152, 219, 0.1)';
+                    this.style.backgroundColor = '#34495e';
+                });
+                input.addEventListener('blur', function() {
+                    this.style.borderColor = '#34495e';
+                    this.style.boxShadow = 'none';
+                    this.style.backgroundColor = '#40424F';
+                });
+            }
+            
+            fieldGroup.appendChild(labelEl);
+            fieldGroup.appendChild(input);
+            return fieldGroup;
+        }
+        
+        // Agregar campos al formulario
+        form.appendChild(createFormField('Código de Material', 'codigoMaterial', bomData.codigoMaterial, 'text', true));
+        form.appendChild(createFormField('Número de Parte', 'numeroParte', bomData.numeroParte));
+        form.appendChild(createFormField('Side', 'side', bomData.side));
+        form.appendChild(createFormField('Tipo de Material', 'tipoMaterial', bomData.tipoMaterial));
+        form.appendChild(createFormField('Classification', 'classification', bomData.classification));
+        form.appendChild(createFormField('Especificación de Material', 'especificacionMaterial', bomData.especificacionMaterial));
+        form.appendChild(createFormField('Vendor', 'vender', bomData.vender));
+        form.appendChild(createFormField('Cantidad Total', 'cantidadTotal', bomData.cantidadTotal, 'number'));
+        form.appendChild(createFormField('Cantidad Original', 'cantidadOriginal', bomData.cantidadOriginal, 'number'));
+        form.appendChild(createFormField('Ubicación', 'ubicacion', bomData.ubicacion));
+        form.appendChild(createFormField('Posición ASSY', 'posicionAssy', bomData.posicionAssy));
+        
+        // Botones del formulario
+        const buttonGroup = document.createElement('div');
+        buttonGroup.style.cssText = `
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #20688C;
+        `;
+        
+        const saveButton = document.createElement('button');
+        saveButton.type = 'button';
+        saveButton.id = 'saveBOMChanges';
+        saveButton.innerHTML = '<i class="fas fa-save" style="margin-right: 8px;"></i>Guardar Cambios';
+        saveButton.style.cssText = `
+            flex: 1;
+            padding: 10px 20px;
+            background-color: #456636;
+            color: white;
+            border: 1px solid #5a7c42;
+            border-radius: 4px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'LG regular', sans-serif;
+        `;
+        saveButton.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#5a7c42';
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(69, 102, 54, 0.3)';
+        });
+        saveButton.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '#456636';
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.type = 'button';
+        cancelButton.innerHTML = '<i class="fas fa-times" style="margin-right: 8px;"></i>Cancelar';
+        cancelButton.style.cssText = `
+            flex: 1;
+            padding: 10px 20px;
+            background-color: #95a5a6;
+            color: white;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'LG regular', sans-serif;
+        `;
+        cancelButton.addEventListener('click', closeBOMEditPanel);
+        cancelButton.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#7f8c8d';
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(149, 165, 166, 0.3)';
+        });
+        cancelButton.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '#95a5a6';
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+        
+        buttonGroup.appendChild(saveButton);
+        buttonGroup.appendChild(cancelButton);
+        form.appendChild(buttonGroup);
+        
+        // Agregar estilos CSS personalizados
+        const style = document.createElement('style');
+        style.textContent = `
+            #bomEditPanel::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            #bomEditPanel::-webkit-scrollbar-track {
+                background-color: #2c3e50;
+            }
+            
+            #bomEditPanel::-webkit-scrollbar-thumb {
+                background-color: #3498db;
+                border-radius: 4px;
+            }
+            
+            #bomEditPanel::-webkit-scrollbar-thumb:hover {
+                background-color: #2980b9;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Ensamblar el panel
+        panelContent.appendChild(header);
+        panelContent.appendChild(form);
+        panel.appendChild(panelContent);
+        
+        // Agregar al DOM
+        document.body.appendChild(overlay);
+        document.body.appendChild(panel);
+        
+        // Guardar datos originales para el formulario
+        panel.dataset.bomId = bomData.id || '';
+        panel.dataset.modelo = bomData.modelo || '';
+        
+        // Animar la apertura
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            panel.style.right = '0';
+        }, 10);
+    }
+
+    function closeBOMEditPanel() {
+        const panel = document.getElementById('bomEditPanel');
+        const overlay = document.getElementById('bomEditPanelOverlay');
+        
+        if (panel) {
+            panel.style.right = '-550px';
+            setTimeout(() => {
+                if (panel.parentNode) panel.parentNode.removeChild(panel);
+            }, 300);
+        }
+        
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            }, 300);
+        }
+    }
+
+    function saveBOMEdit() {
+        const panel = document.getElementById('bomEditPanel');
+        const form = document.getElementById('bomEditForm');
+        
+        if (!panel || !form) return;
+        
+        const formData = new FormData(form);
+        const bomData = {
+            id: panel.dataset.bomId,
+            modelo: panel.dataset.modelo,
+            codigoMaterial: formData.get('codigoMaterial'),
+            numeroParte: formData.get('numeroParte'),
+            side: formData.get('side'),
+            tipoMaterial: formData.get('tipoMaterial'),
+            classification: formData.get('classification'),
+            especificacionMaterial: formData.get('especificacionMaterial'),
+            vender: formData.get('vender'),
+            cantidadTotal: formData.get('cantidadTotal'),
+            cantidadOriginal: formData.get('cantidadOriginal'),
+            ubicacion: formData.get('ubicacion'),
+            posicionAssy: formData.get('posicionAssy')
+        };
+        
+        console.log('💾 Guardando cambios BOM:', bomData);
+        
+        // Cerrar el panel PRIMERO
+        closeBOMEditPanel();
+        
+        // Luego mostrar loading
+        showLoadingModal();
+        updateLoadingProgress(30, 'Guardando cambios BOM...', 'Actualizando registro...');
+        
+        // Enviar al servidor
+        fetch('/api/bom/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bomData)
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Error al guardar');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('✅ BOM actualizado:', data);
+                updateLoadingProgress(100, '✅ Cambios guardados', '');
+                
+                setTimeout(() => {
+                    hideLoadingModal();
+                    showCustomAlert('✅ Cambios guardados exitosamente');
+                    
+                    // Recargar datos después de un delay
+                    setTimeout(() => {
+                        consultarBOM();
+                    }, 500);
+                }, 800);
+            })
+            .catch(error => {
+                console.error('❌ Error al guardar cambios BOM:', error);
+                hideLoadingModal();
+                showCustomAlert(`❌ Error al guardar cambios: ${error.message}`);
+            });
+    }
+
+    // ========== REGISTRO DE POSICIÓN ASSY ==========
+    
+    /**
+     * Crear modal dinámicamente en el body
+     * Siguiendo las mejores prácticas de la guía de desarrollo
+     */
+    function createModalRegistroPosicion() {
+        console.log('🏗️ Creando modal de registro de posición dinámicamente...');
+        
+        // Si ya existe, no crear de nuevo
+        if (document.getElementById('modalRegistroPosicion')) {
+            console.log('✅ Modal ya existe');
+            return;
+        }
+        
+        const modal = document.createElement('div');
+        modal.id = 'modalRegistroPosicion';
+        modal.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            overflow: auto;
+            padding: 20px;
+        `;
+        
+        modal.innerHTML = `
+            <div style="
+                background-color: #32323E;
+                border: 2px solid #20688C;
+                border-radius: 8px;
+                max-width: 95%;
+                margin: 20px auto;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            ">
+                <!-- Header del Modal -->
+                <div style="
+                    background-color: #172A46;
+                    color: #ecf0f1;
+                    padding: 15px 20px;
+                    border-bottom: 2px solid #20688C;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-radius: 6px 6px 0 0;
+                ">
+                    <h3 style="margin: 0; font-family: 'LG regular', sans-serif; font-size: 1.3em;">
+                        <i class="fas fa-map-marked-alt" style="margin-right: 10px; color: #3498db;"></i>
+                        Registro de Posición ASSY
+                    </h3>
+                    <button id="btnCerrarModalPosicion" style="
+                        background-color: #40424F;
+                        border: 1px solid #20688C;
+                        border-radius: 4px;
+                        color: lightgray;
+                        font-size: 20px;
+                        cursor: pointer;
+                        padding: 5px 12px;
+                        transition: all 0.3s;
+                    ">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- Contenido del Modal -->
+                <div style="padding: 20px; max-height: 70vh; overflow-y: auto;">
+                    <div class="bom-table-container">
+                        <table class="bom-table" id="tablaPosicionAssy" style="margin-bottom: 20px;">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 120px;">Código de Material</th>
+                                    <th style="min-width: 120px;">Número de Parte</th>
+                                    <th style="min-width: 150px;">Descripción</th>
+                                    <th style="min-width: 100px;">Ubicación</th>
+                                    <th style="min-width: 150px;">Posición ASSY</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaPosicionAssyBody">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Footer con botones -->
+                <div style="
+                    padding: 15px 20px;
+                    border-top: 2px solid #20688C;
+                    display: flex;
+                    gap: 10px;
+                    justify-content: flex-end;
+                    background-color: #2c3e50;
+                    border-radius: 0 0 6px 6px;
+                ">
+                    <button id="btnGuardarPosicionesAssy" class="bom-btn exportar" style="
+                        padding: 10px 20px;
+                        font-size: 1em;
+                    ">
+                        <i class="fas fa-save" style="margin-right: 8px;"></i>
+                        Guardar Cambios
+                    </button>
+                    <button id="btnCancelarModalPosicion" class="bom-btn limpiar" style="
+                        padding: 10px 20px;
+                        font-size: 1em;
+                    ">
+                        <i class="fas fa-times" style="margin-right: 8px;"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Agregar al body
+        document.body.appendChild(modal);
+        console.log('✅ Modal de registro de posición creado en el body');
+    }
+    
+    function abrirModalRegistroPosicion() {
+        console.log('📍 Abriendo modal de registro de posición');
+        
+        // Crear el modal si no existe
+        createModalRegistroPosicion();
+        
+        // Verificar que haya datos consultados
+        if (!bomDataCache || bomDataCache.length === 0) {
+            showCustomAlert('Por favor, consulta primero el BOM del modelo que deseas editar.');
+            return;
+        }
+        
+        // Llenar la tabla del modal con los datos actuales
+        const tbody = document.getElementById('tablaPosicionAssyBody');
+        if (!tbody) {
+            console.error('❌ No se encontró el tbody del modal');
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        bomDataCache.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.style.cssText = 'transition: background-color 0.2s;';
+            
+            tr.innerHTML = `
+                <td style="padding: 8px; border: 1px solid #5F6375; background-color: #40424F; color: lightgray; font-size: 0.9em;">
+                    ${item.codigoMaterial || ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #5F6375; background-color: #40424F; color: lightgray; font-size: 0.9em;">
+                    ${item.numeroParte || ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #5F6375; background-color: #40424F; color: lightgray; font-size: 0.9em;">
+                    ${item.especificacionMaterial || ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #5F6375; background-color: #40424F; color: lightgray; font-size: 0.9em;">
+                    ${item.ubicacion || ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #5F6375; background-color: #40424F;">
+                    <input 
+                        type="text" 
+                        class="input-posicion-assy"
+                        data-index="${index}"
+                        data-codigo="${item.codigoMaterial}"
+                        value="${item.posicionAssy || ''}"
+                        style="
+                            width: 100%;
+                            padding: 12px 15px;
+                            background-color: #34495e;
+                            color: lightgray;
+                            border: 2px solid #20688C;
+                            border-radius: 4px;
+                            font-family: 'LG regular', sans-serif;
+                            font-size: 1.1em;
+                            font-weight: 600;
+                            transition: all 0.3s;
+                            text-align: center;
+                        "
+                        onfocus="this.style.borderColor='#3498db'; this.style.backgroundColor='#2c3e50'; this.style.boxShadow='0 0 0 3px rgba(52, 152, 219, 0.2)';"
+                        onblur="this.style.borderColor='#20688C'; this.style.backgroundColor='#34495e'; this.style.boxShadow='none';"
+                    />
+                </td>
+            `;
+            
+            tbody.appendChild(tr);
+        });
+        
+        // Mostrar el modal
+        const modal = document.getElementById('modalRegistroPosicion');
+        if (modal) {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Prevenir scroll del body
+        }
+    }
+    
+    function cerrarModalRegistroPosicion() {
+        console.log('❌ Cerrando modal de registro de posición');
+        const modal = document.getElementById('modalRegistroPosicion');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restaurar scroll del body
+        }
+    }
+    
+    function guardarPosicionesAssy() {
+        console.log('💾 Guardando posiciones ASSY');
+        
+        // Recopilar todos los inputs
+        const inputs = document.querySelectorAll('.input-posicion-assy');
+        if (inputs.length === 0) {
+            showCustomAlert('No hay posiciones para guardar.');
+            return;
+        }
+        
+        // Crear array de cambios
+        const cambios = [];
+        inputs.forEach(input => {
+            const index = parseInt(input.dataset.index);
+            const codigo = input.dataset.codigo;
+            const nuevaPosicion = input.value.trim();
+            
+            if (bomDataCache[index]) {
+                cambios.push({
+                    codigoMaterial: codigo,
+                    modelo: bomDataCache[index].modelo,
+                    posicionAssy: nuevaPosicion
+                });
+            }
+        });
+        
+        if (cambios.length === 0) {
+            showCustomAlert('No hay cambios para guardar.');
+            return;
+        }
+        
+        console.log('📦 Cambios a guardar:', cambios);
+        
+        // Cerrar el modal PRIMERO
+        cerrarModalRegistroPosicion();
+        
+        // Luego mostrar loading
+        showLoadingModal();
+        updateLoadingProgress(30, 'Guardando posiciones ASSY...', 'Procesando en lote...');
+        
+        // Enviar al servidor
+        fetch('/api/bom/update-posiciones-assy', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cambios: cambios })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.error || 'Error al guardar posiciones');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('✅ Respuesta del servidor:', data);
+                updateLoadingProgress(100, `✅ ${data.actualizados} posiciones guardadas`, '');
+                
+                // Cerrar loading y mostrar resultado
+                setTimeout(() => {
+                    hideLoadingModal();
+                    
+                    // Mostrar alerta de éxito
+                    showCustomAlert(`✅ ${data.actualizados} posiciones ASSY guardadas correctamente`);
+                    
+                    // Recargar la tabla
+                    const modeloSeleccionado = document.getElementById('modeloDropdown').value;
+                    if (modeloSeleccionado) {
+                        setTimeout(() => {
+                            consultarBOM();
+                        }, 500);
+                    }
+                }, 800);
+            })
+            .catch(error => {
+                console.error('❌ Error al guardar posiciones:', error);
+                hideLoadingModal();
+                showCustomAlert('❌ Error al guardar posiciones: ' + error.message);
+            });
     }
 
     // Exponer función de limpieza globalmente
@@ -951,6 +1720,14 @@
     window.filtrarModelos = filtrarModelos;
     window.mostrarDropdown = mostrarDropdown;
     window.seleccionarModelo = seleccionarModelo;
+    window.openBOMEditPanel = openBOMEditPanel;
+    window.closeBOMEditPanel = closeBOMEditPanel;
+    window.saveBOMEdit = saveBOMEdit;
+    window.aplicarFiltroClassification = aplicarFiltroClassification;
+    window.createModalRegistroPosicion = createModalRegistroPosicion;
+    window.abrirModalRegistroPosicion = abrirModalRegistroPosicion;
+    window.cerrarModalRegistroPosicion = cerrarModalRegistroPosicion;
+    window.guardarPosicionesAssy = guardarPosicionesAssy;
 
 </script>
 

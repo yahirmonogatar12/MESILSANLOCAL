@@ -2289,12 +2289,6 @@ function hideAllMaterialContainers() {
             };
             
             window.mostrarControlBOMInfo = function() {
-                // Verificar permisos antes de continuar
-                if (typeof PermisosDropdowns !== 'undefined' && 
-                    !PermisosDropdowns.tienePermiso('LISTA_INFORMACIONBASICA', 'Control de produccion', 'Control de BOM')) {
-                    return false;
-                }
-                
                 // PASO 1: Ocultar TODOS los contenedores de Información Básica
                 hideAllInformacionBasicaContainers();
                 

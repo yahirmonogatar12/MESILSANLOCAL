@@ -122,6 +122,10 @@ def init_db():
         print(" Migrando tabla materiales...")
         migrar_tabla_materiales()
         
+        # MIGRAR TABLA BOM (agregar columna posicion_assy)
+        print(" Migrando tabla bom...")
+        migrar_tabla_bom()
+        
         print(" Base de datos MySQL inicializada correctamente")
         return True
     except Exception as e:
@@ -1016,15 +1020,33 @@ def obtener_modelos_bom():
         print(f"Error obteniendo modelos BOM: {e}")
         return []
 
-def listar_bom_por_modelo(modelo):
-    """Listar BOM por modelo específico o todos"""
+def listar_bom_por_modelo(modelo, classification=None):
+    """Listar BOM por modelo específico o todos, con filtro opcional de classification"""
     try:
+        # Construir query base
+        query_parts = []
+        params = []
+        
         if modelo == 'todos':
-            query = "SELECT * FROM bom ORDER BY modelo, numero_parte"
-            resultados = execute_query(query, fetch='all') or []
+            query = "SELECT * FROM bom"
         else:
-            query = "SELECT * FROM bom WHERE modelo = %s ORDER BY numero_parte"
-            resultados = execute_query(query, (modelo,), fetch='all') or []
+            query = "SELECT * FROM bom WHERE modelo = %s"
+            params.append(modelo)
+        
+        # Agregar filtro de classification si se proporciona
+        if classification and classification != 'TODOS':
+            if modelo == 'todos':
+                query += " WHERE classification = %s"
+            else:
+                query += " AND classification = %s"
+            params.append(classification)
+        
+        query += " ORDER BY modelo, numero_parte"
+        
+        # Ejecutar query
+        resultados = execute_query(query, tuple(params) if params else (), fetch='all') or []
+        
+        print(f"📊 Query BOM: modelo={modelo}, classification={classification}, resultados={len(resultados)}")
         
         # Mapear nombres de columnas de la BD a nombres esperados por el frontend
         datos_mapeados = []
@@ -1042,6 +1064,7 @@ def listar_bom_por_modelo(modelo):
                 'cantidadTotal': row.get('cantidad_total'),
                 'cantidadOriginal': row.get('cantidad_original'),
                 'ubicacion': row.get('ubicacion'),
+                'posicionAssy': row.get('posicion_assy'),
                 'materialSustituto': row.get('material_sustituto'),
                 'materialOriginal': row.get('material_original'),
                 'registrador': row.get('registrador'),
@@ -1785,6 +1808,34 @@ def migrar_tabla_materiales():
         
     except Exception as e:
         print(f"❌ Error en migración de tabla materiales: {e}")
+        return False
+
+def migrar_tabla_bom():
+    """Migrar tabla bom para agregar columna posicion_assy"""
+    print(" Migrando tabla bom para agregar columna posicion_assy...")
+    
+    try:
+        # Verificar columnas existentes
+        check_columns = "SHOW COLUMNS FROM bom"
+        existing_columns = execute_query(check_columns, fetch='all')
+        existing_names = [col['Field'] for col in existing_columns] if existing_columns else []
+        
+        # Agregar columna posicion_assy si no existe
+        if 'posicion_assy' not in existing_names:
+            try:
+                alter_query = "ALTER TABLE bom ADD COLUMN posicion_assy VARCHAR(255) AFTER ubicacion"
+                execute_query(alter_query)
+                print(" Columna posicion_assy agregada a tabla bom")
+            except Exception as e:
+                print(f" Error agregando columna posicion_assy: {e}")
+        else:
+            print(" Columna posicion_assy ya existe en tabla bom")
+        
+        print(" Migración de tabla bom completada")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error en migración de tabla bom: {e}")
         return False
 
 def verificar_estructura_materiales():

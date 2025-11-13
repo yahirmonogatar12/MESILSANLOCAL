@@ -88,11 +88,13 @@
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de produccion" 
                         data-permiso-boton="Control de modelos">Control de modelos</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMInfo()" 
+                    <li class="sidebar-link" tabindex="0" 
+                        onclick="window.parent.mostrarControlBOMInfo ? window.parent.mostrarControlBOMInfo() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom') : window.location.href='/informacion_basica/control_de_bom')"
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de produccion" 
                         data-permiso-boton="Control de BOM">Control de BOM</li>
-                    <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlBOMSMTInfo()" 
+                    <li class="sidebar-link" tabindex="0" 
+                        onclick="window.parent.mostrarControlBOMSMTInfo ? window.parent.mostrarControlBOMSMTInfo() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-bom-smt-info-container', '/informacion_basica/control_de_bom_smt') : window.location.href='/informacion_basica/control_de_bom_smt')"
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de produccion" 
                         data-permiso-boton="Control de BOM de SMT">Control de BOM de SMT</li>
