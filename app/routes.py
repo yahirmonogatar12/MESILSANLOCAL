@@ -715,8 +715,8 @@ def api_plan_list():
         sql = (
             "SELECT id, lot_no, wo_code, po_code, working_date, line, routing, model_code, part_no, project, process, "
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
-            "COALESCE(produced_count,0) AS input, 0 AS output, COALESCE(produced_count,0) AS produced, "
-            "status, group_no, sequence FROM plan_main"
+            "COALESCE(produced_count,0) AS input, 0 AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
+            "COALESCE(produced_count,0) AS produced, status, group_no, sequence FROM plan_main"
         )
         if where:
             sql += ' WHERE ' + ' AND '.join(where)
@@ -741,10 +741,11 @@ def api_plan_list():
                 'plan_count': r.get('plan_count') if isinstance(r, dict) else r[13],
                 'input': r.get('input') if isinstance(r, dict) else r[14],
                 'output': r.get('output') if isinstance(r, dict) else r[15],
-                'produced': r.get('produced') if isinstance(r, dict) else r[16],
-                'status': r.get('status') if isinstance(r, dict) else r[17],
-                'group_no': r.get('group_no') if isinstance(r, dict) else r[18],
-                'sequence': r.get('sequence') if isinstance(r, dict) else r[19],
+                'entregadas_main': r.get('entregadas_main') if isinstance(r, dict) else r[16],
+                'produced': r.get('produced') if isinstance(r, dict) else r[17],
+                'status': r.get('status') if isinstance(r, dict) else r[18],
+                'group_no': r.get('group_no') if isinstance(r, dict) else r[19],
+                'sequence': r.get('sequence') if isinstance(r, dict) else r[20],
             })
         return jsonify(data)
     except Exception as e:

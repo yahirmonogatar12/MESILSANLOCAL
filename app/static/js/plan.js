@@ -460,7 +460,7 @@ function turnoToRouting(turno) {
 async function loadPlans() {
   try {
     // Mostrar loading en el tbody de la tabla
-    showTableBodyLoading('plan-tableBody', 'Cargando planes...', 16);
+    showTableBodyLoading('plan-tableBody', 'Cargando planes...', 22);
 
     setDefaultDateFilters();
     const fs = document.getElementById("filter-start")?.value;
@@ -505,9 +505,10 @@ async function loadPlans() {
         <td>${r.plan_count}</td>
         <td>${r.produced ?? 0}</td>
         <td>${r.output ?? 0}</td>
+        <td>${r.entregadas_main ?? 0}</td>
         <td>${r.status}</td>
         <td class="tiempo-cell">--:--</td>
-        <td class="tiempo-cell">--:--</td>
+        <td class="tiempo-cell fecha-inicio-cell">--:--</td>
         <td class="tiempo-cell">--:--</td>
         <td style="text-align:center; font-weight:bold;">-</td>
       `;
@@ -520,7 +521,7 @@ async function loadPlans() {
     alert("Error al cargar planes: " + (error.response?.data?.error || error.message));
     // En caso de error, limpiar la tabla
     let tbody = document.getElementById("plan-tableBody");
-    tbody.innerHTML = `<tr class="message-row"><td colspan="21" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
+    tbody.innerHTML = `<tr class="message-row"><td colspan="22" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
   }
 }
 
@@ -646,7 +647,8 @@ function syncVisualGroupsWithTableOrder() {
         plan_count: parseInt(cells[13]?.textContent) || 0,
         produced: parseInt(cells[14]?.textContent) || 0,
         output: parseInt(cells[15]?.textContent) || 0,
-        status: cells[16]?.textContent?.trim() || 'PLAN' // Preservar status desde la celda
+        entregadas_main: parseInt(cells[16]?.textContent) || 0,
+        status: cells[17]?.textContent?.trim() || 'PLAN' // Preservar status desde la celda
       };
     }
 
@@ -2057,7 +2059,7 @@ function renderTableWithVisualGroups(data) {
     const groupHeaderRow = document.createElement('tr');
     groupHeaderRow.className = 'group-header-row';
     groupHeaderRow.innerHTML = `
-      <td colspan="21" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
+      <td colspan="22" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>${group.name}</span>
           <div>
@@ -2074,7 +2076,7 @@ function renderTableWithVisualGroups(data) {
     dropZoneRow.className = 'group-drop-zone';
     dropZoneRow.dataset.groupIndex = groupIndex;
     dropZoneRow.innerHTML = `
-      <td colspan="21" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
+      <td colspan="22" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
           ${group.plans.length === 0 ? 'Arrastra planes aquo para asignarlos a este grupo' : ''}
         </div>
@@ -2111,12 +2113,12 @@ function renderTableWithVisualGroups(data) {
         <td>${plan.plan_count}</td>
         <td>${plan.produced ?? 0}</td>
         <td>${plan.output ?? 0}</td>
+        <td>${plan.entregadas_main ?? 0}</td>
         <td>${plan.status}</td>
         <td class="tiempo-cell">--:--</td>
+        <td class="tiempo-cell fecha-inicio-cell">--:--</td>
         <td class="tiempo-cell">--:--</td>
-        <td class="tiempo-cell">--:--</td>
-        <td style="text-align:center; font-weight:bold; background-color: #3498db; color: white;">${groupIndex + 1}</td>
-        <td class="fecha-inicio-cell">--</td>
+        <td style="text-align:center; font-weight:bold;">-</td>
       `;
 
       tbody.appendChild(tr);
@@ -2126,7 +2128,7 @@ function renderTableWithVisualGroups(data) {
     if (groupIndex < visualGroups.groups.length - 1) {
       const spacerRow = document.createElement('tr');
       spacerRow.className = 'group-spacer';
-      spacerRow.innerHTML = `<td colspan="21" style="height: 10px; background-color: #2c2c2c;"></td>`;
+      spacerRow.innerHTML = `<td colspan="22" style="height: 10px; background-color: #2c2c2c;"></td>`;
       tbody.appendChild(spacerRow);
     }
   });
@@ -2271,11 +2273,11 @@ function resaltarConflictosLineaHorario() {
           cells[5].style.fontWeight = 'bold';
           cells[5].style.color = '#ffffff';
         }
-        // Columna 18: Inicio (hora de inicio)
-        if (cells[18]) {
-          cells[18].style.backgroundColor = '#e74c3c';
-          cells[18].style.fontWeight = 'bold';
-          cells[18].style.color = '#ffffff';
+        // Columna 19: Inicio (hora de inicio)
+        if (cells[19]) {
+          cells[19].style.backgroundColor = '#e74c3c';
+          cells[19].style.fontWeight = 'bold';
+          cells[19].style.color = '#ffffff';
         }
       }
       
@@ -2371,7 +2373,7 @@ function setupGroupDragDrop() {
   function createDropIndicator() {
     const indicator = document.createElement('tr');
     indicator.className = 'drop-indicator';
-    indicator.innerHTML = `<td colspan="21" style="height: 3px; background: #3498db; border: none; padding: 0;"></td>`;
+    indicator.innerHTML = `<td colspan="22" style="height: 3px; background: #3498db; border: none; padding: 0;"></td>`;
     return indicator;
   }
 
@@ -2732,10 +2734,9 @@ function updatePlanRows() {
 
       // Si el plan esto cancelado, mostrar tiempos como -- y marcar como cancelado
       if (calc.isCancelled) {
-        if (cells[17]) cells[17].textContent = '--'; // Tiempo Productivo
-        if (cells[18]) cells[18].textContent = '--'; // Inicio
-        if (cells[19]) cells[19].textContent = '--'; // Fin
-        if (cells[20]) cells[20].textContent = calc.groupNumber; // Grupo
+        if (cells[18]) cells[18].textContent = '--'; // Tiempo Productivo
+        if (cells[19]) cells[19].textContent = '--'; // Inicio
+        if (cells[20]) cells[20].textContent = '--'; // Fin
         if (cells[21]) cells[21].innerHTML = '<span class="status-cancelled">CANCELADO</span>'; // Turno
 
         // Resaltar fila como cancelada
@@ -2744,10 +2745,9 @@ function updatePlanRows() {
         row.style.textDecoration = 'line-through';
       } else {
         // Plan activo - mostrar colculos normales
-        if (cells[17]) cells[17].textContent = minutesToTime(calc.productionTime);
-        if (cells[18]) cells[18].textContent = calc.startTime;
-        if (cells[19]) cells[19].textContent = calc.endTime;
-        if (cells[20]) cells[20].textContent = calc.groupNumber;
+        if (cells[18]) cells[18].textContent = minutesToTime(calc.productionTime);
+        if (cells[19]) cells[19].textContent = calc.startTime;
+        if (cells[20]) cells[20].textContent = calc.endTime;
 
         // Actualizar indicador de tiempo extra en la columna Turno
         if (cells[21]) {
@@ -2768,7 +2768,7 @@ function updatePlanRows() {
         }
       }
 
-      // NO sobrescribir el status real de la base de datos (cells[16])
+    // NO sobrescribir el status real de la base de datos (cells[17])
       // El status real (PLAN, EN PROGRESO, CANCELADO, etc.) debe mantenerse
     }
   });
@@ -2787,7 +2787,7 @@ function renderCurrentVisualGroups() {
     const groupHeaderRow = document.createElement('tr');
     groupHeaderRow.className = 'group-header-row';
     groupHeaderRow.innerHTML = `
-      <td colspan="21" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
+      <td colspan="22" style="background-color: #2c3e50; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #20688C;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>${group.name}</span>
           <div>
@@ -2804,7 +2804,7 @@ function renderCurrentVisualGroups() {
     dropZoneRow.className = 'group-drop-zone';
     dropZoneRow.dataset.groupIndex = groupIndex;
     dropZoneRow.innerHTML = `
-      <td colspan="21" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
+      <td colspan="22" style="background-color: #34495e; border: 2px dashed #20688C; text-align: center; padding: 10px; color: #bdc3c7;">
         <div class="drop-zone-content">
           ${group.plans.length === 0 ? 'Arrastra planes aquo para asignarlos a este grupo' : ''}
         </div>
@@ -2840,12 +2840,12 @@ function renderCurrentVisualGroups() {
         <td>${plan.plan_count}</td>
         <td>${plan.produced ?? 0}</td>
         <td>${plan.output ?? 0}</td>
+        <td>${plan.entregadas_main ?? 0}</td>
         <td>${plan.status}</td>
         <td class="tiempo-cell">--:--</td>
+        <td class="tiempo-cell fecha-inicio-cell">--:--</td>
         <td class="tiempo-cell">--:--</td>
-        <td class="tiempo-cell">--:--</td>
-        <td style="text-align:center; font-weight:bold; background-color: #3498db; color: white;">${groupIndex + 1}</td>
-        <td class="fecha-inicio-cell">--</td>
+        <td style="text-align:center; font-weight:bold;">-</td>
       `;
 
       tbody.appendChild(tr);
@@ -2855,7 +2855,7 @@ function renderCurrentVisualGroups() {
     if (groupIndex < visualGroups.groups.length - 1) {
       const spacerRow = document.createElement('tr');
       spacerRow.className = 'group-spacer';
-      spacerRow.innerHTML = `<td colspan="21" style="height: 10px; background-color: #2c2c2c;"></td>`;
+      spacerRow.innerHTML = `<td colspan="22" style="height: 10px; background-color: #2c2c2c;"></td>`;
       tbody.appendChild(spacerRow);
     }
   });
@@ -2906,7 +2906,8 @@ function reloadTableWithCurrentData() {
         plan_count: parseInt(cells[13]?.textContent?.trim()) || 0,
         produced: parseInt(cells[14]?.textContent?.trim()) || 0,
         output: parseInt(cells[15]?.textContent?.trim()) || 0,
-        status: cells[16]?.textContent?.trim() || 'PLAN' // ? CORREGIDO: cells[16] no cells[15]
+        entregadas_main: parseInt(cells[16]?.textContent?.trim()) || 0,
+        status: cells[17]?.textContent?.trim() || 'PLAN' // ? CORREGIDO: cells[16] no cells[15]
       };
     }
 
@@ -3051,7 +3052,8 @@ function autoArrangePlans() {
       ct: cells[11]?.textContent?.trim() || '0',
       produced: parseInt(cells[14]?.textContent) || 0,
       output: parseInt(cells[15]?.textContent) || 0,
-      status: cells[16]?.textContent?.trim() || 'PLAN'
+      entregadas_main: parseInt(cells[16]?.textContent) || 0,
+      status: cells[17]?.textContent?.trim() || 'PLAN'
     };
   });
 
@@ -3201,9 +3203,9 @@ function calculateAndUpdateTimes() {
       let cells = row.querySelectorAll('td');
 
       // Tiempo de produccion
-      if (cells.length >= 17) {
-        cells[16].textContent = minutesToTime(calc.productionTime);
-        cells[16].className = 'tiempo-cell';
+      if (cells.length >= 19) {
+        cells[18].textContent = minutesToTime(calc.productionTime);
+        cells[18].className = 'tiempo-cell';
       } else {
         const timeCell = document.createElement('td');
         timeCell.textContent = minutesToTime(calc.productionTime);
@@ -3212,38 +3214,25 @@ function calculateAndUpdateTimes() {
       }
 
       // Hora inicio
-      if (cells.length >= 18) {
-        cells[17].textContent = calc.startTime;
-        cells[17].className = 'tiempo-cell';
+      if (cells.length >= 20) {
+        cells[19].textContent = calc.startTime;
+        cells[19].className = 'tiempo-cell fecha-inicio-cell';
       } else {
         const startCell = document.createElement('td');
         startCell.textContent = calc.startTime;
-        startCell.className = 'tiempo-cell';
+        startCell.className = 'tiempo-cell fecha-inicio-cell';
         row.appendChild(startCell);
       }
 
       // Hora fin
-      if (cells.length >= 19) {
-        cells[18].textContent = calc.endTime;
-        cells[18].className = 'tiempo-cell';
+      if (cells.length >= 21) {
+        cells[20].textContent = calc.endTime;
+        cells[20].className = 'tiempo-cell';
       } else {
         const endCell = document.createElement('td');
         endCell.textContent = calc.endTime;
         endCell.className = 'tiempo-cell';
         row.appendChild(endCell);
-      }
-
-      // Nomero de grupo
-      if (cells.length >= 20) {
-        cells[19].textContent = calc.groupNumber;
-        cells[19].style.textAlign = 'center';
-        cells[19].style.fontWeight = 'bold';
-      } else {
-        const groupCell = document.createElement('td');
-        groupCell.textContent = calc.groupNumber;
-        groupCell.style.textAlign = 'center';
-        groupCell.style.fontWeight = 'bold';
-        row.appendChild(groupCell);
       }
 
       // Indicador de tiempo extra en la oltima columna (Turno)
@@ -3898,7 +3887,7 @@ const originalLoadPlans = loadPlans;
 loadPlans = async function () {
   try {
     // Mostrar loading en el tbody de la tabla
-    showTableBodyLoading('plan-tableBody', 'Cargando planes...', 21);
+    showTableBodyLoading('plan-tableBody', 'Cargando planes...', 22);
 
     setDefaultDateFilters();
     const fs = document.getElementById("filter-start")?.value;
@@ -3923,7 +3912,7 @@ loadPlans = async function () {
     alert("Error al cargar planes: " + (error.response?.data?.error || error.message));
     // En caso de error, limpiar la tabla
     let tbody = document.getElementById("plan-tableBody");
-    tbody.innerHTML = `<tr class="message-row"><td colspan="21" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
+    tbody.innerHTML = `<tr class="message-row"><td colspan="22" style="display: table-cell; text-align: center; padding: 20px; color: #888;">Error al cargar los datos</td></tr>`;
   }
 };
 
@@ -3971,6 +3960,8 @@ async function exportarExcel() {
             uph: plan.uph || '',
             plan_count: parseInt(plan.plan_count) || 0,
             produced: parseInt(plan.produced) || 0,
+            output: parseInt(plan.output) || 0,
+            entregadas_main: parseInt(plan.entregadas_main) || 0,
             status: plan.status || 'PLAN',
             tiempo_produccion: plan.tiempo_produccion || '',
             inicio: plan.inicio || '',
@@ -4051,12 +4042,14 @@ async function exportarExcel() {
           uph: cells[12]?.textContent?.trim() || '',
           plan_count: parseInt(cells[13]?.textContent) || 0,
           produced: parseInt(cells[14]?.textContent) || 0,
-          status: cells[15]?.textContent?.trim() || 'PLAN',
-          tiempo_produccion: cells[16]?.textContent?.trim() || '',
-          inicio: cells[17]?.textContent?.trim() || '',
-          fin: cells[18]?.textContent?.trim() || '',
+          output: parseInt(cells[15]?.textContent) || 0,
+          entregadas_main: parseInt(cells[16]?.textContent) || 0,
+          status: cells[17]?.textContent?.trim() || 'PLAN',
+          tiempo_produccion: cells[18]?.textContent?.trim() || '',
+          inicio: cells[19]?.textContent?.trim() || '',
+          fin: cells[20]?.textContent?.trim() || '',
           grupo: grupoVisual, // Usar el grupo visual real en lugar del campo de celda
-          extra: cells[20]?.textContent?.trim() || '',
+          extra: cells[21]?.textContent?.trim() || '',
           groupIndex: Math.floor(index / 5)
         };
 
