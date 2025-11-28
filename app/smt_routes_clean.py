@@ -12,13 +12,13 @@ import os
 # Configuración del logger
 logger = logging.getLogger(__name__)
 
-# Configuración MySQL
+# Configuración MySQL (variables de entorno obligatorias - sin fallback)
 DB_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
-    'port': int(os.getenv('MYSQL_PORT', 11550)),
-    'user': os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
-    'password': os.getenv('MYSQL_PASSWORD', ''),
-    'database': os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
+    'host': os.getenv('MYSQL_HOST'),
+    'port': int(os.getenv('MYSQL_PORT', 3306)),
+    'user': os.getenv('MYSQL_USER'),
+    'password': os.getenv('MYSQL_PASSWORD'),
+    'database': os.getenv('MYSQL_DATABASE'),
     'charset': 'utf8mb4'
 }
 
@@ -223,79 +223,6 @@ def get_filtros_opciones():
 
     except Exception as e:
         logger.error(f"Error en filtros opciones: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@smt_api.route('/smt/debug', methods=['GET'])
-def debug_smt():
-    """
-    Ruta de debug para diagnosticar problemas con datos SMT
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Query básica para obtener datos
-        if request.args.get('folder'):
-            folder = request.args.get('folder')
-            query = """
-                SELECT ScanDate, ScanTime, SlotNo, Result, LOTNO, Barcode,
-                       archivo, linea, maquina, PartName, Quantity, SEQ, Vendor,
-                       PreviousBarcode, Productdate, FeederBase
-                FROM historial_cambio_material_smt
-                WHERE (archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s)
-                ORDER BY ScanDate DESC, ScanTime DESC
-                LIMIT 50
-            """
-            cursor.execute(query, (f"%{folder}%", f"%{folder}%", f"%{folder}%"))
-        else:
-            query = """
-                SELECT ScanDate, ScanTime, SlotNo, Result, LOTNO, Barcode,
-                       archivo, linea, maquina, PartName, Quantity, SEQ, Vendor,
-                       PreviousBarcode, Productdate, FeederBase
-                FROM historial_cambio_material_smt
-                ORDER BY ScanDate DESC, ScanTime DESC
-                LIMIT 50
-            """
-            cursor.execute(query)
-        
-        registros = cursor.fetchall()
-
-        # Calcular estadísticas
-        total_registros = len(registros)
-        ok_count = sum(1 for r in registros if r['Result'] == 'OK')
-        ng_count = sum(1 for r in registros if r['Result'] == 'NG')
-        unique_files = len(set(r['archivo'] for r in registros if r['archivo']))
-
-        # Obtener valores únicos para filtros
-        cursor.execute("SELECT DISTINCT linea FROM historial_cambio_material_smt WHERE linea IS NOT NULL ORDER BY linea")
-        lineas = [r['linea'] for r in cursor.fetchall()]
-        
-        cursor.execute("SELECT DISTINCT maquina FROM historial_cambio_material_smt WHERE maquina IS NOT NULL ORDER BY maquina")
-        maquinas = [r['maquina'] for r in cursor.fetchall()]
-
-        cursor.close()
-        conn.close()
-
-        debug_info = {
-            'total_registros': total_registros,
-            'ok_count': ok_count,
-            'ng_count': ng_count,
-            'unique_files': unique_files,
-            'lineas_disponibles': lineas,
-            'maquinas_disponibles': maquinas,
-            'registros_muestra': registros[:10]  # Solo mostrar 10 para debug
-        }
-
-        return jsonify({
-            'success': True,
-            'debug_info': debug_info
-        })
-
-    except Exception as e:
-        logger.error(f"Error en debug SMT: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

@@ -11,30 +11,59 @@ load_dotenv()
 
 aoi_api = Blueprint("aoi_api", __name__)
 
-# ----- Config DB -----
+# ----- Config DB (variables de entorno obligatorias - sin fallback) -----
 DB = dict(
-    host=os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
-    port=int(os.getenv('MYSQL_PORT', 11550)),
-    user=os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
-    password=os.getenv('MYSQL_PASSWORD', ''),
-    database=os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
+    host=os.getenv('MYSQL_HOST'),
+    port=int(os.getenv('MYSQL_PORT', 3306)),
+    user=os.getenv('MYSQL_USER'),
+    password=os.getenv('MYSQL_PASSWORD'),
+    database=os.getenv('MYSQL_DATABASE'),
     charset="utf8mb4",
     autocommit=True,
 )
 def db():
     return pymysql.connect(**DB)
 
-# ----- Reglas de turno (idénticas al loader) -----
+# ----- Reglas de turno -----
 def classify_shift(dt: datetime) -> str:
-    # DÍA 07:40–17:39, EXTRA 17:40–22:49, NOCHE 22:50–07:30 (incluye 07:30)
+    """
+    Clasificar turno según hora:
+    - DÍA: 7:30 - 17:30
+    - TIEMPO_EXTRA: 17:30 - 22:00
+    - NOCHE: 22:30 - 7:00 (del día siguiente)
+    - Gap 22:00-22:30: se considera fin de TIEMPO_EXTRA
+    - Gap 7:00-7:30: se considera fin de NOCHE
+    """
     mins = dt.hour * 60 + dt.minute
-    if 7*60+40 <= mins < 17*60+40:  return "DIA"
-    if 17*60+40 <= mins < 22*60+50: return "TIEMPO_EXTRA"
-    if mins >= 22*60+50 or mins <= 7*60+30: return "NOCHE"
-    return "DIA"  # 07:31–07:39
+    
+    # DÍA: 7:30 (450 mins) hasta 17:30 (1050 mins)
+    if 7*60+30 <= mins < 17*60+30:
+        return "DIA"
+    
+    # TIEMPO_EXTRA: 17:30 (1050 mins) hasta 22:00 (1320 mins)
+    if 17*60+30 <= mins < 22*60+0:
+        return "TIEMPO_EXTRA"
+    
+    # NOCHE: 22:30 (1350 mins) hasta 7:00 (420 mins del día siguiente)
+    if mins >= 22*60+30 or mins < 7*60+0:
+        return "NOCHE"
+    
+    # Gaps de transición
+    if 22*60+0 <= mins < 22*60+30:
+        return "TIEMPO_EXTRA"  # Gap 22:00-22:30 -> fin de tiempo extra
+    if 7*60+0 <= mins < 7*60+30:
+        return "NOCHE"  # Gap 7:00-7:30 -> fin de noche
+    
+    return "DIA"  # Fallback
 
 def compute_shift_date(dt: datetime, shift: str) -> date:
-    if shift == "NOCHE" and (dt.hour*60 + dt.minute) <= 7*60+30:
+    """
+    Calcular la fecha lógica del turno.
+    Para turno NOCHE después de medianoche, la fecha es del día anterior.
+    """
+    mins = dt.hour * 60 + dt.minute
+    # Si es NOCHE y estamos antes de las 7:00, pertenece al día anterior
+    if shift == "NOCHE" and mins < 7*60+0:
         return (dt - timedelta(days=1)).date()
     return dt.date()
 

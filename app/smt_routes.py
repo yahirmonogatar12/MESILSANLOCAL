@@ -22,13 +22,13 @@ try:
     from config import DATABASE
     DB_CONFIG = DATABASE
 except ImportError:
-    # Configuración por defecto si no se puede importar
+    # Configuración por defecto - variables de entorno obligatorias
     DB_CONFIG = {
-        'host': os.getenv('MYSQL_HOST', 'up-de-fra1-mysql-1.db.run-on-seenode.com'),
-        'port': int(os.getenv('MYSQL_PORT', 11550)),
-        'user': os.getenv('MYSQL_USER', 'db_rrpq0erbdujn'),
-        'password': os.getenv('MYSQL_PASSWORD', ''),
-        'database': os.getenv('MYSQL_DATABASE', 'db_rrpq0erbdujn'),
+        'host': os.getenv('MYSQL_HOST'),
+        'port': int(os.getenv('MYSQL_PORT', 3306)),
+        'user': os.getenv('MYSQL_USER'),
+        'password': os.getenv('MYSQL_PASSWORD'),
+        'database': os.getenv('MYSQL_DATABASE'),
         'charset': 'utf8mb4'
     }
 
