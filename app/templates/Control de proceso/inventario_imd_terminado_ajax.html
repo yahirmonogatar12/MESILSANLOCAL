@@ -438,6 +438,24 @@
                 </div>
               </th>
               <th>Cantidad</th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Tipo Inventario</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('u', 'tipo_inventario')">▼</button>
+                </div>
+                <div id="filtro-u-tipo_inventario" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar tipo..." oninput="aplicarFiltroTextoIMD('u', 'tipo_inventario', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Comentario</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('u', 'comentario')">▼</button>
+                </div>
+                <div id="filtro-u-comentario" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar comentario..." oninput="aplicarFiltroTextoIMD('u', 'comentario', this.value)">
+                </div>
+              </th>
               <th>
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                   <span>Carro</span>
@@ -511,6 +529,24 @@
                   <input type="text" class="filter-input-imd" placeholder="Buscar ubicación..." oninput="aplicarFiltroTextoIMD('m', 'ubicacion', this.value)">
                 </div>
               </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Tipo Inventario</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('m', 'tipo_inventario')">▼</button>
+                </div>
+                <div id="filtro-m-tipo_inventario" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar tipo..." oninput="aplicarFiltroTextoIMD('m', 'tipo_inventario', this.value)">
+                </div>
+              </th>
+              <th class="filterable-header-imd">
+                <div class="header-content-imd">
+                  <span>Comentario</span>
+                  <button class="filter-btn-imd" onclick="toggleFiltroIMD('m', 'comentario')">▼</button>
+                </div>
+                <div id="filtro-m-comentario" class="header-filter-imd">
+                  <input type="text" class="filter-input-imd" placeholder="Buscar comentario..." oninput="aplicarFiltroTextoIMD('m', 'comentario', this.value)">
+                </div>
+              </th>
               <th>
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                   <span>Carro</span>
@@ -575,9 +611,10 @@
                 </div>
               </th>
               <th>Última Entrada</th>
+              <th>Última Salida</th>
               <th>
                 <div style="display: flex; align-items: center; justify-content: space-between;">
-                  <span>Última Salida</span>
+                  <span>Tipo Inventario</span>
                   <button class="clear-all-filters-imd" onclick="limpiarTodosFiltrosIMD('g')" title="Limpiar todos los filtros">×</button>
                 </div>
               </th>

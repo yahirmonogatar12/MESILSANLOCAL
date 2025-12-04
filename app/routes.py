@@ -9842,7 +9842,8 @@ def api_inventario_general():
               stock_total,
               ubicaciones,
               DATE_FORMAT(ultima_entrada, '%Y-%m-%d %H:%i:%s') AS ultima_entrada,
-              DATE_FORMAT(ultima_salida,  '%Y-%m-%d %H:%i:%s') AS ultima_salida
+              DATE_FORMAT(ultima_salida,  '%Y-%m-%d %H:%i:%s') AS ultima_salida,
+              tipo_inventario
             FROM inv_resumen_modelo
             {where_sql}
             ORDER BY modelo, nparte
@@ -9905,6 +9906,8 @@ def api_ubicacion():
               fecha,
               ubicacion,
               cantidad,
+              tipo_inventario,
+              comentario,
               carro
             FROM ubicacionimdinv
             {where_sql}
@@ -9969,6 +9972,8 @@ def api_movimientos():
                 LIMIT 1) AS modelo,
               cantidad,
               ubicacion,
+              tipo_inventario,
+              comentario,
               carro
             FROM movimientosimd_smd m
             {where_sql}

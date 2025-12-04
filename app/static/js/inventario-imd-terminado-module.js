@@ -199,7 +199,8 @@
                     <td>${fmt(fila.stock_total)}</td>
                     <td title="${fmt(fila.ubicaciones)}">${fmt(fila.ubicaciones)}</td>
                     <td>${fmt(fila.ultima_entrada)}</td>
-                    <td>${fmt(fila.ultima_salida)}</td>`;
+                    <td>${fmt(fila.ultima_salida)}</td>
+                    <td>${fmt(fila.tipo_inventario)}</td>`;
             } else if (tabla === 'u') {
                 // Ubicación
                 tr.innerHTML = `
@@ -208,6 +209,8 @@
                     <td title="${fmt(fila.nparte)}">${fmt(fila.nparte)}</td>
                     <td>${fmt(fila.ubicacion)}</td>
                     <td>${fmt(fila.cantidad)}</td>
+                    <td>${fmt(fila.tipo_inventario)}</td>
+                    <td title="${fmt(fila.comentario)}">${fmt(fila.comentario)}</td>
                     <td>${fmt(fila.carro)}</td>`;
             } else if (tabla === 'm') {
                 // Movimientos
@@ -219,6 +222,8 @@
                     <td title="${fmt(fila.modelo)}">${fmt(fila.modelo)}</td>
                     <td>${fmt(fila.cantidad)}</td>
                     <td>${fmt(fila.ubicacion)}</td>
+                    <td>${fmt(fila.tipo_inventario)}</td>
+                    <td title="${fmt(fila.comentario)}">${fmt(fila.comentario)}</td>
                     <td>${fmt(fila.carro)}</td>`;
             }
             
@@ -426,7 +431,7 @@
             
             // Crear datos para Excel
             const datos = datosOriginalesIMD['g'];
-            const headers = ['Modelo', 'No. Parte', 'Stock Total', 'Ubicaciones', 'Última Entrada', 'Última Salida'];
+            const headers = ['Modelo', 'No. Parte', 'Stock Total', 'Ubicaciones', 'Última Entrada', 'Última Salida', 'Tipo Inventario'];
             
             // Crear CSV content
             let csvContent = headers.join(',') + '\n';
@@ -438,7 +443,8 @@
                     `"${row.stock_total || 0}"`,
                     `"${row.ubicaciones || ''}"`,
                     `"${row.ultima_entrada || ''}"`,
-                    `"${row.ultima_salida || ''}"`
+                    `"${row.ultima_salida || ''}"`,
+                    `"${row.tipo_inventario || ''}"`
                 ];
                 csvContent += fila.join(',') + '\n';
             });
@@ -490,6 +496,8 @@
                     { key: 'nparte', header: 'N. Parte' },
                     { key: 'ubicacion', header: 'Ubicación' },
                     { key: 'cantidad', header: 'Cantidad' },
+                    { key: 'tipo_inventario', header: 'Tipo Inventario' },
+                    { key: 'comentario', header: 'Comentario' },
                     { key: 'carro', header: 'Carro' },
                     { key: 'usuario', header: 'Usuario' }
                 ];
@@ -515,6 +523,8 @@
                     { key: 'modelo', header: 'Modelo' },
                     { key: 'cantidad', header: 'Cantidad' },
                     { key: 'ubicacion', header: 'Ubicación' },
+                    { key: 'tipo_inventario', header: 'Tipo Inventario' },
+                    { key: 'comentario', header: 'Comentario' },
                     { key: 'carro', header: 'Carro' }
                 ];
                 exportarExcelIMD(datos, 'movimientos_imd', columnas);
