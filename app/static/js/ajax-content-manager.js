@@ -246,13 +246,13 @@
     // Desactiva CSS de módulos no activos para evitar conflicto de #mm-grid entre pantallas
     function applyModuleStyles(mod) {
         try {
-            const known = ['control_metal_mask.css', 'control_storage_box.css'];
+            const known = ['control-metal-mask.css', 'control-storage-box.css'];
             const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
             links.forEach(link => {
                 const href = link.getAttribute('href') || '';
                 if (!known.some(n => href.includes(n))) return;
-                const enable = (mod === 'metal-mask' && href.includes('control_metal_mask.css')) ||
-                               (mod === 'storage-box' && href.includes('control_storage_box.css'));
+                const enable = (mod === 'metal-mask' && href.includes('control-metal-mask.css')) ||
+                               (mod === 'storage-box' && href.includes('control-storage-box.css'));
                 link.disabled = !enable;
             });
         } catch (e) {
