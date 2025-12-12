@@ -5,7 +5,7 @@ Sistema completo de gestión de usuarios, roles y permisos
 
 from flask import Blueprint, request, jsonify, render_template, session, send_file, redirect, url_for, flash
 from .auth_system import AuthSystem
-from .db_mysql import get_db_connection
+from ..database.db_mysql import get_db_connection
 from datetime import datetime, timedelta
 import json
 import traceback

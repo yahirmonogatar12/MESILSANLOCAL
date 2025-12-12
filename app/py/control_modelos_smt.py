@@ -7,7 +7,7 @@ import datetime
 
 from flask import Blueprint, render_template, request, jsonify, session
 
-from ..config_mysql import execute_query
+from ..database.config_mysql import execute_query
 from .settings import TABLE_NAME, SAFETY_LIMIT, USER_NAME
 
 EXCLUDE_COLS = {"id", "created_at", "updated_at"}

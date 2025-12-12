@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, date
 import re
 import functools
-from app.db_mysql import execute_query
+from ..database.db_mysql import execute_query
 
 # Crear blueprint para las rutas API
 api_po_wo = Blueprint('api_po_wo', __name__, url_prefix='/api')

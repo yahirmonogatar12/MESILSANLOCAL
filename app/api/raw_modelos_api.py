@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from app.db_mysql import execute_query
+from ..database.db_mysql import execute_query
 
 
 api_raw = Blueprint('api_raw', __name__, url_prefix='/api/raw')

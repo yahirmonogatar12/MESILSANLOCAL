@@ -3,7 +3,7 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta, date
 import pymysql
-from .auth_system import AuthSystem
+from ..core.auth_system import AuthSystem
 import os
 from dotenv import load_dotenv
 

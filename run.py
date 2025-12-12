@@ -1,30 +1,19 @@
+"""run.py - Punto de entrada para ejecutar la aplicación MES
+
+Todas las APIs y blueprints se registran centralizadamente en app/__init__.py
+Este archivo solo inicia el servidor de desarrollo.
+"""
 import os
 from dotenv import load_dotenv
 
 # Cargar variables de entorno desde .env
 load_dotenv()
 
-from app.routes import app
-from app.smt_routes_clean import register_smt_routes
-from app.api_po_wo import registrar_rutas_po_wo
-from app.aoi_api import aoi_api
-from app.py.control_modelos_smt import control_modelos_bp
-from app.api_raw_modelos import api_raw
-
-# Registrar todas las rutas
-register_smt_routes(app)
-registrar_rutas_po_wo(app)
-app.register_blueprint(aoi_api)
-app.register_blueprint(control_modelos_bp)
-# Registrar API RAW solo si no fue registrado por app.routes
-if 'api_raw' not in app.blueprints:
-    app.register_blueprint(api_raw)
-
-@app.get("/")
-def health():
-    return "ok", 200
+# Importar la app desde el nuevo __init__.py (estructura modular)
+# Todas las APIs se registran automáticamente en create_app()
+from app import app
 
 if __name__ == '__main__':
-    # Activar debug y reloader para desarrollo
-    # Usando 'stat' reloader (compatible con Python 3.13 en Windows)
-    app.run(host='0.0.0.0', port=5000, use_reloader=True, reloader_type='stat')
+    # Activar debug para desarrollo
+    # Deshabilitado reloader por incompatibilidad con conexiones MySQL
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)

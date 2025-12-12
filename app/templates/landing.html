@@ -1286,7 +1286,7 @@
                 </div>
             </div>
             {% else %}
-            <form class="login-inline-form{% if login_error %} error{% endif %}" method="post" action="{{ url_for('login') }}">
+            <form class="login-inline-form{% if login_error %} error{% endif %}" method="post" action="{{ url_for('auth.login') }}">
                 <div class="login-avatar">
                     <i class="fas fa-user"></i>
                 </div>

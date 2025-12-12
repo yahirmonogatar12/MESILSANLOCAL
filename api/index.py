@@ -12,11 +12,11 @@ except:
     pass
 
 from app.routes import app
-from app.smt_routes_clean import register_smt_routes
-from app.api_po_wo import registrar_rutas_po_wo
-from app.aoi_api import aoi_api
+from app.routes.smt_routes_clean import register_smt_routes
+from app.api.po_wo_api import registrar_rutas_po_wo
+from app.api.aoi_api import aoi_api
 from app.py.control_modelos_smt import control_modelos_bp
-from app.api_raw_modelos import api_raw
+from app.api.raw_modelos_api import api_raw
 
 # Registrar todas las rutas
 register_smt_routes(app)

@@ -1,6 +1,6 @@
 # admin_api.py - API para gestión de permisos de dropdowns
 from flask import Blueprint, jsonify, request, render_template
-from app.db import get_db_connection
+from ..database.db import get_db_connection
 import sqlite3
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
