@@ -139,7 +139,7 @@ class PlanService:
                        model_code, part_no, project, process,
                        COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, 
                        COALESCE(plan_count,0) AS plan_count,
-                       COALESCE(produced_count,0) AS input, 0 AS output, 
+                       COALESCE(produced_count,0) AS input, COALESCE(output,0) AS output, 
                        COALESCE(entregadas_main,0) AS entregadas_main,
                        COALESCE(produced_count,0) AS produced, status, 
                        group_no, sequence 

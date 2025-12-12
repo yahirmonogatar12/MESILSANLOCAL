@@ -16,4 +16,4 @@ from app import app
 if __name__ == '__main__':
     # Activar debug para desarrollo
     # Deshabilitado reloader por incompatibilidad con conexiones MySQL
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
