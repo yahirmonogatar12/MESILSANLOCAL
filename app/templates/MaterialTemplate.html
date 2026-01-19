@@ -2621,23 +2621,40 @@ function hideAllMaterialContainers() {
                         // // // // // // console.log('🔧 Creando contenedor inventario-imd-terminado-unique-container');
                         imdContainer = document.createElement('div');
                         imdContainer.id = 'inventario-imd-terminado-unique-container';
-                        imdContainer.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1001; width: 100%; min-height: 400px; padding: 5px;';
+                        // Estilos SIN !important para que puedan ser limpiados
+                        imdContainer.style.display = 'block';
+                        imdContainer.style.visibility = 'visible';
+                        imdContainer.style.opacity = '1';
+                        imdContainer.style.position = 'relative';
+                        imdContainer.style.zIndex = '1001';
+                        imdContainer.style.width = '100%';
+                        imdContainer.style.minHeight = '400px';
+                        imdContainer.style.padding = '5px';
                         controlProcesoContentArea.appendChild(imdContainer);
                     } else {
-                        // Forzar estilos para override CSS
-                        imdContainer.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative; z-index: 1001; width: 100%; min-height: 400px; padding: 5px;';
+                        // Estilos SIN !important para que puedan ser limpiados
+                        imdContainer.style.display = 'block';
+                        imdContainer.style.visibility = 'visible';
+                        imdContainer.style.opacity = '1';
+                        imdContainer.style.position = 'relative';
+                        imdContainer.style.zIndex = '1001';
+                        imdContainer.style.width = '100%';
+                        imdContainer.style.minHeight = '400px';
+                        imdContainer.style.padding = '5px';
                     }
                     
                     // Ocultar otros contenedores específicos
                     const otherContainers = [
                         'control-proceso-info-container',
                         'Control de produccion SMT-unique-container',
-                        'operacion-linea-smt-unique-container'
+                        'operacion-linea-smt-unique-container',
+                        'plan-main-assy-unique-container'
                     ];
                     
                     otherContainers.forEach(containerId => {
                         const container = document.getElementById(containerId);
                         if (container) {
+                            container.style.cssText = '';
                             container.style.display = 'none';
                         }
                     });

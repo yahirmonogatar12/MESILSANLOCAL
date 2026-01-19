@@ -129,6 +129,8 @@
                 controlProcesoSpecificContainers.forEach(containerId => {
                     const container = document.getElementById(containerId);
                     if (container) {
+                        // Limpiar TODOS los estilos inline y ocultar
+                        container.style.cssText = '';
                         container.style.display = 'none';
                     }
                 });
@@ -163,9 +165,17 @@
                 controlProcesoAjaxContainers.forEach(containerId => {
                     const container = document.getElementById(containerId);
                     if (container) {
+                        // Limpiar TODOS los estilos inline y ocultar
+                        container.style.cssText = '';
                         container.style.display = 'none';
                     }
                 });
+                
+                // 🧹 LIMPIAR estilos inline de áreas de Control de Proceso
+                const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                if (controlProcesoContentArea) {
+                    controlProcesoContentArea.style.cssText = '';
+                }
                 
                 // Ocultar todos los contenedores AJAX de Control de Resultados
                 const controlResultadosAjaxContainers = [
@@ -996,6 +1006,7 @@
                     const containerId = 'plan-main-assy-unique-container';
                     const cont = document.getElementById(containerId);
                     if (!cont) return console.error('❌ Contenedor no existe:', containerId);
+                    // Mostrar contenedor SIN !important
                     cont.style.display = 'block';
                     cont.style.opacity = '1';
                     if (typeof window.cargarContenidoDinamico === 'function') {
