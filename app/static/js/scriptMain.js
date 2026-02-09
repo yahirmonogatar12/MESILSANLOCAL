@@ -141,10 +141,13 @@
                     'operacion-linea-smt-unique-container',
                     'operacion-linea-main-unique-container',
                     'plan-main-assy-unique-container',
+                    'plan-main-imd-unique-container',
+                    'plan-main-smt-unique-container',
                     'control-impresion-identificacion-smt-unique-container',
                     'control-registro-identificacion-smt-unique-container',
                     'historial-operacion-proceso-unique-container',
                     'bom-management-process-unique-container',
+                    'bom-unique-container',
                     'reporte-diario-inspeccion-smt-unique-container',
                     'control-diario-inspeccion-smt-unique-container',
                     'reporte-diario-inspeccion-proceso-unique-container',
@@ -172,9 +175,17 @@
                 });
                 
                 // 🧹 LIMPIAR estilos inline de áreas de Control de Proceso
+                const controlProcesoContent = document.getElementById('control-proceso-content');
                 const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                
+                if (controlProcesoContent) {
+                    controlProcesoContent.style.cssText = '';
+                    controlProcesoContent.style.display = 'none';
+                }
+                
                 if (controlProcesoContentArea) {
                     controlProcesoContentArea.style.cssText = '';
+                    controlProcesoContentArea.style.display = 'none';
                 }
                 
                 // Ocultar todos los contenedores AJAX de Control de Resultados
@@ -197,11 +208,13 @@
                 if (controlResultadosContent) {
                     // Remover estilos inline para que vuelva a usar CSS normal
                     controlResultadosContent.style.cssText = '';
+                    controlResultadosContent.style.display = 'none';
                 }
                 
                 if (controlResultadosContentArea) {
                     // Remover estilos inline para que vuelva a usar CSS normal
                     controlResultadosContentArea.style.cssText = '';
+                    controlResultadosContentArea.style.display = 'none';
                 }
                 
                 // Limpiar estilos de contenedores específicos
@@ -1033,6 +1046,96 @@
                     }
                 } catch (e) {
                     console.error('❌ Error en mostrarPlanMainASSY:', e);
+                }
+            };
+
+            // Función AJAX: Plan Main IMD
+            window.mostrarPlanMainIMD = function() {
+                try {
+                    console.log('📦 Cargando Plan Main IMD...');
+                    
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => { if (btn.id !== 'Control de proceso') btn.classList.remove('active'); });
+                    }
+                    if (typeof window.hideAllMaterialContainers === 'function') window.hideAllMaterialContainers();
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') window.hideAllInformacionBasicaContainers();
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+                    const containerId = 'plan-main-imd-unique-container';
+                    const cont = document.getElementById(containerId);
+                    if (!cont) return console.error('❌ Contenedor no existe:', containerId);
+                    // Mostrar contenedor SIN !important
+                    cont.style.display = 'block';
+                    cont.style.opacity = '1';
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico(containerId, '/plan-main-imd-ajax', () => {
+                            console.log('📦 Contenido de Plan Main IMD cargado, inicializando...');
+                            
+                            // Esperar a que los scripts se carguen completamente
+                            function tryInitialize() {
+                                if (typeof window.initializePlanIMDEventListeners === 'function' && typeof window.loadPlansIMD === 'function') {
+                                    console.log('✅ Inicializando event listeners de Plan Main IMD');
+                                    window.initializePlanIMDEventListeners();
+                                    
+                                    // Cargar datos iniciales
+                                    console.log('📊 Cargando planes IMD iniciales...');
+                                    window.loadPlansIMD();
+                                } else {
+                                    console.log('⏳ Esperando a que plan_imd.js se cargue completamente...');
+                                    setTimeout(tryInitialize, 100);
+                                }
+                            }
+                            
+                            tryInitialize();
+                        });
+                    }
+                } catch (e) {
+                    console.error('❌ Error en mostrarPlanMainIMD:', e);
+                }
+            };
+
+            // Funcion AJAX: Plan Main SMT
+            window.mostrarPlanMainSMT = function() {
+                try {
+                    const controlProcesoButton = document.getElementById('Control de proceso');
+                    if (controlProcesoButton) {
+                        controlProcesoButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => { if (btn.id !== 'Control de proceso') btn.classList.remove('active'); });
+                    }
+                    if (typeof window.hideAllMaterialContainers === 'function') window.hideAllMaterialContainers();
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') window.hideAllInformacionBasicaContainers();
+                    const materialContainer = document.getElementById('material-container');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+                    const containerId = 'plan-main-smt-unique-container';
+                    const cont = document.getElementById(containerId);
+                    if (!cont) return console.error('Contenedor no existe:', containerId);
+                    cont.style.display = 'block';
+                    cont.style.opacity = '1';
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico(containerId, '/plan-main-smt-ajax', () => {
+                            function tryInitialize() {
+                                if (typeof window.initializePlanSMTEventListeners === 'function' && typeof window.loadPlansSMT === 'function') {
+                                    window.initializePlanSMTEventListeners();
+                                    window.loadPlansSMT();
+                                } else {
+                                    setTimeout(tryInitialize, 100);
+                                }
+                            }
+                            tryInitialize();
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error en mostrarPlanMainSMT:', e);
                 }
             };
 
@@ -2288,9 +2391,23 @@ window.mostrarCrearPlanMicom = function() {
                     const controlProcesoContent = document.getElementById('control-proceso-content');
                     const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
 
-                    if (materialContainer) materialContainer.style.display = 'block';
-                    if (controlProcesoContent) controlProcesoContent.style.display = 'block';
-                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
+                    if (materialContainer) {
+                        materialContainer.style.display = 'block';
+                    }
+                    
+                    if (controlProcesoContent) {
+                        controlProcesoContent.style.display = 'block';
+                        controlProcesoContent.style.width = '100%';
+                        controlProcesoContent.style.maxWidth = 'none';
+                    }
+                    
+                    if (controlProcesoContentArea) {
+                        controlProcesoContentArea.style.display = 'block';
+                        controlProcesoContentArea.style.width = '100%';
+                        controlProcesoContentArea.style.maxWidth = 'none';
+                        controlProcesoContentArea.style.margin = '0';
+                        controlProcesoContentArea.style.padding = '0';
+                    }
 
                     // PASO 3: Obtener y mostrar el contenedor específico de BOM
                     const bomContainer = document.getElementById('bom-unique-container');
@@ -2299,7 +2416,12 @@ window.mostrarCrearPlanMicom = function() {
                         return;
                     }
 
+                    // Aplicar estilos de ancho completo al contenedor BOM
                     bomContainer.style.display = 'block';
+                    bomContainer.style.width = '100%';
+                    bomContainer.style.maxWidth = 'none';
+                    bomContainer.style.margin = '0';
+                    bomContainer.style.padding = '0';
 
                     // PASO 4: Cargar contenido dinámicamente (esto también ejecuta cleanup)
                     if (typeof window.cargarContenidoDinamico === 'function') {

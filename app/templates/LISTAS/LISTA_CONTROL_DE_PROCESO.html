@@ -50,6 +50,16 @@
                     <li class="sidebar-link" tabindex="0" 
                             data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
                             data-permiso-seccion="Control de produccion" 
+                            data-permiso-boton="Control de produccion IMT"
+                            onclick="window.parent && window.parent.mostrarPlanMainIMD ? window.parent.mostrarPlanMainIMD() : (window.parent && window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('plan-main-imd-unique-container', '/plan-main-imd-ajax') : window.location.href='/plan-imd')">Control de produccion IMT</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
+                            data-permiso-seccion="Control de produccion" 
+                            data-permiso-boton="Control de produccion SMT Plan"
+                            onclick="window.parent && window.parent.mostrarPlanMainSMT ? window.parent.mostrarPlanMainSMT() : (window.parent && window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('plan-main-smt-unique-container', '/plan-main-smt-ajax') : window.location.href='/plan-smt')">Control de produccion SMT</li>
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROL_DE_PROCESO" 
+                            data-permiso-seccion="Control de produccion" 
                             data-permiso-boton="Control de operacion de linea Main"
                             onclick="window.parent && window.parent.mostrarControlOperacionLineaMain ? window.parent.mostrarControlOperacionLineaMain() : (window.parent && window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('operacion-linea-main-unique-container', '/control-operacion-linea-main-ajax') : window.location.href='/control-main')">Control de operacion de linea ASSY</li>
                     <li class="sidebar-link" tabindex="0" 

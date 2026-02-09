@@ -3169,6 +3169,323 @@ function autoArrangePlans() {
 // Exponer funcion globalmente
 window.autoArrangePlans = autoArrangePlans;
 
+// ====== VISTA POR LINEAS ======
+// Variable de estado para controlar la vista activa
+let currentViewMode = 'groups'; // 'groups' | 'lines'
+
+// Funcion para alternar entre vista de grupos y vista por lineas
+function toggleViewMode() {
+  const toggleBtn = document.getElementById('toggle-view-btn');
+  const groupsCountSelect = document.getElementById('groups-count');
+  const groupsLabel = groupsCountSelect?.previousElementSibling;
+  const autoArrangeBtn = document.getElementById('auto-arrange-btn');
+  const saveSeqBtn = document.getElementById('save-sequences-btn');
+  const lineFilter = document.getElementById('line-filter');
+
+  if (currentViewMode === 'groups') {
+    // Cambiar a vista por lineas
+    currentViewMode = 'lines';
+    if (toggleBtn) {
+      toggleBtn.textContent = 'Vista por Grupos';
+      toggleBtn.style.backgroundColor = '#2980b9';
+    }
+    // Ocultar controles de grupos
+    if (groupsCountSelect) groupsCountSelect.style.display = 'none';
+    if (groupsLabel) groupsLabel.style.display = 'none';
+    if (autoArrangeBtn) autoArrangeBtn.style.display = 'none';
+    if (saveSeqBtn) saveSeqBtn.style.display = 'none';
+    // Mostrar filtro de linea
+    if (lineFilter) lineFilter.style.display = 'inline-block';
+
+    // Renderizar vista por lineas
+    renderTableByLines();
+  } else {
+    // Cambiar a vista por grupos
+    currentViewMode = 'groups';
+    if (toggleBtn) {
+      toggleBtn.textContent = 'Vista por Lineas';
+      toggleBtn.style.backgroundColor = '#16a085';
+    }
+    // Mostrar controles de grupos
+    if (groupsCountSelect) groupsCountSelect.style.display = 'inline-block';
+    if (groupsLabel) groupsLabel.style.display = 'inline';
+    if (autoArrangeBtn) autoArrangeBtn.style.display = 'inline-block';
+    if (saveSeqBtn) saveSeqBtn.style.display = 'inline-block';
+    // Ocultar filtro de linea
+    if (lineFilter) lineFilter.style.display = 'none';
+
+    // Re-renderizar con grupos
+    reloadTableWithCurrentData();
+  }
+}
+
+// Poblar filtro de lineas con las lineas disponibles
+function populateLineFilter(plans) {
+  const lineFilter = document.getElementById('line-filter');
+  if (!lineFilter) return;
+
+  const lines = new Set();
+  plans.forEach(p => {
+    if (p.line) lines.add(p.line);
+  });
+
+  // Ordenar lineas: M1, M2, M3, M4, D1, D2, D3, H1, etc
+  const sortedLines = Array.from(lines).sort((a, b) => {
+    const matchA = a.match(/^([A-Z]+)(\d+)$/);
+    const matchB = b.match(/^([A-Z]+)(\d+)$/);
+    if (!matchA || !matchB) return a.localeCompare(b);
+    const letterOrder = { 'M': 1, 'D': 2, 'H': 3 };
+    const orderA = letterOrder[matchA[1]] || 99;
+    const orderB = letterOrder[matchB[1]] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return parseInt(matchA[2]) - parseInt(matchB[2]);
+  });
+
+  // Preservar seleccion actual
+  const currentValue = lineFilter.value;
+  lineFilter.innerHTML = '<option value="">Todas</option>';
+  sortedLines.forEach(line => {
+    const opt = document.createElement('option');
+    opt.value = line;
+    opt.textContent = line;
+    lineFilter.appendChild(opt);
+  });
+  lineFilter.value = currentValue;
+}
+
+// Renderizar tabla agrupada por lineas de produccion
+function renderTableByLines(filterLine) {
+  const table = document.getElementById('plan-table');
+  const oldTbody = document.getElementById('plan-tableBody');
+  const tbody = document.createElement('tbody');
+  tbody.id = 'plan-tableBody';
+
+  // Obtener todos los planes disponibles
+  let allPlans = [];
+  if (originalPlansData && originalPlansData.length > 0) {
+    allPlans = originalPlansData.map(p => ({ ...p }));
+  } else if (visualGroups && visualGroups.groups) {
+    visualGroups.groups.forEach(g => {
+      if (g.plans) allPlans.push(...g.plans.map(p => ({ ...p })));
+    });
+  }
+
+  // Poblar filtro de lineas
+  populateLineFilter(allPlans);
+
+  // Aplicar filtro de linea si existe
+  if (filterLine) {
+    allPlans = allPlans.filter(p => p.line === filterLine);
+  }
+
+  // Agrupar por linea
+  const lineGroups = {};
+  allPlans.forEach(plan => {
+    const line = plan.line || 'SIN LINEA';
+    if (!lineGroups[line]) lineGroups[line] = [];
+    lineGroups[line].push(plan);
+  });
+
+  // Ordenar lineas
+  const sortedLines = Object.keys(lineGroups).sort((a, b) => {
+    const matchA = a.match(/^([A-Z]+)(\d+)$/);
+    const matchB = b.match(/^([A-Z]+)(\d+)$/);
+    if (!matchA || !matchB) return a.localeCompare(b);
+    const letterOrder = { 'M': 1, 'D': 2, 'H': 3 };
+    const orderA = letterOrder[matchA[1]] || 99;
+    const orderB = letterOrder[matchB[1]] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return parseInt(matchA[2]) - parseInt(matchB[2]);
+  });
+
+  // Limpiar calculos previos para recalcular por linea
+  planningCalculations.clear();
+
+  // Renderizar cada linea como un grupo visual
+  sortedLines.forEach((line, lineIdx) => {
+    const plans = lineGroups[line];
+
+    // Ordenar planes dentro de la linea por sequence o por order guardado
+    plans.sort((a, b) => {
+      const aSeq = a.sequence || 999;
+      const bSeq = b.sequence || 999;
+      return aSeq - bSeq;
+    });
+
+    // Calcular tiempos para la linea
+    let currentTime = timeToMinutes(currentConfig.shiftStart);
+    let totalProductiveMinutes = 0;
+    const productiveMinutes = (currentConfig.productiveHours || 9) * 60;
+
+    const activePlans = plans.filter(p => p.status !== 'CANCELADO');
+
+    activePlans.forEach(plan => {
+      const productionTime = calculateProductionTime(plan.plan_count || 0, plan.uph || 0);
+      const startTime = currentTime;
+      const plannedEndTime = currentTime + productionTime;
+
+      // Verificar breaks
+      let breaksDuringPlan = 0;
+      currentConfig.breaks.forEach(breakInfo => {
+        const breakStart = timeToMinutes(breakInfo.start);
+        const breakEnd = timeToMinutes(breakInfo.end);
+        const breakDuration = breakEnd - breakStart;
+        if (breakStart >= startTime && breakStart < plannedEndTime) {
+          breaksDuringPlan += breakDuration;
+        }
+      });
+
+      const actualEndTime = plannedEndTime + breaksDuringPlan;
+
+      planningCalculations.set(plan.lot_no, {
+        groupNumber: lineIdx + 1,
+        productionTime: productionTime,
+        startTime: minutesToTime(startTime),
+        endTime: minutesToTime(actualEndTime),
+        isOvertime: false,
+        totalGroupTime: totalProductiveMinutes + productionTime
+      });
+
+      currentTime = actualEndTime;
+      totalProductiveMinutes += productionTime;
+    });
+
+    // Planes cancelados
+    plans.filter(p => p.status === 'CANCELADO').forEach(plan => {
+      planningCalculations.set(plan.lot_no, {
+        groupNumber: lineIdx + 1,
+        productionTime: 0,
+        startTime: '--',
+        endTime: '--',
+        isOvertime: false,
+        totalGroupTime: 0,
+        isCancelled: true
+      });
+    });
+
+    // Marcar overtime
+    const isLineOvertime = totalProductiveMinutes > productiveMinutes;
+    let accumulatedTime = 0;
+    activePlans.forEach(plan => {
+      const calc = planningCalculations.get(plan.lot_no);
+      if (calc) {
+        accumulatedTime += calc.productionTime;
+        calc.isOvertime = accumulatedTime > productiveMinutes;
+      }
+    });
+
+    // Header de linea
+    const totalHours = (totalProductiveMinutes / 60).toFixed(1);
+    const statusClass = isLineOvertime ? 'status-extra' : 'status-normal';
+    const statusText = isLineOvertime ? 'TIEMPO EXTRA' : 'NORMAL';
+
+    const headerRow = document.createElement('tr');
+    headerRow.className = 'group-header-row line-header-row';
+    headerRow.innerHTML = `
+      <td colspan="22" style="background-color: #1a3a4a; color: #ecf0f1; font-weight: bold; text-align: center; padding: 8px; border: 2px solid #16a085;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 14px;">LINEA ${line}</span>
+          <div>
+            <span style="margin-right: 10px;">Total: ${totalHours}h</span>
+            <span class="${statusClass}">${statusText}</span>
+          </div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(headerRow);
+
+    // Renderizar planes
+    plans.forEach((plan, planIndex) => {
+      const tr = document.createElement('tr');
+      tr.dataset.lot = plan.lot_no;
+      tr.dataset.line = line;
+      tr.className = 'plan-row';
+
+      const calc = planningCalculations.get(plan.lot_no);
+      const isCancelled = plan.status === 'CANCELADO';
+
+      let tiempoCell = '--:--';
+      let inicioCell = '--:--';
+      let finCell = '--:--';
+      let turnoHTML = '-';
+
+      if (calc && !isCancelled) {
+        tiempoCell = minutesToTime(calc.productionTime);
+        inicioCell = calc.startTime;
+        finCell = calc.endTime;
+        turnoHTML = calc.isOvertime
+          ? '<span class="status-extra">EXTRA</span>'
+          : '<span class="status-normal">NORMAL</span>';
+      } else if (isCancelled) {
+        turnoHTML = '<span class="status-cancelled">CANCELADO</span>';
+      }
+
+      tr.innerHTML = `
+        <td style="background-color: #16a085; color: white; font-weight: bold; text-align: center;">${planIndex + 1}</td>
+        <td>${plan.lot_no}</td>
+        <td>${plan.wo_code || ''}</td>
+        <td>${plan.po_code || ''}</td>
+        <td>${plan.working_date || ''}</td>
+        <td>${plan.line || ''}</td>
+        <td>${routingToTurno(plan.routing)}</td>
+        <td>${plan.model_code || ''}</td>
+        <td>${plan.part_no || ''}</td>
+        <td>${plan.project || ''}</td>
+        <td>${plan.process || ''}</td>
+        <td>${plan.ct || '0'}</td>
+        <td>${plan.uph || '0'}</td>
+        <td>${plan.plan_count || 0}</td>
+        <td>${plan.produced ?? 0}</td>
+        <td>${plan.output ?? 0}</td>
+        <td>${plan.entregadas_main ?? 0}</td>
+        <td>${plan.status || 'PLAN'}</td>
+        <td class="tiempo-cell">${tiempoCell}</td>
+        <td class="tiempo-cell fecha-inicio-cell">${inicioCell}</td>
+        <td class="tiempo-cell">${finCell}</td>
+        <td style="text-align:center; font-weight:bold;">${turnoHTML}</td>
+      `;
+
+      // Estilos para cancelado u overtime
+      if (isCancelled) {
+        tr.style.backgroundColor = '#6c6c6c';
+        tr.style.color = '#ccc';
+        tr.style.textDecoration = 'line-through';
+      } else if (calc && calc.isOvertime) {
+        tr.style.backgroundColor = '#8e2e2e';
+        tr.style.color = '#fff';
+      }
+
+      tbody.appendChild(tr);
+    });
+
+    // Espacio entre lineas
+    if (lineIdx < sortedLines.length - 1) {
+      const spacerRow = document.createElement('tr');
+      spacerRow.className = 'group-spacer';
+      spacerRow.innerHTML = `<td colspan="22" style="height: 10px; background-color: #2c2c2c;"></td>`;
+      tbody.appendChild(spacerRow);
+    }
+  });
+
+  // Si no hay planes
+  if (sortedLines.length === 0) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = `<td colspan="22" style="text-align: center; padding: 20px; color: #888;">No hay planes para mostrar</td>`;
+    tbody.appendChild(emptyRow);
+  }
+
+  // Reemplazar tbody
+  if (oldTbody && oldTbody.parentNode) {
+    oldTbody.parentNode.replaceChild(tbody, oldTbody);
+  } else if (table) {
+    table.appendChild(tbody);
+  }
+}
+
+// Exponer funciones globalmente
+window.toggleViewMode = toggleViewMode;
+window.renderTableByLines = renderTableByLines;
+
 // Exponer funciones de reprogramacion globalmente
 window.loadPendingPlans = loadPendingPlans;
 window.reschedulePendingPlans = reschedulePendingPlans;
@@ -3791,6 +4108,24 @@ function initializePlanEventListeners() {
       reloadTableWithCurrentData();
       return;
     }
+
+    // Toggle vista por lineas
+    if (target.id === 'toggle-view-btn' || target.closest('#toggle-view-btn')) {
+      e.preventDefault();
+      toggleViewMode();
+      return;
+    }
+  });
+
+  // ========== EVENT LISTENER DE CHANGE PARA LINE-FILTER ==========
+  document.body.addEventListener('change', function (e) {
+    const target = e.target;
+    
+    // Filtro de lineas
+    if (target.id === 'line-filter') {
+      renderTableByLines(target.value);
+      return;
+    }
   });
 
   // ========== EVENT LISTENERS DE SUBMIT ==========
@@ -3849,6 +4184,13 @@ function initializePlanEventListeners() {
       return;
     }
     
+    // Verificar que la fila pertenece al contenedor ASSY, no al de IMD
+    const assyContainer = row.closest('#plan-main-assy-unique-container');
+    if (!assyContainer) {
+      console.log('⚠️ Fila no pertenece a ASSY, ignorando...');
+      return;
+    }
+    
     console.log('✅ Fila encontrada:', row);
 
     const lotNo = row.dataset.lot;
@@ -3904,8 +4246,17 @@ loadPlans = async function () {
     // Aplicar orden guardado (si existe) antes de renderizar
     data = applySavedOrderToData(data, fs, fe);
 
-    // Usar nueva funcion de renderizado con grupos visuales
-    renderTableWithVisualGroups(data);
+    // Renderizar segun el modo de vista actual
+    if (currentViewMode === 'lines') {
+      // En modo lineas, poblar el filtro y renderizar por lineas
+      populateLineFilter(data);
+      const lineFilter = document.getElementById('line-filter');
+      const selectedLine = lineFilter ? lineFilter.value : '';
+      renderTableByLines(selectedLine);
+    } else {
+      // Usar nueva funcion de renderizado con grupos visuales
+      renderTableWithVisualGroups(data);
+    };
 
     // ensureOrderToolbar(fs, fe); // Ya no necesario - usamos save-sequences-btn
   } catch (error) {

@@ -461,6 +461,12 @@
         <div id="plan-main-assy-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
+        <div id="plan-main-imd-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
+        <div id="plan-main-smt-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
         <div id="plan-smd-diario-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
@@ -1791,6 +1797,20 @@
                         console.warn('Error en cleanupControlBOM:', e);
                     }
                 }
+                if (typeof window.cleanupPlanIMD === 'function') {
+                    try {
+                        window.cleanupPlanIMD();
+                    } catch(e) {
+                        console.warn('Error en cleanupPlanIMD:', e);
+                    }
+                }
+                if (typeof window.cleanupPlanSMT === 'function') {
+                    try {
+                        window.cleanupPlanSMT();
+                    } catch(e) {
+                        console.warn('Error en cleanupPlanSMT:', e);
+                    }
+                }
                 // Agregar más funciones de limpieza aquí para otros módulos si es necesario
                 
                 // 1. CERRAR TODOS LOS DROPDOWNS ANTES DE LIMPIAR
@@ -2113,9 +2133,18 @@ function hideAllMaterialContainers() {
                 containers.forEach(containerId => {
                     const container = document.getElementById(containerId);
                     if (container) {
+                        // Limpiar estilos inline y ocultar
+                        container.style.cssText = '';
                         container.style.display = 'none';
                     }
                 });
+                
+                // 🧹 LIMPIAR estilos inline del área de Información Básica
+                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
+                if (informacionBasicaArea) {
+                    informacionBasicaArea.style.cssText = '';
+                    informacionBasicaArea.style.display = 'none';
+                }
             }
             
             // Hacer la función disponible globalmente
@@ -2303,7 +2332,14 @@ function hideAllMaterialContainers() {
                     bomProcesoContainer.style.display = 'none';
                 }
                 
-                // PASO 4: Ocultar todos los contenedores de Control de Proceso
+                // PASO 4: OCULTAR control-proceso-content-area (CRÍTICO para evitar doble visualización)
+                const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                if (controlProcesoContentArea) {
+                    controlProcesoContentArea.style.cssText = '';
+                    controlProcesoContentArea.style.display = 'none';
+                }
+                
+                // PASO 5: Ocultar todos los contenedores de Control de Proceso
                 const controlProcesoContainers = [
                     'control-proceso-info-container',
                     'control-produccion-smt-container',
@@ -2320,7 +2356,7 @@ function hideAllMaterialContainers() {
                     if (container) container.style.display = 'none';
                 });
                 
-                // PASO 5: Limpiar cualquier contenido visible en el área de Información Básica
+                // PASO 6: Limpiar cualquier contenido visible en el área de Información Básica
                 const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
                 if (informacionBasicaArea) {
                     // Ocultar todos los divs hijos que puedan tener contenido visible
@@ -2330,14 +2366,24 @@ function hideAllMaterialContainers() {
                             div.style.display = 'none';
                         }
                     });
+                    // Aplicar estilos de ancho completo al área
+                    informacionBasicaArea.style.display = 'block';
+                    informacionBasicaArea.style.width = '100%';
+                    informacionBasicaArea.style.maxWidth = 'none';
+                    informacionBasicaArea.style.margin = '0';
+                    informacionBasicaArea.style.padding = '0';
                 }
                 
-                // PASO 6: Mostrar el contenedor de Control de BOM de Información Básica
+                // PASO 7: Mostrar el contenedor de Control de BOM de Información Básica
                 const container = document.getElementById('control-bom-info-container');
                 if (container) {
                     container.style.display = 'block';
+                    container.style.width = '100%';
+                    container.style.maxWidth = 'none';
+                    container.style.margin = '0';
+                    container.style.padding = '0';
                     
-                    // PASO 7: Cargar el contenido dinámicamente (esto también ejecuta cleanup)
+                    // PASO 8: Cargar el contenido dinámicamente (esto también ejecuta cleanup)
                     cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom')
                         .then(() => {
                             // Inicializar event listeners si existen
@@ -2648,7 +2694,9 @@ function hideAllMaterialContainers() {
                         'control-proceso-info-container',
                         'Control de produccion SMT-unique-container',
                         'operacion-linea-smt-unique-container',
-                        'plan-main-assy-unique-container'
+                        'plan-main-assy-unique-container',
+                        'plan-main-imd-unique-container',
+                        'plan-main-smt-unique-container'
                     ];
                     
                     otherContainers.forEach(containerId => {

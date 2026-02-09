@@ -6,7 +6,10 @@
     background-color: #32323E;
     color: lightgray;
     min-height: 100vh;
-    padding: 2px;   
+    padding: 2px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* Botonera */

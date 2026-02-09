@@ -29,6 +29,9 @@
     if (value === null || value === undefined) return '<span class="text-muted">NULL</span>';
     if (value === '') return '<span class="text-muted">-</span>';
     
+    // Escapar HTML para evitar inyeccion
+    const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    
     // Formatear fechas
     if (columnName.includes('fecha') || columnName.includes('date') || columnName.includes('time')) {
       try {
@@ -49,10 +52,10 @@
     // Truncar texto muy largo y agregar tooltip
     const str = String(value);
     if (str.length > 50) {
-      return `<span title="${str}">${str.substring(0, 50)}...</span>`;
+      return `<span title="${escapeAttr(str)}">${escapeAttr(str.substring(0, 50))}...</span>`;
     }
     
-    return str;
+    return escapeAttr(str);
   }
 
   function render() {
@@ -75,10 +78,11 @@
         const cells = RX.columns.map(col => {
           const value = row[col];
           const displayValue = formatCellValue(value, col);
-          const fullText = String(value || '').replace(/"/g, '&quot;');
+          const rawText = String(value === null || value === undefined ? '' : value);
+          const fullText = rawText.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           
           // Agregar data-full-text solo si el texto es largo
-          const dataAttr = fullText.length > 50 ? `data-full-text="${fullText}"` : '';
+          const dataAttr = rawText.length > 50 ? `data-full-text="${fullText}"` : '';
           
           return `<td ${dataAttr}>${displayValue}</td>`;
         }).join("");
@@ -791,11 +795,24 @@ class RawEditModal {
     // Definir campos numéricos
     const numericFields = ['hora_dia', 'c_t', 'uph', 'price', 'st', 'neck_st', 'l_b', 'input', 'output'];
     
+    // Escapar HTML para atributos de forma segura
+    const escapeHtml = (str) => {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    };
+    
     Object.keys(data).forEach(key => {
       // Excluir campos de metadatos
       if (key.startsWith('_')) return;
       
-      const value = data[key] || '';
+      // Usar comparacion estricta para no perder valores como 0
+      const rawValue = data[key];
+      const value = (rawValue === null || rawValue === undefined || rawValue === '') ? '' : String(rawValue);
       const isReadonly = readonlyFields.includes(key);
       const isNumeric = numericFields.includes(key);
       const readonlyAttr = isReadonly ? 'readonly' : '';
@@ -806,13 +823,13 @@ class RawEditModal {
       
       const fieldHTML = `
         <div class="form-group">
-          <label class="form-label">${key}${readonlyLabel}${numericLabel}</label>
+          <label class="form-label">${escapeHtml(key)}${readonlyLabel}${numericLabel}</label>
           <input 
-            type="${isNumeric ? 'text' : 'text'}" 
+            type="text" 
             class="form-control ${readonlyClass} ${numericClass}" 
             name="${key}" 
-            value="${value}"
-            placeholder="Ingrese ${key}"
+            value="${escapeHtml(value)}"
+            placeholder="Ingrese ${escapeHtml(key)}"
             ${readonlyAttr}
           />
         </div>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Plan IMD</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index-styles.css') }}">
+  <style>
+    /* Fallback por si no cargan los estilos */
+    body { background: #32323E; color: lightgray; font-family: sans-serif; }
+    
+    /* Animaciones para notificaciones de conflicto */
+    @keyframes slideInRight {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+    
+    /* Estilo para filas con conflicto */
+    tr.plan-row[style*="background-color: rgb(192, 57, 43)"] {
+      animation: pulseRed 2s infinite;
+    }
+    
+    @keyframes pulseRed {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+      }
+    }
+    
+    /* ====== Estilos IMT (duplicados de styles.css con IDs imd-) ====== */
+    #imd-plan-container {
+      font-family: 'LG regular', sans-serif;
+      background-color: #32323E;
+      color: lightgray;
+      min-height: 100vh;
+      padding: 2px;
+    }
+    #imd-plan-toolbar {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      padding: 8px;
+      background-color: #34334E;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      border: #20688C 1px solid;
+      flex-wrap: nowrap;
+    }
+    #imd-plan-table-container {
+      background-color: #40424F;
+      padding: 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow-x: auto;
+      overflow-y: auto;
+      width: 100%;
+      max-height: calc(100vh - 120px);
+      position: relative;
+    }
+    #imd-plan-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+      font-size: 11px;
+      background-color: #40424F;
+      table-layout: auto !important;
+    }
+    #imd-plan-table th {
+      background-color: #172A46;
+      color: #ecf0f1;
+      padding: 6px 4px;
+      text-align: center;
+      border: 1px solid #20688C;
+      font-weight: 600;
+      white-space: nowrap;
+      font-size: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    #imd-plan-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    #imd-plan-table thead tr {
+      position: sticky;
+      top: 0;
+    }
+    #imd-plan-table td {
+      padding: 5px 8px;
+      text-align: center;
+      border: 1px solid #5F6375;
+      background-color: #40424F;
+      color: lightgray;
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #imd-plan-table td:nth-child(1), #imd-plan-table th:nth-child(1) { width: auto; min-width: auto; }
+    #imd-plan-table td:nth-child(2), #imd-plan-table th:nth-child(2) { width: auto; min-width: auto; }
+    #imd-plan-table tr:hover td {
+      background-color: #485563;
+    }
+    #imd-plan-table tr:nth-child(even) td {
+      background-color: #44475A;
+    }
+    #imd-plan-table tr:nth-child(even):hover td {
+      background-color: #485563;
+    }
+  </style>
+  </head>
+<body id="imd-plan-container">
+
+  <!-- Toolbar Simple -->
+  <div id="imd-plan-toolbar">
+    <button id="imd-openModalBtn" class="plan-btn plan-btn-add">+ Nuevo Plan</button>
+    <button id="imd-export-excel-btn" class="plan-btn">Exportar Excel</button>
+    <button id="imd-import-excel-btn" class="plan-btn" style="background: #8e44ad;">Importar Excel</button>
+    <button id="imd-save-sequences-btn" class="plan-btn" style="background: #16a085;">Guardar Orden</button>
+    <button id="imd-reschedule-btn" class="plan-btn" style="background: #e67e22;">Reprogramar</button>
+    <button id="imd-reschedule-cancel-btn" class="plan-btn" style="background: #c0392b; display:none;">Cancelar Seleccion</button>
+    
+    <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+      <label style="color: #888;">Fecha:</label>
+      <input type="date" id="imd-filter-start" class="plan-input">
+      <button onclick="loadPlansIMD()" class="plan-btn plan-btn-refresh">Filtrar</button>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div id="imd-plan-table-container">
+    <table id="imd-plan-table">
+      <thead>
+        <tr>
+          <th style="width:30px; display:none;" class="reschedule-col"><input type="checkbox" id="select-all-imd" title="Seleccionar todos"></th>
+          <th>Sec</th>
+          <th>Lot No</th>
+          <th>WO</th>
+          <th>PO</th>
+          <th>Fecha</th>
+          <th>Line</th>
+          <th>Shift</th>
+          <th>Model Code</th>
+          <th>Part No</th>
+          <th>Process</th>
+          <th>CT</th>
+          <th>UPH</th>
+          <th>Plan</th>
+          <th>Output</th>
+          <th>Status</th>
+          <th>Turno</th>
+        </tr>
+      </thead>
+      <tbody id="imd-plan-tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Los modales se crean dinámicamente en JavaScript (ver plan_imd.js - createModalsInBodyIMD()) -->
+  
+  <!-- Script inline para cargar dependencias y asegurar inicialización -->
+  <script>
+    (function() {
+      console.log('📝 Script inline de Control_produccion_imt ejecutándose...');
+      
+      // Función para cargar un script dinámicamente
+      function loadScript(src) {
+        return new Promise((resolve, reject) => {
+          // Verificar si el script ya está cargado
+          const existingScript = document.querySelector(`script[src="${src}"]`);
+          if (existingScript) {
+            console.log(`✅ Script ya cargado: ${src}`);
+            resolve();
+            return;
+          }
+          
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = () => {
+            console.log(`✅ Script cargado: ${src}`);
+            resolve();
+          };
+          script.onerror = () => {
+            console.error(`❌ Error cargando script: ${src}`);
+            reject(new Error(`Failed to load ${src}`));
+          };
+          document.head.appendChild(script);
+        });
+      }
+      
+      // Función para inicializar el módulo
+      async function initializeModule() {
+        try {
+          // Cargar axios si no está disponible
+          if (typeof axios === 'undefined') {
+            console.log('📦 Cargando axios...');
+            await loadScript('https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js');
+          }
+          
+          // Cargar plan_imd.js si no está disponible
+          if (typeof window.initializePlanIMDEventListeners === 'undefined' || typeof window.loadPlansIMD === 'undefined') {
+            console.log('📦 Cargando plan_imd.js...');
+            await loadScript('{{ url_for("static", filename="js/plan_imd.js") }}');
+          }
+          
+          // Cargar index-functions.js si es necesario
+          if (typeof window.exportarExcel === 'undefined') {
+            console.log('📦 Cargando index-functions.js...');
+            await loadScript('{{ url_for("static", filename="js/index-functions.js") }}');
+          }
+          
+          // Esperar un momento para asegurar que todo esté listo
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // IMPORTANTE: Crear modales dinámicamente en el body primero
+          if (typeof window.createModalsInBodyIMD === 'function') {
+            console.log('🏗️ Creando modales en el body...');
+            window.createModalsInBodyIMD();
+          }
+          
+          // Inicializar event listeners
+          if (typeof window.initializePlanIMDEventListeners === 'function') {
+            console.log('✅ Inicializando event listeners de Plan Main IMD');
+            window.initializePlanIMDEventListeners();
+            
+            // Cargar datos iniciales
+            if (typeof window.loadPlansIMD === 'function') {
+              console.log('📊 Cargando planes iniciales...');
+              window.loadPlansIMD();
+            }
+          } else {
+            console.error('❌ initializePlanIMDEventListeners no disponible después de cargar scripts');
+          }
+          
+        } catch (error) {
+          console.error('❌ Error inicializando módulo Plan Main IMD:', error);
+        }
+      }
+      
+      // Ejecutar inicialización
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeModule);
+      } else {
+        initializeModule();
+      }
+    })();
+  </script>
+
+</body>
+</html>
