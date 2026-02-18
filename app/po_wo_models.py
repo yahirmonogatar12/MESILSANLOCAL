@@ -621,21 +621,17 @@ def migrar_tabla_work_orders():
             ("linea", "ADD COLUMN linea VARCHAR(16) DEFAULT 'SMT-1'")
         ]
         
-        # Verificar qué columnas ya existen
-        check_query = "SHOW COLUMNS FROM work_orders"
-        columnas_existentes = execute_query(check_query, fetch='all')
-        nombres_existentes = [col['Field'] for col in columnas_existentes]
-        
+        # Agregar columnas que no existen (captura error 1060 si ya existe)
         for nombre_columna, sql_comando in nuevas_columnas:
-            if nombre_columna not in nombres_existentes:
-                try:
-                    query = f"ALTER TABLE work_orders {sql_comando}"
-                    execute_query(query)
-                    print(f" Columna WO agregada: {nombre_columna}")
-                except Exception as e:
+            try:
+                query = f"ALTER TABLE work_orders {sql_comando}"
+                execute_query(query)
+                print(f" Columna WO agregada: {nombre_columna}")
+            except Exception as e:
+                if "1060" in str(e):
+                    print(f" Columna WO ya existe: {nombre_columna}")
+                else:
                     print(f" Error agregando columna WO {nombre_columna}: {e}")
-            else:
-                print(f" Columna WO ya existe: {nombre_columna}")
         
         print(" Migración de tabla work_orders completada")
         
@@ -647,22 +643,26 @@ def migrar_tabla_plan_main():
     try:
         print("🔄 Migrando tabla plan_main...")
         
-        # Verificar si la columna wo_id ya existe
-        check_query = "SHOW COLUMNS FROM plan_main LIKE 'wo_id'"
-        result = execute_query(check_query, fetch='one')
-        
-        if not result:
-            # Agregar columna wo_id
+        # Agregar columna wo_id si no existe (captura error 1060 si ya existe)
+        try:
             print(" Agregando columna wo_id...")
             alter_query = """
-            ALTER TABLE plan_main 
-            ADD COLUMN wo_id INT NULL AFTER lot_no,
-            ADD INDEX idx_wo_id (wo_id)
+            ALTER TABLE plan_main
+            ADD COLUMN wo_id INT NULL AFTER lot_no
             """
             execute_query(alter_query)
-            print("✅ Columna wo_id agregada a plan_main")
-        else:
-            print(" Columna wo_id ya existe en plan_main")
+            # Agregar índice por separado
+            try:
+                execute_query("ALTER TABLE plan_main ADD INDEX idx_wo_id (wo_id)")
+            except Exception as e:
+                if "1061" not in str(e):  # Ignorar si índice ya existe
+                    print(f" Error agregando índice wo_id: {e}")
+            print(" Columna wo_id agregada a plan_main")
+        except Exception as e:
+            if "1060" in str(e):
+                print(" Columna wo_id ya existe en plan_main")
+            else:
+                print(f" Error agregando columna wo_id: {e}")
         
         print(" Migración de tabla plan_main completada")
         

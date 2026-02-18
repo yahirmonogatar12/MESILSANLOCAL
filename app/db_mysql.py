@@ -1773,24 +1773,17 @@ def migrar_tabla_materiales():
             ("espesor_msl", "VARCHAR(100)")
         ]
         
-        # Verificar qué columnas ya existen
-        check_columns = "SHOW COLUMNS FROM materiales"
-        existing_columns = execute_query(check_columns, fetch='all')
-        existing_names = [col['Field'] for col in existing_columns] if existing_columns else []
-        
-        print(f" Columnas existentes: {existing_names}")
-        
-        # Agregar columnas que no existen
+        # Agregar columnas que no existen (usa IF NOT EXISTS o captura error 1060)
         for col_name, col_definition in nuevas_columnas:
-            if col_name not in existing_names:
-                try:
-                    alter_query = f"ALTER TABLE materiales ADD COLUMN {col_name} {col_definition}"
-                    execute_query(alter_query)
-                    print(f" Columna {col_name} agregada")
-                except Exception as e:
+            try:
+                alter_query = f"ALTER TABLE materiales ADD COLUMN {col_name} {col_definition}"
+                execute_query(alter_query)
+                print(f" Columna {col_name} agregada")
+            except Exception as e:
+                if "1060" in str(e):  # Duplicate column name
+                    print(f" Columna {col_name} ya existe")
+                else:
                     print(f" Error agregando columna {col_name}: {e}")
-            else:
-                print(f" Columna {col_name} ya existe")
         
         # Agregar índice para codigo_material si no existe
         try:
@@ -1815,21 +1808,16 @@ def migrar_tabla_bom():
     print(" Migrando tabla bom para agregar columna posicion_assy...")
     
     try:
-        # Verificar columnas existentes
-        check_columns = "SHOW COLUMNS FROM bom"
-        existing_columns = execute_query(check_columns, fetch='all')
-        existing_names = [col['Field'] for col in existing_columns] if existing_columns else []
-        
-        # Agregar columna posicion_assy si no existe
-        if 'posicion_assy' not in existing_names:
-            try:
-                alter_query = "ALTER TABLE bom ADD COLUMN posicion_assy VARCHAR(255) AFTER ubicacion"
-                execute_query(alter_query)
-                print(" Columna posicion_assy agregada a tabla bom")
-            except Exception as e:
+        # Agregar columna posicion_assy si no existe (captura error 1060 si ya existe)
+        try:
+            alter_query = "ALTER TABLE bom ADD COLUMN posicion_assy VARCHAR(255) AFTER ubicacion"
+            execute_query(alter_query)
+            print(" Columna posicion_assy agregada a tabla bom")
+        except Exception as e:
+            if "1060" in str(e):
+                print(" Columna posicion_assy ya existe en tabla bom")
+            else:
                 print(f" Error agregando columna posicion_assy: {e}")
-        else:
-            print(" Columna posicion_assy ya existe en tabla bom")
         
         print(" Migración de tabla bom completada")
         return True
@@ -2150,44 +2138,23 @@ if __name__ == "__main__":
 
 def agregar_columna_usuario_registro():
     """Agregar columna usuario_registro a la tabla materiales si no existe"""
-    conn = None
-    cursor = None
     try:
-        conn = get_mysql_connection()
-        if not conn:
-            print("❌ No se pudo conectar a MySQL")
-            return False
-            
-        cursor = conn.cursor()
-        
-        # Verificar si la columna ya existe
-        cursor.execute("SHOW COLUMNS FROM materiales LIKE 'usuario_registro'")
-        result = cursor.fetchone()
-        
-        if result:
-            print(" La columna usuario_registro ya existe")
-            return True
-            
-        # Agregar la columna si no existe
-        alter_query = "ALTER TABLE materiales ADD COLUMN usuario_registro VARCHAR(255) DEFAULT 'SISTEMA'"
-        cursor.execute(alter_query)
-        
-        # Agregar índice para la nueva columna
-        index_query = "ALTER TABLE materiales ADD INDEX idx_usuario_registro (usuario_registro)"
-        cursor.execute(index_query)
-        
-        conn.commit()
+        execute_query("ALTER TABLE materiales ADD COLUMN usuario_registro VARCHAR(255) DEFAULT 'SISTEMA'")
         print(" Columna usuario_registro agregada exitosamente")
-        return True
-        
     except Exception as e:
-        print(f"❌ Error agregando columna usuario_registro: {e}")
-        return False
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+        if "1060" in str(e):
+            print(" La columna usuario_registro ya existe")
+        else:
+            print(f"❌ Error agregando columna usuario_registro: {e}")
+            return False
+
+    try:
+        execute_query("ALTER TABLE materiales ADD INDEX idx_usuario_registro (usuario_registro)")
+    except Exception as e:
+        if "1061" not in str(e):
+            print(f" Error agregando índice usuario_registro: {e}")
+
+    return True
 
 def get_mysql_connection():
     """Obtener conexión MySQL simple para migraciones"""
