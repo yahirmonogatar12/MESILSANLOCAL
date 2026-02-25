@@ -11,6 +11,8 @@ pymysql>=1.0.0
 # mysqlclient para mejor rendimiento en Seenode
 mysqlclient>=2.2.0
 gunicorn==21.2.0
+waitress==2.1.2
+
 
 
 # Configuración
