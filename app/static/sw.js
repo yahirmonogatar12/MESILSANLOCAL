@@ -41,7 +41,7 @@ self.addEventListener('install', function(event) {
                 return self.skipWaiting();
             })
             .catch(function(error) {
-                console.error('❌ Service Worker: Error al cachear recursos:', error);
+                console.error(' Service Worker: Error al cachear recursos:', error);
             })
     );
 });
@@ -109,7 +109,7 @@ self.addEventListener('fetch', function(event) {
                     
                     return response;
                 }).catch(function(error) {
-                    console.error('❌ Service Worker: Error en petición de red:', error);
+                    console.error(' Service Worker: Error en petición de red:', error);
                     
                     // Servir página offline personalizada para navegación
                     if (event.request.destination === 'document') {
@@ -252,7 +252,7 @@ function doBackgroundSync() {
         .then(function() {
         })
         .catch(function(error) {
-            console.error('❌ Service Worker: Error en sincronización:', error);
+            console.error(' Service Worker: Error en sincronización:', error);
         });
 }
 

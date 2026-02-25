@@ -121,7 +121,7 @@ async function consultarPOs() {
         const estado = document.getElementById('estadoFilter')?.value || '';
         const url = `/api/po/listar${estado ? `?estado=${estado}` : ''}`;
         
-        console.log('🔍 Consultando URL:', url);
+        console.log(' Consultando URL:', url);
         
         const response = await fetch(url, {
             method: 'GET',
@@ -394,7 +394,7 @@ function llenarDropdownModelos() {
         dropdownList.appendChild(item);
     });
     
-    console.log(`🔍 ${modelosBOM.length} modelos cargados en dropdown WO`);
+    console.log(` ${modelosBOM.length} modelos cargados en dropdown WO`);
 }
 
 // Función para filtrar modelos en el dropdown de WO
@@ -750,7 +750,7 @@ function inicializarDrawerCrearPO() {
             }
         });
         
-        console.log('✅ Drawer crear PO inicializado correctamente');
+        console.log(' Drawer crear PO inicializado correctamente');
     } else {
         console.log('⚠️ Elementos del drawer PO no encontrados en DOM');
     }
@@ -787,9 +787,9 @@ function abrirDrawerPO() {
         drawer.classList.add('open');
         overlay.classList.add('active');
         
-        console.log('✅ Drawer PO abierto correctamente');
+        console.log(' Drawer PO abierto correctamente');
     } else {
-        console.error('❌ No se encontraron elementos del drawer PO');
+        console.error(' No se encontraron elementos del drawer PO');
     }
 }
 
@@ -808,7 +808,7 @@ function cerrarDrawerPO() {
             form.reset();
         }
         
-        console.log('✅ Drawer PO cerrado');
+        console.log(' Drawer PO cerrado');
     }
 }
 
@@ -928,7 +928,7 @@ async function crearPO() {
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             const textResponse = await response.text();
-            console.error('❌ Respuesta no es JSON:', textResponse);
+            console.error(' Respuesta no es JSON:', textResponse);
             throw new Error('El servidor no devolvió JSON válido');
         }
         
@@ -1117,7 +1117,7 @@ function initControlEmbarque() {
     // Cargar datos iniciales
     consultarPOs();
     
-    console.log('✅ Control de Embarque - Sistema PO → WO completamente funcional');
+    console.log(' Control de Embarque - Sistema PO → WO completamente funcional');
 }
 
 // Mantener compatibilidad con carga directa

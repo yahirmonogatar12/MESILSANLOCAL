@@ -43,7 +43,7 @@ window.abrirPanelEdicion = function(btn) {
     if (window.materialEditDrawer && row) {
         window.materialEditDrawer.abrirPanelEdicion(row);
     } else {
-        console.error('❌ MaterialEditDrawer no está inicializado o no se encontró la fila');
+        console.error(' MaterialEditDrawer no está inicializado o no se encontró la fila');
     }
 };
 
@@ -51,7 +51,7 @@ window.cerrarDrawer = function() {
     if (window.materialEditDrawer) {
         window.materialEditDrawer.cerrarDrawer();
     } else {
-        console.error('❌ MaterialEditDrawer no está inicializado');
+        console.error(' MaterialEditDrawer no está inicializado');
     }
 };
 
@@ -59,7 +59,7 @@ window.guardarEdicion = function() {
     if (window.materialEditDrawer) {
         window.materialEditDrawer.guardarEdicion();
     } else {
-        console.error('❌ MaterialEditDrawer no está inicializado');
+        console.error(' MaterialEditDrawer no está inicializado');
     }
 };
 
@@ -640,7 +640,7 @@ class MaterialEditDrawer {
             }
 
         } catch (error) {
-            console.error('❌ Error al guardar cambios:', error);
+            console.error(' Error al guardar cambios:', error);
             this.showError('Error al guardar: ' + error.message);
         } finally {
             this.showLoadingButton(false);
@@ -1005,7 +1005,7 @@ class MaterialRegistroDrawer {
             }
 
         } catch (error) {
-            console.error('❌ Error al registrar material:', error);
+            console.error(' Error al registrar material:', error);
             this.showError('Error al registrar: ' + error.message);
         } finally {
             this.showLoadingButton(false);

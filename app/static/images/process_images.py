@@ -26,11 +26,11 @@ def process_logo(input_path):
         # Guardar como PNG optimizado
         output_path = os.path.join(IMAGES_DIR, 'ilsan-logo.png')
         img.save(output_path, 'PNG', optimize=True)
-        print(f"✅ Logo procesado: {output_path}")
+        print(f" Logo procesado: {output_path}")
         print(f"   Dimensiones: {img.width}x{img.height}px")
         
     except Exception as e:
-        print(f"❌ Error procesando logo: {e}")
+        print(f" Error procesando logo: {e}")
 
 def process_facility(input_path):
     """Procesa la imagen de las instalaciones"""
@@ -51,11 +51,11 @@ def process_facility(input_path):
         # Guardar como JPEG optimizado
         output_path = os.path.join(IMAGES_DIR, 'ilsan-facility.jpg')
         img.save(output_path, 'JPEG', quality=85, optimize=True)
-        print(f"✅ Imagen de instalaciones procesada: {output_path}")
+        print(f" Imagen de instalaciones procesada: {output_path}")
         print(f"   Dimensiones: {img.width}x{img.height}px")
         
     except Exception as e:
-        print(f"❌ Error procesando imagen de instalaciones: {e}")
+        print(f" Error procesando imagen de instalaciones: {e}")
 
 def main():
     print("🖼️  Procesador de Imágenes - ILSAN Landing Page")

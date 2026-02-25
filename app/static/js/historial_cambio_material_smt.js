@@ -155,7 +155,7 @@ function actualizarTabla() {
     const tbody = getElementByIdFlexible('csvTableBody');
     
     if (!tbody) {
-        console.error('❌ No se encontró el elemento tbody de la tabla');
+        console.error(' No se encontró el elemento tbody de la tabla');
         return;
     }
     

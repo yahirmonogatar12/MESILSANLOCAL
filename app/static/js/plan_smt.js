@@ -312,47 +312,34 @@ async function saveSequencesSMT() {
 function openEditModalSMT(planId) {
   const plan = planningDataSMT.find(p => String(p.id) === String(planId));
   if (!plan) return;
-  
+
   let modal = document.getElementById('smt-edit-modal');
   if (!modal) {
     const editHTML = `
     <div id="smt-edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10001; align-items: center; justify-content: center;">
-      <div style="background: #32323E; border-radius: 8px; padding: 20px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto;">
+      <div style="background: #32323E; border-radius: 8px; padding: 20px; max-width: 520px; width: 90%; max-height: 80vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-          <h3 style="color: #2c3e50; margin: 0;">Editar Plan</h3>
+          <h3 style="color: #ecf0f1; margin: 0; font-weight: 600;">Editar Plan</h3>
           <button id="smt-edit-closeBtn" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">&times;</button>
         </div>
         <form id="smt-edit-form">
           <input type="hidden" name="lot_no" id="smt-edit-lot_no">
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px;">
             <div><label style="color: #888; font-size: 12px;">Lot No</label><input type="text" id="smt-edit-lot_display" disabled style="width: 100%; background: #1a1b26; border: 1px solid #333; color: #888; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">Linea</label>
-              <select name="line" id="smt-edit-line" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
-                <option value="SA">SMT A</option><option value="SB">SMT B</option><option value="SC">SMT C</option><option value="SD">SMT D</option><option value="SE">SMT E</option>
-              </select>
-            </div>
             <div><label style="color: #888; font-size: 12px;">Turno</label>
               <select name="shift" id="smt-edit-shift" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
                 <option value="DIA">DIA</option><option value="TARDE">TARDE</option><option value="NOCHE">NOCHE</option>
               </select>
             </div>
-            <div><label style="color: #888; font-size: 12px;">Fecha</label><input type="date" name="working_date" id="smt-edit-working_date" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
             <div><label style="color: #888; font-size: 12px;">Part No</label><input type="text" name="part_no" id="smt-edit-part_no" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">Model Code</label><input type="text" name="model_code" id="smt-edit-model_code" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">Project</label><input type="text" name="project" id="smt-edit-project" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">Process</label><input type="text" name="process" id="smt-edit-process" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">Plan Count</label><input type="number" name="plan_count" id="smt-edit-plan_count" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">CT</label><input type="number" name="ct" id="smt-edit-ct" step="0.01" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">UPH</label><input type="number" name="uph" id="smt-edit-uph" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
-            <div><label style="color: #888; font-size: 12px;">Status</label>
-              <select name="status" id="smt-edit-status" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
-                <option value="PLAN">PLAN</option><option value="EN PROGRESO">EN PROGRESO</option><option value="PAUSADO">PAUSADO</option><option value="TERMINADO">TERMINADO</option><option value="CANCELADO">CANCELADO</option>
-              </select>
-            </div>
+            <div><label style="color: #888; font-size: 12px;">Cantidad</label><input type="number" name="plan_count" id="smt-edit-plan_count" min="0" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
           </div>
-          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-            <button type="submit" style="background: #e67e22; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Guardar Cambios</button>
-            <button type="button" id="smt-edit-cancelBtn" style="background: #7f8c8d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Cancelar</button>
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+              <button type="submit" style="width: 100%; background: #e67e22; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Guardar Cambios</button>
+              <button type="button" id="smt-edit-cancelBtn" style="width: 100%; background: #7f8c8d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Cerrar</button>
+            </div>
+            <button type="button" id="smt-edit-cancel-plan-btn" style="width: 100%; background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Cancelar plan</button>
           </div>
         </form>
       </div>
@@ -360,44 +347,46 @@ function openEditModalSMT(planId) {
     document.body.insertAdjacentHTML('beforeend', editHTML);
     modal = document.getElementById('smt-edit-modal');
   }
-  
-  // Llenar datos
+
   document.getElementById('smt-edit-lot_no').value = plan.lot_no;
   document.getElementById('smt-edit-lot_display').value = plan.lot_no;
-  document.getElementById('smt-edit-line').value = plan.line || 'SA';
   document.getElementById('smt-edit-shift').value = plan.shift || 'DIA';
-  document.getElementById('smt-edit-working_date').value = formatDateSMT(plan.working_date);
   document.getElementById('smt-edit-part_no').value = plan.part_no || '';
-  document.getElementById('smt-edit-model_code').value = plan.model_code || '';
-  document.getElementById('smt-edit-project').value = plan.project || '';
-  document.getElementById('smt-edit-process').value = plan.process || '';
   document.getElementById('smt-edit-plan_count').value = plan.plan_count || 0;
-  document.getElementById('smt-edit-ct').value = plan.ct || 0;
-  document.getElementById('smt-edit-uph').value = plan.uph || 0;
-  document.getElementById('smt-edit-status').value = plan.status || 'PLAN';
-  
+
+  const cancelBtn = document.getElementById('smt-edit-cancel-plan-btn');
+  if (cancelBtn) {
+    if (String(plan.status || '').toUpperCase() === 'CANCELADO') {
+      cancelBtn.textContent = 'Planear';
+      cancelBtn.style.background = '#27ae60';
+      cancelBtn.dataset.action = 'reactivar';
+    } else {
+      cancelBtn.textContent = 'Cancelar plan';
+      cancelBtn.style.background = '#e74c3c';
+      cancelBtn.dataset.action = 'cancelar';
+    }
+  }
+
   modal.style.display = 'flex';
 }
 
 async function updatePlanSMT(formData) {
   try {
+    const partNo = (formData.get('part_no') || '').trim();
+    if (!partNo) {
+      alert('Part No es requerido');
+      return;
+    }
+
     const data = {
       lot_no: formData.get('lot_no'),
-      line: formData.get('line'),
       shift: formData.get('shift'),
-      working_date: formData.get('working_date'),
-      part_no: formData.get('part_no'),
-      model_code: formData.get('model_code'),
-      project: formData.get('project'),
-      process: formData.get('process'),
-      plan_count: parseInt(formData.get('plan_count')) || 0,
-      ct: parseFloat(formData.get('ct')) || 0,
-      uph: parseInt(formData.get('uph')) || 0,
-      status: formData.get('status')
+      part_no: partNo,
+      plan_count: parseInt(formData.get('plan_count'), 10) || 0
     };
-    
+
     const response = await axios.post('/api/plan-smt/update', data);
-    
+
     if (response.data.success) {
       document.getElementById('smt-edit-modal').style.display = 'none';
       loadPlansSMT();
@@ -410,6 +399,46 @@ async function updatePlanSMT(formData) {
   }
 }
 
+async function handleCancelPlanSMT() {
+  const lotNo = document.getElementById('smt-edit-lot_no')?.value;
+  const cancelBtn = document.getElementById('smt-edit-cancel-plan-btn');
+  if (!lotNo || !cancelBtn) return;
+
+  const action = cancelBtn.dataset.action || 'cancelar';
+  const isCancelAction = action === 'cancelar';
+  const nextStatus = isCancelAction ? 'CANCELADO' : 'PLAN';
+  const confirmMsg = isCancelAction ? `Cancelar plan ${lotNo}?` : `Reactivar plan ${lotNo}?`;
+
+  if (!confirm(confirmMsg)) return;
+
+  const originalText = cancelBtn.textContent;
+
+  try {
+    cancelBtn.disabled = true;
+    cancelBtn.textContent = isCancelAction ? 'Cancelando...' : 'Reactivando...';
+    cancelBtn.style.background = '#6c757d';
+    cancelBtn.style.cursor = 'not-allowed';
+
+    const response = await axios.post('/api/plan-smt/update', {
+      lot_no: lotNo,
+      status: nextStatus
+    });
+
+    if (!response.data?.success) {
+      throw new Error(response.data?.error || 'No fue posible actualizar el estado');
+    }
+
+    document.getElementById('smt-edit-modal').style.display = 'none';
+    loadPlansSMT();
+  } catch (error) {
+    alert('Error actualizando estado del plan: ' + (error.response?.data?.error || error.message));
+  } finally {
+    cancelBtn.disabled = false;
+    cancelBtn.textContent = originalText;
+    cancelBtn.style.background = '';
+    cancelBtn.style.cursor = '';
+  }
+}
 // ====== Funciones Auxiliares ======
 function parseTimeSMT(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
@@ -714,6 +743,13 @@ function initializePlanSMTEventListeners() {
     if (target.id === 'smt-edit-closeBtn' || target.id === 'smt-edit-cancelBtn') {
       const modal = document.getElementById('smt-edit-modal');
       if (modal) modal.style.display = 'none';
+      return;
+    }
+
+    // Cancelar / reactivar plan
+    if (target.id === 'smt-edit-cancel-plan-btn' || target.closest('#smt-edit-cancel-plan-btn')) {
+      e.preventDefault();
+      handleCancelPlanSMT();
       return;
     }
     

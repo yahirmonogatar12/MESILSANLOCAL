@@ -22,7 +22,7 @@
             if (woFormContainer) {
                 woFormContainer.style.display = 'block';
             } else {
-                console.error('❌ Elemento woFormContainer no encontrado');
+                console.error(' Elemento woFormContainer no encontrado');
             }
             
             if (btnCrearWO) {
@@ -63,7 +63,7 @@
             const elemento = document.getElementById('woCodigoWO');
             
             if (!elemento) {
-                console.error('❌ Elemento woCodigoWO no encontrado');
+                console.error(' Elemento woCodigoWO no encontrado');
                 return;
             }
             
@@ -74,12 +74,12 @@
                 
                 if (data.ok && data.codigo_wo) {
                     elemento.value = data.codigo_wo;
-                    console.log('✅ Código WO generado desde servidor:', data.codigo_wo);
+                    console.log(' Código WO generado desde servidor:', data.codigo_wo);
                 } else {
                     throw new Error('Error en respuesta del servidor');
                 }
             } catch (error) {
-                console.error('❌ Error al generar código WO:', error);
+                console.error(' Error al generar código WO:', error);
                 alert('Error al generar código WO. Por favor, intente nuevamente.');
             }
         }
@@ -100,7 +100,7 @@
                 setTimeout(consultarWOs, 200);
             }, 50);
             
-            console.log('✅ Crear Plan de Producción inicializado correctamente');
+            console.log(' Crear Plan de Producción inicializado correctamente');
         }
 
         // Mantener compatibilidad con carga directa
@@ -317,7 +317,7 @@
             console.log('Elemento woCodigoWO:', elementoCodigoWO);
             
             if (!elementoCodigoWO) {
-                console.error('❌ Elemento woCodigoWO no encontrado en crearNuevaWO');
+                console.error(' Elemento woCodigoWO no encontrado en crearNuevaWO');
                 mostrarMensaje('Error: Elemento de código WO no encontrado', 'error');
                 return;
             }
@@ -333,7 +333,7 @@
 
             // Validaciones
             if (!codigoWO) {
-                console.error('❌ Código WO está vacío');
+                console.error(' Código WO está vacío');
                 mostrarMensaje('Por favor genere un código de WO', 'error');
                 return;
             }
@@ -1106,7 +1106,7 @@ window.crearNuevaWO = crearNuevaWO;
         if (fileInput) {
             fileInput.click();
         } else {
-            console.error('❌ Input de archivo no encontrado');
+            console.error(' Input de archivo no encontrado');
             alert('Error: No se pudo encontrar el selector de archivo');
         }
     }

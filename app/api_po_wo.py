@@ -94,7 +94,7 @@ def manejo_errores(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            print(f"❌ Error en {func.__name__}: {e}")
+            print(f" Error en {func.__name__}: {e}")
             return jsonify({
                 "ok": False, 
                 "code": "INTERNAL_ERROR", 
@@ -196,7 +196,7 @@ def crear_wo():
             cantidad_planeada, fecha_operacion, modificador
         ))
         
-        print(f"✅ WO creada: {codigo_wo}")
+        print(f" WO creada: {codigo_wo}")
         return jsonify({
             "ok": True, 
             "codigo_wo": codigo_wo,
@@ -204,7 +204,7 @@ def crear_wo():
         }), 201
         
     except Exception as e:
-        print(f"❌ Error creando WO: {e}")
+        print(f" Error creando WO: {e}")
         return jsonify({
             "ok": False, 
             "code": "INTERNAL_ERROR", 
@@ -356,7 +356,7 @@ def listar_wos_alternativo():
         return jsonify({"success": True, "data": work_orders})
         
     except Exception as e:
-        print(f"❌ Error listando WOs: {e}")
+        print(f" Error listando WOs: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -401,7 +401,7 @@ def actualizar_estado_wo(codigo):
         
         execute_query(query_update, (nuevo_estado, modificador, codigo))
         
-        print(f"✅ Estado de WO {codigo} actualizado de {wo_actual['estado']} a {nuevo_estado}")
+        print(f" Estado de WO {codigo} actualizado de {wo_actual['estado']} a {nuevo_estado}")
         return jsonify({
             "ok": True,
             "message": f"Estado de WO {codigo} actualizado a {nuevo_estado}",
@@ -410,7 +410,7 @@ def actualizar_estado_wo(codigo):
         })
         
     except Exception as e:
-        print(f"❌ Error actualizando estado de WO {codigo}: {e}")
+        print(f" Error actualizando estado de WO {codigo}: {e}")
         return jsonify({
             "ok": False,
             "code": "INTERNAL_ERROR",
@@ -456,7 +456,7 @@ def actualizar_po_wo():
         
         execute_query(query_update, (nuevo_codigo_po, codigo_wo))
         
-        print(f"✅ PO actualizado: WO {codigo_wo} -> PO {nuevo_codigo_po}")
+        print(f" PO actualizado: WO {codigo_wo} -> PO {nuevo_codigo_po}")
         return jsonify({
             "success": True,
             "message": f"Código PO actualizado exitosamente",
@@ -466,7 +466,7 @@ def actualizar_po_wo():
         })
         
     except Exception as e:
-        print(f"❌ Error actualizando PO de WO: {e}")
+        print(f" Error actualizando PO de WO: {e}")
         return jsonify({
             "success": False,
             "error": "Error interno del servidor"
@@ -534,14 +534,14 @@ def actualizar_wo_completa():
         
         execute_query(query_update, (modelo, codigo_modelo, nombre_modelo, cantidad_planeada, codigo_po, codigo_wo))
         
-        print(f"✅ WO actualizada: {codigo_wo} -> Modelo: {modelo}, Cantidad: {cantidad_planeada}, PO: {codigo_po}")
+        print(f" WO actualizada: {codigo_wo} -> Modelo: {modelo}, Cantidad: {cantidad_planeada}, PO: {codigo_po}")
         return jsonify({
             "success": True,
             "message": f"WO {codigo_wo} actualizada exitosamente"
         })
         
     except Exception as e:
-        print(f"❌ Error actualizando WO: {e}")
+        print(f" Error actualizando WO: {e}")
         return jsonify({
             "success": False,
             "error": "Error interno del servidor"
@@ -579,14 +579,14 @@ def eliminar_wo():
         query_delete = "DELETE FROM work_orders WHERE codigo_wo = %s"
         execute_query(query_delete, (codigo_wo,))
         
-        print(f"✅ WO eliminada: {codigo_wo}")
+        print(f" WO eliminada: {codigo_wo}")
         return jsonify({
             "success": True,
             "message": f"WO {codigo_wo} eliminada exitosamente"
         })
         
     except Exception as e:
-        print(f"❌ Error eliminando WO: {e}")
+        print(f" Error eliminando WO: {e}")
         return jsonify({
             "success": False,
             "error": "Error interno del servidor"
@@ -667,18 +667,18 @@ def listar_pos():
                 }
                 pos.append(po)
             
-            print(f"✅ {len(pos)} POs listadas exitosamente")
+            print(f" {len(pos)} POs listadas exitosamente")
             return jsonify({
                 "success": True,
                 "data": pos,
                 "total": len(pos)
             })
         else:
-            print(f"❌ Error en consulta de POs: No se obtuvieron resultados")
+            print(f" Error en consulta de POs: No se obtuvieron resultados")
             return jsonify({"success": False, "error": "No se pudieron obtener las POs"}), 500
         
     except Exception as e:
-        print(f"❌ Error listando POs: {e}")
+        print(f" Error listando POs: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -751,18 +751,18 @@ def crear_po():
         affected_rows = execute_query(query_insert, insert_data)
         
         if affected_rows and affected_rows > 0:
-            print(f"✅ PO creada exitosamente: {codigo_po}")
+            print(f" PO creada exitosamente: {codigo_po}")
             return jsonify({
                 "success": True, 
                 "message": f"PO {codigo_po} creada exitosamente",
                 "data": {"codigo_po": codigo_po, **insert_data}
             })
         else:
-            print(f"❌ Error creando PO: No se insertaron filas")
+            print(f" Error creando PO: No se insertaron filas")
             return jsonify({"success": False, "error": "No se pudo insertar la PO"}), 500
         
     except Exception as e:
-        print(f"❌ Error creando PO: {e}")
+        print(f" Error creando PO: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

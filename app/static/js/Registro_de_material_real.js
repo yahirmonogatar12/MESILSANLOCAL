@@ -51,7 +51,7 @@ function consultarInventarioGeneral() {
     const tableBody = document.getElementById('registroMaterialTableBody');
     
     if (!tableBody) {
-        console.error('❌ Tabla de inventario no encontrada');
+        console.error(' Tabla de inventario no encontrada');
         return;
     }
     
@@ -84,14 +84,14 @@ function consultarInventarioGeneral() {
                     poblarTodasLasOpcionesFiltros();
                 }, 100);
             } else {
-                console.error('❌ Error al consultar inventario:', data.message);
+                console.error(' Error al consultar inventario:', data.message);
                 inventarioGeneralData = [];
                 datosInventarioOriginal = [];
                 renderizarInventarioTabla();
             }
         })
         .catch(error => {
-            console.error('❌ Error en fetch:', error);
+            console.error(' Error en fetch:', error);
             inventarioCargado = true; // Marcar que ya se intentó cargar aunque haya fallado
             inventarioGeneralData = [];
             datosInventarioOriginal = [];
@@ -105,7 +105,7 @@ function renderizarInventarioTabla() {
     const tableBody = document.getElementById('registroMaterialTableBody');
     
     if (!tableBody) {
-        console.error('❌ No se encontró el tbody de la tabla');
+        console.error(' No se encontró el tbody de la tabla');
         return;
     }
     
@@ -566,7 +566,7 @@ function verHistorialCompleto(numeroParte) {
         if (data.success) {
             mostrarModalHistorial(numeroParte, data.historial, data.balance_actual);
         } else {
-            alert(`❌ Error al consultar historial: ${data.error}`);
+            alert(` Error al consultar historial: ${data.error}`);
         }
     })
     .catch(error => {
@@ -576,7 +576,7 @@ function verHistorialCompleto(numeroParte) {
         if (loadingModal) {
             loadingModal.remove();
         }
-        alert('❌ Error al consultar historial');
+        alert(' Error al consultar historial');
     })
     .finally(() => {
         modalCargandoHistorial = false;
@@ -626,7 +626,7 @@ function verLotesDetallados(numeroParte) {
         if (data.success) {
             mostrarModalLotes(numeroParte, data.lotes);
         } else {
-            alert(`❌ Error al consultar lotes: ${data.error}`);
+            alert(` Error al consultar lotes: ${data.error}`);
         }
     })
     .catch(error => {
@@ -636,7 +636,7 @@ function verLotesDetallados(numeroParte) {
         if (loadingModal) {
             loadingModal.remove();
         }
-        alert('❌ Error al consultar lotes');
+        alert(' Error al consultar lotes');
     })
     .finally(() => {
         modalCargandoLotes = false;

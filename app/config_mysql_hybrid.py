@@ -228,14 +228,14 @@ def test_connection():
     """Probar conexión usando el método disponible"""
     mode = determine_connection_mode()
     
-    print(f"🧪 Probando conexión MySQL en modo: {mode}")
+    print(f" Probando conexión MySQL en modo: {mode}")
     
     if mode == 'direct':
         return test_direct_connection()
     elif mode == 'http':
         return test_http_connection()
     else:
-        print("❌ No hay métodos de conexión disponibles")
+        print(" No hay métodos de conexión disponibles")
         return False
 
 def test_direct_connection():
@@ -253,11 +253,11 @@ def test_direct_connection():
                 print(" Conexión directa exitosa")
                 return True
         
-        print("❌ Error en conexión directa")
+        print(" Error en conexión directa")
         return False
     
     except Exception as e:
-        print(f"❌ Error en conexión directa: {e}")
+        print(f" Error en conexión directa: {e}")
         return False
 
 def test_http_connection():
@@ -270,11 +270,11 @@ def test_http_connection():
                 print(" Conexión HTTP exitosa")
                 return True
         
-        print("❌ Error en conexión HTTP")
+        print(" Error en conexión HTTP")
         return False
     
     except Exception as e:
-        print(f"❌ Error en conexión HTTP: {e}")
+        print(f" Error en conexión HTTP: {e}")
         return False
 
 def get_connection_info():
@@ -293,14 +293,14 @@ def get_connection_info():
     return info
 
 if __name__ == "__main__":
-    print("🧪 Probando configuración híbrida de MySQL...")
+    print(" Probando configuración híbrida de MySQL...")
     
     info = get_connection_info()
-    print(f"📊 Modo de conexión: {info['mode']}")
+    print(f" Modo de conexión: {info['mode']}")
     print(f"🔗 Conexión directa disponible: {info['direct_available']}")
     print(f"🌐 Conexión HTTP disponible: {info['http_available']}")
     
     if test_connection():
         print(" Conexión exitosa")
     else:
-        print("❌ Error de conexión")
+        print(" Error de conexión")

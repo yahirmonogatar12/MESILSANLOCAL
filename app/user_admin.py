@@ -1730,7 +1730,7 @@ def eliminar_rol(rol_id):
         cursor.execute('SELECT * FROM roles WHERE id = %s', (rol_id,))
         rol = cursor.fetchone()
         if not rol:
-            print(f"❌ Rol ID {rol_id} no encontrado")
+            print(f" Rol ID {rol_id} no encontrado")
             conn.close()
             return jsonify({'error': 'Rol no encontrado'}), 404
         
@@ -1749,7 +1749,7 @@ def eliminar_rol(rol_id):
         print(f"👥 Usuarios asignados al rol: {usuarios_asignados}")
         
         if usuarios_asignados > 0:
-            print(f"❌ No se puede eliminar: {usuarios_asignados} usuarios asignados")
+            print(f" No se puede eliminar: {usuarios_asignados} usuarios asignados")
             conn.close()
             return jsonify({
                 'error': f'No se puede eliminar el rol. Tiene {usuarios_asignados} usuario(s) asignado(s)'
@@ -1777,7 +1777,7 @@ def eliminar_rol(rol_id):
             print(f"  - Roles eliminados: {rol_eliminado}")
             
             if rol_eliminado == 0:
-                print("❌ No se pudo eliminar el rol de la tabla")
+                print(" No se pudo eliminar el rol de la tabla")
                 cursor.execute('ROLLBACK')
                 return jsonify({'error': 'No se pudo eliminar el rol'}), 500
             
@@ -1807,7 +1807,7 @@ def eliminar_rol(rol_id):
         except Exception as e:
             print(f" Error en transacción, haciendo rollback: {e}")
             cursor.execute('ROLLBACK')
-            print(f"❌ Error en transacción eliminando rol: {e}")
+            print(f" Error en transacción eliminando rol: {e}")
             return jsonify({'error': f'Error eliminando rol: {str(e)}'}), 500
             
     except mysql.connector.Error as e:

@@ -113,7 +113,7 @@ def crear_tablas_po_wo():
         return True
         
     except Exception as e:
-        print(f"❌ Error creando tablas PO → WO: {e}")
+        print(f" Error creando tablas PO → WO: {e}")
         return False
 
 

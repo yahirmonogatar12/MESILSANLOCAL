@@ -1,0 +1,836 @@
+﻿<div id="control-cuchillas-corte-module" class="cc-page">
+  <style>
+    .cc-page {
+      background: #32323e;
+      color: #e4e7ea;
+      min-height: calc(100vh - 120px);
+      padding: 16px;
+      font-family: 'LG regular', 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    .cc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      border-bottom: 2px solid #20688c;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+    }
+
+    .cc-header h2 {
+      margin: 0;
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .cc-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .cc-status-badge {
+      border: 1px solid #4b5968;
+      background: #40424f;
+      color: #e4e7ea;
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-width: 250px;
+      text-align: center;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .cc-status-badge.is-ok {
+      border-color: #2e7d32;
+      color: #b8f5bd;
+      background: rgba(46, 125, 50, 0.2);
+    }
+
+    .cc-status-badge.is-warn {
+      border-color: #ef6c00;
+      color: #ffd9a8;
+      background: rgba(239, 108, 0, 0.2);
+    }
+
+    .cc-status-badge.is-error {
+      border-color: #c62828;
+      color: #ffb3b3;
+      background: rgba(198, 40, 40, 0.2);
+    }
+
+    .cc-card {
+      background: #3c3940;
+      border: 1px solid #20688c;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .cc-card h3 {
+      margin: 0 0 10px;
+      color: #f4f6f8;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .cc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .cc-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .cc-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cc-field label {
+      font-size: 11px;
+      color: #d8dde1;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .cc-input,
+    .cc-select {
+      border: 1px solid #5f6375;
+      border-radius: 4px;
+      padding: 7px 8px;
+      background: #d7d7d7;
+      color: #2c3e50;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    .cc-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .cc-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #20688c;
+    }
+
+    .cc-btn:hover {
+      filter: brightness(1.05);
+    }
+
+    .cc-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .cc-btn.is-loading {
+      pointer-events: none;
+    }
+
+    .cc-spinner {
+      display: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #ffffff;
+      animation: cc-spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .cc-btn.is-loading .cc-spinner {
+      display: inline-block;
+    }
+
+    @keyframes cc-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .cc-btn.secondary {
+      background: #546e7a;
+    }
+
+    .cc-btn.warning {
+      background: #ef6c00;
+    }
+
+    .cc-btn.danger {
+      background: #c62828;
+    }
+
+    .cc-btn.success {
+      background: #2e7d32;
+    }
+
+    .cc-table-wrap {
+      border: 1px solid #5f6375;
+      border-radius: 6px;
+      overflow: auto;
+      background: #40424f;
+    }
+
+    .cc-table-wrap.dashboard {
+      max-height: 340px;
+    }
+
+    .cc-table-wrap.events {
+      max-height: 280px;
+    }
+
+    .cc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 960px;
+    }
+
+    .cc-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #172a46;
+      color: #f5f7fa;
+      padding: 7px;
+      border: 1px solid #20688c;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .cc-table td {
+      padding: 7px;
+      border: 1px solid #5f6375;
+      color: #e0e0e0;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    .cc-table tr[data-cc-linea] {
+      cursor: pointer;
+    }
+
+    .cc-row-selected td {
+      background: rgba(32, 104, 140, 0.35);
+    }
+
+    .cc-empty {
+      text-align: center;
+      color: #b0bec5;
+      padding: 12px;
+      font-size: 12px;
+    }
+
+    .cc-kpis {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .cc-kpi {
+      background: #40424f;
+      border: 1px solid #5f6375;
+      border-radius: 6px;
+      padding: 8px;
+    }
+
+    .cc-kpi .kpi-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #cfd8dc;
+      margin-bottom: 3px;
+    }
+
+    .cc-kpi .kpi-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .cc-state {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      text-transform: uppercase;
+    }
+
+    .cc-state.ACTIVA {
+      color: #9be4a0;
+      background: rgba(46, 125, 50, 0.25);
+      border-color: #2e7d32;
+    }
+
+    .cc-state.VENCIDA {
+      color: #ffb3b3;
+      background: rgba(198, 40, 40, 0.25);
+      border-color: #c62828;
+    }
+
+    .cc-state.REEMPLAZADA {
+      color: #ffd9a8;
+      background: rgba(239, 108, 0, 0.25);
+      border-color: #ef6c00;
+    }
+
+    .cc-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .cc-pill.ok {
+      color: #9be4a0;
+      background: rgba(46, 125, 50, 0.25);
+      border-color: #2e7d32;
+    }
+
+    .cc-pill.off {
+      color: #ffb3b3;
+      background: rgba(198, 40, 40, 0.2);
+      border-color: #c62828;
+    }
+
+    .cc-events-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .cc-event-PREALERTA {
+      background: rgba(239, 108, 0, 0.16);
+    }
+
+    .cc-event-VENCIDA {
+      background: rgba(198, 40, 40, 0.18);
+    }
+
+    .cc-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #b0bec5;
+    }
+
+    .cc-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      z-index: 100000;
+    }
+
+    .cc-modal.is-open {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .cc-modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 12, 20, 0.68);
+      z-index: 1;
+    }
+
+    .cc-modal-dialog {
+      position: relative;
+      width: min(1180px, calc(100vw - 32px));
+      max-height: calc(100vh - 40px);
+      margin: 20px auto;
+      background: #32323e;
+      border: 1px solid #20688c;
+      border-radius: 10px;
+      padding: 14px;
+      overflow: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      z-index: 2;
+    }
+
+    .cc-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid #5f6375;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .cc-modal-head h3 {
+      margin: 0;
+      font-size: 19px;
+      color: #ffffff;
+    }
+
+    .cc-modal-close {
+      border: 1px solid #5f6375;
+      background: #40424f;
+      color: #ffffff;
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .cc-modal-close:hover {
+      filter: brightness(1.08);
+    }
+
+    @media (max-width: 1280px) {
+      .cc-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .cc-header {
+        flex-direction: column;
+      }
+
+      .cc-header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .cc-status-badge {
+        min-width: 100%;
+      }
+
+      .cc-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cc-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cc-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cc-modal-dialog {
+        width: calc(100vw - 12px);
+        margin: 6px auto;
+        max-height: calc(100vh - 12px);
+        padding: 10px;
+      }
+    }
+  </style>
+
+  <div class="cc-header">
+    <div>
+      <h2>Control de cuchillas de corte</h2>
+    </div>
+    <div class="cc-header-actions">
+      <button id="cc-btn-open-config-modal" class="cc-btn secondary" type="button">Configuracion</button>
+      <div id="cc-module-status" class="cc-status-badge">Listo</div>
+    </div>
+  </div>
+
+  <div class="cc-card">
+    <div class="cc-events-head">
+      <h3 style="margin:0;">Tablero de lineas configuradas</h3>
+      <div class="cc-row" style="margin:0;">
+        <label style="display:inline-flex; gap:6px; align-items:center; font-size:12px;">
+          <input id="cc-show-all-lineas" type="checkbox">
+          Mostrar lineas de plan_main
+        </label>
+        <button id="cc-btn-refrescar-dashboard" class="cc-btn secondary" type="button">
+          <span class="cc-spinner" aria-hidden="true"></span>
+          <span class="cc-btn-text">Refrescar tablero</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cc-table-wrap dashboard">
+      <table class="cc-table">
+        <thead>
+          <tr>
+            <th>Linea</th>
+            <th>Config</th>
+            <th>Fuente</th>
+            <th>Lot activo</th>
+            <th>Status plan</th>
+            <th>Cuchilla</th>
+            <th>Estado</th>
+            <th>Uso %</th>
+            <th>Consumo / Max</th>
+            <th>Restante</th>
+            <th>Pend. ext.</th>
+          </tr>
+        </thead>
+        <tbody id="cc-dashboard-tbody">
+          <tr>
+            <td colspan="11" class="cc-empty">Sin datos</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="cc-card">
+    <h3>Detalle de linea seleccionada</h3>
+    <div class="cc-kpis">
+      <div class="cc-kpi">
+        <div class="kpi-label">Plan activo</div>
+        <div id="cc-plan-lot" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Status plan</div>
+        <div id="cc-plan-status" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Produced count</div>
+        <div id="cc-plan-input" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Plan count</div>
+        <div id="cc-plan-count" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Config activa</div>
+        <div id="cc-config-activo-kpi" class="kpi-value">-</div>
+      </div>
+
+      <div class="cc-kpi">
+        <div class="kpi-label">Source metric</div>
+        <div id="cc-source-metric-kpi" class="kpi-value">PRODUCED_COUNT</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Source actual</div>
+        <div id="cc-source-actual-kpi" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Ult. sync horario</div>
+        <div id="cc-hourly-sync-at" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Sesion ID</div>
+        <div id="cc-sesion-id" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Cuchilla</div>
+        <div id="cc-sesion-blade" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Estado cuchilla</div>
+        <div id="cc-sesion-estado" class="kpi-value">-</div>
+      </div>
+
+      <div class="cc-kpi">
+        <div class="kpi-label">Factor corte</div>
+        <div id="cc-factor" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Consumo cortes</div>
+        <div id="cc-sesion-consumo" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Max cortes</div>
+        <div id="cc-sesion-max" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Restante</div>
+        <div id="cc-sesion-restante" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Uso (%)</div>
+        <div id="cc-sesion-pct" class="kpi-value">0%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cc-card">
+    <h3>Diagnostico de descuento</h3>
+    <div class="cc-kpis">
+      <div class="cc-kpi">
+        <div class="kpi-label">Source metric</div>
+        <div id="cc-diag-source-metric" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Source actual</div>
+        <div id="cc-diag-source-actual" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Last snapshot</div>
+        <div id="cc-diag-last-snapshot" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Delta estimado</div>
+        <div id="cc-diag-delta" class="kpi-value">0</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Mismo lot</div>
+        <div id="cc-diag-same-lot" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Consumo habilitado</div>
+        <div id="cc-diag-habilitado" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi" style="grid-column: span 4;">
+        <div class="kpi-label">Motivo no descuento</div>
+        <div id="cc-diag-motivo" class="kpi-value">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cc-card">
+    <div class="cc-events-head">
+      <h3 style="margin:0;">Historial de cuchillas</h3>
+      <div class="cc-row" style="margin:0;">
+        <button id="cc-btn-refrescar-historial" class="cc-btn secondary" type="button">
+          <span class="cc-spinner" aria-hidden="true"></span>
+          <span class="cc-btn-text">Refrescar historial</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cc-table-wrap events">
+      <table class="cc-table">
+        <thead>
+          <tr>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th>Linea</th>
+            <th>Sesion</th>
+            <th>Cuchilla</th>
+            <th>Estado</th>
+            <th>Consumo / Max</th>
+            <th>% Uso</th>
+            <th>Creado por</th>
+          </tr>
+        </thead>
+        <tbody id="cc-historial-tbody">
+          <tr>
+            <td colspan="9" class="cc-empty">Sin datos</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="cc-card">
+    <div class="cc-events-head">
+      <h3 style="margin:0;">Historial de eventos</h3>
+      <div class="cc-row" style="margin:0;">
+        <label style="display:inline-flex; gap:6px; align-items:center; font-size:12px;">
+          <input id="cc-solo-pendientes" type="checkbox">
+          Solo pendientes externos
+        </label>
+        <button id="cc-btn-refrescar-eventos" class="cc-btn secondary" type="button">
+          <span class="cc-spinner" aria-hidden="true"></span>
+          <span class="cc-btn-text">Refrescar eventos</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="cc-table-wrap events">
+      <table class="cc-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Linea</th>
+            <th>Lot No</th>
+            <th>Consumo / Max</th>
+            <th>% Uso</th>
+            <th>Pendiente ext.</th>
+            <th>Mensaje</th>
+          </tr>
+        </thead>
+        <tbody id="cc-eventos-tbody">
+          <tr>
+            <td colspan="8" class="cc-empty">Sin datos</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cc-note">
+      Los eventos <strong>VENCIDA</strong> quedan con <code>pendiente_externo=1</code> para consumo externo desde MySQL.
+    </div>
+  </div>
+
+  <div id="cc-config-modal" class="cc-modal" aria-hidden="true">
+    <div class="cc-modal-overlay" data-cc-modal-close="1"></div>
+    <div class="cc-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cc-config-modal-title">
+      <div class="cc-modal-head">
+        <h3 id="cc-config-modal-title">Configuracion y sesion de cuchillas</h3>
+        <button id="cc-btn-close-config-modal" class="cc-modal-close" type="button" aria-label="Cerrar modal">x</button>
+      </div>
+      <div class="cc-grid">
+        <div class="cc-card">
+          <h3>Configuracion por linea</h3>
+          <div class="cc-form-grid">
+            <div class="cc-field">
+              <label for="cc-linea-select">Linea</label>
+              <select id="cc-linea-select" class="cc-select">
+                <option value="">Selecciona linea</option>
+              </select>
+            </div>
+            <div class="cc-field">
+              <label for="cc-source-metric">Fuente de consumo</label>
+              <select id="cc-source-metric" class="cc-select">
+                <option value="PRODUCED_COUNT">PRODUCED_COUNT</option>
+                <option value="PLAN_COUNT">PLAN_COUNT</option>
+              </select>
+            </div>
+            <div class="cc-field">
+              <label for="cc-prealert-pct">Prealerta (%)</label>
+              <input id="cc-prealert-pct" class="cc-input" type="number" min="1" max="100" step="0.01" value="90">
+            </div>
+            <div class="cc-field">
+              <label for="cc-pcb-qty">PCB Qty</label>
+              <input id="cc-pcb-qty" class="cc-input" type="number" min="0.0001" step="0.0001" value="1">
+            </div>
+            <div class="cc-field">
+              <label for="cc-cut-qty">Cut Qty</label>
+              <input id="cc-cut-qty" class="cc-input" type="number" min="0.0001" step="0.0001" value="1">
+            </div>
+            <div class="cc-field" style="justify-content:flex-end;">
+              <label style="font-size:12px; text-transform:none; letter-spacing:0; display:inline-flex; gap:8px; align-items:center; margin-top:22px;">
+                <input id="cc-config-activo" type="checkbox" checked>
+                Configuracion activa en esta linea
+              </label>
+            </div>
+          </div>
+          <div class="cc-row">
+            <button id="cc-btn-recargar-lineas" class="cc-btn secondary" type="button">
+              <span class="cc-spinner" aria-hidden="true"></span>
+              <span class="cc-btn-text">Recargar lineas</span>
+            </button>
+            <button id="cc-btn-guardar-config" class="cc-btn" type="button">
+              <span class="cc-spinner" aria-hidden="true"></span>
+              <span class="cc-btn-text">Guardar configuracion</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cc-card">
+          <h3>Sesion de cuchilla</h3>
+          <div class="cc-form-grid">
+            <div class="cc-field">
+              <label for="cc-blade-code">Blade Code</label>
+              <input id="cc-blade-code" class="cc-input" type="text" placeholder="Ej. BLADE-M1-001">
+            </div>
+            <div class="cc-field">
+              <label for="cc-max-cortes">Max cortes</label>
+              <input id="cc-max-cortes" class="cc-input" type="number" min="0.0001" step="0.0001" placeholder="Ej. 800">
+            </div>
+          </div>
+          <div class="cc-row">
+            <button id="cc-btn-iniciar-sesion" class="cc-btn warning" type="button">
+              <span class="cc-spinner" aria-hidden="true"></span>
+              <span class="cc-btn-text">Iniciar cuchilla</span>
+            </button>
+            <button id="cc-btn-reemplazar-sesion" class="cc-btn danger" type="button">
+              <span class="cc-spinner" aria-hidden="true"></span>
+              <span class="cc-btn-text">Reemplazar cuchilla</span>
+            </button>
+            <button id="cc-btn-eliminar-sesion" class="cc-btn danger" type="button">
+              <span class="cc-spinner" aria-hidden="true"></span>
+              <span class="cc-btn-text">Eliminar cuchilla actual</span>
+            </button>
+            <button id="cc-btn-recalcular" class="cc-btn success" type="button">
+              <span class="cc-spinner" aria-hidden="true"></span>
+              <span class="cc-btn-text">Recalcular ahora</span>
+            </button>
+            <button id="cc-btn-refrescar-estado" class="cc-btn secondary" type="button">
+              <span class="cc-spinner" aria-hidden="true"></span>
+              <span class="cc-btn-text">Refrescar detalle</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var existing = document.querySelector('script[src="' + src + '"]');
+      if (existing) {
+        resolve();
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = function() {
+        reject(new Error('No se pudo cargar ' + src));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  async function bootControlCuchillas() {
+    try {
+      if (typeof axios === 'undefined') {
+        await loadScript('https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js');
+      }
+      if (typeof window.initializeControlCuchillasCorteEventListeners === 'undefined') {
+        await loadScript('/static/js/control-cuchillas-corte.js');
+      }
+
+      function tryInit() {
+        if (typeof window.initializeControlCuchillasCorteEventListeners === 'function') {
+          window.initializeControlCuchillasCorteEventListeners();
+          if (typeof window.cuchillasCorteLoadInitialData === 'function') {
+            window.cuchillasCorteLoadInitialData();
+          }
+        } else {
+          setTimeout(tryInit, 100);
+        }
+      }
+
+      tryInit();
+    } catch (error) {
+      console.error('Error inicializando control de cuchillas:', error);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootControlCuchillas);
+  } else {
+    bootControlCuchillas();
+  }
+})();
+</script>

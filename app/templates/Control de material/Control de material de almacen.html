@@ -1235,7 +1235,7 @@
                 llenarCampoPorId('cantidad_actual', codigoCompleto.cantidad_estandarizada || '');
                 llenarCampoPorId('propiedad_material', codigoCompleto.propiedad_material || '');
                 
-                // ✅ VERIFICAR MATERIAL EXISTENTE PARA HABILITAR BOTÓN UNIDADES
+                //  VERIFICAR MATERIAL EXISTENTE PARA HABILITAR BOTÓN UNIDADES
                 verificarMaterialExistente(codigo);
             }
             
@@ -1690,7 +1690,7 @@
                     
                     
                 } else {
-                    console.warn(`❌ Código de material no encontrado en la base de datos: ${codigo}`);
+                    console.warn(` Código de material no encontrado en la base de datos: ${codigo}`);
                     
                     // Si no existe, mostrar en el dropdown pero sin seleccionar
                     const select = document.getElementById('codigoMaterialSelect');
@@ -1858,7 +1858,7 @@
                     const especificacion = codigoEncontrado.especificacion_material || codigoEncontrado.spec || '';
                     llenarCampoPorId('almacen_especificacion_material', especificacion);
                 } else {
-                    console.warn('❌ No se encontró especificación para:', codigoMaterial);
+                    console.warn(' No se encontró especificación para:', codigoMaterial);
                 }
                 
                 cargarSiguienteSecuencial(codigoMaterial).then(() => {
@@ -1866,7 +1866,7 @@
                         llenarCampoPorId('codigo_material_recibido', proximoCodigoCompleto);
                     }
                 }).catch(error => {
-                    console.error('❌ Error al cargar secuencial:', error);
+                    console.error(' Error al cargar secuencial:', error);
                 });
                 return;
             }
@@ -1882,7 +1882,7 @@
                 codigoEncontrado = codigosMaterial.find(c => c.numero_parte === codigoMaterial);
                 if (codigoEncontrado) {
                 } else {
-                    console.warn('❌ Tampoco encontrado por número de parte');
+                    console.warn(' Tampoco encontrado por número de parte');
                 }
             } else {
             }
@@ -1904,7 +1904,7 @@
                     llenarCampoPorId('almacen_especificacion_material', codigoEncontrado.especificacion_material || codigoEncontrado.spec || '');
                     
                 } else {
-                    console.warn('❌ No se pudo llenar la especificación - código no encontrado');
+                    console.warn(' No se pudo llenar la especificación - código no encontrado');
                 }
             }).catch(error => {
                 console.error('Error al cargar secuencial:', error);
@@ -1928,7 +1928,7 @@
                     }, 2000);
                 }
             } else {
-                console.warn(`❌ Campo no encontrado con ID: ${idCampo}`);
+                console.warn(` Campo no encontrado con ID: ${idCampo}`);
             }
         }
 
@@ -2373,7 +2373,7 @@ if (document.readyState === 'loading') {
                     ocultarModalCarga();
                 })
                 .catch(error => {
-                    console.error('❌ Error completo:', error);
+                    console.error(' Error completo:', error);
                     
                     const tbody = document.querySelector('#tablaControlAlmacen tbody');
                     if (tbody) {
@@ -2571,7 +2571,7 @@ if (document.readyState === 'loading') {
                     await imprimirEtiquetaFormulario();
                 }
             } catch (error) {
-                console.error('❌ Error en manejo de impresión:', error);
+                console.error(' Error en manejo de impresión:', error);
                 mostrarNotificacionImpresion('Error de impresión: ' + error.message, 'error');
             }
         }
@@ -2970,7 +2970,7 @@ if (document.readyState === 'loading') {
                                 alert('Código de material recibido no encontrado en el almacén');
                             }
                         } else {
-                            console.error(`❌ ALMACÉN: Error del servidor: ${response.status}`);
+                            console.error(` ALMACÉN: Error del servidor: ${response.status}`);
                             const errorText = await response.text();
                             console.error('Error text:', errorText);
                             alert(`Error del servidor: ${response.status}`);
@@ -2995,7 +2995,7 @@ if (document.readyState === 'loading') {
                 });
                 
             } else {
-                console.error('❌ ALMACÉN: Campo codigo_material_recibido NO encontrado en el DOM');
+                console.error(' ALMACÉN: Campo codigo_material_recibido NO encontrado en el DOM');
             }
         }
 
@@ -3085,7 +3085,7 @@ if (document.readyState === 'loading') {
                 onScanSuccess(decodedText);
             } catch (err) {
                 console.error('Error al escanear la imagen:', err);
-                statusDiv.textContent = '❌ No se pudo detectar un código QR. Intente de nuevo.';
+                statusDiv.textContent = ' No se pudo detectar un código QR. Intente de nuevo.';
                 statusDiv.style.color = 'red';
                 imagePreview.style.display = 'none';
             }
@@ -3426,14 +3426,14 @@ if (document.readyState === 'loading') {
                 await enviarAServicioWin32(comandoZPL, codigo, configuracion);
                 
             } catch (error) {
-                console.error('❌ Error en impresión automática:', error);
+                console.error(' Error en impresión automática:', error);
                 // Error al imprimir
                 
                 // Fallback: Usar método anterior
                 try {
                     await enviarPorBackendAnterior(comandoZPL, codigo, configuracion);
                 } catch (fallbackError) {
-                    console.error('❌ Fallback también falló:', fallbackError);
+                    console.error(' Fallback también falló:', fallbackError);
                     // Último fallback: Mostrar QR en modal
                     if (window.QRAlmacenSimple && typeof QRAlmacenSimple.generarQR === 'function') {
                         QRAlmacenSimple.generarQR(codigo);
@@ -3474,10 +3474,10 @@ if (document.readyState === 'loading') {
                 await enviarAServicioWin32(comandoZPL, datosEtiqueta.codigo, configuracion);
                 
             } catch (error) {
-                console.error('❌ ERROR EN IMPRESIÓN CON DATOS ESPECÍFICOS:', error);
-                console.error('❌ Tipo de error:', error.name);
-                console.error('❌ Mensaje:', error.message);
-                console.error('❌ Stack:', error.stack);
+                console.error(' ERROR EN IMPRESIÓN CON DATOS ESPECÍFICOS:', error);
+                console.error(' Tipo de error:', error.name);
+                console.error(' Mensaje:', error.message);
+                console.error(' Stack:', error.stack);
                 
                 mostrarNotificacionImpresion('Error al imprimir: ' + error.message, 'error');
                 
@@ -3508,7 +3508,7 @@ if (document.readyState === 'loading') {
                         await imprimirZebraAutomatico(codigoParaFallback);
                         
                     } catch (fallbackError) {
-                        console.error('❌ Fallback también falló:', fallbackError);
+                        console.error(' Fallback también falló:', fallbackError);
                         
                         // Último recurso: mostrar el ZPL generado
                         const zplUltimoRecurso = generarComandoZPLConDatos(datosEtiqueta, 'material');
@@ -3588,7 +3588,7 @@ if (document.readyState === 'loading') {
                 }
                 
             } catch (error) {
-                console.error('❌ Error en servicio Win32:', error);
+                console.error(' Error en servicio Win32:', error);
                 
                 // Verificar si es error de conexión al servicio
                 if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
@@ -3627,7 +3627,7 @@ if (document.readyState === 'loading') {
                 }
                 
             } catch (error) {
-                console.error('❌ Error en método fallback:', error);
+                console.error(' Error en método fallback:', error);
                 throw error;
             }
         }
@@ -3720,17 +3720,17 @@ if (document.readyState === 'loading') {
             
             // Verificar si los campos críticos están vacíos
             if (!cantidadActual || cantidadActual.trim() === '') {
-                console.error('❌ ERROR CRÍTICO: cantidadActual está VACÍO en datos específicos');
+                console.error(' ERROR CRÍTICO: cantidadActual está VACÍO en datos específicos');
             } else {
             }
             
             if (!especificacion || especificacion.trim() === '') {
-                console.error('❌ ERROR CRÍTICO: especificación está VACÍA en datos específicos');
+                console.error(' ERROR CRÍTICO: especificación está VACÍA en datos específicos');
             } else {
             }
             
             if (!datosEtiqueta.fechaRecibo) {
-                console.error('❌ ERROR CRÍTICO: fechaRecibo de SQL está VACÍA');
+                console.error(' ERROR CRÍTICO: fechaRecibo de SQL está VACÍA');
             } else {
             }
             
@@ -3740,7 +3740,7 @@ if (document.readyState === 'loading') {
             
             // Verificar si alguna variable está undefined o null y forzar valores (CON CONVERSIÓN A STRING)
             if (!cantidadActual || String(cantidadActual).trim() === '' || cantidadActual === 'undefined') {
-                console.error('❌ ERROR CRÍTICO: cantidadActual vacío, FORZANDO valor SQL');
+                console.error(' ERROR CRÍTICO: cantidadActual vacío, FORZANDO valor SQL');
                 cantidadActual = String(datosEtiqueta.cantidadActual || '1');
             }
             // Validación final de datos antes de crear ZPL
@@ -3983,7 +3983,7 @@ if (document.readyState === 'loading') {
                 }
                 
             } catch (error) {
-                console.error('❌ Error de impresión USB:', error);
+                console.error(' Error de impresión USB:', error);
                 throw new Error('Error de impresión USB: ' + error.message);
             }
         }
@@ -4017,7 +4017,7 @@ if (document.readyState === 'loading') {
                 }
                 
             } catch (error) {
-                console.error('❌ Error de red:', error);
+                console.error(' Error de red:', error);
                 throw new Error('Error de comunicación de red: ' + error.message);
             }
         }
@@ -4291,7 +4291,7 @@ if (document.readyState === 'loading') {
                 mostrarNotificacionImpresion('Verificación completada', 'success');
                 
             } catch (error) {
-                console.error('❌ Error al verificar impresora:', error);
+                console.error(' Error al verificar impresora:', error);
                 
                 let mensajeError = 'Error desconocido';
                 if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
@@ -4429,7 +4429,7 @@ if (document.readyState === 'loading') {
                 mostrarNotificacionImpresion('Prueba de impresión enviada correctamente', 'success');
                 
             } catch (error) {
-                console.error('❌ Error en prueba de impresión:', error);
+                console.error(' Error en prueba de impresión:', error);
                 mostrarNotificacionImpresion('Error en prueba de impresión: ' + error.message, 'error');
             }
         }
@@ -4611,7 +4611,7 @@ if (document.readyState === 'loading') {
    • mostrarLayoutPequeno() - Visualización del diseño
    • verificarQRCompleto() - Muestra contenido del QR
 
-📊 TIPOS DE ETIQUETA:
+ TIPOS DE ETIQUETA:
    🏷️ SIMPLE: QR básico + texto esencial (para etiquetas pequeñas)
    🏷️ MATERIAL: QR completo + información detallada
 
@@ -4746,7 +4746,7 @@ if (document.readyState === 'loading') {
             ];
             
             verificaciones.forEach(({ nombre, valor, presente }) => {
-                const estado = presente ? '' : '❌';
+                const estado = presente ? '' : '';
                 if (!presente) {
                 }
             });
@@ -4795,7 +4795,7 @@ if (document.readyState === 'loading') {
                 };
                 
                 Object.entries(camposCriticos).forEach(([nombre, valor]) => {
-                    const estado = valor && valor.trim() !== '' ? '' : '❌';
+                    const estado = valor && valor.trim() !== '' ? '' : '';
                 });
                 
                 // Generar ZPL solo para ver el resultado
@@ -4808,11 +4808,11 @@ if (document.readyState === 'loading') {
                 const cantidadMatch = zplGenerado.match(/\^FD(\d+)\^FS.*QTY/i);
                 if (cantidadMatch) {
                     if (cantidadMatch[1] !== datosEtiqueta.cantidadActual) {
-                        console.error('❌ ERROR: Cantidad en ZPL no coincide con datos SQL!');
+                        console.error(' ERROR: Cantidad en ZPL no coincide con datos SQL!');
                     } else {
                     }
                 } else {
-                    console.error('❌ No se encontró cantidad en ZPL');
+                    console.error(' No se encontró cantidad en ZPL');
                 }
                 
                 // Buscar especificación en el ZPL
@@ -4823,7 +4823,7 @@ if (document.readyState === 'loading') {
                 
                 
             } catch (error) {
-                console.error('❌ Error en diagnóstico:', error);
+                console.error(' Error en diagnóstico:', error);
             }
         };
         
@@ -4891,7 +4891,7 @@ if (document.readyState === 'loading') {
                 };
                 
                 Object.entries(datosCriticos).forEach(([campo, valor]) => {
-                    const estado = valor ? '' : '❌';
+                    const estado = valor ? '' : '';
                     const tipo = typeof valor;
                     const longitud = valor ? valor.length : 0;
                 });
@@ -4907,7 +4907,7 @@ if (document.readyState === 'loading') {
                 Object.entries(datosEsperados).forEach(([campo, esperado]) => {
                     const actual = datosFilaSeleccionada[campo];
                     const coincide = actual === esperado;
-                    const estado = coincide ? '' : '❌';
+                    const estado = coincide ? '' : '';
                 });
                 
             } else {
@@ -4940,7 +4940,7 @@ if (document.readyState === 'loading') {
                 .then(() => {
                 })
                 .catch(error => {
-                    console.error('❌ Error en test con datos específicos:', error);
+                    console.error(' Error en test con datos específicos:', error);
                 });
         };
         
@@ -4982,7 +4982,7 @@ if (document.readyState === 'loading') {
             };
             
             Object.entries(datos).forEach(([key, value]) => {
-                const status = value === 'VACÍO' ? '❌' : '';
+                const status = value === 'VACÍO' ? '' : '';
             });
             
             // Probar la función de reimpresión
@@ -4990,7 +4990,7 @@ if (document.readyState === 'loading') {
                 .then(() => {
                 })
                 .catch(error => {
-                    console.error('❌ Error en test de reimpresión:', error);
+                    console.error(' Error en test de reimpresión:', error);
                 });
         };
         
@@ -5375,7 +5375,7 @@ if (document.readyState === 'loading') {
                 // Usar la función de impresión que usa generarComandoZPLConDatos()
                 imprimirZebraAutomaticoConDatos(datosEtiqueta);
             } catch (error) {
-                console.error('❌ Error:', error);
+                console.error(' Error:', error);
             }
         };
         
@@ -5649,7 +5649,7 @@ if (document.readyState === 'loading') {
                     // Imprimir etiqueta individual (sin esperar a que termine)
                     imprimirEtiquetaIndividual(etiqueta.codigo, i + 1, cantidad)
                         .catch(error => {
-                            console.error(`❌ Error imprimiendo etiqueta ${i + 1}:`, error);
+                            console.error(` Error imprimiendo etiqueta ${i + 1}:`, error);
                             // Continuar con las siguientes etiquetas aunque una falle
                         });
                     
@@ -5657,7 +5657,7 @@ if (document.readyState === 'loading') {
                     await new Promise(resolve => setTimeout(resolve, 500));
                     
                 } catch (error) {
-                    console.error(`❌ Error en etiqueta ${i + 1}:`, error);
+                    console.error(` Error en etiqueta ${i + 1}:`, error);
                     // Continuar con las siguientes
                 }
             }
@@ -6485,7 +6485,7 @@ if (document.readyState === 'loading') {
                 
                 
             } catch (error) {
-                console.error('❌ Error guardando entrada:', error);
+                console.error(' Error guardando entrada:', error);
                 throw error;
             }
         }
@@ -6672,12 +6672,12 @@ if (document.readyState === 'loading') {
                     
                 } else {
                     const errorData = await response.json();
-                    console.error('❌ Error del servidor:', errorData);
+                    console.error(' Error del servidor:', errorData);
                     throw new Error(errorData.error || 'Error desconocido del servidor');
                 }
                 
             } catch (error) {
-                console.error('❌ Error completo:', error);
+                console.error(' Error completo:', error);
                 alert('Error al guardar la regla: ' + error.message);
             }
         }
@@ -7239,7 +7239,7 @@ if (document.readyState === 'loading') {
             })
             .catch(error => {
                 Swal.close();
-                console.error('❌ Error de conexión:', error);
+                console.error(' Error de conexión:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Error de Conexión',
@@ -7272,11 +7272,11 @@ if (document.readyState === 'loading') {
                         console.warn('⚠️ Advertencia al actualizar inventario:', result.error);
                     }
                 } else {
-                    console.error('❌ Error HTTP al actualizar inventario:', response.status);
+                    console.error(' Error HTTP al actualizar inventario:', response.status);
                 }
 
             } catch (error) {
-                console.error('❌ Error al actualizar inventario consolidado:', error);
+                console.error(' Error al actualizar inventario consolidado:', error);
                 
                 // Mostrar error solo en consola, no molestar al usuario
                 Swal.fire({

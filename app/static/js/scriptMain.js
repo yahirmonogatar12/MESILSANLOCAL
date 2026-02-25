@@ -141,6 +141,7 @@
                     'operacion-linea-smt-unique-container',
                     'operacion-linea-main-unique-container',
                     'plan-main-assy-unique-container',
+                    'control-cuchillas-corte-unique-container',
                     'plan-main-imd-unique-container',
                     'plan-main-smt-unique-container',
                     'control-impresion-identificacion-smt-unique-container',
@@ -890,6 +891,7 @@
                         'control-produccion-smt-container',
                         'Control de produccion SMT-unique-container',
                         'inventario-imd-terminado-unique-container',
+                        'control-cuchillas-corte-unique-container',
                         'bom-unique-container'
                     ];
                     
@@ -1018,7 +1020,7 @@
                     if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
                     const containerId = 'plan-main-assy-unique-container';
                     const cont = document.getElementById(containerId);
-                    if (!cont) return console.error('❌ Contenedor no existe:', containerId);
+                    if (!cont) return console.error(' Contenedor no existe:', containerId);
                     // Mostrar contenedor SIN !important
                     cont.style.display = 'block';
                     cont.style.opacity = '1';
@@ -1029,11 +1031,11 @@
                             // Esperar a que los scripts se carguen completamente
                             function tryInitialize() {
                                 if (typeof window.initializePlanEventListeners === 'function' && typeof window.loadPlans === 'function') {
-                                    console.log('✅ Inicializando event listeners de Plan Main ASSY');
+                                    console.log(' Inicializando event listeners de Plan Main ASSY');
                                     window.initializePlanEventListeners();
                                     
                                     // Cargar datos iniciales
-                                    console.log('📊 Cargando planes iniciales...');
+                                    console.log(' Cargando planes iniciales...');
                                     window.loadPlans();
                                 } else {
                                     console.log('⏳ Esperando a que plan.js se cargue completamente...');
@@ -1045,7 +1047,70 @@
                         });
                     }
                 } catch (e) {
-                    console.error('❌ Error en mostrarPlanMainASSY:', e);
+                    console.error(' Error en mostrarPlanMainASSY:', e);
+                }
+            };
+
+            // Función AJAX: Control de Cuchillas de Corte (ASSY)
+            window.mostrarControlCuchillasCorte = function() {
+                try {
+                    const controlProduccionButton = document.getElementById('Control de produccion');
+                    if (controlProduccionButton) {
+                        controlProduccionButton.classList.add('active');
+                        document.querySelectorAll('.nav-button').forEach(btn => { if (btn.id !== 'Control de produccion') btn.classList.remove('active'); });
+                    }
+
+                    if (typeof window.hideAllMaterialContainers === 'function') window.hideAllMaterialContainers();
+                    if (typeof window.hideAllInformacionBasicaContainers === 'function') window.hideAllInformacionBasicaContainers();
+
+                    const produccionContainers = [
+                        'produccion-info-container',
+                        'crear-plan-produccion-unique-container',
+                        'plan-smt-unique-container',
+                        'control-embarque-unique-container',
+                        'control-cuchillas-corte-unique-container'
+                    ];
+                    produccionContainers.forEach(containerId => {
+                        const container = document.getElementById(containerId);
+                        if (container) {
+                            container.style.display = 'none';
+                        }
+                    });
+
+                    const materialContainer = document.getElementById('material-container');
+                    const produccionContent = document.getElementById('produccion-content');
+                    const produccionContentArea = document.getElementById('produccion-content-area');
+                    const controlProcesoContent = document.getElementById('control-proceso-content');
+                    const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
+                    if (materialContainer) materialContainer.style.display = 'block';
+                    if (produccionContent) produccionContent.style.display = 'block';
+                    if (produccionContentArea) produccionContentArea.style.display = 'block';
+                    if (controlProcesoContent) controlProcesoContent.style.display = 'none';
+                    if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'none';
+
+                    const containerId = 'control-cuchillas-corte-unique-container';
+                    const cont = document.getElementById(containerId);
+                    if (!cont) return console.error('Contenedor no existe:', containerId);
+
+                    cont.style.display = 'block';
+                    cont.style.opacity = '1';
+
+                    if (typeof window.cargarContenidoDinamico === 'function') {
+                        window.cargarContenidoDinamico(containerId, '/control-cuchillas-corte-ajax', () => {
+                            const init = () => {
+                                if (typeof window.initializeControlCuchillasCorteEventListeners === 'function') {
+                                    window.initializeControlCuchillasCorteEventListeners();
+                                }
+                                if (typeof window.cuchillasCorteLoadInitialData === 'function') {
+                                    window.cuchillasCorteLoadInitialData();
+                                }
+                            };
+                            init();
+                            setTimeout(init, 120);
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error en mostrarControlCuchillasCorte:', e);
                 }
             };
 
@@ -1069,7 +1134,7 @@
                     if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'block';
                     const containerId = 'plan-main-imd-unique-container';
                     const cont = document.getElementById(containerId);
-                    if (!cont) return console.error('❌ Contenedor no existe:', containerId);
+                    if (!cont) return console.error(' Contenedor no existe:', containerId);
                     // Mostrar contenedor SIN !important
                     cont.style.display = 'block';
                     cont.style.opacity = '1';
@@ -1080,11 +1145,11 @@
                             // Esperar a que los scripts se carguen completamente
                             function tryInitialize() {
                                 if (typeof window.initializePlanIMDEventListeners === 'function' && typeof window.loadPlansIMD === 'function') {
-                                    console.log('✅ Inicializando event listeners de Plan Main IMD');
+                                    console.log(' Inicializando event listeners de Plan Main IMD');
                                     window.initializePlanIMDEventListeners();
                                     
                                     // Cargar datos iniciales
-                                    console.log('📊 Cargando planes IMD iniciales...');
+                                    console.log(' Cargando planes IMD iniciales...');
                                     window.loadPlansIMD();
                                 } else {
                                     console.log('⏳ Esperando a que plan_imd.js se cargue completamente...');
@@ -1096,7 +1161,7 @@
                         });
                     }
                 } catch (e) {
-                    console.error('❌ Error en mostrarPlanMainIMD:', e);
+                    console.error(' Error en mostrarPlanMainIMD:', e);
                 }
             };
 
@@ -2139,7 +2204,8 @@
                         'control-proceso-info-container',
                         'control-produccion-smt-container',
                         'operacion-linea-smt-unique-container',
-                        'inventario-imd-terminado-unique-container'
+                        'inventario-imd-terminado-unique-container',
+                        'control-cuchillas-corte-unique-container'
                     ];
                     
                     controlProcesoContainers.forEach(containerId => {
@@ -2376,6 +2442,7 @@ window.mostrarCrearPlanMicom = function() {
                         'control-produccion-smt-container',
                         'operacion-linea-smt-unique-container',
                         'inventario-imd-terminado-unique-container',
+                        'control-cuchillas-corte-unique-container',
                         'Control de produccion SMT-unique-container',
                         'crear-plan-micom-unique-container',
                         'line-material-status-unique-container'
@@ -2412,7 +2479,7 @@ window.mostrarCrearPlanMicom = function() {
                     // PASO 3: Obtener y mostrar el contenedor específico de BOM
                     const bomContainer = document.getElementById('bom-unique-container');
                     if (!bomContainer) {
-                        console.error('❌ El contenedor bom-unique-container no existe en el HTML');
+                        console.error(' El contenedor bom-unique-container no existe en el HTML');
                         return;
                     }
 
@@ -2432,7 +2499,7 @@ window.mostrarCrearPlanMicom = function() {
                             }
                         })
                         .catch(error => {
-                            console.error('❌ Error cargando Control BOM:', error);
+                            console.error(' Error cargando Control BOM:', error);
                             const errorContainer = document.getElementById('bom-unique-container');
                             if (errorContainer) {
                                 errorContainer.innerHTML = `
@@ -2445,11 +2512,11 @@ window.mostrarCrearPlanMicom = function() {
                             }
                         });
                     } else {
-                        console.error('❌ Función cargarContenidoDinamico no está disponible');
+                        console.error(' Función cargarContenidoDinamico no está disponible');
                     }
 
                 } catch (error) {
-                    console.error('❌ Error crítico en mostrarControlBOM:', error);
+                    console.error(' Error crítico en mostrarControlBOM:', error);
                     alert('Error crítico al cargar Control BOM. Consulte la consola para más detalles.');
                 }
             };
@@ -3729,6 +3796,7 @@ window.mostrarPlanSmdDiario = function() {
         const controlProcesoContainers = [
             'operacion-linea-smt-unique-container',
             'Control de produccion SMT-unique-container',
+            'control-cuchillas-corte-unique-container',
             'bom-unique-container',
             'bom-management-process-unique-container'
         ];

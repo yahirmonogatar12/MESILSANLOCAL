@@ -9,7 +9,7 @@
     // Función para esperar a que un CSS esté completamente cargado
     function waitForStylesheet(href) {
         return new Promise((resolve) => {
-            console.log('🔍 Verificando CSS:', href);
+            console.log(' Verificando CSS:', href);
             
             // Si ya existe el CSS, verificar que esté REALMENTE cargado
             const existingLink = document.querySelector(`link[href="${href}"]`);
@@ -178,7 +178,7 @@
         
         // 2. Reaplicar permisos de forma controlada
         if (window.PermisosManagerSimple && window.PermisosManagerSimple.inicializado) {
-            console.log('🔐 Reaplicando permisos para nuevo contenido...');
+            console.log(' Reaplicando permisos para nuevo contenido...');
             try {
                 // Solo reaplicar permisos, no reinicializar completamente
                 if (typeof window.PermisosManagerSimple.aplicarPermisos === 'function') {
@@ -366,7 +366,7 @@
             // Ejecutar scripts incluidos en el HTML cargado
             const newlyLoadedScripts = await executeScriptsIn(target);
             
-            console.log('📄 HTML insertado con estilos completamente aplicados');
+            console.log(' HTML insertado con estilos completamente aplicados');
             
             // 10. REINICIALIZAR SCRIPTS para el nuevo contenido
             updateLoadingText('Configurando funcionalidades...');
@@ -397,7 +397,7 @@
             console.log(' Carga AJAX completada SIN parpadeos (con delay de 2s y scripts)');
             
         } catch (error) {
-            console.error('❌ Error cargando contenido vía AJAX:', error);
+            console.error(' Error cargando contenido vía AJAX:', error);
             if (showLoader) showLoadingModal(false);
         }
     }

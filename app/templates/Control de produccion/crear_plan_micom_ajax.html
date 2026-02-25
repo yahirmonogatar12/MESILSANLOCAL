@@ -797,7 +797,7 @@ tr:nth-child(even):hover td {
             // ===============================
             (function tests(){
                 const res = [];
-                function expect(name, cond){ if(!cond){ console.error('❌', name); res.push(false);} else { console.log('✅', name);} }
+                function expect(name, cond){ if(!cond){ console.error('', name); res.push(false);} else { console.log('', name);} }
                 expect('CSV: duplica comillas', toCSVCell('A"B') === '"A""B"');
                 expect('CSV: con coma envuelve', toCSVCell('A,B') === '"A,B"');
                 // Prueba exportTableToCSV: crea tabla dummy en memoria

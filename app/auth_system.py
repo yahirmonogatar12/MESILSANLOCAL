@@ -75,7 +75,7 @@ class AuthSystem:
         # Fallback a SQLite
         conn = get_db_connection()
         if conn is None:
-            print("❌ Error: No se pudo obtener conexión a la base de datos")
+            print(" Error: No se pudo obtener conexión a la base de datos")
             return
             
         cursor = conn.cursor()
@@ -229,7 +229,7 @@ class AuthSystem:
             print(" Sistema de usuarios inicializado correctamente")
             
         except Exception as e:
-            print(f"❌ Error inicializando base de datos: {e}")
+            print(f" Error inicializando base de datos: {e}")
             conn.rollback()
         finally:
             conn.close()
@@ -608,7 +608,7 @@ class AuthSystem:
             
             conn.close()
         except Exception as e:
-            print(f"❌ Error creando admin por defecto: {e}")
+            print(f" Error creando admin por defecto: {e}")
     
     @staticmethod
     def hash_password(password):
@@ -917,8 +917,8 @@ class AuthSystem:
                 usuario = session.get('usuario')
                 permisos = session.get('permisos', {})
                 
-                print(f"🔍 Verificando permisos para {usuario}: {modulo}.{accion}")
-                print(f"🔍 Permisos en sesión: {permisos}")
+                print(f" Verificando permisos para {usuario}: {modulo}.{accion}")
+                print(f" Permisos en sesión: {permisos}")
                 
                 # Verificar si el usuario tiene el permiso requerido
                 # FORMATO ESPERADO: permisos = {'sistema': ['usuarios', 'auditoria'], 'material': ['ver', 'crear']}
@@ -929,12 +929,12 @@ class AuthSystem:
                         tiene_permiso = True
                         print(f" Permiso encontrado: {modulo}.{accion}")
                     else:
-                        print(f"❌ Permiso no encontrado: {modulo}.{accion} en {permisos.get(modulo, 'módulo no encontrado')}")
+                        print(f" Permiso no encontrado: {modulo}.{accion} en {permisos.get(modulo, 'módulo no encontrado')}")
                 else:
-                    print(f"❌ Formato de permisos incorrecto: {type(permisos)}")
+                    print(f" Formato de permisos incorrecto: {type(permisos)}")
                 
                 if not tiene_permiso:
-                    print(f"❌ Permiso denegado: {modulo}.{accion}")
+                    print(f" Permiso denegado: {modulo}.{accion}")
                     # Registrar intento no autorizado
                     self.registrar_auditoria(
                         usuario=usuario,
@@ -1000,7 +1000,7 @@ class AuthSystem:
             if 'usuario' not in session:
                 # Solo loguear si NO es una petición AJAX esperada de permisos
                 if not (request.is_json or '/obtener_permisos' in request.path):
-                    print(f"❌ No hay usuario en sesión para acceder a {request.endpoint}")
+                    print(f" No hay usuario en sesión para acceder a {request.endpoint}")
                 if request.is_json:
                     return jsonify({'error': 'No autenticado'}), 401
                 return redirect('/login')  # Usar ruta absoluta en lugar de url_for

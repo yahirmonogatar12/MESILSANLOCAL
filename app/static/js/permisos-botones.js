@@ -25,7 +25,7 @@ class PermisosManager {
             this.inicializado = true;
             this.log(' Sistema de permisos inicializado correctamente');
         } catch (error) {
-            console.error('❌ Error inicializando sistema de permisos:', error);
+            console.error(' Error inicializando sistema de permisos:', error);
         }
     }
 
@@ -42,7 +42,7 @@ class PermisosManager {
             this.permisosUsuario = await response.json();
             this.log(' Permisos del usuario cargados:', this.permisosUsuario);
         } catch (error) {
-            console.error('❌ Error cargando permisos:', error);
+            console.error(' Error cargando permisos:', error);
             this.permisosUsuario = {};
         }
     }
@@ -54,7 +54,7 @@ class PermisosManager {
         // Buscar todos los elementos con atributos de permiso
         const elementosConPermisos = document.querySelectorAll('[data-permiso-pagina]');
         
-        this.log(`🔍 Encontrados ${elementosConPermisos.length} elementos con permisos`);
+        this.log(` Encontrados ${elementosConPermisos.length} elementos con permisos`);
         
         elementosConPermisos.forEach(elemento => {
             if (!this.elementosProcesados.has(elemento)) {
@@ -85,7 +85,7 @@ class PermisosManager {
             this.deshabilitarElemento(elemento);
         }
 
-        this.log(`${tienePermiso ? '' : '❌'} ${pagina}>${seccion}>${boton}`, elemento);
+        this.log(`${tienePermiso ? '' : ''} ${pagina}>${seccion}>${boton}`, elemento);
     }
 
     /**
@@ -251,7 +251,7 @@ class PermisosManager {
             this.aplicarPermisos();
             this.log(' Permisos refrescados');
         } catch (error) {
-            console.error('❌ Error refrescando permisos:', error);
+            console.error(' Error refrescando permisos:', error);
         }
     }
 

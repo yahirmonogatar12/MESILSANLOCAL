@@ -13,7 +13,7 @@ El usuario reportó: **"Checa que control bom se importe correctamente con ajax 
 
 ## ESTADO DE LA IMPLEMENTACIÓN
 
-### ✅ COMPLETADO
+###  COMPLETADO
 1. **Ruta AJAX funcional**: `/control-bom-ajax` en `app/routes.py` líneas 3135-3150
 2. **Contenedor en MaterialTemplate**: `bom-unique-container` existe
 3. **Función de visibilidad mejorada**: `mostrarControlBOM()` con lógica completa de ocultación
@@ -161,10 +161,10 @@ curl http://127.0.0.1:5000/listar_modelos_bom
 - Funciones globales en window scope
 
 ## ESTADO DEL SERVIDOR
-- **Flask funcionando** en puerto 5000 ✅
-- **Base de datos MySQL** conectada ✅ 
-- **Rutas principales** funcionando ✅
-- **Control BOM AJAX** route existe ✅
+- **Flask funcionando** en puerto 5000 
+- **Base de datos MySQL** conectada  
+- **Rutas principales** funcionando 
+- **Control BOM AJAX** route existe 
 
 ## RESULTADO ESPERADO
 Al completar, el usuario debería poder:

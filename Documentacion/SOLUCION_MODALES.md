@@ -19,18 +19,18 @@ Los modales no se veían correctamente después de navegar entre secciones debid
 
 ### 3. Modales Implementados
 
-#### ✅ Modal de Nuevo Plan
+####  Modal de Nuevo Plan
 - Fondo oscuro (#34334E)
 - Inputs con fondo (#2B2D3E) y borde azul
 - Botones con colores correctos (verde para guardar, gris para cancelar)
 - Labels en color claro
 
-#### ✅ Modal de Editar Plan
+####  Modal de Editar Plan
 - Mismo estilo que Nuevo Plan
 - Botón rojo para "Cancelar plan"
 - Layout con botones a los lados
 
-#### ✅ Modal de Reprogramar
+####  Modal de Reprogramar
 - Fondo oscuro con título morado (#9b59b6)
 - Filtros con inputs estilizados
 - Tabla con headers oscuros y bordes azules

@@ -97,10 +97,10 @@ def mostrar_info_logs():
         log_files = [f for f in os.listdir(log_dir) if f.startswith('print_service.log')]
         
         print(f" Configuración de logs:")
-        print(f"   📁 Directorio: {log_dir}")
+        print(f"    Directorio: {log_dir}")
         print(f"    Rotación: Cada 1 hora")
-        print(f"   💾 Historial: 24 horas (24 archivos)")
-        print(f"   📊 Archivos actuales: {len(log_files)}")
+        print(f"    Historial: 24 horas (24 archivos)")
+        print(f"    Archivos actuales: {len(log_files)}")
         print(f"    Formato: print_service.log.YYYYMMDD_HH")
         
         if len(log_files) > 1:

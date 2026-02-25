@@ -98,7 +98,7 @@
         };
         
         const hideHandler = (e) => {
-            log(`📁 Hiding: ${elementId}`);
+            log(` Hiding: ${elementId}`);
         };
         
         const hiddenHandler = (e) => {
@@ -153,7 +153,7 @@
             // Obtener instancia de collapse
             const collapseInstance = bootstrap.Collapse.getInstance(targetElement);
             if (!collapseInstance) {
-                log('❌ No se encontró instancia de collapse');
+                log(' No se encontró instancia de collapse');
                 isProcessing = false;
                 return false;
             }
@@ -282,7 +282,7 @@
                 waitForBootstrap(callback, retries + 1);
             }, 500);
         } else {
-            log('❌ Bootstrap no se cargó después de varios intentos');
+            log(' Bootstrap no se cargó después de varios intentos');
         }
     }
     
@@ -357,6 +357,6 @@
         };
     }
     
-    log('📁 Solución universal de dropdowns cargada');
+    log(' Solución universal de dropdowns cargada');
     
 })();

@@ -6,9 +6,9 @@ Transformar ILSAN de un sistema MES monolítico a un **hub centralizado de aplic
 
 ---
 
-## Fase 1: Landing Page Hub ✅ COMPLETADO
+## Fase 1: Landing Page Hub  COMPLETADO
 
-**Estado:** ✅ Implementado y documentado
+**Estado:**  Implementado y documentado
 
 **Entregables:**
 - [x] Landing page (`app/templates/landing.html`) con 4 app cards

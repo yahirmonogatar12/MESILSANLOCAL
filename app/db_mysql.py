@@ -92,7 +92,7 @@ def eliminar_foreign_keys_materiales():
         print(" Eliminación de foreign keys completada")
         
     except Exception as e:
-        print(f"❌ Error en eliminación de foreign keys: {e}")
+        print(f" Error en eliminación de foreign keys: {e}")
 
 def init_db():
     """Inicializar base de datos MySQL y crear tablas"""
@@ -103,7 +103,7 @@ def init_db():
     try:
         # Probar conexión
         if not test_connection():
-            print("❌ Error conectando a MySQL")
+            print(" Error conectando a MySQL")
             return False
         
         # Verificar y reparar foreign keys existentes si es necesario
@@ -166,7 +166,7 @@ def repair_foreign_keys():
                 table_exists = execute_query(check_table, fetch='one')
                 
                 if table_exists:
-                    print(f"🔍 Limpiando foreign keys en tabla {table}...")
+                    print(f" Limpiando foreign keys en tabla {table}...")
                     
                     # Obtener TODAS las foreign keys existentes hacia materiales
                     fk_query = f"""
@@ -198,7 +198,7 @@ def repair_foreign_keys():
         print("🔧 Limpieza completa de foreign keys completada")
         
     except Exception as e:
-        print(f"❌ Error en reparación de foreign keys: {e}")
+        print(f" Error en reparación de foreign keys: {e}")
 
 def create_tables():
     """Crear tablas necesarias en MySQL - ORDEN IMPORTANTE"""
@@ -262,7 +262,7 @@ def create_tables():
             execute_query(create_sql)
             print(f" Tabla base {table_name} creada/verificada")
         except Exception as e:
-            print(f"❌ Error creando tabla base {table_name}: {e}")
+            print(f" Error creando tabla base {table_name}: {e}")
     
     # PASO 2: Crear tablas que dependen de materiales (SIN foreign keys primero)
     dependent_tables_no_fk = {
@@ -309,7 +309,7 @@ def create_tables():
             execute_query(create_sql)
             print(f" Tabla {table_name} creada/verificada")
         except Exception as e:
-            print(f"❌ Error creando tabla {table_name}: {e}")
+            print(f" Error creando tabla {table_name}: {e}")
     
     # PASO 3: Agregar foreign keys después de que todas las tablas existen
     print(" Intentando agregar foreign keys...")
@@ -360,7 +360,7 @@ def add_foreign_keys():
             materiales_exists = execute_query(check_materiales, fetch='one')
             
             if not materiales_exists:
-                print(f"❌ Tabla materiales no existe, no se pueden crear foreign keys")
+                print(f" Tabla materiales no existe, no se pueden crear foreign keys")
                 break
             
             # PASO 3: VERIFICACIÓN TRIPLE - Verificar de 3 formas distintas si existe la FK
@@ -427,7 +427,7 @@ def add_foreign_keys():
                 print(f" Índice creado")
             
             # PASO 5: DOBLE VERIFICACIÓN antes de crear
-            print(f"🔍 Verificación final antes de crear {fk['constraint']}...")
+            print(f" Verificación final antes de crear {fk['constraint']}...")
             
             # Verificar UNA VEZ MÁS que no existe
             final_check = f"""
@@ -458,14 +458,14 @@ def add_foreign_keys():
                 print(f" Foreign key {fk['constraint']} ya existía (confirmado por MySQL) - CORRECTO")
                 continue  # Este NO es un error, es confirmación de que ya existe
             elif "1822" in error_msg:
-                print(f"❌ Error de índice para {fk['constraint']}: {error_msg}")
+                print(f" Error de índice para {fk['constraint']}: {error_msg}")
             elif "1005" in error_msg:
-                print(f"❌ Error de definición para {fk['constraint']}: {error_msg}")
+                print(f" Error de definición para {fk['constraint']}: {error_msg}")
             elif "1091" in error_msg:
                 print(f" Foreign key {fk['constraint']} ya fue procesada anteriormente")
                 continue
             else:
-                print(f"❌ Error creando {fk['constraint']}: {error_msg}")
+                print(f" Error creando {fk['constraint']}: {error_msg}")
             
             # No fallar completamente, continuar con las siguientes
             continue
@@ -601,7 +601,7 @@ def guardar_material(data, usuario_registro=None):
         # VALIDACIONES PREVIAS CON LOGS DETALLADOS
         numero_parte = data.get('numero_parte', '').strip()
         if not numero_parte:
-            print(f"❌ ERROR: numero_parte vacío o None en data: {data}")
+            print(f" ERROR: numero_parte vacío o None en data: {data}")
             return False
         
         # Información de registro
@@ -684,19 +684,19 @@ def guardar_material(data, usuario_registro=None):
             
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ ERROR DETALLADO guardando material '{data.get('numero_parte', 'UNKNOWN')}': {error_msg}")
+        print(f" ERROR DETALLADO guardando material '{data.get('numero_parte', 'UNKNOWN')}': {error_msg}")
         
         # Errores específicos de MySQL
         if "1062" in error_msg:
-            print(f"🔍 Error de duplicado - numero_parte ya existe: {data.get('numero_parte')}")
+            print(f" Error de duplicado - numero_parte ya existe: {data.get('numero_parte')}")
         elif "1406" in error_msg:
-            print(f"🔍 Error de longitud de campo - datos demasiado largos")
+            print(f" Error de longitud de campo - datos demasiado largos")
         elif "1364" in error_msg:
-            print(f"🔍 Error de campo requerido - falta valor para campo NOT NULL")
+            print(f" Error de campo requerido - falta valor para campo NOT NULL")
         elif "1054" in error_msg:
-            print(f"🔍 Error de columna desconocida - verifica estructura de tabla")
+            print(f" Error de columna desconocida - verifica estructura de tabla")
         else:
-            print(f"🔍 Error MySQL genérico: {error_msg}")
+            print(f" Error MySQL genérico: {error_msg}")
             
         return False
 
@@ -743,7 +743,7 @@ def actualizar_material_completo(codigo_original, nuevos_datos):
                 print(f"  - Mapeando {campo_frontend} -> {campo_db} = {valor}")
         
         if not campos_update:
-            print("❌ No hay campos para actualizar")
+            print(" No hay campos para actualizar")
             return {'success': False, 'error': 'No hay campos para actualizar'}
         
         # Agregar el código original para la condición WHERE
@@ -763,7 +763,7 @@ def actualizar_material_completo(codigo_original, nuevos_datos):
             
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ Error actualizando material completo {codigo_original}: {error_msg}")
+        print(f" Error actualizando material completo {codigo_original}: {error_msg}")
         return {'success': False, 'error': f'Error de base de datos: {error_msg}'}
 
 def obtener_material_por_numero(numero_parte):
@@ -779,7 +779,7 @@ def insertar_materiales_desde_excel(df, usuario_importacion=None):
     """Insertar materiales desde DataFrame de Excel con mapeo correcto y DEBUG MEJORADO"""
     try:
         if not PANDAS_AVAILABLE:
-            print("❌ Pandas no disponible para importar Excel")
+            print(" Pandas no disponible para importar Excel")
             return {'insertados': 0, 'omitidos': 0, 'error': 'Pandas no disponible'}
             
         insertados = 0
@@ -807,13 +807,13 @@ def insertar_materiales_desde_excel(df, usuario_importacion=None):
             'Fecha de registro': 'fecha_registro'
         }
         
-        print(f"📊 Procesando {len(df)} filas del Excel...")
-        print(f"🔍 Columnas disponibles en Excel: {list(df.columns)}")
+        print(f" Procesando {len(df)} filas del Excel...")
+        print(f" Columnas disponibles en Excel: {list(df.columns)}")
         
         for index, row in df.iterrows():
             try:
                 fila_numero = index + 1
-                print(f"\n🔍 === PROCESANDO FILA {fila_numero} ===")
+                print(f"\n === PROCESANDO FILA {fila_numero} ===")
                 
                 # Mapear datos desde Excel
                 data = {}
@@ -822,7 +822,7 @@ def insertar_materiales_desde_excel(df, usuario_importacion=None):
                     if excel_col in row:
                         value = str(row[excel_col]).strip() if pd.notna(row[excel_col]) else ''
                         data[db_col] = value
-                        print(f"🔍 {db_col}: '{value[:50]}{'...' if len(value) > 50 else ''}'")
+                        print(f" {db_col}: '{value[:50]}{'...' if len(value) > 50 else ''}'")
                     else:
                         data[db_col] = ''
                         print(f" Columna '{excel_col}' no encontrada en Excel")
@@ -836,7 +836,7 @@ def insertar_materiales_desde_excel(df, usuario_importacion=None):
                     continue
                 
                 # Guardar material con logging detallado e información del usuario
-                print(f"🔍 Intentando guardar material fila {fila_numero} - Usuario: {usuario_importacion}...")
+                print(f" Intentando guardar material fila {fila_numero} - Usuario: {usuario_importacion}...")
                 if guardar_material(data, usuario_registro=usuario_importacion):
                     insertados += 1
                     print(f" Fila {fila_numero} guardada exitosamente por {usuario_importacion}")
@@ -844,21 +844,21 @@ def insertar_materiales_desde_excel(df, usuario_importacion=None):
                         print(f" Procesados {insertados} materiales por {usuario_importacion}...")
                 else:
                     error_msg = f"Fila {fila_numero}: Error al guardar en base de datos"
-                    print(f"❌ {error_msg}")
+                    print(f" {error_msg}")
                     errores_detallados.append(error_msg)
                     omitidos += 1
                     
             except Exception as e:
                 fila_numero = index + 1
                 error_msg = f"Fila {fila_numero}: {str(e)}"
-                print(f"❌ Error procesando fila {fila_numero}: {e}")
+                print(f" Error procesando fila {fila_numero}: {e}")
                 errores_detallados.append(error_msg)
                 omitidos += 1
                 continue
         
         print(f"\n Importación completada por {usuario_importacion}: {insertados} insertados, {omitidos} omitidos")
         if errores_detallados:
-            print(f"🔍 Errores detallados:")
+            print(f" Errores detallados:")
             for error in errores_detallados:
                 print(f"  - {error}")
         
@@ -871,7 +871,7 @@ def insertar_materiales_desde_excel(df, usuario_importacion=None):
         }
         
     except Exception as e:
-        print(f"❌ Error importando materiales desde Excel: {e}")
+        print(f" Error importando materiales desde Excel: {e}")
         return {
             'insertados': 0,
             'omitidos': len(df) if df is not None else 0,
@@ -1006,7 +1006,7 @@ def guardar_bom_item(data):
             return False
             
     except Exception as e:
-        print(f"DEBUG: ❌ ERROR en guardar_bom_item: {e}")
+        print(f"DEBUG:  ERROR en guardar_bom_item: {e}")
         return False
 
 def obtener_modelos_bom():
@@ -1046,7 +1046,7 @@ def listar_bom_por_modelo(modelo, classification=None):
         # Ejecutar query
         resultados = execute_query(query, tuple(params) if params else (), fetch='all') or []
         
-        print(f"📊 Query BOM: modelo={modelo}, classification={classification}, resultados={len(resultados)}")
+        print(f" Query BOM: modelo={modelo}, classification={classification}, resultados={len(resultados)}")
         
         # Mapear nombres de columnas de la BD a nombres esperados por el frontend
         datos_mapeados = []
@@ -1233,7 +1233,7 @@ def insertar_bom_desde_dataframe(df, registrador):
                     print(f"DEBUG: Error en lote {i//batch_size + 1}: {e}")
                     continue
             
-            print(f"DEBUG: ✅ Inserción masiva completada - {total_insertados} filas procesadas")
+            print(f"DEBUG:  Inserción masiva completada - {total_insertados} filas procesadas")
         
         # Información detallada para el frontend
         tiempo_total = time.time() - start_time
@@ -1364,7 +1364,7 @@ def registrar_salida_material_mysql(data):
         # VALIDACIÓN: No permitir salidas sin proceso específico
         proceso_input = data.get('proceso_salida', '').strip()
         if not proceso_input or proceso_input.upper() == 'AUTO':
-            print(f"❌ ERROR: No se puede procesar salida sin especificar proceso destino")
+            print(f" ERROR: No se puede procesar salida sin especificar proceso destino")
             print(f"   - proceso_salida recibido: '{proceso_input}'")
             print(f"   - Se requiere un proceso específico (PRODUCCION, SMD, IMD, etc.)")
             return {
@@ -1389,7 +1389,7 @@ def registrar_salida_material_mysql(data):
         
         # Determinar especificación final
         especificacion_final = especificacion_original or data.get('especificacion_material', '')
-        print(f"🔍 Debug especificación:")
+        print(f" Debug especificación:")
         print(f"   - especificacion_original: '{especificacion_original}'")
         print(f"   - data.get('especificacion_material', ''): '{data.get('especificacion_material', '')}'")
         print(f"   - especificacion_final: '{especificacion_final}'")
@@ -1412,7 +1412,7 @@ def registrar_salida_material_mysql(data):
             especificacion_final  # Usar especificación determinada
         )
         
-        print(f"🔍 Debug query completa:")
+        print(f" Debug query completa:")
         print(f"   - Query: {query}")
         print(f"   - Params: {params}")
         print(f"   - Tipo de cada parámetro:")
@@ -1433,12 +1433,12 @@ def registrar_salida_material_mysql(data):
             verify_result = execute_query(verify_query, (data['codigo_material_recibido'],), fetch='one')
             if verify_result:
                 actual_spec = verify_result.get('especificacion_material', '')
-                print(f"🔍 Verificación inmediata - Especificación en BD: '{actual_spec}'")
+                print(f" Verificación inmediata - Especificación en BD: '{actual_spec}'")
                 if actual_spec != especificacion_final:
                     print(f"⚠️ PROBLEMA: Se envió '{especificacion_final}' pero se guardó '{actual_spec}'")
         
         if result > 0:
-            print(f"✅ Salida registrada exitosamente - Proceso: {proceso_salida}")
+            print(f" Salida registrada exitosamente - Proceso: {proceso_salida}")
             
             # PASO 4: Actualizar inventario general
             try:
@@ -1460,11 +1460,11 @@ def registrar_salida_material_mysql(data):
                 'especificacion_usada': especificacion_original
             }
         else:
-            print(f"❌ Error al registrar salida")
+            print(f" Error al registrar salida")
             return {'success': False, 'error': 'Error al insertar en base de datos'}
             
     except Exception as e:
-        print(f"❌ Error en registrar_salida_material_mysql: {e}")
+        print(f" Error en registrar_salida_material_mysql: {e}")
         return {'success': False, 'error': str(e)}
 
 def buscar_material_por_numero_parte_mysql(numero_parte):
@@ -1547,7 +1547,7 @@ def actualizar_inventario_especifico_salida(numero_parte, codigo_material, canti
         if rollo_encontrado:
             # Solo registrar el movimiento, NO descontar cantidad
             # La cantidad se descontará después cuando se use en la máquina
-            print(f"✅ Rollo encontrado en {tabla_inventario} - No se descuenta cantidad aquí")
+            print(f" Rollo encontrado en {tabla_inventario} - No se descuenta cantidad aquí")
             
             # Registrar movimiento de traslado a proceso específico
             registrar_movimiento_historico_especifico(tabla_inventario, rollo_encontrado['id'], 
@@ -1559,7 +1559,7 @@ def actualizar_inventario_especifico_salida(numero_parte, codigo_material, canti
             return crear_entrada_inventario_especifico(tabla_inventario, numero_parte, codigo_material, cantidad_salida)
             
     except Exception as e:
-        print(f"❌ Error en actualizar_inventario_especifico_salida: {e}")
+        print(f" Error en actualizar_inventario_especifico_salida: {e}")
         return False
 
 def registrar_movimiento_historico_especifico(tabla_inventario, rollo_id, cantidad, proceso_salida, tipo_movimiento='SALIDA_PRODUCCION'):
@@ -1638,14 +1638,14 @@ def crear_entrada_inventario_especifico(tabla_inventario, numero_parte, codigo_m
                 'SISTEMA'
             ))
             
-            print(f"✅ Entrada creada en {tabla_inventario} - Cantidad disponible: {cantidad_actual}")
+            print(f" Entrada creada en {tabla_inventario} - Cantidad disponible: {cantidad_actual}")
             return True
         else:
-            print(f"❌ No se pudo obtener información del material {codigo_material}")
+            print(f" No se pudo obtener información del material {codigo_material}")
             return False
             
     except Exception as e:
-        print(f"❌ Error creando entrada en inventario específico: {e}")
+        print(f" Error creando entrada en inventario específico: {e}")
         return False
 
 def actualizar_inventario_general_salida_mysql(numero_parte, cantidad_salida):
@@ -1748,7 +1748,7 @@ def migrar_desde_sqlite(sqlite_db_path):
         return True
         
     except Exception as e:
-        print(f"❌ Error en migración: {e}")
+        print(f" Error en migración: {e}")
         return False
 
 # === FUNCIONES DE PRUEBA ===
@@ -1800,7 +1800,7 @@ def migrar_tabla_materiales():
         return True
         
     except Exception as e:
-        print(f"❌ Error en migración de tabla materiales: {e}")
+        print(f" Error en migración de tabla materiales: {e}")
         return False
 
 def migrar_tabla_bom():
@@ -1823,7 +1823,7 @@ def migrar_tabla_bom():
         return True
         
     except Exception as e:
-        print(f"❌ Error en migración de tabla bom: {e}")
+        print(f" Error en migración de tabla bom: {e}")
         return False
 
 def verificar_estructura_materiales():
@@ -1925,14 +1925,14 @@ def reparar_tabla_materiales():
 
 def analizar_filas_problematicas():
     """Analizar patrones comunes en filas que fallan durante importación"""
-    print("🔍 === ANÁLISIS DE FILAS PROBLEMÁTICAS ===")
+    print(" === ANÁLISIS DE FILAS PROBLEMÁTICAS ===")
     
     try:
         # Patrones comunes de filas problemáticas
         filas_problematicas = [6, 7, 28, 253]
         
         print(f" Filas reportadas como problemáticas: {filas_problematicas}")
-        print("🔍 Posibles causas comunes:")
+        print(" Posibles causas comunes:")
         print("  1. Datos demasiado largos para los campos")
         print("  2. Caracteres especiales o encoding incorrecto")
         print("  3. Números de parte duplicados")
@@ -1941,7 +1941,7 @@ def analizar_filas_problematicas():
         print("  6. Problemas de encoding UTF-8")
         
         # Verificar duplicados comunes
-        print("\n🔍 Verificando duplicados en la tabla...")
+        print("\n Verificando duplicados en la tabla...")
         duplicados_query = """
             SELECT numero_parte, COUNT(*) as count 
             FROM materiales 
@@ -1959,7 +1959,7 @@ def analizar_filas_problematicas():
             print(" No se encontraron duplicados")
         
         # Verificar tamaños de campos
-        print("\n🔍 Verificando registros con campos muy largos...")
+        print("\n Verificando registros con campos muy largos...")
         campos_largos_query = """
             SELECT 
                 numero_parte,
@@ -1983,7 +1983,7 @@ def analizar_filas_problematicas():
             print(" No se encontraron campos excesivamente largos")
         
         # Verificar caracteres especiales
-        print("\n🔍 Verificando caracteres especiales problemáticos...")
+        print("\n Verificando caracteres especiales problemáticos...")
         especiales_query = """
             SELECT numero_parte, propiedad_material
             FROM materiales 
@@ -2015,17 +2015,17 @@ def analizar_filas_problematicas():
         return True
         
     except Exception as e:
-        print(f"❌ Error analizando filas problemáticas: {e}")
+        print(f" Error analizando filas problemáticas: {e}")
         return False
 
 def diagnosticar_problemas_importacion():
     """Diagnosticar problemas comunes en la importación de materiales"""
-    print("\n🔍 === DIAGNÓSTICO DE PROBLEMAS DE IMPORTACIÓN ===")
+    print("\n === DIAGNÓSTICO DE PROBLEMAS DE IMPORTACIÓN ===")
     
     try:
         # 1. Verificar conexión a MySQL
         if not test_connection():
-            print("❌ PROBLEMA: No hay conexión a MySQL")
+            print(" PROBLEMA: No hay conexión a MySQL")
             return False
         else:
             print(" Conexión MySQL OK")
@@ -2034,7 +2034,7 @@ def diagnosticar_problemas_importacion():
         check_table = "SHOW TABLES LIKE 'materiales'"
         table_exists = execute_query(check_table, fetch='one')
         if not table_exists:
-            print("❌ PROBLEMA: Tabla 'materiales' no existe")
+            print(" PROBLEMA: Tabla 'materiales' no existe")
             return False
         else:
             print(" Tabla 'materiales' existe")
@@ -2054,7 +2054,7 @@ def diagnosticar_problemas_importacion():
         count_query = "SELECT COUNT(*) as total FROM materiales"
         count_result = execute_query(count_query, fetch='one')
         total_materials = count_result['total'] if count_result else 0
-        print(f"\n📊 Total de materiales en BD: {total_materials}")
+        print(f"\n Total de materiales en BD: {total_materials}")
         
         # 6. Verificar espacio disponible (estimado)
         size_query = """
@@ -2065,10 +2065,10 @@ def diagnosticar_problemas_importacion():
         """
         size_result = execute_query(size_query, fetch='one')
         if size_result:
-            print(f"📊 Tamaño de tabla materiales: {size_result['DB Size in MB']} MB")
+            print(f" Tamaño de tabla materiales: {size_result['DB Size in MB']} MB")
         
         # 7. Probar inserción de prueba
-        print("\n🧪 Probando inserción de material de prueba...")
+        print("\n Probando inserción de material de prueba...")
         fecha_actual = obtener_fecha_hora_mexico().replace('-', '').replace(':', '').replace(' ', '_')
         test_data = {
             'codigo_material': 'TEST_DIAG_001',
@@ -2088,29 +2088,29 @@ def diagnosticar_problemas_importacion():
             execute_query(delete_query, (test_data['numero_parte'],))
             print(" Registro de prueba eliminado")
         else:
-            print("❌ PROBLEMA: Falló la inserción de prueba")
+            print(" PROBLEMA: Falló la inserción de prueba")
         
         print("\n Diagnóstico completado")
         return True
         
     except Exception as e:
-        print(f"❌ Error en diagnóstico: {e}")
+        print(f" Error en diagnóstico: {e}")
         return False
 
 def test_mysql_functions():
     """Probar funciones de MySQL CON DIAGNÓSTICO COMPLETO"""
-    print("\n🧪 Probando funciones de MySQL...")
+    print("\n Probando funciones de MySQL...")
     
     try:
         # Probar conexión
         if test_connection():
             print(" Conexión MySQL OK")
         else:
-            print("❌ Error en conexión MySQL")
+            print(" Error en conexión MySQL")
             return False
         
         # Ejecutar diagnóstico completo
-        print("\n🔍 Ejecutando diagnóstico completo...")
+        print("\n Ejecutando diagnóstico completo...")
         diagnosticar_problemas_importacion()
         
         # Verificar estructura de materiales
@@ -2124,13 +2124,13 @@ def test_mysql_functions():
         if init_db():
             print(" Inicialización MySQL OK")
         else:
-            print("❌ Error en inicialización MySQL")
+            print(" Error en inicialización MySQL")
         
         print(" Pruebas de MySQL completadas")
         return True
         
     except Exception as e:
-        print(f"❌ Error en pruebas MySQL: {e}")
+        print(f" Error en pruebas MySQL: {e}")
         return False
 
 if __name__ == "__main__":
@@ -2145,7 +2145,7 @@ def agregar_columna_usuario_registro():
         if "1060" in str(e):
             print(" La columna usuario_registro ya existe")
         else:
-            print(f"❌ Error agregando columna usuario_registro: {e}")
+            print(f" Error agregando columna usuario_registro: {e}")
             return False
 
     try:

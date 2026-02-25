@@ -109,18 +109,18 @@ def test_http_connection():
     try:
         client = MySQLHTTPClient()
         
-        print("🧪 Probando conexión HTTP al proxy MySQL...")
+        print(" Probando conexión HTTP al proxy MySQL...")
         
         # Verificar salud
         if client.health_check():
             print(" Proxy MySQL está saludable")
         else:
-            print("❌ Proxy MySQL no responde")
+            print(" Proxy MySQL no responde")
             return False
         
         # Obtener información
         info = client.get_info()
-        print(f"📊 Servidor: {info.get('name', 'N/A')}")
+        print(f" Servidor: {info.get('name', 'N/A')}")
         print(f"🔗 MySQL Host: {info.get('mysql_host', 'N/A')}")
         print(f"🗄️ Base de datos: {info.get('mysql_database', 'N/A')}")
         
@@ -130,11 +130,11 @@ def test_http_connection():
             print(" Consulta de prueba exitosa")
             return True
         else:
-            print("❌ Error en consulta de prueba")
+            print(" Error en consulta de prueba")
             return False
     
     except Exception as e:
-        print(f"❌ Error probando conexión HTTP: {e}")
+        print(f" Error probando conexión HTTP: {e}")
         return False
 
 if __name__ == "__main__":

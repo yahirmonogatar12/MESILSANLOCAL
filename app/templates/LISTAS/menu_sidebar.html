@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.mostrarControlAlmacen === 'function') {
                     window.mostrarControlAlmacen();
                 } else {
-                    console.error('❌ Función mostrarControlAlmacen no disponible');
+                    console.error(' Función mostrarControlAlmacen no disponible');
                     cargarTemplate('Control de material/Control de material de almacen.html');
                 }
             }
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.mostrarControlSalida === 'function') {
                     window.mostrarControlSalida();
                 } else {
-                    console.error('❌ Función mostrarControlSalida no disponible');
+                    console.error(' Función mostrarControlSalida no disponible');
                     cargarTemplate('Control de material/Control de salida.html');
                 }
             }
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof window.mostrarControlRetorno === 'function') {
                     window.mostrarControlRetorno();
                 } else {
-                    console.error('❌ Función mostrarControlRetorno no disponible');
+                    console.error(' Función mostrarControlRetorno no disponible');
                     cargarTemplate('Control de material/Control de material retorno.html');
                 }
             }
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function cargarTemplate(templatePath) {
         
         if (!appContent) {
-            console.error('❌ Error: No se encontró el área de contenido (.app-content)');
+            console.error(' Error: No se encontró el área de contenido (.app-content)');
             return;
         }
         
@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('💥 Error al cargar template:', error);
             appContent.innerHTML = `
                 <div style="padding: 20px; background-color: #e74c3c; color: white; border-radius: 8px; margin: 20px;">
-                    <h4>❌ Error al cargar el contenido</h4>
+                    <h4> Error al cargar el contenido</h4>
                     <p>No se pudo cargar "<strong>${templatePath}</strong>"</p>
                     <p style="font-size: 12px; margin-top: 10px; opacity: 0.9;">Error técnico: ${error.message}</p>
                     <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 16px; background: white; color: #e74c3c; border: none; border-radius: 4px; cursor: pointer;">

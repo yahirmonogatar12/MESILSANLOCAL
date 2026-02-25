@@ -17,6 +17,7 @@ except ImportError:
     import MySQLdb
 
 from datetime import datetime, date, time as dt_time, timedelta
+from decimal import Decimal
 from functools import wraps
 
 def obtener_fecha_hora_mexico():
@@ -63,6 +64,33 @@ from .smd_inventory_api import register_smd_inventory_routes
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallback_key_for_development_only')  # Necesario para usar sesiones
 
+def _env_flag(name, default=False):
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return str(val).strip().lower() in ('1', 'true', 'yes', 'on', 'si')
+
+def should_run_startup_init():
+    # Overrides explícitos
+    if _env_flag('MES_FORCE_STARTUP_INIT', False):
+        return True
+    if _env_flag('MES_SKIP_STARTUP_INIT', False):
+        return False
+
+    # Si estamos en dev con reloader, solo correr en el proceso real
+    if _env_flag('MES_USE_RELOADER', False):
+        return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+
+    # Sin reloader: correr init normalmente
+    return True
+
+STARTUP_INIT_ENABLED = should_run_startup_init()
+_startup_t0 = time.time()
+
+def _startup_log(msg):
+    elapsed = round(time.time() - _startup_t0, 2)
+    print(f"[startup {elapsed}s] {msg}")
+
 # Registrar rutas SMD Inventory después de crear la app
 register_smd_inventory_routes(app)
 
@@ -78,11 +106,21 @@ except Exception as e:
     print(f"Error registrando API RAW en app.routes: {e}")
 
 # Inicializar base de datos original
-init_db()  # Esto crea la tabla si no existe
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando init_db()")
+    init_db()  # Esto crea la tabla si no existe
+    _startup_log("init_db() completado")
+else:
+    _startup_log("Saltando init_db() por configuración/reloader")
 
 # Inicializar sistema de autenticación
 auth_system = AuthSystem()
-auth_system.init_database()
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando auth_system.init_database()")
+    auth_system.init_database()
+    _startup_log("auth_system.init_database() completado")
+else:
+    _startup_log("Saltando auth_system.init_database() por configuración/reloader")
 
 # Registrar Blueprints de administración
 
@@ -92,7 +130,7 @@ try:
     app.register_blueprint(smt_bp)
     print(" SMT Routes Simple registradas")
 except Exception as e:
-    print(f"❌ Error importando SMT Routes Simple: {e}")
+    print(f" Error importando SMT Routes Simple: {e}")
 
 @app.route("/smt-simple")
 def smt_simple():
@@ -112,7 +150,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
             
             try:
                 username = session['usuario']
-                print(f"🔐 Verificando permisos para usuario: {username}, página: {pagina}, sección: {seccion}, botón: {boton}")
+                print(f" Verificando permisos para usuario: {username}, página: {pagina}, sección: {seccion}, botón: {boton}")
                 
                 # Obtener roles del usuario
                 query_rol = '''
@@ -126,10 +164,10 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 '''
                 
                 usuario_rol = execute_query(query_rol, (username,), fetch='one')
-                print(f"🔍 Resultado query_rol: {usuario_rol}, tipo: {type(usuario_rol)}")
+                print(f" Resultado query_rol: {usuario_rol}, tipo: {type(usuario_rol)}")
                 
                 if not usuario_rol:
-                    print("❌ Usuario sin roles asignados")
+                    print(" Usuario sin roles asignados")
                     return jsonify({'error': 'Usuario sin roles asignados'}), 403
                 
                 # Manejar tanto diccionarios como tuplas
@@ -138,7 +176,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 else:
                     rol_nombre = usuario_rol[0]
                     
-                print(f"👤 Rol del usuario: {rol_nombre}")
+                print(f" Rol del usuario: {rol_nombre}")
                 
                 # AHORA TODOS LOS ROLES (incluido superadmin) verifican permisos en base de datos
                 # Verificar permiso específico
@@ -152,7 +190,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 '''
                 
                 result = execute_query(query_permiso, (username, pagina, seccion, boton), fetch='one')
-                print(f"🔍 Resultado query_permiso: {result}, tipo: {type(result)}")
+                print(f" Resultado query_permiso: {result}, tipo: {type(result)}")
                 
                 # Manejar tanto diccionarios como tuplas
                 if isinstance(result, dict):
@@ -164,7 +202,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 print(f" Tiene permiso: {tiene_permiso} (count: {count_value})")
                 
                 if not tiene_permiso:
-                    print(f"❌ Sin permisos para: {pagina} > {seccion} > {boton}")
+                    print(f" Sin permisos para: {pagina} > {seccion} > {boton}")
                     # Respuesta diferente para AJAX vs navegación directa
                     if request.headers.get('Content-Type') == 'application/json' or request.is_json:
                         return jsonify({
@@ -197,7 +235,7 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
                 return f(*args, **kwargs)
                 
             except Exception as e:
-                print(f"❌ Error verificando permisos: {e}")
+                print(f" Error verificando permisos: {e}")
                 import traceback
                 traceback.print_exc()
                 return jsonify({'error': 'Error interno del servidor'}), 500
@@ -268,7 +306,7 @@ def cargar_usuarios():
 def login_requerido(f):
     @wraps(f)
     def decorada(*args, **kwargs):
-        print("🔐 Verificando sesión avanzada:", session.get('usuario'))
+        print(" Verificando sesión avanzada:", session.get('usuario'))
         
         # Verificar si hay usuario en sesión
         if 'usuario' not in session:
@@ -358,7 +396,7 @@ def login():
 
     user = request.form.get('username', '').strip()
     pw = request.form.get('password', '')
-    print(f"🔐 Intento de login: {user}")
+    print(f" Intento de login: {user}")
         
     # PRIORIDAD 1: Intentar con el nuevo sistema de BD
     resultado_auth = auth_system.verificar_usuario(user, pw)
@@ -380,7 +418,7 @@ def login():
             session['nombre_completo'] = info_usuario['nombre_completo']
             session['email'] = info_usuario['email']
             session['departamento'] = info_usuario['departamento']
-            print(f"✅ Información completa cargada para {user}:")
+            print(f" Información completa cargada para {user}:")
             print(f"  - Nombre completo: {info_usuario['nombre_completo']}")
             print(f"  - Email: {info_usuario['email']}")
             print(f"  - Departamento: {info_usuario['departamento']}")
@@ -409,10 +447,10 @@ def login():
             rol_id = None
 
         session['permisos'] = permisos
-        print(f"🔍 Permisos establecidos en sesión para {user}: {permisos}")
+        print(f" Permisos establecidos en sesión para {user}: {permisos}")
 
         # Redirigir siempre al hub de aplicaciones (landing page)
-        print(f"✅ Login exitoso para {user}, redirigiendo al hub de aplicaciones")
+        print(f" Login exitoso para {user}, redirigiendo al hub de aplicaciones")
         redirect_url = url_for('inicio')
         if is_ajax:
             return jsonify({'success': True, 'redirect': redirect_url})
@@ -456,7 +494,7 @@ def login():
         print(f" Error en fallback JSON: {e}")
 
     # Si llega aquí, login falló
-    print(f"❌ Login falló: {user} ({auth_message})")
+    print(f" Login falló: {user} ({auth_message})")
     auth_system.registrar_auditoria(
         usuario=user,
         modulo='sistema',
@@ -539,7 +577,7 @@ def material():
         if info_usuario and info_usuario['nombre_completo']:
             nombre_completo = info_usuario['nombre_completo']
             session['nombre_completo'] = nombre_completo  # Guardar en sesión para futuras consultas
-            print(f"✅ Nombre completo obtenido de BD: {nombre_completo}")
+            print(f" Nombre completo obtenido de BD: {nombre_completo}")
         else:
             nombre_completo = usuario  # Fallback al username
             session['nombre_completo'] = usuario
@@ -684,6 +722,1665 @@ def ctrl_operacion_linea_main_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 # =============================
+# CONTROL DE CUCHILLAS DE CORTE (ASSY)
+# =============================
+
+CUCHILLAS_PERMISO_PAGINA = 'LISTA_CONTROLDEPRODUCCION'
+CUCHILLAS_PERMISO_SECCION = 'Control de plan de produccion'
+CUCHILLAS_PERMISO_BOTON = 'Control de cuchillas de corte'
+CUCHILLAS_SOURCE_DEFAULT = 'PRODUCED_COUNT'
+CUCHILLAS_SOURCE_ALLOWED = {'PRODUCED_COUNT', 'PLAN_COUNT'}
+CUCHILLAS_HOURLY_SYNC_SECONDS = max(60, int(os.getenv('CUCHILLAS_HOURLY_SYNC_SECONDS', '3600')))
+_cuchillas_sync_thread = None
+_cuchillas_sync_lock = threading.Lock()
+
+
+def _cuchillas_normalize_source_metric(value, default=CUCHILLAS_SOURCE_DEFAULT):
+    source = str(value or '').strip().upper()
+    if source in CUCHILLAS_SOURCE_ALLOWED:
+        return source
+    return default
+
+
+def _cuchillas_get_metric_value(plan_activo, source_metric):
+    plan = plan_activo or {}
+    normalized = _cuchillas_normalize_source_metric(source_metric)
+    if normalized == 'PLAN_COUNT':
+        return _cuchillas_to_float(plan.get('plan_count'), 0.0) or 0.0
+    return _cuchillas_to_float(plan.get('produced_count'), 0.0) or 0.0
+
+
+def _cuchillas_bool_from_int(value):
+    try:
+        return int(value or 0) == 1
+    except Exception:
+        return False
+
+
+def _cuchillas_to_float(value, default=None):
+    try:
+        if value is None:
+            return default
+        if isinstance(value, str):
+            value = value.strip().replace(',', '')
+            if value == '':
+                return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def _cuchillas_bool_param(value):
+    return str(value or '').strip().lower() in ('1', 'true', 'yes', 'si', 'on')
+
+
+def _cuchillas_row_to_json(row):
+    if not row:
+        return None
+    if not isinstance(row, dict):
+        return row
+    parsed = {}
+    for k, v in row.items():
+        if isinstance(v, datetime):
+            parsed[k] = v.strftime('%Y-%m-%d %H:%M:%S')
+        elif isinstance(v, date):
+            parsed[k] = v.strftime('%Y-%m-%d')
+        elif isinstance(v, Decimal):
+            parsed[k] = float(v)
+        else:
+            parsed[k] = v
+    return parsed
+
+
+def _cuchillas_rows_to_json(rows):
+    return [_cuchillas_row_to_json(r) for r in (rows or [])]
+
+
+def _cuchillas_execute_raw(query, params=None, fetch=None):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return execute_query(query, params, fetch=fetch)
+
+        cursor = conn.cursor()
+        if params is None:
+            cursor.execute(query)
+        else:
+            cursor.execute(query, params)
+
+        if fetch == 'one':
+            return cursor.fetchone()
+        if fetch == 'all':
+            return cursor.fetchall()
+
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        try:
+            if cursor:
+                cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
+        except Exception:
+            pass
+
+
+def _cuchillas_usuario_actual():
+    usuario = (session.get('usuario') or session.get('username') or 'sistema')
+    usuario = str(usuario).strip() if usuario else 'sistema'
+    return usuario[:64] if usuario else 'sistema'
+
+
+def _cuchillas_get_plan_activo_por_linea(linea):
+    if not linea:
+        return None
+    query = """
+        SELECT
+            id, lot_no, line, part_no, model_code, process, status,
+            COALESCE(plan_count, 0) AS plan_count,
+            COALESCE(produced_count, 0) AS produced_count,
+            created_at, updated_at
+        FROM plan_main
+        WHERE line = %s
+          AND status IN ('EN PROGRESO', 'PAUSADO', 'PLAN')
+        ORDER BY
+            CASE status
+                WHEN 'EN PROGRESO' THEN 1
+                WHEN 'PAUSADO' THEN 2
+                WHEN 'PLAN' THEN 3
+                ELSE 9
+            END,
+            COALESCE(updated_at, created_at) DESC,
+            created_at DESC,
+            id DESC
+        LIMIT 1
+    """
+    row = execute_query(query, (linea,), fetch='one')
+    return _cuchillas_row_to_json(row)
+
+
+def _cuchillas_get_config_por_linea(linea):
+    if not linea:
+        return None
+    query = """
+        SELECT
+            id, linea, pcb_qty, cut_qty, prealert_pct, source_metric, activo, updated_at
+        FROM cuchillas_corte_config_linea
+        WHERE linea = %s
+        LIMIT 1
+    """
+    row = execute_query(query, (linea,), fetch='one')
+    parsed = _cuchillas_row_to_json(row)
+    if not parsed:
+        return None
+    parsed['source_metric'] = _cuchillas_normalize_source_metric(
+        parsed.get('source_metric'),
+        CUCHILLAS_SOURCE_DEFAULT
+    )
+    parsed['activo'] = 1 if _cuchillas_bool_from_int(parsed.get('activo')) else 0
+    return parsed
+
+
+def _cuchillas_get_sesion_por_linea(linea):
+    if not linea:
+        return None
+    query = """
+        SELECT
+            s.id, s.linea, s.blade_code, s.max_cortes, s.consumo_cortes,
+            s.last_lot_no, s.last_input_snapshot, s.estado,
+            s.prealert_emitida, s.vencida_emitida,
+            s.started_at, s.expired_at, s.ended_at, s.last_hourly_sync_at, s.created_by, s.updated_at,
+            c.pcb_qty, c.cut_qty, c.prealert_pct, c.source_metric, c.activo AS config_activo
+        FROM cuchillas_corte_sesiones s
+        LEFT JOIN cuchillas_corte_config_linea c
+            ON c.linea = s.linea
+        WHERE s.linea = %s
+        ORDER BY
+            CASE s.estado
+                WHEN 'ACTIVA' THEN 1
+                WHEN 'VENCIDA' THEN 2
+                WHEN 'REEMPLAZADA' THEN 3
+                ELSE 9
+            END,
+            s.started_at DESC,
+            s.id DESC
+        LIMIT 1
+    """
+    row = execute_query(query, (linea,), fetch='one')
+    parsed = _cuchillas_row_to_json(row)
+    if not parsed:
+        return None
+
+    consumo = _cuchillas_to_float(parsed.get('consumo_cortes'), 0.0) or 0.0
+    max_cortes = _cuchillas_to_float(parsed.get('max_cortes'), 0.0) or 0.0
+    restante = max(0.0, max_cortes - consumo)
+    pct_uso = round((consumo / max_cortes) * 100.0, 2) if max_cortes > 0 else 0.0
+    pcb_qty = _cuchillas_to_float(parsed.get('pcb_qty'), 0.0) or 0.0
+    cut_qty = _cuchillas_to_float(parsed.get('cut_qty'), 0.0) or 0.0
+    factor_corte = round((cut_qty / pcb_qty), 6) if pcb_qty > 0 else None
+    config_activo = 1 if _cuchillas_bool_from_int(parsed.get('config_activo')) else 0
+    source_metric = _cuchillas_normalize_source_metric(
+        parsed.get('source_metric'),
+        CUCHILLAS_SOURCE_DEFAULT
+    )
+
+    parsed['consumo_cortes'] = consumo
+    parsed['max_cortes'] = max_cortes
+    parsed['restante_cortes'] = restante
+    parsed['porcentaje_uso'] = pct_uso
+    parsed['factor_corte'] = factor_corte
+    parsed['config_activo'] = config_activo
+    parsed['source_metric'] = source_metric
+    return parsed
+
+
+def _cuchillas_get_historial_sesiones(linea=None, limit=100):
+    try:
+        limit_num = int(limit or 100)
+    except Exception:
+        limit_num = 100
+    limit_num = max(1, min(limit_num, 500))
+
+    where = []
+    params = []
+    linea_norm = str(linea or '').strip()
+    if linea_norm:
+        where.append("s.linea = %s")
+        params.append(linea_norm)
+
+    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+    query = f"""
+        SELECT
+            s.id, s.linea, s.blade_code, s.max_cortes, s.consumo_cortes,
+            s.last_lot_no, s.last_input_snapshot, s.estado,
+            s.prealert_emitida, s.vencida_emitida,
+            s.started_at, s.expired_at, s.ended_at, s.last_hourly_sync_at, s.created_by, s.updated_at,
+            c.pcb_qty, c.cut_qty, c.prealert_pct, c.source_metric, c.activo AS config_activo
+        FROM cuchillas_corte_sesiones s
+        LEFT JOIN cuchillas_corte_config_linea c
+            ON c.linea = s.linea
+        {where_sql}
+        ORDER BY s.started_at DESC, s.id DESC
+        LIMIT %s
+    """
+    params.append(limit_num)
+    rows = execute_query(query, tuple(params), fetch='all') or []
+
+    historial = []
+    for row in rows:
+        parsed = _cuchillas_row_to_json(row)
+        if not parsed:
+            continue
+
+        consumo = _cuchillas_to_float(parsed.get('consumo_cortes'), 0.0) or 0.0
+        max_cortes = _cuchillas_to_float(parsed.get('max_cortes'), 0.0) or 0.0
+        restante = max(0.0, max_cortes - consumo)
+        pct_uso = round((consumo / max_cortes) * 100.0, 2) if max_cortes > 0 else 0.0
+        pcb_qty = _cuchillas_to_float(parsed.get('pcb_qty'), 0.0) or 0.0
+        cut_qty = _cuchillas_to_float(parsed.get('cut_qty'), 0.0) or 0.0
+        factor_corte = round((cut_qty / pcb_qty), 6) if pcb_qty > 0 else None
+
+        parsed['consumo_cortes'] = consumo
+        parsed['max_cortes'] = max_cortes
+        parsed['restante_cortes'] = restante
+        parsed['porcentaje_uso'] = pct_uso
+        parsed['factor_corte'] = factor_corte
+        parsed['source_metric'] = _cuchillas_normalize_source_metric(
+            parsed.get('source_metric'),
+            CUCHILLAS_SOURCE_DEFAULT
+        )
+        parsed['config_activo'] = 1 if _cuchillas_bool_from_int(parsed.get('config_activo')) else 0
+        historial.append(parsed)
+
+    return historial
+
+
+def _cuchillas_crear_sesion(linea, blade_code, max_cortes, created_by, config=None):
+    cfg = config or _cuchillas_get_config_por_linea(linea) or {}
+    source_metric = _cuchillas_normalize_source_metric(
+        cfg.get('source_metric'),
+        CUCHILLAS_SOURCE_DEFAULT
+    )
+    plan_activo = _cuchillas_get_plan_activo_por_linea(linea)
+    baseline_lot = plan_activo.get('lot_no') if plan_activo else None
+    baseline_input = _cuchillas_get_metric_value(plan_activo, source_metric)
+
+    insert_sql = """
+        INSERT INTO cuchillas_corte_sesiones (
+            linea, blade_code, max_cortes, consumo_cortes,
+            last_lot_no, last_input_snapshot,
+            estado, prealert_emitida, vencida_emitida,
+            started_at, created_by, updated_at
+        )
+        VALUES (
+            %s, %s, %s, 0,
+            %s, %s,
+            'ACTIVA', 0, 0,
+            NOW(), %s, NOW()
+        )
+    """
+    execute_query(
+        insert_sql,
+        (linea, blade_code, max_cortes, baseline_lot, baseline_input, created_by)
+    )
+
+    sesion_row = execute_query(
+        """
+        SELECT
+            id, linea, blade_code, max_cortes, consumo_cortes,
+            last_lot_no, last_input_snapshot, estado,
+            prealert_emitida, vencida_emitida,
+            started_at, expired_at, ended_at, last_hourly_sync_at, created_by, updated_at
+        FROM cuchillas_corte_sesiones
+        WHERE linea = %s
+          AND blade_code = %s
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (linea, blade_code),
+        fetch='one'
+    )
+    sesion = _cuchillas_row_to_json(sesion_row)
+
+    if sesion and sesion.get('id'):
+        evento_sql = """
+            INSERT INTO cuchillas_corte_eventos (
+                sesion_id, linea, lot_no, event_type,
+                consumo_cortes, max_cortes, porcentaje_uso, mensaje,
+                pendiente_externo, created_at
+            )
+            VALUES (
+                %s, %s, %s, 'INFO',
+                0, %s, 0,
+                %s, 0, NOW()
+            )
+        """
+        mensaje = f"Sesion iniciada para cuchilla {blade_code} (fuente: {source_metric})"
+        execute_query(
+            evento_sql,
+            (
+                sesion['id'],
+                linea,
+                baseline_lot,
+                max_cortes,
+                mensaje
+            )
+        )
+
+    return sesion
+
+
+def _cuchillas_insert_evento(
+    sesion_id,
+    linea,
+    lot_no,
+    event_type,
+    consumo_cortes,
+    max_cortes,
+    porcentaje_uso,
+    mensaje,
+    pendiente_externo=1
+):
+    execute_query(
+        """
+        INSERT INTO cuchillas_corte_eventos (
+            sesion_id, linea, lot_no, event_type,
+            consumo_cortes, max_cortes, porcentaje_uso, mensaje,
+            pendiente_externo, created_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        """,
+        (
+            sesion_id,
+            linea,
+            lot_no,
+            event_type,
+            consumo_cortes,
+            max_cortes,
+            porcentaje_uso,
+            mensaje,
+            1 if _cuchillas_bool_from_int(pendiente_externo) else 0
+        )
+    )
+
+
+def _cuchillas_source_sum_since_session(linea, started_at, source_metric):
+    if not linea:
+        return 0.0
+
+    metric = _cuchillas_normalize_source_metric(source_metric, CUCHILLAS_SOURCE_DEFAULT)
+    metric_col = 'plan_count' if metric == 'PLAN_COUNT' else 'produced_count'
+
+    started_ref = started_at
+    if isinstance(started_ref, datetime):
+        started_ref = started_ref.strftime('%Y-%m-%d %H:%M:%S')
+    elif isinstance(started_ref, date):
+        started_ref = started_ref.strftime('%Y-%m-%d')
+    elif started_ref is None:
+        started_ref = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        started_ref = str(started_ref)
+
+    row = execute_query(
+        f"""
+        SELECT COALESCE(SUM(COALESCE({metric_col}, 0)), 0) AS total_metric
+        FROM plan_main
+        WHERE line = %s
+          AND COALESCE(DATE(working_date), DATE(created_at), CURDATE()) >= DATE(%s)
+          AND COALESCE(DATE(working_date), DATE(created_at), CURDATE()) <= CURDATE()
+          AND COALESCE(status, '') <> 'CANCELADO'
+        """,
+        (linea, started_ref),
+        fetch='one'
+    ) or {}
+    return _cuchillas_to_float((row or {}).get('total_metric'), 0.0) or 0.0
+
+
+def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
+    linea_norm = str(linea or '').strip()
+    if not linea_norm:
+        return {'linea': linea_norm, 'status': 'LINEA_INVALIDA'}
+
+    sesion_row = execute_query(
+        """
+        SELECT
+            s.id, s.linea, s.blade_code, s.max_cortes, s.consumo_cortes,
+            s.last_lot_no, s.last_input_snapshot, s.estado,
+            s.prealert_emitida, s.vencida_emitida,
+            s.started_at, s.expired_at, s.ended_at, s.last_hourly_sync_at, s.created_by, s.updated_at,
+            c.pcb_qty, c.cut_qty, c.prealert_pct, c.source_metric, c.activo AS config_activo
+        FROM cuchillas_corte_sesiones s
+        LEFT JOIN cuchillas_corte_config_linea c
+            ON c.linea = s.linea
+        WHERE s.linea = %s
+          AND s.estado = 'ACTIVA'
+        ORDER BY s.started_at DESC, s.id DESC
+        LIMIT 1
+        """,
+        (linea_norm,),
+        fetch='one'
+    )
+    sesion = _cuchillas_row_to_json(sesion_row)
+    if not sesion:
+        return {'linea': linea_norm, 'status': 'SIN_SESION_ACTIVA'}
+
+    if not _cuchillas_bool_from_int(sesion.get('config_activo')):
+        return {'linea': linea_norm, 'status': 'CONFIG_INACTIVA', 'sesion_id': sesion.get('id')}
+
+    now_dt = datetime.now()
+    last_sync = sesion.get('last_hourly_sync_at')
+    if not force and isinstance(last_sync, str):
+        try:
+            last_sync = datetime.strptime(last_sync, '%Y-%m-%d %H:%M:%S')
+        except Exception:
+            last_sync = None
+    if not force and isinstance(last_sync, datetime):
+        elapsed = (now_dt - last_sync).total_seconds()
+        if elapsed < CUCHILLAS_HOURLY_SYNC_SECONDS:
+            return {
+                'linea': linea_norm,
+                'status': 'SKIPPED_INTERVAL',
+                'sesion_id': sesion.get('id'),
+                'elapsed_seconds': elapsed
+            }
+
+    source_metric = _cuchillas_normalize_source_metric(
+        sesion.get('source_metric'),
+        CUCHILLAS_SOURCE_DEFAULT
+    )
+    source_total = _cuchillas_source_sum_since_session(
+        linea=linea_norm,
+        started_at=sesion.get('started_at'),
+        source_metric=source_metric
+    )
+
+    pcb_qty = _cuchillas_to_float(sesion.get('pcb_qty'), 0.0) or 0.0
+    cut_qty = _cuchillas_to_float(sesion.get('cut_qty'), 0.0) or 0.0
+    max_cortes = _cuchillas_to_float(sesion.get('max_cortes'), 0.0) or 0.0
+    if pcb_qty <= 0 or cut_qty <= 0 or max_cortes <= 0:
+        return {
+            'linea': linea_norm,
+            'status': 'CONFIG_INVALIDA',
+            'sesion_id': sesion.get('id')
+        }
+
+    factor = cut_qty / pcb_qty
+    nuevo_consumo = max(source_total * factor, 0.0)
+    consumo_prev = _cuchillas_to_float(sesion.get('consumo_cortes'), 0.0) or 0.0
+    consumo_changed = abs(nuevo_consumo - consumo_prev) > 0.0001
+    porcentaje_uso = round((nuevo_consumo / max_cortes) * 100.0, 2) if max_cortes > 0 else 0.0
+    plan_activo = _cuchillas_get_plan_activo_por_linea(linea_norm)
+    lot_no = (plan_activo or {}).get('lot_no') or sesion.get('last_lot_no')
+
+    execute_query(
+        """
+        UPDATE cuchillas_corte_sesiones
+        SET consumo_cortes = %s,
+            last_input_snapshot = %s,
+            last_lot_no = %s,
+            last_hourly_sync_at = NOW(),
+            updated_at = NOW()
+        WHERE id = %s
+          AND estado = 'ACTIVA'
+        """,
+        (nuevo_consumo, source_total, lot_no, sesion.get('id'))
+    )
+
+    prealert_pct = _cuchillas_to_float(sesion.get('prealert_pct'), 90.0) or 90.0
+    prealert_threshold = max_cortes * (prealert_pct / 100.0)
+    prealert_emitida = _cuchillas_bool_from_int(sesion.get('prealert_emitida'))
+    vencida_emitida = _cuchillas_bool_from_int(sesion.get('vencida_emitida'))
+
+    if not prealert_emitida and nuevo_consumo >= prealert_threshold:
+        _cuchillas_insert_evento(
+            sesion_id=sesion.get('id'),
+            linea=linea_norm,
+            lot_no=lot_no,
+            event_type='PREALERTA',
+            consumo_cortes=nuevo_consumo,
+            max_cortes=max_cortes,
+            porcentaje_uso=porcentaje_uso,
+            mensaje=f'Prealerta de cuchilla en linea {linea_norm} ({porcentaje_uso}% de uso)',
+            pendiente_externo=1
+        )
+        execute_query(
+            """
+            UPDATE cuchillas_corte_sesiones
+            SET prealert_emitida = 1, updated_at = NOW()
+            WHERE id = %s
+            """,
+            (sesion.get('id'),)
+        )
+
+    if not vencida_emitida and nuevo_consumo >= max_cortes:
+        _cuchillas_insert_evento(
+            sesion_id=sesion.get('id'),
+            linea=linea_norm,
+            lot_no=lot_no,
+            event_type='VENCIDA',
+            consumo_cortes=nuevo_consumo,
+            max_cortes=max_cortes,
+            porcentaje_uso=porcentaje_uso,
+            mensaje=f'Cuchilla vencida en linea {linea_norm} ({porcentaje_uso}% de uso)',
+            pendiente_externo=1
+        )
+        execute_query(
+            """
+            UPDATE cuchillas_corte_sesiones
+            SET estado = 'VENCIDA',
+                vencida_emitida = 1,
+                expired_at = NOW(),
+                ended_at = COALESCE(ended_at, NOW()),
+                updated_at = NOW()
+            WHERE id = %s
+            """,
+            (sesion.get('id'),)
+        )
+
+    if reason == 'manual' and consumo_changed:
+        _cuchillas_insert_evento(
+            sesion_id=sesion.get('id'),
+            linea=linea_norm,
+            lot_no=lot_no,
+            event_type='INFO',
+            consumo_cortes=nuevo_consumo,
+            max_cortes=max_cortes,
+            porcentaje_uso=porcentaje_uso,
+            mensaje=(
+                f"Recalculo manual ({source_metric}): "
+                f"{round(consumo_prev, 4)} -> {round(nuevo_consumo, 4)}"
+            ),
+            pendiente_externo=0
+        )
+
+    return {
+        'linea': linea_norm,
+        'status': 'UPDATED' if consumo_changed else 'NO_CHANGE',
+        'sesion_id': sesion.get('id'),
+        'source_metric': source_metric,
+        'source_total': source_total,
+        'consumo_anterior': consumo_prev,
+        'consumo_nuevo': nuevo_consumo
+    }
+
+
+def _cuchillas_sync_all_active_lines(force=False, reason='hourly'):
+    rows = execute_query(
+        """
+        SELECT DISTINCT linea
+        FROM cuchillas_corte_sesiones
+        WHERE estado = 'ACTIVA'
+          AND linea IS NOT NULL
+          AND TRIM(linea) <> ''
+        ORDER BY linea
+        """,
+        fetch='all'
+    ) or []
+    results = []
+    for row in rows:
+        linea = str((row or {}).get('linea') or '').strip()
+        if not linea:
+            continue
+        try:
+            results.append(_cuchillas_sync_linea_consumo(linea, force=force, reason=reason))
+        except Exception as sync_error:
+            results.append({
+                'linea': linea,
+                'status': 'ERROR',
+                'error': str(sync_error)
+            })
+    return results
+
+
+def _cuchillas_hourly_sync_loop():
+    while True:
+        started = time.time()
+        try:
+            results = _cuchillas_sync_all_active_lines(force=False, reason='hourly')
+            print(f"[cuchillas-hourly] sync completado: {len(results)} lineas")
+        except Exception as e:
+            print(f"[cuchillas-hourly] error: {e}")
+
+        elapsed = time.time() - started
+        sleep_seconds = max(5, CUCHILLAS_HOURLY_SYNC_SECONDS - int(elapsed))
+        time.sleep(sleep_seconds)
+
+
+def iniciar_cuchillas_hourly_sync_worker():
+    global _cuchillas_sync_thread
+    if _env_flag('CUCHILLAS_DISABLE_HOURLY_SYNC', False):
+        print("[cuchillas-hourly] deshabilitado por CUCHILLAS_DISABLE_HOURLY_SYNC")
+        return
+
+    with _cuchillas_sync_lock:
+        if _cuchillas_sync_thread and _cuchillas_sync_thread.is_alive():
+            return
+        _cuchillas_sync_thread = threading.Thread(
+            target=_cuchillas_hourly_sync_loop,
+            name='cuchillas-hourly-sync',
+            daemon=True
+        )
+        _cuchillas_sync_thread.start()
+        print(f"[cuchillas-hourly] worker iniciado ({CUCHILLAS_HOURLY_SYNC_SECONDS}s)")
+
+
+def _cuchillas_build_diagnostico(linea, plan_activo=None, config=None, sesion=None):
+    plan = plan_activo if plan_activo is not None else _cuchillas_get_plan_activo_por_linea(linea)
+    cfg = config if config is not None else _cuchillas_get_config_por_linea(linea)
+    ssn = sesion if sesion is not None else _cuchillas_get_sesion_por_linea(linea)
+
+    source_metric = _cuchillas_normalize_source_metric(
+        (cfg or {}).get('source_metric'),
+        CUCHILLAS_SOURCE_DEFAULT
+    )
+    if ssn:
+        source_actual = _cuchillas_source_sum_since_session(
+            linea=linea,
+            started_at=ssn.get('started_at'),
+            source_metric=source_metric
+        )
+    else:
+        source_actual = _cuchillas_get_metric_value(plan, source_metric)
+    snapshot = _cuchillas_to_float((ssn or {}).get('last_input_snapshot'), 0.0) or 0.0
+    same_lot = bool(
+        ssn and plan and
+        str(ssn.get('last_lot_no') or '') == str(plan.get('lot_no') or '')
+    )
+    delta_estimado = max(source_actual - snapshot, 0.0) if ssn else 0.0
+
+    consumo_habilitado = True
+    motivo = 'Consumo habilitado'
+
+    if not cfg or not _cuchillas_bool_from_int((cfg or {}).get('activo')):
+        consumo_habilitado = False
+        motivo = 'Linea sin configuracion activa'
+    elif not ssn:
+        consumo_habilitado = False
+        motivo = 'No hay sesion activa de cuchilla'
+    elif str((ssn or {}).get('estado') or '').upper() != 'ACTIVA':
+        consumo_habilitado = False
+        motivo = 'La sesion actual no esta ACTIVA'
+    elif not plan:
+        consumo_habilitado = False
+        motivo = 'No hay plan activo para la linea'
+    else:
+        pcb_qty = _cuchillas_to_float((cfg or {}).get('pcb_qty'), 0.0) or 0.0
+        cut_qty = _cuchillas_to_float((cfg or {}).get('cut_qty'), 0.0) or 0.0
+        max_cortes = _cuchillas_to_float((ssn or {}).get('max_cortes'), 0.0) or 0.0
+        if pcb_qty <= 0 or cut_qty <= 0:
+            consumo_habilitado = False
+            motivo = 'Configuracion invalida de factor PCB/Corte'
+        elif max_cortes <= 0:
+            consumo_habilitado = False
+            motivo = 'Max cortes invalido en sesion'
+        elif source_actual <= snapshot:
+            consumo_habilitado = False
+            motivo = f'No hay incremento en {source_metric}'
+
+    plan_seleccionado = None
+    if plan:
+        plan_seleccionado = {
+            'id': plan.get('id'),
+            'lot_no': plan.get('lot_no'),
+            'status': plan.get('status'),
+            'line': plan.get('line')
+        }
+
+    return {
+        'linea': linea,
+        'source_metric': source_metric,
+        'source_actual': source_actual,
+        'last_input_snapshot': snapshot,
+        'delta_estimado': delta_estimado,
+        'same_lot': same_lot,
+        'plan_seleccionado': plan_seleccionado,
+        'sesion_activa': bool(ssn and str(ssn.get('estado') or '').upper() == 'ACTIVA'),
+        'motivo_no_descuento': motivo if not consumo_habilitado else '',
+        'consumo_habilitado': consumo_habilitado
+    }
+
+
+def crear_tablas_cuchillas_corte():
+    try:
+        _cuchillas_execute_raw("""
+            CREATE TABLE IF NOT EXISTS cuchillas_corte_config_linea (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                linea VARCHAR(32) NOT NULL,
+                pcb_qty DECIMAL(10,4) NOT NULL,
+                cut_qty DECIMAL(10,4) NOT NULL,
+                prealert_pct DECIMAL(5,2) NOT NULL DEFAULT 90.00,
+                source_metric ENUM('PRODUCED_COUNT','PLAN_COUNT') NOT NULL DEFAULT 'PRODUCED_COUNT',
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_cuchillas_linea (linea)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        try:
+            _cuchillas_execute_raw("""
+                ALTER TABLE cuchillas_corte_config_linea
+                ADD COLUMN source_metric ENUM('PRODUCED_COUNT','PLAN_COUNT') NOT NULL DEFAULT 'PRODUCED_COUNT'
+                AFTER prealert_pct
+            """)
+        except Exception as alter_error:
+            print(f"(info) columna source_metric ya existe o no aplica: {alter_error}")
+
+        _cuchillas_execute_raw("""
+            CREATE TABLE IF NOT EXISTS cuchillas_corte_sesiones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                linea VARCHAR(32) NOT NULL,
+                blade_code VARCHAR(64) NOT NULL,
+                max_cortes DECIMAL(12,4) NOT NULL,
+                consumo_cortes DECIMAL(12,4) NOT NULL DEFAULT 0,
+                last_lot_no VARCHAR(64) NULL,
+                last_input_snapshot DECIMAL(12,4) NOT NULL DEFAULT 0,
+                estado ENUM('ACTIVA','VENCIDA','REEMPLAZADA') NOT NULL DEFAULT 'ACTIVA',
+                prealert_emitida TINYINT(1) NOT NULL DEFAULT 0,
+                vencida_emitida TINYINT(1) NOT NULL DEFAULT 0,
+                started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                expired_at DATETIME NULL,
+                ended_at DATETIME NULL,
+                last_hourly_sync_at DATETIME NULL,
+                created_by VARCHAR(64) NULL,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        try:
+            _cuchillas_execute_raw("""
+                ALTER TABLE cuchillas_corte_sesiones
+                ADD COLUMN last_hourly_sync_at DATETIME NULL
+                AFTER ended_at
+            """)
+        except Exception as alter_sesion_error:
+            print(f"(info) columna last_hourly_sync_at ya existe o no aplica: {alter_sesion_error}")
+
+        _cuchillas_execute_raw("""
+            CREATE TABLE IF NOT EXISTS cuchillas_corte_eventos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sesion_id INT NOT NULL,
+                linea VARCHAR(32) NOT NULL,
+                lot_no VARCHAR(64) NULL,
+                event_type ENUM('PREALERTA','VENCIDA','INFO') NOT NULL,
+                consumo_cortes DECIMAL(12,4) NOT NULL,
+                max_cortes DECIMAL(12,4) NOT NULL,
+                porcentaje_uso DECIMAL(6,2) NOT NULL,
+                mensaje VARCHAR(255) NOT NULL,
+                pendiente_externo TINYINT(1) NOT NULL DEFAULT 1,
+                consumido_externo_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        # Corregir/asegurar ENUM exacto (sin conversion automatica REAL->DECIMAL)
+        _cuchillas_execute_raw("""
+            ALTER TABLE cuchillas_corte_eventos
+            MODIFY event_type ENUM('PREALERTA','VENCIDA','INFO') NOT NULL
+        """)
+
+        try:
+            _cuchillas_execute_raw("""
+                UPDATE cuchillas_corte_config_linea
+                SET source_metric = 'PRODUCED_COUNT'
+                WHERE source_metric IS NULL
+                   OR source_metric NOT IN ('PRODUCED_COUNT', 'PLAN_COUNT')
+            """)
+        except Exception as source_fix_error:
+            print(f"(info) no fue posible normalizar source_metric: {source_fix_error}")
+
+        index_queries = [
+            "CREATE INDEX idx_sesion_linea_estado ON cuchillas_corte_sesiones(linea, estado, started_at)",
+            "CREATE INDEX idx_eventos_linea_tipo ON cuchillas_corte_eventos(linea, event_type, created_at)",
+            "CREATE INDEX idx_eventos_pendiente ON cuchillas_corte_eventos(pendiente_externo, event_type, created_at)"
+        ]
+        for q in index_queries:
+            try:
+                _cuchillas_execute_raw(q)
+            except Exception as index_error:
+                print(f"(info) indice cuchillas ya existe o no aplica: {index_error}")
+
+        print("Tablas de cuchillas de corte creadas/verificadas")
+    except Exception as e:
+        print(f"Error creando tablas de cuchillas de corte: {e}")
+
+
+def crear_trigger_cuchillas_corte_plan_main():
+    trigger_name = 'trg_plan_main_cuchillas_after_update'
+    try:
+        existing = _cuchillas_execute_raw(
+            """
+            SELECT TRIGGER_NAME
+            FROM information_schema.TRIGGERS
+            WHERE TRIGGER_SCHEMA = DATABASE()
+              AND TRIGGER_NAME = %s
+            """,
+            (trigger_name,),
+            fetch='one'
+        )
+
+        if existing:
+            _cuchillas_execute_raw(f"DROP TRIGGER IF EXISTS {trigger_name}")
+
+        trigger_sql = f"""
+        CREATE TRIGGER {trigger_name}
+        AFTER UPDATE ON plan_main
+        FOR EACH ROW
+        cuchillas_trigger: BEGIN
+            DECLARE v_plan_id BIGINT DEFAULT NULL;
+            DECLARE v_sesion_id INT DEFAULT NULL;
+            DECLARE v_last_lot_no VARCHAR(64) DEFAULT NULL;
+            DECLARE v_last_input_snapshot DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_consumo_cortes DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_max_cortes DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_prealert_emitida TINYINT DEFAULT 0;
+            DECLARE v_vencida_emitida TINYINT DEFAULT 0;
+            DECLARE v_pcb_qty DECIMAL(10,4) DEFAULT 0;
+            DECLARE v_cut_qty DECIMAL(10,4) DEFAULT 0;
+            DECLARE v_prealert_pct DECIMAL(5,2) DEFAULT 90.00;
+            DECLARE v_config_activa TINYINT DEFAULT 0;
+            DECLARE v_source_metric VARCHAR(20) DEFAULT 'PRODUCED_COUNT';
+            DECLARE v_current_input DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_old_input DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_delta_input DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_delta_cortes DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_nuevo_consumo DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_new_snapshot DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_pct_uso DECIMAL(7,2) DEFAULT 0;
+            DECLARE v_prealert_threshold DECIMAL(12,4) DEFAULT 0;
+
+            IF NEW.line IS NULL OR TRIM(NEW.line) = '' THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
+            SELECT p.id
+              INTO v_plan_id
+            FROM plan_main p
+            WHERE p.line = NEW.line
+              AND p.status IN ('EN PROGRESO', 'PAUSADO', 'PLAN')
+            ORDER BY
+                CASE p.status
+                    WHEN 'EN PROGRESO' THEN 1
+                    WHEN 'PAUSADO' THEN 2
+                    WHEN 'PLAN' THEN 3
+                    ELSE 9
+                END,
+                COALESCE(p.updated_at, p.created_at) DESC,
+                p.created_at DESC,
+                p.id DESC
+            LIMIT 1;
+
+            IF v_plan_id IS NULL OR v_plan_id <> NEW.id THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
+            SELECT
+                s.id,
+                s.last_lot_no,
+                COALESCE(s.last_input_snapshot, 0),
+                COALESCE(s.consumo_cortes, 0),
+                COALESCE(s.max_cortes, 0),
+                COALESCE(s.prealert_emitida, 0),
+                COALESCE(s.vencida_emitida, 0),
+                COALESCE(c.pcb_qty, 0),
+                COALESCE(c.cut_qty, 0),
+                COALESCE(c.prealert_pct, 90.00),
+                COALESCE(c.activo, 0),
+                COALESCE(c.source_metric, 'PRODUCED_COUNT')
+            INTO
+                v_sesion_id,
+                v_last_lot_no,
+                v_last_input_snapshot,
+                v_consumo_cortes,
+                v_max_cortes,
+                v_prealert_emitida,
+                v_vencida_emitida,
+                v_pcb_qty,
+                v_cut_qty,
+                v_prealert_pct,
+                v_config_activa,
+                v_source_metric
+            FROM cuchillas_corte_sesiones s
+            LEFT JOIN cuchillas_corte_config_linea c
+                ON c.linea = s.linea
+            WHERE s.linea = NEW.line
+              AND s.estado = 'ACTIVA'
+            ORDER BY s.started_at DESC, s.id DESC
+            LIMIT 1;
+
+            IF v_sesion_id IS NULL THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
+            IF COALESCE(v_config_activa, 0) <> 1 THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
+            IF v_source_metric IS NULL OR v_source_metric NOT IN ('PRODUCED_COUNT', 'PLAN_COUNT') THEN
+                SET v_source_metric = 'PRODUCED_COUNT';
+            END IF;
+
+            IF v_source_metric = 'PLAN_COUNT' THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
+            SET v_current_input = GREATEST(COALESCE(NEW.produced_count, 0), 0);
+            SET v_old_input = GREATEST(COALESCE(OLD.produced_count, 0), 0);
+
+            IF v_current_input = v_old_input THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
+            IF COALESCE(v_pcb_qty, 0) <= 0
+               OR COALESCE(v_cut_qty, 0) <= 0
+               OR COALESCE(v_max_cortes, 0) <= 0 THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
+            IF COALESCE(v_last_lot_no, '') = COALESCE(NEW.lot_no, '') THEN
+                SET v_delta_input = GREATEST(v_current_input - COALESCE(v_last_input_snapshot, 0), 0);
+                SET v_new_snapshot = GREATEST(v_current_input, COALESCE(v_last_input_snapshot, 0));
+            ELSE
+                SET v_delta_input = GREATEST(v_current_input, 0);
+                SET v_new_snapshot = v_current_input;
+            END IF;
+
+            SET v_delta_cortes = v_delta_input * (v_cut_qty / v_pcb_qty);
+            SET v_nuevo_consumo = COALESCE(v_consumo_cortes, 0) + COALESCE(v_delta_cortes, 0);
+            IF v_nuevo_consumo < 0 THEN
+                SET v_nuevo_consumo = 0;
+            END IF;
+
+            SET v_pct_uso = IF(v_max_cortes > 0, ROUND((v_nuevo_consumo / v_max_cortes) * 100, 2), 0);
+
+            UPDATE cuchillas_corte_sesiones
+               SET consumo_cortes = v_nuevo_consumo,
+                   last_input_snapshot = v_new_snapshot,
+                   last_lot_no = NEW.lot_no,
+                   updated_at = NOW()
+             WHERE id = v_sesion_id
+               AND estado = 'ACTIVA';
+
+            SET v_prealert_threshold = v_max_cortes * (COALESCE(v_prealert_pct, 90.00) / 100.00);
+
+            IF v_prealert_emitida = 0 AND v_nuevo_consumo >= v_prealert_threshold THEN
+                INSERT INTO cuchillas_corte_eventos (
+                    sesion_id, linea, lot_no, event_type,
+                    consumo_cortes, max_cortes, porcentaje_uso, mensaje,
+                    pendiente_externo, created_at
+                )
+                VALUES (
+                    v_sesion_id, NEW.line, NEW.lot_no, 'PREALERTA',
+                    v_nuevo_consumo, v_max_cortes, v_pct_uso,
+                    CONCAT('Prealerta de cuchilla en linea ', NEW.line, ' (', ROUND(v_pct_uso, 2), '% de uso)'),
+                    1, NOW()
+                );
+
+                UPDATE cuchillas_corte_sesiones
+                   SET prealert_emitida = 1,
+                       updated_at = NOW()
+                 WHERE id = v_sesion_id;
+            END IF;
+
+            IF v_vencida_emitida = 0 AND v_nuevo_consumo >= v_max_cortes THEN
+                INSERT INTO cuchillas_corte_eventos (
+                    sesion_id, linea, lot_no, event_type,
+                    consumo_cortes, max_cortes, porcentaje_uso, mensaje,
+                    pendiente_externo, created_at
+                )
+                VALUES (
+                    v_sesion_id, NEW.line, NEW.lot_no, 'VENCIDA',
+                    v_nuevo_consumo, v_max_cortes, v_pct_uso,
+                    CONCAT('Cuchilla vencida en linea ', NEW.line, ' (', ROUND(v_pct_uso, 2), '% de uso)'),
+                    1, NOW()
+                );
+
+                UPDATE cuchillas_corte_sesiones
+                   SET estado = 'VENCIDA',
+                       vencida_emitida = 1,
+                       expired_at = NOW(),
+                       ended_at = COALESCE(ended_at, NOW()),
+                       updated_at = NOW()
+                 WHERE id = v_sesion_id;
+            END IF;
+        END
+        """
+        _cuchillas_execute_raw(trigger_sql)
+        print("Trigger de cuchillas de corte creado/actualizado")
+    except Exception as e:
+        print(f"Error creando trigger de cuchillas de corte: {e}")
+
+
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando bootstrap de cuchillas de corte")
+    crear_tablas_cuchillas_corte()
+    crear_trigger_cuchillas_corte_plan_main()
+    _startup_log("Bootstrap de cuchillas de corte completado")
+    iniciar_cuchillas_hourly_sync_worker()
+else:
+    _startup_log("Saltando bootstrap de cuchillas de corte por configuración/reloader")
+
+
+@app.route('/control-cuchillas-corte-ajax')
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def control_cuchillas_corte_ajax():
+    try:
+        return render_template('Control de proceso/control_cuchillas_corte_ajax.html')
+    except Exception as e:
+        print(f"Error al cargar control_cuchillas_corte_ajax: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route('/api/cuchillas-corte/lineas', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_lineas():
+    try:
+        include_all = _cuchillas_bool_param(request.args.get('include_all'))
+        if include_all:
+            rows = execute_query(
+                """
+                SELECT DISTINCT line AS linea
+                FROM plan_main
+                WHERE line IS NOT NULL
+                  AND TRIM(line) <> ''
+                ORDER BY line
+                """,
+                fetch='all'
+            ) or []
+        else:
+            rows = execute_query(
+                """
+                SELECT linea
+                FROM cuchillas_corte_config_linea
+                WHERE activo = 1
+                  AND linea IS NOT NULL
+                  AND TRIM(linea) <> ''
+                ORDER BY linea
+                """,
+                fetch='all'
+            ) or []
+
+        lineas = [str((r or {}).get('linea') or '').strip() for r in rows]
+        lineas = [l for l in lineas if l]
+        return jsonify({
+            'success': True,
+            'lineas': lineas,
+            'include_all': include_all
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/dashboard', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_dashboard():
+    try:
+        include_inactive = _cuchillas_bool_param(request.args.get('include_inactive'))
+        if include_inactive:
+            rows = execute_query(
+                """
+                SELECT linea
+                FROM cuchillas_corte_config_linea
+                WHERE linea IS NOT NULL
+                  AND TRIM(linea) <> ''
+                ORDER BY linea
+                """,
+                fetch='all'
+            ) or []
+        else:
+            rows = execute_query(
+                """
+                SELECT linea
+                FROM cuchillas_corte_config_linea
+                WHERE activo = 1
+                  AND linea IS NOT NULL
+                  AND TRIM(linea) <> ''
+                ORDER BY linea
+                """,
+                fetch='all'
+            ) or []
+
+        items = []
+        for row in rows:
+            linea = str((row or {}).get('linea') or '').strip()
+            if not linea:
+                continue
+
+            _cuchillas_sync_linea_consumo(linea, force=False, reason='dashboard')
+            config = _cuchillas_get_config_por_linea(linea)
+            plan_activo = _cuchillas_get_plan_activo_por_linea(linea)
+            sesion = _cuchillas_get_sesion_por_linea(linea)
+            diagnostico = _cuchillas_build_diagnostico(
+                linea=linea,
+                plan_activo=plan_activo,
+                config=config,
+                sesion=sesion
+            )
+            pendiente_row = execute_query(
+                """
+                SELECT COUNT(*) AS total
+                FROM cuchillas_corte_eventos
+                WHERE linea = %s
+                  AND pendiente_externo = 1
+                  AND event_type = 'VENCIDA'
+                """,
+                (linea,),
+                fetch='one'
+            ) or {}
+
+            items.append({
+                'linea': linea,
+                'config': config,
+                'plan_activo': plan_activo,
+                'sesion': sesion,
+                'diagnostico': diagnostico,
+                'eventos_vencida_pendientes': int((pendiente_row or {}).get('total') or 0)
+            })
+
+        return jsonify({
+            'success': True,
+            'items': items,
+            'include_inactive': include_inactive
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/config', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_get_config():
+    try:
+        linea = (request.args.get('linea') or '').strip()
+        if not linea:
+            return jsonify({'success': False, 'error': 'Parametro linea requerido'}), 400
+
+        config = _cuchillas_get_config_por_linea(linea)
+        if not config:
+            config = {
+                'linea': linea,
+                'pcb_qty': 1.0,
+                'cut_qty': 1.0,
+                'prealert_pct': 90.0,
+                'source_metric': CUCHILLAS_SOURCE_DEFAULT,
+                'activo': 0
+            }
+        return jsonify({'success': True, 'config': config})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/config', methods=['POST'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_save_config():
+    try:
+        data = request.get_json() or {}
+        linea = (data.get('linea') or '').strip()
+        pcb_qty = _cuchillas_to_float(data.get('pcb_qty'))
+        cut_qty = _cuchillas_to_float(data.get('cut_qty'))
+        prealert_pct = _cuchillas_to_float(data.get('prealert_pct'), 90.0)
+        source_metric = _cuchillas_normalize_source_metric(
+            data.get('source_metric'),
+            CUCHILLAS_SOURCE_DEFAULT
+        )
+        activo = 1 if _cuchillas_bool_param(data.get('activo', 1)) else 0
+
+        if not linea:
+            return jsonify({'success': False, 'error': 'linea requerida'}), 400
+        if pcb_qty is None or pcb_qty <= 0:
+            return jsonify({'success': False, 'error': 'pcb_qty debe ser mayor a 0'}), 400
+        if cut_qty is None or cut_qty <= 0:
+            return jsonify({'success': False, 'error': 'cut_qty debe ser mayor a 0'}), 400
+        if prealert_pct is None or prealert_pct <= 0 or prealert_pct > 100:
+            return jsonify({'success': False, 'error': 'prealert_pct debe estar entre 0 y 100'}), 400
+
+        upsert_sql = """
+            INSERT INTO cuchillas_corte_config_linea (
+                linea, pcb_qty, cut_qty, prealert_pct, source_metric, activo, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            ON DUPLICATE KEY UPDATE
+                pcb_qty = VALUES(pcb_qty),
+                cut_qty = VALUES(cut_qty),
+                prealert_pct = VALUES(prealert_pct),
+                source_metric = VALUES(source_metric),
+                activo = VALUES(activo),
+                updated_at = NOW()
+        """
+        execute_query(upsert_sql, (linea, pcb_qty, cut_qty, prealert_pct, source_metric, activo))
+        config = _cuchillas_get_config_por_linea(linea)
+        return jsonify({'success': True, 'config': config})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/sesion/iniciar', methods=['POST'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_sesion_iniciar():
+    try:
+        data = request.get_json() or {}
+        linea = (data.get('linea') or '').strip()
+        blade_code = (data.get('blade_code') or '').strip()
+        max_cortes = _cuchillas_to_float(data.get('max_cortes'))
+
+        if not linea:
+            return jsonify({'success': False, 'error': 'linea requerida'}), 400
+        if not blade_code:
+            return jsonify({'success': False, 'error': 'blade_code requerido'}), 400
+        if max_cortes is None or max_cortes <= 0:
+            return jsonify({'success': False, 'error': 'max_cortes debe ser mayor a 0'}), 400
+
+        config = _cuchillas_get_config_por_linea(linea)
+        if not config or not int(config.get('activo') or 0):
+            return jsonify({
+                'success': False,
+                'error': f'No hay configuracion activa para la linea {linea}. Guarda primero la equivalencia PCB/Corte.'
+            }), 400
+
+        activa = execute_query(
+            """
+            SELECT id, blade_code
+            FROM cuchillas_corte_sesiones
+            WHERE linea = %s
+              AND estado = 'ACTIVA'
+            ORDER BY started_at DESC, id DESC
+            LIMIT 1
+            """,
+            (linea,),
+            fetch='one'
+        )
+        if activa:
+            return jsonify({
+                'success': False,
+                'error': f"Ya existe una sesion activa para la linea {linea} (ID {activa.get('id')}). Usa reemplazar."
+            }), 409
+
+        sesion = _cuchillas_crear_sesion(
+            linea=linea,
+            blade_code=blade_code,
+            max_cortes=max_cortes,
+            created_by=_cuchillas_usuario_actual(),
+            config=config
+        )
+        return jsonify({'success': True, 'sesion': sesion})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/sesion/reemplazar', methods=['POST'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_sesion_reemplazar():
+    try:
+        data = request.get_json() or {}
+        linea = (data.get('linea') or '').strip()
+        blade_code = (data.get('blade_code') or '').strip()
+        max_cortes = _cuchillas_to_float(data.get('max_cortes'))
+
+        if not linea:
+            return jsonify({'success': False, 'error': 'linea requerida'}), 400
+        if not blade_code:
+            return jsonify({'success': False, 'error': 'blade_code requerido'}), 400
+        if max_cortes is None or max_cortes <= 0:
+            return jsonify({'success': False, 'error': 'max_cortes debe ser mayor a 0'}), 400
+
+        config = _cuchillas_get_config_por_linea(linea)
+        if not config or not int(config.get('activo') or 0):
+            return jsonify({
+                'success': False,
+                'error': f'No hay configuracion activa para la linea {linea}. Guarda primero la equivalencia PCB/Corte.'
+            }), 400
+
+        activa = execute_query(
+            """
+            SELECT id, blade_code, max_cortes, consumo_cortes
+            FROM cuchillas_corte_sesiones
+            WHERE linea = %s
+              AND estado = 'ACTIVA'
+            ORDER BY started_at DESC, id DESC
+            LIMIT 1
+            """,
+            (linea,),
+            fetch='one'
+        )
+
+        if activa:
+            execute_query(
+                """
+                UPDATE cuchillas_corte_sesiones
+                SET estado = 'REEMPLAZADA',
+                    ended_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = %s
+                  AND estado = 'ACTIVA'
+                """,
+                (activa.get('id'),)
+            )
+
+            mensaje = (
+                f"Cuchilla {activa.get('blade_code')} reemplazada por {blade_code}. "
+                f"Consumo final: {activa.get('consumo_cortes')}/{activa.get('max_cortes')}"
+            )
+            execute_query(
+                """
+                INSERT INTO cuchillas_corte_eventos (
+                    sesion_id, linea, lot_no, event_type,
+                    consumo_cortes, max_cortes, porcentaje_uso, mensaje,
+                    pendiente_externo, created_at
+                )
+                VALUES (%s, %s, NULL, 'INFO', %s, %s, 0, %s, 0, NOW())
+                """,
+                (
+                    activa.get('id'),
+                    linea,
+                    _cuchillas_to_float(activa.get('consumo_cortes'), 0.0) or 0.0,
+                    _cuchillas_to_float(activa.get('max_cortes'), 0.0) or 0.0,
+                    mensaje
+                )
+            )
+
+        nueva_sesion = _cuchillas_crear_sesion(
+            linea=linea,
+            blade_code=blade_code,
+            max_cortes=max_cortes,
+            created_by=_cuchillas_usuario_actual(),
+            config=config
+        )
+        return jsonify({'success': True, 'sesion': nueva_sesion, 'reemplazo_realizado': bool(activa)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/sesiones', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_sesiones():
+    try:
+        linea = (request.args.get('linea') or '').strip()
+        limit = request.args.get('limit') or 100
+        sesiones = _cuchillas_get_historial_sesiones(
+            linea=linea or None,
+            limit=limit
+        )
+        return jsonify({
+            'success': True,
+            'linea': linea or None,
+            'total': len(sesiones),
+            'sesiones': sesiones
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/sesion/eliminar', methods=['POST'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_sesion_eliminar():
+    try:
+        data = request.get_json() or {}
+        linea = (data.get('linea') or request.args.get('linea') or '').strip()
+        sesion_id_raw = data.get('sesion_id')
+        if sesion_id_raw is None:
+            sesion_id_raw = request.args.get('sesion_id')
+
+        sesion_id = None
+        if sesion_id_raw is not None and str(sesion_id_raw).strip() != '':
+            try:
+                sesion_id = int(sesion_id_raw)
+            except Exception:
+                return jsonify({'success': False, 'error': 'sesion_id invalido'}), 400
+            if sesion_id <= 0:
+                return jsonify({'success': False, 'error': 'sesion_id invalido'}), 400
+
+        if sesion_id is None and not linea:
+            return jsonify({'success': False, 'error': 'linea o sesion_id requerido'}), 400
+
+        target = None
+        if sesion_id is not None:
+            target = execute_query(
+                """
+                SELECT id, linea, blade_code, estado
+                FROM cuchillas_corte_sesiones
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (sesion_id,),
+                fetch='one'
+            )
+            if target and linea and str(target.get('linea') or '').strip() != linea:
+                return jsonify({
+                    'success': False,
+                    'error': f'La sesion {sesion_id} no pertenece a la linea {linea}'
+                }), 400
+        else:
+            target = execute_query(
+                """
+                SELECT id, linea, blade_code, estado
+                FROM cuchillas_corte_sesiones
+                WHERE linea = %s
+                ORDER BY
+                    CASE estado
+                        WHEN 'ACTIVA' THEN 1
+                        WHEN 'VENCIDA' THEN 2
+                        WHEN 'REEMPLAZADA' THEN 3
+                        ELSE 9
+                    END,
+                    started_at DESC,
+                    id DESC
+                LIMIT 1
+                """,
+                (linea,),
+                fetch='one'
+            )
+
+        if not target:
+            return jsonify({'success': False, 'error': 'No se encontro sesion para eliminar'}), 404
+
+        target_id = int(target.get('id'))
+        target_linea = str(target.get('linea') or '').strip()
+        target_blade = str(target.get('blade_code') or '').strip()
+        target_estado = str(target.get('estado') or '').strip().upper()
+
+        eventos_borrados = execute_query(
+            "DELETE FROM cuchillas_corte_eventos WHERE sesion_id = %s",
+            (target_id,)
+        ) or 0
+        sesiones_borradas = execute_query(
+            "DELETE FROM cuchillas_corte_sesiones WHERE id = %s",
+            (target_id,)
+        ) or 0
+
+        if int(sesiones_borradas) <= 0:
+            return jsonify({'success': False, 'error': 'No se pudo eliminar la sesion'}), 409
+
+        return jsonify({
+            'success': True,
+            'eliminada': {
+                'id': target_id,
+                'linea': target_linea,
+                'blade_code': target_blade,
+                'estado': target_estado
+            },
+            'eventos_borrados': int(eventos_borrados),
+            'sesiones_borradas': int(sesiones_borradas)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/estado', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_estado():
+    try:
+        linea = (request.args.get('linea') or '').strip()
+        if not linea:
+            return jsonify({'success': False, 'error': 'Parametro linea requerido'}), 400
+
+        _cuchillas_sync_linea_consumo(linea, force=False, reason='estado')
+        plan_activo = _cuchillas_get_plan_activo_por_linea(linea)
+        config = _cuchillas_get_config_por_linea(linea)
+        sesion = _cuchillas_get_sesion_por_linea(linea)
+        diagnostico = _cuchillas_build_diagnostico(
+            linea=linea,
+            plan_activo=plan_activo,
+            config=config,
+            sesion=sesion
+        )
+
+        eventos = execute_query(
+            """
+            SELECT
+                id, sesion_id, linea, lot_no, event_type,
+                consumo_cortes, max_cortes, porcentaje_uso, mensaje,
+                pendiente_externo, consumido_externo_at, created_at
+            FROM cuchillas_corte_eventos
+            WHERE linea = %s
+            ORDER BY created_at DESC, id DESC
+            LIMIT 20
+            """,
+            (linea,),
+            fetch='all'
+        ) or []
+
+        return jsonify({
+            'success': True,
+            'linea': linea,
+            'plan_activo': plan_activo,
+            'config': config,
+            'sesion': sesion,
+            'diagnostico': diagnostico,
+            'eventos_recentes': _cuchillas_rows_to_json(eventos)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/diagnostico', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_diagnostico():
+    try:
+        linea = (request.args.get('linea') or '').strip()
+        if not linea:
+            return jsonify({'success': False, 'error': 'Parametro linea requerido'}), 400
+
+        _cuchillas_sync_linea_consumo(linea, force=False, reason='diagnostico')
+        plan_activo = _cuchillas_get_plan_activo_por_linea(linea)
+        config = _cuchillas_get_config_por_linea(linea)
+        sesion = _cuchillas_get_sesion_por_linea(linea)
+        diagnostico = _cuchillas_build_diagnostico(
+            linea=linea,
+            plan_activo=plan_activo,
+            config=config,
+            sesion=sesion
+        )
+
+        return jsonify({
+            'success': True,
+            'linea': linea,
+            'plan_activo': plan_activo,
+            'config': config,
+            'sesion': sesion,
+            'diagnostico': diagnostico
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/recalcular', methods=['POST'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_recalcular():
+    try:
+        data = request.get_json() or {}
+        linea = (data.get('linea') or request.args.get('linea') or '').strip()
+        if not linea:
+            return jsonify({'success': False, 'error': 'linea requerida'}), 400
+
+        sync_result = _cuchillas_sync_linea_consumo(linea, force=True, reason='manual')
+        status = str((sync_result or {}).get('status') or '').upper()
+        if status in ('SIN_SESION_ACTIVA', 'CONFIG_INACTIVA', 'CONFIG_INVALIDA', 'LINEA_INVALIDA'):
+            mensajes = {
+                'SIN_SESION_ACTIVA': f'No hay sesion ACTIVA para la linea {linea}',
+                'CONFIG_INACTIVA': f'La configuracion de la linea {linea} esta inactiva',
+                'CONFIG_INVALIDA': f'Configuracion invalida para la linea {linea}',
+                'LINEA_INVALIDA': 'Linea invalida'
+            }
+            return jsonify({
+                'success': False,
+                'linea': linea,
+                'error': mensajes.get(status, status),
+                'detalle': sync_result
+            }), 400
+
+        plan_activo = _cuchillas_get_plan_activo_por_linea(linea)
+        config = _cuchillas_get_config_por_linea(linea)
+        sesion_actualizada = _cuchillas_get_sesion_por_linea(linea)
+        diagnostico_actualizado = _cuchillas_build_diagnostico(
+            linea=linea,
+            plan_activo=plan_activo,
+            config=config,
+            sesion=sesion_actualizada
+        )
+        return jsonify({
+            'success': True,
+            'linea': linea,
+            'aplico_cambios': status == 'UPDATED',
+            'mensaje': 'Recalculo aplicado' if status == 'UPDATED' else 'Sin cambios en consumo',
+            'sync_result': sync_result,
+            'sesion': sesion_actualizada,
+            'diagnostico': diagnostico_actualizado
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/eventos', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_eventos():
+    try:
+        linea = (request.args.get('linea') or '').strip()
+        if not linea:
+            return jsonify({'success': False, 'error': 'Parametro linea requerido'}), 400
+
+        solo_pendientes = _cuchillas_bool_param(request.args.get('solo_pendientes'))
+        where = ["linea = %s"]
+        params = [linea]
+        if solo_pendientes:
+            where.append("pendiente_externo = 1")
+
+        query = f"""
+            SELECT
+                id, sesion_id, linea, lot_no, event_type,
+                consumo_cortes, max_cortes, porcentaje_uso, mensaje,
+                pendiente_externo, consumido_externo_at, created_at
+            FROM cuchillas_corte_eventos
+            WHERE {' AND '.join(where)}
+            ORDER BY created_at DESC, id DESC
+            LIMIT 300
+        """
+        eventos = execute_query(query, tuple(params), fetch='all') or []
+        return jsonify({
+            'success': True,
+            'linea': linea,
+            'solo_pendientes': solo_pendientes,
+            'eventos': _cuchillas_rows_to_json(eventos)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# =============================
 # FRONT PLAN: API mínima plan_main
 # =============================
 
@@ -794,7 +2491,7 @@ def api_plan_create():
         routing = {'DIA': 1, 'TIEMPO EXTRA': 2, 'NOCHE': 3}.get(turno, 1)
         lot_no = _fp_generate_lot_no(datetime.combine(fecha, datetime.min.time()))
         
-        # 🔍 Buscar información adicional en raw (CT, UPH, MODEL, PROJECT) basándose en part_no
+        #  Buscar información adicional en raw (CT, UPH, MODEL, PROJECT) basándose en part_no
         raw_data_query = """
             SELECT part_no, model, project, c_t as ct, uph
             FROM raw
@@ -1124,12 +2821,12 @@ def api_plan_pending():
         if start:
             where.append('DATE(working_date) >= %s')
             params.append(start)
-            print(f"📅 Filtro START aplicado: {start}")
+            print(f" Filtro START aplicado: {start}")
         
         if end:
             where.append('DATE(working_date) <= %s')
             params.append(end)
-            print(f"📅 Filtro END aplicado: {end}")
+            print(f" Filtro END aplicado: {end}")
         
         # Solo planes con cantidad pendiente
         where.append('COALESCE(plan_count, 0) > COALESCE(produced_count, 0)')
@@ -1144,8 +2841,8 @@ def api_plan_pending():
             "ORDER BY working_date, lot_no"
         )
         
-        print(f"🔍 SQL Query: {sql}")
-        print(f"🔍 Parámetros: {tuple(params) if params else 'Sin parámetros'}")
+        print(f" SQL Query: {sql}")
+        print(f" Parámetros: {tuple(params) if params else 'Sin parámetros'}")
         
         rows = execute_query(sql, tuple(params) if params else None, fetch='all')
         
@@ -1161,11 +2858,11 @@ def api_plan_pending():
                 'status': r['status'] if isinstance(r, dict) else r[6]
             })
         
-        print(f"✅ Planes pendientes encontrados: {len(data)}")
+        print(f" Planes pendientes encontrados: {len(data)}")
         return jsonify(data)
         
     except Exception as e:
-        print(f"❌ Error en api_plan_pending: {str(e)}")
+        print(f" Error en api_plan_pending: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plan/reschedule', methods=['POST'])
@@ -1197,14 +2894,14 @@ def api_plan_reschedule():
             FROM plan_main 
             WHERE lot_no IN ({placeholders})
         """
-        print(f"🔍 Buscando {len(lot_nos)} planes para reprogramar")
+        print(f" Buscando {len(lot_nos)} planes para reprogramar")
         planes_originales = execute_query(sql_select, tuple(lot_nos), fetch='all')
         
         if not planes_originales:
-            print(f"❌ No se encontraron planes para los lot_nos: {lot_nos}")
+            print(f" No se encontraron planes para los lot_nos: {lot_nos}")
             return jsonify({'error': 'No se encontraron planes para reprogramar'}), 404
         
-        print(f"✅ Se encontraron {len(planes_originales)} planes")
+        print(f" Se encontraron {len(planes_originales)} planes")
         nuevos_planes_creados = 0
         
         for plan in planes_originales:
@@ -1282,7 +2979,7 @@ def api_plan_reschedule():
                 plan.get('sequence')
             ))
             
-            print(f"✅ Nuevo plan creado: {nuevo_lot_no} (trazabilidad: {lot_no_original} -> {nuevo_lot_no})")
+            print(f" Nuevo plan creado: {nuevo_lot_no} (trazabilidad: {lot_no_original} -> {nuevo_lot_no})")
             nuevos_planes_creados += 1
         
         print(f"🎉 Total de planes creados: {nuevos_planes_creados}")
@@ -1293,7 +2990,7 @@ def api_plan_reschedule():
         })
         
     except Exception as e:
-        print(f"❌ Error en api_plan_reschedule: {str(e)}")
+        print(f" Error en api_plan_reschedule: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -1758,6 +3455,10 @@ def api_plan_imd_import_excel():
         if not parsed_rows:
             return jsonify({'success': True, 'imported': 0, 'message': '0 planes importados'})
 
+        # Ordenar por linea para que lotes sean consecutivos por linea
+        line_priority_imd = {'P1': 0, 'P2': 1, 'P3': 2, 'P4': 3}
+        parsed_rows.sort(key=lambda x: line_priority_imd.get(x['line'], 99))
+
         # Resolver datos de raw_smd en lotes para evitar consultas por fila
         raw_by_part = {}
         unique_parts = sorted({item['part_no'] for item in parsed_rows})
@@ -1888,7 +3589,10 @@ def crear_tabla_plan_smt_v2():
     except Exception as e:
         print(f"Error creando tabla plan_smt: {e}")
 
-crear_tabla_plan_smt_v2()
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando crear_tabla_plan_smt_v2()")
+    crear_tabla_plan_smt_v2()
+    _startup_log("crear_tabla_plan_smt_v2() completado")
 
 @app.route('/api/plan-smt', methods=['GET'])
 @login_requerido
@@ -2231,6 +3935,10 @@ def api_plan_smt_import_excel():
         if not parsed_rows:
             return jsonify({'success': True, 'imported': 0, 'message': '0 planes importados'})
 
+        # Ordenar por linea para que lotes sean consecutivos por linea
+        line_priority_smt = {'SA': 0, 'SB': 1, 'SC': 2, 'SD': 3, 'SE': 4}
+        parsed_rows.sort(key=lambda x: line_priority_smt.get(x['line'], 99))
+
         # Resolver datos de raw_smd en lotes para evitar consultas por fila
         raw_by_part = {}
         unique_parts = sorted({item['part_no'] for item in parsed_rows})
@@ -2393,6 +4101,9 @@ def api_work_orders_import():
         imported = 0
         plans = []
         errors = []
+
+        # Recolectar WOs validas primero para poder ordenar por linea
+        wo_list = []
         for wo_id in wo_ids:
             row = execute_query("SELECT * FROM work_orders WHERE id = %s", (wo_id,), fetch='one')
             if not row:
@@ -2401,15 +4112,20 @@ def api_work_orders_import():
             wo = row
             # Verificar si ya existe (buscar por wo_id para ser más preciso)
             existing = execute_query(
-                "SELECT lot_no, status FROM plan_main WHERE wo_id = %s OR wo_code = %s", 
-                (wo_id, wo.get('codigo_wo')), 
+                "SELECT lot_no, status FROM plan_main WHERE wo_id = %s OR wo_code = %s",
+                (wo_id, wo.get('codigo_wo')),
                 fetch='one'
             )
             if existing:
                 lot_existente = existing.get('lot_no') if isinstance(existing, dict) else existing[0]
                 errors.append(f"WO {wo.get('codigo_wo')} ya fue importada como LOT: {lot_existente}")
                 continue
-            
+            wo_list.append((wo_id, wo))
+
+        # Ordenar por linea para que los lotes sean consecutivos por linea
+        wo_list.sort(key=lambda x: x[1].get('linea') or 'ZZZ')
+
+        for wo_id, wo in wo_list:
             # Obtener part_no y línea del WO
             # En work_orders: 'modelo' es el part_no (ej: EBR42005002)
             # La línea viene directamente de la columna 'linea' del WO
@@ -2680,7 +4396,7 @@ def buscar_material_por_numero_parte():
             return jsonify({'success': False, 'error': f'No se encontraron materiales con número de parte: {numero_parte}'})
             
     except Exception as e:
-        print(f"❌ ERROR en buscar_material_por_numero_parte (MySQL): {e}")
+        print(f" ERROR en buscar_material_por_numero_parte (MySQL): {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def exportar_bom_a_excel(modelo=None, classification=None):
@@ -2887,7 +4603,7 @@ def api_bom_update():
         
         print(f"🔄 Actualizando BOM: codigo_material={codigo_material}, modelo={modelo}")
         print(f"📝 Query: {query}")
-        print(f"📊 Values: {values}")
+        print(f" Values: {values}")
         
         # Ejecutar actualización usando execute_query
         result = execute_query(query, tuple(values), fetch=None)
@@ -2954,7 +4670,7 @@ def api_bom_update_posiciones_assy():
             connection.commit()
             
             actualizados = cursor.rowcount
-            print(f"✅ Total actualizado en una transacción: {actualizados} registros")
+            print(f" Total actualizado en una transacción: {actualizados} registros")
             
             cursor.close()
             connection.close()
@@ -2972,7 +4688,7 @@ def api_bom_update_posiciones_assy():
             raise e
         
     except Exception as e:
-        print(f"❌ Error al actualizar posiciones ASSY: {e}")
+        print(f" Error al actualizar posiciones ASSY: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -3039,7 +4755,7 @@ def guardar_material_route():
         }
         
         # Usar función de db_mysql.py con información del usuario
-        print(f"🔍 Material registrado manualmente por: {usuario_actual}")
+        print(f" Material registrado manualmente por: {usuario_actual}")
         success = guardar_material(material_data, usuario_registro=usuario_actual)
         
         if success:
@@ -3160,8 +4876,8 @@ def consultar_lotes_detalle():
                 }
                 lotes_detalle.append(lote_data)
             except Exception as e:
-                print(f"❌ Error procesando fila {i+1}: {e}")
-                print(f"❌ Datos de la fila: {row}")
+                print(f" Error procesando fila {i+1}: {e}")
+                print(f" Datos de la fila: {row}")
                 continue
         
         print(f" Detalles de lotes consultados: {len(lotes_detalle)} lotes encontrados para {numero_parte}")
@@ -3174,7 +4890,7 @@ def consultar_lotes_detalle():
         })
         
     except Exception as e:
-        print(f"❌ Error al consultar detalles de lotes: {e}")
+        print(f" Error al consultar detalles de lotes: {e}")
         return jsonify({
             'success': False,
             'error': f'Error al consultar detalles de lotes: {str(e)}'
@@ -3483,7 +5199,7 @@ def actualizar_material_completo_route():
             
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ Error en actualizar_material_completo_route: {error_msg}")
+        print(f" Error en actualizar_material_completo_route: {error_msg}")
         return jsonify({'success': False, 'error': f'Error interno del servidor: {error_msg}'}), 500
 
 @app.route('/exportar_excel', methods=['GET'])
@@ -3571,21 +5287,21 @@ def obtener_codigos_material():
     conn = None
     cursor = None
     try:
-        print("🔍 Iniciando obtener_codigos_material...")
+        print(" Iniciando obtener_codigos_material...")
         
         # Obtener parámetro de búsqueda si existe
         busqueda = request.args.get('busqueda', '').strip()
         
         conn = get_db_connection()
         if not conn:
-            print("❌ Error: No se pudo obtener conexión a la base de datos")
+            print(" Error: No se pudo obtener conexión a la base de datos")
             return jsonify([])
         
         cursor = conn.cursor()
         
         # Si hay parámetro de búsqueda, implementar búsqueda inteligente
         if busqueda:
-            print(f"🔍 Búsqueda inteligente para: '{busqueda}'")
+            print(f" Búsqueda inteligente para: '{busqueda}'")
             
             # Query con búsqueda parcial usando LIKE con wildcards
             # Busca en código_material y numero_parte
@@ -3654,7 +5370,7 @@ def obtener_codigos_material():
         return jsonify(codigos)
         
     except Exception as e:
-        print(f"❌ Error en obtener_codigos_material MySQL: {str(e)}")
+        print(f" Error en obtener_codigos_material MySQL: {str(e)}")
         import traceback
         traceback.print_exc()
         
@@ -3730,7 +5446,7 @@ def control_salida():
                              user_info=user_info)
                              
     except Exception as e:
-        print(f"❌ Error al cargar Control de Salida: {e}")
+        print(f" Error al cargar Control de Salida: {e}")
         return render_template('Control de material/Control de salida.html', 
                              usuario='Usuario',
                              error='Error al cargar el módulo')
@@ -3755,7 +5471,7 @@ def guardar_control_almacen():
         resultado = agregar_control_material_almacen(data)
         
         if resultado:
-            print(f"✅ Registro de almacén guardado exitosamente para {data.get('numero_parte', 'N/A')}")
+            print(f" Registro de almacén guardado exitosamente para {data.get('numero_parte', 'N/A')}")
             
             return jsonify({
                 'success': True, 
@@ -4011,7 +5727,7 @@ def actualizar_control_almacen():
         cursor.execute(query, params)
         conn.commit()
         
-        print(f"✅ Filas afectadas: {cursor.rowcount}")
+        print(f" Filas afectadas: {cursor.rowcount}")
         
         if cursor.rowcount > 0:
             print(f"Registro de control de almacén actualizado: ID {registro_id}")
@@ -4031,7 +5747,7 @@ def actualizar_control_almacen():
                 'campos_modificados': campos_modificados
             })
         else:
-            print(f"❌ No se pudo actualizar el registro con ID: {registro_id}")
+            print(f" No se pudo actualizar el registro con ID: {registro_id}")
             return jsonify({'success': False, 'error': 'No se pudo actualizar el registro'}), 500
         
     except Exception as e:
@@ -4176,7 +5892,7 @@ def obtener_siguiente_secuencial():
         
         if resultado_numero_parte:
             numero_parte = resultado_numero_parte['numero_parte']
-            print(f"🔍 Número de parte encontrado: '{numero_parte}' para código: '{codigo_material}'")
+            print(f" Número de parte encontrado: '{numero_parte}' para código: '{codigo_material}'")
         else:
             numero_parte = codigo_material  # Fallback al código original
             print(f"⚠️ No se encontró número de parte, usando código material: '{numero_parte}'")
@@ -4184,7 +5900,7 @@ def obtener_siguiente_secuencial():
         # Obtener la fecha actual en formato YYYYMMDD
         fecha_actual = obtener_fecha_hora_mexico().strftime('%Y%m%d')
         
-        print(f"🔍 Buscando secuenciales para número de parte: '{numero_parte}' y fecha: {fecha_actual}")
+        print(f" Buscando secuenciales para número de parte: '{numero_parte}' y fecha: {fecha_actual}")
         
         # Buscar registros específicos para este número de parte y fecha exacta
         # El formato buscado es: NUMERO_PARTE,YYYYMMDD0001 en el campo codigo_material_recibido
@@ -4201,7 +5917,7 @@ def obtener_siguiente_secuencial():
         cursor.execute(query, (patron_busqueda,))
         resultados = cursor.fetchall()
         
-        print(f"🔍 Encontrados {len(resultados)} registros para el patrón '{patron_busqueda}'")
+        print(f" Encontrados {len(resultados)} registros para el patrón '{patron_busqueda}'")
         
         # Buscar el secuencial más alto para este número de parte y fecha específica
         secuencial_mas_alto = 0
@@ -4221,7 +5937,7 @@ def obtener_siguiente_secuencial():
                 
                 if secuencial_encontrado > secuencial_mas_alto:
                     secuencial_mas_alto = secuencial_encontrado
-                    print(f"📊 Nuevo secuencial más alto: {secuencial_mas_alto}")
+                    print(f" Nuevo secuencial más alto: {secuencial_mas_alto}")
             else:
                 print(f" No coincide con patrón esperado: {codigo_recibido}")
         
@@ -4248,7 +5964,7 @@ def obtener_siguiente_secuencial():
         })
         
     except Exception as e:
-        print(f"❌ Error al obtener siguiente secuencial: {e}")
+        print(f" Error al obtener siguiente secuencial: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -4385,12 +6101,15 @@ def crear_tabla_plan_smd():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
         execute_query(query)
-        print("✅ Tabla plan_smd creada/verificada")
+        print(" Tabla plan_smd creada/verificada")
     except Exception as e:
-        print(f"❌ Error creando tabla plan_smd: {e}")
+        print(f" Error creando tabla plan_smd: {e}")
 
 # Crear tabla al inicializar
-crear_tabla_plan_smd()
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando crear_tabla_plan_smd()")
+    crear_tabla_plan_smd()
+    _startup_log("crear_tabla_plan_smd() completado")
 
 @app.route('/api/work-orders', methods=['GET'])
 @login_requerido
@@ -4484,7 +6203,7 @@ def api_work_orders():
         return jsonify(resultado)
         
     except Exception as e:
-        print(f"❌ Error en API work-orders: {e}")
+        print(f" Error en API work-orders: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/inventario/modelo/<codigo_modelo>', methods=['GET'])
@@ -4517,7 +6236,7 @@ def api_inventario_modelo(codigo_modelo):
         return jsonify(resultado)
         
     except Exception as e:
-        print(f"❌ Error en API inventario modelo {codigo_modelo}: {e}")
+        print(f" Error en API inventario modelo {codigo_modelo}: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plan-smd', methods=['POST'])
@@ -4570,7 +6289,7 @@ def api_plan_smd_guardar():
         })
         
     except Exception as e:
-        print(f"❌ Error guardando plan SMD: {e}")
+        print(f" Error guardando plan SMD: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generar-plan-smd', methods=['POST'])
@@ -4720,16 +6439,16 @@ def api_generar_plan_smd():
             renglon = {
                 "linea": linea_default,
                 "lote": lote,
-                "nparte": codigo_modelo,  # ✅ Usamos codigo_modelo
-                "modelo": codigo_modelo,  # ✅ Usamos codigo_modelo
+                "nparte": codigo_modelo,  #  Usamos codigo_modelo
+                "modelo": codigo_modelo,  #  Usamos codigo_modelo
                 "tipo": tipo_default,
                 "turno": turno_default,
                 "ct": "",
                 "uph": "",
                 "qty": faltante,
-                "fisico": int(inventario_total),  # ✅ Usar el inventario real consultado
+                "fisico": int(inventario_total),  #  Usar el inventario real consultado
                 "falta": faltante,
-                "pct": int((inventario_total / cantidad_planeada) * 100) if cantidad_planeada > 0 else 0,  # ✅ Calcular porcentaje real
+                "pct": int((inventario_total / cantidad_planeada) * 100) if cantidad_planeada > 0 else 0,  #  Calcular porcentaje real
                 "comentarios": f"Inventario: {int(inventario_total)} | Requerido: {int(cantidad_planeada)} | Faltante: {faltante}"
             }
             
@@ -4738,7 +6457,7 @@ def api_generar_plan_smd():
             qty_total_plan += faltante
             faltante_total_plan += faltante
             
-            print(f"✅ Renglón generado - Lote: {lote} | Modelo: {codigo_modelo} | QTY: {faltante}")
+            print(f" Renglón generado - Lote: {lote} | Modelo: {codigo_modelo} | QTY: {faltante}")
         
         # 6. GUARDAR SI NO ES DRY_RUN
         if not dry_run and renglones_plan:
@@ -4763,7 +6482,7 @@ def api_generar_plan_smd():
                     execute_query(query_insert, params_insert)
                     renglones_guardados += 1
                 
-                print(f"💾 Plan guardado: {renglones_guardados} renglones")
+                print(f" Plan guardado: {renglones_guardados} renglones")
                 
             except Exception as e:
                 incidencias.append({
@@ -4791,7 +6510,7 @@ def api_generar_plan_smd():
         return jsonify(resumen)
         
     except Exception as e:
-        print(f"❌ Error en Agente PLAN SMD: {e}")
+        print(f" Error en Agente PLAN SMD: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/control_proceso/control_produccion_smt')
@@ -5122,12 +6841,12 @@ def historial_tension_mask_metal_ajax():
 def inventario_imd_terminado_ajax():
     """Ruta AJAX para cargar dinámicamente el contenido de Inventario IMD Terminado"""
     try:
-        print("🔍 Iniciando carga de Inventario IMD Terminado AJAX...")
+        print(" Iniciando carga de Inventario IMD Terminado AJAX...")
         result = render_template('Control de proceso/inventario_imd_terminado_ajax.html')
         print(f" Template Inventario IMD Terminado AJAX renderizado exitosamente, tamaño: {len(result)} caracteres")
         return result
     except Exception as e:
-        print(f"❌ Error al cargar template Inventario IMD Terminado AJAX: {e}")
+        print(f" Error al cargar template Inventario IMD Terminado AJAX: {e}")
         import traceback
         traceback.print_exc()
         return f"Error al cargar el contenido: {str(e)}", 500
@@ -5255,7 +6974,7 @@ def consultar_especificacion_por_numero_parte():
                 'error': 'Número de parte requerido'
             }), 400
         
-        print(f"🔍 Consultando especificación para número de parte: {numero_parte}")
+        print(f" Consultando especificación para número de parte: {numero_parte}")
         
         # Consultar en la tabla de materiales usando get_db_connection
         conn = get_db_connection()
@@ -5278,7 +6997,7 @@ def consultar_especificacion_por_numero_parte():
             else:
                 parametro = numero_parte
                 
-            print(f"🔍 Ejecutando consulta: {consulta} con parámetro: {parametro}")
+            print(f" Ejecutando consulta: {consulta} con parámetro: {parametro}")
             
             try:
                 cursor.execute(consulta, (parametro,))
@@ -5288,11 +7007,11 @@ def consultar_especificacion_por_numero_parte():
                     material_encontrado = result
                     break
             except Exception as consulta_error:
-                print(f"❌ Error en consulta: {consulta_error}")
+                print(f" Error en consulta: {consulta_error}")
                 continue
         
         if not material_encontrado:
-            print(f"❌ No se encontró material con número de parte: {numero_parte}")
+            print(f" No se encontró material con número de parte: {numero_parte}")
             conn.close()
             return jsonify({
                 'success': False,
@@ -5365,7 +7084,7 @@ def consultar_especificacion_por_numero_parte():
             })
             
     except Exception as e:
-        print(f"❌ Error consultando especificación: {str(e)}")
+        print(f" Error consultando especificación: {str(e)}")
         return jsonify({
             'success': False,
             'error': f'Error interno: {str(e)}'
@@ -5431,7 +7150,7 @@ def consultar_estatus_material():
         data = request.get_json()
         filtros = data if data else {}
         
-        print(f"🔍 Consultando estatus de material con filtros: {filtros}")
+        print(f" Consultando estatus de material con filtros: {filtros}")
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -5494,7 +7213,7 @@ def consultar_estatus_material():
         })
         
     except Exception as e:
-        print(f"❌ Error al consultar estatus de material: {e}")
+        print(f" Error al consultar estatus de material: {e}")
         return jsonify({
             'success': False,
             'error': f'Error al consultar estatus de material: {str(e)}'
@@ -5524,11 +7243,11 @@ def obtener_reglas_escaneo():
                 reglas = json.load(f)
             return jsonify(reglas)
         else:
-            print(f"❌ Archivo rules.json no encontrado en: {ruta_rules}")
+            print(f" Archivo rules.json no encontrado en: {ruta_rules}")
             return jsonify({}), 404
             
     except Exception as e:
-        print(f"❌ Error al cargar reglas de escaneo: {str(e)}")
+        print(f" Error al cargar reglas de escaneo: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # === BUSCAR POR CODIGO MATERIAL RECIBIDO ===
@@ -5536,11 +7255,11 @@ def obtener_reglas_escaneo():
 @login_requerido
 def buscar_codigo_recibido():
     codigo = request.args.get('codigo_material_recibido')
-    print(f"🔍 SERVER: Recibida petición para código: '{codigo}'")
-    print(f"🔍 SERVER: Usuario en sesión: {session.get('usuario', 'No logueado')}")
+    print(f" SERVER: Recibida petición para código: '{codigo}'")
+    print(f" SERVER: Usuario en sesión: {session.get('usuario', 'No logueado')}")
     
     if not codigo:
-        print("❌ SERVER: Código no proporcionado")
+        print(" SERVER: Código no proporcionado")
         return jsonify({'success': False, 'error': 'Código no proporcionado'})
     
     conn = None
@@ -5549,7 +7268,7 @@ def buscar_codigo_recibido():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        print(f"🔍 SERVER: Buscando en BD: {codigo}")
+        print(f" SERVER: Buscando en BD: {codigo}")
         cursor.execute('SELECT * FROM control_material_almacen WHERE codigo_material_recibido = %s', (codigo,))
         row = cursor.fetchone()
         
@@ -5561,7 +7280,7 @@ def buscar_codigo_recibido():
             print(f"📦 SERVER: Datos encontrados: {registro}")
             return jsonify({'success': True, 'registro': registro})
         else:
-            print("❌ SERVER: Código no encontrado en almacén")
+            print(" SERVER: Código no encontrado en almacén")
             return jsonify({'success': False, 'error': 'Código no encontrado en almacén'})
             
     except Exception as e:
@@ -5683,7 +7402,7 @@ def consultar_historial_salidas():
         numero_lote = request.args.get('numero_lote', '').strip()
         codigo_material = request.args.get('codigo_material', '').strip()
         
-        print(f"🔍 Filtros recibidos - fecha_desde: {fecha_inicio}, fecha_hasta: {fecha_fin}, codigo_material: {codigo_material}, numero_lote: {numero_lote}")
+        print(f" Filtros recibidos - fecha_desde: {fecha_inicio}, fecha_hasta: {fecha_fin}, codigo_material: {codigo_material}, numero_lote: {numero_lote}")
         
         # Crear clave de caché simple
         cache_key = f"{fecha_inicio}_{fecha_fin}_{codigo_material}_{numero_lote}"
@@ -5733,7 +7452,7 @@ def consultar_historial_salidas():
         query += ' ORDER BY s.fecha_salida DESC LIMIT 500'
         
         print(f"✓ SQL Query ULTRA-OPTIMIZADO: {query}")
-        print(f"📊 SQL Params: {params}")
+        print(f" SQL Params: {params}")
         
         cursor.execute(query, params)
         resultados = cursor.fetchall()
@@ -5787,7 +7506,7 @@ def consultar_historial_salidas():
         else:
             total_registros = total_count[0] if total_count else 0
         
-        print(f"📊 Consulta completada: {len(datos)} registros mostrados, {total_registros} registros totales")
+        print(f" Consulta completada: {len(datos)} registros mostrados, {total_registros} registros totales")
         
         # Devolver tanto los datos como el conteo total
         return jsonify({
@@ -5838,7 +7557,7 @@ def buscar_material_por_codigo():
         cantidad_original = float(material['cantidad_actual'])
         stock_disponible = cantidad_original - total_salidas
         
-        print(f"📊 STOCK CALCULADO para {codigo_recibido} (MySQL):")
+        print(f" STOCK CALCULADO para {codigo_recibido} (MySQL):")
         print(f"   - Cantidad original: {cantidad_original}")
         print(f"   - Total salidas: {total_salidas}")
         print(f"   - Stock disponible: {stock_disponible}")
@@ -5880,7 +7599,7 @@ def buscar_material_por_codigo():
         return jsonify({'success': True, 'material': material_data})
     
     except Exception as e:
-        print(f"❌ ERROR en buscar_material_por_codigo (MySQL): {str(e)}")
+        print(f" ERROR en buscar_material_por_codigo (MySQL): {str(e)}")
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
 
 @app.route('/verificar_stock_rapido', methods=['GET'])
@@ -5947,7 +7666,7 @@ def verificar_stock_rapido():
         })
         
     except Exception as e:
-        print(f"❌ ERROR en verificar_stock_rapido: {str(e)}")
+        print(f" ERROR en verificar_stock_rapido: {str(e)}")
         return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
 
 @app.route('/procesar_salida_material', methods=['POST'])
@@ -5989,7 +7708,7 @@ def procesar_salida_material():
         # Calcular stock disponible real
         stock_disponible = cantidad_original - total_salidas_previas
         
-        print(f"📊 VERIFICACIÓN STOCK PARA SALIDA {codigo_recibido} (MySQL):")
+        print(f" VERIFICACIÓN STOCK PARA SALIDA {codigo_recibido} (MySQL):")
         print(f"   - Cantidad original: {cantidad_original}")
         print(f"   - Salidas previas: {total_salidas_previas}")
         print(f"   - Stock disponible: {stock_disponible}")
@@ -6039,9 +7758,9 @@ def procesar_salida_material():
                     if resultado:
                         print(f" BACKGROUND (MySQL): Inventario actualizado exitosamente: -{cantidad_salida} para {numero_parte}")
                     else:
-                        print(f"❌ BACKGROUND (MySQL): Error al actualizar inventario para {numero_parte}")
+                        print(f" BACKGROUND (MySQL): Error al actualizar inventario para {numero_parte}")
             except Exception as e:
-                print(f"❌ BACKGROUND ERROR (MySQL): {e}")
+                print(f" BACKGROUND ERROR (MySQL): {e}")
         
         # Ejecutar actualización de inventario en hilo separado
         if numero_parte:
@@ -6064,7 +7783,7 @@ def procesar_salida_material():
         })
         
     except Exception as e:
-        print(f"❌ ERROR GENERAL en procesar_salida_material (MySQL): {e}")
+        print(f" ERROR GENERAL en procesar_salida_material (MySQL): {e}")
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
 
 @app.route('/forzar_actualizacion_inventario/<numero_parte>', methods=['POST'])
@@ -6123,7 +7842,7 @@ def forzar_actualizacion_inventario(numero_parte):
         })
         
     except Exception as e:
-        print(f"❌ ERROR al forzar actualización de inventario: {e}")
+        print(f" ERROR al forzar actualización de inventario: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
         print(f"Error al procesar salida de material: {str(e)}")
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
@@ -6189,7 +7908,7 @@ def recalcular_inventario_general_endpoint():
         cursor.close()
         connection.close()
         
-        print(f"✅ Inventario consolidado recalculado: {filas_afectadas} números de parte actualizados")
+        print(f" Inventario consolidado recalculado: {filas_afectadas} números de parte actualizados")
         
         return jsonify({
             'success': True,
@@ -6327,8 +8046,8 @@ def imprimir_zebra():
             
     except Exception as e:
         error_msg = f'Error interno del servidor: {str(e)}'
-        print(f"❌ ZT230 CRITICAL ERROR: {error_msg}")
-        print(f"❌ ZT230 TRACEBACK: {traceback.format_exc()}")
+        print(f" ZT230 CRITICAL ERROR: {error_msg}")
+        print(f" ZT230 TRACEBACK: {traceback.format_exc()}")
         
         return jsonify({
             'success': False,
@@ -6378,7 +8097,7 @@ def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
             print(" ZEBRA RED: Etiqueta enviada exitosamente")
             
             # Log del evento
-            print(f"📊 ZEBRA LOG: {obtener_fecha_hora_mexico()} - Usuario: {session.get('usuario')} - Código: {codigo} - IP: {ip_impresora}")
+            print(f" ZEBRA LOG: {obtener_fecha_hora_mexico()} - Usuario: {session.get('usuario')} - Código: {codigo} - IP: {ip_impresora}")
             
             return jsonify({
                 'success': True,
@@ -6426,7 +8145,7 @@ def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
         
     except Exception as e:
         error_msg = f'Error en impresión por red: {str(e)}'
-        print(f"❌ ZEBRA RED CRITICAL ERROR: {error_msg}")
+        print(f" ZEBRA RED CRITICAL ERROR: {error_msg}")
         
         return jsonify({
             'success': False,
@@ -6465,7 +8184,7 @@ def imprimir_etiqueta_qr():
         # Log del intento de impresión
         timestamp = obtener_fecha_hora_mexico().isoformat()
         usuario = session.get('usuario', 'unknown')
-        print(f"📊 PRINT LOG: {timestamp} - User: {usuario} - Code: {codigo} - Method: {metodo}")
+        print(f" PRINT LOG: {timestamp} - User: {usuario} - Code: {codigo} - Method: {metodo}")
         
         if metodo == 'usb':
             return imprimir_directo_usb(comando_zpl, codigo)
@@ -6474,8 +8193,8 @@ def imprimir_etiqueta_qr():
             
     except Exception as e:
         error_msg = f'Error en impresión directa: {str(e)}'
-        print(f"❌ IMPRESIÓN DIRECTA ERROR: {error_msg}")
-        print(f"❌ TRACEBACK: {traceback.format_exc()}")
+        print(f" IMPRESIÓN DIRECTA ERROR: {error_msg}")
+        print(f" TRACEBACK: {traceback.format_exc()}")
         
         return jsonify({
             'success': False,
@@ -6507,7 +8226,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(comando_zpl)
         
-        print(f"📄 Archivo creado: {filepath}")
+        print(f" Archivo creado: {filepath}")
         
         # MÉTODO 1: Intentar impresión directa usando copy command a puerto LPT1
         try:
@@ -6582,7 +8301,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
             print(f" PowerShell falló: {str(e3)}")
         
         # MÉTODO 4: Fallback - crear archivo y abrir carpeta
-        print("📁 Fallback: Creando archivo para impresión manual...")
+        print(" Fallback: Creando archivo para impresión manual...")
         
         try:
             os.startfile(temp_dir)
@@ -6605,7 +8324,7 @@ def imprimir_directo_usb(comando_zpl, codigo):
         
     except Exception as e:
         error_msg = f'Error en impresión USB directa: {str(e)}'
-        print(f"❌ USB DIRECTO ERROR: {error_msg}")
+        print(f" USB DIRECTO ERROR: {error_msg}")
         
         return jsonify({
             'success': False,
@@ -6653,7 +8372,7 @@ def imprimir_directo_red(comando_zpl, codigo, ip):
         
     except Exception as e:
         error_msg = f'Error de conexión de red: {str(e)}'
-        print(f"❌ RED DIRECTA ERROR: {error_msg}")
+        print(f" RED DIRECTA ERROR: {error_msg}")
         
         return jsonify({
             'success': False,
@@ -6984,7 +8703,7 @@ def obtener_historial_numero_parte():
         })
         
     except Exception as e:
-        print(f"❌ Error al obtener historial: {e}")
+        print(f" Error al obtener historial: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -7010,7 +8729,7 @@ def obtener_historial_numero_parte_get(numero_parte):
                 'error': 'Número de parte requerido'
             }), 400
         
-        print(f"🔍 Consultando historial GET para número de parte: {numero_parte}")
+        print(f" Consultando historial GET para número de parte: {numero_parte}")
         
         from .db import is_mysql_connection
         using_mysql = is_mysql_connection()
@@ -7179,7 +8898,7 @@ def obtener_historial_numero_parte_get(numero_parte):
         })
         
     except Exception as e:
-        print(f"❌ Error al obtener historial GET: {e}")
+        print(f" Error al obtener historial GET: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -7208,7 +8927,7 @@ def obtener_lotes_numero_parte():
                 'error': 'Número de parte requerido'
             }), 400
         
-        print(f"🔍 Consultando lotes para número de parte: {numero_parte}")
+        print(f" Consultando lotes para número de parte: {numero_parte}")
         
         from .db import is_mysql_connection
         using_mysql = is_mysql_connection()
@@ -7284,7 +9003,7 @@ def obtener_lotes_numero_parte():
         
         rows = cursor.fetchall()
         
-        print(f"🔍 Lotes encontrados: {len(rows) if rows else 0}")
+        print(f" Lotes encontrados: {len(rows) if rows else 0}")
         
         lotes = []
         for row in rows:
@@ -7320,7 +9039,7 @@ def obtener_lotes_numero_parte():
                             'ubicacion_salida': row[7] or ''
                         })
             except Exception as row_error:
-                print(f"❌ Error procesando lote: {row_error}")
+                print(f" Error procesando lote: {row_error}")
                 continue
         
         print(f" Lotes disponibles: {len(lotes)} para {numero_parte}")
@@ -7333,7 +9052,7 @@ def obtener_lotes_numero_parte():
         })
         
     except Exception as e:
-        print(f"❌ Error al consultar lotes: {e}")
+        print(f" Error al consultar lotes: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -7359,7 +9078,7 @@ def obtener_lotes_numero_parte_get(numero_parte):
                 'error': 'Número de parte requerido'
             }), 400
         
-        print(f"🔍 Consultando lotes GET para número de parte: {numero_parte}")
+        print(f" Consultando lotes GET para número de parte: {numero_parte}")
         
         from .db import is_mysql_connection
         using_mysql = is_mysql_connection()
@@ -7435,7 +9154,7 @@ def obtener_lotes_numero_parte_get(numero_parte):
         
         rows = cursor.fetchall()
         
-        print(f"🔍 Lotes encontrados: {len(rows) if rows else 0}")
+        print(f" Lotes encontrados: {len(rows) if rows else 0}")
         
         lotes = []
         for row in rows:
@@ -7471,7 +9190,7 @@ def obtener_lotes_numero_parte_get(numero_parte):
                             'ubicacion_salida': row[7] or ''
                         })
             except Exception as row_error:
-                print(f"❌ Error procesando lote: {row_error}")
+                print(f" Error procesando lote: {row_error}")
                 continue
         
         print(f" Lotes disponibles: {len(lotes)} para {numero_parte}")
@@ -7484,7 +9203,7 @@ def obtener_lotes_numero_parte_get(numero_parte):
         })
         
     except Exception as e:
-        print(f"❌ Error al consultar lotes GET: {e}")
+        print(f" Error al consultar lotes GET: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -7729,10 +9448,10 @@ def get_csv_data():
     """API para obtener datos SMT desde MySQL (no archivos CSV)"""
     try:
         folder = request.args.get('folder', '')
-        print(f"🔍 Solicitud recibida para carpeta: '{folder}'")
+        print(f" Solicitud recibida para carpeta: '{folder}'")
         
         if not folder:
-            print("❌ No se proporcionó parámetro de carpeta")
+            print(" No se proporcionó parámetro de carpeta")
             return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
         
         # Conectar a MySQL directamente
@@ -7750,7 +9469,7 @@ def get_csv_data():
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
         
-        print(f"🔍 Consultando datos SMT desde MySQL para carpeta: {folder}")
+        print(f" Consultando datos SMT desde MySQL para carpeta: {folder}")
         
         # Query para obtener datos de la tabla MySQL
         query = """
@@ -7823,8 +9542,8 @@ def get_csv_data():
         })
         
     except Exception as e:
-        print(f"❌ Error obteniendo datos desde MySQL: {e}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f" Error obteniendo datos desde MySQL: {e}")
+        print(f" Traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False, 
             'error': f'Error al consultar base de datos MySQL: {str(e)}'
@@ -7837,10 +9556,10 @@ def get_csv_stats():
     """API para obtener estadísticas SMT desde MySQL (no archivos CSV)"""
     try:
         folder = request.args.get('folder', '')
-        print(f"🔍 Solicitud recibida para estadísticas de carpeta: '{folder}'")
+        print(f" Solicitud recibida para estadísticas de carpeta: '{folder}'")
         
         if not folder:
-            print("❌ No se proporcionó parámetro de carpeta")
+            print(" No se proporcionó parámetro de carpeta")
             return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
         
         # Conectar a MySQL directamente
@@ -7858,7 +9577,7 @@ def get_csv_stats():
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
         
-        print(f"🔍 Consultando estadísticas SMT desde MySQL para carpeta: {folder}")
+        print(f" Consultando estadísticas SMT desde MySQL para carpeta: {folder}")
         
         # Query para obtener estadísticas de la tabla MySQL
         query = """
@@ -7892,7 +9611,7 @@ def get_csv_stats():
         cursor.close()
         conn.close()
         
-        print(f"📊 Estadísticas obtenidas: {stats['total_records']} registros de {stats['total_files']} archivos")
+        print(f" Estadísticas obtenidas: {stats['total_records']} registros de {stats['total_files']} archivos")
         
         return jsonify({
             'success': True,
@@ -7911,21 +9630,21 @@ def get_csv_stats():
         })
         
     except Exception as e:
-        print(f"❌ Error obteniendo estadísticas desde MySQL: {e}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f" Error obteniendo estadísticas desde MySQL: {e}")
+        print(f" Traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False, 
             'error': f'Error al consultar estadísticas MySQL: {str(e)}'
         }), 500
 
-        print(f"📁 Encontrados {len(csv_files)} archivos CSV")
+        print(f" Encontrados {len(csv_files)} archivos CSV")
         
         # Leer y combinar todos los archivos CSV
         all_data = []
         
         for csv_file in csv_files:
             try:
-                print(f"📄 Leyendo archivo: {os.path.basename(csv_file)} (tamaño: {os.path.getsize(csv_file)} bytes)")
+                print(f" Leyendo archivo: {os.path.basename(csv_file)} (tamaño: {os.path.getsize(csv_file)} bytes)")
                 
                 # Intentar lectura simple primero
                 try:
@@ -7965,7 +9684,7 @@ def get_csv_stats():
                     # Leer el archivo CSV con pandas usando el contenido limpio
                     df = pd.read_csv(StringIO(cleaned_content), encoding='utf-8', on_bad_lines='skip')
                 
-                print(f"📊 DataFrame creado: {len(df)} filas, {len(df.columns)} columnas")
+                print(f" DataFrame creado: {len(df)} filas, {len(df.columns)} columnas")
                 print(f" Columnas: {list(df.columns)}")
                 
                 # Verificar que el DataFrame tenga las columnas esperadas
@@ -7997,14 +9716,14 @@ def get_csv_stats():
                     cleaned_record['SourceFile'] = os.path.basename(csv_file)
                     cleaned_data.append(cleaned_record)
                 
-                print(f"💾 Datos procesados y limpiados: {len(cleaned_data)} registros del archivo {os.path.basename(csv_file)}")
+                print(f" Datos procesados y limpiados: {len(cleaned_data)} registros del archivo {os.path.basename(csv_file)}")
                 all_data.extend(cleaned_data)
                 
             except Exception as file_error:
-                print(f"❌ Error definitivo leyendo {csv_file}: {str(file_error)}")
-                print(f"❌ Tipo de error: {type(file_error).__name__}")
+                print(f" Error definitivo leyendo {csv_file}: {str(file_error)}")
+                print(f" Tipo de error: {type(file_error).__name__}")
                 import traceback
-                print(f"❌ Traceback: {traceback.format_exc()}")
+                print(f" Traceback: {traceback.format_exc()}")
                 continue
         
         if not all_data:
@@ -8025,8 +9744,8 @@ def get_csv_stats():
         })
         
     except Exception as e:
-        print(f"❌ Error obteniendo datos CSV: {e}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f" Error obteniendo datos CSV: {e}")
+        print(f" Traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False, 
             'error': f'Error al acceder a los archivos CSV: {str(e)}'
@@ -8047,8 +9766,8 @@ def filter_csv_data():
         if not folder:
             return jsonify({'success': False, 'error': 'Folder parameter required'}), 400
         
-        print(f"🔍 Filtrando datos MySQL para carpeta: {folder}")
-        print(f"🔍 Filtros: partName={part_name}, result={result}, dateFrom={date_from}, dateTo={date_to}")
+        print(f" Filtrando datos MySQL para carpeta: {folder}")
+        print(f" Filtros: partName={part_name}, result={result}, dateFrom={date_from}, dateTo={date_to}")
         
         # Conectar a MySQL directamente
         import mysql.connector
@@ -8113,7 +9832,7 @@ def filter_csv_data():
         cursor.execute(query, params)
         resultados = cursor.fetchall()
         
-        print(f"📊 Encontrados {len(resultados)} registros con filtros aplicados")
+        print(f" Encontrados {len(resultados)} registros con filtros aplicados")
         
         # Convertir datos para JSON y mapear nombres para compatibilidad
         filtered_data = []
@@ -8164,8 +9883,8 @@ def filter_csv_data():
         })
         
     except Exception as e:
-        print(f"❌ Error filtrando datos desde MySQL: {e}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f" Error filtrando datos desde MySQL: {e}")
+        print(f" Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': f'Error al filtrar datos MySQL: {str(e)}'}), 500
 
 
@@ -8348,8 +10067,8 @@ def guardar_regla_trazabilidad():
         })
         
     except Exception as e:
-        print(f"❌ Error guardando regla de trazabilidad: {e}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f" Error guardando regla de trazabilidad: {e}")
+        print(f" Traceback: {traceback.format_exc()}")
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # ===================================================================
@@ -8360,7 +10079,7 @@ def guardar_regla_trazabilidad():
 @login_requerido
 def control_salida_estado():
     """
-    🔍 Obtener estado general del módulo Control de Salida
+     Obtener estado general del módulo Control de Salida
     
     Retorna:
     - Estadísticas del día
@@ -8405,7 +10124,7 @@ def control_salida_estado():
         })
         
     except Exception as e:
-        print(f"❌ Error obteniendo estado Control de Salida: {e}")
+        print(f" Error obteniendo estado Control de Salida: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/control_salida/configuracion', methods=['GET', 'POST'])
@@ -8458,14 +10177,14 @@ def control_salida_configuracion():
             })
             
     except Exception as e:
-        print(f"❌ Error en configuración Control de Salida: {e}")
+        print(f" Error en configuración Control de Salida: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/control_salida/validar_stock', methods=['POST'])
 @login_requerido
 def control_salida_validar_stock():
     """
-    📊 Validar stock disponible antes de procesar salida
+     Validar stock disponible antes de procesar salida
     
     Útil para validaciones rápidas sin procesar la salida
     """
@@ -8522,7 +10241,7 @@ def control_salida_validar_stock():
         })
         
     except Exception as e:
-        print(f"❌ Error validando stock: {e}")
+        print(f" Error validando stock: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/control_salida/reporte_diario', methods=['GET'])
@@ -8591,7 +10310,7 @@ def control_salida_reporte_diario():
         return jsonify({'success': False, 'error': 'Formato no soportado aún'}), 400
     
     except Exception as e:
-        print(f"❌ Error generando reporte diario: {e}")
+        print(f" Error generando reporte diario: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -8659,9 +10378,9 @@ def importar_excel_plan_produccion():
         # Obtener fecha de operación seleccionada por el usuario
         fecha_operacion_usuario = request.form.get('fecha_operacion', '').strip()
         if fecha_operacion_usuario:
-            print(f"📅 Fecha de operación personalizada seleccionada: {fecha_operacion_usuario}")
+            print(f" Fecha de operación personalizada seleccionada: {fecha_operacion_usuario}")
         else:
-            print("📅 Usando fechas del Excel o fecha actual como respaldo")
+            print(" Usando fechas del Excel o fecha actual como respaldo")
         
         # Función auxiliar para obtener nombre del modelo desde raw
         def obtener_nombre_modelo(codigo_modelo):
@@ -8688,7 +10407,7 @@ def importar_excel_plan_produccion():
             cursor.execute("SHOW COLUMNS FROM work_orders LIKE 'linea'")
             if not cursor.fetchone():
                 cursor.execute("ALTER TABLE work_orders ADD COLUMN linea VARCHAR(32)")
-                print("✅ Columna 'linea' agregada a work_orders")
+                print(" Columna 'linea' agregada a work_orders")
         except Exception as e:
             print(f"Error agregando columna linea: {e}")
         
@@ -8886,7 +10605,7 @@ def importar_excel_plan_produccion():
 @login_requerido
 def control_salida_test_connection():
     """
-    🧪 Probar conexión y funcionalidad básica del módulo
+     Probar conexión y funcionalidad básica del módulo
     """
     try:
         tests = []
@@ -8939,7 +10658,7 @@ def control_salida_test_connection():
         })
         
     except Exception as e:
-        print(f"❌ Error en test de conexión: {e}")
+        print(f" Error en test de conexión: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Rutas de importación AJAX para todas las secciones de material
@@ -9833,7 +11552,7 @@ def api_plan_smd_import():
         })
         
     except Exception as e:
-        print(f"❌ Error importando plan SMD: {e}")
+        print(f" Error importando plan SMD: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/inventario', methods=['GET'])
@@ -9890,7 +11609,7 @@ def api_inventario():
                 })
         
     except Exception as e:
-        print(f"❌ Error consultando inventario: {e}")
+        print(f" Error consultando inventario: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/plan-micom/generar', methods=['POST'])
@@ -9943,7 +11662,7 @@ def api_plan_micom_generar():
         })
         
     except Exception as e:
-        print(f"❌ Error generando plan MICOM: {e}")
+        print(f" Error generando plan MICOM: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================================================
@@ -9980,7 +11699,7 @@ def api_historial_cambio_material_maquina():
         date_to = request.args.get('date_to', '')
         part_name = request.args.get('part_name', '')
         
-        print(f"🔍 API Historial cambio material - Filtros:")
+        print(f" API Historial cambio material - Filtros:")
         print(f"  Equipment: {equipment}")
         print(f"  Slot No: {slot_no}")
         print(f"  Date From: {date_from}")
@@ -10022,7 +11741,7 @@ def api_historial_cambio_material_maquina():
         cursor.execute(query, [default_date])
         resultados = cursor.fetchall()
         
-        print(f"📊 Encontrados {len(resultados)} registros en historial cambio material")
+        print(f" Encontrados {len(resultados)} registros en historial cambio material")
         
         # Formatear datos para la tabla de manera más segura
         formatted_data = []
@@ -10069,7 +11788,7 @@ def api_historial_cambio_material_maquina():
                 formatted_data.append(formatted_row)
                 
             except Exception as row_error:
-                print(f"❌ Error procesando fila {i}: {row_error}")
+                print(f" Error procesando fila {i}: {row_error}")
                 continue
         
         cursor.close()
@@ -10085,8 +11804,8 @@ def api_historial_cambio_material_maquina():
         })
         
     except Exception as e:
-        print(f"❌ Error en API historial cambio material: {e}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
+        print(f" Error en API historial cambio material: {e}")
+        print(f" Traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -10521,8 +12240,8 @@ def api_get_metal_mask_history():
         })
         
     except Exception as e:
-        print('❌ Error en api_get_metal_mask_history:', e)
-        print('❌ Traceback completo:')
+        print(' Error en api_get_metal_mask_history:', e)
+        print(' Traceback completo:')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -10604,7 +12323,7 @@ def api_update_metal_mask_used_count():
             
             if cursor.rowcount > 0:
                 updated_count += cursor.rowcount
-                print(f"✅ Metal Mask {mask_code} - used_count incrementado en {cantidad_producida}")
+                print(f" Metal Mask {mask_code} - used_count incrementado en {cantidad_producida}")
         
         # 4. Registrar el update en el historial para cada mask actualizada
         for mask_code in mask_codes:
@@ -10645,7 +12364,7 @@ def api_update_metal_mask_used_count():
         })
         
     except Exception as e:
-        print('❌ Error actualizando used_count:', e)
+        print(' Error actualizando used_count:', e)
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -11034,7 +12753,7 @@ def mysql_proxy_php():
         return send_from_directory(php_dir, php_file)
         
     except Exception as e:
-        print(f"❌ Error sirviendo mysql-proxy.php: {e}")
+        print(f" Error sirviendo mysql-proxy.php: {e}")
         response = jsonify({
             'success': False,
             'error': f'Error del servidor: {str(e)}'
@@ -11074,7 +12793,7 @@ def api_mysql_simple():
             sql_query = 'SELECT COUNT(*) as total_materiales FROM materiales'
             print(f"⚠️ No se proporcionó SQL, usando consulta por defecto: {sql_query}")
         
-        print(f"🔍 Ejecutando consulta API simple: {sql_query}")
+        print(f" Ejecutando consulta API simple: {sql_query}")
         
         # Validaciones básicas de seguridad
         sql_upper = sql_query.upper()
@@ -11099,11 +12818,11 @@ def api_mysql_simple():
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
         
-        print(f"✅ API Simple - Consulta exitosa: {len(result) if result else 0} registros")
+        print(f" API Simple - Consulta exitosa: {len(result) if result else 0} registros")
         return response
         
     except Exception as e:
-        print(f"❌ Error en API MySQL Simple: {e}")
+        print(f" Error en API MySQL Simple: {e}")
         
         error_response = jsonify({
             'success': False,
@@ -11241,7 +12960,7 @@ def api_plan_smd_diario():
         return jsonify(rows)
     
     except Exception as e:
-        print(f"❌ Error en api_plan_smd_diario: {e}")
+        print(f" Error en api_plan_smd_diario: {e}")
         return jsonify({"error": f"Error en consulta: {str(e)}"}), 500
 
 # ===== VISOR MYSQL =====
@@ -11308,7 +13027,7 @@ def api_mysql_columns():
             return jsonify({"table": table, "columns": []})
             
     except Exception as e:
-        print(f"❌ Error en api_mysql_columns: {e}")
+        print(f" Error en api_mysql_columns: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/mysql/data')
@@ -11393,7 +13112,7 @@ def api_mysql_data():
         })
         
     except Exception as e:
-        print(f"❌ Error en api_mysql_data: {e}")
+        print(f" Error en api_mysql_data: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/mysql/update', methods=['POST'])
@@ -11526,7 +13245,7 @@ def api_mysql_update():
             return jsonify({"error": "No se pudo actualizar el registro"}), 500
             
     except Exception as e:
-        print(f"❌ Error en api_mysql_update: {e}")
+        print(f" Error en api_mysql_update: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
@@ -11609,7 +13328,7 @@ def api_mysql_create():
             return jsonify({"error": "No se pudo crear el registro"}), 500
             
     except Exception as e:
-        print(f"❌ Error en api_mysql_create: {e}")
+        print(f" Error en api_mysql_create: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
@@ -11627,7 +13346,7 @@ def api_mysql_usuario_actual():
             "usuario_display": nombre_completo  # El nombre que se mostrará en la UI
         })
     except Exception as e:
-        print(f"❌ Error en api_mysql_usuario_actual: {e}")
+        print(f" Error en api_mysql_usuario_actual: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/mysql/delete', methods=['POST'])
@@ -11690,7 +13409,7 @@ def api_mysql_delete():
             return jsonify({"error": "No se pudo eliminar el registro"}), 500
             
     except Exception as e:
-        print(f"❌ Error en api_mysql_delete: {e}")
+        print(f" Error en api_mysql_delete: {e}")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 def crear_tabla_plan_smd_runs():
@@ -11750,7 +13469,10 @@ def crear_tabla_plan_smd_runs():
     except Exception as e:
         print(f"⚠️  Error creando tabla plan_smd_runs (continuando): {str(e)[:100]}")
 
-crear_tabla_plan_smd_runs()
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando crear_tabla_plan_smd_runs()")
+    crear_tabla_plan_smd_runs()
+    _startup_log("crear_tabla_plan_smd_runs() completado")
 
 @app.route('/api/plan-smd/list', methods=['GET'])
 def api_plan_smd_list():
@@ -12056,7 +13778,7 @@ def api_plan_run_start():
         run = execute_query("SELECT * FROM plan_smd_runs WHERE lot_no=%s", (lot_no,), fetch='one')
         return jsonify({'success': True, 'run': run})
     except Exception as e:
-        print(f"❌ Error en api_plan_run_start: {e}")
+        print(f" Error en api_plan_run_start: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -12134,7 +13856,7 @@ def api_plan_run_end():
             print(f"⚠️ Error actualizando trazabilidad (FINALIZADO): {e2}")
         return jsonify({'success': True, 'run': run})
     except Exception as e:
-        print(f"❌ Error en api_plan_run_end: {e}")
+        print(f" Error en api_plan_run_end: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -12231,7 +13953,7 @@ def api_plan_run_status():
             producido = int(min(qty_plan, uph * elapsed_hours))
         return jsonify({'success': True, 'running': row['status']=='RUNNING', 'run': row, 'producido_est': producido})
     except Exception as e:
-        print(f"❌ Error en api_plan_run_status: {e}")
+        print(f" Error en api_plan_run_status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 def crear_tabla_trazabilidad():
     """Crear tabla de trazabilidad (LOTE por WO/LINEA con estados)."""
@@ -12255,9 +13977,12 @@ def crear_tabla_trazabilidad():
         execute_query(query)
         print(" Tabla trazabilidad creada/verificada")
     except Exception as e:
-        print(f"❌ Error creando tabla trazabilidad: {e}")
+        print(f" Error creando tabla trazabilidad: {e}")
 
-crear_tabla_trazabilidad()
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando crear_tabla_trazabilidad()")
+    crear_tabla_trazabilidad()
+    _startup_log("crear_tabla_trazabilidad() completado")
 
 
 ###############################################
@@ -12325,7 +14050,10 @@ def init_metal_mask_tables():
 
 
 # Inicializar tablas de Metal Mask
-init_metal_mask_tables()
+if STARTUP_INIT_ENABLED:
+    _startup_log("Iniciando init_metal_mask_tables()")
+    init_metal_mask_tables()
+    _startup_log("init_metal_mask_tables() completado")
 
 
 # Poginas nuevas (HTML integrados)

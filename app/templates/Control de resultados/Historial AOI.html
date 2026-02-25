@@ -509,7 +509,7 @@
         aoiEventListeners = [];
         
         isModuleInitialized = false;
-        console.log('✅ Módulo Historial AOI limpiado');
+        console.log(' Módulo Historial AOI limpiado');
     }
     
     // Función principal de inicialización
@@ -519,7 +519,7 @@
             cleanupModule();
         }
         
-        console.log('✅ Inicializando Historial AOI...');
+        console.log(' Inicializando Historial AOI...');
         isModuleInitialized = true;
         
         // Configurar event listeners
@@ -564,7 +564,7 @@
                 if (mutation.type === 'childList') {
                     const aoiRoot = document.getElementById('aoi-root');
                     if (aoiRoot && !isModuleInitialized) {
-                        console.log('🔍 Detectado contenido dinámico AOI, inicializando...');
+                        console.log(' Detectado contenido dinámico AOI, inicializando...');
                         setTimeout(inicializarModulo, 200);
                     }
                 }

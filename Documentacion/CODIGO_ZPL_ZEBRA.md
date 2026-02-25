@@ -204,7 +204,7 @@ CT~~CD,~CC^~CT~
 
 ---
 
-## 📊 DATOS DEL CÓDIGO QR
+##  DATOS DEL CÓDIGO QR
 
 ### Formato JSON Compacto
 ```javascript
@@ -386,7 +386,7 @@ mostrarNotificacionImpresion('Mensaje', 'tipo');
 
 ---
 
-## 🔍 VARIABLES CRÍTICAS EN ZPL
+##  VARIABLES CRÍTICAS EN ZPL
 
 ### Siempre Presentes
 1. **CODIGO_MATERIAL** - Identificador único del material
@@ -514,12 +514,12 @@ localStorage.setItem('zebra_config', JSON.stringify({
 El sistema genera **código ZPL estándar** para impresoras Zebra ZT230, optimizado para etiquetas de material de almacén. 
 
 **Características principales:**
-- ✅ Código QR con datos compactos
-- ✅ Información legible (código, fecha, cantidad, especificación)
-- ✅ Soporte para múltiples líneas de texto
-- ✅ Configuración flexible (USB/Red)
-- ✅ Sistema de fallback robusto
-- ✅ Validación de datos antes de imprimir
+-  Código QR con datos compactos
+-  Información legible (código, fecha, cantidad, especificación)
+-  Soporte para múltiples líneas de texto
+-  Configuración flexible (USB/Red)
+-  Sistema de fallback robusto
+-  Validación de datos antes de imprimir
 
 **Archivos involucrados:**
 - `Control de material de almacen.html` (líneas 3250-3900)

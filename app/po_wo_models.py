@@ -1,7 +1,7 @@
 """
 Modelos de base de datos para el sistema PO → WO
 Basado        execute_query(query_work_orders)
-        print("✅ Tabla work_orders creada/verificada")
+        print(" Tabla work_orders creada/verificada")
         
         # Migrar tabla existente para WO independientes
         migrar_work_orders_independientes()n la especificación del agente de IA
@@ -11,6 +11,24 @@ from .db_mysql import execute_query
 from .config_mysql import get_db_connection
 from datetime import datetime, date
 import re
+import os
+
+
+def _env_flag(name, default=False):
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return str(val).strip().lower() in ('1', 'true', 'yes', 'on', 'si')
+
+
+def _should_run_startup_init():
+    if _env_flag('MES_FORCE_STARTUP_INIT', False):
+        return True
+    if _env_flag('MES_SKIP_STARTUP_INIT', False):
+        return False
+    if _env_flag('MES_USE_RELOADER', False):
+        return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+    return True
 
 def crear_tablas_po_wo():
     """Crear las tablas necesarias para el sistema PO → WO"""
@@ -68,7 +86,7 @@ def crear_tablas_po_wo():
         return True
         
     except Exception as e:
-        print(f"❌ Error creando tablas PO → WO: {e}")
+        print(f" Error creando tablas PO → WO: {e}")
         return False
 
 
@@ -80,7 +98,7 @@ def migrar_work_orders_independientes():
         # 1. Intentar eliminar foreign key si existe
         try:
             execute_query("ALTER TABLE work_orders DROP FOREIGN KEY work_orders_ibfk_1")
-            print("✅ Foreign key eliminada: work_orders_ibfk_1")
+            print(" Foreign key eliminada: work_orders_ibfk_1")
         except Exception as e:
             if "doesn't exist" in str(e).lower() or "constraint" not in str(e).lower():
                 print("ℹ️ Foreign key no existe o ya fue eliminada")
@@ -90,22 +108,22 @@ def migrar_work_orders_independientes():
         # 2. Modificar columna codigo_po para permitir valores por defecto
         try:
             execute_query("ALTER TABLE work_orders MODIFY COLUMN codigo_po VARCHAR(32) DEFAULT 'SIN-PO'")
-            print("✅ Columna codigo_po modificada: ahora permite WO independientes")
+            print(" Columna codigo_po modificada: ahora permite WO independientes")
         except Exception as e:
             print(f"⚠️ Error modificando columna codigo_po: {e}")
         
         # 3. Actualizar registros existentes que puedan tener problemas
         try:
             execute_query("UPDATE work_orders SET codigo_po = 'SIN-PO' WHERE codigo_po IS NULL OR codigo_po = ''")
-            print("✅ Registros existentes actualizados")
+            print(" Registros existentes actualizados")
         except Exception as e:
             print(f"⚠️ Error actualizando registros: {e}")
             
-        print("✅ Migración de work_orders completada")
+        print(" Migración de work_orders completada")
         return True
         
     except Exception as e:
-        print(f"❌ Error en migración de work_orders: {e}")
+        print(f" Error en migración de work_orders: {e}")
         return False
 
 def validar_codigo_po(codigo_po):
@@ -160,7 +178,7 @@ def generar_codigo_po():
         return codigo_po
         
     except Exception as e:
-        print(f"❌ Error generando código PO: {e}")
+        print(f" Error generando código PO: {e}")
         return None
 
 def generar_codigo_wo():
@@ -193,7 +211,7 @@ def generar_codigo_wo():
         return codigo_wo
         
     except Exception as e:
-        print(f"❌ Error generando código WO: {e}")
+        print(f" Error generando código WO: {e}")
         return None
 
 def verificar_po_existe(codigo_po):
@@ -203,7 +221,7 @@ def verificar_po_existe(codigo_po):
         resultado = execute_query(query, (codigo_po,), fetch='one')
         return resultado is not None
     except Exception as e:
-        print(f"❌ Error verificando existencia de PO: {e}")
+        print(f" Error verificando existencia de PO: {e}")
         return False
 
 def verificar_wo_existe(codigo_wo):
@@ -213,7 +231,7 @@ def verificar_wo_existe(codigo_wo):
         resultado = execute_query(query, (codigo_wo,), fetch='one')
         return resultado is not None
     except Exception as e:
-        print(f"❌ Error verificando existencia de WO: {e}")
+        print(f" Error verificando existencia de WO: {e}")
         return False
 
 def obtener_po_por_codigo(codigo_po):
@@ -248,7 +266,7 @@ def obtener_po_por_codigo(codigo_po):
         return None
         
     except Exception as e:
-        print(f"❌ Error obteniendo PO por código: {e}")
+        print(f" Error obteniendo PO por código: {e}")
         return None
 
 def obtener_wo_por_codigo(codigo_wo):
@@ -282,7 +300,7 @@ def obtener_wo_por_codigo(codigo_wo):
         return None
         
     except Exception as e:
-        print(f"❌ Error obteniendo WO por código: {e}")
+        print(f" Error obteniendo WO por código: {e}")
         return None
 
 def listar_pos_por_estado(estado=None):
@@ -329,7 +347,7 @@ def listar_pos_por_estado(estado=None):
         return pos
         
     except Exception as e:
-        print(f"❌ Error listando POs: {e}")
+        print(f" Error listando POs: {e}")
         return []
 
 def listar_pos_con_filtros(estado=None, fecha_desde=None, fecha_hasta=None, cliente=None):
@@ -437,7 +455,7 @@ def listar_wos_por_po(codigo_po=None):
         return wos
         
     except Exception as e:
-        print(f"❌ Error listando WOs: {e}")
+        print(f" Error listando WOs: {e}")
         return []
 
 def listar_wos_con_filtros(codigo_po=None, fecha_desde=None, fecha_hasta=None):
@@ -549,7 +567,7 @@ def listar_wos(fecha_desde=None, fecha_hasta=None):
         return wos
         
     except Exception as e:
-        print(f"❌ Error listando WOs: {e}")
+        print(f" Error listando WOs: {e}")
         return []
 
 def obtener_modelos_unicos_bom():
@@ -571,7 +589,7 @@ def obtener_modelos_unicos_bom():
         return modelos
         
     except Exception as e:
-        print(f"❌ Error obteniendo modelos de BOM: {e}")
+        print(f" Error obteniendo modelos de BOM: {e}")
         return []
 
 def migrar_tabla_embarques():
@@ -607,7 +625,7 @@ def migrar_tabla_embarques():
         print(" Migración de tabla embarques completada")
         
     except Exception as e:
-        print(f"❌ Error migrando tabla embarques: {e}")
+        print(f" Error migrando tabla embarques: {e}")
 
 def migrar_tabla_work_orders():
     """Migrar tabla work_orders para agregar nuevos campos"""
@@ -636,7 +654,7 @@ def migrar_tabla_work_orders():
         print(" Migración de tabla work_orders completada")
         
     except Exception as e:
-        print(f"❌ Error migrando tabla work_orders: {e}")
+        print(f" Error migrando tabla work_orders: {e}")
 
 def migrar_tabla_plan_main():
     """Migrar tabla plan_main para agregar columna wo_id"""
@@ -670,11 +688,14 @@ def migrar_tabla_plan_main():
         print(f"⚠️ Error migrando tabla plan_main: {e}")
 
 # Inicializar tablas al importar el módulo
-try:
-    crear_tablas_po_wo()
-    migrar_tabla_embarques()  # Migrar campos nuevos PO
-    migrar_tabla_work_orders()  # Migrar campos nuevos WO
-    migrar_tabla_plan_main()  # Migrar para agregar wo_id
-    print(" Modelos PO → WO inicializados correctamente")
-except Exception as e:
-    print(f"❌ Error inicializando modelos PO → WO: {e}")
+if _should_run_startup_init():
+    try:
+        crear_tablas_po_wo()
+        migrar_tabla_embarques()  # Migrar campos nuevos PO
+        migrar_tabla_work_orders()  # Migrar campos nuevos WO
+        migrar_tabla_plan_main()  # Migrar para agregar wo_id
+        print(" Modelos PO → WO inicializados correctamente")
+    except Exception as e:
+        print(f" Error inicializando modelos PO → WO: {e}")
+else:
+    print("[startup] Saltando init de PO/WO por configuración/reloader")

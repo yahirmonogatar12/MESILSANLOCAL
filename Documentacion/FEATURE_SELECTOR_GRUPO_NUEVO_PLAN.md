@@ -9,16 +9,16 @@ Se ha agregado un **campo de selección de grupo** al modal de "Nuevo Plan" que 
 ## ✨ Características
 
 ### Antes (Problema):
-- ❌ Al crear un nuevo plan, siempre se añadía al final de la tabla
-- ❌ Tenías que arrastrarlo manualmente hasta el grupo deseado
-- ❌ Proceso lento y tedioso especialmente con muchos grupos
+-  Al crear un nuevo plan, siempre se añadía al final de la tabla
+-  Tenías que arrastrarlo manualmente hasta el grupo deseado
+-  Proceso lento y tedioso especialmente con muchos grupos
 
 ### Después (Solución):
-- ✅ Campo nuevo: **"🎯 Asignar a Grupo"**
-- ✅ Selección directa del grupo destino (Grupo 1, Grupo 2, etc.)
-- ✅ Opción "Automático (al final)" para comportamiento original
-- ✅ El plan aparece inmediatamente en el grupo seleccionado
-- ✅ Tiempos recalculados automáticamente
+-  Campo nuevo: **"🎯 Asignar a Grupo"**
+-  Selección directa del grupo destino (Grupo 1, Grupo 2, etc.)
+-  Opción "Automático (al final)" para comportamiento original
+-  El plan aparece inmediatamente en el grupo seleccionado
+-  Tiempos recalculados automáticamente
 
 ---
 
@@ -107,7 +107,7 @@ function populateGroupSelector() {
     selectElement.appendChild(option);
   }
   
-  console.log(`✅ Selector de grupos actualizado con ${groupCount} grupos`);
+  console.log(` Selector de grupos actualizado con ${groupCount} grupos`);
 }
 ```
 
@@ -130,7 +130,7 @@ function assignPlanToGroup(lotNo, targetGroupIndex) {
   const planData = originalPlansData.find(p => p.lot_no === lotNo);
   
   if (!planData) {
-    console.error(`❌ Plan ${lotNo} no encontrado en originalPlansData`);
+    console.error(` Plan ${lotNo} no encontrado en originalPlansData`);
     return;
   }
   
@@ -150,7 +150,7 @@ function assignPlanToGroup(lotNo, targetGroupIndex) {
   // Agregar el plan al grupo destino
   visualGroups.groups[targetGroupIndex].plans.push(planData);
   
-  console.log(`✅ Plan ${lotNo} asignado al grupo ${targetGroupIndex + 1}`);
+  console.log(` Plan ${lotNo} asignado al grupo ${targetGroupIndex + 1}`);
   
   // Re-renderizar la tabla
   const allPlans = [];
@@ -248,7 +248,7 @@ window.assignPlanToGroup = assignPlanToGroup;          // ⭐ NUEVO
 
 ---
 
-## 📊 Flujo de Datos
+##  Flujo de Datos
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -304,7 +304,7 @@ window.assignPlanToGroup = assignPlanToGroup;          // ⭐ NUEVO
 
 ---
 
-## 🧪 Pruebas Recomendadas
+##  Pruebas Recomendadas
 
 ### Caso 1: Asignar a Grupo Específico
 1. Clic en "+ Nuevo Plan"
@@ -393,12 +393,12 @@ Grupo 2-6: Planes normales
 
 ## 📌 Resumen
 
-- ✅ **Funcionalidad:** Selector de grupo en modal "Nuevo Plan"
-- ✅ **Archivo:** `app/static/js/plan.js`
-- ✅ **Funciones nuevas:** `populateGroupSelector()`, `assignPlanToGroup()`
-- ✅ **Beneficio principal:** Asignación directa sin arrastrar manualmente
-- ✅ **Compatible:** Con funcionalidad de drag & drop existente
+-  **Funcionalidad:** Selector de grupo en modal "Nuevo Plan"
+-  **Archivo:** `app/static/js/plan.js`
+-  **Funciones nuevas:** `populateGroupSelector()`, `assignPlanToGroup()`
+-  **Beneficio principal:** Asignación directa sin arrastrar manualmente
+-  **Compatible:** Con funcionalidad de drag & drop existente
 
 **Fecha de Implementación:** 29 de octubre de 2025  
 **Versión:** 1.0  
-**Estado:** ✅ Completo y funcional
+**Estado:**  Completo y funcional

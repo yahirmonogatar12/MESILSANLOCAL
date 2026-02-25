@@ -57,7 +57,49 @@
         <button class="bom-btn importar" id="btnImportarExcelBOM">
             Importar al excel
         </button>
+        <button id="btnHelpImportBOM" title="Formato de Excel para importar" style="
+            width: 28px; height: 28px; border-radius: 50%; border: 2px solid #3498db;
+            background: transparent; color: #3498db; font-weight: bold; font-size: 14px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            margin-left: 4px; transition: all 0.2s;
+        ">?</button>
     </div>
+
+<!-- Modal de ayuda para formato de importacion -->
+<div id="bomImportHelpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10001; align-items:center; justify-content:center;">
+    <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; padding:24px; max-width:650px; width:90%; max-height:80vh; overflow-y:auto; color:#ecf0f1;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #444; padding-bottom:10px;">
+            <h3 style="margin:0; color:#3498db; font-size:16px;">Formato de Excel para importar BOM</h3>
+            <button id="btnCloseHelpBOM" style="background:none; border:none; color:#888; font-size:22px; cursor:pointer;">&times;</button>
+        </div>
+        <p style="color:#ccc; font-size:13px; margin-bottom:12px;">El archivo debe ser <b>.xlsx</b> o <b>.xls</b>. La primera fila debe contener los nombres de las columnas.</p>
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+                <tr style="background:#2c3e50;">
+                    <th style="padding:6px 8px; border:1px solid #444; text-align:left; color:#3498db;">Columna</th>
+                    <th style="padding:6px 8px; border:1px solid #444; text-align:center; color:#3498db; width:70px;">Requerida</th>
+                    <th style="padding:6px 8px; border:1px solid #444; text-align:left; color:#3498db;">Nombres aceptados</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td style="padding:5px 8px; border:1px solid #333; color:#e74c3c; font-weight:bold;">Modelo</td><td style="padding:5px 8px; border:1px solid #333; text-align:center; color:#e74c3c;">Si</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Modelo</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333; color:#e74c3c; font-weight:bold;">Numero de Parte</td><td style="padding:5px 8px; border:1px solid #333; text-align:center; color:#e74c3c;">Si</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Numero de Parte, Part Number</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Codigo de Material</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Codigo de Material, Material Code</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Side</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Side, Lado</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Tipo de Material</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Tipo de Material, Material Type</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Ubicacion</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Ubicacion, Location</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Classification</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Classification, Categoria, Tipo</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Proveedor</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Proveedor, Vendor, Supplier</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Cantidad Total</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Cantidad Total, Total Quantity, Cantidad, Qty</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Cantidad Original</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Cantidad Original, Original Quantity</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Descripcion</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Descripcion, Description, Especificacion</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Material Original</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Material Original</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Material Sustituto</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Material Sustituto, Substitute Material</td></tr>
+            </tbody>
+        </table>
+        <p style="color:#888; font-size:11px; margin-top:12px;">Las columnas marcadas en rojo son obligatorias. Las filas sin Modelo o Numero de Parte seran omitidas.</p>
+    </div>
+</div>
 
     <!-- Tabla de BOM -->
     <div class="bom-table-container">
@@ -90,7 +132,7 @@
 </div>
 
 <!-- Modal personalizado para mensajes -->
-<div id="customAlertModal">
+<div id="customAlertModal" style="display:none;">
     <div id="customAlertDialog" tabindex="0">
         <div id="customAlertMessage"></div>
         <button onclick="hideCustomAlert()" id="customAlertOkBtn">OK</button>
@@ -98,7 +140,7 @@
 </div>
 
 <!-- Modal de carga con progreso -->
-<div id="loadingModal">
+<div id="loadingModal" style="display:none;">
     <div id="loadingDialog">
         <div id="loadingTitle">Cargando BOM</div>
         <div id="loadingMessage">Procesando archivo Excel...</div>
@@ -169,6 +211,19 @@
                     if (fileInput) fileInput.click();
                     return;
                 }
+
+                // Boton ayuda importar
+                if (target.id === 'btnHelpImportBOM' || target.closest('#btnHelpImportBOM')) {
+                    e.preventDefault();
+                    document.getElementById('bomImportHelpModal').style.display = 'flex';
+                    return;
+                }
+                // Cerrar modal ayuda
+                if (target.id === 'btnCloseHelpBOM' || target.closest('#btnCloseHelpBOM')) {
+                    e.preventDefault();
+                    document.getElementById('bomImportHelpModal').style.display = 'none';
+                    return;
+                }
                 
                 // Dropdown items
                 if (target.classList.contains('bom-dropdown-item')) {
@@ -205,6 +260,11 @@
                 }
             });
             
+            // Cerrar modal ayuda al hacer click fuera
+            document.getElementById('bomImportHelpModal').addEventListener('click', function(e) {
+                if (e.target === this) this.style.display = 'none';
+            });
+
             // Event delegation para doble click en filas de la tabla
             document.body.addEventListener('dblclick', function(e) {
                 const row = e.target.closest('tr[data-bom-id]');
@@ -241,7 +301,7 @@
             });
             
             document.body.dataset.controlBOMListenersAttached = 'true';
-            console.log('✅ Event Listeners de Control BOM inicializados correctamente');
+            console.log(' Event Listeners de Control BOM inicializados correctamente');
         } else {
             console.log('⚠️ Event Listeners de Control BOM ya estaban inicializados');
         }
@@ -292,17 +352,17 @@
                     // Guardar en cache
                     bomDataCache = data;
                     mostrarDatosEnTabla(data);
-                    console.log(`✅ Cargados ${data.length} registros de BOM`);
+                    console.log(` Cargados ${data.length} registros de BOM`);
                 } else if (data.error) {
-                    console.error('❌ Error del servidor:', data.error);
+                    console.error(' Error del servidor:', data.error);
                     showCustomAlert('Error al cargar datos de BOM: ' + data.error);
                 } else {
-                    console.error('❌ Formato de respuesta no reconocido:', data);
+                    console.error(' Formato de respuesta no reconocido:', data);
                     showCustomAlert('Error al procesar datos de BOM: formato no válido');
                 }
             })
             .catch(error => {
-                console.error('❌ Error en la petición:', error);
+                console.error(' Error en la petición:', error);
                 showCustomAlert('Error al conectar con el servidor: ' + error.message);
             });
             return;
@@ -317,7 +377,7 @@
         const filtro = document.getElementById('bomClassificationFilter').value;
         const modeloSeleccionado = document.getElementById('bomModeloSearch').value;
         
-        console.log('🔍 Aplicando filtro:', filtro);
+        console.log(' Aplicando filtro:', filtro);
         
         // Verificar si hay un modelo seleccionado
         if (!modeloSeleccionado || modeloSeleccionado.trim() === '' || modeloSeleccionado === 'todos') {
@@ -607,16 +667,16 @@
                     summary += `<span style='font-size:0.9em;color:#b0eaff;'>${fecha} ${hora}</span><br><br>`;
                     
                     if (data.insertados !== undefined) {
-                        summary += `<span style='font-size:0.9em;color:#27ae60;'>✅ Registros procesados: ${data.insertados}</span><br>`;
+                        summary += `<span style='font-size:0.9em;color:#27ae60;'> Registros procesados: ${data.insertados}</span><br>`;
                     }
                     if (data.omitidos !== undefined && data.omitidos > 0) {
                         summary += `<span style='font-size:0.9em;color:#f39c12;'>⚠️ Filas omitidas: ${data.omitidos}</span><br>`;
                     }
                     if (data.total_procesado !== undefined) {
-                        summary += `<span style='font-size:0.85em;color:#3498db;'>📊 Total en archivo: ${data.total_procesado}</span><br>`;
+                        summary += `<span style='font-size:0.85em;color:#3498db;'> Total en archivo: ${data.total_procesado}</span><br>`;
                     }
                     if (data.filas_bd_afectadas !== undefined) {
-                        summary += `<span style='font-size:0.85em;color:#9b59b6;'>💾 Filas en BD: ${data.filas_bd_afectadas}</span><br>`;
+                        summary += `<span style='font-size:0.85em;color:#9b59b6;'> Filas en BD: ${data.filas_bd_afectadas}</span><br>`;
                     }
                     summary += `<span style='font-size:0.8em;color:#95a5a6;'>⏱️ Tiempo total: ${totalTime}s</span><br>`;
                     
@@ -778,7 +838,7 @@
         })
         .then(modelos => {
             if (!selectFiltro) {
-                console.error("❌ No se encontró el elemento bomFiltroModeloSelect");
+                console.error(" No se encontró el elemento bomFiltroModeloSelect");
                 return;
             }
             
@@ -793,7 +853,7 @@
             
         })
         .catch(error => {
-            console.error('❌ Error al cargar modelos para filtro:', error);
+            console.error(' Error al cargar modelos para filtro:', error);
         });
     }
 
@@ -1062,7 +1122,7 @@
             delete document.body.dataset.controlBOMListenersAttached;
         }
         
-        console.log('✅ Limpieza de Control BOM completada');
+        console.log(' Limpieza de Control BOM completada');
     }
 
     // ========== PANEL DESLIZANTE DE EDICIÓN ==========
@@ -1372,7 +1432,7 @@
             posicionAssy: formData.get('posicionAssy')
         };
         
-        console.log('💾 Guardando cambios BOM:', bomData);
+        console.log(' Guardando cambios BOM:', bomData);
         
         // Cerrar el panel PRIMERO
         closeBOMEditPanel();
@@ -1398,12 +1458,12 @@
                 return response.json();
             })
             .then(data => {
-                console.log('✅ BOM actualizado:', data);
-                updateLoadingProgress(100, '✅ Cambios guardados', '');
+                console.log(' BOM actualizado:', data);
+                updateLoadingProgress(100, ' Cambios guardados', '');
                 
                 setTimeout(() => {
                     hideLoadingModal();
-                    showCustomAlert('✅ Cambios guardados exitosamente');
+                    showCustomAlert(' Cambios guardados exitosamente');
                     
                     // Recargar datos después de un delay
                     setTimeout(() => {
@@ -1412,9 +1472,9 @@
                 }, 800);
             })
             .catch(error => {
-                console.error('❌ Error al guardar cambios BOM:', error);
+                console.error(' Error al guardar cambios BOM:', error);
                 hideLoadingModal();
-                showCustomAlert(`❌ Error al guardar cambios: ${error.message}`);
+                showCustomAlert(` Error al guardar cambios: ${error.message}`);
             });
     }
 
@@ -1429,7 +1489,7 @@
         
         // Si ya existe, no crear de nuevo
         if (document.getElementById('modalRegistroPosicion')) {
-            console.log('✅ Modal ya existe');
+            console.log(' Modal ya existe');
             return;
         }
         
@@ -1536,7 +1596,7 @@
         
         // Agregar al body
         document.body.appendChild(modal);
-        console.log('✅ Modal de registro de posición creado en el body');
+        console.log(' Modal de registro de posición creado en el body');
     }
     
     function abrirModalRegistroPosicion() {
@@ -1554,7 +1614,7 @@
         // Llenar la tabla del modal con los datos actuales
         const tbody = document.getElementById('tablaPosicionAssyBody');
         if (!tbody) {
-            console.error('❌ No se encontró el tbody del modal');
+            console.error(' No se encontró el tbody del modal');
             return;
         }
         
@@ -1615,7 +1675,7 @@
     }
     
     function cerrarModalRegistroPosicion() {
-        console.log('❌ Cerrando modal de registro de posición');
+        console.log(' Cerrando modal de registro de posición');
         const modal = document.getElementById('modalRegistroPosicion');
         if (modal) {
             modal.style.display = 'none';
@@ -1624,7 +1684,7 @@
     }
     
     function guardarPosicionesAssy() {
-        console.log('💾 Guardando posiciones ASSY');
+        console.log(' Guardando posiciones ASSY');
         
         // Recopilar todos los inputs
         const inputs = document.querySelectorAll('.input-posicion-assy');
@@ -1680,15 +1740,15 @@
                 return response.json();
             })
             .then(data => {
-                console.log('✅ Respuesta del servidor:', data);
-                updateLoadingProgress(100, `✅ ${data.actualizados} posiciones guardadas`, '');
+                console.log(' Respuesta del servidor:', data);
+                updateLoadingProgress(100, ` ${data.actualizados} posiciones guardadas`, '');
                 
                 // Cerrar loading y mostrar resultado
                 setTimeout(() => {
                     hideLoadingModal();
                     
                     // Mostrar alerta de éxito
-                    showCustomAlert(`✅ ${data.actualizados} posiciones ASSY guardadas correctamente`);
+                    showCustomAlert(` ${data.actualizados} posiciones ASSY guardadas correctamente`);
                     
                     // Recargar la tabla
                     const modeloSeleccionado = document.getElementById('modeloDropdown').value;
@@ -1700,9 +1760,9 @@
                 }, 800);
             })
             .catch(error => {
-                console.error('❌ Error al guardar posiciones:', error);
+                console.error(' Error al guardar posiciones:', error);
                 hideLoadingModal();
-                showCustomAlert('❌ Error al guardar posiciones: ' + error.message);
+                showCustomAlert(' Error al guardar posiciones: ' + error.message);
             });
     }
 
@@ -1738,7 +1798,7 @@
     
     function tryInitialize() {
         if (typeof window.initializeControlBOMEventListeners === 'function') {
-            console.log('✅ Inicializando Control BOM Event Listeners');
+            console.log(' Inicializando Control BOM Event Listeners');
             window.initializeControlBOMEventListeners();
         } else {
             console.log('⏳ Esperando carga de funciones de Control BOM...');

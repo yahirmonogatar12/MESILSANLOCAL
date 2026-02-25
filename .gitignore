@@ -66,4 +66,4 @@ logs/
 *.temp
 
 # Dev
-run dev.py
+run_dev.py

@@ -10,14 +10,14 @@ Las horas mostradas en el frontend (tabla Plan Main) eran **diferentes** a las h
 
 ---
 
-## 🔍 Causa Raíz
+##  Causa Raíz
 
 El problema estaba en la función `saveGroupSequences()` en el archivo `plan.js` (líneas ~3568-3590).
 
 ### Flujo Incorrecto (ANTES):
 
 ```javascript
-// ❌ CÓDIGO INCORRECTO
+//  CÓDIGO INCORRECTO
 const dateTime = new Date(year, month - 1, day, hours, minutes, 0);
 plannedStart = dateTime.toISOString().slice(0, 19).replace('T', ' ');
 ```
@@ -39,17 +39,17 @@ new Date():         2025-10-22 07:30:00 (Local GMT-6)
 ↓
 MySQL guarda:       2025-10-22 13:30:00 (como DATETIME)
 ↓
-Frontend lee:       13:30 ❌ (diferente a 07:30 mostrado)
+Frontend lee:       13:30  (diferente a 07:30 mostrado)
 ```
 
 ---
 
-## ✅ Solución Implementada
+##  Solución Implementada
 
 ### Código Corregido (DESPUÉS):
 
 ```javascript
-// ✅ CÓDIGO CORRECTO
+//  CÓDIGO CORRECTO
 const todayStr = getTodayInNuevoLeon(); // '2025-10-22'
 const [hours, minutes] = startTime.split(':');
 plannedStart = `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
@@ -68,14 +68,14 @@ Hora calculada:     07:30 (Nuevo León)
 ↓
 Construcción directa:   2025-10-22 07:30:00
 ↓
-MySQL guarda:       2025-10-22 07:30:00 ✅
+MySQL guarda:       2025-10-22 07:30:00 
 ↓
-Frontend lee:       07:30 ✅ (coincide perfectamente)
+Frontend lee:       07:30  (coincide perfectamente)
 ```
 
 ---
 
-## 📁 Archivos Modificados
+##  Archivos Modificados
 
 ### `app/static/js/plan.js`
 
@@ -85,12 +85,12 @@ Frontend lee:       07:30 ✅ (coincide perfectamente)
 **Cambios:**
 
 1. **planned_start** - Conversión de `startTime` (HH:MM) a DATETIME
-   - ❌ Antes: `dateTime.toISOString().slice(0, 19).replace('T', ' ')`
-   - ✅ Ahora: `` `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00` ``
+   -  Antes: `dateTime.toISOString().slice(0, 19).replace('T', ' ')`
+   -  Ahora: `` `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00` ``
 
 2. **planned_end** - Conversión de `endTime` (HH:MM) a DATETIME
-   - ❌ Antes: `dateTime.toISOString().slice(0, 19).replace('T', ' ')`
-   - ✅ Ahora: `` `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00` ``
+   -  Antes: `dateTime.toISOString().slice(0, 19).replace('T', ' ')`
+   -  Ahora: `` `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00` ``
 
 ---
 
@@ -100,20 +100,20 @@ Frontend lee:       07:30 ✅ (coincide perfectamente)
 |---------|-------|---------|
 | **Conversión UTC** | Sí (suma 6 horas) | No |
 | **Complejidad** | Alta (usa Date objects) | Baja (string directo) |
-| **Consistencia** | ❌ Frontend ≠ MySQL | ✅ Frontend = MySQL |
+| **Consistencia** |  Frontend ≠ MySQL |  Frontend = MySQL |
 | **Zona horaria** | Depende del navegador | Siempre Nuevo León |
 | **Legibilidad** | Difícil de debuggear | Fácil de entender |
 
 ---
 
-## 🧪 Verificación de la Corrección
+##  Verificación de la Corrección
 
 ### Pasos para verificar:
 
 1. **Recargar la página** `Control_produccion_assy.html`
 2. **Mover planes** usando drag & drop o auto-acomodo
 3. **Observar las horas** en las columnas "Inicio" y "Fin"
-4. **Guardar el orden** haciendo clic en el botón "💾 Guardar Orden"
+4. **Guardar el orden** haciendo clic en el botón " Guardar Orden"
 5. **Verificar en MySQL** que las horas coincidan exactamente
 
 ### Query SQL para verificar:
@@ -141,45 +141,45 @@ ORDER BY group_no, sequence;
 ### ⚠️ Regla General: **NO usar `.toISOString()` para fechas locales**
 
 **Cuándo usar `.toISOString()`:**
-- ✅ Para timestamps UTC (logs, auditoría)
-- ✅ Para comunicación con APIs internacionales
-- ✅ Para almacenar fechas en formato ISO 8601
+-  Para timestamps UTC (logs, auditoría)
+-  Para comunicación con APIs internacionales
+-  Para almacenar fechas en formato ISO 8601
 
 **Cuándo NO usar `.toISOString()`:**
-- ❌ Para fechas/horas de eventos locales (producción, turnos)
-- ❌ Para campos DATETIME que representan zona horaria específica
-- ❌ Cuando la hora mostrada debe coincidir con la guardada
+-  Para fechas/horas de eventos locales (producción, turnos)
+-  Para campos DATETIME que representan zona horaria específica
+-  Cuando la hora mostrada debe coincidir con la guardada
 
 ### 💡 Mejores Prácticas:
 
 1. **Para DATETIME local:**
    ```javascript
-   // ✅ CORRECTO
+   //  CORRECTO
    const dateStr = `${year}-${month}-${day} ${hours}:${minutes}:00`;
    ```
 
 2. **Para Date objects locales:**
    ```javascript
-   // ✅ CORRECTO - sin conversión UTC
+   //  CORRECTO - sin conversión UTC
    const localDate = new Date(year, month-1, day, hours, minutes, 0);
    const dateStr = localDate.toLocaleString('sv-SE'); // Formato: YYYY-MM-DD HH:MM:SS
    ```
 
 3. **Para timestamps UTC:**
    ```javascript
-   // ✅ CORRECTO - cuando SÍ necesitas UTC
+   //  CORRECTO - cuando SÍ necesitas UTC
    const utcDate = new Date().toISOString(); // '2025-10-22T13:30:00.000Z'
    ```
 
 ---
 
-## 📊 Comparación de Métodos
+##  Comparación de Métodos
 
 | Método | Zona Horaria | Conversión UTC | Uso Recomendado |
 |--------|--------------|----------------|-----------------|
 | `.toISOString()` | UTC | Sí (automática) | APIs, logs globales |
 | `.toLocaleString()` | Local | No | Mostrar al usuario |
-| String template | Control manual | No | **Mejor para DATETIME local** ✅ |
+| String template | Control manual | No | **Mejor para DATETIME local**  |
 | `.getTime()` | Timestamp Unix | N/A | Cálculos de tiempo |
 
 ---
@@ -218,7 +218,7 @@ if (endTime !== '--') {
 - **Problema:** MySQL guardaba horas 6 horas adelantadas (UTC en vez de local)
 - **Causa:** Uso de `.toISOString()` que convierte a UTC automáticamente
 - **Solución:** Construir string DATETIME directamente sin conversión UTC
-- **Resultado:** ✅ Horas consistentes entre frontend y MySQL
+- **Resultado:**  Horas consistentes entre frontend y MySQL
 
 **Fecha de Corrección:** 22 de octubre de 2025  
 **Archivo Modificado:** `app/static/js/plan.js`  

@@ -38,15 +38,15 @@ Copy-Item "ruta\a\tu\logo.png" "c:\Users\jesus\OneDrive\Documents\Desarrollo\Def
 Copy-Item "ruta\a\tu\facility.webp" "c:\Users\jesus\OneDrive\Documents\Desarrollo\Defect MS\MESILSANLOCAL\app\static\images\ilsan-facility.jpg"
 ```
 
-## ✅ Verificación
+##  Verificación
 
 Una vez agregadas las imágenes, refresca el navegador (F5) en:
 - http://127.0.0.1:5000/inicio
 
 Deberías ver:
-- ✅ Logo circular verde en la navbar superior
-- ✅ Logo en el hero banner junto a "ILSAN Electronics"
-- ✅ Imagen de fondo en el hero banner (opcional)
+-  Logo circular verde en la navbar superior
+-  Logo en el hero banner junto a "ILSAN Electronics"
+-  Imagen de fondo en el hero banner (opcional)
 
 ## 🎨 Optimización Opcional
 

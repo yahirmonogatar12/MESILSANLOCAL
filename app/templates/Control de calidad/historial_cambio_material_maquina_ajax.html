@@ -401,13 +401,13 @@
             }
             
             currentData = data.data || [];
-            console.log('✅ Datos cargados:', currentData.length, 'registros');
+            console.log(' Datos cargados:', currentData.length, 'registros');
             
             // Renderizar datos
             renderTable(currentData);
             
         } catch (error) {
-            console.error('❌ Error cargando datos:', error);
+            console.error(' Error cargando datos:', error);
             if (elements.tableBody) {
                 elements.tableBody.innerHTML = `
                     <tr>
@@ -502,9 +502,9 @@
             link.click();
             document.body.removeChild(link);
             
-            console.log('✅ Archivo Excel exportado exitosamente');
+            console.log(' Archivo Excel exportado exitosamente');
         } catch (error) {
-            console.error('❌ Error exportando Excel:', error);
+            console.error(' Error exportando Excel:', error);
             alert('Error al exportar archivo');
         }
     }
@@ -564,7 +564,7 @@
             return;
         }
         
-        console.log('✅ Inicializando Historial Cambio Material Máquina...');
+        console.log(' Inicializando Historial Cambio Material Máquina...');
         isModuleInitialized = true;
         
         // Configurar fechas por defecto
@@ -594,7 +594,7 @@
                 if (mutation.type === 'childList') {
                     const container = document.getElementById('historial-cambio-material-maquina-unique-container');
                     if (container && !isModuleInitialized) {
-                        console.log('🔍 Detectado contenido dinámico HCMM, inicializando...');
+                        console.log(' Detectado contenido dinámico HCMM, inicializando...');
                         setTimeout(inicializar, 200);
                     }
                 }

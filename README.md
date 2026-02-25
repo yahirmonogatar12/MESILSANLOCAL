@@ -2,6 +2,10 @@
 
 Sistema MES basado en Flask para gestión de materiales, BOM, inventarios, planeación de producción y módulos SMT, con soporte de impresión local Zebra.
 
+## Documentacion tecnica actualizada
+
+- Indice tecnico v2: [Documentacion/README_TECNICO_MES.md](Documentacion/README_TECNICO_MES.md)
+
 ## Requisitos
 
 - Python 3.11 (ver `runtime.txt`)

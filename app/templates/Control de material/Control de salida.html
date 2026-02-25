@@ -449,7 +449,7 @@
                 console.log(' Control de Salida SIN VERIFICACIÓN inicializado');
                 
             } catch (error) {
-                console.error('❌ Error en inicialización:', error);
+                console.error(' Error en inicialización:', error);
                 window.controlSalidaInicializado = false;
             }
         }
@@ -612,7 +612,7 @@
                     window.verEstadoCola();
                     if (typeof mostrarMensajeSimple === 'function') {
                         const estado = window.verEstadoCola();
-                        mostrarMensajeSimple(`📊 Escaneados: ${estado.total} | Pendientes: ${estado.pendientes}`, 'info');
+                        mostrarMensajeSimple(` Escaneados: ${estado.total} | Pendientes: ${estado.pendientes}`, 'info');
                     }
                 }
             });
@@ -647,7 +647,7 @@
             
             // Mostrar mensaje inmediato de que se recibió con información de detección
             if (typeof mostrarMensajeSimple === 'function') {
-                const tipoDeteccion = contadorInputsRapidos >= 5 ? '🔍 ESCÁNER' : '⌨️ MANUAL';
+                const tipoDeteccion = contadorInputsRapidos >= 5 ? ' ESCÁNER' : '⌨️ MANUAL';
                 mostrarMensajeSimple(`📦 ${tipoDeteccion} ${contadorEscaneos}: ${codigo.substring(0, 12)}...`, 'info');
             }
             
@@ -674,9 +674,9 @@
                     await new Promise(resolve => setTimeout(resolve, 50)); // Reducido de 100ms a 50ms
                     
                 } catch (error) {
-                    console.error(`❌ Error procesando ${item.codigo}:`, error);
+                    console.error(` Error procesando ${item.codigo}:`, error);
                     if (typeof mostrarMensajeSimple === 'function') {
-                        mostrarMensajeSimple(`❌ Error: ${item.codigo.substring(0, 8)}...`, 'error');
+                        mostrarMensajeSimple(` Error: ${item.codigo.substring(0, 8)}...`, 'error');
                     }
                 }
                 
@@ -699,7 +699,7 @@
 
                 if (!data.success || !data.material) {
                     if (typeof mostrarMensajeSimple === 'function') {
-                        mostrarMensajeSimple(`❌ No encontrado: ${item.codigo.substring(0, 8)}...`, 'error');
+                        mostrarMensajeSimple(` No encontrado: ${item.codigo.substring(0, 8)}...`, 'error');
                     }
                     return;
                 }
@@ -767,7 +767,7 @@
                     }
                 } else {
                     if (typeof mostrarMensajeSimple === 'function') {
-                        mostrarMensajeSimple(`❌ Error salida: ${codigo.substring(0, 8)}...`, 'error');
+                        mostrarMensajeSimple(` Error salida: ${codigo.substring(0, 8)}...`, 'error');
                     }
                 }
                 
@@ -787,7 +787,7 @@
             
             // Mostrar progreso en consola solo si hay actividad
             if (pendientes > 0 || procesandoCola) {
-                console.log(`📊 Progreso: ${procesados}/${contadorEscaneos} procesados, ${pendientes} pendientes`);
+                console.log(` Progreso: ${procesados}/${contadorEscaneos} procesados, ${pendientes} pendientes`);
             }
         }
         
@@ -947,7 +947,7 @@
             }
         };
         window.verEstadoCola = function() {
-            console.log(`📊 Estado de cola:
+            console.log(` Estado de cola:
             - Total escaneados: ${contadorEscaneos}
             - Pendientes: ${colaEscaneo.length}
             - Procesando: ${procesandoCola}

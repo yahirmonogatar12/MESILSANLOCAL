@@ -96,7 +96,7 @@
         // Configurar todos los dropdowns existentes
         const dropdownButtons = document.querySelectorAll('[data-bs-toggle="collapse"]');
         
-        log(`🔍 Configurando ${dropdownButtons.length} dropdowns para ${getDeviceType()}`);
+        log(` Configurando ${dropdownButtons.length} dropdowns para ${getDeviceType()}`);
         
         dropdownButtons.forEach((button, index) => {
             setupDropdownButton(button, index);
@@ -532,7 +532,7 @@
                 waitForBootstrap(callback, retries + 1);
             }, 500);
         } else {
-            log('❌ Bootstrap no disponible, usando modo básico');
+            log(' Bootstrap no disponible, usando modo básico');
             callback(); // Continuar sin Bootstrap para móvil
         }
     }
@@ -683,6 +683,6 @@
         resizeTimeout = setTimeout(handleResize, 250);
     });
     
-    log('📁 Sistema unificado de dropdowns cargado');
+    log(' Sistema unificado de dropdowns cargado');
     
 })();

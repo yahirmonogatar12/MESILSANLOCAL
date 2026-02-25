@@ -12,15 +12,15 @@ Al generar lotes internos para múltiples etiquetas, el sistema genera el **mism
 ### Comportamiento Actual (INCORRECTO)
 ```
 Etiqueta 1: 04.11.2025.0003
-Etiqueta 2: 04.11.2025.0003  ❌ DUPLICADO
-Etiqueta 3: 04.11.2025.0003  ❌ DUPLICADO
+Etiqueta 2: 04.11.2025.0003   DUPLICADO
+Etiqueta 3: 04.11.2025.0003   DUPLICADO
 ```
 
 ### Comportamiento Esperado (CORRECTO)
 ```
-Etiqueta 1: 04.11.2025.0003  ✅
-Etiqueta 2: 04.11.2025.0004  ✅
-Etiqueta 3: 04.11.2025.0005  ✅
+Etiqueta 1: 04.11.2025.0003  
+Etiqueta 2: 04.11.2025.0004  
+Etiqueta 3: 04.11.2025.0005  
 ```
 
 ---
@@ -188,8 +188,8 @@ async function procesarEscaneoEtiquetaImpresa(event) {
 2. **Separación Temporal Entre Generación y Guardado:**
    ```
    [Escaneo Etiqueta 1] → Genera 0003 (memoria) → No guarda aún
-   [Escaneo Etiqueta 2] → Consulta BD (solo ve hasta 0002) → Genera 0003 ❌
-   [Escaneo Etiqueta 3] → Consulta BD (solo ve hasta 0002) → Genera 0003 ❌
+   [Escaneo Etiqueta 2] → Consulta BD (solo ve hasta 0002) → Genera 0003 
+   [Escaneo Etiqueta 3] → Consulta BD (solo ve hasta 0002) → Genera 0003 
    ...
    [Finalizar Asignación] → Guarda todos los 0003 a la BD
    ```
@@ -210,17 +210,17 @@ async function procesarEscaneoEtiquetaImpresa(event) {
 
 ## 5. Soluciones Propuestas
 
-### ❌ Solución 1: Guardar Inmediatamente Después de Generar (RECHAZADA)
+###  Solución 1: Guardar Inmediatamente Después de Generar (RECHAZADA)
 **Problema:** Requiere guardar cada etiqueta individualmente, muy lento y complejo.
 
 ---
 
-### ❌ Solución 2: Contador en Memoria con Sincronización (RECHAZADA)
+###  Solución 2: Contador en Memoria con Sincronización (RECHAZADA)
 **Problema:** No garantiza unicidad en entornos multi-usuario.
 
 ---
 
-### ✅ Solución 3: Generación de Todos los Lotes al Inicio (RECOMENDADA)
+###  Solución 3: Generación de Todos los Lotes al Inicio (RECOMENDADA)
 
 **Descripción:**
 - Cuando el usuario marca "Lote Interno" y especifica cantidad (ej: 5 etiquetas)
@@ -315,7 +315,7 @@ async function procesarEscaneoEtiquetaImpresa(event) {
 
 ---
 
-### ✅ Solución 4: Contador Local con Incremento Manual (ALTERNATIVA)
+###  Solución 4: Contador Local con Incremento Manual (ALTERNATIVA)
 
 **Descripción:**
 - Obtener el secuencial inicial una sola vez
@@ -399,12 +399,12 @@ async function procesarImpresionUnidades() {
 **Implementar Solución 4: Contador Local con Incremento Manual**
 
 ### Ventajas:
-✅ Una sola consulta a la base de datos  
-✅ Lotes pre-calculados antes de escanear  
-✅ Visible en la tabla desde el inicio  
-✅ No hay race conditions  
-✅ Rápido y eficiente  
-✅ Garantiza unicidad dentro de la misma sesión  
+ Una sola consulta a la base de datos  
+ Lotes pre-calculados antes de escanear  
+ Visible en la tabla desde el inicio  
+ No hay race conditions  
+ Rápido y eficiente  
+ Garantiza unicidad dentro de la misma sesión  
 
 ### Desventajas:
 ⚠️ Requiere lógica adicional para manejar errores de guardado  
@@ -438,7 +438,7 @@ async function procesarImpresionUnidades() {
 ## 8. Archivos Afectados
 
 ```
-📁 MESILSANLOCAL/
+ MESILSANLOCAL/
 ├── app/
 │   ├── routes.py (Backend - Sin cambios necesarios)
 │   └── templates/

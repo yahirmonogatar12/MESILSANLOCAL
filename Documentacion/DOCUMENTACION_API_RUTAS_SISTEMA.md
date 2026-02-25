@@ -89,7 +89,7 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 🔐 RUTAS DE AUTENTICACIÓN
+###  RUTAS DE AUTENTICACIÓN
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
@@ -100,48 +100,48 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📄 RUTAS DE PÁGINAS PRINCIPALES
+###  RUTAS DE PÁGINAS PRINCIPALES
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/ILSAN-ELECTRONICS` | GET | Página principal MaterialTemplate | ✅ |
-| `/dashboard` | GET | Alias para MaterialTemplate | ✅ |
-| `/calendario` | GET | Calendario de producción | ✅ |
-| `/defect-management` | GET | Gestión de defectos (en desarrollo) | ✅ |
-| `/sistemas` | GET | Redirección al hub | ✅ |
-| `/soporte` | GET | Página de soporte técnico | ✅ |
-| `/documentacion` | GET | Página de documentación | ✅ |
-| `/Prueba` | GET | Control de salida (prueba) | ✅ |
-| `/DESARROLLO` | GET | Control de salida (desarrollo) | ✅ |
+| `/ILSAN-ELECTRONICS` | GET | Página principal MaterialTemplate |  |
+| `/dashboard` | GET | Alias para MaterialTemplate |  |
+| `/calendario` | GET | Calendario de producción |  |
+| `/defect-management` | GET | Gestión de defectos (en desarrollo) |  |
+| `/sistemas` | GET | Redirección al hub |  |
+| `/soporte` | GET | Página de soporte técnico |  |
+| `/documentacion` | GET | Página de documentación |  |
+| `/Prueba` | GET | Control de salida (prueba) |  |
+| `/DESARROLLO` | GET | Control de salida (desarrollo) |  |
 
 ---
 
-### 📁 RUTAS FRONT PLAN
+###  RUTAS FRONT PLAN
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
 | `/front-plan/static/<path:filename>` | GET | Assets de FRONT PLAN | No |
-| `/plan-main` | GET | Página de planeación | ✅ |
-| `/control-main` | GET | Panel de control de operación | ✅ |
-| `/plan-main-assy-ajax` | GET | AJAX para plan main | ✅ |
-| `/control-operacion-linea-main-ajax` | GET | AJAX para control operación | ✅ |
+| `/plan-main` | GET | Página de planeación |  |
+| `/control-main` | GET | Panel de control de operación |  |
+| `/plan-main-assy-ajax` | GET | AJAX para plan main |  |
+| `/control-operacion-linea-main-ajax` | GET | AJAX para control operación |  |
 
 ---
 
-### 📊 API PLAN (Plan de Producción)
+###  API PLAN (Plan de Producción)
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/api/plan` | GET | Listar planes | ✅ |
-| `/api/plan` | POST | Crear plan | ✅ |
-| `/api/plan/update` | POST | Actualizar plan | ✅ |
-| `/api/plan/status` | POST | Actualizar estado | ✅ |
-| `/api/plan/save-sequences` | POST | Guardar secuencias | ✅ |
-| `/api/plan/pending` | GET | Planes pendientes | ✅ |
-| `/api/plan/reschedule` | POST | Reprogramar planes | ✅ |
-| `/api/plan/export-excel` | POST | Exportar a Excel | ✅ |
-| `/api/plan-main/list` | GET | Listar plan main | ✅ |
-| `/api/raw/search` | GET | Buscar en tabla RAW | ✅ |
+| `/api/plan` | GET | Listar planes |  |
+| `/api/plan` | POST | Crear plan |  |
+| `/api/plan/update` | POST | Actualizar plan |  |
+| `/api/plan/status` | POST | Actualizar estado |  |
+| `/api/plan/save-sequences` | POST | Guardar secuencias |  |
+| `/api/plan/pending` | GET | Planes pendientes |  |
+| `/api/plan/reschedule` | POST | Reprogramar planes |  |
+| `/api/plan/export-excel` | POST | Exportar a Excel |  |
+| `/api/plan-main/list` | GET | Listar plan main |  |
+| `/api/raw/search` | GET | Buscar en tabla RAW |  |
 
 ---
 
@@ -149,14 +149,14 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/importar_excel_bom` | POST | Importar BOM desde Excel | ✅ |
-| `/listar_modelos_bom` | GET | Listar modelos BOM | ✅ |
-| `/listar_bom` | POST | Listar registros BOM | ✅ |
-| `/consultar_bom` | GET | Consultar BOM con filtros | ✅ |
-| `/exportar_excel_bom` | GET | Exportar BOM a Excel | ✅ |
-| `/api/bom/update` | POST | Actualizar registro BOM | ✅ |
+| `/importar_excel_bom` | POST | Importar BOM desde Excel |  |
+| `/listar_modelos_bom` | GET | Listar modelos BOM |  |
+| `/listar_bom` | POST | Listar registros BOM |  |
+| `/consultar_bom` | GET | Consultar BOM con filtros |  |
+| `/exportar_excel_bom` | GET | Exportar BOM a Excel |  |
+| `/api/bom/update` | POST | Actualizar registro BOM |  |
 | `/api/bom/update-posiciones-assy` | POST | Actualizar posiciones ASSY | No |
-| `/api/bom-smt-data` | GET | Datos BOM para SMT | ✅ |
+| `/api/bom-smt-data` | GET | Datos BOM para SMT |  |
 
 ---
 
@@ -168,11 +168,11 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 | `/listar_materiales` | GET | Listar materiales | No |
 | `/importar_excel` | POST | Importar materiales desde Excel | No |
 | `/actualizar_campo_material` | POST | Actualizar campo específico | No |
-| `/actualizar_material_completo` | POST | Actualizar material completo | ✅ |
-| `/exportar_excel` | GET | Exportar materiales a Excel | ✅ |
+| `/actualizar_material_completo` | POST | Actualizar material completo |  |
+| `/exportar_excel` | GET | Exportar materiales a Excel |  |
 | `/obtener_codigos_material` | GET | Obtener códigos para dropdown | No |
-| `/buscar_material_por_numero_parte` | GET | Buscar por número de parte | ✅ |
-| `/buscar_material_por_codigo` | GET | Buscar por código | ✅ |
+| `/buscar_material_por_numero_parte` | GET | Buscar por número de parte |  |
+| `/buscar_material_por_codigo` | GET | Buscar por código |  |
 
 ---
 
@@ -180,13 +180,13 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/control_almacen` | GET | Página de control de almacén | ✅ |
-| `/guardar_control_almacen` | POST | Guardar registro | ✅ |
-| `/consultar_control_almacen` | GET | Consultar registros | ✅ |
-| `/actualizar_control_almacen` | POST | Actualizar registro | ✅ |
-| `/obtener_secuencial_lote_interno` | POST | Obtener siguiente secuencial | ✅ |
+| `/control_almacen` | GET | Página de control de almacén |  |
+| `/guardar_control_almacen` | POST | Guardar registro |  |
+| `/consultar_control_almacen` | GET | Consultar registros |  |
+| `/actualizar_control_almacen` | POST | Actualizar registro |  |
+| `/obtener_secuencial_lote_interno` | POST | Obtener siguiente secuencial |  |
 | `/obtener_siguiente_secuencial` | GET | Siguiente secuencial código | No |
-| `/actualizar_estado_desecho_almacen` | POST | Actualizar estado desecho | ✅ |
+| `/actualizar_estado_desecho_almacen` | POST | Actualizar estado desecho |  |
 
 ---
 
@@ -194,36 +194,36 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/control_salida` | GET | Página de control de salida | ✅ |
-| `/buscar_codigo_recibido` | GET | Buscar código recibido | ✅ |
-| `/guardar_salida_lote` | POST | Guardar salida de lote | ✅ |
-| `/consultar_historial_salidas` | GET | Historial de salidas | ✅ |
-| `/procesar_salida_material` | POST | Procesar salida | ✅ |
-| `/verificar_stock_rapido` | GET | Verificar stock | ✅ |
-| `/control_salida/estado` | GET | Estado del módulo | ✅ |
-| `/control_salida/configuracion` | GET, POST | Configuración | ✅ |
-| `/control_salida/validar_stock` | POST | Validar stock | ✅ |
-| `/control_salida/reporte_diario` | GET | Reporte diario | ✅ |
+| `/control_salida` | GET | Página de control de salida |  |
+| `/buscar_codigo_recibido` | GET | Buscar código recibido |  |
+| `/guardar_salida_lote` | POST | Guardar salida de lote |  |
+| `/consultar_historial_salidas` | GET | Historial de salidas |  |
+| `/procesar_salida_material` | POST | Procesar salida |  |
+| `/verificar_stock_rapido` | GET | Verificar stock |  |
+| `/control_salida/estado` | GET | Estado del módulo |  |
+| `/control_salida/configuracion` | GET, POST | Configuración |  |
+| `/control_salida/validar_stock` | POST | Validar stock |  |
+| `/control_salida/reporte_diario` | GET | Reporte diario |  |
 
 ---
 
-### 📊 API INVENTARIO
+###  API INVENTARIO
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/api/inventario/consultar` | POST | Consultar inventario general | ✅ |
-| `/api/inventario/historial` | POST | Historial por número de parte | ✅ |
-| `/api/inventario/historial/<numero_parte>` | GET | Historial (GET) | ✅ |
-| `/api/inventario/lotes` | POST | Lotes por número de parte | ✅ |
-| `/api/inventario/lotes/<numero_parte>` | GET | Lotes (GET) | ✅ |
-| `/api/inventario/lotes_detalle` | POST | Detalle de lotes | ✅ |
-| `/api/inventario/modelo/<codigo_modelo>` | GET | Inventario por modelo | ✅ |
-| `/api/inventario` | GET | API inventario general | ✅ |
+| `/api/inventario/consultar` | POST | Consultar inventario general |  |
+| `/api/inventario/historial` | POST | Historial por número de parte |  |
+| `/api/inventario/historial/<numero_parte>` | GET | Historial (GET) |  |
+| `/api/inventario/lotes` | POST | Lotes por número de parte |  |
+| `/api/inventario/lotes/<numero_parte>` | GET | Lotes (GET) |  |
+| `/api/inventario/lotes_detalle` | POST | Detalle de lotes |  |
+| `/api/inventario/modelo/<codigo_modelo>` | GET | Inventario por modelo |  |
+| `/api/inventario` | GET | API inventario general |  |
 | `/api/inventario_general` | GET | Inventario general IMD | No |
-| `/obtener_inventario_general` | GET | Obtener inventario | ✅ |
-| `/verificar_estado_inventario` | GET | Verificar estado | ✅ |
-| `/recalcular_inventario_general` | POST | Recalcular inventario | ✅ |
-| `/forzar_actualizacion_inventario/<numero_parte>` | POST | Forzar actualización | ✅ |
+| `/obtener_inventario_general` | GET | Obtener inventario |  |
+| `/verificar_estado_inventario` | GET | Verificar estado |  |
+| `/recalcular_inventario_general` | POST | Recalcular inventario |  |
+| `/forzar_actualizacion_inventario/<numero_parte>` | POST | Forzar actualización |  |
 
 ---
 
@@ -231,11 +231,11 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/api/plan-smd` | POST | Guardar plan SMD | ✅ |
+| `/api/plan-smd` | POST | Guardar plan SMD |  |
 | `/api/plan-smd/list` | GET | Listar planes SMD | No |
-| `/api/plan-smd/import` | POST | Importar plan SMD | ✅ |
+| `/api/plan-smd/import` | POST | Importar plan SMD |  |
 | `/api/plan-smd-diario` | GET | Plan SMD diario | No |
-| `/api/generar-plan-smd` | POST | Generar plan SMD (Agente) | ✅ |
+| `/api/generar-plan-smd` | POST | Generar plan SMD (Agente) |  |
 | `/plan-smd-diario` | GET | Página plan SMD diario | No |
 
 ---
@@ -244,8 +244,8 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/api/work-orders` | GET | Listar Work Orders | ✅ |
-| `/api/work-orders/import` | POST | Importar Work Orders | ✅ |
+| `/api/work-orders` | GET | Listar Work Orders |  |
+| `/api/work-orders/import` | POST | Importar Work Orders |  |
 
 ---
 
@@ -265,8 +265,8 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/imprimir_zebra` | POST | Imprimir etiqueta Zebra | ✅ |
-| `/imprimir_etiqueta_qr` | POST | Imprimir etiqueta QR | ✅ |
+| `/imprimir_zebra` | POST | Imprimir etiqueta Zebra |  |
+| `/imprimir_etiqueta_qr` | POST | Imprimir etiqueta QR |  |
 
 ---
 
@@ -274,15 +274,15 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/control/metal-mask` | GET | Página control Metal Mask | ✅ |
-| `/control/metal-mask/caja` | GET | Página control caja Metal Mask | ✅ |
-| `/api/masks` | GET | Listar masks | ✅ |
-| `/api/masks` | POST | Crear mask | ✅ |
-| `/api/masks/<int:mask_id>` | PUT | Actualizar mask | ✅ |
-| `/api/masks/info` | GET | Info de mask | ✅ |
-| `/api/metal-mask/history` | GET | Historial Metal Mask | ✅ |
-| `/api/metal-mask/history` | POST | Guardar historial | ✅ |
-| `/api/metal-mask/update-used-count` | POST | Actualizar contador uso | ✅ |
+| `/control/metal-mask` | GET | Página control Metal Mask |  |
+| `/control/metal-mask/caja` | GET | Página control caja Metal Mask |  |
+| `/api/masks` | GET | Listar masks |  |
+| `/api/masks` | POST | Crear mask |  |
+| `/api/masks/<int:mask_id>` | PUT | Actualizar mask |  |
+| `/api/masks/info` | GET | Info de mask |  |
+| `/api/metal-mask/history` | GET | Historial Metal Mask |  |
+| `/api/metal-mask/history` | POST | Guardar historial |  |
+| `/api/metal-mask/update-used-count` | POST | Actualizar contador uso |  |
 | `/api/metal-mask/test` | GET | Test Metal Mask | No |
 
 ---
@@ -291,37 +291,37 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/api/storage` | GET | Obtener storage boxes | ✅ |
-| `/api/storage` | POST | Agregar storage box | ✅ |
-| `/api/storage/<int:storage_id>` | PUT | Actualizar storage | ✅ |
+| `/api/storage` | GET | Obtener storage boxes |  |
+| `/api/storage` | POST | Agregar storage box |  |
+| `/api/storage/<int:storage_id>` | PUT | Actualizar storage |  |
 
 ---
 
-### 📊 HISTORIAL SMT
+###  HISTORIAL SMT
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/historial-cambio-material-smt` | GET | Página historial SMT | ✅ |
+| `/historial-cambio-material-smt` | GET | Página historial SMT |  |
 | `/historial-cambio-material-smt-ajax` | GET | AJAX historial SMT | No |
-| `/api/historial-cambio-material-maquina` | GET | API historial máquina | ✅ |
-| `/api/historial_smt_latest` | GET | Último por línea/máquina/slot | ✅ |
-| `/api/historial_smt_latest_v2` | GET | Versión 2 con agrupación | ✅ |
-| `/api/test-historial-smt` | GET | Test historial SMT | ✅ |
-| `/api/test-historial-smt-v2` | GET | Test historial SMT v2 | ✅ |
-| `/api/crear-datos-prueba-smt` | POST | Crear datos de prueba | ✅ |
+| `/api/historial-cambio-material-maquina` | GET | API historial máquina |  |
+| `/api/historial_smt_latest` | GET | Último por línea/máquina/slot |  |
+| `/api/historial_smt_latest_v2` | GET | Versión 2 con agrupación |  |
+| `/api/test-historial-smt` | GET | Test historial SMT |  |
+| `/api/test-historial-smt-v2` | GET | Test historial SMT v2 |  |
+| `/api/crear-datos-prueba-smt` | POST | Crear datos de prueba |  |
 
 ---
 
-### 🔍 HISTORIAL ICT
+###  HISTORIAL ICT
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/historial-ict` | GET | Página historial ICT | ✅ |
-| `/ict/front-full-defects2` | GET | Vista defectos ICT | ✅ |
-| `/api/ict/data` | GET | Datos ICT | ✅ |
-| `/api/ict/defects` | GET | Defectos por barcode | ✅ |
-| `/api/ict/export` | GET | Exportar ICT a Excel | ✅ |
-| `/api/ict/export-defects` | GET | Exportar defectos a Excel | ✅ |
+| `/historial-ict` | GET | Página historial ICT |  |
+| `/ict/front-full-defects2` | GET | Vista defectos ICT |  |
+| `/api/ict/data` | GET | Datos ICT |  |
+| `/api/ict/defects` | GET | Defectos por barcode |  |
+| `/api/ict/export` | GET | Exportar ICT a Excel |  |
+| `/api/ict/export-defects` | GET | Exportar defectos a Excel |  |
 
 ---
 
@@ -334,8 +334,8 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 | `/api/mysql/data` | GET | Datos de tabla | No |
 | `/api/mysql/update` | POST | Actualizar registro | No |
 | `/api/mysql/create` | POST | Crear registro | No |
-| `/api/mysql/delete` | POST | Eliminar registro | ✅ |
-| `/api/mysql/usuario-actual` | GET | Usuario actual | ✅ |
+| `/api/mysql/delete` | POST | Eliminar registro |  |
+| `/api/mysql/usuario-actual` | GET | Usuario actual |  |
 | `/api/mysql` | GET, POST | Proxy MySQL | No |
 | `/mysql-proxy.php` | GET, POST | Proxy PHP (Android) | No |
 
@@ -351,19 +351,19 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 🔐 PERMISOS
+###  PERMISOS
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
 | `/verificar_permiso_dropdown` | POST | Verificar permiso dropdown | No |
-| `/obtener_permisos_usuario_actual` | GET | Permisos del usuario | ✅ |
-| `/test-permisos` | GET | Test de permisos | ✅ |
-| `/test-frontend-permisos` | GET | Test frontend permisos | ✅ |
-| `/test-ajax-manager` | GET | Test AJAX manager | ✅ |
+| `/obtener_permisos_usuario_actual` | GET | Permisos del usuario |  |
+| `/test-permisos` | GET | Test de permisos |  |
+| `/test-frontend-permisos` | GET | Test frontend permisos |  |
+| `/test-ajax-manager` | GET | Test AJAX manager |  |
 
 ---
 
-### 📁 RUTAS AJAX (Control de Material)
+###  RUTAS AJAX (Control de Material)
 
 | Ruta | Método | Descripción |
 |------|--------|-------------|
@@ -390,7 +390,7 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📁 RUTAS AJAX (Control de Proceso)
+###  RUTAS AJAX (Control de Proceso)
 
 | Ruta | Método | Descripción |
 |------|--------|-------------|
@@ -407,7 +407,7 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📁 RUTAS AJAX (Control de Producción)
+###  RUTAS AJAX (Control de Producción)
 
 | Ruta | Método | Descripción |
 |------|--------|-------------|
@@ -429,7 +429,7 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📁 RUTAS AJAX (Calidad y Empaque)
+###  RUTAS AJAX (Calidad y Empaque)
 
 | Ruta | Método | Descripción |
 |------|--------|-------------|
@@ -445,7 +445,7 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📁 RUTAS AJAX (Identificación y Scrap)
+###  RUTAS AJAX (Identificación y Scrap)
 
 | Ruta | Método | Descripción |
 |------|--------|-------------|
@@ -457,7 +457,7 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📁 RUTAS LISTAS
+###  RUTAS LISTAS
 
 | Ruta | Método | Descripción |
 |------|--------|-------------|
@@ -472,14 +472,14 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📁 CSV VIEWER
+###  CSV VIEWER
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/csv-viewer` | GET | Visor CSV | ✅ |
-| `/api/csv_data` | GET | Datos CSV | ✅ |
-| `/api/csv_stats` | GET | Estadísticas CSV | ✅ |
-| `/api/filter_data` | POST | Filtrar datos CSV | ✅ |
+| `/csv-viewer` | GET | Visor CSV |  |
+| `/api/csv_data` | GET | Datos CSV |  |
+| `/api/csv_stats` | GET | Estadísticas CSV |  |
+| `/api/filter_data` | POST | Filtrar datos CSV |  |
 
 ---
 

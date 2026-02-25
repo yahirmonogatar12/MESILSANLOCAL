@@ -136,21 +136,8 @@ function showTableLoading(containerId, message = 'Cargando...') {
     left: 0;
   `;
 
-  // Crear icono central
-  const icon = document.createElement('div');
-  icon.innerHTML = '📦';
-  icon.style.cssText = `
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 24px;
-    animation: pulse 1.5s ease-in-out infinite;
-  `;
-
   spinnerContainer.appendChild(spinnerOuter);
   spinnerContainer.appendChild(spinner);
-  spinnerContainer.appendChild(icon);
 
   // Crear texto con estilo mejorado
   const text = document.createElement('div');
@@ -185,16 +172,6 @@ function showTableLoading(containerId, message = 'Cargando...') {
     animation: progressIndeterminate 1.5s ease-in-out infinite;
   `;
   progressBar.appendChild(progressFill);
-
-  // Crear subtexto
-  const subtext = document.createElement('div');
-  subtext.style.cssText = `
-    color: #95a5a6;
-    font-size: 12px;
-    margin-top: 15px;
-    animation: fadeInUp 0.7s ease;
-  `;
-  subtext.textContent = 'Por favor espere...';
 
   // Agregar animaciones CSS si no existen
   if (!document.getElementById('loading-animations-style')) {
@@ -235,7 +212,6 @@ function showTableLoading(containerId, message = 'Cargando...') {
   overlay.appendChild(spinnerContainer);
   overlay.appendChild(text);
   overlay.appendChild(progressBar);
-  overlay.appendChild(subtext);
 
   // Agregar overlay al container
   container.appendChild(overlay);
@@ -1030,7 +1006,7 @@ async function handleCancelPlan() {
  * Retorna null si no hay conflicto, o un objeto con información del conflicto
  */
 function validarConflictoLineaHorario(nuevoPlan) {
-  console.log('🔍 Validando conflictos de línea/horario para:', nuevoPlan);
+  console.log(' Validando conflictos de línea/horario para:', nuevoPlan);
   
   // *** CORRECCIÓN: Obtener planes desde visualGroups ***
   const todosLosPlanes = [];
@@ -1060,7 +1036,7 @@ function validarConflictoLineaHorario(nuevoPlan) {
     });
   });
   
-  console.log(`📊 Comparando contra ${planesConHorario.length} planes activos`);
+  console.log(` Comparando contra ${planesConHorario.length} planes activos`);
   
   // Para el nuevo plan, necesitamos calcular su hora de inicio
   // Buscar en qué grupo estaría y calcular su posición
@@ -1088,7 +1064,7 @@ function validarConflictoLineaHorario(nuevoPlan) {
     const mismoInicio = planExistente.inicio && planExistente.inicio === horaInicioNuevoPlan;
     
     if (mismaLinea && mismaFecha && mismoInicio) {
-      console.log('❌ Conflicto detectado:', {
+      console.log(' Conflicto detectado:', {
         planExistente: {
           lot_no: planExistente.lot_no,
           line: planExistente.line,
@@ -1122,7 +1098,7 @@ function validarConflictoLineaHorario(nuevoPlan) {
     }
   }
   
-  console.log('✅ No se detectaron conflictos');
+  console.log(' No se detectaron conflictos');
   return null;
 }
 
@@ -1163,7 +1139,7 @@ async function handleNewPlanSubmit(form) {
         const planEnGrupo = group.plans.find(p => p.lot_no === planConflictivo.lot_no);
         if (planEnGrupo) {
           grupoDestino = i + 1; // Los grupos son 1-indexed
-          console.log(`✅ Plan conflictivo ${planConflictivo.lot_no} encontrado en GRUPO ${grupoDestino}`);
+          console.log(` Plan conflictivo ${planConflictivo.lot_no} encontrado en GRUPO ${grupoDestino}`);
           break;
         }
       }
@@ -1639,20 +1615,20 @@ async function importSingleWO(woId, button) {
         const plan = response.data.plans[0];
         // Ocultar loading con transición suave
         hideTableLoading('plan-main-table');
-        alert(`✅ WO importado exitosamente como Plan: ${plan.lot_no}`);
+        alert(` WO importado exitosamente como Plan: ${plan.lot_no}`);
         loadPlans(); // Recargar tabla principal
         loadWorkOrders(); // Recargar WOs
       } else if (errors.length > 0) {
         hideTableLoading('plan-main-table');
-        alert(`❌ No se pudo importar:\n\n${errors.join('\n')}`);
+        alert(` No se pudo importar:\n\n${errors.join('\n')}`);
       }
     } else {
       hideTableLoading('plan-main-table');
-      alert("❌ Error en importación: " + (response.data.errors || []).join(", "));
+      alert(" Error en importación: " + (response.data.errors || []).join(", "));
     }
   } catch (error) {
     hideTableLoading('plan-main-table');
-    alert("❌ Error importando WO: " + (error.response?.data?.error || error.message));
+    alert(" Error importando WO: " + (error.response?.data?.error || error.message));
   } finally {
     // Restaurar boton
     button.textContent = originalText;
@@ -1702,7 +1678,7 @@ async function importAllSelectedWOs() {
   if (alreadyImported.length > 0) {
     const message = `⚠️ ${alreadyImported.length} WO(s) ya importada(s) serán omitida(s):\n${alreadyImported.join(', ')}\n\n¿Continuar con las ${woIdsToImport.length} WO(s) restantes?`;
     if (woIdsToImport.length === 0) {
-      alert("❌ Todas las WOs seleccionadas ya fueron importadas.");
+      alert(" Todas las WOs seleccionadas ya fueron importadas.");
       return;
     }
     if (!confirm(message)) {
@@ -1718,12 +1694,12 @@ async function importAllSelectedWOs() {
 
   try {
     // Mostrar loading mejorado en múltiples lugares
-    showTableLoading('wo-modal-content', `📦 Importando ${woIds.length} Work Order${woIds.length > 1 ? 's' : ''}...`);
-    showTableLoading('plan-main-table', `📦 Procesando ${woIds.length} Work Order${woIds.length > 1 ? 's' : ''}...`);
-    updateWOStatus(`⏳ Importando ${woIds.length} work orders...`);
+    showTableLoading('wo-modal-content', `Importando ${woIds.length} Work Order${woIds.length > 1 ? 's' : ''}...`);
+    showTableLoading('plan-main-table', `Procesando ${woIds.length} Work Order${woIds.length > 1 ? 's' : ''}...`);
+    updateWOStatus(`Importando ${woIds.length} work orders...`);
 
     // Deshabilitar boton de importar
-    setButtonLoading('wo-import-selected-btn', true, '📦 Importando...');
+    setButtonLoading('wo-import-selected-btn', true, 'Importando...');
 
     const response = await axios.post("/api/work-orders/import", {
       wo_ids: woIds,
@@ -1734,7 +1710,7 @@ async function importAllSelectedWOs() {
       const { imported, errors } = response.data;
       
       if (imported > 0) {
-        let message = `✅ ${imported} Work Order(s) importado(s) exitosamente`;
+        let message = ` ${imported} Work Order(s) importado(s) exitosamente`;
 
         if (errors && errors.length > 0) {
           message += `\n\n⚠️ WOs ya importadas (${errors.length}):\n`;
@@ -1745,7 +1721,7 @@ async function importAllSelectedWOs() {
 
         alert(message);
       } else if (errors && errors.length > 0) {
-        let message = `❌ Ninguna WO pudo ser importada:\n\n`;
+        let message = ` Ninguna WO pudo ser importada:\n\n`;
         errors.forEach((error, index) => {
           message += `${index + 1}. ${error}\n`;
         });
@@ -1759,16 +1735,16 @@ async function importAllSelectedWOs() {
       document.getElementById("wo-select-all").checked = false;
 
     } else {
-      alert("❌ Error en importación: " + (response.data.errors || []).join(", "));
+      alert(" Error en importación: " + (response.data.errors || []).join(", "));
     }
   } catch (error) {
-    alert("❌ Error importando WOs: " + (error.response?.data?.error || error.message));
+    alert(" Error importando WOs: " + (error.response?.data?.error || error.message));
   } finally {
     // Ocultar loading y restaurar botones
     hideTableLoading('wo-modal-content');
     hideTableLoading('plan-main-table');
     setButtonLoading('wo-import-selected-btn', false, 'Importar Seleccionados');
-    updateWOStatus("✅ Listo para importar");
+    updateWOStatus(" Listo para importar");
   }
 }
 
@@ -1908,7 +1884,7 @@ async function reschedulePendingPlans() {
   const newDateInput = document.getElementById("reschedule-new-date");
 
   if (!newDateInput) {
-    console.error('❌ Elemento reschedule-new-date no encontrado');
+    console.error(' Elemento reschedule-new-date no encontrado');
     alert("Error: Elemento de fecha no disponible");
     return;
   }
@@ -1942,7 +1918,7 @@ async function reschedulePendingPlans() {
 
     // Mostrar modal de éxito con información detallada
     const created = response.data.created || 0;
-    showSuccessModal(`✅ ${created} nuevo(s) plan(es) creado(s) exitosamente para ${newDate}\n\nCada plan tiene la cantidad pendiente calculada automáticamente.`);
+    showSuccessModal(` ${created} nuevo(s) plan(es) creado(s) exitosamente para ${newDate}\n\nCada plan tiene la cantidad pendiente calculada automáticamente.`);
 
     // Recargar la lista de pendientes
     loadPendingPlans();
@@ -1960,7 +1936,7 @@ async function reschedulePendingPlans() {
     }
 
   } catch (error) {
-    console.error('❌ Error al crear nuevos planes:', error);
+    console.error(' Error al crear nuevos planes:', error);
     alert("Error al crear nuevos planes: " + (error.response?.data?.error || error.message));
     updateRescheduleStatus("Error al crear planes");
   }
@@ -2158,7 +2134,7 @@ function renderTableWithVisualGroups(data) {
  * Marca en rojo las filas que tienen la misma línea y horario de inicio
  */
 function resaltarConflictosLineaHorario() {
-  console.log('🔍 Buscando conflictos de línea/horario para resaltar...');
+  console.log(' Buscando conflictos de línea/horario para resaltar...');
   
   // *** CORRECCIÓN: Obtener planes desde visualGroups en lugar de planningData ***
   const todosLosPlanes = [];
@@ -2166,8 +2142,8 @@ function resaltarConflictosLineaHorario() {
     todosLosPlanes.push(...group.plans);
   });
   
-  console.log('📊 Total de planes en grupos:', todosLosPlanes.length);
-  console.log('📊 planningCalculations size:', planningCalculations.size);
+  console.log(' Total de planes en grupos:', todosLosPlanes.length);
+  console.log(' planningCalculations size:', planningCalculations.size);
   
   // Crear mapa de planes con su hora de inicio calculada
   const planesConHorario = [];
@@ -2188,11 +2164,11 @@ function resaltarConflictosLineaHorario() {
         model_code: plan.model_code,
         group_no: calc.groupNumber
       });
-      console.log(`  ✅ Agregado: ${plan.lot_no} - ${plan.line} - ${calc.startTime}`);
+      console.log(`   Agregado: ${plan.lot_no} - ${plan.line} - ${calc.startTime}`);
     }
   });
   
-  console.log(`📊 Analizando ${planesConHorario.length} planes activos con horario calculado`);
+  console.log(` Analizando ${planesConHorario.length} planes activos con horario calculado`);
   
   // Crear mapa de conflictos: "linea-fecha-hora" -> [lot_no1, lot_no2, ...]
   const conflictosMap = new Map();
@@ -2218,7 +2194,7 @@ function resaltarConflictosLineaHorario() {
     .filter(([clave, planes]) => planes.length > 1);
   
   if (clavesConConflicto.length === 0) {
-    console.log('✅ No se encontraron conflictos de línea/horario');
+    console.log(' No se encontraron conflictos de línea/horario');
     return;
   }
   
@@ -2243,7 +2219,7 @@ function resaltarConflictosLineaHorario() {
   // Resaltar filas con conflicto
   const tbody = document.getElementById('plan-tableBody');
   if (!tbody) {
-    console.error('❌ No se encontró plan-tableBody');
+    console.error(' No se encontró plan-tableBody');
     return;
   }
   
@@ -2298,7 +2274,7 @@ function resaltarConflictosLineaHorario() {
     }
   });
   
-  console.log(`✅ ${conflictosResaltados} filas resaltadas con conflicto`);
+  console.log(` ${conflictosResaltados} filas resaltadas con conflicto`);
   
   // Mostrar notificación si hay conflictos
   if (conflictosResaltados > 0) {
@@ -3922,7 +3898,7 @@ function initializePlanEventListeners() {
       if (dateInput) {
         const today = getTodayInNuevoLeon(); // Formato YYYY-MM-DD
         dateInput.value = today;
-        console.log('📅 Fecha del día establecida:', today);
+        console.log(' Fecha del día establecida:', today);
       }
 
       const modal = document.getElementById('plan-modal');
@@ -3942,9 +3918,9 @@ function initializePlanEventListeners() {
           opacity: 1 !important;
           visibility: visible !important;
         `;
-        console.log('✅ Modal plan-modal abierto con estilos forzados');
+        console.log(' Modal plan-modal abierto con estilos forzados');
       } else {
-        console.error('❌ Modal plan-modal no encontrado después de crearlo');
+        console.error(' Modal plan-modal no encontrado después de crearlo');
       }
       return;
     }
@@ -4180,7 +4156,7 @@ function initializePlanEventListeners() {
     const row = e.target.closest('tr.plan-row');
     
     if (!row) {
-      console.log('❌ No se encontró tr.plan-row');
+      console.log(' No se encontró tr.plan-row');
       return;
     }
     
@@ -4191,16 +4167,16 @@ function initializePlanEventListeners() {
       return;
     }
     
-    console.log('✅ Fila encontrada:', row);
+    console.log(' Fila encontrada:', row);
 
     const lotNo = row.dataset.lot;
     console.log('📋 Lot No:', lotNo);
     
     if (lotNo && typeof openEditModal === 'function') {
-      console.log('✅ Abriendo modal de edición para:', lotNo);
+      console.log(' Abriendo modal de edición para:', lotNo);
       openEditModal(lotNo);
     } else {
-      console.log('❌ No se puede abrir modal. lotNo:', lotNo, 'openEditModal existe:', typeof openEditModal === 'function');
+      console.log(' No se puede abrir modal. lotNo:', lotNo, 'openEditModal existe:', typeof openEditModal === 'function');
     }
   };
   
@@ -4209,7 +4185,7 @@ function initializePlanEventListeners() {
 
   // Marcar como inicializado
   document.body.dataset.planListenersAttached = 'true';
-  console.log('✅ Event listeners configurados correctamente');
+  console.log(' Event listeners configurados correctamente');
 }
 
 // Event listeners para nuevos controles

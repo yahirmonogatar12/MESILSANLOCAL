@@ -30,9 +30,9 @@ MYSQL_CONFIG = {
     'charset': 'utf8mb4',
     'autocommit': True,
     'ssl_disabled': False,
-    'connect_timeout': 60,
-    'read_timeout': 60,
-    'write_timeout': 60
+    'connect_timeout': int(os.getenv('MYSQL_CONNECT_TIMEOUT', '10')),
+    'read_timeout': int(os.getenv('MYSQL_READ_TIMEOUT', '10')),
+    'write_timeout': int(os.getenv('MYSQL_WRITE_TIMEOUT', '10'))
 }
 
 # Imprimir config una sola vez al cargar el módulo
@@ -41,7 +41,7 @@ print(f"🔧 MySQL Config: host={MYSQL_CONFIG['host']}, port={MYSQL_CONFIG['port
 # ============ CONNECTION POOL ============
 _pool = []
 _pool_lock = threading.Lock()
-_MAX_POOL_SIZE = 3  # Máximo de conexiones reutilizables en el pool
+_MAX_POOL_SIZE = max(1, int(os.getenv('MYSQL_POOL_SIZE', '3')))  # Máximo de conexiones reutilizables en el pool
 
 def _create_connection():
     """Crear una nueva conexión MySQL"""
@@ -237,12 +237,12 @@ def test_connection():
             cursor.fetchone()
             return True
     except Exception as e:
-        print(f"❌ Error de conexión: {e}")
+        print(f" Error de conexión: {e}")
         return False
 
 if __name__ == "__main__":
-    print("🧪 Probando conexión a MySQL...")
+    print(" Probando conexión a MySQL...")
     if test_connection():
         print(" Conexión exitosa")
     else:
-        print("❌ Error de conexión")
+        print(" Error de conexión")

@@ -189,7 +189,7 @@
           // Verificar si el script ya está cargado
           const existingScript = document.querySelector(`script[src="${src}"]`);
           if (existingScript) {
-            console.log(`✅ Script ya cargado: ${src}`);
+            console.log(` Script ya cargado: ${src}`);
             resolve();
             return;
           }
@@ -197,11 +197,11 @@
           const script = document.createElement('script');
           script.src = src;
           script.onload = () => {
-            console.log(`✅ Script cargado: ${src}`);
+            console.log(` Script cargado: ${src}`);
             resolve();
           };
           script.onerror = () => {
-            console.error(`❌ Error cargando script: ${src}`);
+            console.error(` Error cargando script: ${src}`);
             reject(new Error(`Failed to load ${src}`));
           };
           document.head.appendChild(script);
@@ -240,20 +240,20 @@
           
           // Inicializar event listeners
           if (typeof window.initializePlanIMDEventListeners === 'function') {
-            console.log('✅ Inicializando event listeners de Plan Main IMD');
+            console.log(' Inicializando event listeners de Plan Main IMD');
             window.initializePlanIMDEventListeners();
             
             // Cargar datos iniciales
             if (typeof window.loadPlansIMD === 'function') {
-              console.log('📊 Cargando planes iniciales...');
+              console.log(' Cargando planes iniciales...');
               window.loadPlansIMD();
             }
           } else {
-            console.error('❌ initializePlanIMDEventListeners no disponible después de cargar scripts');
+            console.error(' initializePlanIMDEventListeners no disponible después de cargar scripts');
           }
           
         } catch (error) {
-          console.error('❌ Error inicializando módulo Plan Main IMD:', error);
+          console.error(' Error inicializando módulo Plan Main IMD:', error);
         }
       }
       

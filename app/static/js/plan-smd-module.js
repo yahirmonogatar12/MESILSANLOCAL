@@ -131,7 +131,7 @@
             return; 
         }
         queue.push(wo);
-        console.log('✅ WO agregada. Cola actual:', queue);
+        console.log(' WO agregada. Cola actual:', queue);
         renderQueue();
     }
     
@@ -389,7 +389,7 @@ function renderPlan() {
             console.log('Solo faltantes:', onlyShortage);
             
             for (const wo of queue) {
-                console.log('🔍 Procesando WO:', wo.codigo_wo, 'Modelo:', wo.codigo_modelo || wo.modelo);
+                console.log(' Procesando WO:', wo.codigo_wo, 'Modelo:', wo.codigo_modelo || wo.modelo);
                 
                 const inv = await fetchJSON(PLAN_SMD_API.inventarioPorModelo(wo.codigo_modelo||wo.modelo||''));
                 const invRows = Array.isArray(inv) ? inv : (inv.rows||[]);
@@ -397,7 +397,7 @@ function renderPlan() {
 
                 if (onlyShortage) {
                     const { faltante, totalFisico, planQty } = computeShortage(wo, invRows);
-                    console.log('🔍 Faltante calculado:', faltante, 'Total físico:', totalFisico);
+                    console.log(' Faltante calculado:', faltante, 'Total físico:', totalFisico);
 
                     // Si hay faltantes, generar fila por faltante
                     if (faltante > 0) {
@@ -427,13 +427,13 @@ function renderPlan() {
                 }
             }
             
-            console.log('✅ Plan generado con', rows.length, 'filas:', rows);
+            console.log(' Plan generado con', rows.length, 'filas:', rows);
             plan = rows;
             renderPlan();
             for (let i = 0; i < plan.length; i++) { try { await updateCtUphForRowAt(i); } catch {} }
             
         } catch (e) { 
-            console.error('❌ Error generando plan:', e); 
+            console.error(' Error generando plan:', e); 
             alertMsg('No fue posible generar el plan: ' + e.message); 
         }
         finally { 
@@ -505,7 +505,7 @@ function renderPlan() {
                     if (!updateRes.ok) {
                         console.warn(`Error actualizando WO ${codigoWO}: HTTP ${updateRes.status}`);
                     } else {
-                        console.log(`✅ WO ${codigoWO} actualizada a PLANIFICADA`);
+                        console.log(` WO ${codigoWO} actualizada a PLANIFICADA`);
                     }
                 } catch (err) {
                     console.warn(`Error actualizando WO ${codigoWO}:`, err);
@@ -653,7 +653,7 @@ function renderPlan() {
         if(results.includes(false)){ 
             console.warn('⚠️ Algunas pruebas fallaron'); 
         } else {
-            console.log('✅ Todos los tests pasaron correctamente');
+            console.log(' Todos los tests pasaron correctamente');
         }
         
         return !results.includes(false);

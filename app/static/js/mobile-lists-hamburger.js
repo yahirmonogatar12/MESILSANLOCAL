@@ -411,7 +411,7 @@ window.testMobileListsHamburger = function() {
         
         return 'Prueba completada. Revisa si aparece el botón hamburguesa en la esquina inferior derecha.';
     } else {
-        console.error('❌ MobileListsHamburger no está inicializado');
+        console.error(' MobileListsHamburger no está inicializado');
         return 'Error: MobileListsHamburger no está inicializado';
     }
 };

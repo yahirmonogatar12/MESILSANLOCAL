@@ -275,14 +275,14 @@ Default: > 1200px    (Pantallas grandes)
 
 ## 🎯 Tips y Mejores Prácticas
 
-### ✅ DO (Hacer)
+###  DO (Hacer)
 - Usar variables CSS para colores y espaciados
 - Mantener consistencia con el theme ILSAN
 - Documentar cambios significativos en esta guía
 - Probar en mobile después de cada cambio
 - Usar clases semánticas (`.user-info-bar` no `.blue-bar`)
 
-### ❌ DON'T (No Hacer)
+###  DON'T (No Hacer)
 - Usar `!important` (salvo excepciones críticas)
 - Estilos inline directos en HTML (usar clases)
 - Colores hardcoded (usar variables CSS)
@@ -303,19 +303,19 @@ Default: > 1200px    (Pantallas grandes)
 ## 📝 Historial de Cambios
 
 ### v1.1 - 2025-10-16
-- ✅ Rediseño de navbar con logo cuadrado
-- ✅ Cambio de "Supplier Portal" a "Sistema Integrado de Gestión"
-- ✅ User avatar más discreto (36px → border sutil)
-- ✅ Botón logout outline style (menos llamativo)
-- ✅ Mejoras responsive para mobile
-- ✅ Separación de componentes en `landing-components.css`
-- ✅ Creación de esta guía de diseño
+-  Rediseño de navbar con logo cuadrado
+-  Cambio de "Supplier Portal" a "Sistema Integrado de Gestión"
+-  User avatar más discreto (36px → border sutil)
+-  Botón logout outline style (menos llamativo)
+-  Mejoras responsive para mobile
+-  Separación de componentes en `landing-components.css`
+-  Creación de esta guía de diseño
 
 ### v1.0 - 2025-10-15
-- ✅ Landing page inicial con hero banner
-- ✅ Sistema de navegación horizontal
-- ✅ Cards de aplicaciones con permisos
-- ✅ Footer corporativo
+-  Landing page inicial con hero banner
+-  Sistema de navegación horizontal
+-  Cards de aplicaciones con permisos
+-  Footer corporativo
 
 ---
 

@@ -30,7 +30,7 @@ function procesarImpresionUnidades() {
 1. Usuario hace clic en "Unidades" → modal pequeño para cantidad
 2. Usuario ingresa cantidad (sin marcar checkbox de lote interno)
 3. Confirma → `procesarImpresionUnidades()` se ejecuta
-4. **Función SIEMPRE abre `modal-asignacion-lotes`** ❌
+4. **Función SIEMPRE abre `modal-asignacion-lotes`** 
 5. Usuario confundido porque no quería asignar lotes de proveedor
 
 ## Solución Implementada
@@ -50,7 +50,7 @@ function procesarImpresionUnidades() {
     try {
         cerrarModalUnidades();
         
-        // ✅ CLAVE: Verificar si se va a usar lote interno
+        //  CLAVE: Verificar si se va a usar lote interno
         const usarLoteInterno = window.loteInternoParaGuardar !== null && 
                                window.loteInternoParaGuardar !== undefined;
         
@@ -69,7 +69,7 @@ function procesarImpresionUnidades() {
             });
         }
         
-        // ✅ DECISIÓN: Según checkbox de lote interno
+        //  DECISIÓN: Según checkbox de lote interno
         if (usarLoteInterno) {
             // Con lote interno: abrir modal para escanear etiquetas
             abrirModalAsignacionLotes();
@@ -140,7 +140,7 @@ async function guardarEntradaInventarioDirecto(item) {
         codigo_material_original: materialExistente.codigo,
         codigo_material: document.getElementById('codigoMaterialSelect').value,
         // ... otros campos del formulario ...
-        numero_lote_material: '', // ✅ Sin lote de proveedor
+        numero_lote_material: '', //  Sin lote de proveedor
         codigo_material_recibido: item.codigo, // Código consecutivo generado
         // ... resto de campos ...
     };
@@ -177,7 +177,7 @@ async function guardarEntradaInventarioDirecto(item) {
 7. Imprime etiquetas → Guarda directamente en inventario
    ↓
 8. Muestra modal de éxito
-   ✅ NO abre modal de asignación de lotes
+    NO abre modal de asignación de lotes
 ```
 
 ### Flujo 2: Con Lote Interno
@@ -197,7 +197,7 @@ async function guardarEntradaInventarioDirecto(item) {
 7. Imprime en segundo plano
    ↓
 8. Abre modal para escanear etiquetas impresas
-   ✅ Modal correcto se abre
+    Modal correcto se abre
 ```
 
 ## Archivos Modificados
@@ -209,10 +209,10 @@ async function guardarEntradaInventarioDirecto(item) {
 - ~5520-5610: Nuevas funciones `imprimirYGuardarDirecto()` y `guardarEntradaInventarioDirecto()`
 
 **Cambios clave:**
-1. ✅ Verificación de `window.loteInternoParaGuardar` para decidir flujo
-2. ✅ Creación de función `imprimirYGuardarDirecto()` para modo manual
-3. ✅ Creación de función `guardarEntradaInventarioDirecto()` sin lote proveedor
-4. ✅ Mantenimiento de flujo existente cuando sí se usa lote interno
+1.  Verificación de `window.loteInternoParaGuardar` para decidir flujo
+2.  Creación de función `imprimirYGuardarDirecto()` para modo manual
+3.  Creación de función `guardarEntradaInventarioDirecto()` sin lote proveedor
+4.  Mantenimiento de flujo existente cuando sí se usa lote interno
 
 ## Validación
 
@@ -238,11 +238,11 @@ async function guardarEntradaInventarioDirecto(item) {
 
 ## Beneficios
 
-1. ✅ **Eliminado conflicto de modales**: Ya no se abre modal incorrecto
-2. ✅ **Flujo más rápido**: Modo manual procesa directamente sin pasos adicionales
-3. ✅ **Mejor UX**: Usuario obtiene feedback inmediato sin modales innecesarios
-4. ✅ **Código más claro**: Separación de responsabilidades (con lote vs sin lote)
-5. ✅ **Mantenibilidad**: Funciones independientes para cada flujo
+1.  **Eliminado conflicto de modales**: Ya no se abre modal incorrecto
+2.  **Flujo más rápido**: Modo manual procesa directamente sin pasos adicionales
+3.  **Mejor UX**: Usuario obtiene feedback inmediato sin modales innecesarios
+4.  **Código más claro**: Separación de responsabilidades (con lote vs sin lote)
+5.  **Mantenibilidad**: Funciones independientes para cada flujo
 
 ## Notas Técnicas
 

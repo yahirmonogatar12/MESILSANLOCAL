@@ -305,7 +305,7 @@ function mostrarAlerta(mensaje, tipo = 'info') {
     
     const iconMap = {
         'success': '',
-        'error': '❌', 
+        'error': '', 
         'warning': '',
         'info': ''
     };

@@ -40,8 +40,8 @@ class MobileListas {
                     <div class="mobile-lista-item" data-lista="control-produccion" tabindex="0">🏭 Control de Producción</div>
                     <div class="mobile-lista-item" data-lista="control-proceso" tabindex="0">⚙️ Control de Proceso</div>
                     <div class="mobile-lista-item" data-lista="control-calidad" tabindex="0"> Control de Calidad</div>
-                    <div class="mobile-lista-item" data-lista="control-resultados" tabindex="0">📊 Control de Resultados</div>
-                    <div class="mobile-lista-item" data-lista="control-reporte" tabindex="0">📄 Control de Reporte</div>
+                    <div class="mobile-lista-item" data-lista="control-resultados" tabindex="0"> Control de Resultados</div>
+                    <div class="mobile-lista-item" data-lista="control-reporte" tabindex="0"> Control de Reporte</div>
                     <div class="mobile-lista-item" data-lista="configuracion" tabindex="0">⚙️ Configuración</div>
                 </div>
             </div>
@@ -167,7 +167,7 @@ class MobileListas {
             }
             
         } catch (error) {
-            console.error('❌ Error:', error);
+            console.error(' Error:', error);
             this.showTestContent(titulo);
         }
     }

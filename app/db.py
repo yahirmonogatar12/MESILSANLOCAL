@@ -173,7 +173,7 @@ def create_legacy_tables():
             execute_query(create_sql)
             print(f" Tabla {table_name} creada/verificada")
         except Exception as e:
-            print(f"❌ Error creando tabla {table_name}: {e}")
+            print(f" Error creando tabla {table_name}: {e}")
 
 def init_sqlite_db():
     """Inicialización de SQLite como fallback"""
@@ -381,7 +381,7 @@ def obtener_control_material_almacen():
 def migrar_datos_sqlite():
     """Migrar datos desde SQLite existente a MySQL"""
     if not MYSQL_AVAILABLE:
-        print("❌ MySQL no disponible para migración")
+        print(" MySQL no disponible para migración")
         return False
         
     try:
@@ -396,7 +396,7 @@ def migrar_datos_sqlite():
             print(" No se encontró base de datos SQLite para migrar")
             return True
     except Exception as e:
-        print(f"❌ Error en migración: {e}")
+        print(f" Error en migración: {e}")
         return False
 
 # === FUNCIONES DE PRUEBA ===
@@ -447,7 +447,7 @@ def actualizar_inventario_consolidado_entrada(data):
         return result > 0
         
     except Exception as e:
-        print(f"❌ Error actualizando inventario_consolidado: {e}")
+        print(f" Error actualizando inventario_consolidado: {e}")
         return False
 
 def test_database_connection():
@@ -467,12 +467,12 @@ def test_database_connection():
         return False
 
 if __name__ == "__main__":
-    print("🧪 Probando conexión a base de datos...")
+    print(" Probando conexión a base de datos...")
     if test_database_connection():
         print(" Conexión exitosa")
         if init_db():
             print(" Base de datos inicializada")
         else:
-            print("❌ Error inicializando base de datos")
+            print(" Error inicializando base de datos")
     else:
-        print("❌ Error de conexión")
+        print(" Error de conexión")

@@ -24,7 +24,7 @@ function consultarInventarioGeneral() {
     const tableBody = document.getElementById('registroMaterialTableBody');
     
     if (!tableBody) {
-        console.error('❌ Tabla de inventario no encontrada');
+        console.error(' Tabla de inventario no encontrada');
         return;
     }
     
@@ -65,7 +65,7 @@ function renderizarInventarioTabla() {
     const tableBody = document.getElementById('registroMaterialTableBody');
     
     if (!tableBody) {
-        console.error('❌ No se encontró el tbody de la tabla');
+        console.error(' No se encontró el tbody de la tabla');
         return;
     }
     
@@ -154,12 +154,12 @@ function verHistorialCompleto(numeroParte) {
         if (data.success) {
             mostrarModalHistorial(numeroParte, data.historial, data.balance_actual);
         } else {
-            alert(`❌ Error al consultar historial: ${data.error}`);
+            alert(` Error al consultar historial: ${data.error}`);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('❌ Error al consultar historial');
+        alert(' Error al consultar historial');
     });
 }
 
@@ -178,12 +178,12 @@ function verLotesDetallados(numeroParte) {
         if (data.success) {
             mostrarModalLotes(numeroParte, data.lotes);
         } else {
-            alert(`❌ Error al consultar lotes: ${data.error}`);
+            alert(` Error al consultar lotes: ${data.error}`);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('❌ Error al consultar lotes');
+        alert(' Error al consultar lotes');
     });
 }
 
@@ -388,7 +388,7 @@ function toggleInventarioSelectAll() {
 }
 
 function exportarInventarioExcel() {
-    console.log('📊 Exportando inventario a Excel');
+    console.log(' Exportando inventario a Excel');
     const params = new URLSearchParams({
         tipo: 'inventario_general',
         formato: 'excel'

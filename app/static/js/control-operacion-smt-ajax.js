@@ -1390,7 +1390,7 @@
               if (cantidadProducida > 0) {
                 try {
                   await actualizarUsedCountMetalMask(selectedPlanId, cantidadProducida);
-                  console.log('✅ Metal Mask used_count actualizado correctamente');
+                  console.log(' Metal Mask used_count actualizado correctamente');
                 } catch (error) {
                   console.warn('⚠️ Error actualizando Metal Mask:', error.message);
                   // Continuar con el proceso aunque falle la actualización del Metal Mask

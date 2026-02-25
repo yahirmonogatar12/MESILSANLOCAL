@@ -178,7 +178,7 @@ def api_create_row():
         query = f"INSERT INTO `{TABLE_NAME}` ({colnames}) VALUES ({placeholders})"
         execute_query(query, values)
         
-        print(f"✅ Registro creado por usuario: {current_user}")
+        print(f" Registro creado por usuario: {current_user}")
         return jsonify({"ok": True})
     except Exception as e:
         print(f"Error creando registro: {e}")

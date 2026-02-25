@@ -20,14 +20,14 @@ El flujo original tenía una falla de diseño:
 6. renderTableWithVisualGroups() REDISTRIBUYE todos los planes automáticamente
    (usando algoritmo round-robin que ignora group_no porque es NULL)
 7. Frontend intenta mover el plan con assignPlanToGroup()
-8. ❌ YA ES TARDE: el plan ya fue distribuido automáticamente
+8.  YA ES TARDE: el plan ya fue distribuido automáticamente
 ```
 
 **Problema principal**: El plan se creaba en la BD sin `group_no`, por lo que al recargar, el algoritmo automático lo redistribuía antes de que el frontend pudiera moverlo.
 
 ---
 
-## ✅ Solución Implementada
+##  Solución Implementada
 
 ### Cambio de Estrategia
 En lugar de intentar mover el plan después de crearlo, **guardamos el grupo directamente en la base de datos** al momento de crear el plan.
@@ -84,7 +84,7 @@ async function handleNewPlanSubmit(form) {
   
   // Extraer grupo seleccionado
   const targetGroup = data.target_group ? parseInt(data.target_group) : null;
-  delete data.target_group; // ❌ NO enviar al backend
+  delete data.target_group; //  NO enviar al backend
 
   // Crear plan (sin group_no)
   const response = await axios.post("/api/plan", data);
@@ -106,7 +106,7 @@ async function handleNewPlanSubmit(form) {
 async function handleNewPlanSubmit(form) {
   const data = Object.fromEntries(new FormData(form));
   
-  // ✅ Renombrar target_group a group_no para el backend
+  //  Renombrar target_group a group_no para el backend
   if (data.target_group && data.target_group !== '0') {
     data.group_no = parseInt(data.target_group);
   }
@@ -118,7 +118,7 @@ async function handleNewPlanSubmit(form) {
   // Recargar planes - el plan ya viene con su grupo desde la BD
   await loadPlans();
   
-  // ✅ Ya no necesitamos mover manualmente
+  //  Ya no necesitamos mover manualmente
   // renderTableWithVisualGroups() respeta el group_no del backend
 }
 ```
@@ -144,12 +144,12 @@ async function handleNewPlanSubmit(form) {
 8. renderTableWithVisualGroups() detecta que los planes tienen group_no
 9. renderTableWithVisualGroups() usa la rama hasGroupData = true
 10. Cada plan se asigna a su grupo según plan.group_no desde la BD
-11. ✅ El plan aparece correctamente en el Grupo 4
+11.  El plan aparece correctamente en el Grupo 4
 ```
 
 ---
 
-## 📊 Verificación del Código
+##  Verificación del Código
 
 ### Frontend respeta `group_no` de la BD
 
@@ -193,19 +193,19 @@ if (hasGroupData) {
 
 ---
 
-## 🧪 Prueba del Fix
+##  Prueba del Fix
 
 ### Antes del Fix:
 ```
 1. Crear plan para M4 → Seleccionar "Grupo 4"
-2. Resultado: Plan aparece en Grupo 1 ❌
+2. Resultado: Plan aparece en Grupo 1 
 ```
 
 ### Después del Fix:
 ```
 1. Crear plan para M4 → Seleccionar "Grupo 4"
-2. Resultado: Plan aparece en Grupo 4 ✅
-3. Recargar página → Plan sigue en Grupo 4 ✅
+2. Resultado: Plan aparece en Grupo 4 
+3. Recargar página → Plan sigue en Grupo 4 
 ```
 
 ---
@@ -231,7 +231,7 @@ if (hasGroupData) {
 
 ---
 
-## 🔍 Archivos Modificados
+##  Archivos Modificados
 
 1. **Backend**: `app/routes.py` (líneas 808-833)
    - Endpoint `/api/plan` (POST)
@@ -247,6 +247,6 @@ if (hasGroupData) {
 
 ---
 
-## ✅ Resultado Final
+##  Resultado Final
 
 El bug está completamente resuelto. Ahora cuando un usuario crea un plan y selecciona un grupo específico, el plan aparece correctamente en ese grupo de forma inmediata y persistente.

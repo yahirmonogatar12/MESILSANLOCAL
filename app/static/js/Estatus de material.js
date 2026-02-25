@@ -247,7 +247,7 @@ window.initEstatusMaterial = function() {
     const recibidoBody = document.getElementById('estatus-recibido-body');
     
     if (!inventarioBody || !recibidoBody) {
-        console.error('❌ Elementos DOM no encontrados para Estatus de Material');
+        console.error(' Elementos DOM no encontrados para Estatus de Material');
         return;
     }
     
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalInventario = document.getElementById('total-inventario');
         
         if (!inventarioBody || !totalInventario) {
-            console.error('❌ Elementos DOM no encontrados para inventario');
+            console.error(' Elementos DOM no encontrados para inventario');
             return;
         }
         
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const totalRecibido = document.getElementById('total-recibido');
         
         if (!recibidoBody || !totalRecibido) {
-            console.error('❌ Elementos DOM no encontrados para material recibido');
+            console.error(' Elementos DOM no encontrados para material recibido');
             return;
         }
         
@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnVerRecibidos = document.getElementById('btn-ver-recibidos');
         
         if (!inventarioPanel || !recibidoPanel || !btnVerInventario || !btnVerRecibidos) {
-            console.error('❌ Elementos DOM no encontrados para navegación móvil');
+            console.error(' Elementos DOM no encontrados para navegación móvil');
             return;
         }
         
@@ -491,7 +491,7 @@ window.initEstatusMaterial = function() {
     const btnVerRecibidos = document.getElementById('btn-ver-recibidos');
     
     if (!inventarioBody || !recibidoBody) {
-        console.error('❌ Elementos DOM no encontrados para Estatus de Material');
+        console.error(' Elementos DOM no encontrados para Estatus de Material');
         return;
     }
     

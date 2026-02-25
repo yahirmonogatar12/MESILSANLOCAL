@@ -435,6 +435,9 @@
         <!-- </div> -->
         
         <!-- Crear plan micom -->
+        <div id="control-cuchillas-corte-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
 
     </div>
     
@@ -1743,7 +1746,7 @@
                     });
                     
                 } catch (error) {
-                    console.error('❌ Error en limpieza de event listeners:', error);
+                    console.error(' Error en limpieza de event listeners:', error);
                 }
             }
             
@@ -1769,7 +1772,7 @@
                     });
                     
                 } catch (error) {
-                    console.error('❌ Error cerrando dropdowns:', error);
+                    console.error(' Error cerrando dropdowns:', error);
                 }
             }
             
@@ -1933,7 +1936,7 @@
                         return html;
                     })
                     .catch(error => {
-                        console.error('❌ Error al cargar el contenido:', error);
+                        console.error(' Error al cargar el contenido:', error);
                         // Solo mostrar mensaje genérico si no es un error de permisos
                         if (!error.message.includes('Permisos insuficientes') && !error.message.includes('Usuario no autenticado')) {
                             container.innerHTML = '<div class="error-message">Error al cargar el contenido. Por favor, intente nuevamente.</div>';
@@ -2046,7 +2049,7 @@
                         window.cerrarControlEmbarque();
                         // // // // // // // console.log(' Control de Embarque cerrado exitosamente');
                     } catch (error) {
-                        console.error('❌ Error cerrando Control de Embarque:', error);
+                        console.error(' Error cerrando Control de Embarque:', error);
                     }
                 } else {
                     // // // // // // // console.log(' Función cerrarControlEmbarque no disponible');
@@ -2096,6 +2099,8 @@ function hideAllMaterialContainers() {
     if (controlOperacionLineaContainer) controlOperacionLineaContainer.style.display = 'none';
     const inventarioImdTerminadoContainer = document.getElementById('inventario-imd-terminado-unique-container');
     if (inventarioImdTerminadoContainer) inventarioImdTerminadoContainer.style.display = 'none';
+    const controlCuchillasCorteContainer = document.getElementById('control-cuchillas-corte-unique-container');
+    if (controlCuchillasCorteContainer) controlCuchillasCorteContainer.style.display = 'none';
 }
         
             
@@ -2300,7 +2305,7 @@ function hideAllMaterialContainers() {
                         .then(() => {
                         })
                         .catch(error => {
-                            console.error('❌ Error cargando Control de Material de Información Básica:', error);
+                            console.error(' Error cargando Control de Material de Información Básica:', error);
                             container.innerHTML = '<div class="error-message"><h3>Error al cargar el contenido</h3><p>No se pudo cargar Control de Material. Por favor, intente nuevamente.</p></div>';
                         });
                 }
@@ -2345,6 +2350,7 @@ function hideAllMaterialContainers() {
                     'control-produccion-smt-container',
                     'operacion-linea-smt-unique-container',
                     'inventario-imd-terminado-unique-container',
+                    'control-cuchillas-corte-unique-container',
                     'Control de produccion SMT-unique-container',
                     'crear-plan-micom-unique-container',
                     'line-material-status-unique-container',
@@ -2392,7 +2398,7 @@ function hideAllMaterialContainers() {
                             }
                         })
                         .catch(error => {
-                            console.error('❌ Error cargando Control de BOM de Información Básica:', error);
+                            console.error(' Error cargando Control de BOM de Información Básica:', error);
                             // El error ya se muestra en cargarContenidoDinamico, no hacer nada más aquí
                         });
                 }
@@ -2618,11 +2624,11 @@ function hideAllMaterialContainers() {
                             // Auto-inicialización ya está incluida en el template
                             // // // // // // // console.log(' Control de Embarque AJAX completamente funcional');
                         } else {
-                            console.error('❌ No se encontró el contenedor embarque-unique-container');
+                            console.error(' No se encontró el contenedor embarque-unique-container');
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Error cargando Control de Embarque AJAX:', error);
+                        console.error(' Error cargando Control de Embarque AJAX:', error);
                         
                         // Manejo robusto de errores
                         if (error.status === 404) {
@@ -2640,7 +2646,7 @@ function hideAllMaterialContainers() {
                     });
                     
                 } catch (error) {
-                    console.error('❌ Error crítico en mostrarControlembarque:', error);
+                    console.error(' Error crítico en mostrarControlembarque:', error);
                     alert('Error crítico al cargar el módulo Control de Embarque');
                 }
             };
@@ -2695,6 +2701,7 @@ function hideAllMaterialContainers() {
                         'Control de produccion SMT-unique-container',
                         'operacion-linea-smt-unique-container',
                         'plan-main-assy-unique-container',
+                        'control-cuchillas-corte-unique-container',
                         'plan-main-imd-unique-container',
                         'plan-main-smt-unique-container'
                     ];
@@ -2721,11 +2728,11 @@ function hideAllMaterialContainers() {
                             // // // // // // // console.log(' Contenedor de Inventario IMD Terminado inicializado');
                             // // // // // // // console.log(' Inventario IMD Terminado AJAX completamente funcional');
                         } else {
-                            console.error('❌ No se encontró el contenedor inventario-imd-terminado-unique-container');
+                            console.error(' No se encontró el contenedor inventario-imd-terminado-unique-container');
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Error cargando Inventario IMD Terminado AJAX:', error);
+                        console.error(' Error cargando Inventario IMD Terminado AJAX:', error);
                         
                         // Manejo específico de errores
                         let errorMessage = 'Error desconocido al cargar el módulo';
@@ -2786,7 +2793,7 @@ function hideAllMaterialContainers() {
                     });
                     
                 } catch (error) {
-                    console.error('❌ Error crítico en mostrarInventarioIMDTerminado:', error);
+                    console.error(' Error crítico en mostrarInventarioIMDTerminado:', error);
                     alert('Error crítico al cargar el módulo Inventario IMD Terminado');
                 }
             };
@@ -3540,7 +3547,7 @@ function hideAllMaterialContainers() {
                     }
                     
                 } else {
-                    mostrarMensajeSimple('❌ Código no coincide con el material', 'error');
+                    mostrarMensajeSimple(' Código no coincide con el material', 'error');
                     verificacionCompletada = false;
                     event.target.value = '';
                     event.target.focus();
@@ -3613,7 +3620,7 @@ function hideAllMaterialContainers() {
                     // console.log(` Especificación encontrada desde campo '${data.campo_origen}':`, data.especificacion);
                     return data.especificacion;
                 } else {
-                    // // // // // // console.log('❌ No se encontró especificación:', data.error || 'Sin especificación disponible');
+                    // // // // // // console.log(' No se encontró especificación:', data.error || 'Sin especificación disponible');
                     
                     // Si tenemos información del material, mostrarla para debug
                     if (data.campos_disponibles) {
@@ -3624,7 +3631,7 @@ function hideAllMaterialContainers() {
                 }
                 
             } catch (error) {
-                console.error('❌ Error al consultar especificación:', error);
+                console.error(' Error al consultar especificación:', error);
                 return null;
             }
         }
@@ -3659,20 +3666,20 @@ function hideAllMaterialContainers() {
                         // // // // // // // console.log(' No hay historial de salidas para este número de parte');
                     }
                 } else {
-                    // // // // // // console.log('❌ Error al consultar historial:', response.status);
+                    // // // // // // console.log(' Error al consultar historial:', response.status);
                 }
                 
                 return null;
                 
             } catch (error) {
-                console.error('❌ Error al consultar especificación desde historial:', error);
+                console.error(' Error al consultar especificación desde historial:', error);
                 return null;
             }
         }
 
         // Función para rellenar campos del material
         function rellenarCamposMaterial(material) {
-            // // // // // // console.log('🔍 RELLENANDO CAMPOS - Material recibido:', material);
+            // // // // // // console.log(' RELLENANDO CAMPOS - Material recibido:', material);
             
             const campos = [
                 'salida_codigo_material_original',
@@ -3746,7 +3753,7 @@ function hideAllMaterialContainers() {
                         
                         // Si no encontramos especificación, intentar consultarla desde historial primero
                         if (material.numero_parte) {
-                            // // // // // // console.log('🔍 Intentando consultar especificación desde historial por número de parte...');
+                            // // // // // // console.log(' Intentando consultar especificación desde historial por número de parte...');
                             consultarEspecificacionDesdeHistorial(material.numero_parte)
                                 .then(especificacionHistorial => {
                                     if (especificacionHistorial && campo) {
@@ -3760,7 +3767,7 @@ function hideAllMaterialContainers() {
                                         }
                                     } else {
                                         // Si no hay en historial, intentar consulta directa a BD como fallback
-                                        // // // // // // console.log('🔍 No hay especificación en historial, intentando consulta directa...');
+                                        // // // // // // console.log(' No hay especificación en historial, intentando consulta directa...');
                                         consultarEspecificacionPorNumeroParte(material.numero_parte)
                                             .then(especificacionConsultada => {
                                                 if (especificacionConsultada && campo) {
@@ -3786,8 +3793,8 @@ function hideAllMaterialContainers() {
                 }
             });
             
-            // 🔍 DEBUG: Mostrar información completa del material
-            // // // // // // console.log('📊 INFORMACIÓN COMPLETA DEL MATERIAL:');
+            //  DEBUG: Mostrar información completa del material
+            // // // // // // console.log(' INFORMACIÓN COMPLETA DEL MATERIAL:');
             // // // // // // console.log('- Código material:', material.codigo_material || 'N/A');
             // // // // // // console.log('- Número parte:', material.numero_parte || 'N/A');
             // // // // // // console.log('- Cantidad actual:', material.cantidad_actual || 'N/A');
@@ -3872,7 +3879,7 @@ function hideAllMaterialContainers() {
                     const procesoDestino = salidaData.proceso_destino || 'PRODUCCION';
                     
                     mostrarMensajeSimple(
-                        `✅ Salida automática procesada: ${cantidadSalida}${modeloTexto} → ${procesoDestino}`, 
+                        ` Salida automática procesada: ${cantidadSalida}${modeloTexto} → ${procesoDestino}`, 
                         'success'
                     );
                     
@@ -3884,7 +3891,7 @@ function hideAllMaterialContainers() {
                 }
                 
             } catch (error) {
-                console.error('❌ Error en procesamiento automático:', error);
+                console.error(' Error en procesamiento automático:', error);
                 mostrarMensajeSimple('Error interno en procesamiento automático', 'error');
             }
         }
@@ -3969,7 +3976,7 @@ function hideAllMaterialContainers() {
                     const procesoDestino = salidaData.proceso_destino || 'PRODUCCION';
                     
                     mostrarMensajeSimple(
-                        `✅ Salida procesada: ${cantidadSalida}${modeloTexto} → ${procesoDestino}`, 
+                        ` Salida procesada: ${cantidadSalida}${modeloTexto} → ${procesoDestino}`, 
                         'success'
                     );
                     
@@ -3985,7 +3992,7 @@ function hideAllMaterialContainers() {
                 }
                 
             } catch (error) {
-                console.error('❌ Error en procesamiento manual desde MaterialTemplate:', error);
+                console.error(' Error en procesamiento manual desde MaterialTemplate:', error);
                 mostrarMensajeSimple('Error interno en procesamiento manual', 'error');
             }
         }
@@ -4020,11 +4027,11 @@ function hideAllMaterialContainers() {
 
         // 🔧 FUNCIÓN DE DEBUGGING PARA NÚMERO DE LOTE
         window.debugNumeroLote = function() {
-            // // // // // // console.log('🧪 VERIFICANDO NÚMERO DE LOTE DESDE BASE DE DATOS:');
+            // // // // // // console.log(' VERIFICANDO NÚMERO DE LOTE DESDE BASE DE DATOS:');
             // // // // // // console.log('================================================');
             
             if (!materialActual) {
-                // // // // // // console.log('❌ No hay material actual cargado');
+                // // // // // // console.log(' No hay material actual cargado');
                 // // // // // // console.log('💡 Primero escanee un código de material');
                 return { error: 'No hay material cargado' };
             }
@@ -4041,7 +4048,7 @@ function hideAllMaterialContainers() {
                 'numeroLote'
             ];
             
-            // // // // // // console.log('🔍 Buscando número de lote en todas las propiedades:');
+            // // // // // // console.log(' Buscando número de lote en todas las propiedades:');
             const resultados = {};
             
             propiedadesLote.forEach(prop => {
@@ -4055,7 +4062,7 @@ function hideAllMaterialContainers() {
             if (campoLote) {
                 // // // // // // // console.log(' Campo visual número de lote:', campoLote.value || 'VACÍO');
             } else {
-                // // // // // // console.log('❌ Campo visual de número de lote no encontrado');
+                // // // // // // console.log(' Campo visual de número de lote no encontrado');
             }
             
             // Buscar el mejor número de lote disponible
@@ -4086,13 +4093,13 @@ function hideAllMaterialContainers() {
             // // // // // // console.log('🔧 FORZANDO RELLENADO DE NÚMERO DE LOTE...');
             
             if (!materialActual) {
-                // // // // // // console.log('❌ No hay material cargado');
+                // // // // // // console.log(' No hay material cargado');
                 return false;
             }
             
             const campoLote = document.getElementById('salida_numero_lote_material');
             if (!campoLote) {
-                // // // // // // console.log('❌ Campo de número de lote no encontrado');
+                // // // // // // console.log(' Campo de número de lote no encontrado');
                 return false;
             }
             
@@ -4121,18 +4128,18 @@ function hideAllMaterialContainers() {
         
         // 🔧 FUNCIÓN PARA DEBUGGING DE TABLA HISTORIAL
         window.debugTablaHistorial = function() {
-            // // // // // // console.log('🧪 DEBUGGING TABLA HISTORIAL DE SALIDAS:');
+            // // // // // // console.log(' DEBUGGING TABLA HISTORIAL DE SALIDAS:');
             // // // // // // console.log('=====================================');
             
             // Intentar obtener los datos más recientes de la tabla
             const tabla = document.getElementById('salida_tablaSalidas');
             if (!tabla) {
-                // // // // // // console.log('❌ Tabla de salidas no encontrada');
+                // // // // // // console.log(' Tabla de salidas no encontrada');
                 return { error: 'Tabla no encontrada' };
             }
             
             const filas = tabla.querySelectorAll('tbody tr');
-            // console.log(`📊 Filas encontradas en tabla: ${filas.length}`);
+            // console.log(` Filas encontradas en tabla: ${filas.length}`);
             
             if (filas.length === 0) {
                 // // // // // // // console.log(' No hay filas en la tabla');
@@ -4159,7 +4166,7 @@ function hideAllMaterialContainers() {
             
             const numeroLote = celdas[7]?.textContent || '';
             if (!numeroLote || numeroLote === '') {
-                // // // // // // console.log('❌ EL NÚMERO DE LOTE ESTÁ VACÍO EN LA TABLA');
+                // // // // // // console.log(' EL NÚMERO DE LOTE ESTÁ VACÍO EN LA TABLA');
                 // // // // // // console.log('💡 Esto indica que el servidor no está enviando el número de lote');
                 // // // // // // console.log('💡 O que está en una propiedad diferente a las que buscamos');
             } else {
@@ -4175,7 +4182,7 @@ function hideAllMaterialContainers() {
         
         // 🔧 FUNCIÓN PARA INTERCEPTAR RESPUESTA DEL SERVIDOR
         window.debugRespuestaServidor = function() {
-            // // // // // // console.log('🔍 INTERCEPTANDO PRÓXIMA CONSULTA AL SERVIDOR...');
+            // // // // // // console.log(' INTERCEPTANDO PRÓXIMA CONSULTA AL SERVIDOR...');
             
             // Interceptar fetch temporalmente
             const originalFetch = window.fetch;
@@ -4208,12 +4215,12 @@ function hideAllMaterialContainers() {
                                         'descripcion'
                                     ];
                                     
-                                    // // // // // // console.log('🔍 PROPIEDADES DE ESPECIFICACIÓN:');
+                                    // // // // // // console.log(' PROPIEDADES DE ESPECIFICACIÓN:');
                                     propiedadesEspec.forEach(prop => {
                                         if (primeraSalida.hasOwnProperty(prop)) {
                                             // console.log(`   ${prop}:`, primeraSalida[prop]);
                                         } else {
-                                            // console.log(`  ❌ ${prop}: NO ENCONTRADO`);
+                                            // console.log(`   ${prop}: NO ENCONTRADO`);
                                         }
                                     });
                                     
@@ -4227,12 +4234,12 @@ function hideAllMaterialContainers() {
                                         'numeroLote'
                                     ];
                                     
-                                    // // // // // // console.log('🔍 PROPIEDADES DE NÚMERO DE LOTE:');
+                                    // // // // // // console.log(' PROPIEDADES DE NÚMERO DE LOTE:');
                                     propiedadesLote.forEach(prop => {
                                         if (primeraSalida.hasOwnProperty(prop)) {
                                             // console.log(`   ${prop}:`, primeraSalida[prop]);
                                         } else {
-                                            // console.log(`  ❌ ${prop}: NO ENCONTRADO`);
+                                            // console.log(`   ${prop}: NO ENCONTRADO`);
                                         }
                                     });
                                     
@@ -4240,7 +4247,7 @@ function hideAllMaterialContainers() {
                                     // console.log(Object.keys(primeraSalida));
                                 } else {
                                     // // // // // // // console.log(' No hay salidas en la respuesta o formato diferente');
-                                    // // // // // // console.log('🔍 Estructura de datos recibida:', Object.keys(data));
+                                    // // // // // // console.log(' Estructura de datos recibida:', Object.keys(data));
                                 }
                                 
                                 // Restaurar fetch original
@@ -4273,11 +4280,11 @@ function hideAllMaterialContainers() {
 
         // 🔧 FUNCIÓN DE PRUEBA PARA CONSULTAR ESPECIFICACIÓN
         window.probarConsultaEspecificacion = async function() {
-            // // // // // // console.log('🧪 PROBANDO CONSULTA DE ESPECIFICACIÓN...');
+            // // // // // // console.log(' PROBANDO CONSULTA DE ESPECIFICACIÓN...');
             // // // // // // console.log('=======================================');
             
             const numeroParte = '0RH5602C622';
-            // // // // // // console.log('🔍 Consultando número de parte:', numeroParte);
+            // // // // // // console.log(' Consultando número de parte:', numeroParte);
             
             try {
                 const especificacion = await consultarEspecificacionPorNumeroParte(numeroParte);
@@ -4294,11 +4301,11 @@ function hideAllMaterialContainers() {
                     
                     return especificacion;
                 } else {
-                    // // // // // // console.log('❌ No se pudo obtener especificación');
+                    // // // // // // console.log(' No se pudo obtener especificación');
                     return null;
                 }
             } catch (error) {
-                console.error('❌ Error en prueba de consulta:', error);
+                console.error(' Error en prueba de consulta:', error);
                 return null;
             }
         };
@@ -4377,7 +4384,7 @@ function hideAllMaterialContainers() {
         // 🔧 FUNCIÓN PARA REPARAR TABLA ACTUAL CON ESPECIFICACIÓN
         window.repararTablaEspecificacion = function() {
             if (!materialActual) {
-                // // // // // // console.log('❌ No hay material cargado');
+                // // // // // // console.log(' No hay material cargado');
                 return false;
             }
             
@@ -4386,7 +4393,7 @@ function hideAllMaterialContainers() {
             
             const tabla = document.getElementById('salida_tablaSalidas');
             if (!tabla) {
-                // // // // // // console.log('❌ Tabla no encontrada');
+                // // // // // // console.log(' Tabla no encontrada');
                 return false;
             }
             
@@ -4476,7 +4483,7 @@ function hideAllMaterialContainers() {
                         return originalFetch.apply(this, args)
                             .then(response => {
                                 return response.clone().json().then(data => {
-                                    // // // // // // console.log('🔍 Interceptando respuesta del servidor:', data);
+                                    // // // // // // console.log(' Interceptando respuesta del servidor:', data);
                                     
                                     // Modificar datos antes de devolver
                                     if (data.success && Array.isArray(data.salidas)) {
@@ -4517,11 +4524,11 @@ function hideAllMaterialContainers() {
         
         // 🔧 FUNCIÓN PARA DEBUGGING DE ESPECIFICACIÓN
         window.debugEspecificacionMaterial = function() {
-            // // // // // // console.log('🧪 VERIFICANDO ESPECIFICACIÓN DE MATERIAL:');
+            // // // // // // console.log(' VERIFICANDO ESPECIFICACIÓN DE MATERIAL:');
             // // // // // // console.log('=========================================');
             
             if (!materialActual) {
-                // // // // // // console.log('❌ No hay material actual cargado');
+                // // // // // // console.log(' No hay material actual cargado');
                 // // // // // // console.log('💡 Primero escanee un código de material');
                 return { error: 'No hay material cargado' };
             }
@@ -4538,7 +4545,7 @@ function hideAllMaterialContainers() {
                 'descripcion'
             ];
             
-            // // // // // // console.log('🔍 Buscando especificación en todas las propiedades:');
+            // // // // // // console.log(' Buscando especificación en todas las propiedades:');
             const resultados = {};
             
             propiedadesEspecificacion.forEach(prop => {
@@ -4552,7 +4559,7 @@ function hideAllMaterialContainers() {
             if (campoEspecificacion) {
                 // // // // // // // console.log(' Campo visual especificación:', campoEspecificacion.value || 'VACÍO');
             } else {
-                // // // // // // console.log('❌ Campo visual de especificación no encontrado');
+                // // // // // // console.log(' Campo visual de especificación no encontrado');
             }
             
             // Buscar la mejor especificación disponible
@@ -4680,7 +4687,7 @@ function hideAllMaterialContainers() {
                     btnRegistro: document.getElementById('btnRegistroSalida')
                 };
                 
-                // // // // // // console.log('📊 Elementos encontrados:', {
+                // // // // // // console.log(' Elementos encontrados:', {
                     historial: !!elementos.historial,
                     registro: !!elementos.registro,
                     btnHistorial: !!elementos.btnHistorial,
@@ -4688,8 +4695,8 @@ function hideAllMaterialContainers() {
                 });
                 
                 if (!elementos.historial) {
-                    console.error('❌ historialSection NO ENCONTRADO');
-                    // // // // // // console.log('🔍 Intentando encontrar en toda la página...');
+                    console.error(' historialSection NO ENCONTRADO');
+                    // // // // // // console.log(' Intentando encontrar en toda la página...');
                     
                     // Buscar en todo el documento
                     const todosLosElementos = document.querySelectorAll('*');
@@ -4701,14 +4708,14 @@ function hideAllMaterialContainers() {
                         }
                     });
                     
-                    // // // // // // console.log('🔍 Elementos con "historial" encontrados:', historialEncontrados);
+                    // // // // // // console.log(' Elementos con "historial" encontrados:', historialEncontrados);
                     
                     alert('ERROR: No se encontró la sección de historial.\n\nAsegúrate de estar en la sección "Control de Salida"');
                     return 'Error: Debes estar en Control de Salida';
                 }
                 
                 if (!elementos.registro) {
-                    console.error('❌ tablasRegistroSalida NO ENCONTRADO');
+                    console.error(' tablasRegistroSalida NO ENCONTRADO');
                     alert('ERROR: No se encontró la sección de registro');
                     return 'Error: Sección de registro no encontrada';
                 }
@@ -4745,7 +4752,7 @@ function hideAllMaterialContainers() {
                 }
                 
                 // // // // // // // console.log(' HISTORIAL MOSTRADO EXITOSAMENTE');
-                // // // // // // console.log('📊 Estado final:', {
+                // // // // // // console.log(' Estado final:', {
                     historialDisplay: elementos.historial.style.display,
                     registroDisplay: elementos.registro.style.display
                 });
@@ -4762,7 +4769,7 @@ function hideAllMaterialContainers() {
                 return ' HISTORIAL ACTIVADO GLOBALMENTE';
                 
             } catch (error) {
-                console.error('❌ Error en HISTORIAL_GLOBAL.mostrar:', error);
+                console.error(' Error en HISTORIAL_GLOBAL.mostrar:', error);
                 alert('ERROR: ' + error.message);
                 return 'Error: ' + error.message;
             }
@@ -4781,7 +4788,7 @@ function hideAllMaterialContainers() {
                 };
                 
                 if (!elementos.historial || !elementos.registro) {
-                    console.error('❌ Elementos no encontrados para mostrar registro');
+                    console.error(' Elementos no encontrados para mostrar registro');
                     return 'Error: Elementos no encontrados';
                 }
                 
@@ -4820,7 +4827,7 @@ function hideAllMaterialContainers() {
                 return ' REGISTRO ACTIVADO';
                 
             } catch (error) {
-                console.error('❌ Error en HISTORIAL_GLOBAL.mostrarRegistro:', error);
+                console.error(' Error en HISTORIAL_GLOBAL.mostrarRegistro:', error);
                 return 'Error: ' + error.message;
             }
         },
@@ -4878,12 +4885,12 @@ function hideAllMaterialContainers() {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
                         
-                        // 🔍 VERIFICAR SI LA RESPUESTA ES HTML (PÁGINA DE LOGIN) EN LUGAR DE JSON
+                        //  VERIFICAR SI LA RESPUESTA ES HTML (PÁGINA DE LOGIN) EN LUGAR DE JSON
                         const contentType = response.headers.get('content-type');
-                        // // // // // // console.log('📄 Content-Type:', contentType);
+                        // // // // // // console.log(' Content-Type:', contentType);
                         
                         if (contentType && contentType.includes('text/html')) {
-                            console.error('❌ La respuesta es HTML (página de login) - Usuario no autenticado');
+                            console.error(' La respuesta es HTML (página de login) - Usuario no autenticado');
                             throw new Error('Sesión expirada. Por favor, recargue la página e inicie sesión nuevamente.');
                         }
                         
@@ -4918,13 +4925,13 @@ function hideAllMaterialContainers() {
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Error al consultar salidas:', error);
+                        console.error(' Error al consultar salidas:', error);
                         this.mostrarMensaje('Error al consultar salidas: ' + error.message, 'error');
                         return 'Error: ' + error.message;
                     });
 
             } catch (error) {
-                console.error('❌ Error en HISTORIAL_GLOBAL.consultar:', error);
+                console.error(' Error en HISTORIAL_GLOBAL.consultar:', error);
                 this.mostrarMensaje('Error interno: ' + error.message, 'error');
                 return 'Error: ' + error.message;
             }
@@ -4934,7 +4941,7 @@ function hideAllMaterialContainers() {
         actualizarTablaSalidas: function(salidas) {
             const tbody = document.querySelector('#salida_tablaSalidas tbody');
             if (!tbody) {
-                console.error('❌ Tabla de salidas no encontrada');
+                console.error(' Tabla de salidas no encontrada');
                 return;
             }
             
@@ -5174,7 +5181,7 @@ function hideAllMaterialContainers() {
                 };
             }
             
-            // // // // // // console.log('📊 Estado completo HISTORIAL_GLOBAL:', estado);
+            // // // // // // console.log(' Estado completo HISTORIAL_GLOBAL:', estado);
             return estado;
         },
         
@@ -5240,17 +5247,17 @@ function hideAllMaterialContainers() {
     };
     
     // ===================================================================
-    // 🧪 FUNCIONES DE TEST GLOBALES PARA AUTO-ENTER
+    //  FUNCIONES DE TEST GLOBALES PARA AUTO-ENTER
     // ===================================================================
     
-    // 🧪 FUNCIÓN DE TEST SIMPLE PARA AUTO-ENTER (DISPONIBLE GLOBALMENTE)
+    //  FUNCIÓN DE TEST SIMPLE PARA AUTO-ENTER (DISPONIBLE GLOBALMENTE)
     window.testAutoEnterSimple = function() {
-        // // // // // // console.log('🧪 PROBANDO AUTO-ENTER SIMPLE DESDE MATERIAL TEMPLATE...');
+        // // // // // // console.log(' PROBANDO AUTO-ENTER SIMPLE DESDE MATERIAL TEMPLATE...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         if (!codigoInput) {
-            console.error('❌ Campo código no encontrado');
-            return '❌ Campo código no encontrado - ¿Está en Control de Salida?';
+            console.error(' Campo código no encontrado');
+            return ' Campo código no encontrado - ¿Está en Control de Salida?';
         }
         
         // Limpiar campo
@@ -5277,7 +5284,7 @@ function hideAllMaterialContainers() {
                 setTimeout(escribirCaracter, 50); // 50ms entre caracteres
             } else {
                 // // // // // // // console.log(' Código escrito completo, debería activar auto-Enter');
-                // // // // // // console.log('🔍 Valor final del campo:', codigoInput.value);
+                // // // // // // console.log(' Valor final del campo:', codigoInput.value);
                 
                 // Verificar si hay listeners configurados
                 const listeners = codigoInput.cloneNode().outerHTML.includes('addEventListener');
@@ -5285,7 +5292,7 @@ function hideAllMaterialContainers() {
                 
                 // Test manual adicional: disparar Enter
                 setTimeout(() => {
-                    // // // // // // console.log('🧪 Disparando Enter manual como test adicional...');
+                    // // // // // // console.log(' Disparando Enter manual como test adicional...');
                     const enterEvent = new KeyboardEvent('keydown', {
                         key: 'Enter',
                         keyCode: 13,
@@ -5298,7 +5305,7 @@ function hideAllMaterialContainers() {
         };
         
         escribirCaracter();
-        return '🧪 Test iniciado - observe la consola y los campos';
+        return ' Test iniciado - observe la consola y los campos';
     };
 
     // 🚀 FUNCIÓN ULTRA-SIMPLE PARA AUTO-ENTER (DISPONIBLE GLOBALMENTE)
@@ -5350,7 +5357,7 @@ function hideAllMaterialContainers() {
             
             // // // // // // // console.log(' Auto-Enter configurado para campo CÓDIGO');
         } else {
-            console.error('❌ Campo código no encontrado');
+            console.error(' Campo código no encontrado');
         }
         
         if (verificacionInput) {
@@ -5396,7 +5403,7 @@ function hideAllMaterialContainers() {
             
             // // // // // // // console.log(' Auto-Enter configurado para campo VERIFICACIÓN');
         } else {
-            console.error('❌ Campo verificación no encontrado');
+            console.error(' Campo verificación no encontrado');
         }
         
         // // // // // // // console.log(' AUTO-ENTER ULTRA-SIMPLE CONFIGURADO EXITOSAMENTE desde MaterialTemplate');
@@ -5443,9 +5450,9 @@ function hideAllMaterialContainers() {
         // // // // // // console.log('👁️ Observador AJAX activado para auto-Enter desde MaterialTemplate');
     };
     
-    // 🧪 FUNCIÓN ADICIONAL PARA VERIFICAR ESTADO DEL AUTO-ENTER
+    //  FUNCIÓN ADICIONAL PARA VERIFICAR ESTADO DEL AUTO-ENTER
     window.verificarAutoEnter = function() {
-        // // // // // // console.log('🔍 VERIFICANDO ESTADO DEL AUTO-ENTER...');
+        // // // // // // console.log(' VERIFICANDO ESTADO DEL AUTO-ENTER...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         const verificacionInput = document.getElementById('salida_verificacion_codigo');
@@ -5465,8 +5472,8 @@ function hideAllMaterialContainers() {
             // // // // // // // console.log(' Todo parece estar bien configurado');
             return ' Auto-Enter configurado correctamente';
         } else {
-            // // // // // // console.log('❌ Faltan elementos para auto-Enter');
-            return '❌ Configuración incompleta';
+            // // // // // // console.log(' Faltan elementos para auto-Enter');
+            return ' Configuración incompleta';
         }
     };
 
@@ -5570,7 +5577,7 @@ function hideAllMaterialContainers() {
         _onKeydown: function(event, campoId) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                // // // // // // console.log('🔍 ENTER MANUAL DETECTADO en', campoId);
+                // // // // // // console.log(' ENTER MANUAL DETECTADO en', campoId);
                 
                 // Limpiar timer de escaneo
                 const timer = window.ENTER_AUTOMATICO_GLOBAL.timers.get(campoId);
@@ -5627,13 +5634,13 @@ function hideAllMaterialContainers() {
             // PASO 2: Ejecutar función de búsqueda específica
             setTimeout(() => {
                 if (campoData.config.funcionBusqueda) {
-                    // // // // // // console.log('🔍 EJECUTANDO FUNCIÓN DE BÚSQUEDA:', campoData.config.funcionBusqueda.name || 'función anónima');
+                    // // // // // // console.log(' EJECUTANDO FUNCIÓN DE BÚSQUEDA:', campoData.config.funcionBusqueda.name || 'función anónima');
                     try {
                         campoData.config.funcionBusqueda(codigo);
                         this._mostrarMensaje('🚀 Código escaneado - Auto-llenado activado', 'exito');
                     } catch (error) {
-                        console.error('❌ Error en función de búsqueda:', error);
-                        this._mostrarMensaje('❌ Error en auto-llenado', 'error');
+                        console.error(' Error en función de búsqueda:', error);
+                        this._mostrarMensaje(' Error en auto-llenado', 'error');
                     }
                 } else {
                     // Buscar función de búsqueda automáticamente
@@ -5662,13 +5669,13 @@ function hideAllMaterialContainers() {
             
             for (const nombreFuncion of funcionesBusqueda) {
                 if (typeof window[nombreFuncion] === 'function') {
-                    // // // // // // console.log('🔍 FUNCIÓN ENCONTRADA:', nombreFuncion);
+                    // // // // // // console.log(' FUNCIÓN ENCONTRADA:', nombreFuncion);
                     try {
                         window[nombreFuncion](codigo);
                         this._mostrarMensaje('🚀 Código escaneado - Auto-llenado activado', 'exito');
                         return;
                     } catch (error) {
-                        console.error('❌ Error en', nombreFuncion, ':', error);
+                        console.error(' Error en', nombreFuncion, ':', error);
                     }
                 }
             }
@@ -5721,7 +5728,7 @@ function hideAllMaterialContainers() {
         
         // Verificar y reparar configuración
         verificar: function() {
-            // // // // // // console.log('🔍 VERIFICANDO ENTER AUTOMÁTICO GLOBAL...');
+            // // // // // // console.log(' VERIFICANDO ENTER AUTOMÁTICO GLOBAL...');
             
             let reparaciones = 0;
             
@@ -5761,7 +5768,7 @@ function hideAllMaterialContainers() {
     
     // Función global para testing
     window.testEnterAutomaticoEscaneo = function() {
-        // // // // // // console.log('🧪 PROBANDO ENTER AUTOMÁTICO GLOBAL...');
+        // // // // // // console.log(' PROBANDO ENTER AUTOMÁTICO GLOBAL...');
         
         const codigoInput = document.getElementById('salida_codigo_material_recibido');
         if (!codigoInput) {
@@ -5798,7 +5805,7 @@ function hideAllMaterialContainers() {
         }
         
         if (typeof buscarMaterialPorCodigo === 'function') {
-            // // // // // // console.log('🔍 Ejecutando buscarMaterialPorCodigo para:', codigo);
+            // // // // // // console.log(' Ejecutando buscarMaterialPorCodigo para:', codigo);
             buscarMaterialPorCodigo(codigo);
             return ' Auto-llenado forzado ejecutado';
         } else {
