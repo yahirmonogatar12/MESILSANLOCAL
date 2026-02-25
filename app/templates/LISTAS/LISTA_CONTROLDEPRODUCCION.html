@@ -26,6 +26,20 @@
                 </ul>
             </li>
             <li class="sidebar-section">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarControlProduccion" aria-expanded="false">
+                    <span class="sidebar-icon"></span>
+                    Control de produccion
+                    <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
+                </button>
+                <ul class="collapse sidebar-dropdown-list" id="sidebarControlProduccion">
+                    <li class="sidebar-link" tabindex="0" 
+                            data-permiso-pagina="LISTA_CONTROLDEPRODUCCION" 
+                            data-permiso-seccion="Control de plan de produccion" 
+                            data-permiso-boton="Control de cuchillas de corte"
+                            onclick="window.parent && window.parent.mostrarControlCuchillasCorte ? window.parent.mostrarControlCuchillasCorte() : (window.parent && window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-cuchillas-corte-unique-container', '/control-cuchillas-corte-ajax') : window.location.href='/control-cuchillas-corte-ajax')">Control de cuchillas de corte</li>
+                </ul>
+            </li>
+            <li class="sidebar-section">
                 <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarSMT" aria-expanded="false">
                     <span class="sidebar-icon"></span>
                     Control de SMT
