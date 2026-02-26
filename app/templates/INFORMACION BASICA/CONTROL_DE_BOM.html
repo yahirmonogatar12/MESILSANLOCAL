@@ -84,17 +84,15 @@
             <tbody>
                 <tr><td style="padding:5px 8px; border:1px solid #333; color:#e74c3c; font-weight:bold;">Modelo</td><td style="padding:5px 8px; border:1px solid #333; text-align:center; color:#e74c3c;">Si</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Modelo</td></tr>
                 <tr><td style="padding:5px 8px; border:1px solid #333; color:#e74c3c; font-weight:bold;">Numero de Parte</td><td style="padding:5px 8px; border:1px solid #333; text-align:center; color:#e74c3c;">Si</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Numero de Parte, Part Number</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Codigo de Material</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Codigo de Material, Material Code</td></tr>
                 <tr><td style="padding:5px 8px; border:1px solid #333;">Side</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Side, Lado</td></tr>
                 <tr><td style="padding:5px 8px; border:1px solid #333;">Tipo de Material</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Tipo de Material, Material Type</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Ubicacion</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Ubicacion, Location</td></tr>
                 <tr><td style="padding:5px 8px; border:1px solid #333;">Classification</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Classification, Categoria, Tipo</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Especificacion de material</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Descripcion, Description, Especificacion</td></tr>
                 <tr><td style="padding:5px 8px; border:1px solid #333;">Proveedor</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Proveedor, Vendor, Supplier</td></tr>
                 <tr><td style="padding:5px 8px; border:1px solid #333;">Cantidad Total</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Cantidad Total, Total Quantity, Cantidad, Qty</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Cantidad Original</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Cantidad Original, Original Quantity</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Descripcion</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Descripcion, Description, Especificacion</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Ubicacion</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Ubicacion, Location</td></tr>
+                <tr><td style="padding:5px 8px; border:1px solid #333;">Material Sustituto</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Material Sustituto, Substitute Material (texto libre)</td></tr>
                 <tr><td style="padding:5px 8px; border:1px solid #333;">Material Original</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Material Original</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Material Sustituto</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Material Sustituto, Substitute Material</td></tr>
             </tbody>
         </table>
         <p style="color:#888; font-size:11px; margin-top:12px;">Las columnas marcadas en rojo son obligatorias. Las filas sin Modelo o Numero de Parte seran omitidas.</p>
@@ -107,7 +105,6 @@
             <thead>
                 <tr>
                     <th title="Selector de fila para acciones múltiples">Selector</th>
-                    <th class="col-codigo" title="Código de material del componente">Código de material</th>
                     <th class="col-numero-parte" title="Número de parte del componente">Número de parte</th>
                     <th class="col-side" title="Lado o posición del componente">Side</th>
                     <th class="col-tipo" title="Tipo o categoría del material">Tipo de material</th>
@@ -115,10 +112,9 @@
                     <th class="col-especificacion" title="Especificación técnica del material">Especificación de material</th>
                     <th class="col-vender" title="Información del vendedor o proveedor">Vendor</th>
                     <th class="col-cantidad-total" title="Cantidad total requerida">Cantidad total</th>
-                    <th class="col-cantidad-original" title="Cantidad original especificada">Cantidad original</th>
                     <th class="col-ubicacion" title="Ubicación física del material">Ubicación</th>
                     <th class="col-posicion-assy" title="Posición en el ensamble ASSY">Posición ASSY</th>
-                    <th class="col-material-sustituto" title="Estado de material sustituto (solo lectura)">Material sustituto</th>
+                    <th class="col-material-sustituto" title="Material sustituto">Material sustituto</th>
                     <th class="col-material-original" title="Estado de material original (solo lectura)">Material original</th>
                     <th class="col-registrador" title="Usuario que registró el elemento">Registrador</th>
                     <th class="col-fecha" title="Fecha y hora de registro">Fecha de registro</th>
@@ -322,7 +318,7 @@
             if (modelo === 'todos' || !modelo || modelo.trim() === '') {
                 showCustomAlert(' Debe seleccionar un modelo específico.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
                 const tbody = document.querySelector('#bomTableBody');
-                tbody.innerHTML = '<tr><td colspan="15" class="no-data">Seleccione un modelo específico para visualizar los datos de BOM.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="14" class="no-data">Seleccione un modelo específico para visualizar los datos de BOM.</td></tr>';
                 return;
             }
             
@@ -395,7 +391,7 @@
         tbody.innerHTML = '';
         
         if (!datos || datos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="16" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
             return;
         }
         
@@ -453,7 +449,6 @@
             
             row.innerHTML = `
                 <td>${selectorCheckbox}</td>
-                ${crearCelda(item.codigoMaterial)}
                 ${crearCelda(item.numeroParte)}
                 ${crearCelda(item.side)}
                 ${crearCelda(item.tipoMaterial)}
@@ -461,10 +456,9 @@
                 ${crearCelda(item.especificacionMaterial)}
                 ${crearCelda(item.vender)}
                 ${crearCelda(limpiarNumero(item.cantidadTotal || '0'))}
-                ${crearCelda(limpiarNumero(item.cantidadOriginal || '0'))}
                 ${crearCelda(item.ubicacion)}
                 ${crearCelda(item.posicionAssy || '')}
-                ${crearCeldaCheckbox(item.materialSustituto, index, 'materialSustituto')}
+                ${crearCelda(item.materialSustituto)}
                 ${crearCeldaCheckbox(item.materialOriginal, index, 'materialOriginal')}
                 ${crearCelda(item.registrador)}
                 ${crearCelda(item.fechaRegistro)}
@@ -1266,7 +1260,6 @@
         }
         
         // Agregar campos al formulario
-        form.appendChild(createFormField('Código de Material', 'codigoMaterial', bomData.codigoMaterial, 'text', true));
         form.appendChild(createFormField('Número de Parte', 'numeroParte', bomData.numeroParte));
         form.appendChild(createFormField('Side', 'side', bomData.side));
         form.appendChild(createFormField('Tipo de Material', 'tipoMaterial', bomData.tipoMaterial));
@@ -1274,9 +1267,9 @@
         form.appendChild(createFormField('Especificación de Material', 'especificacionMaterial', bomData.especificacionMaterial));
         form.appendChild(createFormField('Vendor', 'vender', bomData.vender));
         form.appendChild(createFormField('Cantidad Total', 'cantidadTotal', bomData.cantidadTotal, 'number'));
-        form.appendChild(createFormField('Cantidad Original', 'cantidadOriginal', bomData.cantidadOriginal, 'number'));
         form.appendChild(createFormField('Ubicación', 'ubicacion', bomData.ubicacion));
         form.appendChild(createFormField('Posición ASSY', 'posicionAssy', bomData.posicionAssy));
+        form.appendChild(createFormField('Material Sustituto', 'materialSustituto', bomData.materialSustituto));
         
         // Botones del formulario
         const buttonGroup = document.createElement('div');
@@ -1382,6 +1375,7 @@
         // Guardar datos originales para el formulario
         panel.dataset.bomId = bomData.id || '';
         panel.dataset.modelo = bomData.modelo || '';
+        panel.dataset.codigoMaterial = bomData.codigoMaterial || '';
         
         // Animar la apertura
         setTimeout(() => {
@@ -1419,7 +1413,7 @@
         const bomData = {
             id: panel.dataset.bomId,
             modelo: panel.dataset.modelo,
-            codigoMaterial: formData.get('codigoMaterial'),
+            codigoMaterial: panel.dataset.codigoMaterial,
             numeroParte: formData.get('numeroParte'),
             side: formData.get('side'),
             tipoMaterial: formData.get('tipoMaterial'),
@@ -1427,9 +1421,9 @@
             especificacionMaterial: formData.get('especificacionMaterial'),
             vender: formData.get('vender'),
             cantidadTotal: formData.get('cantidadTotal'),
-            cantidadOriginal: formData.get('cantidadOriginal'),
             ubicacion: formData.get('ubicacion'),
-            posicionAssy: formData.get('posicionAssy')
+            posicionAssy: formData.get('posicionAssy'),
+            materialSustituto: formData.get('materialSustituto')
         };
         
         console.log(' Guardando cambios BOM:', bomData);

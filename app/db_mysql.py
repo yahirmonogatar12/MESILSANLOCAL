@@ -1153,11 +1153,16 @@ def insertar_bom_desde_dataframe(df, registrador):
                     except (ValueError, TypeError):
                         cantidad_original = cantidad_total
                 
+                # Preparar codigo_material: si no viene en Excel, usar numero_parte
+                codigo_material = str(row.get(col_codigo_material, '') if col_codigo_material else '').strip()
+                if not codigo_material:
+                    codigo_material = numero_parte
+
                 # Preparar fila para inserción masiva
                 fila_datos = (
                     modelo,
                     numero_parte,
-                    str(row.get(col_codigo_material, '') if col_codigo_material else '').strip(),
+                    codigo_material,
                     str(row.get(col_side, '') if col_side else '').strip(),
                     str(row.get(col_tipo_material, '') if col_tipo_material else '').strip(),
                     str(row.get(col_ubicacion, '') if col_ubicacion else '').strip(),

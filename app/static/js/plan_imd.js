@@ -782,27 +782,27 @@ function initializePlanIMDEventListeners() {
       return;
     }
     
-    // Reprogramar
+    // Reprogramar - abrir modal
     if (target.id === 'imd-reschedule-btn' || target.closest('#imd-reschedule-btn')) {
       e.preventDefault();
-      toggleRescheduleModeIMD();
+      openRescheduleModalIMD();
       return;
     }
-    
-    // Cancelar selección reprogramar
-    if (target.id === 'imd-reschedule-cancel-btn' || target.closest('#imd-reschedule-cancel-btn')) {
+
+    // Buscar pendientes
+    if (target.id === 'imd-reschedule-search-btn') {
       e.preventDefault();
-      exitRescheduleModeIMD();
+      loadPendingPlansIMD();
       return;
     }
-    
+
     // Cerrar modal reprogramar
     if (target.id === 'imd-reschedule-closeBtn' || target.id === 'imd-reschedule-cancelBtn') {
       const modal = document.getElementById('imd-reschedule-modal');
       if (modal) modal.style.display = 'none';
       return;
     }
-    
+
     // Confirmar reprogramar
     if (target.id === 'imd-reschedule-confirmBtn') {
       e.preventDefault();
@@ -811,11 +811,11 @@ function initializePlanIMDEventListeners() {
     }
   });
   
-  // Select all checkbox
+  // Select all checkbox (reschedule pending table)
   document.body.addEventListener('change', function(e) {
-    if (e.target.id === 'select-all-imd') {
+    if (e.target.id === 'imd-reschedule-select-all') {
       const checked = e.target.checked;
-      document.querySelectorAll('.plan-checkbox-imd').forEach(cb => cb.checked = checked);
+      document.querySelectorAll('.imd-pending-cb').forEach(cb => cb.checked = checked);
     }
   });
   
@@ -847,105 +847,129 @@ function initializePlanIMDEventListeners() {
 }
 
 // ====== Reprogramar planes ======
-let rescheduleMode = false;
-
-function toggleRescheduleModeIMD() {
-  if (!rescheduleMode) {
-    // Entrar en modo selección
-    rescheduleMode = true;
-    document.querySelectorAll('.reschedule-col').forEach(el => el.style.display = 'table-cell');
-    document.getElementById('imd-reschedule-btn').textContent = 'Confirmar Reprogramar';
-    document.getElementById('imd-reschedule-btn').style.background = '#d35400';
-    document.getElementById('imd-reschedule-cancel-btn').style.display = '';
-  } else {
-    // Ya en modo selección: abrir modal
-    openRescheduleModalIMD();
-  }
-}
-
-function exitRescheduleModeIMD() {
-  rescheduleMode = false;
-  document.querySelectorAll('.reschedule-col').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('.plan-checkbox-imd').forEach(cb => cb.checked = false);
-  const selectAll = document.getElementById('select-all-imd');
-  if (selectAll) selectAll.checked = false;
-  document.getElementById('imd-reschedule-btn').textContent = 'Reprogramar';
-  document.getElementById('imd-reschedule-btn').style.background = '#e67e22';
-  document.getElementById('imd-reschedule-cancel-btn').style.display = 'none';
-}
-
 function openRescheduleModalIMD() {
-  const selected = document.querySelectorAll('.plan-checkbox-imd:checked');
-  if (selected.length === 0) {
-    alert('Selecciona al menos un plan para reprogramar');
-    return;
-  }
-  
-  // Crear modal si no existe
   let modal = document.getElementById('imd-reschedule-modal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'imd-reschedule-modal';
-    modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; justify-content:center; align-items:center;';
+    modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;';
     modal.innerHTML = `
-      <div style="background:#2a2a3a; border-radius:12px; padding:24px; width:380px; color:#ddd;">
+      <div style="background:#2a2a3a; border-radius:12px; padding:24px; width:750px; max-width:95%; max-height:85vh; overflow-y:auto; color:#ddd;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h3 style="margin:0; color:#e67e22;">Reprogramar Planes</h3>
+          <h3 style="margin:0; color:#e67e22;">Reprogramar Planes IMD</h3>
           <button id="imd-reschedule-closeBtn" style="background:none; border:none; color:#888; font-size:20px; cursor:pointer;">&times;</button>
         </div>
-        <p id="imd-reschedule-count" style="color:#aaa; margin-bottom:16px;"></p>
-        <label style="color:#888; font-size:13px;">Nueva fecha:</label>
-        <input type="date" id="imd-reschedule-date" style="width:100%; padding:8px; background:#1e1e2e; border:1px solid #444; border-radius:6px; color:#ddd; margin-top:4px; margin-bottom:20px;">
+        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px;">
+          <div>
+            <label style="color:#888; font-size:12px;">Fecha Desde</label>
+            <input type="date" id="imd-reschedule-from" style="display:block; padding:6px; background:#1e1e2e; border:1px solid #444; border-radius:6px; color:#ddd;">
+          </div>
+          <div>
+            <label style="color:#888; font-size:12px;">Fecha Hasta</label>
+            <input type="date" id="imd-reschedule-to" style="display:block; padding:6px; background:#1e1e2e; border:1px solid #444; border-radius:6px; color:#ddd;">
+          </div>
+          <button id="imd-reschedule-search-btn" style="padding:6px 14px; background:#3498db; border:none; border-radius:6px; color:white; cursor:pointer;">Buscar Pendientes</button>
+          <div style="margin-left:auto;">
+            <label style="color:#888; font-size:12px;">Nueva Fecha</label>
+            <input type="date" id="imd-reschedule-new-date" style="display:block; padding:6px; background:#1e1e2e; border:1px solid #444; border-radius:6px; color:#ddd;">
+          </div>
+        </div>
+        <div id="imd-reschedule-table-container" style="max-height:400px; overflow-y:auto; margin-bottom:16px;">
+          <p style="color:#666; text-align:center; padding:20px;">Selecciona rango de fechas y busca pendientes</p>
+        </div>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
-          <button id="imd-reschedule-cancelBtn" style="padding:8px 16px; background:#555; border:none; border-radius:6px; color:#ddd; cursor:pointer;">Cancelar</button>
-          <button id="imd-reschedule-confirmBtn" style="padding:8px 16px; background:#e67e22; border:none; border-radius:6px; color:white; cursor:pointer; font-weight:bold;">Reprogramar</button>
+          <button id="imd-reschedule-cancelBtn" style="padding:8px 16px; background:#555; border:none; border-radius:6px; color:#ddd; cursor:pointer;">Cerrar</button>
+          <button id="imd-reschedule-confirmBtn" style="padding:8px 16px; background:#e67e22; border:none; border-radius:6px; color:white; cursor:pointer; font-weight:bold;">Reprogramar Seleccionados</button>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
   }
-  
-  document.getElementById('imd-reschedule-count').textContent = `${selected.length} plan(es) seleccionado(s)`;
-  document.getElementById('imd-reschedule-date').value = getTodayIMD();
+
+  const today = getTodayIMD();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+  const fromDefault = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Monterrey', year: 'numeric', month: '2-digit', day: '2-digit' }).format(sevenDaysAgo);
+  document.getElementById('imd-reschedule-from').value = fromDefault;
+  document.getElementById('imd-reschedule-to').value = today;
+  document.getElementById('imd-reschedule-new-date').value = today;
+  document.getElementById('imd-reschedule-table-container').innerHTML = '<p style="color:#666; text-align:center; padding:20px;">Selecciona rango de fechas y busca pendientes</p>';
   modal.style.display = 'flex';
 }
 
-async function confirmRescheduleIMD() {
-  const newDate = document.getElementById('imd-reschedule-date').value;
-  if (!newDate) {
-    alert('Selecciona una fecha');
+async function loadPendingPlansIMD() {
+  const from = document.getElementById('imd-reschedule-from').value;
+  const to = document.getElementById('imd-reschedule-to').value;
+  const container = document.getElementById('imd-reschedule-table-container');
+  if (!from || !to) {
+    alert('Selecciona fecha desde y hasta');
     return;
   }
-  
-  const selected = document.querySelectorAll('.plan-checkbox-imd:checked');
-  const planIds = Array.from(selected).map(cb => parseInt(cb.dataset.planId));
-  
-  if (planIds.length === 0) {
-    alert('No hay planes seleccionados');
-    return;
-  }
-  
+  container.innerHTML = '<p style="color:#3498db; text-align:center; padding:20px;">Buscando planes pendientes...</p>';
   try {
-    const resp = await axios.post('/api/plan-imd/reschedule', {
-      plan_ids: planIds,
-      new_date: newDate
+    const resp = await axios.get(`/api/plan-imd/pending-reschedule?start=${from}&end=${to}`);
+    const plans = resp.data || [];
+    if (plans.length === 0) {
+      container.innerHTML = '<p style="color:#888; text-align:center; padding:20px;">No hay planes pendientes en este rango</p>';
+      return;
+    }
+    let html = `<table style="width:100%; border-collapse:collapse; font-size:11px;">
+      <thead><tr style="background:#172A46; color:#ecf0f1;">
+        <th style="padding:6px; border:1px solid #444;"><input type="checkbox" id="imd-reschedule-select-all"></th>
+        <th style="padding:6px; border:1px solid #444;">Lot No</th>
+        <th style="padding:6px; border:1px solid #444;">Fecha</th>
+        <th style="padding:6px; border:1px solid #444;">Part No</th>
+        <th style="padding:6px; border:1px solid #444;">Linea</th>
+        <th style="padding:6px; border:1px solid #444;">Plan</th>
+        <th style="padding:6px; border:1px solid #444;">Produced</th>
+        <th style="padding:6px; border:1px solid #444;">Pendiente</th>
+        <th style="padding:6px; border:1px solid #444;">Status</th>
+      </tr></thead><tbody>`;
+    plans.forEach(p => {
+      const pending = (p.plan_count || 0) - (p.produced_count || 0);
+      html += `<tr style="border-bottom:1px solid #444;">
+        <td style="padding:5px; text-align:center; border:1px solid #444;"><input type="checkbox" class="imd-pending-cb" data-lot="${p.lot_no}"></td>
+        <td style="padding:5px; border:1px solid #444;">${p.lot_no}</td>
+        <td style="padding:5px; border:1px solid #444;">${p.working_date}</td>
+        <td style="padding:5px; border:1px solid #444;">${p.part_no || ''}</td>
+        <td style="padding:5px; border:1px solid #444;">${lineToDisplay(p.line) || p.line}</td>
+        <td style="padding:5px; text-align:right; border:1px solid #444;">${p.plan_count || 0}</td>
+        <td style="padding:5px; text-align:right; border:1px solid #444;">${p.produced_count || 0}</td>
+        <td style="padding:5px; text-align:right; border:1px solid #444; color:#e67e22; font-weight:bold;">${pending}</td>
+        <td style="padding:5px; border:1px solid #444;">${p.status || ''}</td>
+      </tr>`;
     });
-    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = `<p style="color:#e74c3c; text-align:center; padding:20px;">Error: ${err.message}</p>`;
+  }
+}
+
+async function confirmRescheduleIMD() {
+  const newDate = document.getElementById('imd-reschedule-new-date').value;
+  if (!newDate) {
+    alert('Selecciona la nueva fecha');
+    return;
+  }
+  const checked = document.querySelectorAll('.imd-pending-cb:checked');
+  const lotNos = Array.from(checked).map(cb => cb.dataset.lot);
+  if (lotNos.length === 0) {
+    alert('Selecciona al menos un plan');
+    return;
+  }
+  if (!confirm(`Reprogramar ${lotNos.length} plan(es) a ${newDate}?\nSe crearan sublotes con la cantidad pendiente y los originales quedaran como TERMINADO.`)) return;
+  try {
+    const resp = await axios.post('/api/plan-imd/reschedule', { lot_nos: lotNos, new_working_date: newDate });
     if (resp.data.success) {
-      alert(resp.data.message || `${planIds.length} plan(es) reprogramado(s)`);
+      alert(resp.data.message || 'Planes reprogramados');
       const modal = document.getElementById('imd-reschedule-modal');
       if (modal) modal.style.display = 'none';
-      // Deseleccionar todo
-      const selectAll = document.getElementById('select-all-imd');
-      if (selectAll) selectAll.checked = false;
-      exitRescheduleModeIMD();
       loadPlansIMD();
     } else {
       alert(resp.data.error || 'Error al reprogramar');
     }
   } catch (err) {
-    console.error('Error reprogramando:', err);
-    alert('Error al reprogramar planes');
+    alert('Error: ' + (err.response?.data?.error || err.message));
   }
 }
 

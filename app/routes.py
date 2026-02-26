@@ -3265,6 +3265,14 @@ def api_plan_reschedule():
             ))
             
             print(f" Nuevo plan creado: {nuevo_lot_no} (trazabilidad: {lot_no_original} -> {nuevo_lot_no})")
+
+            # Actualizar plan original: plan_count = produced_count y status = TERMINADO
+            execute_query(
+                "UPDATE plan_main SET plan_count = %s, status = 'TERMINADO', updated_at = NOW() WHERE lot_no = %s",
+                (produced_count, lot_no_original)
+            )
+            print(f" Plan original {lot_no_original} actualizado: plan_count={produced_count}, status=TERMINADO")
+
             nuevos_planes_creados += 1
         
         print(f"🎉 Total de planes creados: {nuevos_planes_creados}")
@@ -3599,27 +3607,122 @@ def api_plan_imd_pending():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/plan-imd/pending-reschedule', methods=['GET'])
+@login_requerido
+def api_plan_imd_pending_reschedule():
+    """Obtener planes IMD con cantidad pendiente para reprogramar"""
+    try:
+        start = request.args.get('start')
+        end = request.args.get('end')
+        where = ["COALESCE(status, '') <> 'CANCELADO'", "COALESCE(plan_count, 0) > COALESCE(produced_count, 0)"]
+        params = []
+        if start:
+            where.append("DATE(working_date) >= %s")
+            params.append(start)
+        if end:
+            where.append("DATE(working_date) <= %s")
+            params.append(end)
+        sql = f"""
+            SELECT lot_no, working_date, part_no, line, model_code, plan_count,
+                   COALESCE(produced_count, 0) as produced_count, status
+            FROM plan_imd
+            WHERE {' AND '.join(where)}
+            ORDER BY working_date, line, sequence
+        """
+        rows = execute_query(sql, tuple(params), fetch='all') or []
+        result = []
+        for r in rows:
+            wd = r.get('working_date')
+            result.append({
+                'lot_no': r['lot_no'],
+                'working_date': wd.strftime('%Y-%m-%d') if hasattr(wd, 'strftime') else str(wd) if wd else '',
+                'part_no': r.get('part_no'),
+                'line': r.get('line'),
+                'model_code': r.get('model_code'),
+                'plan_count': r.get('plan_count', 0),
+                'produced_count': r.get('produced_count', 0),
+                'status': r.get('status')
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/plan-imd/reschedule', methods=['POST'])
 @login_requerido
 def api_plan_imd_reschedule():
-    """Reprogramar planes IMD a nueva fecha"""
+    """Reprogramar planes IMD: crear sublotes con cantidad pendiente y cerrar originales"""
     try:
         data = request.get_json() or {}
-        plan_ids = data.get('plan_ids', [])
-        new_date = data.get('new_date')
-        
-        if not plan_ids or not new_date:
-            return jsonify({'error': 'plan_ids y new_date requeridos'}), 400
-        
-        fecha = _fp_safe_date(new_date) or datetime.utcnow().date()
-        updated = 0
-        
-        for plan_id in plan_ids:
-            sql = "UPDATE plan_imd SET working_date = %s, updated_at = NOW() WHERE id = %s"
-            execute_query(sql, (fecha, plan_id))
-            updated += 1
-        
-        return jsonify({'success': True, 'updated': updated, 'message': f'{updated} plan(es) reprogramado(s) a {new_date}'})
+        lot_nos = data.get('lot_nos', [])
+        new_date = data.get('new_working_date')
+
+        if not (lot_nos and new_date):
+            return jsonify({'error': 'lot_nos y new_working_date requeridos'}), 400
+
+        placeholders = ','.join(['%s'] * len(lot_nos))
+        planes = execute_query(f"""
+            SELECT lot_no, wo_code, po_code, working_date, line, model_code,
+                   part_no, project, process, plan_count, produced_count, ct, uph,
+                   routing, status, group_no, sequence, shift
+            FROM plan_imd WHERE lot_no IN ({placeholders})
+        """, tuple(lot_nos), fetch='all') or []
+
+        if not planes:
+            return jsonify({'error': 'No se encontraron planes'}), 404
+
+        creados = 0
+        for plan in planes:
+            lot_original = plan['lot_no']
+            plan_count = plan['plan_count'] or 0
+            produced = plan['produced_count'] or 0
+            pendiente = plan_count - produced
+            if pendiente <= 0:
+                continue
+
+            # Determinar lote base
+            parts = lot_original.split('-')
+            # IMD-YYMMDD-NNN formato base tiene 3 partes separadas por -
+            if len(parts) > 3:
+                lot_base = '-'.join(parts[:3])
+            else:
+                lot_base = lot_original
+
+            # Buscar siguiente secuencia
+            result = execute_query(
+                "SELECT COUNT(*) as c FROM plan_imd WHERE lot_no LIKE %s AND lot_no <> %s",
+                (f"{lot_base}-%", lot_base), fetch='one'
+            )
+            # Restar las que son el formato base IMD-YYMMDD-NNN (3 partes)
+            # Solo contar sublotes (4+ partes)
+            sub_count = execute_query(
+                "SELECT COUNT(*) as c FROM plan_imd WHERE lot_no LIKE %s AND lot_no <> %s AND CHAR_LENGTH(lot_no) > CHAR_LENGTH(%s)",
+                (f"{lot_base}-%", lot_base, lot_base), fetch='one'
+            )
+            next_seq = (sub_count['c'] if sub_count else 0) + 1
+            nuevo_lot = f"{lot_base}-{next_seq:02d}"
+
+            execute_query("""
+                INSERT INTO plan_imd
+                (lot_no, wo_code, po_code, working_date, line, shift, model_code,
+                 part_no, project, process, plan_count, ct, uph, routing, status,
+                 group_no, sequence, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, NOW())
+            """, (
+                nuevo_lot, plan.get('wo_code'), plan.get('po_code'), new_date,
+                plan.get('line'), plan.get('shift'), plan.get('model_code'),
+                plan.get('part_no'), plan.get('project'), plan.get('process'),
+                pendiente, plan.get('ct'), plan.get('uph'), plan.get('routing'),
+                plan.get('group_no'), plan.get('sequence')
+            ))
+
+            # Cerrar plan original
+            execute_query(
+                "UPDATE plan_imd SET plan_count = %s, status = 'TERMINADO', updated_at = NOW() WHERE lot_no = %s",
+                (produced, lot_original)
+            )
+            creados += 1
+
+        return jsonify({'success': True, 'created': creados, 'message': f'{creados} nuevo(s) plan(es) creado(s) para {new_date}'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4092,23 +4195,116 @@ def api_plan_smt_save_sequences():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/plan-smt/pending', methods=['GET'])
+@login_requerido
+def api_plan_smt_pending():
+    """Obtener planes SMT con cantidad pendiente para reprogramar"""
+    try:
+        start = request.args.get('start')
+        end = request.args.get('end')
+        where = ["COALESCE(status, '') <> 'CANCELADO'", "COALESCE(plan_count, 0) > COALESCE(produced_count, 0)"]
+        params = []
+        if start:
+            where.append("DATE(working_date) >= %s")
+            params.append(start)
+        if end:
+            where.append("DATE(working_date) <= %s")
+            params.append(end)
+        sql = f"""
+            SELECT lot_no, working_date, part_no, line, model_code, plan_count,
+                   COALESCE(produced_count, 0) as produced_count, status
+            FROM plan_smt
+            WHERE {' AND '.join(where)}
+            ORDER BY working_date, line, sequence
+        """
+        rows = execute_query(sql, tuple(params), fetch='all') or []
+        result = []
+        for r in rows:
+            wd = r.get('working_date')
+            result.append({
+                'lot_no': r['lot_no'],
+                'working_date': wd.strftime('%Y-%m-%d') if hasattr(wd, 'strftime') else str(wd) if wd else '',
+                'part_no': r.get('part_no'),
+                'line': r.get('line'),
+                'model_code': r.get('model_code'),
+                'plan_count': r.get('plan_count', 0),
+                'produced_count': r.get('produced_count', 0),
+                'status': r.get('status')
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/plan-smt/reschedule', methods=['POST'])
 @login_requerido
 def api_plan_smt_reschedule():
-    """Reprogramar planes SMT a nueva fecha"""
+    """Reprogramar planes SMT: crear sublotes con cantidad pendiente y cerrar originales"""
     try:
         data = request.get_json() or {}
-        plan_ids = data.get('plan_ids', [])
-        new_date = data.get('new_date')
-        if not plan_ids or not new_date:
-            return jsonify({'error': 'plan_ids y new_date requeridos'}), 400
-        fecha = _fp_safe_date(new_date) or datetime.utcnow().date()
-        updated = 0
-        for plan_id in plan_ids:
-            sql = "UPDATE plan_smt SET working_date = %s, updated_at = NOW() WHERE id = %s"
-            execute_query(sql, (fecha, plan_id))
-            updated += 1
-        return jsonify({'success': True, 'updated': updated, 'message': f'{updated} plan(es) reprogramado(s) a {new_date}'})
+        lot_nos = data.get('lot_nos', [])
+        new_date = data.get('new_working_date')
+
+        if not (lot_nos and new_date):
+            return jsonify({'error': 'lot_nos y new_working_date requeridos'}), 400
+
+        placeholders = ','.join(['%s'] * len(lot_nos))
+        planes = execute_query(f"""
+            SELECT lot_no, wo_code, po_code, working_date, line, model_code,
+                   part_no, project, process, plan_count, produced_count, ct, uph,
+                   routing, status, group_no, sequence, shift
+            FROM plan_smt WHERE lot_no IN ({placeholders})
+        """, tuple(lot_nos), fetch='all') or []
+
+        if not planes:
+            return jsonify({'error': 'No se encontraron planes'}), 404
+
+        creados = 0
+        for plan in planes:
+            lot_original = plan['lot_no']
+            plan_count = plan['plan_count'] or 0
+            produced = plan['produced_count'] or 0
+            pendiente = plan_count - produced
+            if pendiente <= 0:
+                continue
+
+            # Determinar lote base
+            parts = lot_original.split('-')
+            # SMT-YYMMDD-NNN formato base tiene 3 partes separadas por -
+            if len(parts) > 3:
+                lot_base = '-'.join(parts[:3])
+            else:
+                lot_base = lot_original
+
+            # Buscar siguiente secuencia de sublotes
+            sub_count = execute_query(
+                "SELECT COUNT(*) as c FROM plan_smt WHERE lot_no LIKE %s AND lot_no <> %s AND CHAR_LENGTH(lot_no) > CHAR_LENGTH(%s)",
+                (f"{lot_base}-%", lot_base, lot_base), fetch='one'
+            )
+            next_seq = (sub_count['c'] if sub_count else 0) + 1
+            nuevo_lot = f"{lot_base}-{next_seq:02d}"
+
+            execute_query("""
+                INSERT INTO plan_smt
+                (lot_no, wo_code, po_code, working_date, line, shift, model_code,
+                 part_no, project, process, plan_count, ct, uph, routing, status,
+                 group_no, sequence, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PLAN', %s, %s, NOW())
+            """, (
+                nuevo_lot, plan.get('wo_code'), plan.get('po_code'), new_date,
+                plan.get('line'), plan.get('shift'), plan.get('model_code'),
+                plan.get('part_no'), plan.get('project'), plan.get('process'),
+                pendiente, plan.get('ct'), plan.get('uph'), plan.get('routing'),
+                plan.get('group_no'), plan.get('sequence')
+            ))
+
+            # Cerrar plan original
+            execute_query(
+                "UPDATE plan_smt SET plan_count = %s, status = 'TERMINADO', updated_at = NOW() WHERE lot_no = %s",
+                (produced, lot_original)
+            )
+            creados += 1
+
+        return jsonify({'success': True, 'created': creados, 'message': f'{creados} nuevo(s) plan(es) creado(s) para {new_date}'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4694,11 +4890,11 @@ def exportar_bom_a_excel(modelo=None, classification=None):
         
         # Construir la consulta SQL con filtros
         base_query = """
-            SELECT modelo, codigo_material, numero_parte, side, tipo_material, 
-                   classification, especificacion_material, vender, cantidad_total, 
-                   cantidad_original, ubicacion, posicion_assy, material_sustituto, material_original, 
+            SELECT modelo, numero_parte, side, tipo_material,
+                   classification, especificacion_material, vender, cantidad_total,
+                   ubicacion, posicion_assy, material_sustituto, material_original,
                    registrador, fecha_registro
-            FROM bom 
+            FROM bom
         """
         
         where_clauses = []
@@ -4730,7 +4926,6 @@ def exportar_bom_a_excel(modelo=None, classification=None):
         # Renombrar columnas para mejor legibilidad
         column_mapping = {
             'modelo': 'Modelo',
-            'codigo_material': 'Código de Material',
             'numero_parte': 'Número de Parte',
             'side': 'Side',
             'tipo_material': 'Tipo de Material',
@@ -4738,7 +4933,6 @@ def exportar_bom_a_excel(modelo=None, classification=None):
             'especificacion_material': 'Especificación de Material',
             'vender': 'Vendor',
             'cantidad_total': 'Cantidad Total',
-            'cantidad_original': 'Cantidad Original',
             'ubicacion': 'Ubicación',
             'posicion_assy': 'Posición ASSY',
             'material_sustituto': 'Material Sustituto',
@@ -4857,9 +5051,9 @@ def api_bom_update():
             'especificacion_material': data.get('especificacionMaterial'),
             'vender': data.get('vender'),
             'cantidad_total': data.get('cantidadTotal'),
-            'cantidad_original': data.get('cantidadOriginal'),
             'ubicacion': data.get('ubicacion'),
-            'posicion_assy': data.get('posicionAssy')
+            'posicion_assy': data.get('posicionAssy'),
+            'material_sustituto': data.get('materialSustituto')
         }
         
         # Filtrar campos que no son None

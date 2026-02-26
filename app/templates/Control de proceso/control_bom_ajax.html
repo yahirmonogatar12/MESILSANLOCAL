@@ -39,7 +39,6 @@
             <thead>
                 <tr>
                     <th>Selector</th>
-                    <th>Código de material</th>
                     <th>Número de parte</th>
                     <th>Side</th>
                     <th>Tipo de material</th>
@@ -47,7 +46,6 @@
                     <th>Especificación detallada</th>
                     <th>Vendor</th>
                     <th>Cantidad total</th>
-                    <th>Cantidad original</th>
                     <th>Ubicación</th>
                     <th>Material sustituto</th>
                     <th>Material original</th>
@@ -57,7 +55,7 @@
             </thead>
             <tbody id="bomTableBody-bom">
                 <tr>
-                    <td colspan="15" class="bom-no-data">Sin datos para mostrar. Seleccione un modelo y haga clic en Consultar.</td>
+                    <td colspan="13" class="bom-no-data">Sin datos para mostrar. Seleccione un modelo y haga clic en Consultar.</td>
                 </tr>
             </tbody>
         </table>
@@ -96,10 +94,6 @@
                     <input type="text" id="modelo" name="modelo" required>
                 </div>
                 <div class="form-group">
-                    <label for="codigo_material">Código de material:</label>
-                    <input type="text" id="codigo_material" name="codigo_material" required>
-                </div>
-                <div class="form-group">
                     <label for="numero_parte">Número de parte:</label>
                     <input type="text" id="numero_parte" name="numero_parte" required>
                 </div>
@@ -132,12 +126,12 @@
                     <input type="number" id="cantidad_total" name="cantidad_total" min="0" step="0.01" required>
                 </div>
                 <div class="form-group">
-                    <label for="cantidad_original">Cantidad original:</label>
-                    <input type="number" id="cantidad_original" name="cantidad_original" min="0" step="0.01">
-                </div>
-                <div class="form-group">
                     <label for="ubicacion">Ubicación:</label>
                     <input type="text" id="ubicacion" name="ubicacion">
+                </div>
+                <div class="form-group">
+                    <label for="material_sustituto">Material sustituto:</label>
+                    <input type="text" id="material_sustituto" name="material_sustituto">
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Guardar</button>
@@ -500,7 +494,7 @@ input[type="checkbox"] {
         tbody.innerHTML = '';
         
         if (currentBOMData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" class="no-data">No hay datos para mostrar</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="no-data">No hay datos para mostrar</td></tr>';
             return;
         }
         
@@ -508,19 +502,18 @@ input[type="checkbox"] {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><input type="checkbox" class="bom-checkbox" value="${bom.id}"></td>
-                <td>${escapeHtml(bom.modelo)}</td>
+                <td>${escapeHtml(bom.numero_parte)}</td>
                 <td>${escapeHtml(bom.side)}</td>
                 <td>${escapeHtml(bom.tipo_material)}</td>
                 <td>${escapeHtml(bom.classification)}</td>
                 <td>${escapeHtml(bom.especificacion_material)}</td>
                 <td>${escapeHtml(bom.vender)}</td>
                 <td>${bom.cantidad_total}</td>
-                <td>${bom.cantidad_original}</td>
                 <td>${escapeHtml(bom.ubicacion)}</td>
-                <td>
-                    <button class="btn btn-primary btn-sm" onclick="editBOM(${bom.id})">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteBOM(${bom.id})">Eliminar</button>
-                </td>
+                <td>${escapeHtml(bom.material_sustituto)}</td>
+                <td>${escapeHtml(bom.material_original)}</td>
+                <td>${escapeHtml(bom.registrador)}</td>
+                <td>${escapeHtml(bom.fecha_registro)}</td>
             `;
             tbody.appendChild(row);
         });
@@ -636,12 +629,11 @@ input[type="checkbox"] {
             }
             
             // Crear CSV
-            const headers = ['Modelo', 'Código Material', 'Número Parte', 'Side', 'Tipo Material', 'Classification', 'Especificación', 'Vendor', 'Cantidad Total', 'Cantidad Original', 'Ubicación'];
+            const headers = ['Modelo', 'Número Parte', 'Side', 'Tipo Material', 'Classification', 'Especificación', 'Vendor', 'Cantidad Total', 'Ubicación', 'Material Sustituto', 'Material Original'];
             const csvContent = [
                 headers.join(','),
                 ...currentBOMData.map(bom => [
                     bom.modelo,
-                    bom.codigo_material,
                     bom.numero_parte,
                     bom.side,
                     bom.tipo_material,
@@ -649,8 +641,9 @@ input[type="checkbox"] {
                     `"${bom.especificacion_material}"`,
                     bom.vender,
                     bom.cantidad_total,
-                    bom.cantidad_original,
-                    bom.ubicacion
+                    bom.ubicacion,
+                    `"${bom.material_sustituto || ''}"`,
+                    bom.material_original
                 ].join(','))
             ].join('\n');
             
