@@ -886,6 +886,63 @@ def _cuchillas_get_config_por_linea(linea):
     return parsed
 
 
+def _cuchillas_get_config_por_modelo(linea, model_code):
+    if not linea or not model_code:
+        return None
+    row = execute_query(
+        """
+        SELECT id, linea, model_code, pcb_qty, cut_qty, activo, updated_at
+        FROM cuchillas_corte_config_modelo
+        WHERE linea = %s AND model_code = %s AND activo = 1
+        LIMIT 1
+        """,
+        (str(linea).strip(), str(model_code).strip()),
+        fetch='one'
+    )
+    return _cuchillas_row_to_json(row)
+
+
+def _cuchillas_get_configs_modelo_por_linea(linea):
+    if not linea:
+        return {}
+    rows = execute_query(
+        """
+        SELECT model_code, pcb_qty, cut_qty
+        FROM cuchillas_corte_config_modelo
+        WHERE linea = %s AND activo = 1
+        """,
+        (str(linea).strip(),),
+        fetch='all'
+    ) or []
+    config_map = {}
+    for r in rows:
+        rd = _cuchillas_row_to_json(r)
+        mc = str(rd.get('model_code', '')).strip()
+        if mc:
+            config_map[mc] = rd
+    return config_map
+
+
+def _cuchillas_get_effective_config(linea, model_code):
+    model_cfg = _cuchillas_get_config_por_modelo(linea, model_code) if model_code else None
+    if model_cfg:
+        return {
+            'pcb_qty': model_cfg.get('pcb_qty'),
+            'cut_qty': model_cfg.get('cut_qty'),
+            'config_tipo': 'MODELO',
+            'config_model_code': model_code
+        }
+    line_cfg = _cuchillas_get_config_por_linea(linea)
+    if line_cfg and _cuchillas_bool_from_int(line_cfg.get('activo')):
+        return {
+            'pcb_qty': line_cfg.get('pcb_qty'),
+            'cut_qty': line_cfg.get('cut_qty'),
+            'config_tipo': 'LINEA',
+            'config_model_code': None
+        }
+    return None
+
+
 def _cuchillas_get_sesion_por_linea(linea):
     if not linea:
         return None
@@ -1145,6 +1202,66 @@ def _cuchillas_source_sum_since_session(linea, started_at, source_metric):
     return _cuchillas_to_float((row or {}).get('total_metric'), 0.0) or 0.0
 
 
+def _cuchillas_consumo_ponderado_since_session(linea, started_at, source_metric, default_pcb_qty, default_cut_qty):
+    if not linea:
+        return 0.0
+
+    metric = _cuchillas_normalize_source_metric(source_metric, CUCHILLAS_SOURCE_DEFAULT)
+    metric_col = 'plan_count' if metric == 'PLAN_COUNT' else 'produced_count'
+
+    started_ref = started_at
+    if isinstance(started_ref, datetime):
+        started_ref = started_ref.strftime('%Y-%m-%d %H:%M:%S')
+    elif isinstance(started_ref, date):
+        started_ref = started_ref.strftime('%Y-%m-%d')
+    elif started_ref is None:
+        started_ref = AuthSystem.get_mexico_time_mysql()
+    else:
+        started_ref = str(started_ref)
+
+    mexico_today = AuthSystem.get_mexico_time().strftime('%Y-%m-%d')
+
+    rows = execute_query(
+        f"""
+        SELECT COALESCE(model_code, '') AS model_code,
+               COALESCE(SUM(COALESCE({metric_col}, 0)), 0) AS total_metric
+        FROM plan_main
+        WHERE line = %s
+          AND COALESCE(DATE(working_date), DATE(created_at), %s) >= DATE(%s)
+          AND COALESCE(DATE(working_date), DATE(created_at), %s) <= %s
+          AND COALESCE(status, '') <> 'CANCELADO'
+        GROUP BY COALESCE(model_code, '')
+        """,
+        (linea, mexico_today, started_ref, mexico_today, mexico_today),
+        fetch='all'
+    ) or []
+
+    config_map = _cuchillas_get_configs_modelo_por_linea(linea)
+
+    total_consumo = 0.0
+    for row_data in rows:
+        r = _cuchillas_row_to_json(row_data)
+        mc = str(r.get('model_code', '')).strip()
+        metric_val = _cuchillas_to_float(r.get('total_metric'), 0.0) or 0.0
+
+        if mc and mc in config_map:
+            pcb = _cuchillas_to_float(config_map[mc].get('pcb_qty'), 0.0) or 0.0
+            cut = _cuchillas_to_float(config_map[mc].get('cut_qty'), 0.0)
+            if cut is None:
+                cut = 0.0
+        else:
+            pcb = default_pcb_qty
+            cut = default_cut_qty
+
+        if cut <= 0 or pcb <= 0:
+            continue
+
+        factor = cut / pcb
+        total_consumo += metric_val * factor
+
+    return max(total_consumo, 0.0)
+
+
 def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
     linea_norm = str(linea or '').strip()
     if not linea_norm:
@@ -1216,8 +1333,13 @@ def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
             'sesion_id': sesion.get('id')
         }
 
-    factor = cut_qty / pcb_qty
-    nuevo_consumo = max(source_total * factor, 0.0)
+    nuevo_consumo = _cuchillas_consumo_ponderado_since_session(
+        linea=linea_norm,
+        started_at=sesion.get('started_at'),
+        source_metric=source_metric,
+        default_pcb_qty=pcb_qty,
+        default_cut_qty=cut_qty
+    )
     consumo_prev = _cuchillas_to_float(sesion.get('consumo_cortes'), 0.0) or 0.0
     consumo_changed = abs(nuevo_consumo - consumo_prev) > 0.0001
     porcentaje_uso = round((nuevo_consumo / max_cortes) * 100.0, 2) if max_cortes > 0 else 0.0
@@ -1541,10 +1663,24 @@ def crear_tablas_cuchillas_corte():
         except Exception as source_fix_error:
             print(f"(info) no fue posible normalizar source_metric: {source_fix_error}")
 
+        _cuchillas_execute_raw("""
+            CREATE TABLE IF NOT EXISTS cuchillas_corte_config_modelo (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                linea VARCHAR(32) NOT NULL,
+                model_code VARCHAR(64) NOT NULL,
+                pcb_qty DECIMAL(10,4) NOT NULL,
+                cut_qty DECIMAL(10,4) NOT NULL DEFAULT 0,
+                activo TINYINT(1) NOT NULL DEFAULT 1,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_cuchillas_modelo (linea, model_code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
         index_queries = [
             "CREATE INDEX idx_sesion_linea_estado ON cuchillas_corte_sesiones(linea, estado, started_at)",
             "CREATE INDEX idx_eventos_linea_tipo ON cuchillas_corte_eventos(linea, event_type, created_at)",
-            "CREATE INDEX idx_eventos_pendiente ON cuchillas_corte_eventos(pendiente_externo, event_type, created_at)"
+            "CREATE INDEX idx_eventos_pendiente ON cuchillas_corte_eventos(pendiente_externo, event_type, created_at)",
+            "CREATE INDEX idx_config_modelo_linea ON cuchillas_corte_config_modelo(linea, activo)"
         ]
         for q in index_queries:
             try:
@@ -1600,6 +1736,10 @@ def crear_trigger_cuchillas_corte_plan_main():
             DECLARE v_new_snapshot DECIMAL(12,4) DEFAULT 0;
             DECLARE v_pct_uso DECIMAL(7,2) DEFAULT 0;
             DECLARE v_prealert_threshold DECIMAL(12,4) DEFAULT 0;
+            DECLARE v_model_pcb_qty DECIMAL(10,4) DEFAULT NULL;
+            DECLARE v_model_cut_qty DECIMAL(10,4) DEFAULT NULL;
+            DECLARE v_model_found TINYINT DEFAULT 0;
+            DECLARE CONTINUE HANDLER FOR NOT FOUND BEGIN END;
 
             IF NEW.line IS NULL OR TRIM(NEW.line) = '' THEN
                 LEAVE cuchillas_trigger;
@@ -1668,6 +1808,26 @@ def crear_trigger_cuchillas_corte_plan_main():
                 LEAVE cuchillas_trigger;
             END IF;
 
+            -- Buscar config por modelo, si existe sobreescribe pcb_qty y cut_qty de linea
+            SELECT pcb_qty, cut_qty
+            INTO v_model_pcb_qty, v_model_cut_qty
+            FROM cuchillas_corte_config_modelo
+            WHERE linea = NEW.line
+              AND model_code = COALESCE(NEW.model_code, '')
+              AND activo = 1
+            LIMIT 1;
+
+            IF v_model_pcb_qty IS NOT NULL THEN
+                SET v_pcb_qty = v_model_pcb_qty;
+                SET v_cut_qty = v_model_cut_qty;
+                SET v_model_found = 1;
+            END IF;
+
+            -- Si cut_qty = 0 para este modelo, no consume cuchilla
+            IF COALESCE(v_cut_qty, 0) <= 0 THEN
+                LEAVE cuchillas_trigger;
+            END IF;
+
             IF v_source_metric IS NULL OR v_source_metric NOT IN ('PRODUCED_COUNT', 'PLAN_COUNT') THEN
                 SET v_source_metric = 'PRODUCED_COUNT';
             END IF;
@@ -1684,7 +1844,6 @@ def crear_trigger_cuchillas_corte_plan_main():
             END IF;
 
             IF COALESCE(v_pcb_qty, 0) <= 0
-               OR COALESCE(v_cut_qty, 0) <= 0
                OR COALESCE(v_max_cortes, 0) <= 0 THEN
                 LEAVE cuchillas_trigger;
             END IF;
@@ -1885,12 +2044,15 @@ def api_cuchillas_corte_dashboard():
                 fetch='one'
             ) or {}
 
+            model_code = (plan_activo or {}).get('model_code', '')
+            effective = _cuchillas_get_effective_config(linea, model_code)
             items.append({
                 'linea': linea,
                 'config': config,
                 'plan_activo': plan_activo,
                 'sesion': sesion,
                 'diagnostico': diagnostico,
+                'config_efectiva': effective,
                 'eventos_vencida_pendientes': int((pendiente_row or {}).get('total') or 0)
             })
 
@@ -1969,6 +2131,113 @@ def api_cuchillas_corte_save_config():
         execute_query(upsert_sql, (linea, pcb_qty, cut_qty, prealert_pct, source_metric, activo, mexico_now, mexico_now))
         config = _cuchillas_get_config_por_linea(linea)
         return jsonify({'success': True, 'config': config})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/config-modelo', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_get_config_modelos():
+    try:
+        linea = (request.args.get('linea') or '').strip()
+        if not linea:
+            return jsonify({'success': False, 'error': 'linea requerida'}), 400
+        rows = execute_query(
+            "SELECT id, linea, model_code, pcb_qty, cut_qty, activo, updated_at FROM cuchillas_corte_config_modelo WHERE linea = %s ORDER BY model_code",
+            (linea,),
+            fetch='all'
+        ) or []
+        modelos = [_cuchillas_row_to_json(r) for r in rows]
+        return jsonify({'success': True, 'modelos': modelos})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/config-modelo', methods=['POST'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_save_config_modelo():
+    try:
+        data = request.get_json() or {}
+        linea = (data.get('linea') or '').strip()
+        model_code = (data.get('model_code') or '').strip()
+        pcb_qty = _cuchillas_to_float(data.get('pcb_qty'))
+        cut_qty = _cuchillas_to_float(data.get('cut_qty'), 0.0)
+        activo = 1 if _cuchillas_bool_param(data.get('activo', 1)) else 0
+
+        if not linea or not model_code:
+            return jsonify({'success': False, 'error': 'linea y model_code requeridos'}), 400
+        if pcb_qty is None or pcb_qty <= 0:
+            return jsonify({'success': False, 'error': 'pcb_qty debe ser mayor a 0'}), 400
+        if cut_qty is None or cut_qty < 0:
+            return jsonify({'success': False, 'error': 'cut_qty no puede ser negativo'}), 400
+
+        mexico_now = AuthSystem.get_mexico_time_mysql()
+        execute_query(
+            """
+            INSERT INTO cuchillas_corte_config_modelo (linea, model_code, pcb_qty, cut_qty, activo, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                pcb_qty = VALUES(pcb_qty),
+                cut_qty = VALUES(cut_qty),
+                activo = VALUES(activo),
+                updated_at = %s
+            """,
+            (linea, model_code, pcb_qty, cut_qty, activo, mexico_now, mexico_now)
+        )
+        modelos_rows = execute_query(
+            "SELECT id, linea, model_code, pcb_qty, cut_qty, activo, updated_at FROM cuchillas_corte_config_modelo WHERE linea = %s ORDER BY model_code",
+            (linea,),
+            fetch='all'
+        ) or []
+        modelos = [_cuchillas_row_to_json(r) for r in modelos_rows]
+        return jsonify({'success': True, 'modelos': modelos})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/config-modelo/eliminar', methods=['POST'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_delete_config_modelo():
+    try:
+        data = request.get_json() or {}
+        linea = (data.get('linea') or '').strip()
+        model_code = (data.get('model_code') or '').strip()
+        if not linea or not model_code:
+            return jsonify({'success': False, 'error': 'linea y model_code requeridos'}), 400
+        execute_query(
+            "DELETE FROM cuchillas_corte_config_modelo WHERE linea = %s AND model_code = %s",
+            (linea, model_code)
+        )
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cuchillas-corte/modelos-linea', methods=['GET'])
+@login_requerido
+@requiere_permiso_dropdown(CUCHILLAS_PERMISO_PAGINA, CUCHILLAS_PERMISO_SECCION, CUCHILLAS_PERMISO_BOTON)
+def api_cuchillas_corte_modelos_linea():
+    try:
+        linea = (request.args.get('linea') or '').strip()
+        if not linea:
+            return jsonify({'success': False, 'error': 'linea requerida'}), 400
+        rows = execute_query(
+            """SELECT DISTINCT model_code FROM plan_main
+               WHERE line = %s AND model_code IS NOT NULL AND model_code <> ''
+               ORDER BY model_code""",
+            (linea,),
+            fetch='all'
+        ) or []
+        modelos = []
+        for r in rows:
+            rd = _cuchillas_row_to_json(r)
+            mc = str(rd.get('model_code', '') if rd else '').strip()
+            if mc:
+                modelos.append(mc)
+        return jsonify({'success': True, 'modelos': modelos})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -2265,6 +2534,8 @@ def api_cuchillas_corte_estado():
             fetch='all'
         ) or []
 
+        model_code = (plan_activo or {}).get('model_code', '')
+        effective = _cuchillas_get_effective_config(linea, model_code)
         return jsonify({
             'success': True,
             'linea': linea,
@@ -2272,6 +2543,7 @@ def api_cuchillas_corte_estado():
             'config': config,
             'sesion': sesion,
             'diagnostico': diagnostico,
+            'config_efectiva': effective,
             'eventos_recentes': _cuchillas_rows_to_json(eventos)
         })
     except Exception as e:

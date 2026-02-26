@@ -487,6 +487,8 @@
             <th>Config</th>
             <th>Fuente</th>
             <th>Lot activo</th>
+            <th>Modelo</th>
+            <th>Config usada</th>
             <th>Status plan</th>
             <th>Cuchilla</th>
             <th>Estado</th>
@@ -527,6 +529,10 @@
       <div class="cc-kpi">
         <div class="kpi-label">Config activa</div>
         <div id="cc-config-activo-kpi" class="kpi-value">-</div>
+      </div>
+      <div class="cc-kpi">
+        <div class="kpi-label">Config usada</div>
+        <div id="cc-config-tipo-kpi" class="kpi-value">-</div>
       </div>
 
       <div class="cc-kpi">
@@ -739,6 +745,51 @@
               <span class="cc-spinner" aria-hidden="true"></span>
               <span class="cc-btn-text">Guardar configuracion</span>
             </button>
+          </div>
+        </div>
+
+        <div class="cc-card">
+          <h3>Configuracion por modelo</h3>
+          <p style="font-size:12px; color:#b0bec5; margin-bottom:8px;">
+            Modelos sin configuracion usaran los valores de la linea como default.
+            Si Cut Qty = 0, el modelo no consumira cuchilla.
+          </p>
+          <div class="cc-form-grid" style="margin-bottom:8px;">
+            <div class="cc-field">
+              <label for="cc-modelo-select">Modelo</label>
+              <input id="cc-modelo-select" class="cc-input" type="text" list="cc-modelo-datalist" placeholder="Selecciona o escribe modelo">
+              <datalist id="cc-modelo-datalist"></datalist>
+            </div>
+            <div class="cc-field">
+              <label for="cc-modelo-pcb-qty">PCB Qty</label>
+              <input id="cc-modelo-pcb-qty" class="cc-input" type="number" min="0.0001" step="0.0001" value="1">
+            </div>
+            <div class="cc-field">
+              <label for="cc-modelo-cut-qty">Cut Qty (0 = sin corte)</label>
+              <input id="cc-modelo-cut-qty" class="cc-input" type="number" min="0" step="0.0001" value="0">
+            </div>
+            <div class="cc-field" style="justify-content:flex-end;">
+              <button id="cc-btn-guardar-config-modelo" class="cc-btn" type="button" style="margin-top:22px;">
+                <span class="cc-spinner" aria-hidden="true"></span>
+                <span class="cc-btn-text">Guardar modelo</span>
+              </button>
+            </div>
+          </div>
+          <div class="cc-table-wrap" style="max-height:200px;">
+            <table class="cc-table" style="min-width:auto;">
+              <thead>
+                <tr>
+                  <th>Modelo</th>
+                  <th>PCB Qty</th>
+                  <th>Cut Qty</th>
+                  <th>Factor</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="cc-modelos-config-tbody">
+                <tr><td colspan="5" class="cc-empty">Sin configuraciones de modelo</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 

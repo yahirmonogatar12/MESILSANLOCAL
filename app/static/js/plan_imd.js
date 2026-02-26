@@ -325,6 +325,11 @@ function openEditModalIMD(planId) {
           <input type="hidden" name="lot_no" id="imd-edit-lot_no">
           <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px;">
             <div><label style="color: #888; font-size: 12px;">Lot No</label><input type="text" id="imd-edit-lot_display" disabled style="width: 100%; background: #1a1b26; border: 1px solid #333; color: #888; padding: 8px; border-radius: 4px;"></div>
+            <div><label style="color: #888; font-size: 12px;">Linea</label>
+              <select name="line" id="imd-edit-line" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
+                <option value="P1">PANA A</option><option value="P2">PANA B</option><option value="P3">PANA C</option><option value="P4">PANA D</option>
+              </select>
+            </div>
             <div><label style="color: #888; font-size: 12px;">Turno</label>
               <select name="shift" id="imd-edit-shift" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
                 <option value="DIA">DIA</option><option value="TARDE">TARDE</option><option value="NOCHE">NOCHE</option>
@@ -349,6 +354,7 @@ function openEditModalIMD(planId) {
 
   document.getElementById('imd-edit-lot_no').value = plan.lot_no;
   document.getElementById('imd-edit-lot_display').value = plan.lot_no;
+  document.getElementById('imd-edit-line').value = plan.line || 'P1';
   document.getElementById('imd-edit-shift').value = plan.shift || 'DIA';
   document.getElementById('imd-edit-part_no').value = plan.part_no || '';
   document.getElementById('imd-edit-plan_count').value = plan.plan_count || 0;
@@ -379,6 +385,7 @@ async function updatePlanIMD(formData) {
 
     const data = {
       lot_no: formData.get('lot_no'),
+      line: formData.get('line'),
       shift: formData.get('shift'),
       part_no: partNo,
       plan_count: parseInt(formData.get('plan_count'), 10) || 0

@@ -326,6 +326,11 @@ function openEditModalSMT(planId) {
           <input type="hidden" name="lot_no" id="smt-edit-lot_no">
           <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px;">
             <div><label style="color: #888; font-size: 12px;">Lot No</label><input type="text" id="smt-edit-lot_display" disabled style="width: 100%; background: #1a1b26; border: 1px solid #333; color: #888; padding: 8px; border-radius: 4px;"></div>
+            <div><label style="color: #888; font-size: 12px;">Linea</label>
+              <select name="line" id="smt-edit-line" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
+                <option value="SA">SMT A</option><option value="SB">SMT B</option><option value="SC">SMT C</option><option value="SD">SMT D</option><option value="SE">SMT E</option>
+              </select>
+            </div>
             <div><label style="color: #888; font-size: 12px;">Turno</label>
               <select name="shift" id="smt-edit-shift" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;">
                 <option value="DIA">DIA</option><option value="TARDE">TARDE</option><option value="NOCHE">NOCHE</option>
@@ -350,6 +355,7 @@ function openEditModalSMT(planId) {
 
   document.getElementById('smt-edit-lot_no').value = plan.lot_no;
   document.getElementById('smt-edit-lot_display').value = plan.lot_no;
+  document.getElementById('smt-edit-line').value = plan.line || 'SA';
   document.getElementById('smt-edit-shift').value = plan.shift || 'DIA';
   document.getElementById('smt-edit-part_no').value = plan.part_no || '';
   document.getElementById('smt-edit-plan_count').value = plan.plan_count || 0;
@@ -380,6 +386,7 @@ async function updatePlanSMT(formData) {
 
     const data = {
       lot_no: formData.get('lot_no'),
+      line: formData.get('line'),
       shift: formData.get('shift'),
       part_no: partNo,
       plan_count: parseInt(formData.get('plan_count'), 10) || 0

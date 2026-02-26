@@ -361,13 +361,133 @@
     if (activo) activo.checked = Number(cfg.activo || 0) === 1;
   }
 
+  // ---- Config por modelo ----
+
+  async function loadModelosLinea(linea) {
+    var datalist = getEl('cc-modelo-datalist');
+    if (!datalist) return;
+    datalist.innerHTML = '';
+    if (!linea) return;
+    try {
+      var resp = await requestApi('GET', '/api/cuchillas-corte/modelos-linea', null, { linea: linea });
+      var modelos = Array.isArray(resp.modelos) ? resp.modelos : [];
+      modelos.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m;
+        datalist.appendChild(opt);
+      });
+    } catch (err) {
+      console.warn('Error cargando modelos:', err);
+    }
+  }
+
+  async function loadConfigModelos(linea) {
+    var tbody = getEl('cc-modelos-config-tbody');
+    if (!tbody) return;
+    if (!linea) {
+      tbody.innerHTML = '<tr><td colspan="5" class="cc-empty">Selecciona una linea</td></tr>';
+      return;
+    }
+    try {
+      var resp = await requestApi('GET', '/api/cuchillas-corte/config-modelo', null, { linea: linea });
+      var modelos = Array.isArray(resp.modelos) ? resp.modelos : [];
+      if (!modelos.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="cc-empty">Sin configuraciones de modelo (se usa config de linea)</td></tr>';
+        return;
+      }
+      var html = modelos.map(function(m) {
+        var pcb = toNumber(m.pcb_qty, 0);
+        var cut = toNumber(m.cut_qty, 0);
+        var factor = pcb > 0 ? (cut / pcb) : 0;
+        var sinCorte = cut <= 0;
+        return [
+          '<tr>',
+            '<td>', escapeHtml(m.model_code || '-'), '</td>',
+            '<td>', formatNumber(pcb, 4), '</td>',
+            '<td>', sinCorte ? '<span class="cc-pill off">0 (sin corte)</span>' : formatNumber(cut, 4), '</td>',
+            '<td>', formatNumber(factor, 6), '</td>',
+            '<td>',
+              '<button class="cc-btn danger cc-btn-eliminar-modelo" data-modelo="', escapeHtml(m.model_code), '" style="padding:2px 8px; font-size:11px;">Eliminar</button>',
+            '</td>',
+          '</tr>'
+        ].join('');
+      }).join('');
+      tbody.innerHTML = html;
+    } catch (err) {
+      tbody.innerHTML = '<tr><td colspan="5" class="cc-empty">Error cargando modelos</td></tr>';
+    }
+  }
+
+  async function saveConfigModelo() {
+    var linea = getCurrentLinea();
+    if (!linea) {
+      setStatus('Selecciona una linea', 'warn');
+      return;
+    }
+    var modelInput = getEl('cc-modelo-select');
+    var pcbInput = getEl('cc-modelo-pcb-qty');
+    var cutInput = getEl('cc-modelo-cut-qty');
+    var modelCode = String(modelInput ? modelInput.value : '').trim();
+    var pcbQty = toNumber(pcbInput ? pcbInput.value : '', NaN);
+    var cutQty = toNumber(cutInput ? cutInput.value : '', NaN);
+
+    if (!modelCode) {
+      setStatus('Ingresa un modelo', 'warn');
+      return;
+    }
+    if (!Number.isFinite(pcbQty) || pcbQty <= 0) {
+      setStatus('PCB Qty debe ser mayor a 0', 'warn');
+      return;
+    }
+    if (!Number.isFinite(cutQty) || cutQty < 0) {
+      setStatus('Cut Qty no puede ser negativo', 'warn');
+      return;
+    }
+
+    try {
+      setButtonLoading('cc-btn-guardar-config-modelo', true, 'Guardando...');
+      await requestApi('POST', '/api/cuchillas-corte/config-modelo', {
+        linea: linea,
+        model_code: modelCode,
+        pcb_qty: pcbQty,
+        cut_qty: cutQty,
+        activo: 1
+      });
+      setStatus('Config de modelo ' + modelCode + ' guardada', 'ok');
+      if (modelInput) modelInput.value = '';
+      if (pcbInput) pcbInput.value = '1';
+      if (cutInput) cutInput.value = '0';
+      await loadConfigModelos(linea);
+    } catch (err) {
+      setStatus(parseError(err), 'error');
+    } finally {
+      setButtonLoading('cc-btn-guardar-config-modelo', false);
+    }
+  }
+
+  async function deleteConfigModelo(linea, modelCode) {
+    if (!confirm('Eliminar configuracion del modelo ' + modelCode + '?\nSe usara la config de linea como default.')) return;
+    try {
+      await requestApi('POST', '/api/cuchillas-corte/config-modelo/eliminar', {
+        linea: linea,
+        model_code: modelCode
+      });
+      setStatus('Config de modelo ' + modelCode + ' eliminada', 'ok');
+      await loadConfigModelos(linea);
+    } catch (err) {
+      setStatus(parseError(err), 'error');
+    }
+  }
+
+  // ---- Fin config por modelo ----
+
   function renderDashboard(items) {
     var tbody = getEl('cc-dashboard-tbody');
     if (!tbody) return;
 
     var rows = Array.isArray(items) ? items : [];
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="11" class="cc-empty">No hay lineas configuradas activas</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="cc-empty">No hay lineas configuradas activas</td></tr>';
       return;
     }
 
@@ -386,12 +506,21 @@
       var restante = formatNumber(sesion.restante_cortes || 0, 4);
       var pendExt = formatNumber(item.eventos_vencida_pendientes || 0, 0);
 
+      var cfgEfectiva = item.config_efectiva || {};
+      var cfgTipo = cfgEfectiva.config_tipo || 'LINEA';
+      var cfgModelCode = cfgEfectiva.config_model_code || '';
+      var cfgUsadaLabel = cfgTipo === 'MODELO'
+        ? '<span class="cc-pill ok">' + escapeHtml(cfgModelCode) + '</span>'
+        : '<span class="cc-pill">LINEA</span>';
+
       return [
         '<tr class="', rowClass, '" data-cc-linea="', escapeHtml(linea), '">',
           '<td>', escapeHtml(linea || '-'), '</td>',
           '<td>', configBadge(config), '</td>',
           '<td>', escapeHtml(sourceLabel(config.source_metric || diag.source_metric || 'PRODUCED_COUNT')), '</td>',
           '<td>', escapeHtml(plan.lot_no || '-'), '</td>',
+          '<td>', escapeHtml(plan.model_code || '-'), '</td>',
+          '<td>', cfgUsadaLabel, '</td>',
           '<td>', escapeHtml(plan.status || '-'), '</td>',
           '<td>', escapeHtml(sesion.blade_code || '-'), '</td>',
           '<td>', estadoBadge(sesion.estado), '</td>',
@@ -438,6 +567,16 @@
     var sesion = (payload && payload.sesion) || null;
     var config = (payload && payload.config) || null;
     var diagnostico = (payload && payload.diagnostico) || null;
+    var cfgEfectiva = (payload && payload.config_efectiva) || null;
+
+    var cfgTipoEl = getEl('cc-config-tipo-kpi');
+    if (cfgTipoEl) {
+      if (cfgEfectiva && cfgEfectiva.config_tipo === 'MODELO') {
+        cfgTipoEl.innerHTML = '<span class="cc-pill ok">MODELO: ' + escapeHtml(cfgEfectiva.config_model_code || '') + '</span>';
+      } else {
+        cfgTipoEl.innerHTML = '<span class="cc-pill">LINEA (default)</span>';
+      }
+    }
 
     var planLot = getEl('cc-plan-lot');
     var planStatus = getEl('cc-plan-status');
@@ -649,6 +788,8 @@
     var estadoResp = await requestApi('GET', '/api/cuchillas-corte/estado', null, { linea: l });
     renderEstado(estadoResp);
     fillConfigForm(estadoResp.config || null, l);
+    loadModelosLinea(l);
+    loadConfigModelos(l);
 
     if (showFeedback) {
       setStatus('Detalle actualizado (' + nowLabel() + ')', 'ok');
@@ -978,6 +1119,8 @@
       await loadLineaDetalle(linea, false);
       await loadHistorial(false);
       await loadEventos(false);
+      loadModelosLinea(linea);
+      loadConfigModelos(linea);
       setStatus('Linea ' + linea + ' lista', 'ok');
     } catch (error) {
       setStatus(parseError(error), 'error');
@@ -994,6 +1137,8 @@
     loadLineaDetalle(linea, true);
     loadHistorial(false);
     loadEventos(false);
+    loadModelosLinea(linea);
+    loadConfigModelos(linea);
     return true;
   }
 
@@ -1057,6 +1202,23 @@
     if (target.id === 'cc-btn-guardar-config' || target.closest('#cc-btn-guardar-config')) {
       e.preventDefault();
       saveConfig();
+      return;
+    }
+
+    if (target.id === 'cc-btn-guardar-config-modelo' || target.closest('#cc-btn-guardar-config-modelo')) {
+      e.preventDefault();
+      saveConfigModelo();
+      return;
+    }
+
+    if (target.classList.contains('cc-btn-eliminar-modelo') || target.closest('.cc-btn-eliminar-modelo')) {
+      e.preventDefault();
+      var btn = target.classList.contains('cc-btn-eliminar-modelo') ? target : target.closest('.cc-btn-eliminar-modelo');
+      var modelo = btn ? btn.getAttribute('data-modelo') : '';
+      var linea = getCurrentLinea();
+      if (modelo && linea) {
+        deleteConfigModelo(linea, modelo);
+      }
       return;
     }
 
