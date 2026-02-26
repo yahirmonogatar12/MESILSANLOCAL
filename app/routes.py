@@ -1021,12 +1021,13 @@ def _cuchillas_crear_sesion(linea, blade_code, max_cortes, created_by, config=No
             %s, %s, %s, 0,
             %s, %s,
             'ACTIVA', 0, 0,
-            NOW(), %s, NOW()
+            %s, %s, %s
         )
     """
+    mexico_now = AuthSystem.get_mexico_time_mysql()
     execute_query(
         insert_sql,
-        (linea, blade_code, max_cortes, baseline_lot, baseline_input, created_by)
+        (linea, blade_code, max_cortes, baseline_lot, baseline_input, mexico_now, created_by, mexico_now)
     )
 
     sesion_row = execute_query(
@@ -1057,7 +1058,7 @@ def _cuchillas_crear_sesion(linea, blade_code, max_cortes, created_by, config=No
             VALUES (
                 %s, %s, %s, 'INFO',
                 0, %s, 0,
-                %s, 0, NOW()
+                %s, 0, %s
             )
         """
         mensaje = f"Sesion iniciada para cuchilla {blade_code} (fuente: {source_metric})"
@@ -1068,7 +1069,8 @@ def _cuchillas_crear_sesion(linea, blade_code, max_cortes, created_by, config=No
                 linea,
                 baseline_lot,
                 max_cortes,
-                mensaje
+                mensaje,
+                mexico_now
             )
         )
 
@@ -1093,7 +1095,7 @@ def _cuchillas_insert_evento(
             consumo_cortes, max_cortes, porcentaje_uso, mensaje,
             pendiente_externo, created_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             sesion_id,
@@ -1104,7 +1106,8 @@ def _cuchillas_insert_evento(
             max_cortes,
             porcentaje_uso,
             mensaje,
-            1 if _cuchillas_bool_from_int(pendiente_externo) else 0
+            1 if _cuchillas_bool_from_int(pendiente_externo) else 0,
+            AuthSystem.get_mexico_time_mysql()
         )
     )
 
@@ -1122,7 +1125,7 @@ def _cuchillas_source_sum_since_session(linea, started_at, source_metric):
     elif isinstance(started_ref, date):
         started_ref = started_ref.strftime('%Y-%m-%d')
     elif started_ref is None:
-        started_ref = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        started_ref = AuthSystem.get_mexico_time_mysql()
     else:
         started_ref = str(started_ref)
 
@@ -1172,7 +1175,7 @@ def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
     if not _cuchillas_bool_from_int(sesion.get('config_activo')):
         return {'linea': linea_norm, 'status': 'CONFIG_INACTIVA', 'sesion_id': sesion.get('id')}
 
-    now_dt = datetime.now()
+    now_dt = AuthSystem.get_mexico_time()
     last_sync = sesion.get('last_hourly_sync_at')
     if not force and isinstance(last_sync, str):
         try:
@@ -1180,7 +1183,10 @@ def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
         except Exception:
             last_sync = None
     if not force and isinstance(last_sync, datetime):
-        elapsed = (now_dt - last_sync).total_seconds()
+        if last_sync.tzinfo is None:
+            elapsed = (now_dt.replace(tzinfo=None) - last_sync).total_seconds()
+        else:
+            elapsed = (now_dt - last_sync).total_seconds()
         if elapsed < CUCHILLAS_HOURLY_SYNC_SECONDS:
             return {
                 'linea': linea_norm,
@@ -1216,6 +1222,7 @@ def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
     porcentaje_uso = round((nuevo_consumo / max_cortes) * 100.0, 2) if max_cortes > 0 else 0.0
     plan_activo = _cuchillas_get_plan_activo_por_linea(linea_norm)
     lot_no = (plan_activo or {}).get('lot_no') or sesion.get('last_lot_no')
+    mexico_now = AuthSystem.get_mexico_time_mysql()
 
     execute_query(
         """
@@ -1223,12 +1230,12 @@ def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
         SET consumo_cortes = %s,
             last_input_snapshot = %s,
             last_lot_no = %s,
-            last_hourly_sync_at = NOW(),
-            updated_at = NOW()
+            last_hourly_sync_at = %s,
+            updated_at = %s
         WHERE id = %s
           AND estado = 'ACTIVA'
         """,
-        (nuevo_consumo, source_total, lot_no, sesion.get('id'))
+        (nuevo_consumo, source_total, lot_no, mexico_now, mexico_now, sesion.get('id'))
     )
 
     prealert_pct = _cuchillas_to_float(sesion.get('prealert_pct'), 90.0) or 90.0
@@ -1251,10 +1258,10 @@ def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
         execute_query(
             """
             UPDATE cuchillas_corte_sesiones
-            SET prealert_emitida = 1, updated_at = NOW()
+            SET prealert_emitida = 1, updated_at = %s
             WHERE id = %s
             """,
-            (sesion.get('id'),)
+            (mexico_now, sesion.get('id'))
         )
 
     if not vencida_emitida and nuevo_consumo >= max_cortes:
@@ -1274,12 +1281,12 @@ def _cuchillas_sync_linea_consumo(linea, force=False, reason='hourly'):
             UPDATE cuchillas_corte_sesiones
             SET estado = 'VENCIDA',
                 vencida_emitida = 1,
-                expired_at = NOW(),
-                ended_at = COALESCE(ended_at, NOW()),
-                updated_at = NOW()
+                expired_at = %s,
+                ended_at = COALESCE(ended_at, %s),
+                updated_at = %s
             WHERE id = %s
             """,
-            (sesion.get('id'),)
+            (mexico_now, mexico_now, mexico_now, sesion.get('id'))
         )
 
     if reason == 'manual' and consumo_changed:
@@ -1697,11 +1704,13 @@ def crear_trigger_cuchillas_corte_plan_main():
 
             SET v_pct_uso = IF(v_max_cortes > 0, ROUND((v_nuevo_consumo / v_max_cortes) * 100, 2), 0);
 
+            SET @mexico_now = CONVERT_TZ(NOW(), @@global.time_zone, '-06:00');
+
             UPDATE cuchillas_corte_sesiones
                SET consumo_cortes = v_nuevo_consumo,
                    last_input_snapshot = v_new_snapshot,
                    last_lot_no = NEW.lot_no,
-                   updated_at = NOW()
+                   updated_at = @mexico_now
              WHERE id = v_sesion_id
                AND estado = 'ACTIVA';
 
@@ -1717,12 +1726,12 @@ def crear_trigger_cuchillas_corte_plan_main():
                     v_sesion_id, NEW.line, NEW.lot_no, 'PREALERTA',
                     v_nuevo_consumo, v_max_cortes, v_pct_uso,
                     CONCAT('Prealerta de cuchilla en linea ', NEW.line, ' (', ROUND(v_pct_uso, 2), '% de uso)'),
-                    1, NOW()
+                    1, @mexico_now
                 );
 
                 UPDATE cuchillas_corte_sesiones
                    SET prealert_emitida = 1,
-                       updated_at = NOW()
+                       updated_at = @mexico_now
                  WHERE id = v_sesion_id;
             END IF;
 
@@ -1736,15 +1745,15 @@ def crear_trigger_cuchillas_corte_plan_main():
                     v_sesion_id, NEW.line, NEW.lot_no, 'VENCIDA',
                     v_nuevo_consumo, v_max_cortes, v_pct_uso,
                     CONCAT('Cuchilla vencida en linea ', NEW.line, ' (', ROUND(v_pct_uso, 2), '% de uso)'),
-                    1, NOW()
+                    1, @mexico_now
                 );
 
                 UPDATE cuchillas_corte_sesiones
                    SET estado = 'VENCIDA',
                        vencida_emitida = 1,
-                       expired_at = NOW(),
-                       ended_at = COALESCE(ended_at, NOW()),
-                       updated_at = NOW()
+                       expired_at = @mexico_now,
+                       ended_at = COALESCE(ended_at, @mexico_now),
+                       updated_at = @mexico_now
                  WHERE id = v_sesion_id;
             END IF;
         END
@@ -1946,16 +1955,17 @@ def api_cuchillas_corte_save_config():
             INSERT INTO cuchillas_corte_config_linea (
                 linea, pcb_qty, cut_qty, prealert_pct, source_metric, activo, updated_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 pcb_qty = VALUES(pcb_qty),
                 cut_qty = VALUES(cut_qty),
                 prealert_pct = VALUES(prealert_pct),
                 source_metric = VALUES(source_metric),
                 activo = VALUES(activo),
-                updated_at = NOW()
+                updated_at = %s
         """
-        execute_query(upsert_sql, (linea, pcb_qty, cut_qty, prealert_pct, source_metric, activo))
+        mexico_now = AuthSystem.get_mexico_time_mysql()
+        execute_query(upsert_sql, (linea, pcb_qty, cut_qty, prealert_pct, source_metric, activo, mexico_now, mexico_now))
         config = _cuchillas_get_config_por_linea(linea)
         return jsonify({'success': True, 'config': config})
     except Exception as e:
@@ -2053,17 +2063,18 @@ def api_cuchillas_corte_sesion_reemplazar():
             fetch='one'
         )
 
+        mexico_now_reemplazo = AuthSystem.get_mexico_time_mysql()
         if activa:
             execute_query(
                 """
                 UPDATE cuchillas_corte_sesiones
                 SET estado = 'REEMPLAZADA',
-                    ended_at = NOW(),
-                    updated_at = NOW()
+                    ended_at = %s,
+                    updated_at = %s
                 WHERE id = %s
                   AND estado = 'ACTIVA'
                 """,
-                (activa.get('id'),)
+                (mexico_now_reemplazo, mexico_now_reemplazo, activa.get('id'))
             )
 
             mensaje = (
@@ -2077,14 +2088,15 @@ def api_cuchillas_corte_sesion_reemplazar():
                     consumo_cortes, max_cortes, porcentaje_uso, mensaje,
                     pendiente_externo, created_at
                 )
-                VALUES (%s, %s, NULL, 'INFO', %s, %s, 0, %s, 0, NOW())
+                VALUES (%s, %s, NULL, 'INFO', %s, %s, 0, %s, 0, %s)
                 """,
                 (
                     activa.get('id'),
                     linea,
                     _cuchillas_to_float(activa.get('consumo_cortes'), 0.0) or 0.0,
                     _cuchillas_to_float(activa.get('max_cortes'), 0.0) or 0.0,
-                    mensaje
+                    mensaje,
+                    mexico_now_reemplazo
                 )
             )
 
