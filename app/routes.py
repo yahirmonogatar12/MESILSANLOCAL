@@ -1129,16 +1129,17 @@ def _cuchillas_source_sum_since_session(linea, started_at, source_metric):
     else:
         started_ref = str(started_ref)
 
+    mexico_today = AuthSystem.get_mexico_time().strftime('%Y-%m-%d')
     row = execute_query(
         f"""
         SELECT COALESCE(SUM(COALESCE({metric_col}, 0)), 0) AS total_metric
         FROM plan_main
         WHERE line = %s
-          AND COALESCE(DATE(working_date), DATE(created_at), CURDATE()) >= DATE(%s)
-          AND COALESCE(DATE(working_date), DATE(created_at), CURDATE()) <= CURDATE()
+          AND COALESCE(DATE(working_date), DATE(created_at), %s) >= DATE(%s)
+          AND COALESCE(DATE(working_date), DATE(created_at), %s) <= %s
           AND COALESCE(status, '') <> 'CANCELADO'
         """,
-        (linea, started_ref),
+        (linea, mexico_today, started_ref, mexico_today, mexico_today),
         fetch='one'
     ) or {}
     return _cuchillas_to_float((row or {}).get('total_metric'), 0.0) or 0.0
