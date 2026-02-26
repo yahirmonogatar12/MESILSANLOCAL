@@ -5,6 +5,8 @@ import os
 from .config_mysql import execute_query, test_connection
 from datetime import datetime, timedelta
 import json
+import re
+import unicodedata
 
 def obtener_fecha_hora_mexico():
     """Obtener fecha y hora actual en zona horaria de México (GMT-6)"""
@@ -1093,29 +1095,104 @@ def insertar_bom_desde_dataframe(df, registrador):
         columnas_disponibles = df.columns.tolist()
         print(f"DEBUG: Columnas en el DataFrame: {columnas_disponibles}")
         
-        # Función auxiliar para buscar columna por variaciones
-        def buscar_columna(variaciones, columnas):
-            for var in variaciones:
-                for col in columnas:
-                    if var.lower() in col.lower():
+        # Función auxiliar para buscar columna por variaciones de forma no ambigua
+        def normalizar_columna(nombre):
+            texto = str(nombre or '')
+            texto = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
+            texto = texto.strip().lower()
+            texto = re.sub(r'[^a-z0-9]+', ' ', texto)
+            return ' '.join(texto.split())
+
+        columnas_normalizadas = {col: normalizar_columna(col) for col in columnas_disponibles}
+
+        def buscar_columna(variaciones_exactas=None, variaciones_contiene=None, excluir=None):
+            variaciones_exactas = variaciones_exactas or []
+            variaciones_contiene = variaciones_contiene or []
+            excluir = set(excluir or [])
+
+            # 1) Priorizar match exacto normalizado (evita confundir "Tipo" con "Tipo de material")
+            for var in variaciones_exactas:
+                var_norm = normalizar_columna(var)
+                for col, col_norm in columnas_normalizadas.items():
+                    if col in excluir:
+                        continue
+                    if col_norm == var_norm:
+                        return col
+
+            # 2) Fallback por coincidencia parcial
+            for var in variaciones_contiene:
+                var_norm = normalizar_columna(var)
+                for col, col_norm in columnas_normalizadas.items():
+                    if col in excluir:
+                        continue
+                    if var_norm and var_norm in col_norm:
                         return col
             return None
-        
+
         # Mapear las columnas principales
-        col_modelo = buscar_columna(['modelo'], columnas_disponibles)
-        col_numero_parte = buscar_columna(['numero de parte', 'número de parte', 'numero_parte', 'n de parte', 'part number'], columnas_disponibles)
-        col_codigo_material = buscar_columna(['codigo de material', 'código de material', 'codigo_material', 'material code'], columnas_disponibles)
-        col_side = buscar_columna(['side', 'lado'], columnas_disponibles)
-        col_tipo_material = buscar_columna(['tipo de material', 'tipo_material', 'material type'], columnas_disponibles)
-        col_ubicacion = buscar_columna(['ubicacion', 'ubicación', 'location'], columnas_disponibles)
-        col_categoria = buscar_columna(['categoria', 'categoría', 'tipo', 'classification'], columnas_disponibles)
-        col_proveedor = buscar_columna(['proveedor', 'vendor', 'vender', 'supplier'], columnas_disponibles)
-        col_cantidad = buscar_columna(['cantidad', 'quantity', 'qty'], columnas_disponibles)
-        col_cantidad_total = buscar_columna(['cantidad total', 'cantidad_total', 'total quantity'], columnas_disponibles)
-        col_cantidad_original = buscar_columna(['cantidad original', 'cantidad_original', 'original quantity'], columnas_disponibles)
-        col_descripcion = buscar_columna(['descripcion', 'descripción', 'description', 'especificacion', 'especificación'], columnas_disponibles)
-        col_material_original = buscar_columna(['material original', 'material_original', 'original material'], columnas_disponibles)
-        col_material_sustituto = buscar_columna(['material sustituto', 'material_sustituto', 'substitute material'], columnas_disponibles)
+        col_modelo = buscar_columna(
+            variaciones_exactas=['modelo'],
+            variaciones_contiene=['modelo']
+        )
+        col_numero_parte = buscar_columna(
+            variaciones_exactas=['numero de parte', 'número de parte', 'numero_parte', 'n de parte', 'part number'],
+            variaciones_contiene=['numero parte', 'part number']
+        )
+        col_codigo_material = buscar_columna(
+            variaciones_exactas=['codigo de material', 'código de material', 'codigo_material', 'material code'],
+            variaciones_contiene=['codigo material', 'material code']
+        )
+        col_side = buscar_columna(
+            variaciones_exactas=['side', 'lado'],
+            variaciones_contiene=['side', 'lado']
+        )
+        col_tipo_material = buscar_columna(
+            variaciones_exactas=['tipo de material', 'tipo_material', 'material type', 'smd/imd/main', 'smd imd main'],
+            variaciones_contiene=['tipo de material', 'material type', 'smd imd main']
+        )
+        col_ubicacion = buscar_columna(
+            variaciones_exactas=['ubicacion', 'ubicación', 'location'],
+            variaciones_contiene=['ubicacion', 'location']
+        )
+        col_classification = buscar_columna(
+            variaciones_exactas=['classification', 'clasificacion', 'clasificación', 'categoria', 'categoría', 'class'],
+            variaciones_contiene=['classification', 'clasificacion', 'categoria'],
+            excluir={col_tipo_material} if col_tipo_material else None
+        )
+        col_proveedor = buscar_columna(
+            variaciones_exactas=['proveedor', 'vendor', 'vender', 'supplier'],
+            variaciones_contiene=['proveedor', 'vendor', 'vender', 'supplier']
+        )
+        col_cantidad = buscar_columna(
+            variaciones_exactas=['cantidad', 'quantity', 'qty'],
+            variaciones_contiene=['cantidad', 'quantity', 'qty']
+        )
+        col_cantidad_total = buscar_columna(
+            variaciones_exactas=['cantidad total', 'cantidad_total', 'total quantity'],
+            variaciones_contiene=['cantidad total', 'total quantity']
+        )
+        col_cantidad_original = buscar_columna(
+            variaciones_exactas=['cantidad original', 'cantidad_original', 'original quantity'],
+            variaciones_contiene=['cantidad original', 'original quantity']
+        )
+        col_descripcion = buscar_columna(
+            variaciones_exactas=['descripcion', 'descripción', 'description', 'especificacion', 'especificación'],
+            variaciones_contiene=['descripcion', 'description', 'especificacion']
+        )
+        col_material_original = buscar_columna(
+            variaciones_exactas=['material original', 'material_original', 'original material'],
+            variaciones_contiene=['material original', 'original material']
+        )
+        col_material_sustituto = buscar_columna(
+            variaciones_exactas=['material sustituto', 'material_sustituto', 'substitute material'],
+            variaciones_contiene=['material sustituto', 'substitute material']
+        )
+
+        print(
+            "DEBUG: Mapeo columnas BOM -> "
+            f"modelo={col_modelo}, numero_parte={col_numero_parte}, "
+            f"tipo_material={col_tipo_material}, classification={col_classification}"
+        )
         
         print(f"DEBUG: Preparando carga masiva para {len(df)} filas...")
         print(f"DEBUG: Usuario registrador: {registrador}")
@@ -1166,7 +1243,7 @@ def insertar_bom_desde_dataframe(df, registrador):
                     str(row.get(col_side, '') if col_side else '').strip(),
                     str(row.get(col_tipo_material, '') if col_tipo_material else '').strip(),
                     str(row.get(col_ubicacion, '') if col_ubicacion else '').strip(),
-                    str(row.get(col_categoria, '') if col_categoria else '').strip(),
+                    str(row.get(col_classification, '') if col_classification else '').strip(),
                     str(row.get(col_proveedor, '') if col_proveedor else '').strip(),
                     str(row.get(col_material_original, '') if col_material_original else '').strip(),
                     str(row.get(col_material_sustituto, '') if col_material_sustituto else '').strip(),
@@ -1187,6 +1264,7 @@ def insertar_bom_desde_dataframe(df, registrador):
         print(f"DEBUG: Datos preparados: {len(datos_para_insertar)} filas válidas")
         
         # INSERCIÓN MASIVA
+        total_insertados = 0
         if datos_para_insertar:
             print(f"DEBUG: Ejecutando inserción masiva...")
             
@@ -1212,7 +1290,6 @@ def insertar_bom_desde_dataframe(df, registrador):
             
             # Ejecutar en lotes para evitar problemas de memoria
             batch_size = 100
-            total_insertados = 0
             
             for i in range(0, len(datos_para_insertar), batch_size):
                 batch = datos_para_insertar[i:i + batch_size]
