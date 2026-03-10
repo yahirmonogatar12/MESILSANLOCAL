@@ -190,7 +190,7 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 📤 RUTAS CONTROL DE SALIDA
+###  RUTAS CONTROL DE SALIDA
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|

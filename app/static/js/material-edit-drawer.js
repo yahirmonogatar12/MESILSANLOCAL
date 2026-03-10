@@ -608,7 +608,7 @@ class MaterialEditDrawer {
             // Mostrar indicador de carga
             this.showLoadingButton(true);
 
-            console.log('📤 Enviando actualización:', { codigo_material_original, nuevos_datos });
+            console.log(' Enviando actualización:', { codigo_material_original, nuevos_datos });
 
             // Enviar al servidor
             const response = await fetch('/actualizar_material_completo', {
@@ -978,7 +978,7 @@ class MaterialRegistroDrawer {
             // Mostrar indicador de carga
             this.showLoadingButton(true);
 
-            console.log('📤 Enviando nuevo material:', nuevoItem);
+            console.log(' Enviando nuevo material:', nuevoItem);
 
             // Enviar al servidor
             const response = await fetch('/guardar_material', {

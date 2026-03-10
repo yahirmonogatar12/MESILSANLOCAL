@@ -302,9 +302,6 @@
             const response = await fetch(url, { credentials: 'include' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            updateLoadingText('Procesando contenido HTML...');
-            await new Promise(resolve => setTimeout(resolve, 300)); // Pausa visual
-
             const htmlText = await response.text();
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlText, 'text/html');
@@ -332,7 +329,6 @@
             }
 
             updateLoadingText('Aplicando estilos...');
-            await new Promise(resolve => setTimeout(resolve, 500)); // Pausa visual
 
             // 4. Crear el contenido OCULTO primero
             const tempDiv = document.createElement('div');
@@ -350,17 +346,13 @@
             
             updateLoadingText('Finalizando carga...');
             
-            // 7. DELAY ADICIONAL DE 2 SEGUNDOS como solicitaste
-            console.log('⏰ Aplicando delay adicional de 2 segundos...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // 8. AHORA hacer visible el contenido con estilos aplicados
+            // 7. AHORA hacer visible el contenido con estilos aplicados
             tempDiv.style.visibility = 'visible';
             tempDiv.style.opacity = '1';
-            tempDiv.style.transition = 'opacity 0.3s ease-in-out';
+            tempDiv.style.transition = 'opacity 0.15s ease-in-out';
             
-            // 9. Mover contenido del div temporal al contenedor final
-            await new Promise(resolve => setTimeout(resolve, 300)); // Esperar transición
+            // 8. Mover contenido del div temporal al contenedor final
+            await new Promise(resolve => requestAnimationFrame(resolve));
             target.innerHTML = tempDiv.innerHTML;
             
             // Ejecutar scripts incluidos en el HTML cargado
@@ -368,7 +360,7 @@
             
             console.log(' HTML insertado con estilos completamente aplicados');
             
-            // 10. REINICIALIZAR SCRIPTS para el nuevo contenido
+            // 9. REINICIALIZAR SCRIPTS para el nuevo contenido
             updateLoadingText('Configurando funcionalidades...');
             reinitializeScripts();
 

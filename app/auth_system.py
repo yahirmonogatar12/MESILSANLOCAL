@@ -10,7 +10,7 @@ import os
 import threading
 import time
 from functools import wraps
-from flask import session, jsonify, request, redirect, url_for, g, current_app
+from flask import session, jsonify, request, redirect, url_for, g, current_app, has_request_context
 from datetime import datetime, timedelta, timezone
 import traceback
 from .db_mysql import get_db_connection
@@ -25,6 +25,10 @@ try:
 except ImportError:
     MYSQLDB_AVAILABLE = False
     print("MySQLdb no disponible para auth_system")
+
+_BUTTON_PERMISSIONS_CACHE = {}
+_BUTTON_PERMISSIONS_CACHE_LOCK = threading.Lock()
+_BUTTON_PERMISSIONS_CACHE_TTL = max(60, int(os.getenv('PERMISSIONS_CACHE_TTL_SECONDS', '300')))
 
 class AuthSystem:
     def __init__(self, app=None):
@@ -738,6 +742,134 @@ class AuthSystem:
         finally:
             conn.close()
 
+    def obtener_roles_usuario(self, username):
+        """Obtener roles del usuario, reutilizando la sesión cuando aplica."""
+        if has_request_context() and session.get('usuario') == username:
+            cached_roles = session.get('roles')
+            if isinstance(cached_roles, list) and cached_roles:
+                return cached_roles
+
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT r.nombre
+                FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN roles r ON ur.rol_id = r.id
+                WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
+                ORDER BY r.nivel DESC, r.nombre ASC
+            ''', (username,))
+
+            roles = []
+            seen_roles = set()
+            for row in cursor.fetchall():
+                if isinstance(row, dict):
+                    role_name = row.get('nombre')
+                else:
+                    role_name = row[0]
+
+                if role_name and role_name not in seen_roles:
+                    roles.append(role_name)
+                    seen_roles.add(role_name)
+
+            if has_request_context() and session.get('usuario') == username:
+                session['roles'] = roles
+                session['rol_principal'] = roles[0] if roles else None
+                session.modified = True
+
+            return roles
+        except Exception as e:
+            print(f"Error obteniendo roles: {e}")
+            return []
+        finally:
+            if conn is not None:
+                conn.close()
+
+    def obtener_rol_principal_usuario(self, username):
+        """Obtener el rol principal del usuario desde sesión o BD."""
+        if has_request_context() and session.get('usuario') == username:
+            cached_role = session.get('rol_principal')
+            if cached_role:
+                return cached_role
+
+        roles = self.obtener_roles_usuario(username)
+        return roles[0] if roles else None
+
+    def _get_cached_button_permissions(self, username):
+        now_ts = time.time()
+        with _BUTTON_PERMISSIONS_CACHE_LOCK:
+            entry = _BUTTON_PERMISSIONS_CACHE.get(username)
+            if not entry:
+                return None
+            if entry['expires_at'] <= now_ts:
+                _BUTTON_PERMISSIONS_CACHE.pop(username, None)
+                return None
+            return entry['permissions']
+
+    def _set_cached_button_permissions(self, username, permissions):
+        with _BUTTON_PERMISSIONS_CACHE_LOCK:
+            _BUTTON_PERMISSIONS_CACHE[username] = {
+                'permissions': permissions,
+                'expires_at': time.time() + _BUTTON_PERMISSIONS_CACHE_TTL
+            }
+
+    def invalidar_cache_permisos_botones(self, username=None):
+        """Invalidar caché local de permisos de botones."""
+        with _BUTTON_PERMISSIONS_CACHE_LOCK:
+            if username:
+                _BUTTON_PERMISSIONS_CACHE.pop(username, None)
+                return
+            _BUTTON_PERMISSIONS_CACHE.clear()
+
+    def _consultar_permisos_botones_usuario(self, username):
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT DISTINCT pb.pagina, pb.seccion, pb.boton, pb.descripcion
+                FROM usuarios_sistema u
+                JOIN usuario_roles ur ON u.id = ur.usuario_id
+                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+                JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+                WHERE u.username = %s AND pb.activo = 1
+                ORDER BY pb.pagina, pb.seccion, pb.boton
+            ''', (username,))
+
+            permisos_botones = {}
+            for row in cursor.fetchall():
+                if isinstance(row, dict):
+                    pagina_nombre = row.get('pagina')
+                    seccion = row.get('seccion')
+                    boton = row.get('boton')
+                    descripcion = row.get('descripcion')
+                else:
+                    pagina_nombre, seccion, boton, descripcion = row
+
+                if not pagina_nombre or not seccion or not boton:
+                    continue
+
+                if pagina_nombre not in permisos_botones:
+                    permisos_botones[pagina_nombre] = {}
+
+                if seccion not in permisos_botones[pagina_nombre]:
+                    permisos_botones[pagina_nombre][seccion] = []
+
+                permisos_botones[pagina_nombre][seccion].append({
+                    'boton': boton,
+                    'descripcion': descripcion
+                })
+
+            return permisos_botones
+        except Exception as e:
+            print(f"Error consultando permisos de botones: {e}")
+            return {}
+        finally:
+            if conn is not None:
+                conn.close()
+
     def obtener_permisos_usuario(self, username):
         """Obtener todos los permisos de un usuario basado en sus roles"""
         conn = get_db_connection()
@@ -781,89 +913,34 @@ class AuthSystem:
             conn.close()
     
     def obtener_permisos_botones_usuario(self, username, pagina=None):
-        """Obtener permisos específicos de botones para un usuario"""
-        conn = None
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            if pagina:
-                # Obtener permisos de una página específica
-                cursor.execute('''
-                    SELECT DISTINCT pb.pagina, pb.seccion, pb.boton, pb.descripcion
-                    FROM usuarios_sistema u
-                    JOIN usuario_roles ur ON u.id = ur.usuario_id
-                    JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                    JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                    WHERE u.username = %s AND pb.pagina = %s AND pb.activo = 1
-                    ORDER BY pb.seccion, pb.boton
-                ''', (username, pagina))
-            else:
-                # Obtener todos los permisos de botones
-                cursor.execute('''
-                    SELECT DISTINCT pb.pagina, pb.seccion, pb.boton, pb.descripcion
-                    FROM usuarios_sistema u
-                    JOIN usuario_roles ur ON u.id = ur.usuario_id
-                    JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                    JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                    WHERE u.username = %s AND pb.activo = 1
-                    ORDER BY pb.pagina, pb.seccion, pb.boton
-                ''', (username,))
-            
-            permisos_botones = {}
-            for row in cursor.fetchall():
-                pagina_nombre = row[0]
-                seccion = row[1] 
-                boton = row[2]
-                descripcion = row[3]
-                
-                if pagina_nombre not in permisos_botones:
-                    permisos_botones[pagina_nombre] = {}
-                
-                if seccion not in permisos_botones[pagina_nombre]:
-                    permisos_botones[pagina_nombre][seccion] = []
-                    
-                permisos_botones[pagina_nombre][seccion].append({
-                    'boton': boton,
-                    'descripcion': descripcion
-                })
-            
-            return permisos_botones
-            
-        except Exception as e:
-            print(f"Error obteniendo permisos de botones: {e}")
-            return {}
-        finally:
-            if conn is not None:
-                conn.close()
+        """Obtener permisos específicos de botones usando caché temporal."""
+        permisos_botones = self._get_cached_button_permissions(username)
+        if permisos_botones is None:
+            permisos_botones = self._consultar_permisos_botones_usuario(username)
+            self._set_cached_button_permissions(username, permisos_botones)
+
+        if pagina:
+            if pagina not in permisos_botones:
+                return {}
+            return {pagina: permisos_botones[pagina]}
+
+        return permisos_botones
     
     def verificar_permiso_boton(self, username, pagina, seccion, boton):
-        """Verificar si un usuario tiene permiso para un botón específico"""
+        """Verificar si un usuario tiene permiso para un botón específico."""
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT COUNT(*) as count
-                FROM usuarios_sistema u
-                JOIN usuario_roles ur ON u.id = ur.usuario_id
-                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                WHERE u.username = %s 
-                AND pb.pagina = %s 
-                AND pb.seccion = %s 
-                AND pb.boton = %s 
-                AND pb.activo = 1
-            ''', (username, pagina, seccion, boton))
-            
-            result = cursor.fetchone()
-            return result[0] > 0
-            
+            permisos_pagina = self.obtener_permisos_botones_usuario(username, pagina)
+            botones = permisos_pagina.get(pagina, {}).get(seccion, [])
+            for item in botones:
+                if isinstance(item, dict):
+                    if item.get('boton') == boton:
+                        return True
+                elif item == boton:
+                    return True
+            return False
         except Exception as e:
             print(f"Error verificando permiso de botón: {e}")
             return False
-        finally:
-            conn.close()
     
     def registrar_auditoria(self, usuario, modulo, accion, descripcion='', 
                         datos_antes=None, datos_despues=None, resultado='EXITOSO',
@@ -1007,8 +1084,13 @@ class AuthSystem:
             
             # Solo loguear accesos exitosos en modo verbose
             # print(f"✓ Usuario {session.get('usuario')} accediendo a {request.endpoint}")
-            # Actualizar última actividad
-            self._actualizar_actividad_sesion(session.get('usuario'))
+            # Actualizar última actividad con throttling para no golpear MySQL en cada request
+            now_ts = int(time.time())
+            last_touch_ts = int(session.get('_last_activity_touch_ts', 0) or 0)
+            if now_ts - last_touch_ts >= 300:
+                self._actualizar_actividad_sesion(session.get('usuario'))
+                session['_last_activity_touch_ts'] = now_ts
+                session.modified = True
             
             return f(*args, **kwargs)
             

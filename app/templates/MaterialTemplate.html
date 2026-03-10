@@ -1776,6 +1776,73 @@
                 }
             }
             
+            window.__dynamicModuleScriptUrls = window.__dynamicModuleScriptUrls || new Set();
+            window.__dynamicModuleLoadController = window.__dynamicModuleLoadController || null;
+
+            function ejecutarScriptsDinamicos(container) {
+                const scripts = Array.from(container.querySelectorAll('script'));
+                const cargas = scripts.map(script => {
+                    if (script.src) {
+                        const src = script.getAttribute('src');
+                        if (!src) {
+                            script.remove();
+                            return Promise.resolve();
+                        }
+
+                        if (window.__dynamicModuleScriptUrls.has(src)) {
+                            script.remove();
+                            return Promise.resolve();
+                        }
+
+                        return new Promise(resolve => {
+                            const newScript = document.createElement('script');
+                            if (script.type) newScript.type = script.type;
+                            if (script.noModule) newScript.noModule = true;
+                            newScript.src = src;
+                            newScript.onload = () => {
+                                window.__dynamicModuleScriptUrls.add(src);
+                                resolve();
+                            };
+                            newScript.onerror = () => {
+                                console.error(`Error cargando script dinámico: ${src}`);
+                                resolve();
+                            };
+                            script.replaceWith(newScript);
+                        });
+                    }
+
+                    if (!script.textContent || !script.textContent.trim()) {
+                        script.remove();
+                        return Promise.resolve();
+                    }
+
+                    const inlineScript = document.createElement('script');
+                    if (script.type) inlineScript.type = script.type;
+                    inlineScript.textContent = script.textContent;
+                    script.replaceWith(inlineScript);
+                    return Promise.resolve();
+                });
+
+                return Promise.all(cargas);
+            }
+
+            function inicializarContenidoDinamico(container, initCallback) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
+                    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+                        new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                }
+
+                if (window.unifiedDropdowns) {
+                    window.unifiedDropdowns.init();
+                }
+
+                if (initCallback && typeof initCallback === 'function') {
+                    initCallback();
+                }
+            }
+
             // Función genérica para cargar contenido dinámicamente
             window.cargarContenidoDinamico = function(containerId, templatePath, initCallback = null) {
                 const container = document.getElementById(containerId);
@@ -1826,14 +1893,21 @@
                 
                 // 2. LIMPIAR EL CONTENEDOR
                 container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
+
+                if (window.__dynamicModuleLoadController) {
+                    window.__dynamicModuleLoadController.abort();
+                }
+
+                const controller = new AbortController();
+                window.__dynamicModuleLoadController = controller;
                 
                 // 3. CARGAR EL CONTENIDO DINÁMICAMENTE
                 return fetch(templatePath, {
                     method: 'GET',
                     credentials: 'same-origin', // Incluir cookies de sesión
+                    signal: controller.signal,
                     headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'Cache-Control': 'no-cache'
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
                     }
                 })
                     .then(response => {
@@ -1900,42 +1974,26 @@
                         }
                         
                         container.innerHTML = html;
-                        
-                        // 4. ESPERAR UN POCO ANTES DE INICIALIZAR COMPONENTES
-                        setTimeout(() => {
-                            // Re-inicializar tooltips si existen en el nuevo contenido
-                            const tooltipTriggerList = container.querySelectorAll('[data-bs-toggle="tooltip"]');
-                            tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-                                new bootstrap.Tooltip(tooltipTriggerEl);
+
+                        return ejecutarScriptsDinamicos(container).then(() => {
+                            if (controller.signal.aborted) {
+                                return html;
+                            }
+
+                            requestAnimationFrame(() => {
+                                if (window.__dynamicModuleLoadController !== controller || controller.signal.aborted) {
+                                    return;
+                                }
+                                inicializarContenidoDinamico(container, initCallback);
                             });
-                            
-                            // 5. REINICIALIZAR EL SISTEMA UNIFICADO DE DROPDOWNS
-                            if (window.unifiedDropdowns) {
-                                window.unifiedDropdowns.init();
-                            }
-                            
-                            
-                            // Ejecutar callback de inicialización si se proporciona
-                            if (initCallback && typeof initCallback === 'function') {
-                                initCallback();
-                            }
-                        }, 150);
-                        
-                        // Ejecutar cualquier script que pueda estar en el HTML cargado
-                        const scripts = container.querySelectorAll('script');
-                        scripts.forEach(script => {
-                            const newScript = document.createElement('script');
-                            if (script.src) {
-                                newScript.src = script.src;
-                            } else {
-                                newScript.textContent = script.textContent;
-                            }
-                            document.head.appendChild(newScript);
+                            return html;
                         });
-                        
-                        return html;
                     })
                     .catch(error => {
+                        if (error && error.name === 'AbortError') {
+                            return null;
+                        }
+
                         console.error(' Error al cargar el contenido:', error);
                         // Solo mostrar mensaje genérico si no es un error de permisos
                         if (!error.message.includes('Permisos insuficientes') && !error.message.includes('Usuario no autenticado')) {

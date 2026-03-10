@@ -43,6 +43,43 @@ _pool = []
 _pool_lock = threading.Lock()
 _MAX_POOL_SIZE = max(1, int(os.getenv('MYSQL_POOL_SIZE', '3')))  # Máximo de conexiones reutilizables en el pool
 
+
+class PooledMySQLConnection:
+    """Proxy que devuelve la conexión al pool cuando se llama close()."""
+
+    def __init__(self, connection):
+        self._connection = connection
+        self._released = False
+
+    def cursor(self, *args, **kwargs):
+        if self._connection is None:
+            raise RuntimeError("La conexión del pool ya fue liberada")
+        return self._connection.cursor(*args, **kwargs)
+
+    def close(self):
+        if self._released or self._connection is None:
+            return
+        connection = self._connection
+        self._connection = None
+        self._released = True
+        _return_to_pool(connection)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is not None:
+            try:
+                self.rollback()
+            except Exception:
+                pass
+        self.close()
+
+    def __getattr__(self, name):
+        if self._connection is None:
+            raise RuntimeError("La conexión del pool ya fue liberada")
+        return getattr(self._connection, name)
+
 def _create_connection():
     """Crear una nueva conexión MySQL"""
     if not MYSQL_AVAILABLE:
@@ -89,6 +126,14 @@ def _return_to_pool(conn):
         conn.close()
     except Exception:
         pass
+
+
+def get_pooled_connection():
+    """Obtener una conexión reutilizable; close() la regresa al pool."""
+    raw_connection = _get_pooled_connection()
+    if raw_connection is None:
+        return None
+    return PooledMySQLConnection(raw_connection)
 
 def get_mysql_connection_string():
     """Construir cadena de conexión para MySQL"""

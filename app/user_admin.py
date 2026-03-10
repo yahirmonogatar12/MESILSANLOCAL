@@ -1014,25 +1014,8 @@ def verificar_permiso_dropdown():
         username = session.get('usuario')
         if not username:
             return jsonify({'tiene_permiso': False, 'error': 'Usuario no autenticado'}), 401
-        
-        conn = get_db_connection()
-        cursor = get_dict_cursor(conn)
-        
-        # Verificar si el usuario tiene el permiso específico
-        cursor.execute('''
-            SELECT COUNT(*) as tiene_permiso
-            FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-            WHERE u.username = %s AND pb.pagina = %s AND pb.seccion = %s AND pb.boton = %s
-            AND u.activo = 1 AND pb.activo = 1
-        ''', (username, pagina, seccion, boton))
-        
-        resultado = cursor.fetchone()
-        tiene_permiso = resultado['tiene_permiso'] > 0
-        
-        conn.close()
+
+        tiene_permiso = auth_system.verificar_permiso_boton(username, pagina, seccion, boton)
         
         return jsonify({'tiene_permiso': tiene_permiso})
         
@@ -1048,50 +1031,26 @@ def obtener_permisos_usuario_actual():
         username = session.get('usuario')
         if not username:
             return jsonify({'error': 'Usuario no autenticado'}), 401
-        
-        conn = get_db_connection()
-        cursor = get_dict_cursor(conn)
-        
-        # Obtener todos los permisos de botones del usuario
-        cursor.execute('''
-            SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
-            FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-            WHERE u.username = %s AND u.activo = 1 AND pb.activo = 1
-            ORDER BY pb.pagina, pb.seccion, pb.boton
-        ''', (username,))
-        
-        permisos = cursor.fetchall()
-        conn.close()
-        
-        # Organizar permisos para fácil consulta en frontend
+
+        permisos = auth_system.obtener_permisos_botones_usuario(username)
         permisos_dict = {}
-        for permiso in permisos:
-            if MYSQLDB_AVAILABLE:
-                # DictCursor: acceso por clave
-                pagina = permiso['pagina']
-                seccion = permiso['seccion']
-                boton = permiso['boton']
-            else:
-                # Regular cursor: acceso por índice
-                pagina = permiso[0]
-                seccion = permiso[1]
-                boton = permiso[2]
-                
-            if pagina not in permisos_dict:
-                permisos_dict[pagina] = {}
-            
-            if seccion not in permisos_dict[pagina]:
+        total_permisos = 0
+        for pagina, secciones in permisos.items():
+            permisos_dict[pagina] = {}
+            for seccion, botones in secciones.items():
                 permisos_dict[pagina][seccion] = []
-            
-            permisos_dict[pagina][seccion].append(boton)
+                for item in botones:
+                    boton = item.get('boton') if isinstance(item, dict) else item
+                    if not boton:
+                        continue
+                    permisos_dict[pagina][seccion].append(boton)
+                    total_permisos += 1
         
         return jsonify({
             'permisos': permisos_dict,
             'usuario': username,
-            'total_permisos': len(permisos)
+            'rol': auth_system.obtener_rol_principal_usuario(username),
+            'total_permisos': total_permisos
         })
         
     except Exception as e:
@@ -1942,6 +1901,5 @@ def init_admin_routes(app):
     """Inicializar las rutas de administración en la app"""
     app.register_blueprint(user_admin_bp)
     print(" Rutas de administración de usuarios registradas")
-
 
 

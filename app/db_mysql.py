@@ -475,11 +475,11 @@ def add_foreign_keys():
     print("🔗 Proceso de foreign keys completado DEFINITIVAMENTE")
 
 def get_connection():
-    """Obtener conexión a MySQL"""
+    """Obtener conexión a MySQL reutilizable desde el pool."""
     if not MYSQL_AVAILABLE:
         return None
-    from .config_mysql import get_mysql_connection
-    return get_mysql_connection()
+    from .config_mysql import get_pooled_connection
+    return get_pooled_connection()
 
 # Alias para compatibilidad
 get_db_connection = get_connection

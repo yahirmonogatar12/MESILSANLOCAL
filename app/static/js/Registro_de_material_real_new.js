@@ -279,7 +279,7 @@ function mostrarModalHistorial(numeroParte, historial, balanceActual) {
                                         <tr>
                                             <td>
                                                 <span class="tipo-movimiento ${mov.tipo_movimiento.toLowerCase()}">
-                                                    ${mov.tipo_movimiento === 'ENTRADA' ? '📥' : '📤'} ${mov.tipo_movimiento}
+                                                    ${mov.tipo_movimiento === 'ENTRADA' ? '📥' : ''} ${mov.tipo_movimiento}
                                                 </span>
                                             </td>
                                             <td class="fecha">${formatearFecha(mov.fecha_movimiento)}</td>

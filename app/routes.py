@@ -151,55 +151,16 @@ def requiere_permiso_dropdown(pagina, seccion, boton):
             try:
                 username = session['usuario']
                 print(f" Verificando permisos para usuario: {username}, página: {pagina}, sección: {seccion}, botón: {boton}")
-                
-                # Obtener roles del usuario
-                query_rol = '''
-                    SELECT r.nombre
-                    FROM usuarios_sistema u
-                    JOIN usuario_roles ur ON u.id = ur.usuario_id
-                    JOIN roles r ON ur.rol_id = r.id
-                    WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
-                    ORDER BY r.nivel DESC
-                    LIMIT 1
-                '''
-                
-                usuario_rol = execute_query(query_rol, (username,), fetch='one')
-                print(f" Resultado query_rol: {usuario_rol}, tipo: {type(usuario_rol)}")
-                
-                if not usuario_rol:
+
+                rol_nombre = auth_system.obtener_rol_principal_usuario(username)
+                if not rol_nombre:
                     print(" Usuario sin roles asignados")
                     return jsonify({'error': 'Usuario sin roles asignados'}), 403
-                
-                # Manejar tanto diccionarios como tuplas
-                if isinstance(usuario_rol, dict):
-                    rol_nombre = usuario_rol['nombre']
-                else:
-                    rol_nombre = usuario_rol[0]
-                    
+
                 print(f" Rol del usuario: {rol_nombre}")
-                
-                # AHORA TODOS LOS ROLES (incluido superadmin) verifican permisos en base de datos
-                # Verificar permiso específico
-                query_permiso = '''
-                    SELECT COUNT(*) FROM usuarios_sistema u
-                    JOIN usuario_roles ur ON u.id = ur.usuario_id
-                    JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                    JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                    WHERE u.username = %s AND pb.pagina = %s AND pb.seccion = %s AND pb.boton = %s
-                    AND u.activo = 1 AND pb.activo = 1
-                '''
-                
-                result = execute_query(query_permiso, (username, pagina, seccion, boton), fetch='one')
-                print(f" Resultado query_permiso: {result}, tipo: {type(result)}")
-                
-                # Manejar tanto diccionarios como tuplas
-                if isinstance(result, dict):
-                    count_value = result.get('COUNT(*)', 0) or result.get('count', 0) or list(result.values())[0] if result else 0
-                else:
-                    count_value = result[0] if result else 0
-                    
-                tiene_permiso = count_value > 0
-                print(f" Tiene permiso: {tiene_permiso} (count: {count_value})")
+
+                tiene_permiso = auth_system.verificar_permiso_boton(username, pagina, seccion, boton)
+                print(f" Tiene permiso: {tiene_permiso}")
                 
                 if not tiene_permiso:
                     print(f" Sin permisos para: {pagina} > {seccion} > {boton}")
@@ -249,35 +210,23 @@ def tiene_permiso_boton(nombre_boton):
     """Filtro para verificar si el usuario actual tiene permiso para un botón específico"""
     try:
         # Obtener el usuario de la sesión actual
-        if 'username' not in session:
+        if 'usuario' not in session:
             return False
         
-        username = session['username']
-        
-        # Verificar si el usuario es superadmin (acceso total)
-        query_usuario = 'SELECT departamento FROM usuarios_sistema WHERE username = %s'
-        usuario = execute_query(query_usuario, (username,), fetch='one')
-        
-        if not usuario:
-            return False
-            
-        if usuario[0] == 'superadmin':
+        username = session['usuario']
+        if auth_system.obtener_rol_principal_usuario(username) == 'superadmin':
             return True
-        
-        # Verificar permiso específico del botón
-        query_permiso = '''
-            SELECT 1 FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN roles r ON ur.rol_id = r.id
-            JOIN rol_permisos_botones rpb ON r.id = rpb.rol_id
-            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-            WHERE u.username = %s AND pb.boton = %s AND pb.activo = 1
-            LIMIT 1
-        '''
-        
-        resultado = execute_query(query_permiso, (username, nombre_boton), fetch='one')
-        
-        return resultado is not None
+
+        permisos_botones = auth_system.obtener_permisos_botones_usuario(username)
+        for secciones in permisos_botones.values():
+            for botones in secciones.values():
+                for item in botones:
+                    if isinstance(item, dict) and item.get('boton') == nombre_boton:
+                        return True
+                    if item == nombre_boton:
+                        return True
+
+        return False
         
     except Exception as e:
         print(f"Error verificando permiso de botón '{nombre_boton}': {e}")
@@ -315,8 +264,13 @@ def login_requerido(f):
         
         usuario = session.get('usuario')
         
-        # Actualizar actividad de sesión
-        auth_system._actualizar_actividad_sesion(usuario)
+        # Evita un round-trip a MySQL remoto en cada request AJAX.
+        now_ts = int(time.time())
+        last_touch_ts = int(session.get('_last_activity_touch_ts', 0) or 0)
+        if now_ts - last_touch_ts >= 300:
+            auth_system._actualizar_actividad_sesion(usuario)
+            session['_last_activity_touch_ts'] = now_ts
+            session.modified = True
         
         return f(*args, **kwargs)
     return decorada
@@ -333,32 +287,7 @@ def render_landing_page(login_error=None, login_username=None):
         usuario = session.get('usuario')
         nombre_completo = session.get('nombre_completo', usuario)
         permisos = session.get('permisos', {})
-
-        try:
-            from .db_mysql import get_db_connection
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT DISTINCT r.nombre
-                FROM usuarios_sistema u
-                JOIN usuario_roles ur ON u.id = ur.usuario_id
-                JOIN roles r ON ur.rol_id = r.id
-                WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
-            ''', (usuario,))
-            roles = [row[0] for row in cursor.fetchall()]
-        except Exception as e:
-            print(f"⚠️ Error obteniendo roles: {e}")
-        finally:
-            try:
-                if 'cursor' in locals() and cursor:
-                    cursor.close()
-            except Exception:
-                pass
-            try:
-                if 'conn' in locals() and conn:
-                    conn.close()
-            except Exception:
-                pass
+        roles = session.get('roles') or auth_system.obtener_roles_usuario(usuario)
 
     upcoming_apps = [
         {
@@ -447,6 +376,9 @@ def login():
             rol_id = None
 
         session['permisos'] = permisos
+        session['roles'] = auth_system.obtener_roles_usuario(user)
+        session['rol_principal'] = session['roles'][0] if session['roles'] else None
+        session.modified = True
         print(f" Permisos establecidos en sesión para {user}: {permisos}")
 
         # Redirigir siempre al hub de aplicaciones (landing page)
@@ -5845,7 +5777,7 @@ def obtener_codigos_material():
             }
             codigos.append(material)
         
-        print(f"📤 Devolviendo {len(codigos)} materiales formateados")
+        print(f" Devolviendo {len(codigos)} materiales formateados")
         return jsonify(codigos)
         
     except Exception as e:
@@ -6198,8 +6130,8 @@ def actualizar_control_almacen():
             WHERE id = %s
         """
         
-        print(f"📤 Query SQL: {query}")
-        print(f"📤 Parámetros: {params}")
+        print(f" Query SQL: {query}")
+        print(f" Parámetros: {params}")
         print(f"📝 Campos modificados: {campos_modificados}")
         
         # Ejecutar la actualización
@@ -8565,7 +8497,7 @@ def imprimir_zebra_red(ip_impresora, comando_zpl, codigo):
             # Enviar comando ZPL
             comando_bytes = comando_zpl.encode('utf-8')
             sock.send(comando_bytes)
-            print(f"📤 ZEBRA RED: Comando enviado ({len(comando_bytes)} bytes)")
+            print(f" ZEBRA RED: Comando enviado ({len(comando_bytes)} bytes)")
             
             # Pequeña pausa para procesamiento
             import time
@@ -9738,7 +9670,7 @@ def verificar_permiso_dropdown():
     Verificar si el usuario actual tiene permiso para un dropdown específico
     """
     try:
-        if 'username' not in session:
+        if 'usuario' not in session:
             return jsonify({'tiene_permiso': False, 'error': 'Usuario no autenticado'}), 401
         
         # Obtener datos desde JSON
@@ -9753,44 +9685,13 @@ def verificar_permiso_dropdown():
         if not all([pagina, seccion, boton]):
             return jsonify({'tiene_permiso': False, 'error': 'Parámetros incompletos'}), 400
         
-        username = session['username']
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Obtener roles del usuario desde la nueva estructura
-        cursor.execute('''
-            SELECT r.nombre
-            FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN roles r ON ur.rol_id = r.id
-            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
-            ORDER BY r.nivel DESC
-            LIMIT 1
-        ''', (username,))
-        
-        usuario_rol = cursor.fetchone()
-        
-        if not usuario_rol:
+        username = session.get('usuario')
+        rol_nombre = auth_system.obtener_rol_principal_usuario(username)
+
+        if not rol_nombre:
             return jsonify({'tiene_permiso': False, 'error': 'Usuario no encontrado o sin roles'}), 404
-        
-        rol_nombre = usuario_rol[0]
-        
-        # Superadmin tiene todos los permisos
-        if rol_nombre == 'superadmin':
-            return jsonify({'tiene_permiso': True, 'motivo': 'superadmin'})
-        
-        # Verificar permiso específico
-        cursor.execute('''
-            SELECT COUNT(*) FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-            JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-            WHERE u.username = %s AND pb.pagina = %s AND pb.seccion = %s AND pb.boton = %s
-            AND u.activo = 1 AND pb.activo = 1
-        ''', (username, pagina, seccion, boton))
-        
-        tiene_permiso = cursor.fetchone()[0] > 0
-        conn.close()
+
+        tiene_permiso = auth_system.verificar_permiso_boton(username, pagina, seccion, boton)
         
         return jsonify({
             'tiene_permiso': tiene_permiso,
@@ -9814,69 +9715,26 @@ def obtener_permisos_usuario_actual():
             return jsonify({'permisos': [], 'error': 'Usuario no autenticado'}), 401
         
         username = session['usuario']
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Obtener roles del usuario desde la nueva estructura
-        cursor.execute('''
-            SELECT r.nombre
-            FROM usuarios_sistema u
-            JOIN usuario_roles ur ON u.id = ur.usuario_id
-            JOIN roles r ON ur.rol_id = r.id
-            WHERE u.username = %s AND u.activo = 1 AND r.activo = 1
-            ORDER BY r.nivel DESC
-            LIMIT 1
-        ''', (username,))
-        
-        usuario_rol = cursor.fetchone()
-        
-        if not usuario_rol:
-            conn.close()
+        rol_nombre = auth_system.obtener_rol_principal_usuario(username)
+        if not rol_nombre:
             return jsonify({'permisos': {}, 'error': 'Usuario no encontrado o sin roles'}), 404
-        
-        # Acceso compatible con dict o tupla
-        rol_nombre = usuario_rol['nombre'] if isinstance(usuario_rol, dict) else usuario_rol[0]
-        
-        # Superadmin tiene todos los permisos
-        if rol_nombre == 'superadmin':
-            cursor.execute('SELECT pagina, seccion, boton FROM permisos_botones WHERE activo = 1 ORDER BY pagina, seccion, boton')
-            permisos = cursor.fetchall()
-        else:
-            # Obtener permisos específicos del rol
-            cursor.execute('''
-                SELECT pb.pagina, pb.seccion, pb.boton 
-                FROM usuarios_sistema u
-                JOIN usuario_roles ur ON u.id = ur.usuario_id
-                JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
-                JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
-                WHERE u.username = %s AND u.activo = 1 AND pb.activo = 1
-                ORDER BY pb.pagina, pb.seccion, pb.boton
-            ''', (username,))
-            permisos = cursor.fetchall()
-        
-        conn.close()
+
+        permisos = auth_system.obtener_permisos_botones_usuario(username)
         
         # Formatear permisos para JavaScript en estructura jerárquica
         permisos_jerarquicos = {}
         total_permisos = 0
-        
-        for permiso in permisos:
-            # Acceso compatible con dict o tupla
-            if isinstance(permiso, dict):
-                pagina = permiso['pagina']
-                seccion = permiso['seccion']
-                boton = permiso['boton']
-            else:
-                pagina, seccion, boton = permiso
-            
-            if pagina not in permisos_jerarquicos:
-                permisos_jerarquicos[pagina] = {}
-            
-            if seccion not in permisos_jerarquicos[pagina]:
+
+        for pagina, secciones in permisos.items():
+            permisos_jerarquicos[pagina] = {}
+            for seccion, botones in secciones.items():
                 permisos_jerarquicos[pagina][seccion] = []
-            
-            permisos_jerarquicos[pagina][seccion].append(boton)
-            total_permisos += 1
+                for item in botones:
+                    boton = item.get('boton') if isinstance(item, dict) else item
+                    if not boton:
+                        continue
+                    permisos_jerarquicos[pagina][seccion].append(boton)
+                    total_permisos += 1
         
         return jsonify({
             'permisos': permisos_jerarquicos,
@@ -10426,10 +10284,22 @@ def cargar_configuracion_usuario(usuario):
         return {}
 
 
-def guardar_configuracion_usuario(usuario, config):
-    """Guardar configuración específica del usuario"""
+def guardar_configuracion_usuario(usuario, config, valor=None):
+    """Guardar configuración específica del usuario.
+
+    Acepta:
+    - guardar_configuracion_usuario(usuario, config_dict)
+    - guardar_configuracion_usuario(usuario, clave, valor)
+    """
     try:
         import json
+        if valor is not None:
+            config_actual = cargar_configuracion_usuario(usuario) or {}
+            config_actual[str(config)] = valor
+            config = config_actual
+        elif not isinstance(config, dict):
+            raise ValueError("config debe ser un diccionario o una clave con valor")
+
         conn = get_db_connection()
         cursor = conn.cursor()
         
