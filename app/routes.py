@@ -60,6 +60,7 @@ from .po_wo_models import (
 from .api_po_wo import registrar_rutas_po_wo
 from .api_raw_modelos import api_raw
 from .smd_inventory_api import register_smd_inventory_routes
+from .shipping_api import register_shipping_routes, init_shipping_tables
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallback_key_for_development_only')  # Necesario para usar sesiones
@@ -94,6 +95,9 @@ def _startup_log(msg):
 # Registrar rutas SMD Inventory después de crear la app
 register_smd_inventory_routes(app)
 
+# Registrar rutas Shipping API (App móvil de embarques)
+register_shipping_routes(app)
+
 # Registrar rutas API PO → WO
 # registrar_rutas_po_wo(app)  # Comentado para evitar conflicto con run.py
 
@@ -119,6 +123,11 @@ if STARTUP_INIT_ENABLED:
     _startup_log("Iniciando auth_system.init_database()")
     auth_system.init_database()
     _startup_log("auth_system.init_database() completado")
+    
+    # Inicializar tablas de Shipping (app móvil embarques)
+    _startup_log("Iniciando init_shipping_tables()")
+    init_shipping_tables()
+    _startup_log("init_shipping_tables() completado")
 else:
     _startup_log("Saltando auth_system.init_database() por configuración/reloader")
 
