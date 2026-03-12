@@ -656,9 +656,9 @@ def init_shipping_tables():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabla de operadores
+        # Tabla dedicada de operadores para la app de embarques
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS operators (
+            CREATE TABLE IF NOT EXISTS operators_shipping (
                 id VARCHAR(20) PRIMARY KEY COMMENT 'Número de empleado',
                 full_name VARCHAR(100) NOT NULL,
                 department VARCHAR(50) NULL,
@@ -671,6 +671,41 @@ def init_shipping_tables():
                 INDEX idx_is_active (is_active)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
+
+        # Migrar operadores legacy si la tabla anterior existe.
+        cursor.execute("SHOW TABLES LIKE 'operators'")
+        if cursor.fetchone():
+            cursor.execute("""
+                INSERT INTO operators_shipping (
+                    id, full_name, department, shift, password_hash,
+                    is_active, last_login, created_at, updated_at
+                )
+                SELECT
+                    o.id, o.full_name, o.department, o.shift, o.password_hash,
+                    o.is_active, o.last_login, o.created_at, o.updated_at
+                FROM operators o
+                LEFT JOIN operators_shipping os ON os.id = o.id
+                WHERE os.id IS NULL
+            """)
+
+        # Registrar admin por defecto para embarques si no existe.
+        cursor.execute("""
+            INSERT INTO operators_shipping (
+                id, full_name, department, shift, password_hash, is_active
+            )
+            SELECT %s, %s, %s, %s, %s, TRUE
+            FROM DUAL
+            WHERE NOT EXISTS (
+                SELECT 1 FROM operators_shipping WHERE id = %s
+            )
+        """, (
+            'admin',
+            'Administrador Embarques',
+            'Embarques',
+            'admin',
+            hash_shipping_password('admin123'),
+            'admin',
+        ))
         
         # Tabla de validaciones de calidad
         cursor.execute("""
