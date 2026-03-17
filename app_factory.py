@@ -17,6 +17,7 @@ def create_app():
     from app.aoi_api import aoi_api
     from app.py.control_modelos_smt import control_modelos_bp
     from app.api_raw_modelos import api_raw
+    from app.shipping_api import register_shipping_routes, init_shipping_tables
 
     if not getattr(app, "_mes_factory_initialized", False):
         register_smt_routes(app)
@@ -30,6 +31,10 @@ def create_app():
 
         if 'api_raw' not in app.blueprints:
             app.register_blueprint(api_raw)
+
+        # Shipping API para app móvil de embarques
+        register_shipping_routes(app)
+        init_shipping_tables()
 
         if 'health' not in app.view_functions:
             @app.get("/")

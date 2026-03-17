@@ -10,6 +10,7 @@ Fecha: Marzo 2026
 
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta, timezone
+import hashlib
 import logging
 import functools
 import os
@@ -56,6 +57,20 @@ def get_db_connection():
         charset='utf8mb4',
         autocommit=True
     )
+
+
+def hash_shipping_password(password):
+    """Generar hash SHA-256 para credenciales del módulo de embarques."""
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+
+def verify_shipping_password(stored_hash, password):
+    """Verificar contraseñas soportando hash SHA-256 y valores legacy."""
+    if not stored_hash:
+        return False
+
+    password_hash = hash_shipping_password(password)
+    return stored_hash == password_hash or stored_hash == password
 
 
 def manejo_errores(func):
@@ -119,10 +134,10 @@ def login():
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
     
     try:
-        # Buscar operador en la tabla de operadores de embarques
+        # Buscar operador en la tabla dedicada de operadores de embarques
         cursor.execute("""
             SELECT id, full_name, department, shift, password_hash
-            FROM operators
+            FROM operators_shipping
             WHERE id = %s AND is_active = TRUE
         """, (username,))
         
@@ -134,14 +149,8 @@ def login():
                 "message": "Usuario o contraseña incorrectos"
             }), 401
         
-        # Verificar contraseña (usando bcrypt o hash simple según implementación)
-        # TODO: Implementar verificación real de hash
-        # Por ahora, para desarrollo, aceptamos password == username
-        password_valid = (password == username) or (password == 'admin123' and username == 'admin')
-        
-        # En producción, usar:
-        # from werkzeug.security import check_password_hash
-        # password_valid = check_password_hash(operator['password_hash'], password)
+        # Verificar contraseña usando hash propio y compatibilidad legacy.
+        password_valid = verify_shipping_password(operator['password_hash'], password)
         
         if not password_valid:
             return jsonify({
@@ -151,11 +160,10 @@ def login():
         
         # Actualizar último acceso
         cursor.execute("""
-            UPDATE operators SET last_login = %s WHERE id = %s
+            UPDATE operators_shipping SET last_login = %s WHERE id = %s
         """, (get_mexico_time(), username))
         
         # Generar token simple (en producción usar JWT)
-        import hashlib
         import secrets
         token_data = f"{username}:{secrets.token_hex(16)}:{datetime.now().isoformat()}"
         token = hashlib.sha256(token_data.encode()).hexdigest()
@@ -656,9 +664,9 @@ def init_shipping_tables():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabla de operadores
+        # Tabla dedicada de operadores para la app de embarques
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS operators (
+            CREATE TABLE IF NOT EXISTS operators_shipping (
                 id VARCHAR(20) PRIMARY KEY COMMENT 'Número de empleado',
                 full_name VARCHAR(100) NOT NULL,
                 department VARCHAR(50) NULL,
@@ -671,6 +679,60 @@ def init_shipping_tables():
                 INDEX idx_is_active (is_active)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
+
+        # Migrar operadores legacy si la tabla anterior existe.
+        cursor.execute("SHOW TABLES LIKE 'operators'")
+        if cursor.fetchone():
+            cursor.execute("SHOW COLUMNS FROM operators")
+            legacy_columns = {row[0] for row in cursor.fetchall()}
+
+            if 'id' in legacy_columns:
+                full_name_expr = 'o.full_name' if 'full_name' in legacy_columns else 'o.id'
+                department_expr = 'o.department' if 'department' in legacy_columns else 'NULL'
+                shift_expr = 'o.shift' if 'shift' in legacy_columns else "'A'"
+                password_expr = (
+                    'o.password_hash'
+                    if 'password_hash' in legacy_columns
+                    else 'SHA2(o.id, 256)'
+                )
+                is_active_expr = 'o.is_active' if 'is_active' in legacy_columns else 'TRUE'
+                last_login_expr = 'o.last_login' if 'last_login' in legacy_columns else 'NULL'
+                created_at_expr = 'o.created_at' if 'created_at' in legacy_columns else 'CURRENT_TIMESTAMP'
+                updated_at_expr = 'o.updated_at' if 'updated_at' in legacy_columns else 'CURRENT_TIMESTAMP'
+
+                cursor.execute(f"""
+                    INSERT INTO operators_shipping (
+                        id, full_name, department, shift, password_hash,
+                        is_active, last_login, created_at, updated_at
+                    )
+                    SELECT
+                        o.id, {full_name_expr}, {department_expr}, {shift_expr}, {password_expr},
+                        {is_active_expr}, {last_login_expr}, {created_at_expr}, {updated_at_expr}
+                    FROM operators o
+                    LEFT JOIN operators_shipping os ON os.id = o.id
+                    WHERE os.id IS NULL
+                """)
+            else:
+                print("⚠️ Tabla legacy operators sin columna id, se omite migración")
+
+        # Registrar admin por defecto para embarques si no existe.
+        cursor.execute("""
+            INSERT INTO operators_shipping (
+                id, full_name, department, shift, password_hash, is_active
+            )
+            SELECT %s, %s, %s, %s, %s, TRUE
+            FROM DUAL
+            WHERE NOT EXISTS (
+                SELECT 1 FROM operators_shipping WHERE id = %s
+            )
+        """, (
+            'admin',
+            'Administrador Embarques',
+            'Embarques',
+            'admin',
+            hash_shipping_password('admin123'),
+            'admin',
+        ))
         
         # Tabla de validaciones de calidad
         cursor.execute("""
