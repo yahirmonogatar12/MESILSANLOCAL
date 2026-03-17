@@ -17,6 +17,7 @@ from app.api_po_wo import registrar_rutas_po_wo
 from app.aoi_api import aoi_api
 from app.py.control_modelos_smt import control_modelos_bp
 from app.api_raw_modelos import api_raw
+from app.shipping_api import register_shipping_routes, init_shipping_tables
 
 # Registrar todas las rutas
 register_smt_routes(app)
@@ -27,6 +28,10 @@ app.register_blueprint(control_modelos_bp)
 # Registrar API RAW solo si no fue registrado por app.routes
 if 'api_raw' not in app.blueprints:
     app.register_blueprint(api_raw)
+
+# Registrar Shipping API para la app móvil de embarques
+register_shipping_routes(app)
+init_shipping_tables()
 
 @app.get("/")
 def health():

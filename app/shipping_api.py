@@ -683,7 +683,6 @@ def init_shipping_tables():
         # Migrar operadores legacy si la tabla anterior existe.
         cursor.execute("SHOW TABLES LIKE 'operators'")
         if cursor.fetchone():
-<<<<<<< HEAD
             cursor.execute("SHOW COLUMNS FROM operators")
             legacy_columns = {row[0] for row in cursor.fetchall()}
 
@@ -715,20 +714,6 @@ def init_shipping_tables():
                 """)
             else:
                 print("⚠️ Tabla legacy operators sin columna id, se omite migración")
-=======
-            cursor.execute("""
-                INSERT INTO operators_shipping (
-                    id, full_name, department, shift, password_hash,
-                    is_active, last_login, created_at, updated_at
-                )
-                SELECT
-                    o.id, o.full_name, o.department, o.shift, o.password_hash,
-                    o.is_active, o.last_login, o.created_at, o.updated_at
-                FROM operators o
-                LEFT JOIN operators_shipping os ON os.id = o.id
-                WHERE os.id IS NULL
-            """)
->>>>>>> f8858a5bf0557231fa2d69a5b93237ad5fa03caf
 
         # Registrar admin por defecto para embarques si no existe.
         cursor.execute("""
