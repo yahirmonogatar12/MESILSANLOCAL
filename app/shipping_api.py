@@ -47,11 +47,11 @@ def get_db_connection():
     """Crear conexión a la base de datos MySQL"""
     if not MYSQL_AVAILABLE:
         raise RuntimeError("MySQL no está disponible")
-    
+
     return MySQLdb.connect(
         host=os.getenv('MYSQL_HOST', 'localhost'),
         port=int(os.getenv('MYSQL_PORT', 3306)),
-        user=os.getenv('MYSQL_USER', ''),
+        user=os.getenv('MYSQL_USER') or os.getenv('MYSQL_USERNAME', ''),
         passwd=os.getenv('MYSQL_PASSWORD', ''),
         db=os.getenv('MYSQL_DATABASE', ''),
         charset='utf8mb4',
