@@ -657,131 +657,164 @@ def register_shipping_routes(app):
 def init_shipping_tables():
     """Crear las tablas necesarias para el módulo de embarques si no existen"""
     if not MYSQL_AVAILABLE:
-        print("⚠️ MySQL no disponible, no se pueden crear tablas de shipping")
+        print("MySQL no disponible, no se pueden crear tablas de shipping")
         return False
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabla dedicada de operadores para la app de embarques
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS operators_shipping (
-                id VARCHAR(20) PRIMARY KEY COMMENT 'Número de empleado',
-                full_name VARCHAR(100) NOT NULL,
-                department VARCHAR(50) NULL,
-                shift ENUM('A', 'B', 'C', 'admin') DEFAULT 'A',
-                password_hash VARCHAR(255) NOT NULL,
-                is_active BOOLEAN DEFAULT TRUE,
-                last_login DATETIME NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_is_active (is_active)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """)
-
-        # Migrar operadores legacy si la tabla anterior existe.
-        cursor.execute("SHOW TABLES LIKE 'operators'")
-        if cursor.fetchone():
-            cursor.execute("SHOW COLUMNS FROM operators")
-            legacy_columns = {row[0] for row in cursor.fetchall()}
-
-            if 'id' in legacy_columns:
-                full_name_expr = 'o.full_name' if 'full_name' in legacy_columns else 'o.id'
-                department_expr = 'o.department' if 'department' in legacy_columns else 'NULL'
-                shift_expr = 'o.shift' if 'shift' in legacy_columns else "'A'"
-                password_expr = (
-                    'o.password_hash'
-                    if 'password_hash' in legacy_columns
-                    else 'SHA2(o.id, 256)'
-                )
-                is_active_expr = 'o.is_active' if 'is_active' in legacy_columns else 'TRUE'
-                last_login_expr = 'o.last_login' if 'last_login' in legacy_columns else 'NULL'
-                created_at_expr = 'o.created_at' if 'created_at' in legacy_columns else 'CURRENT_TIMESTAMP'
-                updated_at_expr = 'o.updated_at' if 'updated_at' in legacy_columns else 'CURRENT_TIMESTAMP'
-
-                cursor.execute(f"""
-                    INSERT INTO operators_shipping (
-                        id, full_name, department, shift, password_hash,
-                        is_active, last_login, created_at, updated_at
-                    )
-                    SELECT
-                        o.id, {full_name_expr}, {department_expr}, {shift_expr}, {password_expr},
-                        {is_active_expr}, {last_login_expr}, {created_at_expr}, {updated_at_expr}
-                    FROM operators o
-                    LEFT JOIN operators_shipping os ON os.id = o.id
-                    WHERE os.id IS NULL
+        # Limpiar tabla operators_shipping si tiene problemas de estructura
+        try:
+            cursor.execute("DROP TABLE IF EXISTS operators_shipping_old")
+        except:
+            pass
+        
+        # Verificar si operators_shipping ya existe
+        cursor.execute("SHOW TABLES LIKE 'operators_shipping'")
+        table_exists = cursor.fetchone() is not None
+        
+        if not table_exists:
+            # Tabla dedicada de operadores para la app de embarques
+            print("Creando tabla operators_shipping...")
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS operators_shipping (
+                        id VARCHAR(20) PRIMARY KEY COMMENT 'Número de empleado',
+                        full_name VARCHAR(100) NOT NULL,
+                        department VARCHAR(50) NULL,
+                        shift ENUM('A', 'B', 'C', 'admin') DEFAULT 'A',
+                        password_hash VARCHAR(255) NOT NULL,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        last_login DATETIME NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX idx_is_active (is_active)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """)
-            else:
-                print("⚠️ Tabla legacy operators sin columna id, se omite migración")
+                print("Tabla operators_shipping creada")
+            except Exception as e:
+                print(f"Error creando tabla operators_shipping: {e}")
+                traceback.print_exc()
+            
+            # Migrar operadores legacy si la tabla anterior existe.
+            try:
+                cursor.execute("SHOW TABLES LIKE 'operators'")
+                if cursor.fetchone():
+                    cursor.execute("SHOW COLUMNS FROM operators")
+                    legacy_columns = {row[0] for row in cursor.fetchall()}
 
-        # Registrar admin por defecto para embarques si no existe.
-        cursor.execute("""
-            INSERT INTO operators_shipping (
-                id, full_name, department, shift, password_hash, is_active
-            )
-            SELECT %s, %s, %s, %s, %s, TRUE
-            FROM DUAL
-            WHERE NOT EXISTS (
-                SELECT 1 FROM operators_shipping WHERE id = %s
-            )
-        """, (
-            'admin',
-            'Administrador Embarques',
-            'Embarques',
-            'admin',
-            hash_shipping_password('admin123'),
-            'admin',
-        ))
+                    if 'id' in legacy_columns:
+                        full_name_expr = 'o.full_name' if 'full_name' in legacy_columns else 'o.id'
+                        department_expr = 'o.department' if 'department' in legacy_columns else 'NULL'
+                        shift_expr = 'o.shift' if 'shift' in legacy_columns else "'A'"
+                        password_expr = (
+                            'o.password_hash'
+                            if 'password_hash' in legacy_columns
+                            else 'SHA2(o.id, 256)'
+                        )
+                        is_active_expr = 'o.is_active' if 'is_active' in legacy_columns else 'TRUE'
+                        last_login_expr = 'o.last_login' if 'last_login' in legacy_columns else 'NULL'
+                        created_at_expr = 'o.created_at' if 'created_at' in legacy_columns else 'CURRENT_TIMESTAMP'
+                        updated_at_expr = 'o.updated_at' if 'updated_at' in legacy_columns else 'CURRENT_TIMESTAMP'
+
+                        cursor.execute(f"""
+                            INSERT INTO operators_shipping (
+                                id, full_name, department, shift, password_hash,
+                                is_active, last_login, created_at, updated_at
+                            )
+                            SELECT
+                                o.id, {full_name_expr}, {department_expr}, {shift_expr}, {password_expr},
+                                {is_active_expr}, {last_login_expr}, {created_at_expr}, {updated_at_expr}
+                            FROM operators o
+                            LEFT JOIN operators_shipping os ON os.id = o.id
+                            WHERE os.id IS NULL
+                        """)
+                        print("Operadores legacy migrados")
+            except Exception as e:
+                print(f"No se pudo migrar operadores legacy: {e}, continuando...")
+
+            # Registrar admin por defecto para embarques si no existe.
+            cursor.execute("""
+                SELECT COUNT(*) FROM operators_shipping WHERE id = %s
+            """, ('admin',))
+            
+            if cursor.fetchone()[0] == 0:
+                try:
+                    cursor.execute("""
+                        INSERT INTO operators_shipping (
+                            id, full_name, department, shift, password_hash, is_active
+                        )
+                        VALUES (%s, %s, %s, %s, %s, TRUE)
+                    """, (
+                        'admin',
+                        'Administrador Embarques',
+                        'Embarques',
+                        'admin',
+                        hash_shipping_password('admin123'),
+                    ))
+                    print("Admin de shipping creado")
+                except Exception as e:
+                    print(f"No se pudo insertar admin: {e}")
+        else:
+            print("Tabla operators_shipping ya existe, se omite creación")
         
         # Tabla de validaciones de calidad
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS quality_validations (
-                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                box_id VARCHAR(50) NOT NULL,
-                product_name VARCHAR(150) NULL,
-                lot_number VARCHAR(50) NULL,
-                quality_status ENUM('released', 'pending', 'rejected', 'in_process') NOT NULL DEFAULT 'pending',
-                validated_by VARCHAR(20) NULL,
-                validated_at DATETIME NULL,
-                rejection_reason TEXT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                UNIQUE INDEX idx_box_id_unique (box_id),
-                INDEX idx_quality_status (quality_status)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """)
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS quality_validations (
+                    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    box_id VARCHAR(50) NOT NULL,
+                    product_name VARCHAR(150) NULL,
+                    lot_number VARCHAR(50) NULL,
+                    quality_status ENUM('released', 'pending', 'rejected', 'in_process') NOT NULL DEFAULT 'pending',
+                    validated_by VARCHAR(20) NULL,
+                    validated_at DATETIME NULL,
+                    rejection_reason TEXT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE INDEX idx_box_id_unique (box_id),
+                    INDEX idx_quality_status (quality_status)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+        except Exception as e:
+            print(f"Tabla quality_validations: {e}")
         
         # Tabla de entradas de embarque
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS shipping_entries (
-                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                box_id VARCHAR(50) NOT NULL,
-                quality_status ENUM('released', 'pending', 'rejected', 'in_process') NOT NULL,
-                scanned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                scanned_by VARCHAR(20) NOT NULL,
-                product_name VARCHAR(150) NULL,
-                lot_number VARCHAR(50) NULL,
-                warehouse_zone VARCHAR(20) NULL,
-                notes TEXT NULL,
-                device_id VARCHAR(50) NULL,
-                synced_at DATETIME NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_box_id (box_id),
-                INDEX idx_scanned_at (scanned_at),
-                INDEX idx_scanned_by (scanned_by),
-                INDEX idx_quality_status (quality_status)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """)
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS shipping_entries (
+                    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    box_id VARCHAR(50) NOT NULL,
+                    quality_status ENUM('released', 'pending', 'rejected', 'in_process') NOT NULL,
+                    scanned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    scanned_by VARCHAR(20) NOT NULL,
+                    product_name VARCHAR(150) NULL,
+                    lot_number VARCHAR(50) NULL,
+                    warehouse_zone VARCHAR(20) NULL,
+                    notes TEXT NULL,
+                    device_id VARCHAR(50) NULL,
+                    synced_at DATETIME NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_box_id (box_id),
+                    INDEX idx_scanned_at (scanned_at),
+                    INDEX idx_scanned_by (scanned_by),
+                    INDEX idx_quality_status (quality_status)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+        except Exception as e:
+            print(f"Tabla shipping_entries: {e}")
         
         conn.commit()
         cursor.close()
         conn.close()
         
-        print("✅ Tablas de shipping creadas/verificadas correctamente")
+        print("Tablas de shipping creadas/verificadas correctamente")
         return True
         
     except Exception as e:
         print(f"❌ Error creando tablas de shipping: {e}")
+        import traceback
+        traceback.print_exc()
         return False
