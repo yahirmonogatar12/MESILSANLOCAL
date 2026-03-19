@@ -19,6 +19,20 @@ Este indice centraliza la documentacion tecnica actualizada del sistema MES ILSA
 - [MODELO_DE_DATOS_MYSQL.md](./MODELO_DE_DATOS_MYSQL.md)
 - [MODULO_BOM_DEEP_DIVE.md](./MODULO_BOM_DEEP_DIVE.md)
 - [HALLAZGOS_TECNICOS_Y_RIESGOS.md](./HALLAZGOS_TECNICOS_Y_RIESGOS.md)
+- [REFACTOR_BACKEND/README.md](./REFACTOR_BACKEND/README.md)
+
+## Programa activo de refactor backend
+
+El programa activo de refactor backend y su seguimiento por fases vive en:
+
+- [REFACTOR_BACKEND/README.md](./REFACTOR_BACKEND/README.md)
+
+Ese paquete contiene:
+
+- tablero global de avance
+- fases del refactor con estado real observado
+- decisiones y supuestos cerrados
+- bitacora de continuidad entre sesiones
 
 ## Quick start tecnico
 

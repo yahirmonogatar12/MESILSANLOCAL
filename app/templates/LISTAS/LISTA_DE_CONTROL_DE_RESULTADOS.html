@@ -8,22 +8,22 @@
                     <span class="sidebar-caret"></i><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarinventario">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Control de inventario" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Control de inventario"
                             data-permiso-boton="Estatus de inventario en proceso">Estatus de inventario en proceso</li>
                 </ul>
             </li>
             <li class="sidebar-section">
                 <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarresultados">
                     <span class="sidebar-icon"></i></span>
-                    Consultar resultados 
+                    Consultar resultados
                     <span class="sidebar-caret"></i><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarresultados">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Consultar resultados" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Consultar resultados"
                             data-permiso-boton="Consultar cantidad consumida de produccion SMT">Consultar cantidad consumida de produccion SMT</li>
                 </ul>
             </li>
@@ -34,26 +34,26 @@
                     <span class="sidebar-caret"></i><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMaquinasSMT">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas SMT" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas SMT"
                             data-permiso-boton="Historial de maquina SPI">Historial de maquina SPI</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas SMT" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas SMT"
                             data-permiso-boton="Consultar % de Oper. direct">Consultar % de Oper. direct</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas SMT" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas SMT"
                             data-permiso-boton="Historial de maquina AOI"
                             onclick="window.parent.mostrarHistorialAOI ? window.parent.mostrarHistorialAOI() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-aoi-unique-container', '/historial-aoi-ajax') : window.location.href='/historial-aoi')">Historial de maquina AOI</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas SMT" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas SMT"
                             data-permiso-boton="Historial de % de Oper. direct">Historial de % de Oper. direct</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas SMT" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas SMT"
                             data-permiso-boton="SMT AOI 3times defect history">SMT AOI 3times defect history</li>
                 </ul>
             </li>
@@ -64,22 +64,27 @@
                     <span class="sidebar-caret"></i><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMaquinascalidad">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas calidad" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas calidad"
                             data-permiso-boton="Historial de maquina EOL">Historial de maquina EOL</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas calidad" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas calidad"
                             data-permiso-boton="Historial de maquina ICT"
                             onclick="window.parent.mostrarHistorialICT ? window.parent.mostrarHistorialICT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-ict-unique-container', '/historial-ict-ajax') : window.location.href='/historial-ict')">Historial de maquina ICT</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas calidad" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas calidad"
+                            data-permiso-boton="Historial de cambios de parametros ICT"
+                            onclick="window.parent.mostrarHistorialCambiosParametrosICT ? window.parent.mostrarHistorialCambiosParametrosICT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-cambios-parametros-ict-unique-container', '/historial-cambios-parametros-ict-ajax') : window.location.href='/historial-cambios-parametros-ict')">Historial de cambios de parametros ICT</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas calidad"
                             data-permiso-boton="Historial de maquina MCU">Historial de maquina MCU</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de maquinas calidad" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de maquinas calidad"
                             data-permiso-boton="Historial de maquina de TOUCH">Historial de maquina de TOUCH</li>
                 </ul>
             </li>
@@ -90,9 +95,9 @@
                     <span class="sidebar-caret"></i><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarotrasmaquinas">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS" 
-                            data-permiso-seccion="Historial de otras maquinas" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
+                            data-permiso-seccion="Historial de otras maquinas"
                             data-permiso-boton="Historial de maquina de temperatura y humedad">Historial de maquina de temperatura y humedad</li>
                 </ul>
             </li>
@@ -101,7 +106,7 @@
 
         <div class="overlay"></div>
 
-        <main class="app-content"> 
+        <main class="app-content">
         </main>
     </div>
 <script src="{{ url_for('static', filename='js/permisos-dropdowns.js') }}"></script>

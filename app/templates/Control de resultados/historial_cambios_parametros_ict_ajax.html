@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial Cambios Parámetros ICT</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ict.css') }}">
+  <style>
+    /* ===== ESTILOS ADICIONALES ESPECÍFICOS PARA ESTA TABLA ===== */
+    #cp-params-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--ilsan-dark-secondary);
+    }
+
+    #cp-params-table th,
+    #cp-params-table td {
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    #cp-params-table thead th {
+      background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
+      color: var(--ilsan-text-light);
+      position: sticky;
+      top: 0;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.3px;
+      z-index: 10;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #cp-params-table tbody td {
+      color: var(--ilsan-text-secondary);
+      background-color: var(--ilsan-dark-secondary);
+      transition: background-color 0.2s ease;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #cp-params-table tbody tr:nth-child(even) td {
+      background-color: #44475A;
+    }
+
+    #cp-params-table tbody tr {
+      transition: all 0.2s ease;
+    }
+
+    #cp-params-table tbody tr:hover td {
+      background-color: var(--ilsan-hover);
+    }
+
+    /* Badge valor anterior (rojo) */
+    .cp-val-old {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: rgba(142, 35, 35, 0.25);
+      color: #ffb3b3;
+      border: 1px solid rgba(142, 35, 35, 0.45);
+    }
+
+    /* Badge valor nuevo (verde) */
+    .cp-val-new {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      background: rgba(69, 102, 54, 0.3);
+      color: #c8e6c9;
+      border: 1px solid rgba(69, 102, 54, 0.45);
+    }
+
+    /* Número de fila */
+    .cp-row-num {
+      color: var(--ilsan-text-gray);
+      font-size: 0.7rem;
+    }
+
+    /* Columna parametro */
+    .cp-col-param {
+      color: #82b4e8;
+    }
+
+    /* Columna ICT bold */
+    .cp-col-ict {
+      font-weight: 700;
+      color: var(--ilsan-text-light);
+    }
+
+    /* Sin datos */
+    .cp-no-data {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--ilsan-text-gray);
+      font-size: 0.9rem;
+    }
+
+    .cp-no-data svg {
+      width: 42px;
+      height: 42px;
+      margin-bottom: 12px;
+      opacity: 0.35;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Forzar que el #ict-filters de este módulo use su propio ID */
+    #cp-ict-filters {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 10px;
+      row-gap: 10px;
+      padding: 12px 18px 16px;
+      align-items: flex-end;
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    #cp-ict-filters .filter-group input,
+    #cp-ict-filters .filter-group select {
+      width: 148px;
+    }
+
+    /* Animación entrada igual que ICT */
+    .filters-card,
+    .results-card {
+      animation: fadeInUp 0.5s ease;
+    }
+  </style>
+</head>
+<body id="cp-params-container">
+<div class="ict-page">
+
+  <!-- ===== TARJETA FILTROS ===== -->
+  <div class="filters-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+      </svg>
+      <h3>Filtros de Búsqueda</h3>
+    </div>
+
+    <div id="cp-ict-filters">
+      <!-- Fecha Desde -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Fecha Desde
+        </label>
+        <input type="date" id="cp-filter-fecha-desde">
+      </div>
+
+      <!-- Fecha Hasta -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Fecha Hasta
+        </label>
+        <input type="date" id="cp-filter-fecha-hasta">
+      </div>
+
+      <!-- Hora Desde -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Hora Desde
+        </label>
+        <input type="time" id="cp-filter-hora-desde">
+      </div>
+
+      <!-- Hora Hasta -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Hora Hasta
+        </label>
+        <input type="time" id="cp-filter-hora-hasta">
+      </div>
+
+      <!-- ICT -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+          ICT
+        </label>
+        <input type="text" id="cp-filter-ict" placeholder="Ej. ICT1 M2">
+      </div>
+
+      <!-- STD / Fuente -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          STD (Fuente)
+        </label>
+        <input type="text" id="cp-filter-std" placeholder="source_filename…">
+      </div>
+
+      <!-- Componente -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          Componente
+        </label>
+        <input type="text" id="cp-filter-componente" placeholder="part_name…">
+      </div>
+
+      <!-- Parámetro -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="21" x2="4" y2="14"/>
+            <line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/>
+            <line x1="20" y1="12" x2="20" y2="3"/>
+          </svg>
+          Parámetro
+        </label>
+        <input type="text" id="cp-filter-parametro" placeholder="field_name…">
+      </div>
+
+      <!-- Botón consultar -->
+      <button id="cp-btn-consultar" class="btn-primary">
+        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Consultar
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== TARJETA RESULTADOS ===== -->
+  <div class="results-card">
+    <div class="card-header">
+      <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+      <h3>Registros de Cambios de Parámetros</h3>
+      <span class="record-count" id="cp-record-count">0 registros</span>
+      <button id="cp-btn-export" class="btn-export">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Exportar Excel
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <!-- Spinner de carga -->
+      <div class="table-loading" id="cp-table-loading">
+        <div class="spinner"></div>
+        <span></span>Cargando datos…</span>
+      </div>
+
+      <!-- Tabla -->
+      <table id="cp-params-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>ICT</th>
+            <th>STD (Fuente)</th>
+            <th>Componente</th>
+            <th>Parámetro</th>
+            <th>Valor Anterior</th>
+            <th>Valor Nuevo</th>
+          </tr>
+        </thead>
+        <tbody id="cp-params-body"></tbody>
+      </table>
+
+      <!-- Sin datos -->
+      <div class="cp-no-data" id="cp-no-data" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <p>No se encontraron registros con los filtros aplicados.</p>
+        <p style="font-size:0.78rem;margin-top:4px;">Ajuste los filtros y vuelva a consultar.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.ict-page -->
+
+<script>
+(function () {
+  'use strict';
+
+  /* ===== HELPERS ===== */
+  function el(id) { return document.getElementById(id); }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ===== ESTADO UI ===== */
+  function mostrarCargando(v) {
+    var loading = el('cp-table-loading');
+    if (loading) loading.classList.toggle('active', v);
+  }
+
+  function mostrarSinDatos(v) {
+    var nd = el('cp-no-data');
+    if (nd) nd.style.display = v ? 'block' : 'none';
+  }
+
+  function actualizarContador(n) {
+    var cnt = el('cp-record-count');
+    if (cnt) cnt.textContent = n + ' registro' + (n !== 1 ? 's' : '');
+  }
+
+  /* ===== CONSTRUIR PARAMS ===== */
+  function buildParams() {
+    var p = new URLSearchParams();
+    var fDesde = el('cp-filter-fecha-desde');
+    var fHasta = el('cp-filter-fecha-hasta');
+    var hDesde = el('cp-filter-hora-desde');
+    var hHasta = el('cp-filter-hora-hasta');
+    var ict    = el('cp-filter-ict');
+    var std    = el('cp-filter-std');
+    var comp   = el('cp-filter-componente');
+    var param  = el('cp-filter-parametro');
+
+    if (fDesde && fDesde.value) p.set('fecha_desde', fDesde.value);
+    if (fHasta && fHasta.value) p.set('fecha_hasta', fHasta.value);
+    if (hDesde && hDesde.value) p.set('hora_desde',  hDesde.value);
+    if (hHasta && hHasta.value) p.set('hora_hasta',  hHasta.value);
+    if (ict   && ict.value.trim())  p.set('ict',        ict.value.trim());
+    if (std   && std.value.trim())  p.set('std',        std.value.trim());
+    if (comp  && comp.value.trim()) p.set('componente', comp.value.trim());
+    if (param && param.value.trim()) p.set('parametro', param.value.trim());
+
+    return p;
+  }
+
+  /* ===== RENDERIZAR FILA ===== */
+  function renderFila(row, idx) {
+    var tr = document.createElement('tr');
+    var vAnterior = row.valor_anterior != null ? row.valor_anterior : '';
+    var vNuevo    = row.valor_nuevo    != null ? row.valor_nuevo    : '';
+
+    tr.innerHTML =
+      '<td class="cp-row-num">' + idx + '</td>' +
+      '<td>' + escHtml(row.fecha || '') + '</td>' +
+      '<td>' + escHtml(row.hora  || '') + '</td>' +
+      '<td class="cp-col-ict">'  + escHtml(row.ict        || '') + '</td>' +
+      '<td title="' + escHtml(row.std || '') + '">' + escHtml(row.std        || '') + '</td>' +
+      '<td>' + escHtml(row.componente || '') + '</td>' +
+      '<td class="cp-col-param">' + escHtml(row.parametro  || '') + '</td>' +
+      '<td><span class="cp-val-old" title="' + escHtml(vAnterior) + '">' + escHtml(vAnterior || '—') + '</span></td>' +
+      '<td><span class="cp-val-new" title="' + escHtml(vNuevo)    + '">' + escHtml(vNuevo    || '—') + '</span></td>';
+
+    return tr;
+  }
+
+  /* ===== CARGAR DATOS ===== */
+  function loadCambiosParametrosICT() {
+    var params = buildParams();
+    mostrarCargando(true);
+    mostrarSinDatos(false);
+
+    var tbody = el('cp-params-body');
+    if (tbody) tbody.innerHTML = '';
+
+    var tableEl = el('cp-params-table');
+
+    fetch('/api/ict/param-changes?' + params.toString(), {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    })
+    .then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function (data) {
+      mostrarCargando(false);
+      var rows = Array.isArray(data) ? data : (data.data || data.rows || []);
+
+      actualizarContador(rows.length);
+
+      if (rows.length === 0) {
+        if (tableEl) tableEl.style.display = 'none';
+        mostrarSinDatos(true);
+        return;
+      }
+
+      if (tableEl) tableEl.style.display = '';
+      mostrarSinDatos(false);
+
+      rows.forEach(function (row, idx) {
+        if (tbody) tbody.appendChild(renderFila(row, idx + 1));
+      });
+    })
+    .catch(function (err) {
+      console.error('[CambiosICT] Error:', err);
+      mostrarCargando(false);
+      if (tableEl) tableEl.style.display = 'none';
+      mostrarSinDatos(true);
+      var nd = el('cp-no-data');
+      if (nd) {
+        var ps = nd.querySelectorAll('p');
+        if (ps[0]) ps[0].textContent = 'Error al cargar los datos. Verifique la conexión.';
+      }
+    });
+  }
+
+  /* ===== EXPORTAR ===== */
+  function exportarExcel() {
+    var params = buildParams();
+    window.location.href = '/api/ict/param-changes/export?' + params.toString();
+  }
+
+  /* ===== INIT ===== */
+  function initializeCambiosParametrosICT() {
+    /* Ocultar tabla inicialmente */
+    var tableEl = el('cp-params-table');
+    if (tableEl) tableEl.style.display = 'none';
+
+    /* Fecha de hoy por defecto */
+    var hoy = new Date().toISOString().split('T')[0];
+    var fDesde = el('cp-filter-fecha-desde');
+    var fHasta = el('cp-filter-fecha-hasta');
+    if (fDesde && !fDesde.value) fDesde.value = hoy;
+    if (fHasta && !fHasta.value) fHasta.value = hoy;
+
+    /* Botón consultar */
+    var btnConsultar = el('cp-btn-consultar');
+    if (btnConsultar) {
+      btnConsultar.addEventListener('click', loadCambiosParametrosICT);
+    }
+
+    /* Botón exportar */
+    var btnExport = el('cp-btn-export');
+    if (btnExport) {
+      btnExport.addEventListener('click', exportarExcel);
+    }
+
+    /* Enter en cualquier input dispara consulta */
+    var inputIds = [
+      'cp-filter-fecha-desde', 'cp-filter-fecha-hasta',
+      'cp-filter-hora-desde',  'cp-filter-hora-hasta',
+      'cp-filter-ict',         'cp-filter-std',
+      'cp-filter-componente',  'cp-filter-parametro'
+    ];
+    inputIds.forEach(function (id) {
+      var inp = el(id);
+      if (inp) {
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') loadCambiosParametrosICT();
+        });
+      }
+    });
+
+    /* Carga inicial automática */
+    loadCambiosParametrosICT();
+  }
+
+  /* ===== EXPONER GLOBALMENTE ===== */
+  window.initializeCambiosParametrosICT = initializeCambiosParametrosICT;
+  window.loadCambiosParametrosICT       = loadCambiosParametrosICT;
+
+  /* ===== AUTO-INIT ===== */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeCambiosParametrosICT);
+  } else {
+    initializeCambiosParametrosICT();
+  }
+
+})();
+</script>
+</body>
+</html>
