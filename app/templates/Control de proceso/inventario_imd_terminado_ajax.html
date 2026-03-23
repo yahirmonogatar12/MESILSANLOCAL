@@ -389,6 +389,21 @@
       }
     }
   </style>
+
+    <!-- Controles Snapshot Histórico -->
+    <div class="controls-imd" id="INVIMDPCBID_snapshot-controls" style="align-items: center; padding: 6px 10px;">
+      <div class="group-imd" style="flex-direction: row; align-items: center; gap: 6px;">
+        <label class="label-imd" style="white-space: nowrap;">Consultar Histórico</label>
+        <input type="date" class="input-imd" id="INVIMDPCBID_snapshot-fecha" style="padding: 4px 6px; width: 150px;">
+      </div>
+      <button class="btn-imd" id="INVIMDPCBID_snapshot-cargar" style="padding: 4px 12px;">Cargar</button>
+      <button class="btn-imd" id="INVIMDPCBID_snapshot-volver"
+              style="display:none; background:#8e44ad; border-color:#8e44ad; padding: 4px 12px;">
+        Volver a En Vivo
+      </button>
+      <span id="INVIMDPCBID_snapshot-status" style="font-size: 11px; color: #95a5a6; margin-left: auto;">Vista en vivo</span>
+    </div>
+
     <div class="tabs-imd">
       <button class="tab-imd active" data-panel="inventario">Inventario General</button>
       <button class="tab-imd" data-panel="ubicacion">Ubicación</button>
