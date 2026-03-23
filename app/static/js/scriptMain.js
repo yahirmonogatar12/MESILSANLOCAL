@@ -245,6 +245,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
       "historial-cambios-parametros-ict-unique-container",
+      "historial-maquina-ict-pass-fail-unique-container",
     ];
 
     controlResultadosAjaxContainers.forEach((containerId) => {
@@ -4451,6 +4452,105 @@ window.mostrarHistorialICT = function () {
     }
   } catch (error) {
     console.error("Error crítico en mostrarHistorialICT:", error);
+  }
+};
+
+// ============================================================
+// Función AJAX para Historial de Maquinas ICT % Pass/Fail
+// ============================================================
+window.mostrarHistorialMaquinaICTPassFail = function () {
+  try {
+    const controlResultadosButton = document.getElementById(
+      "Control de resultados",
+    );
+    if (controlResultadosButton) {
+      controlResultadosButton.classList.add("active");
+      document.querySelectorAll(".nav-button").forEach((btn) => {
+        if (btn.id !== "Control de resultados") {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
+    if (typeof window.hideAllMaterialContainers === "function") {
+      window.hideAllMaterialContainers();
+    }
+
+    // Ocultar otros contenedores de Control de Resultados
+    const controlResultadosContainers = [
+      "control-resultados-info-container",
+      "historial-aoi-unique-container",
+      "historial-ict-unique-container",
+      "historial-cambios-parametros-ict-unique-container",
+      "historial-maquina-ict-pass-fail-unique-container",
+    ];
+
+    controlResultadosContainers.forEach((containerId) => {
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.style.display = "none";
+      }
+    });
+
+    const materialContainer = document.getElementById("material-container");
+    const controlResultadosContent = document.getElementById(
+      "control-resultados-content",
+    );
+    const controlResultadosContentArea = document.getElementById(
+      "control-resultados-content-area",
+    );
+
+    if (materialContainer) {
+      materialContainer.style.display = "block";
+    }
+
+    if (controlResultadosContent) {
+      controlResultadosContent.style.display = "block";
+      controlResultadosContent.style.width = "100%";
+      controlResultadosContent.style.maxWidth = "none";
+    }
+
+    if (controlResultadosContentArea) {
+      controlResultadosContentArea.style.display = "block";
+      controlResultadosContentArea.style.width = "100%";
+      controlResultadosContentArea.style.maxWidth = "none";
+      controlResultadosContentArea.style.margin = "0";
+      controlResultadosContentArea.style.paddingRight = "0";
+    }
+
+    const historialMaquinaICTPassFailContainer = document.getElementById(
+      "historial-maquina-ict-pass-fail-unique-container",
+    );
+    if (!historialMaquinaICTPassFailContainer) {
+      console.error("El contenedor Historial Maquina ICT % Pass/Fail no existe en el HTML");
+      return;
+    }
+
+    // 🎨 Estilos para el contenedor Historial Maquina ICT % Pass/Fail
+    historialMaquinaICTPassFailContainer.style.display = "block";
+    historialMaquinaICTPassFailContainer.style.opacity = "1";
+    historialMaquinaICTPassFailContainer.style.width = "100%";
+    historialMaquinaICTPassFailContainer.style.maxWidth = "none";
+    historialMaquinaICTPassFailContainer.style.margin = "0";
+    historialMaquinaICTPassFailContainer.style.visibility = "visible";
+
+    if (typeof window.cargarContenidoDinamico === "function") {
+      window.cargarContenidoDinamico(
+        "historial-maquina-ict-pass-fail-unique-container",
+        "/historial-maquina-ict-pass-fail",
+        () => {
+          // Ejecutar inicialización del módulo si existe
+          if (typeof window.initializeIctPassFailEventListeners === "function") {
+            window.initializeIctPassFailEventListeners();
+          }
+          if (typeof window.loadIctPassFailData === "function") {
+            window.loadIctPassFailData();
+          }
+        },
+      );
+    }
+  } catch (error) {
+    console.error("Error crítico en mostrarHistorialMaquinaICTPassFail:", error);
   }
 };
 

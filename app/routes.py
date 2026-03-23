@@ -8707,6 +8707,16 @@ def historial_ict_ajax():
         print(f"Error al cargar template de Historial ICT: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
+@app.route("/historial-maquina-ict-pass-fail")
+@login_requerido
+def historial_maquina_ict_pass_fail():
+    """Servir la página de Historial maquina ICT % Pass/Fail"""
+    try:
+        return render_template("Control de resultados/history_ict_Pass_Fail.html")
+    except Exception as e:
+        print(f"Error al cargar Historial maquina ICT % Pass/Fail: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
 
 @app.route("/historial-cambios-parametros-ict-ajax")
 @login_requerido
