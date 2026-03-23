@@ -468,6 +468,97 @@
         }
     };
 
+    // Snapshot histórico
+    let snapshotMode = false;
+
+    // Cache de fechas con snapshot disponible
+    let _snapshotFechasDisponibles = {};
+
+    const S = {
+        loadFechas: async () => {
+            try {
+                const r = await fetch('/api/snapshot_inventario/fechas');
+                const data = await r.json();
+                const input = qs('#INVIMDPCBID_snapshot-fecha');
+                if (!input) return;
+                _snapshotFechasDisponibles = {};
+                (data.fechas || []).forEach(item => {
+                    const f = typeof item === 'string' ? item : item.fecha;
+                    const h = typeof item === 'object' ? (item.hora || '') : '';
+                    _snapshotFechasDisponibles[f] = h;
+                });
+                // Configurar rango del calendario
+                const fechas = Object.keys(_snapshotFechasDisponibles).sort();
+                if (fechas.length > 0) {
+                    input.min = fechas[0];
+                    input.max = fechas[fechas.length - 1];
+                }
+            } catch (e) {
+                console.error('Error cargando fechas de snapshot:', e);
+            }
+        },
+
+        cargar: async () => {
+            const input = qs('#INVIMDPCBID_snapshot-fecha');
+            if (!input) return;
+            const fecha = input.value;
+            if (!fecha) {
+                S.volverEnVivo();
+                return;
+            }
+
+            const hora = _snapshotFechasDisponibles[fecha] || '';
+            snapshotMode = true;
+
+            const statusEl = qs('#INVIMDPCBID_snapshot-status');
+            const volverBtn = qs('#INVIMDPCBID_snapshot-volver');
+            if (statusEl) statusEl.textContent = 'Cargando snapshot ' + fecha + '...';
+            if (volverBtn) volverBtn.style.display = 'inline-block';
+
+            try {
+                const [rg, ru] = await Promise.all([
+                    fetch('/api/snapshot_inventario/general?fecha=' + encodeURIComponent(fecha)),
+                    fetch('/api/snapshot_inventario/ubicacion?fecha=' + encodeURIComponent(fecha))
+                ]);
+                const dg = await rg.json();
+                const du = await ru.json();
+
+                datosOriginalesIMD['g'] = dg.items || [];
+                filtrosIMD['g'] = {};
+                actualizarTablaIMD('g', datosOriginalesIMD['g']);
+                qs('#INVIMDPCBID_g-status').textContent = datosOriginalesIMD['g'].length + ' items (snapshot ' + fecha + ')';
+
+                datosOriginalesIMD['u'] = du.items || [];
+                filtrosIMD['u'] = {};
+                actualizarTablaIMD('u', datosOriginalesIMD['u']);
+                qs('#INVIMDPCBID_u-status').textContent = datosOriginalesIMD['u'].length + ' registros (snapshot ' + fecha + ')';
+
+                var label = fecha + (hora ? ' a las ' + hora : '');
+                if (statusEl) statusEl.textContent = 'Snapshot: ' + label;
+
+                // Marcar si no hay datos para esa fecha
+                if ((dg.items || []).length === 0 && (du.items || []).length === 0) {
+                    if (statusEl) statusEl.textContent = 'Sin snapshot para ' + fecha;
+                }
+            } catch (e) {
+                console.error('Error cargando snapshot:', e);
+                if (statusEl) statusEl.textContent = 'Error cargando snapshot';
+            }
+        },
+
+        volverEnVivo: () => {
+            snapshotMode = false;
+            const input = qs('#INVIMDPCBID_snapshot-fecha');
+            const volverBtn = qs('#INVIMDPCBID_snapshot-volver');
+            const statusEl = qs('#INVIMDPCBID_snapshot-status');
+            if (input) input.value = '';
+            if (volverBtn) volverBtn.style.display = 'none';
+            if (statusEl) statusEl.textContent = 'Vista en vivo';
+            G.load();
+            U.load();
+        }
+    };
+
     // Configuración de eventos
     function configurarEventos() {
         // Tabs
@@ -542,6 +633,14 @@
             qs('#INVIMDPCBID_g-exportar').addEventListener('click', G.exportarExcel);
         }
 
+        // Snapshot histórico
+        if (qs('#INVIMDPCBID_snapshot-cargar')) {
+            qs('#INVIMDPCBID_snapshot-cargar').addEventListener('click', S.cargar);
+        }
+        if (qs('#INVIMDPCBID_snapshot-volver')) {
+            qs('#INVIMDPCBID_snapshot-volver').addEventListener('click', S.volverEnVivo);
+        }
+
         // Cerrar filtros IMD al hacer clic fuera
         document.addEventListener('click', function(event) {
             // Solo procesar si no es un click en elementos de filtro
@@ -603,6 +702,7 @@
         G.load();        // Inventario general
         U.load();        // Ubicaciones
         M.load();        // Movimientos
+        S.loadFechas();  // Poblar dropdown de snapshots históricos
         
         // Prepara estados
         const globalStatus = qs('#INVIMDPCBID_globalStatus');
@@ -632,7 +732,8 @@
         filtros: filtrosIMD,
         U: U,
         M: M,
-        G: G
+        G: G,
+        S: S
     };
 
 })();
