@@ -8873,6 +8873,153 @@ def historial_maquina_ict_pass_fail():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
+@app.route("/api/ict/pass-fail")
+@login_requerido
+def ict_pass_fail_api():
+    """Obtener conteo distintivo Pass/Fail agrupado por fecha, línea, ICT y no_parte."""
+    try:
+        fecha = request.args.get("fecha", "").strip()
+        linea = request.args.get("linea", "").strip()
+        no_parte = request.args.get("no_parte", "").strip()
+
+        sql = (
+            "SELECT fecha, linea, ict, no_parte, "
+            "COUNT(DISTINCT CASE WHEN resultado='OK' THEN barcode END) AS ok_count, "
+            "COUNT(DISTINCT CASE WHEN resultado='NG' THEN barcode END) AS ng_count, "
+            "COUNT(DISTINCT barcode) AS total "
+            "FROM history_ict WHERE 1=1"
+        )
+        params = []
+
+        if fecha:
+            sql += " AND fecha=%s"
+            params.append(fecha)
+        if linea:
+            sql += " AND linea=%s"
+            params.append(linea)
+        if no_parte:
+            sql += " AND no_parte LIKE %s"
+            params.append(f"%{no_parte}%")
+
+        sql += " GROUP BY fecha, linea, ict, no_parte ORDER BY fecha DESC, linea, ict, no_parte LIMIT 2000"
+        rows = execute_query(sql, tuple(params) if params else None, fetch="all") or []
+
+        result = []
+        for row in rows:
+            ok = row.get("ok_count", 0) or 0
+            ng = row.get("ng_count", 0) or 0
+            total = row.get("total", 0) or 0
+            pct_ok = round(ok / total * 100, 2) if total > 0 else 0
+            pct_ng = round(ng / total * 100, 2) if total > 0 else 0
+            result.append({
+                "fecha": str(row.get("fecha", "")) if row.get("fecha") else "",
+                "linea": row.get("linea", "") or "",
+                "ict": row.get("ict", "") or "",
+                "no_parte": row.get("no_parte", "") or "",
+                "ok_count": ok,
+                "ng_count": ng,
+                "pct_ok": pct_ok,
+                "pct_ng": pct_ng,
+                "total": total,
+            })
+
+        return jsonify(result)
+    except Exception as e:
+        import traceback
+
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+@app.route("/api/ict/pass-fail/export")
+@login_requerido
+def ict_pass_fail_export():
+    """Exportar conteo Pass/Fail agrupado a Excel."""
+    try:
+        fecha = request.args.get("fecha", "").strip()
+        linea = request.args.get("linea", "").strip()
+        no_parte = request.args.get("no_parte", "").strip()
+
+        sql = (
+            "SELECT fecha, linea, ict, no_parte, "
+            "COUNT(DISTINCT CASE WHEN resultado='OK' THEN barcode END) AS ok_count, "
+            "COUNT(DISTINCT CASE WHEN resultado='NG' THEN barcode END) AS ng_count, "
+            "COUNT(DISTINCT barcode) AS total "
+            "FROM history_ict WHERE 1=1"
+        )
+        params = []
+
+        if fecha:
+            sql += " AND fecha=%s"
+            params.append(fecha)
+        if linea:
+            sql += " AND linea=%s"
+            params.append(linea)
+        if no_parte:
+            sql += " AND no_parte LIKE %s"
+            params.append(f"%{no_parte}%")
+
+        sql += " GROUP BY fecha, linea, ict, no_parte ORDER BY fecha DESC, linea, ict, no_parte LIMIT 5000"
+        rows = execute_query(sql, tuple(params) if params else None, fetch="all") or []
+
+        from io import BytesIO
+
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "ICT Pass-Fail"
+
+        headers = ["Fecha", "Línea", "ICT", "No. Parte", "OK", "NG", "%OK", "%NG", "Total"]
+        header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center")
+
+        for row_idx, row in enumerate(rows, 2):
+            ok = row.get("ok_count", 0) or 0
+            ng = row.get("ng_count", 0) or 0
+            total = row.get("total", 0) or 0
+            pct_ok = round(ok / total * 100, 2) if total > 0 else 0
+            pct_ng = round(ng / total * 100, 2) if total > 0 else 0
+
+            ws.cell(row=row_idx, column=1, value=str(row.get("fecha", "")) if row.get("fecha") else "")
+            ws.cell(row=row_idx, column=2, value=row.get("linea", "") or "")
+            ws.cell(row=row_idx, column=3, value=row.get("ict", "") or "")
+            ws.cell(row=row_idx, column=4, value=row.get("no_parte", "") or "")
+            ws.cell(row=row_idx, column=5, value=ok)
+            ws.cell(row=row_idx, column=6, value=ng)
+            ws.cell(row=row_idx, column=7, value=f"{pct_ok}%")
+            ws.cell(row=row_idx, column=8, value=f"{pct_ng}%")
+            ws.cell(row=row_idx, column=9, value=total)
+
+        col_widths = [12, 8, 8, 20, 8, 8, 8, 8, 8]
+        for col_idx, width in enumerate(col_widths, 1):
+            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = width
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        from flask import Response
+
+        filename = f"ict_pass_fail_{fecha or 'todos'}.xlsx"
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        import traceback
+
+        print(f"Error exportando ICT Pass/Fail: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/historial-cambios-parametros-ict-ajax")
 @login_requerido
 def historial_cambios_parametros_ict_ajax():
