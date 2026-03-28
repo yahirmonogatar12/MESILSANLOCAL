@@ -375,6 +375,20 @@
             color: rgba(255, 255, 255, 0.82);
         }
 
+        .profile-section-title {
+            margin: 0.35rem 0 0.15rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .profile-section-hint {
+            margin: 0;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.68);
+        }
+
         .profile-field input {
             width: 100%;
             border-radius: 12px;
@@ -1536,9 +1550,9 @@
                         </li>
                         {% endif %}
                         
-                        {% if 'admin' in roles %}
+                        {% if usuario_autenticado %}
                         <li>
-                            <a href="#" style="opacity: 0.5; cursor: not-allowed;">
+                            <a href="/portal-tickets">
                                 <span class="dropdown-item-title">Portal de Tickets</span>
                             </a>
                         </li>
@@ -1616,7 +1630,7 @@
                 <div>
                     <div class="profile-modal-eyebrow">Mi Perfil</div>
                     <h2 class="profile-modal-title" id="profile-settings-title">Configuracion de usuario</h2>
-                    <p class="profile-modal-subtitle">Actualiza tu nombre y correo sin salir del portal. El rol se muestra solo como referencia.</p>
+                    <p class="profile-modal-subtitle">Actualiza tu nombre, correo y contraseña sin salir del portal. El rol se muestra solo como referencia.</p>
                 </div>
                 <button type="button" class="profile-modal-close" data-profile-modal-close aria-label="Cerrar">
                     <i class="fas fa-times"></i>
@@ -1640,6 +1654,22 @@
                         <div class="profile-field profile-field-full">
                             <label for="profile-email">Correo electronico</label>
                             <input id="profile-email" name="email" type="email" autocomplete="email" placeholder="tu.correo@empresa.com">
+                        </div>
+                        <div class="profile-field profile-field-full">
+                            <div class="profile-section-title">Cambiar contraseña</div>
+                            <p class="profile-section-hint">Deja estos campos vacios si no quieres cambiarla. Para actualizarla debes escribir tu contraseña actual.</p>
+                        </div>
+                        <div class="profile-field profile-field-full">
+                            <label for="profile-current-password">Contraseña actual</label>
+                            <input id="profile-current-password" name="current_password" type="password" autocomplete="current-password">
+                        </div>
+                        <div class="profile-field">
+                            <label for="profile-new-password">Nueva contraseña</label>
+                            <input id="profile-new-password" name="new_password" type="password" autocomplete="new-password">
+                        </div>
+                        <div class="profile-field">
+                            <label for="profile-confirm-password">Confirmar nueva contraseña</label>
+                            <input id="profile-confirm-password" name="confirm_password" type="password" autocomplete="new-password">
                         </div>
                     </div>
                     <div id="profile-settings-message" class="profile-message" aria-live="polite"></div>
@@ -1680,6 +1710,9 @@
             const profileRoleInput = document.getElementById('profile-role');
             const profileFullNameInput = document.getElementById('profile-full-name');
             const profileEmailInput = document.getElementById('profile-email');
+            const profileCurrentPasswordInput = document.getElementById('profile-current-password');
+            const profileNewPasswordInput = document.getElementById('profile-new-password');
+            const profileConfirmPasswordInput = document.getElementById('profile-confirm-password');
             const profileSaveButton = document.getElementById('profile-save-button');
             const profileModalTriggers = document.querySelectorAll('[data-profile-modal-trigger]');
             const profileModalCloseButtons = document.querySelectorAll('[data-profile-modal-close]');
@@ -1767,6 +1800,18 @@
                 }
             }
 
+            function clearProfilePasswordFields() {
+                if (profileCurrentPasswordInput) {
+                    profileCurrentPasswordInput.value = '';
+                }
+                if (profileNewPasswordInput) {
+                    profileNewPasswordInput.value = '';
+                }
+                if (profileConfirmPasswordInput) {
+                    profileConfirmPasswordInput.value = '';
+                }
+            }
+
             function applyProfileState() {
                 if (!profileFullNameInput || !profileEmailInput || !profileSaveButton) {
                     return;
@@ -1775,6 +1820,15 @@
                 const fieldsDisabled = profileBusy || !profileEditable;
                 profileFullNameInput.disabled = fieldsDisabled;
                 profileEmailInput.disabled = fieldsDisabled;
+                if (profileCurrentPasswordInput) {
+                    profileCurrentPasswordInput.disabled = fieldsDisabled;
+                }
+                if (profileNewPasswordInput) {
+                    profileNewPasswordInput.disabled = fieldsDisabled;
+                }
+                if (profileConfirmPasswordInput) {
+                    profileConfirmPasswordInput.disabled = fieldsDisabled;
+                }
                 profileSaveButton.disabled = fieldsDisabled;
                 profileSaveButton.textContent = profileBusy ? profileBusyLabel : defaultProfileSaveLabel;
             }
@@ -1815,6 +1869,7 @@
                     profileEmailInput.value = profile.email || '';
                 }
 
+                clearProfilePasswordFields();
                 updateDisplayedUserName(profile.nombre_completo || profile.username || '');
                 applyProfileState();
             }
@@ -1884,6 +1939,7 @@
                 profileBackdrop.classList.remove('active');
                 profileBackdrop.setAttribute('aria-hidden', 'true');
                 document.body.classList.remove('profile-modal-open');
+                clearProfilePasswordFields();
                 setProfileMessage('', '');
             }
 
@@ -1990,7 +2046,10 @@
                             },
                             body: JSON.stringify({
                                 nombre_completo: profileFullNameInput ? profileFullNameInput.value.trim() : '',
-                                email: profileEmailInput ? profileEmailInput.value.trim() : ''
+                                email: profileEmailInput ? profileEmailInput.value.trim() : '',
+                                current_password: profileCurrentPasswordInput ? profileCurrentPasswordInput.value : '',
+                                new_password: profileNewPasswordInput ? profileNewPasswordInput.value : '',
+                                confirm_password: profileConfirmPasswordInput ? profileConfirmPasswordInput.value : ''
                             })
                         });
 

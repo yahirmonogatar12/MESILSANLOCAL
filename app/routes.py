@@ -99,6 +99,7 @@ from .po_wo_models import (
 )
 from .shipping_api import init_shipping_tables, register_shipping_routes
 from .smd_inventory_api import register_smd_inventory_routes
+from .tickets_portal import create_tickets_blueprint
 from .user_admin import user_admin_bp
 
 app = Flask(__name__)
@@ -197,6 +198,13 @@ def smt_simple():
 
 app.register_blueprint(user_admin_bp, url_prefix="/admin")
 app.register_blueprint(admin_bp)
+
+try:
+    if "tickets_portal" not in app.blueprints:
+        app.register_blueprint(create_tickets_blueprint(auth_system))
+        print(" Portal de Tickets registrado")
+except Exception as e:
+    print(f" Error registrando Portal de Tickets: {e}")
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):
@@ -590,6 +598,10 @@ def api_mi_perfil():
     payload = request.get_json(silent=True) or request.form
     nombre_completo = (payload.get("nombre_completo") or "").strip()
     email = (payload.get("email") or "").strip()
+    current_password = payload.get("current_password") or ""
+    new_password = payload.get("new_password") or ""
+    confirm_password = payload.get("confirm_password") or ""
+    change_password = bool(current_password or new_password or confirm_password)
 
     if not nombre_completo:
         return (
@@ -624,6 +636,62 @@ def api_mi_perfil():
             400,
         )
 
+    if change_password:
+        if not current_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Debes escribir tu contrasena actual",
+                    }
+                ),
+                400,
+            )
+
+        if not new_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Debes escribir una nueva contrasena",
+                    }
+                ),
+                400,
+            )
+
+        if len(new_password) < 6:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "La nueva contrasena debe tener al menos 6 caracteres",
+                    }
+                ),
+                400,
+            )
+
+        if new_password != confirm_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "La confirmacion de la nueva contrasena no coincide",
+                    }
+                ),
+                400,
+            )
+
+        if new_password == current_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "La nueva contrasena debe ser diferente a la actual",
+                    }
+                ),
+                400,
+            )
+
     conn = None
     cursor = None
     try:
@@ -632,23 +700,86 @@ def api_mi_perfil():
             raise RuntimeError("No se pudo obtener conexion a la base de datos")
 
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE usuarios_sistema
-            SET nombre_completo = %s,
-                email = %s,
-                modificado_por = %s,
-                fecha_modificacion = %s
-            WHERE username = %s
-            """,
-            (
-                nombre_completo,
-                email,
-                usuario,
-                auth_system.get_mexico_time_mysql(),
-                usuario,
-            ),
-        )
+        if change_password:
+            cursor.execute(
+                """
+                SELECT password_hash
+                FROM usuarios_sistema
+                WHERE username = %s
+                """,
+                (usuario,),
+            )
+            usuario_row = cursor.fetchone()
+            password_hash_actual = ""
+
+            if isinstance(usuario_row, dict):
+                password_hash_actual = usuario_row.get("password_hash") or ""
+            elif usuario_row:
+                password_hash_actual = usuario_row[0]
+
+            if not password_hash_actual:
+                conn.rollback()
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "message": "No fue posible validar tu contrasena actual",
+                        }
+                    ),
+                    404,
+                )
+
+            if password_hash_actual != auth_system.hash_password(current_password):
+                conn.rollback()
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "message": "La contrasena actual es incorrecta",
+                        }
+                    ),
+                    400,
+                )
+
+            cursor.execute(
+                """
+                UPDATE usuarios_sistema
+                SET nombre_completo = %s,
+                    email = %s,
+                    password_hash = %s,
+                    modificado_por = %s,
+                    fecha_modificacion = %s,
+                    intentos_fallidos = 0,
+                    bloqueado_hasta = NULL
+                WHERE username = %s
+                """,
+                (
+                    nombre_completo,
+                    email,
+                    auth_system.hash_password(new_password),
+                    usuario,
+                    auth_system.get_mexico_time_mysql(),
+                    usuario,
+                ),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE usuarios_sistema
+                SET nombre_completo = %s,
+                    email = %s,
+                    modificado_por = %s,
+                    fecha_modificacion = %s
+                WHERE username = %s
+                """,
+                (
+                    nombre_completo,
+                    email,
+                    usuario,
+                    auth_system.get_mexico_time_mysql(),
+                    usuario,
+                ),
+            )
 
         if cursor.rowcount == 0:
             conn.rollback()
@@ -690,14 +821,22 @@ def api_mi_perfil():
         usuario=usuario,
         modulo="sistema",
         accion="actualizar_perfil",
-        descripcion="Actualizacion de perfil desde la landing page",
+        descripcion=(
+            "Actualizacion de perfil y contrasena desde la landing page"
+            if change_password
+            else "Actualizacion de perfil desde la landing page"
+        ),
         resultado="EXITOSO",
     )
 
     return jsonify(
         {
             "success": True,
-            "message": "Perfil actualizado correctamente",
+            "message": (
+                "Perfil y contrasena actualizados correctamente"
+                if change_password
+                else "Perfil actualizado correctamente"
+            ),
             "perfil": {
                 "username": usuario,
                 "nombre_completo": nombre_completo,
