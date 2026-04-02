@@ -103,6 +103,7 @@ from .shipping_material_api import (
     register_shipping_material_routes,
 )
 from .smd_inventory_api import register_smd_inventory_routes
+from .tickets_portal import create_tickets_blueprint
 from .user_admin import user_admin_bp
 
 app = Flask(__name__)
@@ -231,6 +232,13 @@ def smt_simple():
 
 app.register_blueprint(user_admin_bp, url_prefix="/admin")
 app.register_blueprint(admin_bp)
+
+try:
+    if "tickets_portal" not in app.blueprints:
+        app.register_blueprint(create_tickets_blueprint(auth_system))
+        print(" Portal de Tickets registrado")
+except Exception as e:
+    print(f" Error registrando Portal de Tickets: {e}")
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):
@@ -577,6 +585,302 @@ def login():
 def inicio():
     """Landing page / Hub de aplicaciones"""
     return render_landing_page()
+
+
+@app.route("/api/mi-perfil", methods=["GET", "POST"])
+def api_mi_perfil():
+    """Consultar o actualizar el perfil del usuario autenticado."""
+    usuario = session.get("usuario")
+    if not usuario:
+        return jsonify({"success": False, "message": "Sesion expirada"}), 401
+
+    roles = session.get("roles") or auth_system.obtener_roles_usuario(usuario) or []
+    rol_principal = session.get("rol_principal") or (roles[0] if roles else "")
+    if roles and session.get("roles") != roles:
+        session["roles"] = roles
+        session["rol_principal"] = rol_principal
+        session.modified = True
+
+    info_usuario = auth_system.obtener_informacion_usuario(usuario)
+
+    if request.method == "GET":
+        nombre_completo = session.get("nombre_completo") or usuario
+        email = session.get("email") or ""
+        editable = bool(info_usuario)
+
+        if info_usuario:
+            nombre_completo = info_usuario.get("nombre_completo") or nombre_completo
+            email = info_usuario.get("email") or email
+            session["nombre_completo"] = nombre_completo
+            session["email"] = email
+            session.modified = True
+
+        return jsonify(
+            {
+                "success": True,
+                "perfil": {
+                    "username": usuario,
+                    "nombre_completo": nombre_completo,
+                    "email": email,
+                    "rol": rol_principal,
+                    "roles": roles,
+                    "editable": editable,
+                },
+            }
+        )
+
+    payload = request.get_json(silent=True) or request.form
+    nombre_completo = (payload.get("nombre_completo") or "").strip()
+    email = (payload.get("email") or "").strip()
+    current_password = payload.get("current_password") or ""
+    new_password = payload.get("new_password") or ""
+    confirm_password = payload.get("confirm_password") or ""
+    change_password = bool(current_password or new_password or confirm_password)
+
+    if not nombre_completo:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "El nombre completo es obligatorio",
+                }
+            ),
+            400,
+        )
+
+    if len(nombre_completo) > 120:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "El nombre completo es demasiado largo",
+                }
+            ),
+            400,
+        )
+
+    if email and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "El correo electronico no es valido",
+                }
+            ),
+            400,
+        )
+
+    if change_password:
+        if not current_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Debes escribir tu contrasena actual",
+                    }
+                ),
+                400,
+            )
+
+        if not new_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Debes escribir una nueva contrasena",
+                    }
+                ),
+                400,
+            )
+
+        if len(new_password) < 6:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "La nueva contrasena debe tener al menos 6 caracteres",
+                    }
+                ),
+                400,
+            )
+
+        if new_password != confirm_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "La confirmacion de la nueva contrasena no coincide",
+                    }
+                ),
+                400,
+            )
+
+        if new_password == current_password:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "La nueva contrasena debe ser diferente a la actual",
+                    }
+                ),
+                400,
+            )
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            raise RuntimeError("No se pudo obtener conexion a la base de datos")
+
+        cursor = conn.cursor()
+        if change_password:
+            cursor.execute(
+                """
+                SELECT password_hash
+                FROM usuarios_sistema
+                WHERE username = %s
+                """,
+                (usuario,),
+            )
+            usuario_row = cursor.fetchone()
+            password_hash_actual = ""
+
+            if isinstance(usuario_row, dict):
+                password_hash_actual = usuario_row.get("password_hash") or ""
+            elif usuario_row:
+                password_hash_actual = usuario_row[0]
+
+            if not password_hash_actual:
+                conn.rollback()
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "message": "No fue posible validar tu contrasena actual",
+                        }
+                    ),
+                    404,
+                )
+
+            if password_hash_actual != auth_system.hash_password(current_password):
+                conn.rollback()
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "message": "La contrasena actual es incorrecta",
+                        }
+                    ),
+                    400,
+                )
+
+            cursor.execute(
+                """
+                UPDATE usuarios_sistema
+                SET nombre_completo = %s,
+                    email = %s,
+                    password_hash = %s,
+                    modificado_por = %s,
+                    fecha_modificacion = %s,
+                    intentos_fallidos = 0,
+                    bloqueado_hasta = NULL
+                WHERE username = %s
+                """,
+                (
+                    nombre_completo,
+                    email,
+                    auth_system.hash_password(new_password),
+                    usuario,
+                    auth_system.get_mexico_time_mysql(),
+                    usuario,
+                ),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE usuarios_sistema
+                SET nombre_completo = %s,
+                    email = %s,
+                    modificado_por = %s,
+                    fecha_modificacion = %s
+                WHERE username = %s
+                """,
+                (
+                    nombre_completo,
+                    email,
+                    usuario,
+                    auth_system.get_mexico_time_mysql(),
+                    usuario,
+                ),
+            )
+
+        if cursor.rowcount == 0:
+            conn.rollback()
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "No fue posible actualizar este usuario",
+                    }
+                ),
+                404,
+            )
+
+        conn.commit()
+    except Exception as exc:
+        if conn:
+            conn.rollback()
+        print(f"Error actualizando perfil de {usuario}: {exc}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "No fue posible guardar los cambios",
+                }
+            ),
+            500,
+        )
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+    session["nombre_completo"] = nombre_completo
+    session["email"] = email
+    session.modified = True
+
+    auth_system.registrar_auditoria(
+        usuario=usuario,
+        modulo="sistema",
+        accion="actualizar_perfil",
+        descripcion=(
+            "Actualizacion de perfil y contrasena desde la landing page"
+            if change_password
+            else "Actualizacion de perfil desde la landing page"
+        ),
+        resultado="EXITOSO",
+    )
+
+    return jsonify(
+        {
+            "success": True,
+            "message": (
+                "Perfil y contrasena actualizados correctamente"
+                if change_password
+                else "Perfil actualizado correctamente"
+            ),
+            "perfil": {
+                "username": usuario,
+                "nombre_completo": nombre_completo,
+                "email": email,
+                "rol": rol_principal,
+                "roles": roles,
+                "editable": True,
+            },
+        }
+    )
 
 
 @app.route("/calendario")
@@ -15900,6 +16204,10 @@ def api_movimientos():
         tipo = request.args.get(
             "tipo", "", type=str
         ).strip()  # ENTRADA / SALIDA / AJUSTE / ""
+
+        if not desde:
+            # Mantener la consulta inicial acotada al dia actual en horario de Mexico.
+            desde = obtener_fecha_hora_mexico().strftime("%Y-%m-%d")
 
         where_conditions = []
         params = []

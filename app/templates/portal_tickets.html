@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Tickets - ILSAN</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #1a1d2e;
+            --bg-secondary: #232738;
+            --bg-card: #2a2e42;
+            --bg-card-hover: #313650;
+            --border-subtle: rgba(255,255,255,.07);
+            --border-active: rgba(14,159,110,.6);
+            --text-primary: #f0f3fa;
+            --text-secondary: #8b93a8;
+            --text-muted: #636b80;
+            --accent-green: #0e9f6e;
+            --accent-green-glow: rgba(14,159,110,.35);
+            --accent-blue: #3b82f6;
+            --accent-blue-glow: rgba(59,130,246,.25);
+            --accent-amber: #f59e0b;
+            --accent-amber-glow: rgba(245,158,11,.25);
+            --accent-red: #ef4444;
+            --accent-red-glow: rgba(239,68,68,.25);
+            --accent-purple: #8b5cf6;
+            --accent-purple-glow: rgba(139,92,246,.25);
+            --radius-sm: 12px;
+            --radius-md: 18px;
+            --radius-lg: 24px;
+            --radius-pill: 999px;
+            --shadow-card: 0 8px 32px rgba(0,0,0,.18);
+            --shadow-elevated: 0 16px 48px rgba(0,0,0,.28);
+            --transition-fast: .18s cubic-bezier(.4,0,.2,1);
+            --transition-normal: .3s cubic-bezier(.4,0,.2,1);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'LG regular', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ---- Scrollbar ---- */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+
+        /* ---- Page ---- */
+        .page-wrap { max-width: 1520px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+        /* ---- Hero Header ---- */
+        .hero {
+            position: relative;
+            background: linear-gradient(135deg, #01874c 0%, #0a6e3f 40%, #1663a7 100%);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 1.75rem;
+            box-shadow: 0 20px 50px rgba(1,135,76,.18), 0 8px 24px rgba(0,0,0,.2);
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 80% 20%, rgba(255,255,255,.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .hero-content { position: relative; z-index: 1; }
+        .hero h1 { font-size: 1.65rem; letter-spacing: -.02em; }
+        .hero-subtitle { color: rgba(255,255,255,.7); font-size: .92rem; }
+
+        /* ---- User chip ---- */
+        .user-chip {
+            display: inline-flex; align-items: center; gap: .5rem;
+            padding: .4rem .85rem .4rem .5rem;
+            background: rgba(255,255,255,.12);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,.15);
+            border-radius: var(--radius-pill);
+            font-weight: 700; font-size: .82rem;
+            transition: background var(--transition-fast);
+        }
+        .user-chip:hover { background: rgba(255,255,255,.18); }
+        .user-chip .avatar {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: grid; place-items: center;
+            font-size: .72rem; font-weight: 800; color: #fff;
+        }
+        .user-chip.superadmin .avatar { background: linear-gradient(135deg, var(--accent-amber), #d97706); }
+        .user-chip.regular .avatar { background: linear-gradient(135deg, var(--accent-blue), #2563eb); }
+
+        /* ---- Buttons ---- */
+        .btn-pill { border-radius: var(--radius-pill); font-weight: 700; font-size: .88rem; padding: .5rem 1.15rem; transition: all var(--transition-fast); }
+        .btn-main {
+            background: linear-gradient(135deg, #0e9f6e, #059669);
+            border: none; color: #fff;
+            box-shadow: 0 4px 16px rgba(14,159,110,.3);
+        }
+        .btn-main:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(14,159,110,.4); color: #fff; background: linear-gradient(135deg, #10b981, #0e9f6e); }
+        .btn-main:active { transform: translateY(0); }
+        .btn-ghost { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); color: #fff; }
+        .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.2); }
+
+        /* ---- Alert ---- */
+        .alert-portal {
+            display: none; border-radius: var(--radius-sm); padding: .85rem 1.1rem;
+            font-weight: 600; font-size: .9rem; margin: .75rem 0;
+            animation: alertSlide .35s cubic-bezier(.4,0,.2,1);
+        }
+        .alert-portal.show { display: flex; align-items: center; gap: .6rem; }
+        .alert-portal.success { background: rgba(14,159,110,.12); color: #6ee7b7; border: 1px solid rgba(14,159,110,.25); }
+        .alert-portal.success::before { content: '\f058'; font-family: 'Font Awesome 6 Free'; font-weight: 900; }
+        .alert-portal.error { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.25); }
+        .alert-portal.error::before { content: '\f06a'; font-family: 'Font Awesome 6 Free'; font-weight: 900; }
+        .alert-portal.info { background: rgba(59,130,246,.12); color: #93c5fd; border: 1px solid rgba(59,130,246,.25); }
+        .alert-portal.info::before { content: '\f05a'; font-family: 'Font Awesome 6 Free'; font-weight: 900; }
+        @keyframes alertSlide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ---- Summary Cards ---- */
+        .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; margin: 1rem 0; }
+        .summary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.1rem;
+            display: flex; align-items: center; gap: .85rem;
+            box-shadow: var(--shadow-card);
+            transition: all var(--transition-normal);
+            position: relative; overflow: hidden;
+        }
+        .summary-card::after {
+            content: '';
+            position: absolute; top: 0; left: 0;
+            width: 3px; height: 100%;
+            border-radius: 0 4px 4px 0;
+        }
+        .summary-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-elevated); }
+        .summary-card .icon-box {
+            width: 46px; height: 46px; border-radius: 14px;
+            display: grid; place-items: center; font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+        .summary-card .label { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); font-weight: 600; }
+        .summary-card .value { font-size: 1.7rem; font-weight: 800; line-height: 1.1; margin-top: .15rem; }
+        .sc-total .icon-box { background: rgba(59,130,246,.14); color: var(--accent-blue); }
+        .sc-total::after { background: var(--accent-blue); }
+        .sc-total .value { color: var(--accent-blue); }
+        .sc-open .icon-box { background: rgba(14,159,110,.14); color: var(--accent-green); }
+        .sc-open::after { background: var(--accent-green); }
+        .sc-open .value { color: var(--accent-green); }
+        .sc-progress .icon-box { background: rgba(245,158,11,.14); color: var(--accent-amber); }
+        .sc-progress::after { background: var(--accent-amber); }
+        .sc-progress .value { color: var(--accent-amber); }
+
+        /* ---- Layout ---- */
+        .layout { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 1rem; align-items: start; }
+        .sidebar { display: grid; gap: .85rem; }
+
+        /* ---- Panel ---- */
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            transition: box-shadow var(--transition-normal);
+        }
+        .panel-body { padding: 1.15rem; }
+        .panel-header {
+            padding: 1rem 1.15rem .5rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .panel-title { font-size: .92rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+
+        /* ---- Forms ---- */
+        .form-label { font-size: .8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .35rem; }
+        .form-control, .form-select {
+            background: rgba(255,255,255,.05); color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,.1); border-radius: var(--radius-sm);
+            min-height: 44px; font-size: .9rem;
+            transition: all var(--transition-fast);
+        }
+        .form-select option { background: #2a2e42; color: var(--text-primary); }
+        .form-control::placeholder { color: var(--text-muted); }
+        .form-control:focus, .form-select:focus {
+            background: rgba(255,255,255,.07); color: var(--text-primary);
+            border-color: rgba(14,159,110,.5);
+            box-shadow: 0 0 0 3px var(--accent-green-glow);
+        }
+        textarea.form-control { min-height: 120px; resize: vertical; }
+
+        /* ---- Search ---- */
+        .search-box {
+            position: relative; margin-bottom: .75rem;
+        }
+        .search-box input {
+            padding-left: 2.5rem;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+        }
+        .search-box .search-icon {
+            position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+            color: var(--text-muted); font-size: .85rem; pointer-events: none;
+        }
+
+        /* ---- Ticket List ---- */
+        .list { display: grid; gap: .55rem; max-height: 680px; overflow-y: auto; padding-right: 2px; }
+        .ticket-item {
+            display: block; width: 100%; text-align: left;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm); padding: .85rem 1rem;
+            background: rgba(255,255,255,.025); cursor: pointer;
+            transition: all var(--transition-fast);
+            position: relative; overflow: hidden;
+        }
+        .ticket-item::before {
+            content: '';
+            position: absolute; top: 0; left: 0;
+            width: 3px; height: 100%;
+            border-radius: 0 3px 3px 0;
+            opacity: 0;
+            transition: opacity var(--transition-fast);
+        }
+        .ticket-item:hover, .ticket-item.active {
+            border-color: var(--border-active);
+            background: rgba(14,159,110,.06);
+            transform: translateX(2px);
+        }
+        .ticket-item:hover::before, .ticket-item.active::before { opacity: 1; background: var(--accent-green); }
+        .ticket-item .ticket-title { font-weight: 700; font-size: .9rem; line-height: 1.3; color: var(--text-primary); }
+        .ticket-item .ticket-meta { font-size: .78rem; color: var(--text-secondary); margin-top: .2rem; }
+        .ticket-item .ticket-preview { font-size: .8rem; color: var(--text-muted); margin-top: .4rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ticket-item .ticket-badges { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
+        .ticket-item .ticket-time { font-size: .72rem; color: var(--text-muted); white-space: nowrap; }
+        .ticket-item .msg-count {
+            display: inline-flex; align-items: center; gap: .25rem;
+            font-size: .72rem; color: var(--text-secondary); margin-left: auto;
+        }
+
+        /* ---- Badges ---- */
+        .badge-chip {
+            display: inline-flex; align-items: center; gap: .3rem;
+            padding: .22rem .6rem; border-radius: var(--radius-pill);
+            border: 1px solid transparent;
+            font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .03em;
+            white-space: nowrap;
+        }
+        .type-normal { background: rgba(59,130,246,.12); color: #93c5fd; border-color: rgba(59,130,246,.25); }
+        .type-superticket { background: rgba(245,158,11,.14); color: #fcd34d; border-color: rgba(245,158,11,.28); }
+        .status-abierto { background: rgba(14,159,110,.14); color: #6ee7b7; border-color: rgba(14,159,110,.28); }
+        .status-en_proceso { background: rgba(59,130,246,.14); color: #93c5fd; border-color: rgba(59,130,246,.28); }
+        .status-resuelto { background: rgba(139,92,246,.14); color: #c4b5fd; border-color: rgba(139,92,246,.28); }
+        .status-cerrado { background: rgba(239,68,68,.12); color: #fca5a5; border-color: rgba(239,68,68,.25); }
+        .priority-baja { background: rgba(107,114,128,.14); color: #9ca3af; border-color: rgba(107,114,128,.25); }
+        .priority-media { background: rgba(59,130,246,.1); color: #93c5fd; border-color: rgba(59,130,246,.2); }
+        .priority-alta { background: rgba(245,158,11,.14); color: #fcd34d; border-color: rgba(245,158,11,.28); }
+        .priority-critica { background: rgba(239,68,68,.16); color: #fca5a5; border-color: rgba(239,68,68,.3); }
+
+        /* ---- Priority dot ---- */
+        .priority-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+            box-shadow: 0 0 6px currentColor;
+        }
+        .priority-dot.baja { color: #6b7280; background: #6b7280; }
+        .priority-dot.media { color: var(--accent-blue); background: var(--accent-blue); }
+        .priority-dot.alta { color: var(--accent-amber); background: var(--accent-amber); }
+        .priority-dot.critica { color: var(--accent-red); background: var(--accent-red); animation: pulseDot 1.8s ease infinite; }
+        @keyframes pulseDot { 0%, 100% { box-shadow: 0 0 4px currentColor; } 50% { box-shadow: 0 0 12px currentColor; } }
+
+        /* ---- Detail Empty ---- */
+        .detail-empty {
+            min-height: 680px; display: grid; place-items: center; text-align: center;
+            color: var(--text-secondary); padding: 2rem;
+        }
+        .detail-empty .empty-icon {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle);
+            display: grid; place-items: center; margin: 0 auto 1.25rem;
+            font-size: 1.8rem; color: var(--text-muted);
+        }
+        .detail-empty h2 { font-size: 1.25rem; margin-bottom: .5rem; }
+        .detail-empty p { color: var(--text-muted); font-size: .9rem; }
+
+        /* ---- Detail Meta ---- */
+        .meta-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; margin-bottom: 1rem; }
+        .meta-box {
+            border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+            background: rgba(255,255,255,.025); padding: .85rem;
+            transition: background var(--transition-fast);
+        }
+        .meta-box:hover { background: rgba(255,255,255,.04); }
+        .meta-box .meta-label { display: block; font-size: .72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .25rem; }
+        .meta-box .meta-value { font-weight: 700; font-size: .92rem; }
+
+        /* ---- Section box ---- */
+        .section-box {
+            border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+            background: rgba(255,255,255,.02); padding: 1.15rem;
+        }
+        .section-title { font-size: .95rem; font-weight: 800; margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
+        .section-title i { color: var(--text-muted); font-size: .85rem; }
+
+        /* ---- Messages / Chat ---- */
+        .messages { display: grid; gap: .65rem; }
+        .message {
+            max-width: min(85%, 720px);
+            border-radius: var(--radius-md); padding: .9rem 1rem;
+            border: 1px solid var(--border-subtle);
+            background: rgba(255,255,255,.03);
+            position: relative;
+            animation: msgAppear .3s cubic-bezier(.4,0,.2,1);
+        }
+        @keyframes msgAppear { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .message.me {
+            margin-left: auto;
+            background: rgba(59,130,246,.1);
+            border-color: rgba(59,130,246,.22);
+        }
+        .message.superadmin {
+            background: rgba(245,158,11,.08);
+            border-color: rgba(245,158,11,.2);
+        }
+        .message .msg-header {
+            display: flex; justify-content: space-between; align-items: center; gap: .75rem;
+            margin-bottom: .45rem;
+        }
+        .message .msg-author { font-weight: 700; font-size: .88rem; display: flex; align-items: center; gap: .45rem; }
+        .message .msg-author .author-avatar {
+            width: 26px; height: 26px; border-radius: 50%;
+            display: inline-grid; place-items: center;
+            font-size: .65rem; font-weight: 800; color: #fff; flex-shrink: 0;
+        }
+        .message.me .msg-author .author-avatar { background: linear-gradient(135deg, var(--accent-blue), #2563eb); }
+        .message.superadmin .msg-author .author-avatar { background: linear-gradient(135deg, var(--accent-amber), #d97706); }
+        .message:not(.me):not(.superadmin) .msg-author .author-avatar { background: linear-gradient(135deg, #6b7280, #4b5563); }
+        .message .msg-time { font-size: .74rem; color: var(--text-muted); white-space: nowrap; }
+        .message .msg-role { font-size: .68rem; color: var(--text-muted); background: rgba(255,255,255,.06); padding: .15rem .45rem; border-radius: var(--radius-pill); }
+        .message .msg-body { font-size: .9rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+
+        /* ---- Attachments ---- */
+        .attachment-grid { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .65rem; }
+        .attachment-thumb {
+            display: block; width: 110px; height: 82px;
+            border-radius: 10px; border: 1px solid var(--border-subtle);
+            object-fit: cover; overflow: hidden;
+            background: rgba(255,255,255,.03);
+            transition: all var(--transition-fast);
+        }
+        .attachment-thumb:hover { border-color: var(--accent-green); transform: scale(1.04); box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+        .file-note { color: var(--text-muted); font-size: .78rem; margin-top: .3rem; }
+
+        /* ---- Quick Actions ---- */
+        .ticket-quick-actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
+
+        /* ---- Modal ---- */
+        .ticket-modal-backdrop {
+            position: fixed; inset: 0;
+            display: none; align-items: center; justify-content: center;
+            padding: 1rem;
+            background: rgba(0,0,0,.65);
+            backdrop-filter: blur(6px);
+            z-index: 3000;
+            animation: fadeIn .2s ease;
+        }
+        .ticket-modal-backdrop.show { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .ticket-modal-card {
+            width: min(100%, 680px); max-height: 90vh; overflow: auto;
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 32px 80px rgba(0,0,0,.4);
+            animation: modalSlide .3s cubic-bezier(.4,0,.2,1);
+        }
+        @keyframes modalSlide { from { opacity: 0; transform: translateY(20px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* ---- Loading Skeleton ---- */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.08) 50%, rgba(255,255,255,.04) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* ---- Responsive ---- */
+        @media (max-width: 1280px) {
+            .layout { grid-template-columns: 360px minmax(0, 1fr); }
+        }
+        @media (max-width: 1080px) {
+            .layout { grid-template-columns: 1fr; }
+            .meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 768px) {
+            .summary { grid-template-columns: 1fr 1fr 1fr; }
+            .meta-grid { grid-template-columns: 1fr; }
+            .page-wrap { padding: .85rem; }
+            .hero { padding: 1.1rem; border-radius: var(--radius-md); }
+            .hero h1 { font-size: 1.3rem; }
+            .message { max-width: 100%; }
+            .ticket-modal-card { border-radius: var(--radius-md); }
+            .panel { border-radius: var(--radius-md); }
+        }
+        @media (max-width: 480px) {
+            .summary { grid-template-columns: 1fr; gap: .5rem; }
+            .summary-card { padding: .75rem; }
+            .summary-card .value { font-size: 1.4rem; }
+            .summary-card .icon-box { width: 38px; height: 38px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrap">
+        <!-- ===== HERO ===== -->
+        <div class="hero">
+            <div class="hero-content d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h1 class="m-0 fw-bold text-white">
+                        <i class="fas fa-headset me-2" style="opacity:.85;"></i>Portal de Tickets
+                    </h1>
+                    <p class="hero-subtitle mb-0 mt-1">Sistema de seguimiento y soporte interno ILSAN</p>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="user-chip {{ 'superadmin' if ticket_bootstrap.current_user.is_superadmin else 'regular' }}">
+                        <span class="avatar">
+                            <i class="fas {{ 'fa-shield-halved' if ticket_bootstrap.current_user.is_superadmin else 'fa-user' }}"></i>
+                        </span>
+                        {{ ticket_bootstrap.current_user.display_name }}
+                        <span style="opacity:.6;font-weight:400;">|</span>
+                        {{ 'Superadmin' if ticket_bootstrap.current_user.is_superadmin else ticket_bootstrap.current_user.primary_role }}
+                    </span>
+                    <button type="button" class="btn btn-main btn-pill" id="open-create-ticket-modal">
+                        <i class="fas fa-plus me-1"></i> Nuevo Ticket
+                    </button>
+                    <a href="/inicio" class="btn btn-ghost btn-pill">
+                        <i class="fas fa-arrow-left me-1"></i> Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ALERT ===== -->
+        <div id="portal-alert" class="alert-portal"></div>
+
+        <!-- ===== SUMMARY (solo superadmin) ===== -->
+        {% if ticket_bootstrap.current_user.is_superadmin %}
+        <div class="summary">
+            <div class="summary-card sc-total">
+                <div class="icon-box"><i class="fas fa-layer-group"></i></div>
+                <div><div class="label">Total</div><div class="value" id="summary-total">0</div></div>
+            </div>
+            <div class="summary-card sc-open">
+                <div class="icon-box"><i class="fas fa-folder-open"></i></div>
+                <div><div class="label">Abiertos</div><div class="value" id="summary-open">0</div></div>
+            </div>
+            <div class="summary-card sc-progress">
+                <div class="icon-box"><i class="fas fa-spinner"></i></div>
+                <div><div class="label">En Proceso</div><div class="value" id="summary-progress">0</div></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ===== MAIN LAYOUT ===== -->
+        <div class="layout">
+            <aside class="sidebar">
+                <!-- Filters -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title"><i class="fas fa-sliders me-2" style="opacity:.5;"></i>Filtros</h3>
+                    </div>
+                    <div class="panel-body" style="padding-top:.25rem;">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label" for="filter-status">Estado</label>
+                                <select id="filter-status" class="form-select">
+                                    <option value="">Todos</option>
+                                    <option value="abierto">Abierto</option>
+                                    <option value="en_proceso">En proceso</option>
+                                    <option value="resuelto">Resuelto</option>
+                                    <option value="cerrado">Cerrado</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" for="filter-type">Tipo</label>
+                                <select id="filter-type" class="form-select">
+                                    <option value="">Todos</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="superticket">SuperTicket</option>
+                                </select>
+                            </div>
+                            <div class="col-12" id="scope-wrapper" style="display:none;">
+                                <label class="form-label" for="filter-scope">Alcance</label>
+                                <select id="filter-scope" class="form-select">
+                                    <option value="all">Todos los tickets</option>
+                                    <option value="mine">Solo mis tickets</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Ticket List -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title"><i class="fas fa-ticket me-2" style="opacity:.5;"></i>Tickets</h3>
+                        <span class="badge-chip type-normal" id="tickets-count-badge" style="font-size:.68rem;">0</span>
+                    </div>
+                    <div class="panel-body" style="padding-top:0;">
+                        <div class="search-box">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" class="form-control" id="ticket-search" placeholder="Buscar tickets...">
+                        </div>
+                        <div id="tickets-list" class="list">
+                            <div class="text-center py-4">
+                                <div class="skeleton" style="height:64px;margin-bottom:.5rem;"></div>
+                                <div class="skeleton" style="height:64px;margin-bottom:.5rem;"></div>
+                                <div class="skeleton" style="height:64px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Detail Panel -->
+            <section id="ticket-detail" class="panel">
+                <div class="panel-body detail-empty">
+                    <div>
+                        <div class="empty-icon"><i class="fas fa-ticket"></i></div>
+                        <h2 class="fw-bold">Selecciona un ticket</h2>
+                        <p>Abre uno del listado para ver detalle, responder o cambiar estado.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- ===== CREATE MODAL ===== -->
+    <div class="ticket-modal-backdrop" id="create-ticket-modal" aria-hidden="true">
+        <div class="ticket-modal-card">
+            <div class="panel-body">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <h2 class="h4 fw-bold mb-1"><i class="fas fa-plus-circle me-2" style="color:var(--accent-green);"></i>Crear Ticket</h2>
+                        <p class="mb-0" style="color:var(--text-secondary);font-size:.88rem;">Crea tickets normales o supertickets. Adjunta imagenes si es necesario.</p>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-pill" id="close-create-ticket-modal" style="padding:.4rem .7rem;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="create-ticket-form" class="d-grid gap-3">
+                    <div>
+                        <label class="form-label" for="ticket-title">Titulo</label>
+                        <input id="ticket-title" class="form-control" maxlength="180" placeholder="Describe brevemente el problema" required>
+                    </div>
+                    <div>
+                        <label class="form-label" for="ticket-description">Descripcion</label>
+                        <textarea id="ticket-description" class="form-control" minlength="10" placeholder="Describe a detalle la situacion, incluye pasos para reproducir si aplica..." required></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <input type="hidden" id="ticket-type" value="normal">
+                        <div class="col-6">
+                            <label class="form-label" for="ticket-priority">Prioridad</label>
+                            <select id="ticket-priority" class="form-select">
+                                <option value="baja">Baja</option>
+                                <option value="media" selected>Media</option>
+                                <option value="alta">Alta</option>
+                                <option value="critica">Critica</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="ticket-category">Categoria</label>
+                            <select id="ticket-category" class="form-select">
+                                <option value="general">General</option>
+                                <option value="sistema">Sistema</option>
+                                <option value="material">Material</option>
+                                <option value="calidad">Calidad</option>
+                                <option value="infraestructura">Infra</option>
+                                <option value="acceso">Acceso</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="ticket-attachments">Imagenes</label>
+                            <input id="ticket-attachments" class="form-control" type="file" accept="image/*" multiple>
+                            <div class="file-note" id="ticket-attachments-note">Puedes adjuntar hasta 5 imagenes.</div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 pt-1">
+                        <button type="button" class="btn btn-ghost btn-pill" id="cancel-create-ticket">Cancelar</button>
+                        <button class="btn btn-main btn-pill" type="submit">
+                            <i class="fas fa-paper-plane me-1"></i> Crear Ticket
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>window.TICKET_PORTAL_BOOTSTRAP = {{ ticket_bootstrap | tojson }};</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const boot = window.TICKET_PORTAL_BOOTSTRAP || {};
+            const user = boot.current_user || {};
+            const state = { tickets: [], filteredTickets: [], selectedId: null, searchTerm: '' };
+
+            // DOM refs
+            const alertBox = document.getElementById('portal-alert');
+            const listEl = document.getElementById('tickets-list');
+            const detailEl = document.getElementById('ticket-detail');
+            const createForm = document.getElementById('create-ticket-form');
+            const createModal = document.getElementById('create-ticket-modal');
+            const openCreateModalButton = document.getElementById('open-create-ticket-modal');
+            const closeCreateModalButton = document.getElementById('close-create-ticket-modal');
+            const cancelCreateTicketButton = document.getElementById('cancel-create-ticket');
+            const createAttachmentsInput = document.getElementById('ticket-attachments');
+            const createAttachmentsNote = document.getElementById('ticket-attachments-note');
+            const filterStatus = document.getElementById('filter-status');
+            const filterType = document.getElementById('filter-type');
+            const filterScope = document.getElementById('filter-scope');
+            const scopeWrapper = document.getElementById('scope-wrapper');
+            const searchInput = document.getElementById('ticket-search');
+            const countBadge = document.getElementById('tickets-count-badge');
+            const defaultCreateAttachmentNote = 'Puedes adjuntar hasta 5 imagenes.';
+            const summaryEls = {
+                total: document.getElementById('summary-total'),
+                open: document.getElementById('summary-open'),
+                progress: document.getElementById('summary-progress')
+            };
+
+            if (user.is_superadmin && scopeWrapper) scopeWrapper.style.display = 'block';
+
+            // Utilities
+            const esc = (v) => String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+            const fmt = (v) => {
+                if (!v) return '-';
+                const d = new Date(String(v).replace(' ','T'));
+                return Number.isNaN(d.getTime()) ? v : d.toLocaleString('es-MX',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+            };
+            const fmtRelative = (v) => {
+                if (!v) return '';
+                const d = new Date(String(v).replace(' ','T'));
+                if (Number.isNaN(d.getTime())) return v;
+                const diff = Date.now() - d.getTime();
+                const mins = Math.floor(diff/60000);
+                if (mins < 1) return 'Ahora';
+                if (mins < 60) return `hace ${mins}m`;
+                const hrs = Math.floor(mins/60);
+                if (hrs < 24) return `hace ${hrs}h`;
+                const days = Math.floor(hrs/24);
+                if (days < 7) return `hace ${days}d`;
+                return fmt(v);
+            };
+            const badgeCls = (kind, val) => `${kind}-${String(val||'').replace(/\s+/g,'_')}`;
+            const initials = (name) => {
+                const parts = String(name||'?').trim().split(/\s+/);
+                return parts.length > 1 ? (parts[0][0]+parts[1][0]).toUpperCase() : parts[0].substring(0,2).toUpperCase();
+            };
+
+            const requestFetch = async (url, opts = {}) => {
+                const headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers||{});
+                const resp = await fetch(url, Object.assign({}, opts, {headers}));
+                const data = await resp.json().catch(()=>({}));
+                if (!resp.ok || !data.success) throw new Error(data.message||'Operacion no disponible');
+                return data;
+            };
+            const jsonFetch = async (url, opts = {}) => requestFetch(url, opts);
+            const formFetch = async (url, formData, opts = {}) => requestFetch(url, Object.assign({}, opts, {body:formData}));
+
+            let alertTimer = null;
+            const showAlert = (msg, type='info') => {
+                clearTimeout(alertTimer);
+                alertBox.textContent = msg||'';
+                alertBox.className = 'alert-portal';
+                if (msg) {
+                    alertBox.classList.add('show', type);
+                    alertTimer = setTimeout(() => { alertBox.classList.remove('show'); }, 6000);
+                }
+            };
+
+            const animateValue = (el, target) => {
+                const current = parseInt(el.textContent)||0;
+                if (current === target) return;
+                el.textContent = target;
+                el.style.transform = 'scale(1.15)';
+                el.style.transition = 'transform .3s cubic-bezier(.4,0,.2,1)';
+                setTimeout(() => { el.style.transform = 'scale(1)'; }, 300);
+            };
+
+            const setSummary = (data = {}) => {
+                if (summaryEls.total) animateValue(summaryEls.total, data.total||0);
+                if (summaryEls.open) animateValue(summaryEls.open, data.open||0);
+                if (summaryEls.progress) animateValue(summaryEls.progress, data.in_progress||0);
+            };
+
+            const emptyDetail = (title, message, icon='fa-ticket') => {
+                detailEl.innerHTML = `
+                    <div class="panel-body detail-empty">
+                        <div>
+                            <div class="empty-icon"><i class="fas ${esc(icon)}"></i></div>
+                            <h2 class="fw-bold">${esc(title)}</h2>
+                            <p>${esc(message)}</p>
+                        </div>
+                    </div>`;
+            };
+
+            const renderSelectedFiles = (target, files, baseMsg) => {
+                if (!target) return;
+                if (!files || !files.length) { target.textContent = baseMsg; return; }
+                const names = Array.from(files).slice(0,3).map(f=>f.name);
+                const suffix = files.length > 3 ? ` y ${files.length-3} mas` : '';
+                target.textContent = `${files.length} imagen(es): ${names.join(', ')}${suffix}`;
+            };
+
+            const attachmentsHtml = (atts) => {
+                if (!atts || !atts.length) return '';
+                return `<div class="attachment-grid">${atts.map(a=>`
+                    <a href="${esc(a.file_url)}" target="_blank" rel="noopener noreferrer" title="${esc(a.original_name||'Imagen')}">
+                        <img class="attachment-thumb" src="${esc(a.file_url)}" alt="${esc(a.original_name||'Imagen')}">
+                    </a>`).join('')}</div>`;
+            };
+
+            // Modal
+            const openCreateModal = () => {
+                if (!createModal) return;
+                createModal.classList.add('show');
+                createModal.setAttribute('aria-hidden','false');
+                document.body.style.overflow = 'hidden';
+                setTimeout(()=>{ const t=document.getElementById('ticket-title'); if(t) t.focus(); },60);
+            };
+            const closeCreateModal = () => {
+                if (!createModal) return;
+                createModal.classList.remove('show');
+                createModal.setAttribute('aria-hidden','true');
+                document.body.style.overflow = '';
+            };
+
+            // Search filter
+            const applySearch = () => {
+                const term = state.searchTerm.toLowerCase();
+                if (!term) {
+                    state.filteredTickets = state.tickets;
+                } else {
+                    state.filteredTickets = state.tickets.filter(t =>
+                        (t.title||'').toLowerCase().includes(term) ||
+                        (t.ticket_no||'').toLowerCase().includes(term) ||
+                        (t.requester_name||'').toLowerCase().includes(term) ||
+                        (t.description||'').toLowerCase().includes(term) ||
+                        (t.category||'').toLowerCase().includes(term)
+                    );
+                }
+                if (countBadge) countBadge.textContent = state.filteredTickets.length;
+                renderList();
+            };
+
+            // Render ticket list
+            const renderList = () => {
+                const tickets = state.filteredTickets;
+                if (!tickets.length) {
+                    listEl.innerHTML = `
+                        <div class="text-center py-4" style="color:var(--text-muted);">
+                            <i class="fas fa-search fa-2x mb-2" style="opacity:.3;"></i>
+                            <div>${state.searchTerm ? 'Sin resultados para la busqueda.' : 'No hay tickets con los filtros actuales.'}</div>
+                        </div>`;
+                    return;
+                }
+                listEl.innerHTML = tickets.map(t => `
+                    <button type="button" class="ticket-item ${state.selectedId === t.id ? 'active' : ''}" data-ticket-id="${t.id}">
+                        <div class="d-flex align-items-start gap-2">
+                            <div class="priority-dot ${esc(t.priority)}" style="margin-top:6px;" title="Prioridad: ${esc(t.priority)}"></div>
+                            <div style="flex:1;min-width:0;">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="ticket-title">${esc(t.title)}</div>
+                                    <span class="ticket-time">${fmtRelative(t.updated_at)}</span>
+                                </div>
+                                <div class="ticket-meta">${esc(t.ticket_no)} &middot; ${esc(t.requester_name||t.requester_username||'')}</div>
+                                <div class="ticket-preview">${esc(t.last_message_preview||t.description||'')}</div>
+                                <div class="ticket-badges">
+                                    <span class="badge-chip ${badgeCls('type',t.ticket_type)}">${esc(t.ticket_type)}</span>
+                                    <span class="badge-chip ${badgeCls('status',t.status)}">${esc(t.status)}</span>
+                                    <span class="badge-chip ${badgeCls('priority',t.priority)}">${esc(t.priority)}</span>
+                                    ${t.message_count > 0 ? `<span class="msg-count"><i class="fas fa-comment-dots"></i> ${t.message_count}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                `).join('');
+
+                listEl.querySelectorAll('[data-ticket-id]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        state.selectedId = Number(btn.dataset.ticketId);
+                        renderList();
+                        loadDetail(state.selectedId);
+                    });
+                });
+            };
+
+            // Render detail
+            const renderDetail = (ticket, messages) => {
+                const canReply = ticket.permissions && ticket.permissions.can_reply;
+                const canChangeStatus = ticket.permissions && ticket.permissions.can_change_status;
+                const lockText = ticket.ticket_type === 'superticket' && !canReply
+                    ? `<div class="d-flex align-items-center gap-2 mb-3 py-2 px-3" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.18);border-radius:var(--radius-sm);font-size:.85rem;color:#fcd34d;">
+                        <i class="fas fa-lock"></i> Solo superadmin puede contestar supertickets.
+                       </div>`
+                    : '';
+                const replyAttachmentNote = 'Puedes adjuntar hasta 5 imagenes.';
+
+                detailEl.innerHTML = `
+                    <div class="panel-body">
+                        <!-- Header -->
+                        <div class="d-flex flex-wrap justify-content-between gap-3 mb-3">
+                            <div>
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    <span class="badge-chip ${badgeCls('type',ticket.ticket_type)}">
+                                        <i class="fas ${ticket.ticket_type==='superticket'?'fa-bolt':'fa-ticket'}"></i>
+                                        ${esc(ticket.ticket_type)}
+                                    </span>
+                                    <span class="badge-chip ${badgeCls('status',ticket.status)}">
+                                        <i class="fas ${ticket.status==='abierto'?'fa-circle-dot':ticket.status==='en_proceso'?'fa-spinner':ticket.status==='resuelto'?'fa-circle-check':'fa-lock'}"></i>
+                                        ${esc(ticket.status)}
+                                    </span>
+                                    <span class="badge-chip ${badgeCls('priority',ticket.priority)}">
+                                        <span class="priority-dot ${esc(ticket.priority)}" style="width:6px;height:6px;"></span>
+                                        ${esc(ticket.priority)}
+                                    </span>
+                                </div>
+                                <div style="font-size:.82rem;color:var(--text-muted);">${esc(ticket.ticket_no)}</div>
+                                <h2 class="fw-bold mb-0 mt-1" style="font-size:1.35rem;line-height:1.3;">${esc(ticket.title)}</h2>
+                            </div>
+                            <div class="text-end" style="font-size:.82rem;color:var(--text-muted);">
+                                <div>Ultimo movimiento</div>
+                                <strong style="color:var(--text-primary);">${fmt(ticket.last_message_at)}</strong>
+                            </div>
+                        </div>
+
+                        ${canChangeStatus && ticket.status !== 'cerrado' ? `
+                            <div class="ticket-quick-actions mb-3">
+                                ${ticket.status !== 'en_proceso' ? `
+                                <button type="button" class="btn btn-ghost btn-pill" style="border-color:rgba(59,130,246,.3);color:#93c5fd;" id="ticket-progress-button">
+                                    <i class="fas fa-spinner me-1"></i> En proceso
+                                </button>` : ''}
+                                ${ticket.status !== 'resuelto' ? `
+                                <button type="button" class="btn btn-ghost btn-pill" style="border-color:rgba(139,92,246,.3);color:#c4b5fd;" id="ticket-resolve-button">
+                                    <i class="fas fa-check-circle me-1"></i> Resolver
+                                </button>` : ''}
+                                <button type="button" class="btn btn-ghost btn-pill" style="border-color:rgba(239,68,68,.3);color:#fca5a5;" id="ticket-close-button">
+                                    <i class="fas fa-lock me-1"></i> Cerrar
+                                </button>
+                            </div>
+                        ` : ''}
+
+                        <!-- Meta -->
+                        <div class="meta-grid">
+                            <div class="meta-box">
+                                <span class="meta-label"><i class="fas fa-user me-1"></i>Solicitante</span>
+                                <div class="meta-value">${esc(ticket.requester_name||ticket.requester_username||'')}</div>
+                            </div>
+                            <div class="meta-box">
+                                <span class="meta-label"><i class="fas fa-user-check me-1"></i>Asignado a</span>
+                                <div class="meta-value">${esc(ticket.assigned_to_name||'Sin asignar')}</div>
+                            </div>
+                            <div class="meta-box">
+                                <span class="meta-label"><i class="fas fa-tag me-1"></i>Categoria</span>
+                                <div class="meta-value">${esc(ticket.category||'general')}</div>
+                            </div>
+                            <div class="meta-box">
+                                <span class="meta-label"><i class="fas fa-calendar me-1"></i>Creado</span>
+                                <div class="meta-value">${fmt(ticket.created_at)}</div>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="section-box mb-3">
+                            <div class="section-title"><i class="fas fa-align-left"></i> Descripcion inicial</div>
+                            <p class="mb-0" style="white-space:pre-wrap;font-size:.9rem;line-height:1.6;color:var(--text-secondary);">${esc(ticket.description||'')}</p>
+                        </div>
+
+                        <!-- Conversation -->
+                        <div class="section-box mb-3">
+                            <div class="section-title"><i class="fas fa-comments"></i> Conversacion <span style="font-size:.75rem;color:var(--text-muted);font-weight:400;margin-left:.5rem;">${messages.length} mensaje(s)</span></div>
+                            <div class="messages">
+                                ${messages.length ? messages.map(msg => `
+                                    <article class="message ${msg.is_current_user?'me':''} ${msg.is_superadmin_reply?'superadmin':''}">
+                                        <div class="msg-header">
+                                            <div class="msg-author">
+                                                <span class="author-avatar">${initials(msg.author_name||msg.author_username||'?')}</span>
+                                                ${esc(msg.author_name||msg.author_username||'')}
+                                                <span class="msg-role">${esc(msg.author_role||'usuario')}</span>
+                                            </div>
+                                            <span class="msg-time">${fmt(msg.created_at)}</span>
+                                        </div>
+                                        <div class="msg-body">${esc(msg.message_body||'')}</div>
+                                        ${attachmentsHtml(msg.attachments)}
+                                    </article>
+                                `).join('') : '<div style="text-align:center;padding:1.5rem;color:var(--text-muted);"><i class="fas fa-comment-slash" style="opacity:.4;"></i><div class="mt-2">Aun no hay mensajes.</div></div>'}
+                            </div>
+                        </div>
+
+                        ${canChangeStatus ? `
+                            <div class="section-box mb-3">
+                                <div class="section-title"><i class="fas fa-cog"></i> Control de estado</div>
+                                <form id="ticket-status-form" class="row g-2 align-items-end">
+                                    <div class="col-md-4">
+                                        <label class="form-label" for="ticket-status-select">Nuevo estado</label>
+                                        <select id="ticket-status-select" class="form-select">
+                                            <option value="abierto" ${ticket.status==='abierto'?'selected':''}>Abierto</option>
+                                            <option value="en_proceso" ${ticket.status==='en_proceso'?'selected':''}>En proceso</option>
+                                            <option value="resuelto" ${ticket.status==='resuelto'?'selected':''}>Resuelto</option>
+                                            <option value="cerrado" ${ticket.status==='cerrado'?'selected':''}>Cerrado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="ticket-status-comment">Comentario</label>
+                                        <input id="ticket-status-comment" class="form-control" placeholder="Opcional...">
+                                    </div>
+                                    <div class="col-md-2 d-flex justify-content-end">
+                                        <button class="btn btn-ghost btn-pill w-100" type="submit"><i class="fas fa-save me-1"></i> Aplicar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        ` : ''}
+
+                        <!-- Reply -->
+                        <div class="section-box">
+                            <div class="section-title"><i class="fas fa-reply"></i> Responder</div>
+                            ${lockText}
+                            <form id="ticket-reply-form" class="d-grid gap-3">
+                                <div>
+                                    <textarea id="ticket-reply-message" class="form-control" placeholder="${canReply ? 'Escribe tu respuesta...' : 'Sin permiso para responder'}" ${canReply?'':'disabled'} style="min-height:100px;"></textarea>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+                                    <div style="flex:1;min-width:200px;">
+                                        <input id="ticket-reply-attachments" class="form-control" type="file" accept="image/*" multiple ${canReply?'':'disabled'} style="min-height:38px;font-size:.85rem;">
+                                        <div class="file-note" id="ticket-reply-attachments-note">${replyAttachmentNote}</div>
+                                    </div>
+                                    <button class="btn btn-main btn-pill" type="submit" ${canReply?'':'disabled'}>
+                                        <i class="fas fa-paper-plane me-1"></i> Enviar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+
+                // Reply form
+                const replyForm = document.getElementById('ticket-reply-form');
+                if (replyForm && canReply) {
+                    const replyAttIn = document.getElementById('ticket-reply-attachments');
+                    const replyAttNote = document.getElementById('ticket-reply-attachments-note');
+                    if (replyAttIn) replyAttIn.addEventListener('change', () => renderSelectedFiles(replyAttNote, replyAttIn.files, replyAttachmentNote));
+                    replyForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const msg = document.getElementById('ticket-reply-message').value.trim();
+                        if (!msg) { showAlert('Escribe un mensaje para responder.','error'); return; }
+                        try {
+                            const fd = new FormData();
+                            fd.append('message', msg);
+                            Array.from((replyAttIn&&replyAttIn.files)||[]).forEach(f=>fd.append('attachments',f));
+                            const data = await formFetch(`/api/tickets/${ticket.id}/reply`, fd, {method:'POST',headers:{}});
+                            showAlert(data.message||'Respuesta enviada','success');
+                            await loadTickets(ticket.id);
+                        } catch(err) { showAlert(err.message||'No fue posible responder','error'); }
+                    });
+                }
+
+                // Status form
+                const statusForm = document.getElementById('ticket-status-form');
+                if (statusForm) {
+                    statusForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        try {
+                            const data = await jsonFetch(`/api/tickets/${ticket.id}/status`, {
+                                method:'POST',
+                                headers:{'Content-Type':'application/json'},
+                                body:JSON.stringify({status:document.getElementById('ticket-status-select').value,comment:document.getElementById('ticket-status-comment').value.trim()})
+                            });
+                            showAlert(data.message||'Estado actualizado','success');
+                            await loadTickets(ticket.id);
+                        } catch(err) { showAlert(err.message||'No fue posible actualizar','error'); }
+                    });
+                }
+
+                // Quick action buttons
+                const quickStatus = async (status, comment) => {
+                    try {
+                        const data = await jsonFetch(`/api/tickets/${ticket.id}/status`, {
+                            method:'POST',
+                            headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({status,comment})
+                        });
+                        showAlert(data.message||'Estado actualizado','success');
+                        await loadTickets(ticket.id);
+                    } catch(err) { showAlert(err.message||'No fue posible actualizar','error'); }
+                };
+                const closeBtn = document.getElementById('ticket-close-button');
+                if (closeBtn) closeBtn.addEventListener('click', ()=>quickStatus('cerrado','Ticket cerrado por superadmin'));
+                const resolveBtn = document.getElementById('ticket-resolve-button');
+                if (resolveBtn) resolveBtn.addEventListener('click', ()=>quickStatus('resuelto','Ticket resuelto por superadmin'));
+                const progressBtn = document.getElementById('ticket-progress-button');
+                if (progressBtn) progressBtn.addEventListener('click', ()=>quickStatus('en_proceso','Ticket en proceso'));
+            };
+
+            // Load detail
+            const loadDetail = async (ticketId) => {
+                if (!ticketId) { emptyDetail('Selecciona un ticket','Usa el panel izquierdo para abrirlo.'); return; }
+                detailEl.innerHTML = `<div class="panel-body" style="min-height:400px;display:grid;place-items:center;"><div class="skeleton" style="width:80%;height:200px;"></div></div>`;
+                try {
+                    const data = await jsonFetch(`/api/tickets/${ticketId}`);
+                    renderDetail(data.ticket, data.messages||[]);
+                } catch(err) {
+                    showAlert(err.message||'No fue posible cargar el ticket','error');
+                    emptyDetail('Error cargando ticket','Intenta abrirlo de nuevo.','fa-exclamation-triangle');
+                }
+            };
+
+            // Load tickets
+            const loadTickets = async (preferredId) => {
+                const params = new URLSearchParams();
+                if (filterStatus.value) params.set('status', filterStatus.value);
+                if (filterType.value) params.set('type', filterType.value);
+                if (user.is_superadmin && filterScope && filterScope.value) params.set('scope', filterScope.value);
+                try {
+                    const data = await jsonFetch(`/api/tickets?${params.toString()}`);
+                    state.tickets = data.tickets||[];
+                    setSummary(data.summary||{});
+
+                    if (preferredId) {
+                        const found = state.tickets.find(t=>t.id===preferredId);
+                        state.selectedId = found ? found.id : null;
+                    } else if (state.selectedId) {
+                        const found = state.tickets.find(t=>t.id===state.selectedId);
+                        state.selectedId = found ? found.id : null;
+                    } else {
+                        state.selectedId = null;
+                    }
+
+                    applySearch();
+
+                    if (state.selectedId) {
+                        await loadDetail(state.selectedId);
+                    } else if (state.tickets.length) {
+                        emptyDetail('Selecciona un ticket','Haz click en uno del listado para ver su detalle.');
+                    } else {
+                        emptyDetail('Sin tickets','Crea uno nuevo o cambia los filtros.','fa-inbox');
+                    }
+                } catch(err) {
+                    showAlert(err.message||'No fue posible cargar tickets','error');
+                    emptyDetail('Error de conexion','Reintenta en unos momentos.','fa-wifi');
+                }
+            };
+
+            // Create ticket
+            createForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                try {
+                    const fd = new FormData();
+                    fd.append('title', document.getElementById('ticket-title').value.trim());
+                    fd.append('description', document.getElementById('ticket-description').value.trim());
+                    fd.append('ticket_type', document.getElementById('ticket-type').value);
+                    fd.append('priority', document.getElementById('ticket-priority').value);
+                    fd.append('category', document.getElementById('ticket-category').value);
+                    Array.from((createAttachmentsInput&&createAttachmentsInput.files)||[]).forEach(f=>fd.append('attachments',f));
+                    const data = await formFetch('/api/tickets', fd, {method:'POST',headers:{}});
+                    createForm.reset();
+                    document.getElementById('ticket-type').value = 'normal';
+                    document.getElementById('ticket-priority').value = 'media';
+                    document.getElementById('ticket-category').value = 'general';
+                    renderSelectedFiles(createAttachmentsNote, null, defaultCreateAttachmentNote);
+                    closeCreateModal();
+                    showAlert(data.message||'Ticket creado correctamente','success');
+                    await loadTickets(data.ticket ? data.ticket.id : null);
+                } catch(err) { showAlert(err.message||'No fue posible crear el ticket','error'); }
+            });
+
+            // Events
+            if (createAttachmentsInput) createAttachmentsInput.addEventListener('change', ()=>renderSelectedFiles(createAttachmentsNote, createAttachmentsInput.files, defaultCreateAttachmentNote));
+            if (openCreateModalButton) openCreateModalButton.addEventListener('click', openCreateModal);
+            if (closeCreateModalButton) closeCreateModalButton.addEventListener('click', closeCreateModal);
+            if (cancelCreateTicketButton) cancelCreateTicketButton.addEventListener('click', closeCreateModal);
+            if (createModal) createModal.addEventListener('click', (e)=>{ if(e.target===createModal) closeCreateModal(); });
+            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'&&createModal&&createModal.classList.contains('show')) closeCreateModal(); });
+
+            let searchDebounce = null;
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchDebounce);
+                    searchDebounce = setTimeout(() => {
+                        state.searchTerm = searchInput.value.trim();
+                        applySearch();
+                    }, 200);
+                });
+            }
+
+            [filterStatus, filterType, filterScope].forEach(el => {
+                if (!el) return;
+                el.addEventListener('change', () => loadTickets());
+            });
+
+            renderSelectedFiles(createAttachmentsNote, null, defaultCreateAttachmentNote);
+            loadTickets();
+        });
+    </script>
+</body>
+</html>

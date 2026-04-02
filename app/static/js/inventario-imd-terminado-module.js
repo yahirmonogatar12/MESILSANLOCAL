@@ -1,15 +1,15 @@
 /**
- * Módulo de Inventario IMD Terminado
+ * Modulo de Inventario IMD Terminado
  * Encapsula toda la funcionalidad para gestionar el inventario de productos IMD terminados
- * Usa patrón IIFE para evitar conflictos de variables globales
+ * Usa patron IIFE para evitar conflictos de variables globales
  */
 (function() {
     'use strict';
     
-    // Variables privadas del módulo
+    // Variables privadas del modulo
     let datosOriginalesIMD = {
         'g': [], // Inventario general
-        'u': [], // Ubicación  
+        'u': [], // Ubicacion
         'm': []  // Movimientos
     };
     
@@ -18,6 +18,21 @@
         'u': {},
         'm': {}
     };
+
+    const moduloTiming = {
+        startedAt: null,
+        etapas: {
+            inicio_modulo: { duracion_ms: 0, desde_inicio_ms: 0 },
+            render_html: null,
+            inventario_general: null,
+            ubicacion: null,
+            movimientos: null
+        }
+    };
+
+    let movimientosCargados = false;
+    let movimientosEnCarga = null;
+    let snapshotFechasProgramadas = false;
 
     // Funciones utilitarias privadas
     function fmt(v) { 
@@ -35,9 +50,68 @@
     function qsa(sel) { 
         return Array.from(document.querySelectorAll(sel)); 
     }
+
+    function nowMs() {
+        if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+            return performance.now();
+        }
+        return Date.now();
+    }
     
     function todayISO() { 
-        return new Date().toISOString().split('T')[0]; 
+        const now = new Date();
+        const local = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+        return local.toISOString().split('T')[0];
+    }
+
+    moduloTiming.startedAt = nowMs();
+
+    function registrarEtapa(etapa, inicioEtapa) {
+        const finishedAt = nowMs();
+        const duracionMs = Math.round(finishedAt - inicioEtapa);
+        const desdeInicioMs = Math.round(finishedAt - moduloTiming.startedAt);
+
+        moduloTiming.etapas[etapa] = {
+            duracion_ms: duracionMs,
+            desde_inicio_ms: desdeInicioMs
+        };
+
+        console.log(`[IMD][timing] ${etapa}: ${duracionMs}ms (${desdeInicioMs}ms desde inicio)`);
+        return moduloTiming.etapas[etapa];
+    }
+
+    async function medirEtapa(etapa, fn) {
+        const inicioEtapa = nowMs();
+        try {
+            return await fn();
+        } finally {
+            registrarEtapa(etapa, inicioEtapa);
+        }
+    }
+
+    function programarCargaSnapshotFechas() {
+        if (snapshotFechasProgramadas) return;
+        snapshotFechasProgramadas = true;
+
+        const run = () => {
+            try {
+                S.loadFechas();
+            } catch (error) {
+                console.error('Error diferido cargando fechas de snapshot:', error);
+            }
+        };
+
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(() => requestAnimationFrame(run));
+            return;
+        }
+
+        setTimeout(run, 0);
+    }
+
+    function cargarMovimientosSiHaceFalta() {
+        if (movimientosCargados || movimientosEnCarga) return movimientosEnCarga;
+        return M.load();
     }
 
     // Funciones para filtros IMD
@@ -85,11 +159,11 @@
         const select = document.querySelector(`#filtro-${tabla}-${columna} .filter-select-imd`);
         if (!select || !datosOriginalesIMD[tabla].length) return;
         
-        // Mantener opciones fijas y agregar dinámicas según la columna
+        // Mantener opciones fijas y agregar dinamicas segun la columna
         const opcionesFijas = Array.from(select.querySelectorAll('option')).map(opt => opt.value);
         const valoresUnicos = new Set();
         
-        // Obtener valores únicos de la columna
+        // Obtener valores unicos de la columna
         datosOriginalesIMD[tabla].forEach(fila => {
             const valor = fila[columna];
             if (valor && valor !== '' && valor !== null && valor !== undefined) {
@@ -97,7 +171,7 @@
             }
         });
         
-        // Agregar opciones dinámicas (solo si no existen en las fijas)
+        // Agregar opciones dinamicas (solo si no existen en las fijas)
         const valoresOrdenados = Array.from(valoresUnicos).sort();
         valoresOrdenados.forEach(valor => {
             if (!opcionesFijas.includes(valor)) {
@@ -118,7 +192,7 @@
         
         aplicarTodosFiltrosIMD(tabla);
         
-        // Cerrar el filtro después de aplicar
+        // Cerrar el filtro despues de aplicar
         document.getElementById(`filtro-${tabla}-${columna}`).style.display = 'none';
         document.querySelector(`button[onclick="toggleFiltroIMD('${tabla}', '${columna}')"]`).classList.remove('active');
     }
@@ -170,7 +244,7 @@
                 } else if (columna === 'stock_total' && valorFiltro === '=0') {
                     return parseInt(valorCelda || 0) === 0;
                 } else {
-                    // Filtro de texto - búsqueda que contiene (case-insensitive)
+                    // Filtro de texto - busqueda que contiene (case-insensitive)
                     const valorTexto = (valorCelda || '').toString().toLowerCase();
                     const filtroTexto = valorFiltro.toLowerCase();
                     return valorTexto.includes(filtroTexto);
@@ -202,7 +276,7 @@
                     <td>${fmt(fila.ultima_salida)}</td>
                     <td>${fmt(fila.tipo_inventario)}</td>`;
             } else if (tabla === 'u') {
-                // Ubicación
+                // Ubicacion
                 tr.innerHTML = `
                     <td>${fmt(fila.fecha || fila.fecha_registro || '')}</td>
                     <td title="${fmt(fila.modelo)}">${fmt(fila.modelo)}</td>
@@ -275,7 +349,7 @@
         });
     }
 
-    // Función para exportar datos a Excel
+    // Funcion para exportar datos a Excel
     function exportarExcelIMD(datos, nombreArchivo, columnas) {
         if (!datos || datos.length === 0) {
             alert('No hay datos para exportar');
@@ -314,35 +388,29 @@
         document.body.removeChild(link);
     }
 
-    // Configuración de módulos de funcionalidad
+    // Configuracion de modulos de funcionalidad
     const U = {
         url: '/api/ubicacion',
-        load: async () => {
-            qs('#INVIMDPCBID_u-loading').style.display = 'block'; 
-            qs('#INVIMDPCBID_u-status').textContent = 'Cargando…';
+        load: async () => medirEtapa('ubicacion', async () => {
+            qs('#INVIMDPCBID_u-loading').style.display = 'block';
+            qs('#INVIMDPCBID_u-status').textContent = 'Cargando...';
             try {
-                const r = await fetch(U.url); 
+                const r = await fetch(U.url);
                 const data = await r.json();
                 const rows = data.items || data.data || [];
-                
-                // Guardar datos originales para filtros
                 datosOriginalesIMD['u'] = rows;
-                filtrosIMD['u'] = {}; // Resetear filtros
-                
-                // Usar función de actualización que soporta filtros
+                filtrosIMD['u'] = {};
                 actualizarTablaIMD('u', rows);
-                
                 qs('#INVIMDPCBID_u-status').textContent = `${rows.length} registros`;
             } catch (e) {
-                qs('#INVIMDPCBID_u-status').textContent = 'Error de conexión';
-            } finally { 
-                qs('#INVIMDPCBID_u-loading').style.display = 'none'; 
+                qs('#INVIMDPCBID_u-status').textContent = 'Error de conexion';
+            } finally {
+                qs('#INVIMDPCBID_u-loading').style.display = 'none';
             }
-        },
+        }),
         clear: () => {
             qs('#INVIMDPCBID_u-table tbody').innerHTML = '';
             qs('#INVIMDPCBID_u-status').textContent = 'Limpio';
-            // Limpiar datos y filtros
             datosOriginalesIMD['u'] = [];
             limpiarTodosFiltrosIMD('u');
         }
@@ -351,42 +419,54 @@
     const M = {
         url: '/api/movimientos',
         load: async () => {
-            const desde = qs('#INVIMDPCBID_m-desde').value;
-            const hasta = qs('#INVIMDPCBID_m-hasta').value;
-            
-            const p = new URLSearchParams();
-            if (desde) p.append('desde', desde);
-            if (hasta) p.append('hasta', hasta);
+            if (movimientosEnCarga) {
+                return movimientosEnCarga;
+            }
 
-            qs('#INVIMDPCBID_m-loading').style.display = 'block'; 
-            qs('#INVIMDPCBID_m-status').textContent = 'Cargando…';
+            movimientosEnCarga = medirEtapa('movimientos', async () => {
+                let desde = qs('#INVIMDPCBID_m-desde').value;
+                const hasta = qs('#INVIMDPCBID_m-hasta').value;
+
+                if (!desde) {
+                    desde = todayISO();
+                    qs('#INVIMDPCBID_m-desde').value = desde;
+                }
+
+                const p = new URLSearchParams();
+                if (desde) p.append('desde', desde);
+                if (hasta) p.append('hasta', hasta);
+
+                qs('#INVIMDPCBID_m-loading').style.display = 'block';
+                qs('#INVIMDPCBID_m-status').textContent = 'Cargando...';
+                try {
+                    const r = await fetch(M.url + (p.toString() ? `?${p.toString()}` : ''));
+                    const data = await r.json();
+                    const rows = data.items || data.data || [];
+                    datosOriginalesIMD['m'] = rows;
+                    filtrosIMD['m'] = {};
+                    movimientosCargados = true;
+                    actualizarTablaIMD('m', rows);
+                    qs('#INVIMDPCBID_m-status').textContent = `${rows.length} movimientos`;
+                } catch (e) {
+                    qs('#INVIMDPCBID_m-status').textContent = 'Error de conexion';
+                } finally {
+                    qs('#INVIMDPCBID_m-loading').style.display = 'none';
+                }
+            });
+
             try {
-                const r = await fetch(M.url + (p.toString() ? `?${p.toString()}` : '')); 
-                const data = await r.json();
-                const rows = data.items || data.data || [];
-                
-                // Guardar datos originales para filtros
-                datosOriginalesIMD['m'] = rows;
-                filtrosIMD['m'] = {}; // Resetear filtros
-                
-                // Usar función de actualización que soporta filtros
-                actualizarTablaIMD('m', rows);
-                
-                qs('#INVIMDPCBID_m-status').textContent = `${rows.length} movimientos`;
-            } catch (e) {
-                qs('#INVIMDPCBID_m-status').textContent = 'Error de conexión';
-            } finally { 
-                qs('#INVIMDPCBID_m-loading').style.display = 'none'; 
+                return await movimientosEnCarga;
+            } finally {
+                movimientosEnCarga = null;
             }
         },
         clear: () => {
-            ['INVIMDPCBID_m-desde', 'INVIMDPCBID_m-hasta'].forEach(id => { 
-                const el = qs('#' + id); 
-                if (el) el.value = ''; 
+            ['INVIMDPCBID_m-desde', 'INVIMDPCBID_m-hasta'].forEach(id => {
+                const el = qs('#' + id);
+                if (el) el.value = '';
             });
             qs('#INVIMDPCBID_m-table tbody').innerHTML = '';
-            qs('#INVIMDPCBID_m-status').textContent = 'Limpio';
-            // Limpiar datos y filtros
+            qs('#INVIMDPCBID_m-status').textContent = 'Listo para consultar';
             datosOriginalesIMD['m'] = [];
             limpiarTodosFiltrosIMD('m');
         }
@@ -394,32 +474,26 @@
 
     const G = {
         url: '/api/inventario_general',
-        load: async () => {
-            qs('#INVIMDPCBID_g-loading').style.display = 'block'; 
-            qs('#INVIMDPCBID_g-status').textContent = 'Cargando…';
+        load: async () => medirEtapa('inventario_general', async () => {
+            qs('#INVIMDPCBID_g-loading').style.display = 'block';
+            qs('#INVIMDPCBID_g-status').textContent = 'Cargando...';
             try {
-                const r = await fetch(G.url); 
+                const r = await fetch(G.url);
                 const data = await r.json();
                 const rows = data.items || data.data || [];
-                
-                // Guardar datos originales para filtros
                 datosOriginalesIMD['g'] = rows;
-                filtrosIMD['g'] = {}; // Resetear filtros
-                
-                // Usar función de actualización que soporta filtros
+                filtrosIMD['g'] = {};
                 actualizarTablaIMD('g', rows);
-                
-                qs('#INVIMDPCBID_g-status').textContent = `${rows.length} ítems`;
+                qs('#INVIMDPCBID_g-status').textContent = `${rows.length} items`;
             } catch (e) {
-                qs('#INVIMDPCBID_g-status').textContent = 'Error de conexión';
-            } finally { 
-                qs('#INVIMDPCBID_g-loading').style.display = 'none'; 
+                qs('#INVIMDPCBID_g-status').textContent = 'Error de conexion';
+            } finally {
+                qs('#INVIMDPCBID_g-loading').style.display = 'none';
             }
-        },
+        }),
         clear: () => {
             qs('#INVIMDPCBID_g-table tbody').innerHTML = '';
             qs('#INVIMDPCBID_g-status').textContent = 'Limpio';
-            // Limpiar datos y filtros
             datosOriginalesIMD['g'] = [];
             limpiarTodosFiltrosIMD('g');
         },
@@ -428,14 +502,11 @@
                 alert('No hay datos para exportar. Primero realiza una consulta.');
                 return;
             }
-            
-            // Crear datos para Excel
+
             const datos = datosOriginalesIMD['g'];
-            const headers = ['Modelo', 'No. Parte', 'Stock Total', 'Ubicaciones', 'Última Entrada', 'Última Salida', 'Tipo Inventario'];
-            
-            // Crear CSV content
+            const headers = ['Modelo', 'No. Parte', 'Stock Total', 'Ubicaciones', 'Ultima Entrada', 'Ultima Salida', 'Tipo Inventario'];
             let csvContent = headers.join(',') + '\n';
-            
+
             datos.forEach(row => {
                 const fila = [
                     `"${row.modelo || ''}"`,
@@ -448,27 +519,25 @@
                 ];
                 csvContent += fila.join(',') + '\n';
             });
-            
-            // Crear y descargar archivo
+
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            
-            // Nombre del archivo con fecha
-            const fecha = new Date().toISOString().split('T')[0];
+
+            const fecha = todayISO();
             link.setAttribute('download', `inventario_imd_general_${fecha}.csv`);
-            
+
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
+
             qs('#INVIMDPCBID_g-status').textContent = `Exportados ${datos.length} registros a Excel`;
         }
     };
 
-    // Snapshot histórico
+    // Snapshot historico
     let snapshotMode = false;
 
     // Cache de fechas con snapshot disponible
@@ -559,19 +628,23 @@
         }
     };
 
-    // Configuración de eventos
+    // Configuracion de eventos
     function configurarEventos() {
-        // Tabs
         qsa('.tab-imd').forEach(b => {
             b.addEventListener('click', () => {
+                const panel = b.dataset.panel;
+
                 qsa('.tab-imd').forEach(t => t.classList.remove('active'));
                 qsa('.panel-imd').forEach(p => p.classList.remove('active'));
                 b.classList.add('active');
-                qs('#INVIMDPCBID_panel-' + b.dataset.panel).classList.add('active');
+                qs('#INVIMDPCBID_panel-' + panel).classList.add('active');
+
+                if (panel === 'movimientos') {
+                    cargarMovimientosSiHaceFalta();
+                }
             });
         });
 
-        // Ubicación
         if (qs('#INVIMDPCBID_u-buscar')) {
             qs('#INVIMDPCBID_u-buscar').addEventListener('click', U.load);
         }
@@ -585,7 +658,7 @@
                     { key: 'fecha', header: 'Fecha' },
                     { key: 'modelo', header: 'Modelo' },
                     { key: 'nparte', header: 'N. Parte' },
-                    { key: 'ubicacion', header: 'Ubicación' },
+                    { key: 'ubicacion', header: 'Ubicacion' },
                     { key: 'cantidad', header: 'Cantidad' },
                     { key: 'tipo_inventario', header: 'Tipo Inventario' },
                     { key: 'comentario', header: 'Comentario' },
@@ -596,8 +669,10 @@
             });
         }
 
-        // Movimientos
         setDefaultDates(['INVIMDPCBID_m-desde']);
+        if (qs('#INVIMDPCBID_m-status')) {
+            qs('#INVIMDPCBID_m-status').textContent = 'Listo para consultar';
+        }
         if (qs('#INVIMDPCBID_m-buscar')) {
             qs('#INVIMDPCBID_m-buscar').addEventListener('click', M.load);
         }
@@ -613,7 +688,7 @@
                     { key: 'nparte', header: 'N. Parte' },
                     { key: 'modelo', header: 'Modelo' },
                     { key: 'cantidad', header: 'Cantidad' },
-                    { key: 'ubicacion', header: 'Ubicación' },
+                    { key: 'ubicacion', header: 'Ubicacion' },
                     { key: 'tipo_inventario', header: 'Tipo Inventario' },
                     { key: 'comentario', header: 'Comentario' },
                     { key: 'carro', header: 'Carro' }
@@ -622,7 +697,6 @@
             });
         }
 
-        // Inventario General
         if (qs('#INVIMDPCBID_g-buscar')) {
             qs('#INVIMDPCBID_g-buscar').addEventListener('click', G.load);
         }
@@ -633,7 +707,6 @@
             qs('#INVIMDPCBID_g-exportar').addEventListener('click', G.exportarExcel);
         }
 
-        // Snapshot histórico
         if (qs('#INVIMDPCBID_snapshot-cargar')) {
             qs('#INVIMDPCBID_snapshot-cargar').addEventListener('click', S.cargar);
         }
@@ -641,9 +714,7 @@
             qs('#INVIMDPCBID_snapshot-volver').addEventListener('click', S.volverEnVivo);
         }
 
-        // Cerrar filtros IMD al hacer clic fuera
         document.addEventListener('click', function(event) {
-            // Solo procesar si no es un click en elementos de filtro
             if (!event.target.closest('.filterable-header-imd')) {
                 document.querySelectorAll('.header-filter-imd').forEach(filter => {
                     filter.style.display = 'none';
@@ -655,29 +726,27 @@
         });
     }
 
-    // Función de inicialización
     function inicializarInventarioIMD() {
-        // Test mode with mock data when ?test=1
-        function isTestMode() { 
-            return window.location.search.indexOf('test=1') >= 0; 
+        function isTestMode() {
+            return window.location.search.indexOf('test=1') >= 0;
         }
-        
+
         if (isTestMode()) {
             (function() {
                 var mock = {
-                    '/api/ubicacion': { 
+                    '/api/ubicacion': {
                         items: [
                             {fecha:'2025-08-10', modelo:'ES1D', nparte:'0DR100009MA', ubicacion:'A1-01', cantidad:120, carro:'C1', usuario:'yahir'},
                             {fecha:'2025-08-10', modelo:'US1J', nparte:'0DR100009CC', ubicacion:'B2-03', cantidad:60, carro:'C2', usuario:'admin'}
                         ]
                     },
-                    '/api/movimientos': { 
+                    '/api/movimientos': {
                         items: [
                             {fecha_hora:'2025-08-10 08:15', tipo:'ENTRADA', nparte:'0DR100009MA', modelo:'ES1D', cantidad:120, ubicacion:'A1-01', carro:'C1', usuario:'yahir'},
                             {fecha_hora:'2025-08-10 09:10', tipo:'SALIDA', nparte:'0DR100009CC', modelo:'US1J', cantidad:20, ubicacion:'B2-03', carro:'C2', usuario:'admin'}
                         ]
                     },
-                    '/api/inventario_general': { 
+                    '/api/inventario_general': {
                         items: [
                             {modelo:'ES1D', nparte:'0DR100009MA', stock_total:1000, ubicaciones:'A1-01,C1; B1-02,C3', ultima_entrada:'2025-08-09', ultima_salida:'2025-08-10'},
                             {modelo:'US1J', nparte:'0DR100009CC', stock_total:500, ubicaciones:'B2-03,C2', ultima_entrada:'2025-08-08', ultima_salida:'2025-08-10'}
@@ -695,25 +764,23 @@
             })();
         }
 
-        // Configurar eventos
+        registrarEtapa('render_html', moduloTiming.startedAt);
         configurarEventos();
 
-        // Auto-cargar al abrir
-        G.load();        // Inventario general
-        U.load();        // Ubicaciones
-        M.load();        // Movimientos
-        S.loadFechas();  // Poblar dropdown de snapshots históricos
-        
-        // Prepara estados
+        G.load();
+        U.load();
+        programarCargaSnapshotFechas();
+
         const globalStatus = qs('#INVIMDPCBID_globalStatus');
         if (globalStatus) {
             globalStatus.textContent = 'Inventario IMD Terminado';
         }
 
-        console.log('Módulo Inventario IMD Terminado inicializado correctamente');
+        console.log('Modulo Inventario IMD Terminado inicializado correctamente');
+        console.table(moduloTiming.etapas);
     }
 
-    // Auto-inicialización cuando el DOM esté listo
+    // Auto-inicializacion cuando el DOM este listo
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', inicializarInventarioIMD);
     } else {
@@ -725,7 +792,7 @@
     window.aplicarFiltroTextoIMD = aplicarFiltroTextoIMD;
     window.limpiarTodosFiltrosIMD = limpiarTodosFiltrosIMD;
 
-    // Exportar el módulo completo para uso externo
+    // Exportar el modulo completo para uso externo
     window.inventarioIMDModule = {
         inicializar: inicializarInventarioIMD,
         datosOriginales: datosOriginalesIMD,
@@ -733,7 +800,10 @@
         U: U,
         M: M,
         G: G,
-        S: S
+        S: S,
+        metricas: moduloTiming,
+        cargarMovimientos: cargarMovimientosSiHaceFalta
     };
 
 })();
+

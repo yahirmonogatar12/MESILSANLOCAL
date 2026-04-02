@@ -1,8 +1,27 @@
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 _cached_app = None
+
+
+def _env_flag(name, default=False):
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return str(val).strip().lower() in ("1", "true", "yes", "on", "si")
+
+
+def should_run_startup_init():
+    if _env_flag("MES_FORCE_STARTUP_INIT", False):
+        return True
+    if _env_flag("MES_SKIP_STARTUP_INIT", False):
+        return False
+    if _env_flag("MES_USE_RELOADER", False):
+        return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+    return True
 
 
 def create_app():
@@ -23,20 +42,20 @@ def create_app():
         register_smt_routes(app)
         registrar_rutas_po_wo(app)
 
-        if 'aoi_api' not in app.blueprints:
+        if "aoi_api" not in app.blueprints:
             app.register_blueprint(aoi_api)
 
-        if 'control_modelos_bp' not in app.blueprints:
+        if "control_modelos_bp" not in app.blueprints:
             app.register_blueprint(control_modelos_bp)
 
-        if 'api_raw' not in app.blueprints:
+        if "api_raw" not in app.blueprints:
             app.register_blueprint(api_raw)
 
-        # Shipping API para app móvil de embarques
         register_shipping_routes(app)
-        init_shipping_tables()
+        if should_run_startup_init():
+            init_shipping_tables()
 
-        if 'health' not in app.view_functions:
+        if "health" not in app.view_functions:
             @app.get("/")
             def health():
                 return "ok", 200
