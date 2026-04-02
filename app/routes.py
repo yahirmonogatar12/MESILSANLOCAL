@@ -98,6 +98,10 @@ from .po_wo_models import (
     verificar_wo_existe,
 )
 from .shipping_api import init_shipping_tables, register_shipping_routes
+from .shipping_material_api import (
+    init_shipping_material_tables,
+    register_shipping_material_routes,
+)
 from .smd_inventory_api import register_smd_inventory_routes
 from .user_admin import user_admin_bp
 
@@ -143,6 +147,7 @@ register_smd_inventory_routes(app)
 
 # Registrar rutas Shipping API (App móvil de embarques)
 register_shipping_routes(app)
+register_shipping_material_routes(app)
 
 # Registrar rutas API PO → WO
 # registrar_rutas_po_wo(app)  # Comentado para evitar conflicto con run.py
@@ -174,10 +179,39 @@ if STARTUP_INIT_ENABLED:
     _startup_log("Iniciando init_shipping_tables()")
     init_shipping_tables()
     _startup_log("init_shipping_tables() completado")
+
+    _startup_log("Iniciando init_shipping_material_tables()")
+    init_shipping_material_tables()
+    _startup_log("init_shipping_material_tables() completado")
 else:
     _startup_log("Saltando auth_system.init_database() por configuración/reloader")
 
 # Registrar Blueprints de administración
+
+
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    database_status = "unavailable"
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        cursor.close()
+        conn.close()
+        database_status = "ok"
+    except Exception:
+        database_status = "error"
+
+    return jsonify(
+        {
+            "status": "OK",
+            "service": "MESILSANLOCAL",
+            "database": database_status,
+            "timestamp": obtener_fecha_hora_mexico().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    )
 
 # SMT Routes Simple
 try:

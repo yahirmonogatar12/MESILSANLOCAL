@@ -33,6 +33,202 @@ logger = logging.getLogger(__name__)
 shipping_api = Blueprint('shipping_api', __name__, url_prefix='/api/shipping')
 
 
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+SESSION_DURATION_HOURS = 24
+FULL_ACCESS_DEPARTMENTS = {'Sistemas', 'Gerencia', 'Administración'}
+AVAILABLE_DEPARTMENTS = [
+    'Almacén de Embarques',
+    'Calidad',
+    'Sistemas',
+    'Gerencia',
+    'Administración',
+]
+AVAILABLE_CARGOS = [
+    'Operador de Embarques',
+    'Supervisor de Embarques',
+    'Inspector de Calidad',
+    'Administrador',
+]
+AVAILABLE_SHIPPING_PERMISSIONS = [
+    {
+        'key': 'view_warehousing',
+        'name': 'Ver entradas',
+        'description': 'Permite consultar el módulo de entradas de material.',
+    },
+    {
+        'key': 'write_warehousing',
+        'name': 'Registrar entradas',
+        'description': 'Permite capturar y editar entradas de material.',
+    },
+    {
+        'key': 'multi_edit_warehousing',
+        'name': 'Edición múltiple de entradas',
+        'description': 'Permite editar varias entradas de material al mismo tiempo.',
+    },
+    {
+        'key': 'view_outgoing',
+        'name': 'Ver salidas',
+        'description': 'Permite consultar el módulo de salidas.',
+    },
+    {
+        'key': 'write_outgoing',
+        'name': 'Registrar salidas',
+        'description': 'Permite capturar y editar salidas de material.',
+    },
+    {
+        'key': 'view_inventory',
+        'name': 'Ver inventario',
+        'description': 'Permite consultar el inventario.',
+    },
+    {
+        'key': 'view_iqc',
+        'name': 'Ver IQC',
+        'description': 'Permite consultar la inspección de calidad.',
+    },
+    {
+        'key': 'write_iqc',
+        'name': 'Registrar IQC',
+        'description': 'Permite capturar resultados de inspección de calidad.',
+    },
+    {
+        'key': 'view_quarantine',
+        'name': 'Ver cuarentena',
+        'description': 'Permite consultar el módulo de cuarentena.',
+    },
+    {
+        'key': 'send_quarantine',
+        'name': 'Enviar a cuarentena',
+        'description': 'Permite enviar material a cuarentena.',
+    },
+    {
+        'key': 'release_quarantine',
+        'name': 'Liberar cuarentena',
+        'description': 'Permite liberar o modificar material en cuarentena.',
+    },
+    {
+        'key': 'view_blacklist',
+        'name': 'Ver lista negra',
+        'description': 'Permite consultar la lista negra.',
+    },
+    {
+        'key': 'write_blacklist',
+        'name': 'Editar lista negra',
+        'description': 'Permite crear y actualizar registros en lista negra.',
+    },
+    {
+        'key': 'manage_users',
+        'name': 'Administrar usuarios',
+        'description': 'Permite gestionar usuarios y sus permisos.',
+    },
+    {
+        'key': 'view_reports',
+        'name': 'Ver reportes',
+        'description': 'Permite consultar reportes operativos.',
+    },
+    {
+        'key': 'export_data',
+        'name': 'Exportar datos',
+        'description': 'Permite exportar información del sistema.',
+    },
+    {
+        'key': 'approve_cancellation',
+        'name': 'Aprobar cancelaciones',
+        'description': 'Permite aprobar cancelaciones de registros.',
+    },
+    {
+        'key': 'view_material_return',
+        'name': 'Ver devoluciones de material',
+        'description': 'Permite consultar devoluciones de material.',
+    },
+    {
+        'key': 'write_material_return',
+        'name': 'Registrar devoluciones de material',
+        'description': 'Permite crear devoluciones de material.',
+    },
+    {
+        'key': 'view_requirements',
+        'name': 'Ver requerimientos',
+        'description': 'Permite consultar requerimientos de material.',
+    },
+    {
+        'key': 'write_requirements',
+        'name': 'Registrar requerimientos',
+        'description': 'Permite crear o editar requerimientos de material.',
+    },
+    {
+        'key': 'approve_requirements',
+        'name': 'Aprobar requerimientos',
+        'description': 'Permite aprobar requerimientos de material.',
+    },
+    {
+        'key': 'view_reentry',
+        'name': 'Ver reingresos',
+        'description': 'Permite consultar reingresos o reubicaciones.',
+    },
+    {
+        'key': 'write_reentry',
+        'name': 'Registrar reingresos',
+        'description': 'Permite registrar reingresos o reubicaciones.',
+    },
+    {
+        'key': 'view_pending_exits',
+        'name': 'Ver pendientes de salida',
+        'description': 'Permite consultar salidas pendientes.',
+    },
+    {
+        'key': 'write_pending_exits',
+        'name': 'Registrar pendientes de salida',
+        'description': 'Permite procesar salidas pendientes.',
+    },
+    {
+        'key': 'view_audit',
+        'name': 'Ver auditoría',
+        'description': 'Permite consultar auditorías de inventario.',
+    },
+    {
+        'key': 'start_audit',
+        'name': 'Gestionar auditoría',
+        'description': 'Permite iniciar y cerrar auditorías.',
+    },
+    {
+        'key': 'scan_audit',
+        'name': 'Escanear auditoría',
+        'description': 'Permite capturar lecturas durante auditorías.',
+    },
+    {
+        'key': 'view_master_labels',
+        'name': 'Ver etiquetas master',
+        'description': 'Permite consultar etiquetas master.',
+    },
+    {
+        'key': 'write_master_labels',
+        'name': 'Gestionar etiquetas master',
+        'description': 'Permite crear o eliminar etiquetas master.',
+    },
+    {
+        'key': 'view_warehouse_map',
+        'name': 'Ver mapa de almacén',
+        'description': 'Permite consultar el mapa del almacén.',
+    },
+    {
+        'key': 'create_warehouse_zones',
+        'name': 'Crear zonas de almacén',
+        'description': 'Permite crear zonas y editar datos de zona.',
+    },
+    {
+        'key': 'edit_warehouse_locations',
+        'name': 'Editar ubicaciones de almacén',
+        'description': 'Permite editar ubicaciones, racks y movimientos.',
+    },
+    {
+        'key': 'manage_warehouse_layout',
+        'name': 'Gestionar layout de almacén',
+        'description': 'Permite administrar el layout completo del almacén.',
+    },
+]
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # UTILIDADES
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -73,6 +269,60 @@ def verify_shipping_password(stored_hash, password):
     return stored_hash == password_hash or stored_hash == password
 
 
+def normalize_db_datetime(value):
+    """Normalizar valores datetime provenientes de MySQL o strings ISO."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None)
+    if isinstance(value, str):
+        normalized = value.replace('Z', '+00:00')
+        try:
+            return datetime.fromisoformat(normalized).replace(tzinfo=None)
+        except ValueError:
+            return None
+    return None
+
+
+def build_user_payload(user_row):
+    """Construir respuesta de usuario sin exponer campos sensibles."""
+    active_value = user_row.get('activo', 0)
+    if isinstance(active_value, str):
+        is_active = active_value.strip().lower() in {'1', 'true'}
+    else:
+        is_active = bool(active_value)
+
+    return {
+        'id': user_row['id'],
+        'username': user_row['username'],
+        'email': user_row.get('email'),
+        'full_name': user_row.get('nombre_completo') or user_row['username'],
+        'department': user_row.get('departamento'),
+        'cargo': user_row.get('cargo'),
+        'active': is_active,
+    }
+
+
+def get_enabled_permissions(cursor, user_id, department):
+    """Obtener permisos efectivos del usuario para el módulo de embarques."""
+    has_full_access = department in FULL_ACCESS_DEPARTMENTS
+
+    if has_full_access:
+        return has_full_access, [permission['key'] for permission in AVAILABLE_SHIPPING_PERMISSIONS]
+
+    cursor.execute(
+        """
+        SELECT permission_key
+        FROM user_permissions_materiales
+        WHERE user_id = %s AND enabled = 1
+        ORDER BY permission_key ASC
+        """,
+        (user_id,),
+    )
+    permissions = [row['permission_key'] for row in cursor.fetchall()]
+    return has_full_access, permissions
+
+
 def manejo_errores(func):
     """Decorator para manejo centralizado de errores"""
     @functools.wraps(func)
@@ -105,7 +355,7 @@ def manejo_errores(func):
 def login():
     """
     POST /api/shipping/auth/login
-    Autenticar operador de embarques
+    Autenticar usuario del sistema para el módulo de embarques
     
     Body:
     {
@@ -116,11 +366,10 @@ def login():
     Response:
     {
         "success": true,
-        "token": "...",
-        "user": { id, username, full_name, department, shift }
+        "user": { id, username, full_name, department, cargo }
     }
     """
-    data = request.get_json(force=True)
+    data = request.get_json(silent=True) or {}
     username = data.get('username', '').strip()
     password = data.get('password', '')
     
@@ -134,50 +383,91 @@ def login():
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
     
     try:
-        # Buscar operador en la tabla dedicada de operadores de embarques
         cursor.execute("""
-            SELECT id, full_name, department, shift, password_hash
-            FROM operators_shipping
-            WHERE id = %s AND is_active = TRUE
+            SELECT id, username, password_hash, email, nombre_completo,
+                   departamento, cargo, activo, intentos_fallidos, bloqueado_hasta
+            FROM usuarios_sistema
+            WHERE username = %s
         """, (username,))
         
-        operator = cursor.fetchone()
+        user = cursor.fetchone()
         
-        if not operator:
+        if not user:
             return jsonify({
                 "success": False,
                 "message": "Usuario o contraseña incorrectos"
             }), 401
         
-        # Verificar contraseña usando hash propio y compatibilidad legacy.
-        password_valid = verify_shipping_password(operator['password_hash'], password)
+        if int(user.get('activo') or 0) != 1:
+            return jsonify({
+                "success": False,
+                "message": "El usuario está inactivo"
+            }), 403
+
+        bloqueado_hasta = normalize_db_datetime(user.get('bloqueado_hasta'))
+        ahora = get_mexico_time()
+
+        if bloqueado_hasta and ahora < bloqueado_hasta:
+            return jsonify({
+                "success": False,
+                "message": "Usuario bloqueado temporalmente",
+                "blockedUntil": bloqueado_hasta.isoformat(),
+                "intentosRestantes": 0,
+            }), 423
+
+        if bloqueado_hasta and ahora >= bloqueado_hasta:
+            cursor.execute("""
+                UPDATE usuarios_sistema
+                SET bloqueado_hasta = NULL, intentos_fallidos = 0
+                WHERE id = %s
+            """, (user['id'],))
+            user['intentos_fallidos'] = 0
+            user['bloqueado_hasta'] = None
+
+        password_valid = verify_shipping_password(user['password_hash'], password)
         
         if not password_valid:
+            intentos = int(user.get('intentos_fallidos') or 0) + 1
+            intentos_restantes = max(0, MAX_FAILED_ATTEMPTS - intentos)
+
+            if intentos >= MAX_FAILED_ATTEMPTS:
+                bloqueado_hasta = get_mexico_time() + timedelta(minutes=LOCKOUT_MINUTES)
+                cursor.execute("""
+                    UPDATE usuarios_sistema
+                    SET intentos_fallidos = %s, bloqueado_hasta = %s
+                    WHERE id = %s
+                """, (intentos, bloqueado_hasta, user['id']))
+
+                return jsonify({
+                    "success": False,
+                    "message": f"Usuario bloqueado por {LOCKOUT_MINUTES} minutos",
+                    "blockedUntil": bloqueado_hasta.isoformat(),
+                    "intentosRestantes": 0,
+                }), 401
+
+            cursor.execute("""
+                UPDATE usuarios_sistema
+                SET intentos_fallidos = %s
+                WHERE id = %s
+            """, (intentos, user['id']))
+
             return jsonify({
                 "success": False,
-                "message": "Usuario o contraseña incorrectos"
+                "message": "Usuario o contraseña incorrectos",
+                "intentosRestantes": intentos_restantes,
             }), 401
         
-        # Actualizar último acceso
         cursor.execute("""
-            UPDATE operators_shipping SET last_login = %s WHERE id = %s
-        """, (get_mexico_time(), username))
-        
-        # Generar token simple (en producción usar JWT)
-        import secrets
-        token_data = f"{username}:{secrets.token_hex(16)}:{datetime.now().isoformat()}"
-        token = hashlib.sha256(token_data.encode()).hexdigest()
+            UPDATE usuarios_sistema
+            SET intentos_fallidos = 0,
+                bloqueado_hasta = NULL,
+                ultimo_acceso = %s
+            WHERE id = %s
+        """, (get_mexico_time(), user['id']))
         
         return jsonify({
             "success": True,
-            "token": token,
-            "user": {
-                "id": operator['id'],
-                "username": operator['id'],
-                "full_name": operator['full_name'],
-                "department": operator['department'],
-                "shift": operator['shift']
-            }
+            "user": build_user_payload(user)
         })
         
     finally:
@@ -190,12 +480,154 @@ def login():
 def logout():
     """
     POST /api/shipping/auth/logout
-    Cerrar sesión del operador
+    Cerrar sesión del usuario y registrar su último acceso.
     """
-    # En una implementación con JWT, aquí invalidaríamos el token
+    data = request.get_json(silent=True) or {}
+    user_id = data.get('userId')
+
+    if user_id:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE usuarios_sistema
+                SET ultimo_acceso = %s
+                WHERE id = %s
+            """, (get_mexico_time(), user_id))
+        finally:
+            cursor.close()
+            conn.close()
+
     return jsonify({
         "success": True,
         "message": "Sesión cerrada correctamente"
+    })
+
+
+@shipping_api.route('/auth/verify/<int:user_id>', methods=['GET'])
+@manejo_errores
+def verify_user(user_id):
+    """
+    GET /api/shipping/auth/verify/{user_id}
+    Verificar que el usuario siga existiendo y permanezca activo.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+    try:
+        cursor.execute("""
+            SELECT id, username, email, nombre_completo, departamento, cargo, activo
+            FROM usuarios_sistema
+            WHERE id = %s
+        """, (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({
+                "success": False,
+                "valid": False,
+                "message": "Usuario no encontrado"
+            }), 404
+
+        if int(user.get('activo') or 0) != 1:
+            return jsonify({
+                "success": False,
+                "valid": False,
+                "message": "Usuario inactivo"
+            }), 403
+
+        return jsonify({
+            "success": True,
+            "valid": True,
+            "user": build_user_payload(user),
+        })
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@shipping_api.route('/users/<int:user_id>/permissions', methods=['GET'])
+@manejo_errores
+def get_user_permissions(user_id):
+    """
+    GET /api/shipping/users/{user_id}/permissions
+    Obtener permisos efectivos del catálogo compartido entre escritorio y móvil.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+    try:
+        cursor.execute("""
+            SELECT id, departamento, activo
+            FROM usuarios_sistema
+            WHERE id = %s
+        """, (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "Usuario no encontrado"
+            }), 404
+
+        if int(user.get('activo') or 0) != 1:
+            return jsonify({
+                "success": False,
+                "message": "Usuario inactivo"
+            }), 403
+
+        has_full_access, permission_keys = get_enabled_permissions(
+            cursor,
+            user['id'],
+            user.get('departamento'),
+        )
+
+        return jsonify({
+            "success": True,
+            "userId": user['id'],
+            "department": user.get('departamento'),
+            "hasFullAccess": has_full_access,
+            "permissions": [
+                {
+                    "permission_key": permission_key,
+                    "enabled": True,
+                }
+                for permission_key in permission_keys
+            ],
+            "enabledPermissions": permission_keys,
+        })
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@shipping_api.route('/permissions/available', methods=['GET'])
+@manejo_errores
+def get_available_permissions():
+    """Catálogo hardcodeado de permisos compartidos entre escritorio y móvil."""
+    return jsonify({
+        "success": True,
+        "permissions": AVAILABLE_SHIPPING_PERMISSIONS,
+    })
+
+
+@shipping_api.route('/departments', methods=['GET'])
+@manejo_errores
+def get_departments():
+    """Catálogo hardcodeado de departamentos expuesto por API."""
+    return jsonify({
+        "success": True,
+        "departments": AVAILABLE_DEPARTMENTS,
+    })
+
+
+@shipping_api.route('/cargos', methods=['GET'])
+@manejo_errores
+def get_cargos():
+    """Catálogo hardcodeado de cargos expuesto por API."""
+    return jsonify({
+        "success": True,
+        "cargos": AVAILABLE_CARGOS,
     })
 
 
@@ -469,9 +901,11 @@ def get_entry(entry_id):
     
     try:
         cursor.execute("""
-            SELECT se.*, o.full_name as operator_name
+            SELECT se.*,
+                   COALESCE(u.nombre_completo, u.username, se.scanned_by) AS operator_name
             FROM shipping_entries se
-            LEFT JOIN operators o ON se.scanned_by = o.id
+            LEFT JOIN usuarios_sistema u
+                ON CAST(u.id AS CHAR) = se.scanned_by OR u.username = se.scanned_by
             WHERE se.id = %s
         """, (entry_id,))
         
@@ -779,6 +1213,22 @@ def init_shipping_tables():
             """)
         except Exception as e:
             print(f"Tabla quality_validations: {e}")
+
+        # Tabla de permisos compartida por escritorio y app móvil.
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_permissions_materiales (
+                    user_id INT NOT NULL,
+                    permission_key VARCHAR(100) NOT NULL,
+                    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (user_id, permission_key),
+                    INDEX idx_user_permissions_enabled (user_id, enabled)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+        except Exception as e:
+            print(f"Tabla user_permissions_materiales: {e}")
         
         # Tabla de entradas de embarque
         try:
