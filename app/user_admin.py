@@ -6,7 +6,9 @@ Sistema completo de gestión de usuarios, roles y permisos
 from flask import Blueprint, request, jsonify, render_template, session, send_file, redirect, url_for, flash
 from .auth_system import AuthSystem
 from .db_mysql import get_db_connection
+from .shipping_api import get_shipping_permission_dropdown_catalog
 from datetime import datetime, timedelta
+from functools import wraps
 import json
 import traceback
 import tempfile
@@ -31,6 +33,28 @@ except ImportError as e:
 # Crear Blueprint para las rutas de administración
 user_admin_bp = Blueprint('user_admin', __name__)
 auth_system = AuthSystem()
+
+
+def requiere_superadmin(f):
+    """Restringir acciones críticas de roles/permisos al superadmin central."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        usuario = session.get('usuario')
+        if not usuario:
+            if request.is_json:
+                return jsonify({'error': 'No autenticado', 'codigo': 401}), 401
+            return redirect('/login')
+
+        roles = auth_system.obtener_roles_usuario(usuario)
+        if 'superadmin' not in roles:
+            return jsonify({
+                'error': 'Solo superadmin puede administrar roles y permisos',
+                'codigo': 403,
+            }), 403
+
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 def execute_with_retry(operation, max_retries=3, retry_delay=0.1):
     """
@@ -684,6 +708,7 @@ def obtener_permisos_dropdowns_rol(rol_id):
 @user_admin_bp.route('/actualizar_permisos_dropdowns_rol', methods=['POST'])
 @auth_system.login_requerido_avanzado
 @auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin
 def actualizar_permisos_dropdowns_rol():
     """Actualizar permisos de dropdowns de un rol"""
     try:
@@ -709,6 +734,7 @@ def actualizar_permisos_dropdowns_rol():
         
         conn.commit()
         conn.close()
+        auth_system.invalidar_cache_permisos_botones()
         
         # Registrar auditoría
         auth_system.registrar_auditoria(
@@ -730,6 +756,7 @@ def actualizar_permisos_dropdowns_rol():
 @user_admin_bp.route('/sincronizar_permisos_dropdowns', methods=['POST'])
 @auth_system.login_requerido_avanzado
 @auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin
 def sincronizar_permisos_dropdowns():
     """Sincronizar permisos de dropdowns desde archivos LISTAS"""
     import os
@@ -792,6 +819,21 @@ def sincronizar_permisos_dropdowns():
                 print(f"Error procesando {archivo}: {e}")
                 continue
         
+        # Agregar permisos del módulo móvil de embarques para que superadmin los administre aquí.
+        for permiso in get_shipping_permission_dropdown_catalog():
+            if not any(
+                p['pagina'] == permiso['pagina']
+                and p['seccion'] == permiso['seccion']
+                and p['boton'] == permiso['boton']
+                for p in permisos_encontrados
+            ):
+                permisos_encontrados.append({
+                    'pagina': permiso['pagina'],
+                    'seccion': permiso['seccion'],
+                    'boton': permiso['boton'],
+                    'descripcion': permiso['descripcion'],
+                })
+
         # Sincronizar con la base de datos
         conn = get_db_connection()
         cursor = get_dict_cursor(conn)
@@ -819,6 +861,33 @@ def sincronizar_permisos_dropdowns():
                 INSERT INTO permisos_botones (pagina, seccion, boton, descripcion, activo)
                 VALUES (%s, %s, %s, %s, 1)
             ''', (pagina, seccion, boton, permiso_completo['descripcion']))
+
+        # Mantener al rol superadmin con acceso total a los permisos recién sincronizados.
+        cursor.execute('SELECT id FROM roles WHERE nombre = %s AND activo = 1', ('superadmin',))
+        superadmin_role = cursor.fetchone()
+        if superadmin_role:
+            superadmin_role_id = superadmin_role['id']
+            for pagina, seccion, boton in permisos_nuevos:
+                cursor.execute('''
+                    SELECT id FROM permisos_botones
+                    WHERE pagina = %s AND seccion = %s AND boton = %s AND activo = 1
+                ''', (pagina, seccion, boton))
+                permiso_row = cursor.fetchone()
+                if not permiso_row:
+                    continue
+
+                cursor.execute('''
+                    SELECT 1
+                    FROM rol_permisos_botones
+                    WHERE rol_id = %s AND permiso_boton_id = %s
+                    LIMIT 1
+                ''', (superadmin_role_id, permiso_row['id']))
+
+                if cursor.fetchone() is None:
+                    cursor.execute('''
+                        INSERT INTO rol_permisos_botones (rol_id, permiso_boton_id)
+                        VALUES (%s, %s)
+                    ''', (superadmin_role_id, permiso_row['id']))
         
         # Desactivar permisos obsoletos
         for pagina, seccion, boton in permisos_obsoletos:
@@ -842,6 +911,7 @@ def sincronizar_permisos_dropdowns():
         
         conn.commit()
         conn.close()
+        auth_system.invalidar_cache_permisos_botones()
         
         # Registrar actividad
         try:
@@ -1579,6 +1649,7 @@ def test_permisos_debug():
 @user_admin_bp.route('/crear_rol', methods=['POST'])
 @auth_system.login_requerido_avanzado
 @auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin
 def crear_rol():
     """Crear un nuevo rol"""
     conn = None
@@ -1598,6 +1669,8 @@ def crear_rol():
         nivel = data.get('nivel', 1)
         if not isinstance(nivel, int) or nivel < 1 or nivel > 10:
             return jsonify({'error': 'El nivel debe ser un número entre 1 y 10'}), 400
+        if nivel >= 8:
+            return jsonify({'error': 'Los niveles 8-10 están reservados para roles del sistema'}), 400
         
         conn = get_db_connection()
         cursor = get_dict_cursor(conn)
@@ -1606,9 +1679,6 @@ def crear_rol():
         cursor.execute('SELECT id FROM roles WHERE nombre = %s', (data['nombre'],))
         if cursor.fetchone():
             return jsonify({'error': 'Ya existe un rol con ese nombre'}), 400
-        
-        # Iniciar transacción
-        cursor.execute('BEGIN IMMEDIATE')
         
         try:
             # Crear el rol
@@ -1633,7 +1703,7 @@ def crear_rol():
             # )
             print(" Auditoría registrada (modo simplificado)")
             
-            cursor.execute('COMMIT')
+            conn.commit()
             
             # Obtener el rol creado para devolverlo
             cursor.execute('''
@@ -1653,7 +1723,7 @@ def crear_rol():
             })
             
         except Exception as e:
-            cursor.execute('ROLLBACK')
+            conn.rollback()
             print(f"Error en transacción creando rol: {e}")
             return jsonify({'error': f'Error creando rol: {str(e)}'}), 500
             
@@ -1677,6 +1747,7 @@ def crear_rol():
 @user_admin_bp.route('/eliminar_rol/<int:rol_id>', methods=['DELETE'])
 @auth_system.login_requerido_avanzado
 @auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin
 def eliminar_rol(rol_id):
     """Eliminar un rol"""
     conn = None
@@ -1713,10 +1784,6 @@ def eliminar_rol(rol_id):
             return jsonify({
                 'error': f'No se puede eliminar el rol. Tiene {usuarios_asignados} usuario(s) asignado(s)'
             }), 400
-        
-        # Iniciar transacción
-        print(" Iniciando transacción...")
-        cursor.execute('BEGIN IMMEDIATE')
         
         try:
             # Eliminar permisos asociados al rol
@@ -1755,7 +1822,7 @@ def eliminar_rol(rol_id):
             # )
             print(" Auditoría registrada (modo simplificado)")
             
-            cursor.execute('COMMIT')
+            conn.commit()
             print(f" Rol '{rol_dict['nombre']}' eliminado exitosamente")
             
             return jsonify({
@@ -1765,7 +1832,7 @@ def eliminar_rol(rol_id):
             
         except Exception as e:
             print(f" Error en transacción, haciendo rollback: {e}")
-            cursor.execute('ROLLBACK')
+            conn.rollback()
             print(f" Error en transacción eliminando rol: {e}")
             return jsonify({'error': f'Error eliminando rol: {str(e)}'}), 500
             
@@ -1791,6 +1858,7 @@ def eliminar_rol(rol_id):
 @user_admin_bp.route('/actualizar_rol/<int:rol_id>', methods=['PUT'])
 @auth_system.login_requerido_avanzado
 @auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin
 def actualizar_rol(rol_id):
     """Actualizar un rol existente"""
     conn = None
@@ -1826,15 +1894,14 @@ def actualizar_rol(rol_id):
         
         if not isinstance(nivel, int) or nivel < 1 or nivel > 10:
             return jsonify({'error': 'El nivel debe ser un número entre 1 y 10'}), 400
+        if rol_dict['nivel'] < 8 and nivel >= 8:
+            return jsonify({'error': 'Los niveles 8-10 están reservados para roles del sistema'}), 400
         
         # Verificar que el nombre no exista en otro rol
         if nombre != rol_dict['nombre']:
             cursor.execute('SELECT id FROM roles WHERE nombre = %s AND id != %s', (nombre, rol_id))
             if cursor.fetchone():
                 return jsonify({'error': 'Ya existe otro rol con ese nombre'}), 400
-        
-        # Iniciar transacción explícita
-        cursor.execute('BEGIN TRANSACTION')
         
         try:
             # Actualizar el rol
@@ -1853,20 +1920,8 @@ def actualizar_rol(rol_id):
                 cambios.append(f'descripción actualizada')
             if nivel != rol_dict['nivel']:
                 cambios.append(f'nivel: {rol_dict["nivel"]} → {nivel}')
-            
-            cursor.execute('''
-                INSERT INTO auditoria_usuarios (
-                    usuario, accion, detalles, fecha_hora
-                ) VALUES (%s, %s, %s, ?)
-            ''', (
-                usuario_actual,
-                'actualizar_rol',
-                f'Rol "{rol_dict["nombre"]}" actualizado: {", ".join(cambios)}',
-                datetime.now()
-            ))
-            
-            # Confirmar transacción
-            cursor.execute('COMMIT')
+
+            conn.commit()
             
             # Obtener el rol actualizado
             cursor.execute('''
@@ -1887,7 +1942,7 @@ def actualizar_rol(rol_id):
             
         except Exception as e:
             # Revertir transacción en caso de error
-            cursor.execute('ROLLBACK')
+            conn.rollback()
             raise e
         
     except Exception as e:

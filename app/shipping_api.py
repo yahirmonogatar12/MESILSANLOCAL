@@ -37,6 +37,7 @@ MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 SESSION_DURATION_HOURS = 24
 FULL_ACCESS_DEPARTMENTS = {'Sistemas', 'Gerencia', 'Administración'}
+SHIPPING_PERMISSION_PANEL_PAGE = 'APP_REGISTRO_EMBARQUES'
 AVAILABLE_DEPARTMENTS = [
     'Almacén de Embarques',
     'Calidad',
@@ -50,183 +51,243 @@ AVAILABLE_CARGOS = [
     'Inspector de Calidad',
     'Administrador',
 ]
-AVAILABLE_SHIPPING_PERMISSIONS = [
+SHIPPING_PERMISSION_DEFINITIONS = [
     {
         'key': 'view_warehousing',
         'name': 'Ver entradas',
         'description': 'Permite consultar el módulo de entradas de material.',
+        'section': 'Operación',
     },
     {
         'key': 'write_warehousing',
         'name': 'Registrar entradas',
         'description': 'Permite capturar y editar entradas de material.',
+        'section': 'Operación',
     },
     {
         'key': 'multi_edit_warehousing',
         'name': 'Edición múltiple de entradas',
         'description': 'Permite editar varias entradas de material al mismo tiempo.',
+        'section': 'Operación',
     },
     {
         'key': 'view_outgoing',
         'name': 'Ver salidas',
         'description': 'Permite consultar el módulo de salidas.',
+        'section': 'Operación',
     },
     {
         'key': 'write_outgoing',
         'name': 'Registrar salidas',
         'description': 'Permite capturar y editar salidas de material.',
+        'section': 'Operación',
     },
     {
         'key': 'view_inventory',
         'name': 'Ver inventario',
         'description': 'Permite consultar el inventario.',
+        'section': 'Inventario',
     },
     {
         'key': 'view_iqc',
         'name': 'Ver IQC',
         'description': 'Permite consultar la inspección de calidad.',
+        'section': 'Calidad',
     },
     {
         'key': 'write_iqc',
         'name': 'Registrar IQC',
         'description': 'Permite capturar resultados de inspección de calidad.',
+        'section': 'Calidad',
     },
     {
         'key': 'view_quarantine',
         'name': 'Ver cuarentena',
         'description': 'Permite consultar el módulo de cuarentena.',
+        'section': 'Calidad',
     },
     {
         'key': 'send_quarantine',
         'name': 'Enviar a cuarentena',
         'description': 'Permite enviar material a cuarentena.',
+        'section': 'Calidad',
     },
     {
         'key': 'release_quarantine',
         'name': 'Liberar cuarentena',
         'description': 'Permite liberar o modificar material en cuarentena.',
+        'section': 'Calidad',
     },
     {
         'key': 'view_blacklist',
         'name': 'Ver lista negra',
         'description': 'Permite consultar la lista negra.',
+        'section': 'Calidad',
     },
     {
         'key': 'write_blacklist',
         'name': 'Editar lista negra',
         'description': 'Permite crear y actualizar registros en lista negra.',
+        'section': 'Calidad',
     },
     {
         'key': 'manage_users',
         'name': 'Administrar usuarios',
         'description': 'Permite gestionar usuarios y sus permisos.',
+        'section': 'Administración',
     },
     {
         'key': 'view_reports',
         'name': 'Ver reportes',
         'description': 'Permite consultar reportes operativos.',
+        'section': 'Auditoría y reportes',
     },
     {
         'key': 'export_data',
         'name': 'Exportar datos',
         'description': 'Permite exportar información del sistema.',
+        'section': 'Auditoría y reportes',
     },
     {
         'key': 'approve_cancellation',
         'name': 'Aprobar cancelaciones',
         'description': 'Permite aprobar cancelaciones de registros.',
+        'section': 'Auditoría y reportes',
     },
     {
         'key': 'view_material_return',
         'name': 'Ver devoluciones de material',
         'description': 'Permite consultar devoluciones de material.',
+        'section': 'Retornos y requerimientos',
     },
     {
         'key': 'write_material_return',
         'name': 'Registrar devoluciones de material',
         'description': 'Permite crear devoluciones de material.',
+        'section': 'Retornos y requerimientos',
     },
     {
         'key': 'view_requirements',
         'name': 'Ver requerimientos',
         'description': 'Permite consultar requerimientos de material.',
+        'section': 'Retornos y requerimientos',
     },
     {
         'key': 'write_requirements',
         'name': 'Registrar requerimientos',
         'description': 'Permite crear o editar requerimientos de material.',
+        'section': 'Retornos y requerimientos',
     },
     {
         'key': 'approve_requirements',
         'name': 'Aprobar requerimientos',
         'description': 'Permite aprobar requerimientos de material.',
+        'section': 'Retornos y requerimientos',
     },
     {
         'key': 'view_reentry',
         'name': 'Ver reingresos',
         'description': 'Permite consultar reingresos o reubicaciones.',
+        'section': 'Inventario',
     },
     {
         'key': 'write_reentry',
         'name': 'Registrar reingresos',
         'description': 'Permite registrar reingresos o reubicaciones.',
+        'section': 'Inventario',
     },
     {
         'key': 'view_pending_exits',
         'name': 'Ver pendientes de salida',
         'description': 'Permite consultar salidas pendientes.',
+        'section': 'Inventario',
     },
     {
         'key': 'write_pending_exits',
         'name': 'Registrar pendientes de salida',
         'description': 'Permite procesar salidas pendientes.',
+        'section': 'Inventario',
     },
     {
         'key': 'view_audit',
         'name': 'Ver auditoría',
         'description': 'Permite consultar auditorías de inventario.',
+        'section': 'Auditoría y reportes',
     },
     {
         'key': 'start_audit',
         'name': 'Gestionar auditoría',
         'description': 'Permite iniciar y cerrar auditorías.',
+        'section': 'Auditoría y reportes',
     },
     {
         'key': 'scan_audit',
         'name': 'Escanear auditoría',
         'description': 'Permite capturar lecturas durante auditorías.',
+        'section': 'Auditoría y reportes',
     },
     {
         'key': 'view_master_labels',
         'name': 'Ver etiquetas master',
         'description': 'Permite consultar etiquetas master.',
+        'section': 'Inventario',
     },
     {
         'key': 'write_master_labels',
         'name': 'Gestionar etiquetas master',
         'description': 'Permite crear o eliminar etiquetas master.',
+        'section': 'Inventario',
     },
     {
         'key': 'view_warehouse_map',
         'name': 'Ver mapa de almacén',
         'description': 'Permite consultar el mapa del almacén.',
+        'section': 'Layout',
     },
     {
         'key': 'create_warehouse_zones',
         'name': 'Crear zonas de almacén',
         'description': 'Permite crear zonas y editar datos de zona.',
+        'section': 'Layout',
     },
     {
         'key': 'edit_warehouse_locations',
         'name': 'Editar ubicaciones de almacén',
         'description': 'Permite editar ubicaciones, racks y movimientos.',
+        'section': 'Layout',
     },
     {
         'key': 'manage_warehouse_layout',
         'name': 'Gestionar layout de almacén',
         'description': 'Permite administrar el layout completo del almacén.',
+        'section': 'Layout',
     },
 ]
+
+AVAILABLE_SHIPPING_PERMISSIONS = [
+    {
+        'key': permission['key'],
+        'name': permission['name'],
+        'description': permission['description'],
+    }
+    for permission in SHIPPING_PERMISSION_DEFINITIONS
+]
+
+SHIPPING_PERMISSION_DROPDOWN_CATALOG = [
+    {
+        'permission_key': permission['key'],
+        'pagina': SHIPPING_PERMISSION_PANEL_PAGE,
+        'seccion': permission['section'],
+        'boton': permission['name'],
+        'descripcion': permission['description'],
+    }
+    for permission in SHIPPING_PERMISSION_DEFINITIONS
+]
+
+SHIPPING_PERMISSION_LOOKUP_BY_DROPDOWN = {
+    (permission['pagina'], permission['seccion'], permission['boton']): permission['permission_key']
+    for permission in SHIPPING_PERMISSION_DROPDOWN_CATALOG
+}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -303,13 +364,59 @@ def build_user_payload(user_row):
     }
 
 
-def get_enabled_permissions(cursor, user_id, department):
-    """Obtener permisos efectivos del usuario para el módulo de embarques."""
-    has_full_access = department in FULL_ACCESS_DEPARTMENTS
+def get_shipping_permission_dropdown_catalog():
+    """Catálogo de permisos de embarques en formato del panel central."""
+    return [dict(permission) for permission in SHIPPING_PERMISSION_DROPDOWN_CATALOG]
 
-    if has_full_access:
-        return has_full_access, [permission['key'] for permission in AVAILABLE_SHIPPING_PERMISSIONS]
 
+def user_has_superadmin_role(cursor, user_id):
+    """Determinar si el usuario tiene el rol central de superadmin."""
+    cursor.execute(
+        """
+        SELECT 1
+        FROM usuario_roles ur
+        JOIN roles r ON ur.rol_id = r.id
+        WHERE ur.usuario_id = %s
+          AND r.activo = 1
+          AND r.nombre = 'superadmin'
+        LIMIT 1
+        """,
+        (user_id,),
+    )
+    return cursor.fetchone() is not None
+
+
+def get_role_based_shipping_permissions(cursor, user_id):
+    """Resolver permisos de embarques heredados desde roles del panel central."""
+    cursor.execute(
+        """
+        SELECT DISTINCT pb.pagina, pb.seccion, pb.boton
+        FROM usuario_roles ur
+        JOIN roles r ON ur.rol_id = r.id
+        JOIN rol_permisos_botones rpb ON ur.rol_id = rpb.rol_id
+        JOIN permisos_botones pb ON rpb.permiso_boton_id = pb.id
+        WHERE ur.usuario_id = %s
+          AND r.activo = 1
+          AND pb.activo = 1
+          AND pb.pagina = %s
+        ORDER BY pb.seccion ASC, pb.boton ASC
+        """,
+        (user_id, SHIPPING_PERMISSION_PANEL_PAGE),
+    )
+
+    permissions = set()
+    for row in cursor.fetchall():
+        permission_key = SHIPPING_PERMISSION_LOOKUP_BY_DROPDOWN.get(
+            (row['pagina'], row['seccion'], row['boton'])
+        )
+        if permission_key:
+            permissions.add(permission_key)
+
+    return sorted(permissions)
+
+
+def get_legacy_user_shipping_permissions(cursor, user_id):
+    """Resolver permisos legacy asignados directamente al usuario."""
     cursor.execute(
         """
         SELECT permission_key
@@ -319,7 +426,22 @@ def get_enabled_permissions(cursor, user_id, department):
         """,
         (user_id,),
     )
-    permissions = [row['permission_key'] for row in cursor.fetchall()]
+    return [row['permission_key'] for row in cursor.fetchall()]
+
+
+def get_enabled_permissions(cursor, user_id, department):
+    """Obtener permisos efectivos del usuario para el módulo de embarques."""
+    has_full_access = department in FULL_ACCESS_DEPARTMENTS or user_has_superadmin_role(
+        cursor,
+        user_id,
+    )
+
+    if has_full_access:
+        return has_full_access, [permission['key'] for permission in AVAILABLE_SHIPPING_PERMISSIONS]
+
+    role_permissions = set(get_role_based_shipping_permissions(cursor, user_id))
+    legacy_permissions = set(get_legacy_user_shipping_permissions(cursor, user_id))
+    permissions = sorted(role_permissions | legacy_permissions)
     return has_full_access, permissions
 
 

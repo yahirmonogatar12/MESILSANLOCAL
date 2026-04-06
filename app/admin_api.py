@@ -1,16 +1,46 @@
 # admin_api.py - API para gestión de permisos de dropdowns
-from flask import Blueprint, jsonify, request, render_template
+from functools import wraps
+from flask import Blueprint, jsonify, request, render_template, redirect, session
+from .auth_system import auth_system
 from app.db import get_db_connection
 import sqlite3
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+
+def requiere_superadmin_panel(f):
+    """Permitir gestión de roles/permisos solo al superadmin central."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        usuario = session.get('usuario')
+        if not usuario:
+            if request.is_json:
+                return jsonify({'error': 'No autenticado', 'codigo': 401}), 401
+            return redirect('/login')
+
+        roles = auth_system.obtener_roles_usuario(usuario)
+        if 'superadmin' not in roles:
+            return jsonify({
+                'error': 'Solo superadmin puede administrar roles y permisos',
+                'codigo': 403,
+            }), 403
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
 @admin_bp.route('/permisos-dropdowns')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin_panel
 def gestionar_permisos_dropdowns():
     """Página principal de gestión de permisos"""
     return render_template('admin/gestionar_permisos_dropdowns.html')
 
 @admin_bp.route('/api/roles')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin_panel
 def get_roles():
     """Obtener todos los roles disponibles"""
     try:
@@ -40,6 +70,9 @@ def get_roles():
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/dropdowns')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin_panel
 def get_dropdowns():
     """Obtener todos los dropdowns disponibles con estructura jerárquica"""
     try:
@@ -79,6 +112,9 @@ def get_dropdowns():
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/role-permissions/<role_name>')
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin_panel
 def get_role_permissions(role_name):
     """Obtener permisos de un rol específico con estructura jerárquica"""
     try:
@@ -118,6 +154,9 @@ def get_role_permissions(role_name):
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/toggle-permission', methods=['POST'])
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin_panel
 def toggle_permission():
     """Alternar permiso para un rol usando estructura jerárquica"""
     try:
@@ -193,6 +232,9 @@ def toggle_permission():
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/enable-all-permissions', methods=['POST'])
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin_panel
 def enable_all_permissions():
     """Habilitar todos los permisos de dropdown para un rol"""
     try:
@@ -222,7 +264,7 @@ def enable_all_permissions():
             
             # Insertar solo si no existe (ignorar duplicados)
             cursor.execute("""
-                INSERT OR IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id, fecha_asignacion) 
+                INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id, fecha_asignacion) 
                 VALUES (%s, %s, NOW())
             """, (rol_id, permiso_id))
             
@@ -241,6 +283,9 @@ def enable_all_permissions():
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/disable-all-permissions', methods=['POST'])
+@auth_system.login_requerido_avanzado
+@auth_system.requiere_permiso('sistema', 'usuarios')
+@requiere_superadmin_panel
 def disable_all_permissions():
     """Deshabilitar todos los permisos de dropdown para un rol"""
     try:
