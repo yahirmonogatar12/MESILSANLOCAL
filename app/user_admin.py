@@ -6,7 +6,11 @@ Sistema completo de gestión de usuarios, roles y permisos
 from flask import Blueprint, request, jsonify, render_template, session, send_file, redirect, url_for, flash
 from .auth_system import AuthSystem
 from .db_mysql import get_db_connection
-from .shipping_api import get_shipping_permission_dropdown_catalog
+from .shipping_api import (
+    AVAILABLE_CARGOS,
+    AVAILABLE_DEPARTMENTS,
+    get_shipping_permission_dropdown_catalog,
+)
 from datetime import datetime, timedelta
 from functools import wraps
 import json
@@ -33,6 +37,36 @@ except ImportError as e:
 # Crear Blueprint para las rutas de administración
 user_admin_bp = Blueprint('user_admin', __name__)
 auth_system = AuthSystem()
+
+DEFAULT_USER_DEPARTMENTS = [
+    'Almacén',
+    'Producción',
+    'Calidad',
+    'Administración',
+    'Sistemas',
+    'Gerencia',
+]
+DEFAULT_USER_CARGOS = [
+    'Almacenista',
+    'Supervisor',
+    'Operador',
+    'Administrador',
+]
+
+
+def _merge_catalog_values(*groups):
+    merged = []
+    seen = set()
+
+    for group in groups:
+        for value in group:
+            normalized = (value or '').strip()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            merged.append(normalized)
+
+    return merged
 
 
 def requiere_superadmin(f):
@@ -91,7 +125,20 @@ def get_dict_cursor(conn):
 def panel_administracion():
     """Panel principal de administración de usuarios"""
     usuario = session.get('usuario')
-    return render_template('admin/panel_usuarios.html', usuario=usuario)
+    department_options = _merge_catalog_values(
+        DEFAULT_USER_DEPARTMENTS,
+        AVAILABLE_DEPARTMENTS,
+    )
+    cargo_options = _merge_catalog_values(
+        DEFAULT_USER_CARGOS,
+        AVAILABLE_CARGOS,
+    )
+    return render_template(
+        'admin/panel_usuarios.html',
+        usuario=usuario,
+        department_options=department_options,
+        cargo_options=cargo_options,
+    )
 
 @user_admin_bp.route('/auditoria')
 @auth_system.login_requerido_avanzado

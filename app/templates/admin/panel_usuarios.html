@@ -299,19 +299,21 @@
                                     <label for="departamento" class="form-label">Departamento</label>
                                     <select class="form-select" id="departamento">
                                         <option value="">Seleccionar departamento</option>
-                                        <option value="Almacén">Almacén</option>
-                                        <option value="Producción">Producción</option>
-                                        <option value="Calidad">Calidad</option>
-                                        <option value="Administración">Administración</option>
-                                        <option value="Sistemas">Sistemas</option>
-                                        <option value="Gerencia">Gerencia</option>
+                                        {% for department in department_options %}
+                                        <option value="{{ department }}">{{ department }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="cargo" class="form-label">Cargo</label>
-                                    <input type="text" class="form-control" id="cargo">
+                                    <input type="text" class="form-control" id="cargo" list="cargoOptions">
+                                    <datalist id="cargoOptions">
+                                        {% for cargo in cargo_options %}
+                                        <option value="{{ cargo }}"></option>
+                                        {% endfor %}
+                                    </datalist>
                                 </div>
                             </div>
                         </div>
