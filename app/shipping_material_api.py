@@ -558,6 +558,19 @@ def build_fifo_allocations(layers, requested_quantity):
     }
 
 
+def resolve_available_layer_quantity(previous_quantity, incoming_quantity):
+    previous = normalize_integer(previous_quantity) or 0
+    incoming = normalize_integer(incoming_quantity) or 0
+
+    if incoming <= 0:
+        return 0
+
+    if previous >= 0:
+        return incoming
+
+    return max(previous + incoming, 0)
+
+
 def apply_fifo_allocations(cursor, allocations):
     for allocation in allocations:
         cursor.execute(
@@ -575,7 +588,9 @@ def apply_fifo_allocations(cursor, allocations):
 
 def create_hidden_return_layer(cursor, inventory, return_folio, payload):
     net_quantity = normalize_integer(payload.get("netQuantity")) or 0
-    if net_quantity <= 0:
+    available_quantity = normalize_integer(payload.get("availableQuantity")) or 0
+
+    if net_quantity <= 0 or available_quantity <= 0:
         return
 
     layer_folio = generate_movement_folio("EMB-LYR")
@@ -608,9 +623,9 @@ def create_hidden_return_layer(cursor, inventory, return_folio, payload):
             inventory["id"],
             inventory.get("catalog_id") or inventory.get("catalog_ref_id"),
             inventory["part_number"],
-            net_quantity,
-            net_quantity,
-            net_quantity,
+            available_quantity,
+            available_quantity,
+            available_quantity,
             inventory.get("product_model") or inventory.get("catalog_model"),
             inventory.get("description") or inventory.get("catalog_description"),
             inventory.get("customer") or inventory.get("catalog_customer"),
@@ -943,11 +958,11 @@ def create_entry():
         or data.get("warehouse_zone")
     )
 
-    if not part_number or quantity is None or quantity <= 0 or not location_code:
+    if not part_number or quantity is None or quantity <= 0:
         return jsonify(
             {
                 "success": False,
-                "error": "Se requiere numero de parte, ubicacion y una cantidad valida",
+                "error": "Se requiere numero de parte y una cantidad valida",
             }
         ), 400
 
@@ -970,6 +985,10 @@ def create_entry():
 
         previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
         new_quantity = previous_quantity + quantity
+        available_quantity = resolve_available_layer_quantity(
+            previous_quantity,
+            quantity,
+        )
         movement_at = to_sql_datetime(
             data.get("receivedAt") or data.get("scanned_at")
         )
@@ -1016,7 +1035,7 @@ def create_entry():
                 inventory.get("catalog_id") or inventory.get("catalog_ref_id"),
                 inventory["part_number"],
                 quantity,
-                quantity,
+                available_quantity,
                 previous_quantity,
                 new_quantity,
                 inventory.get("product_model") or inventory.get("catalog_model"),
@@ -1164,26 +1183,8 @@ def create_exit():
             ), 404
 
         previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
-        if previous_quantity < quantity:
-            conn.rollback()
-            return jsonify(
-                {
-                    "success": False,
-                    "error": f"Inventario insuficiente. Disponible: {previous_quantity}",
-                }
-            ), 400
-
         fifo_layers = load_fifo_layers(cursor, inventory["part_number"])
         fifo_plan = build_fifo_allocations(fifo_layers, quantity)
-        if fifo_plan["remaining"] > 0:
-            conn.rollback()
-            return jsonify(
-                {
-                    "success": False,
-                    "error": "No hay suficiente material disponible en capas FIFO. "
-                    f"Disponible para FIFO: {fifo_plan['totalAvailable']}",
-                }
-            ), 400
 
         new_quantity = previous_quantity - quantity
         movement_at = to_sql_datetime(data.get("exitedAt"))
@@ -1235,7 +1236,9 @@ def create_exit():
                 inventory.get("product_model") or inventory.get("catalog_model"),
                 inventory.get("description") or inventory.get("catalog_description"),
                 inventory.get("customer") or inventory.get("catalog_customer"),
-                first_allocation.get("zoneCode"),
+                first_allocation.get("zoneCode")
+                or inventory.get("zone_code")
+                or inventory.get("catalog_zone_code"),
                 first_allocation.get("locationCode"),
                 json.dumps(fifo_plan["allocations"]),
                 normalize_search(data.get("destinationArea"))
@@ -1383,6 +1386,10 @@ def create_return():
         previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
         net_quantity = return_quantity - loss_quantity
         new_quantity = previous_quantity + net_quantity
+        available_quantity = resolve_available_layer_quantity(
+            previous_quantity,
+            net_quantity,
+        )
         movement_at = to_sql_datetime(data.get("returnedAt"))
         return_folio = generate_movement_folio("EMB-RET")
 
@@ -1447,6 +1454,7 @@ def create_return():
             return_folio,
             {
                 "netQuantity": net_quantity,
+                "availableQuantity": available_quantity,
                 "zoneCode": data.get("zone"),
                 "locationCode": data.get("location"),
                 "notes": data.get("remarks"),
