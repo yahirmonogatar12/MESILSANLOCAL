@@ -109,21 +109,48 @@ window.mostrarSearchShippingHistory = function() {
     );
 };
 
-// Return Warehousing Register
-window.mostrarReturnWarehousingRegister = function() {
+// Almacén de Embarques - Entradas
+window.mostrarAlmacenEmbarquesEntradas = function() {
     mostrarModuloControlProceso(
-        'return-warehousing-register-unique-container',
-        '/return-warehousing-register-ajax',
-        'inicializarReturnWarehousingRegisterAjax'
+        'almacen-embarques-entradas-unique-container',
+        '/almacen-embarques-entradas-ajax',
+        'inicializarAlmacenEmbarquesEntradasAjax'
     );
 };
 
-// Return Warehousing History
-window.mostrarReturnWarehousingHistory = function() {
+// Almacén de Embarques - Salidas
+window.mostrarAlmacenEmbarquesSalidas = function() {
     mostrarModuloControlProceso(
-        'return-warehousing-history-unique-container',
-        '/return-warehousing-history-ajax',
-        'inicializarReturnWarehousingHistoryAjax'
+        'almacen-embarques-salidas-unique-container',
+        '/almacen-embarques-salidas-ajax',
+        'inicializarAlmacenEmbarquesSalidasAjax'
+    );
+};
+
+// Almacén de Embarques - Retorno
+window.mostrarAlmacenEmbarquesRetorno = function() {
+    mostrarModuloControlProceso(
+        'almacen-embarques-retorno-unique-container',
+        '/almacen-embarques-retorno-ajax',
+        'inicializarAlmacenEmbarquesRetornoAjax'
+    );
+};
+
+// Almacén de Embarques - Modificar movimientos
+window.mostrarAlmacenEmbarquesMovimientos = function() {
+    mostrarModuloControlProceso(
+        'almacen-embarques-movimientos-unique-container',
+        '/almacen-embarques-movimientos-ajax',
+        'inicializarAlmacenEmbarquesMovimientosAjax'
+    );
+};
+
+// Almacén de Embarques - Inventario general
+window.mostrarAlmacenEmbarquesInventarioGeneral = function() {
+    mostrarModuloControlProceso(
+        'almacen-embarques-inventario-general-unique-container',
+        '/almacen-embarques-inventario-general-ajax',
+        'inicializarAlmacenEmbarquesInventarioGeneralAjax'
     );
 };
 
@@ -216,8 +243,9 @@ function mostrarModuloControlProceso(containerId, ajaxUrl, initFunction) {
             'search-packaging-history-unique-container',
             'shipping-register-management-unique-container',
             'search-shipping-history-unique-container',
-            'return-warehousing-register-unique-container',
-            'return-warehousing-history-unique-container',
+            'almacen-embarques-entradas-unique-container',
+            'almacen-embarques-salidas-unique-container',
+            'almacen-embarques-retorno-unique-container',
             'registro-movimiento-identificacion-unique-container',
             'control-otras-identificaciones-unique-container',
             'control-movimiento-ns-producto-unique-container',

@@ -99,6 +99,10 @@ from .po_wo_models import (
 )
 from .shipping_api import init_shipping_tables, register_shipping_routes
 from .shipping_material_api import (
+    SHIPPING_TABLES,
+    adjust_shipping_movement_record,
+    assign_exit_departure_value,
+    get_departure_history_records,
     init_shipping_material_tables,
     register_shipping_material_routes,
 )
@@ -8932,30 +8936,1232 @@ def search_shipping_history_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/return-warehousing-register-ajax")
+def _normalizar_numero_embarques_historial(value):
+    """Convertir Decimals a int/float legibles para JSON y Excel."""
+    if value is None:
+        return 0
+    if isinstance(value, Decimal):
+        try:
+            entero = int(value)
+            return entero if value == entero else float(value)
+        except Exception:
+            return float(value)
+    return value
+
+
+def _normalizar_texto_embarques_historial(value):
+    """Normalizar valores escalar a texto simple."""
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    return str(value)
+
+
+def _aplicar_filtros_historial_embarques(sql, params, search_columns):
+    """Aplicar filtros comunes de historial para los módulos de embarques."""
+    search = request.args.get("search", "").strip()
+    fecha_desde = request.args.get("fecha_desde", "").strip()
+    fecha_hasta = request.args.get("fecha_hasta", "").strip()
+
+    if fecha_desde:
+        sql += " AND DATE(COALESCE(movement_at, created_at)) >= %s"
+        params.append(fecha_desde)
+
+    if fecha_hasta:
+        sql += " AND DATE(COALESCE(movement_at, created_at)) <= %s"
+        params.append(fecha_hasta)
+
+    if search:
+        like_value = f"%{search}%"
+        sql += " AND (" + " OR ".join(
+            [f"COALESCE({column}, '') LIKE %s" for column in search_columns]
+        ) + ")"
+        params.extend([like_value] * len(search_columns))
+
+    return sql, params
+
+
+def _obtener_historial_entradas_almacen_embarques(limit=300):
+    sql = """
+        SELECT
+            DATE(COALESCE(movement_at, created_at)) AS fecha,
+            DATE_FORMAT(COALESCE(movement_at, created_at), '%%H:%%i:%%s') AS hora,
+            entry_folio AS folio,
+            part_number,
+            quantity AS cantidad,
+            previous_quantity,
+            new_quantity,
+            available_quantity,
+            product_model,
+            description,
+            customer,
+            zone_code,
+            location_code,
+            reference_code,
+            batch_no,
+            registered_by
+        FROM embarques_entrada_material
+        WHERE COALESCE(is_fifo_layer_only, 0) = 0
+    """
+    params = []
+    sql, params = _aplicar_filtros_historial_embarques(
+        sql,
+        params,
+        [
+            "entry_folio",
+            "part_number",
+            "product_model",
+            "description",
+            "customer",
+            "zone_code",
+            "location_code",
+            "reference_code",
+            "registered_by",
+        ],
+    )
+    sql += " ORDER BY COALESCE(movement_at, created_at) DESC, id DESC LIMIT %s"
+    params.append(limit)
+
+    rows = execute_query(sql, tuple(params), fetch="all") or []
+    return [
+        {
+            "fecha": _normalizar_texto_embarques_historial(row.get("fecha")),
+            "hora": _normalizar_texto_embarques_historial(row.get("hora")),
+            "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+            "part_number": _normalizar_texto_embarques_historial(
+                row.get("part_number")
+            ),
+            "cantidad": _normalizar_numero_embarques_historial(row.get("cantidad")),
+            "previous_quantity": _normalizar_numero_embarques_historial(
+                row.get("previous_quantity")
+            ),
+            "new_quantity": _normalizar_numero_embarques_historial(
+                row.get("new_quantity")
+            ),
+            "available_quantity": _normalizar_numero_embarques_historial(
+                row.get("available_quantity")
+            ),
+            "product_model": _normalizar_texto_embarques_historial(
+                row.get("product_model")
+            ),
+            "description": _normalizar_texto_embarques_historial(
+                row.get("description")
+            ),
+            "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+            "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+            "location_code": _normalizar_texto_embarques_historial(
+                row.get("location_code")
+            ),
+            "reference_code": _normalizar_texto_embarques_historial(
+                row.get("reference_code")
+            ),
+            "batch_no": _normalizar_texto_embarques_historial(row.get("batch_no")),
+            "registered_by": _normalizar_texto_embarques_historial(
+                row.get("registered_by")
+            ),
+        }
+        for row in rows
+    ]
+
+
+def _obtener_historial_salidas_almacen_embarques(limit=300):
+    sql = """
+        SELECT
+            id,
+            DATE(COALESCE(movement_at, created_at)) AS fecha,
+            DATE_FORMAT(COALESCE(movement_at, created_at), '%%H:%%i:%%s') AS hora,
+            exit_folio AS folio,
+            part_number,
+            quantity AS cantidad,
+            previous_quantity,
+            new_quantity,
+            product_model,
+            description,
+            customer,
+            zone_code,
+            location_code,
+            destination_area,
+            departure_code,
+            departure_assigned_at,
+            departure_assigned_by,
+            reason,
+            requested_by,
+            registered_by
+        FROM embarques_salida_material
+        WHERE 1=1
+    """
+    params = []
+    sql, params = _aplicar_filtros_historial_embarques(
+        sql,
+        params,
+        [
+            "exit_folio",
+            "part_number",
+            "product_model",
+            "description",
+            "customer",
+            "zone_code",
+            "location_code",
+            "destination_area",
+            "departure_code",
+            "departure_assigned_by",
+            "reason",
+            "requested_by",
+            "registered_by",
+        ],
+    )
+    sql += " ORDER BY COALESCE(movement_at, created_at) DESC LIMIT %s"
+    params.append(limit)
+
+    rows = execute_query(sql, tuple(params), fetch="all") or []
+    return [
+        {
+            "id": row.get("id"),
+            "fecha": _normalizar_texto_embarques_historial(row.get("fecha")),
+            "hora": _normalizar_texto_embarques_historial(row.get("hora")),
+            "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+            "part_number": _normalizar_texto_embarques_historial(
+                row.get("part_number")
+            ),
+            "cantidad": _normalizar_numero_embarques_historial(row.get("cantidad")),
+            "previous_quantity": _normalizar_numero_embarques_historial(
+                row.get("previous_quantity")
+            ),
+            "new_quantity": _normalizar_numero_embarques_historial(
+                row.get("new_quantity")
+            ),
+            "product_model": _normalizar_texto_embarques_historial(
+                row.get("product_model")
+            ),
+            "description": _normalizar_texto_embarques_historial(
+                row.get("description")
+            ),
+            "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+            "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+            "location_code": _normalizar_texto_embarques_historial(
+                row.get("location_code")
+            ),
+            "destination_area": _normalizar_texto_embarques_historial(
+                row.get("destination_area")
+            ),
+            "departure_code": _normalizar_texto_embarques_historial(
+                row.get("departure_code")
+            ),
+            "departure_assigned_at": _normalizar_texto_embarques_historial(
+                row.get("departure_assigned_at")
+            ),
+            "departure_assigned_by": _normalizar_texto_embarques_historial(
+                row.get("departure_assigned_by")
+            ),
+            "reason": _normalizar_texto_embarques_historial(row.get("reason")),
+            "requested_by": _normalizar_texto_embarques_historial(
+                row.get("requested_by")
+            ),
+            "registered_by": _normalizar_texto_embarques_historial(
+                row.get("registered_by")
+            ),
+        }
+        for row in rows
+    ]
+
+
+def _obtener_historial_retorno_almacen_embarques(limit=300):
+    sql = """
+        SELECT
+            DATE(COALESCE(movement_at, created_at)) AS fecha,
+            DATE_FORMAT(COALESCE(movement_at, created_at), '%%H:%%i:%%s') AS hora,
+            return_folio AS folio,
+            part_number,
+            return_quantity,
+            loss_quantity,
+            previous_quantity,
+            new_quantity,
+            product_model,
+            description,
+            customer,
+            zone_code,
+            location_code,
+            reason,
+            remarks,
+            registered_by
+        FROM embarques_retorno_material
+        WHERE 1=1
+    """
+    params = []
+    sql, params = _aplicar_filtros_historial_embarques(
+        sql,
+        params,
+        [
+            "return_folio",
+            "part_number",
+            "product_model",
+            "description",
+            "customer",
+            "zone_code",
+            "location_code",
+            "reason",
+            "remarks",
+            "registered_by",
+        ],
+    )
+    sql += " ORDER BY COALESCE(movement_at, created_at) DESC LIMIT %s"
+    params.append(limit)
+
+    rows = execute_query(sql, tuple(params), fetch="all") or []
+    return [
+        {
+            "fecha": _normalizar_texto_embarques_historial(row.get("fecha")),
+            "hora": _normalizar_texto_embarques_historial(row.get("hora")),
+            "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+            "part_number": _normalizar_texto_embarques_historial(
+                row.get("part_number")
+            ),
+            "return_quantity": _normalizar_numero_embarques_historial(
+                row.get("return_quantity")
+            ),
+            "loss_quantity": _normalizar_numero_embarques_historial(
+                row.get("loss_quantity")
+            ),
+            "previous_quantity": _normalizar_numero_embarques_historial(
+                row.get("previous_quantity")
+            ),
+            "new_quantity": _normalizar_numero_embarques_historial(
+                row.get("new_quantity")
+            ),
+            "product_model": _normalizar_texto_embarques_historial(
+                row.get("product_model")
+            ),
+            "description": _normalizar_texto_embarques_historial(
+                row.get("description")
+            ),
+            "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+            "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+            "location_code": _normalizar_texto_embarques_historial(
+                row.get("location_code")
+            ),
+            "reason": _normalizar_texto_embarques_historial(row.get("reason")),
+            "remarks": _normalizar_texto_embarques_historial(row.get("remarks")),
+            "registered_by": _normalizar_texto_embarques_historial(
+                row.get("registered_by")
+            ),
+        }
+        for row in rows
+    ]
+
+
+def _obtener_movimientos_editables_almacen_embarques(limit=500):
+    limit = min(max(int(limit or 500), 1), 2000)
+    tipo = (request.args.get("tipo", "") or "").strip().lower()
+    search = (request.args.get("search", "") or "").strip()
+    fecha_desde = (request.args.get("fecha_desde", "") or "").strip()
+    fecha_hasta = (request.args.get("fecha_hasta", "") or "").strip()
+
+    sql = f"""
+        SELECT
+            movimiento.movement_type,
+            movimiento.movement_label,
+            movimiento.record_id,
+            DATE(movimiento.movement_timestamp) AS fecha,
+            DATE_FORMAT(movimiento.movement_timestamp, '%%H:%%i:%%s') AS hora,
+            movimiento.folio,
+            movimiento.part_number,
+            movimiento.quantity_primary,
+            movimiento.quantity_secondary,
+            movimiento.product_model,
+            movimiento.customer,
+            movimiento.zone_code,
+            movimiento.location_value,
+            movimiento.detail,
+            movimiento.departure_code,
+            movimiento.registered_by,
+            ajuste.adjusted_by AS last_adjusted_by,
+            ajuste.adjusted_at AS last_adjusted_at
+        FROM (
+            SELECT
+                'entry' AS movement_type,
+                'Entrada' AS movement_label,
+                e.id AS record_id,
+                COALESCE(e.movement_at, e.created_at) AS movement_timestamp,
+                e.entry_folio AS folio,
+                e.part_number,
+                e.quantity AS quantity_primary,
+                NULL AS quantity_secondary,
+                e.product_model,
+                e.customer,
+                e.zone_code,
+                e.location_code AS location_value,
+                CONCAT_WS(' / ', NULLIF(e.zone_code, ''), NULLIF(e.location_code, '')) AS detail,
+                NULL AS departure_code,
+                e.registered_by
+            FROM `{SHIPPING_TABLES['entries']}` e
+            WHERE COALESCE(e.is_fifo_layer_only, 0) = 0
+
+            UNION ALL
+
+            SELECT
+                'exit' AS movement_type,
+                'Salida' AS movement_label,
+                s.id AS record_id,
+                COALESCE(s.movement_at, s.created_at) AS movement_timestamp,
+                s.exit_folio AS folio,
+                s.part_number,
+                s.quantity AS quantity_primary,
+                NULL AS quantity_secondary,
+                s.product_model,
+                s.customer,
+                s.zone_code,
+                s.destination_area AS location_value,
+                CONCAT_WS(' / ', NULLIF(s.destination_area, ''), NULLIF(s.reason, '')) AS detail,
+                s.departure_code,
+                s.registered_by
+            FROM `{SHIPPING_TABLES['exits']}` s
+
+            UNION ALL
+
+            SELECT
+                'return' AS movement_type,
+                'Retorno' AS movement_label,
+                r.id AS record_id,
+                COALESCE(r.movement_at, r.created_at) AS movement_timestamp,
+                r.return_folio AS folio,
+                r.part_number,
+                r.return_quantity AS quantity_primary,
+                r.loss_quantity AS quantity_secondary,
+                r.product_model,
+                r.customer,
+                r.zone_code,
+                r.location_code AS location_value,
+                CONCAT_WS(' / ', NULLIF(r.reason, ''), NULLIF(r.remarks, '')) AS detail,
+                NULL AS departure_code,
+                r.registered_by
+            FROM `{SHIPPING_TABLES['returns']}` r
+        ) movimiento
+        LEFT JOIN (
+            SELECT
+                a.movement_type,
+                a.record_id,
+                a.adjusted_by,
+                a.adjusted_at
+            FROM `{SHIPPING_TABLES['movement_adjustments']}` a
+            INNER JOIN (
+                SELECT movement_type, record_id, MAX(id) AS latest_id
+                FROM `{SHIPPING_TABLES['movement_adjustments']}`
+                GROUP BY movement_type, record_id
+            ) latest
+                ON latest.latest_id = a.id
+        ) ajuste
+            ON ajuste.movement_type = movimiento.movement_type
+           AND ajuste.record_id = movimiento.record_id
+        WHERE 1 = 1
+    """
+    params = []
+
+    if tipo in {"entry", "exit", "return"}:
+        sql += " AND movimiento.movement_type = %s"
+        params.append(tipo)
+
+    if fecha_desde:
+        sql += " AND DATE(movimiento.movement_timestamp) >= %s"
+        params.append(fecha_desde)
+
+    if fecha_hasta:
+        sql += " AND DATE(movimiento.movement_timestamp) <= %s"
+        params.append(fecha_hasta)
+
+    if search:
+        like_value = f"%{search}%"
+        sql += """
+            AND (
+                COALESCE(movimiento.folio, '') LIKE %s
+                OR COALESCE(movimiento.part_number, '') LIKE %s
+                OR COALESCE(movimiento.product_model, '') LIKE %s
+                OR COALESCE(movimiento.customer, '') LIKE %s
+                OR COALESCE(movimiento.zone_code, '') LIKE %s
+                OR COALESCE(movimiento.location_value, '') LIKE %s
+                OR COALESCE(movimiento.detail, '') LIKE %s
+                OR COALESCE(movimiento.departure_code, '') LIKE %s
+                OR COALESCE(movimiento.registered_by, '') LIKE %s
+            )
+        """
+        params.extend([like_value] * 9)
+
+    sql += " ORDER BY movimiento.movement_timestamp DESC, movimiento.record_id DESC LIMIT %s"
+    params.append(limit)
+
+    rows = execute_query(sql, tuple(params), fetch="all") or []
+    return [
+        {
+            "movement_type": _normalizar_texto_embarques_historial(row.get("movement_type")),
+            "movement_label": _normalizar_texto_embarques_historial(row.get("movement_label")),
+            "record_id": row.get("record_id"),
+            "fecha": _normalizar_texto_embarques_historial(row.get("fecha")),
+            "hora": _normalizar_texto_embarques_historial(row.get("hora")),
+            "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+            "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
+            "quantity_primary": _normalizar_numero_embarques_historial(row.get("quantity_primary")),
+            "quantity_secondary": _normalizar_numero_embarques_historial(row.get("quantity_secondary")),
+            "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
+            "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+            "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+            "location_value": _normalizar_texto_embarques_historial(row.get("location_value")),
+            "detail": _normalizar_texto_embarques_historial(row.get("detail")),
+            "departure_code": _normalizar_texto_embarques_historial(row.get("departure_code")),
+            "registered_by": _normalizar_texto_embarques_historial(row.get("registered_by")),
+            "last_adjusted_by": _normalizar_texto_embarques_historial(row.get("last_adjusted_by")),
+            "last_adjusted_at": _normalizar_texto_embarques_historial(row.get("last_adjusted_at")),
+        }
+        for row in rows
+    ]
+
+
+def _obtener_detalle_movimiento_almacen_embarques(movement_type, record_id):
+    normalized_type = movement_type.strip().lower()
+    record_id = int(record_id)
+
+    if normalized_type == "entry":
+        row = execute_query(
+            f"""
+            SELECT
+                id,
+                entry_folio AS folio,
+                part_number,
+                quantity,
+                product_model,
+                description,
+                customer,
+                zone_code,
+                location_code,
+                reference_code,
+                batch_no,
+                notes,
+                registered_by,
+                movement_at
+            FROM `{SHIPPING_TABLES['entries']}`
+            WHERE id = %s
+              AND COALESCE(is_fifo_layer_only, 0) = 0
+            LIMIT 1
+            """,
+            (record_id,),
+            fetch="one",
+        )
+        if not row:
+            return None
+        return {
+            "movement_type": "entry",
+            "movement_label": "Entrada",
+            "record_id": row.get("id"),
+            "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+            "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
+            "quantity": _normalizar_numero_embarques_historial(row.get("quantity")),
+            "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
+            "description": _normalizar_texto_embarques_historial(row.get("description")),
+            "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+            "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+            "location_code": _normalizar_texto_embarques_historial(row.get("location_code")),
+            "reference_code": _normalizar_texto_embarques_historial(row.get("reference_code")),
+            "batch_no": _normalizar_texto_embarques_historial(row.get("batch_no")),
+            "notes": _normalizar_texto_embarques_historial(row.get("notes")),
+            "registered_by": _normalizar_texto_embarques_historial(row.get("registered_by")),
+            "movement_at": _normalizar_texto_embarques_historial(row.get("movement_at")),
+        }
+
+    if normalized_type == "exit":
+        row = execute_query(
+            f"""
+            SELECT
+                id,
+                exit_folio AS folio,
+                part_number,
+                quantity,
+                product_model,
+                description,
+                customer,
+                zone_code,
+                location_code,
+                destination_area,
+                departure_code,
+                reason,
+                requested_by,
+                remarks,
+                registered_by,
+                movement_at
+            FROM `{SHIPPING_TABLES['exits']}`
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (record_id,),
+            fetch="one",
+        )
+        if not row:
+            return None
+        return {
+            "movement_type": "exit",
+            "movement_label": "Salida",
+            "record_id": row.get("id"),
+            "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+            "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
+            "quantity": _normalizar_numero_embarques_historial(row.get("quantity")),
+            "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
+            "description": _normalizar_texto_embarques_historial(row.get("description")),
+            "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+            "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+            "location_code": _normalizar_texto_embarques_historial(row.get("location_code")),
+            "destination_area": _normalizar_texto_embarques_historial(row.get("destination_area")),
+            "departure_code": _normalizar_texto_embarques_historial(row.get("departure_code")),
+            "reason": _normalizar_texto_embarques_historial(row.get("reason")),
+            "requested_by": _normalizar_texto_embarques_historial(row.get("requested_by")),
+            "remarks": _normalizar_texto_embarques_historial(row.get("remarks")),
+            "registered_by": _normalizar_texto_embarques_historial(row.get("registered_by")),
+            "movement_at": _normalizar_texto_embarques_historial(row.get("movement_at")),
+        }
+
+    if normalized_type == "return":
+        row = execute_query(
+            f"""
+            SELECT
+                id,
+                return_folio AS folio,
+                part_number,
+                return_quantity,
+                loss_quantity,
+                product_model,
+                description,
+                customer,
+                zone_code,
+                location_code,
+                reason,
+                remarks,
+                registered_by,
+                movement_at
+            FROM `{SHIPPING_TABLES['returns']}`
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (record_id,),
+            fetch="one",
+        )
+        if not row:
+            return None
+        return {
+            "movement_type": "return",
+            "movement_label": "Retorno",
+            "record_id": row.get("id"),
+            "folio": _normalizar_texto_embarques_historial(row.get("folio")),
+            "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
+            "return_quantity": _normalizar_numero_embarques_historial(row.get("return_quantity")),
+            "loss_quantity": _normalizar_numero_embarques_historial(row.get("loss_quantity")),
+            "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
+            "description": _normalizar_texto_embarques_historial(row.get("description")),
+            "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+            "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+            "location_code": _normalizar_texto_embarques_historial(row.get("location_code")),
+            "reason": _normalizar_texto_embarques_historial(row.get("reason")),
+            "remarks": _normalizar_texto_embarques_historial(row.get("remarks")),
+            "registered_by": _normalizar_texto_embarques_historial(row.get("registered_by")),
+            "movement_at": _normalizar_texto_embarques_historial(row.get("movement_at")),
+        }
+
+    return None
+
+
+def _obtener_inventario_general_almacen_embarques(limit=5000):
+    limit = min(max(int(limit or 5000), 1), 20000)
+    search = (request.args.get("search", "") or "").strip()
+    fecha_desde = (request.args.get("fecha_desde", "") or "").strip()
+    fecha_hasta = (request.args.get("fecha_hasta", "") or "").strip()
+
+    closure_subquery = f"""
+        SELECT cierre.part_number, cierre.initial_quantity, cierre.closed_at, cierre.closure_label
+        FROM `{SHIPPING_TABLES['inventory_closures']}` cierre
+        INNER JOIN (
+            SELECT part_number, MAX(closed_at) AS latest_closed_at
+            FROM `{SHIPPING_TABLES['inventory_closures']}`
+            GROUP BY part_number
+        ) ultimo
+            ON ultimo.part_number = cierre.part_number
+           AND ultimo.latest_closed_at = cierre.closed_at
+    """
+
+    date_entries_filter = ""
+    date_exits_filter = ""
+    date_returns_filter = ""
+    params = []
+
+    if fecha_desde:
+        date_entries_filter += " AND DATE(COALESCE(e.movement_at, e.created_at)) >= %s"
+        date_exits_filter += " AND DATE(COALESCE(s.movement_at, s.created_at)) >= %s"
+        date_returns_filter += " AND DATE(COALESCE(r.movement_at, r.created_at)) >= %s"
+        params.extend([fecha_desde, fecha_desde, fecha_desde])
+
+    if fecha_hasta:
+        date_entries_filter += " AND DATE(COALESCE(e.movement_at, e.created_at)) <= %s"
+        date_exits_filter += " AND DATE(COALESCE(s.movement_at, s.created_at)) <= %s"
+        date_returns_filter += " AND DATE(COALESCE(r.movement_at, r.created_at)) <= %s"
+        params.extend([fecha_hasta, fecha_hasta, fecha_hasta])
+
+    sql = f"""
+        SELECT
+            i.part_number,
+            i.product_model,
+            i.customer,
+            i.current_quantity,
+            cierre.initial_quantity AS closure_initial_quantity,
+            cierre.closed_at AS period_start,
+            cierre.closure_label,
+            COALESCE(entradas.entries_qty, 0) AS entries_qty,
+            COALESCE(salidas.exits_qty, 0) AS exits_qty,
+            COALESCE(retornos.return_entries_qty, 0) AS return_entries_qty,
+            COALESCE(retornos.return_exits_qty, 0) AS return_exits_qty
+        FROM `{SHIPPING_TABLES['inventory']}` i
+        LEFT JOIN ({closure_subquery}) cierre
+            ON cierre.part_number = i.part_number
+        LEFT JOIN (
+            SELECT
+                e.part_number,
+                COALESCE(SUM(e.quantity), 0) AS entries_qty
+            FROM `{SHIPPING_TABLES['entries']}` e
+            LEFT JOIN ({closure_subquery}) cierre_e
+                ON cierre_e.part_number = e.part_number
+            WHERE COALESCE(e.is_fifo_layer_only, 0) = 0
+              AND COALESCE(e.movement_at, e.created_at) >= COALESCE(cierre_e.closed_at, '1000-01-01')
+              {date_entries_filter}
+            GROUP BY e.part_number
+        ) entradas
+            ON entradas.part_number = i.part_number
+        LEFT JOIN (
+            SELECT
+                s.part_number,
+                COALESCE(SUM(s.quantity), 0) AS exits_qty
+            FROM `{SHIPPING_TABLES['exits']}` s
+            LEFT JOIN ({closure_subquery}) cierre_s
+                ON cierre_s.part_number = s.part_number
+            WHERE COALESCE(s.movement_at, s.created_at) >= COALESCE(cierre_s.closed_at, '1000-01-01')
+              {date_exits_filter}
+            GROUP BY s.part_number
+        ) salidas
+            ON salidas.part_number = i.part_number
+        LEFT JOIN (
+            SELECT
+                r.part_number,
+                COALESCE(SUM(r.return_quantity), 0) AS return_entries_qty,
+                COALESCE(SUM(r.loss_quantity), 0) AS return_exits_qty
+            FROM `{SHIPPING_TABLES['returns']}` r
+            LEFT JOIN ({closure_subquery}) cierre_r
+                ON cierre_r.part_number = r.part_number
+            WHERE COALESCE(r.movement_at, r.created_at) >= COALESCE(cierre_r.closed_at, '1000-01-01')
+              {date_returns_filter}
+            GROUP BY r.part_number
+        ) retornos
+            ON retornos.part_number = i.part_number
+        WHERE 1 = 1
+    """
+
+    if search:
+        like_value = f"%{search}%"
+        sql += """
+            AND (
+                COALESCE(i.part_number, '') LIKE %s
+                OR COALESCE(i.product_model, '') LIKE %s
+                OR COALESCE(i.customer, '') LIKE %s
+            )
+        """
+        params.extend([like_value, like_value, like_value])
+
+    sql += " ORDER BY i.part_number ASC LIMIT %s"
+    params.append(limit)
+
+    rows = execute_query(sql, tuple(params), fetch="all") or []
+    result_rows = []
+    has_closure = False
+    latest_period_start = None
+
+    for row in rows:
+        current_quantity = _normalizar_numero_embarques_historial(row.get("current_quantity"))
+        entries_qty = _normalizar_numero_embarques_historial(row.get("entries_qty"))
+        exits_qty = _normalizar_numero_embarques_historial(row.get("exits_qty"))
+        return_entries_qty = _normalizar_numero_embarques_historial(row.get("return_entries_qty"))
+        return_exits_qty = _normalizar_numero_embarques_historial(row.get("return_exits_qty"))
+        closure_initial_quantity = row.get("closure_initial_quantity")
+        period_start = _normalizar_texto_embarques_historial(row.get("period_start"))
+        closure_label = _normalizar_texto_embarques_historial(row.get("closure_label"))
+
+        if closure_initial_quantity is None:
+            initial_quantity = (
+                current_quantity
+                - entries_qty
+                + exits_qty
+                - return_entries_qty
+                + return_exits_qty
+            )
+        else:
+            initial_quantity = _normalizar_numero_embarques_historial(closure_initial_quantity)
+            has_closure = True
+
+        if period_start and (latest_period_start is None or period_start > latest_period_start):
+            latest_period_start = period_start
+
+        result_rows.append(
+            {
+                "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
+                "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
+                "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+                "initial_quantity": initial_quantity,
+                "entries_qty": entries_qty,
+                "exits_qty": exits_qty,
+                "return_entries_qty": return_entries_qty,
+                "return_exits_qty": return_exits_qty,
+                "current_quantity": current_quantity,
+                "period_start": period_start,
+                "closure_label": closure_label,
+            }
+        )
+
+    return {
+        "rows": result_rows,
+        "summary": {
+            "total_items": len(result_rows),
+            "has_closure": has_closure,
+            "latest_period_start": latest_period_start or "",
+        },
+    }
+
+
+def _exportar_historial_embarques_excel(sheet_name, filename, headers, rows):
+    """Generar archivo Excel para cualquiera de los historiales de embarques."""
+    from io import BytesIO
+
+    from flask import Response
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+
+    header_fill = PatternFill(
+        start_color="1F4E79", end_color="1F4E79", fill_type="solid"
+    )
+    header_font = Font(color="FFFFFF", bold=True)
+
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    for row_idx, row in enumerate(rows, 2):
+        for col_idx, key in enumerate(headers.values(), 1):
+            ws.cell(row=row_idx, column=col_idx, value=row.get(key, ""))
+
+    for column_cells in ws.columns:
+        max_length = 0
+        column_letter = column_cells[0].column_letter
+        for cell in column_cells:
+            cell.alignment = Alignment(vertical="top")
+            value_length = len(str(cell.value or ""))
+            if value_length > max_length:
+                max_length = value_length
+        ws.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 28)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return Response(
+        output.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.route("/almacen-embarques-entradas-ajax")
 @login_requerido
-def return_warehousing_register_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Return Warehousing Register"""
+def almacen_embarques_entradas_ajax():
+    """Ruta AJAX para visualizar historial de entradas de almacén de embarques."""
     try:
         return render_template(
-            "Control de proceso/return_warehousing_register_ajax.html"
+            "Control de proceso/almacen_embarques_entradas_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Return Warehousing Register AJAX: {e}")
+        print(f"Error al cargar template Almacén Embarques Entradas AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/return-warehousing-history-ajax")
+@app.route("/almacen-embarques-salidas-ajax")
 @login_requerido
-def return_warehousing_history_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Return Warehousing History"""
+def almacen_embarques_salidas_ajax():
+    """Ruta AJAX para visualizar historial de salidas de almacén de embarques."""
     try:
         return render_template(
-            "Control de proceso/return_warehousing_history_ajax.html"
+            "Control de proceso/almacen_embarques_salidas_ajax.html"
         )
     except Exception as e:
-        print(f"Error al cargar template Return Warehousing History AJAX: {e}")
+        print(f"Error al cargar template Almacén Embarques Salidas AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route("/almacen-embarques-retorno-ajax")
+@login_requerido
+def almacen_embarques_retorno_ajax():
+    """Ruta AJAX para visualizar historial de retornos de almacén de embarques."""
+    try:
+        return render_template(
+            "Control de proceso/almacen_embarques_retorno_ajax.html"
+        )
+    except Exception as e:
+        print(f"Error al cargar template Almacén Embarques Retorno AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route("/almacen-embarques-movimientos-ajax")
+@login_requerido
+def almacen_embarques_movimientos_ajax():
+    """Ruta AJAX para visualizar y ajustar movimientos de almacén de embarques."""
+    try:
+        return render_template(
+            "Control de proceso/almacen_embarques_movimientos_ajax.html"
+        )
+    except Exception as e:
+        print(f"Error al cargar template Almacén Embarques Movimientos AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route("/almacen-embarques-inventario-general-ajax")
+@login_requerido
+def almacen_embarques_inventario_general_ajax():
+    """Ruta AJAX para visualizar inventario general de almacén de embarques."""
+    try:
+        return render_template(
+            "Control de proceso/almacen_embarques_inventario_general_ajax.html"
+        )
+    except Exception as e:
+        print(
+            f"Error al cargar template Almacén Embarques Inventario General AJAX: {e}"
+        )
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route("/api/almacen-embarques/entradas")
+@login_requerido
+def api_almacen_embarques_entradas():
+    """Obtener historial de entradas de almacén de embarques."""
+    try:
+        return jsonify(_obtener_historial_entradas_almacen_embarques())
+    except Exception as e:
+        print(f"Error API entradas almacén embarques: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/entradas/export")
+@login_requerido
+def export_almacen_embarques_entradas():
+    """Exportar historial de entradas de almacén de embarques a Excel."""
+    try:
+        rows = _obtener_historial_entradas_almacen_embarques(limit=5000)
+        return _exportar_historial_embarques_excel(
+            "Entradas Embarques",
+            "entradas_almacen_embarques.xlsx",
+            {
+                "Fecha": "fecha",
+                "Hora": "hora",
+                "Folio": "folio",
+                "No. Parte": "part_number",
+                "Cantidad": "cantidad",
+                "Modelo": "product_model",
+                "Cliente": "customer",
+                "Zona": "zone_code",
+                "Ubicación": "location_code",
+                "Usuario": "registered_by",
+            },
+            rows,
+        )
+    except Exception as e:
+        print(
+            f"Error exportando entradas almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/salidas")
+@login_requerido
+def api_almacen_embarques_salidas():
+    """Obtener historial de salidas de almacén de embarques."""
+    try:
+        return jsonify(_obtener_historial_salidas_almacen_embarques())
+    except Exception as e:
+        print(f"Error API salidas almacén embarques: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/salidas/export")
+@login_requerido
+def export_almacen_embarques_salidas():
+    """Exportar historial de salidas de almacén de embarques a Excel."""
+    try:
+        rows = _obtener_historial_salidas_almacen_embarques(limit=5000)
+        return _exportar_historial_embarques_excel(
+            "Salidas Embarques",
+            "salidas_almacen_embarques.xlsx",
+            {
+                "Fecha": "fecha",
+                "Hora": "hora",
+                "Folio": "folio",
+                "No. Parte": "part_number",
+                "Cantidad": "cantidad",
+                "Departure": "departure_code",
+                "Modelo": "product_model",
+                "Cliente": "customer",
+                "Destino": "destination_area",
+                "Motivo": "reason",
+                "Usuario": "registered_by",
+            },
+            rows,
+        )
+    except Exception as e:
+        print(
+            f"Error exportando salidas almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/salidas/<int:exit_id>/departure", methods=["POST", "PUT", "PATCH"])
+@login_requerido
+def assign_almacen_embarques_departure(exit_id):
+    """Asignar o reasignar departure a una salida de almacén de embarques."""
+    try:
+        data = request.get_json(silent=True) or {}
+        assigned_by = session.get(
+            "nombre_completo", session.get("usuario", "Sistema")
+        )
+        payload, status_code = assign_exit_departure_value(
+            exit_id,
+            data.get("departureCode") or data.get("departure"),
+            assigned_by,
+            departure_quantity=(
+                data.get("departureQuantity")
+                if data.get("departureQuantity") is not None
+                else data.get("quantity")
+            ),
+            notes=data.get("notes"),
+            assigned_at=data.get("assignedAt"),
+        )
+        return jsonify(payload), status_code
+    except Exception as e:
+        print(
+            f"Error asignando departure a salida {exit_id}: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/departures/history")
+@login_requerido
+def api_almacen_embarques_departure_history():
+    """Consultar historial de asignaciones de departure ligadas a salidas."""
+    try:
+        payload = get_departure_history_records(
+            limit=request.args.get("limit"),
+            departure_code=request.args.get("departureCode")
+            or request.args.get("departure"),
+            exit_id=request.args.get("exitId"),
+        )
+        return jsonify(payload)
+    except Exception as e:
+        print(
+            f"Error consultando historial de departures: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/retorno")
+@login_requerido
+def api_almacen_embarques_retorno():
+    """Obtener historial de retornos de almacén de embarques."""
+    try:
+        return jsonify(_obtener_historial_retorno_almacen_embarques())
+    except Exception as e:
+        print(f"Error API retorno almacén embarques: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/retorno/export")
+@login_requerido
+def export_almacen_embarques_retorno():
+    """Exportar historial de retornos de almacén de embarques a Excel."""
+    try:
+        rows = _obtener_historial_retorno_almacen_embarques(limit=5000)
+        return _exportar_historial_embarques_excel(
+            "Retorno Embarques",
+            "retorno_almacen_embarques.xlsx",
+            {
+                "Fecha": "fecha",
+                "Hora": "hora",
+                "Folio": "folio",
+                "No. Parte": "part_number",
+                "Cantidad retorno": "return_quantity",
+                "Cantidad pérdida": "loss_quantity",
+                "Modelo": "product_model",
+                "Cliente": "customer",
+                "Tipo": "reason",
+                "Usuario": "registered_by",
+            },
+            rows,
+        )
+    except Exception as e:
+        print(
+            f"Error exportando retorno almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/movimientos")
+@login_requerido
+def api_almacen_embarques_movimientos():
+    """Obtener historial unificado editable de movimientos de embarques."""
+    try:
+        return jsonify(
+            {
+                "success": True,
+                "rows": _obtener_movimientos_editables_almacen_embarques(),
+            }
+        )
+    except Exception as e:
+        print(
+            f"Error API movimientos almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/movimientos/export")
+@login_requerido
+def export_almacen_embarques_movimientos():
+    """Exportar historial editable de movimientos de embarques."""
+    try:
+        rows = _obtener_movimientos_editables_almacen_embarques(limit=5000)
+        return _exportar_historial_embarques_excel(
+            "Movimientos Embarques",
+            "movimientos_almacen_embarques.xlsx",
+            {
+                "Fecha": "fecha",
+                "Hora": "hora",
+                "Tipo": "movement_label",
+                "Folio": "folio",
+                "No. Parte": "part_number",
+                "Cantidad": "quantity_primary",
+                "Modelo": "product_model",
+                "Cliente": "customer",
+                "Zona": "zone_code",
+                "Ubicacion / Destino": "location_value",
+                "Departure": "departure_code",
+                "Usuario": "registered_by",
+            },
+            rows,
+        )
+    except Exception as e:
+        print(
+            f"Error exportando movimientos de embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/movimientos/<movement_type>/<int:record_id>")
+@login_requerido
+def api_almacen_embarques_movimiento_detalle(movement_type, record_id):
+    """Obtener detalle actual de un movimiento editable de embarques."""
+    try:
+        movement = _obtener_detalle_movimiento_almacen_embarques(
+            movement_type, record_id
+        )
+        if not movement:
+            return jsonify({"success": False, "error": "Movimiento no encontrado"}), 404
+        return jsonify({"success": True, "movement": movement})
+    except Exception as e:
+        print(
+            f"Error obteniendo detalle de movimiento {movement_type}/{record_id}: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route(
+    "/api/almacen-embarques/movimientos/<movement_type>/<int:record_id>",
+    methods=["PATCH", "PUT", "POST"],
+)
+@login_requerido
+def api_almacen_embarques_movimiento_update(movement_type, record_id):
+    """Actualizar un movimiento de embarques y registrar el historial del ajuste."""
+    try:
+        data = request.get_json(silent=True) or {}
+        notes = (data.get("notes") or "").strip()
+        if not notes:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "El motivo del ajuste es obligatorio",
+                    }
+                ),
+                400,
+            )
+        payload, status_code = adjust_shipping_movement_record(
+            movement_type,
+            record_id,
+            data.get("changes") or data,
+            session.get("nombre_completo", session.get("usuario", "Sistema")),
+            notes=notes,
+        )
+        return jsonify(payload), status_code
+    except Exception as e:
+        print(
+            f"Error actualizando movimiento {movement_type}/{record_id}: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general")
+@login_requerido
+def api_almacen_embarques_inventario_general():
+    """Obtener inventario general del periodo para almacén de embarques."""
+    try:
+        payload = _obtener_inventario_general_almacen_embarques()
+        return jsonify({"success": True, **payload})
+    except Exception as e:
+        print(
+            f"Error API inventario general embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/export")
+@login_requerido
+def export_almacen_embarques_inventario_general():
+    """Exportar inventario general del periodo de embarques."""
+    try:
+        payload = _obtener_inventario_general_almacen_embarques(limit=20000)
+        return _exportar_historial_embarques_excel(
+            "Inventario General Embarques",
+            "inventario_general_almacen_embarques.xlsx",
+            {
+                "No. Parte": "part_number",
+                "Modelo": "product_model",
+                "Cliente": "customer",
+                "Inventario inicial": "initial_quantity",
+                "Entradas": "entries_qty",
+                "Salidas": "exits_qty",
+                "Entradas retorno": "return_entries_qty",
+                "Salidas retorno": "return_exits_qty",
+                "Cantidad total": "current_quantity",
+                "Inicio de periodo": "period_start",
+                "Cierre": "closure_label",
+            },
+            payload.get("rows") or [],
+        )
+    except Exception as e:
+        print(
+            f"Error exportando inventario general embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/registro-movimiento-identificacion-ajax")

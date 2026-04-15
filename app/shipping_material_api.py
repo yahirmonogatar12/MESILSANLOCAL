@@ -21,6 +21,9 @@ SHIPPING_TABLES = {
     "entries": "embarques_entrada_material",
     "exits": "embarques_salida_material",
     "returns": "embarques_retorno_material",
+    "departure_history": "embarques_departure_historial",
+    "movement_adjustments": "embarques_movimiento_ajustes_historial",
+    "inventory_closures": "embarques_inventario_cierres",
 }
 
 shipping_material_api = Blueprint(
@@ -36,6 +39,11 @@ def normalize_search(raw_value):
 
 def normalize_part_number(raw_value):
     return normalize_search(raw_value).upper()
+
+
+def normalize_departure_code(raw_value):
+    value = normalize_search(raw_value)
+    return value.upper() if value else ""
 
 
 def normalize_header(value):
@@ -101,6 +109,93 @@ def generate_movement_folio(prefix):
     timestamp = now.strftime("%Y%m%d-%H%M%S")
     random_part = random.randint(100, 999)
     return f"{prefix}-{timestamp}-{random_part}"
+
+
+def get_split_folio_base(exit_folio):
+    folio = normalize_search(exit_folio)
+    if not folio:
+        return ""
+    return re.sub(r"-S\d*$", "", folio)
+
+
+def generate_split_exit_folio(cursor, source_exit_folio):
+    base_folio = get_split_folio_base(source_exit_folio)
+    if not base_folio:
+        return f"{generate_movement_folio('EMB-SAL')}-S"
+
+    cursor.execute(
+        f"""
+        SELECT exit_folio
+        FROM `{SHIPPING_TABLES['exits']}`
+        WHERE exit_folio = %s OR exit_folio LIKE %s
+        ORDER BY id ASC
+        """,
+        (f"{base_folio}-S", f"{base_folio}-S%"),
+    )
+    existing_folios = {normalize_search(row.get("exit_folio")) for row in cursor.fetchall()}
+    if f"{base_folio}-S" not in existing_folios:
+        return f"{base_folio}-S"
+
+    suffix = 2
+    while f"{base_folio}-S{suffix}" in existing_folios:
+        suffix += 1
+    return f"{base_folio}-S{suffix}"
+
+
+def parse_fifo_allocations(raw_value):
+    if not raw_value:
+        return []
+
+    if isinstance(raw_value, list):
+        return raw_value
+
+    try:
+        parsed = json.loads(raw_value)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+
+    return parsed if isinstance(parsed, list) else []
+
+
+def split_fifo_allocations(allocations, assigned_quantity):
+    requested_quantity = normalize_integer(assigned_quantity) or 0
+    assigned_allocations = []
+    remainder_allocations = []
+    remaining_to_assign = requested_quantity
+
+    for allocation in allocations:
+        allocation_data = dict(allocation)
+        previous_available = normalize_integer(allocation_data.get("previousAvailable")) or 0
+        consumed_quantity = normalize_integer(allocation_data.get("consumedQuantity")) or 0
+
+        if consumed_quantity <= 0:
+            continue
+
+        assigned_from_layer = min(consumed_quantity, max(remaining_to_assign, 0))
+        if assigned_from_layer > 0:
+            assigned_allocations.append(
+                {
+                    **allocation_data,
+                    "consumedQuantity": assigned_from_layer,
+                    "previousAvailable": previous_available,
+                    "nextAvailable": previous_available - assigned_from_layer,
+                }
+            )
+            remaining_to_assign -= assigned_from_layer
+
+        remaining_on_layer = consumed_quantity - assigned_from_layer
+        if remaining_on_layer > 0:
+            remainder_previous_available = previous_available - assigned_from_layer
+            remainder_allocations.append(
+                {
+                    **allocation_data,
+                    "consumedQuantity": remaining_on_layer,
+                    "previousAvailable": remainder_previous_available,
+                    "nextAvailable": remainder_previous_available - remaining_on_layer,
+                }
+            )
+
+    return assigned_allocations, remainder_allocations
 
 
 def build_search_clause(search, columns):
@@ -296,6 +391,8 @@ def init_shipping_material_tables():
             CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['exits']}` (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
               exit_folio VARCHAR(40) NOT NULL,
+              split_from_exit_id BIGINT UNSIGNED NULL,
+              split_root_exit_id BIGINT UNSIGNED NULL,
               inventory_id BIGINT UNSIGNED NOT NULL,
               catalog_id BIGINT UNSIGNED NOT NULL,
               part_number VARCHAR(64) NOT NULL,
@@ -309,6 +406,9 @@ def init_shipping_material_tables():
               location_code VARCHAR(60) NULL,
               fifo_allocation_json LONGTEXT NULL,
               destination_area VARCHAR(120) NULL,
+              departure_code VARCHAR(120) NULL,
+              departure_assigned_at DATETIME NULL,
+              departure_assigned_by VARCHAR(120) NULL,
               reason VARCHAR(120) NULL,
               requested_by VARCHAR(120) NULL,
               remarks TEXT NULL,
@@ -325,6 +425,40 @@ def init_shipping_material_tables():
                 ON DELETE RESTRICT,
               CONSTRAINT fk_exits_catalog
                 FOREIGN KEY (catalog_id) REFERENCES `{SHIPPING_TABLES['catalog']}` (id)
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['departure_history']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              exit_id BIGINT UNSIGNED NOT NULL,
+              exit_folio VARCHAR(40) NOT NULL,
+              inventory_id BIGINT UNSIGNED NOT NULL,
+              catalog_id BIGINT UNSIGNED NOT NULL,
+              part_number VARCHAR(64) NOT NULL,
+              quantity INT NOT NULL,
+              departure_code VARCHAR(120) NOT NULL,
+              previous_departure_code VARCHAR(120) NULL,
+              assignment_action VARCHAR(20) NOT NULL DEFAULT 'assigned',
+              product_model VARCHAR(180) NULL,
+              customer VARCHAR(120) NULL,
+              destination_area VARCHAR(120) NULL,
+              reason VARCHAR(120) NULL,
+              assigned_by VARCHAR(120) NULL,
+              assigned_at DATETIME NOT NULL,
+              notes TEXT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              KEY idx_departure_history_exit_id (exit_id),
+              KEY idx_departure_history_departure (departure_code),
+              KEY idx_departure_history_part_number (part_number),
+              KEY idx_departure_history_assigned_at (assigned_at),
+              CONSTRAINT fk_departure_history_exit
+                FOREIGN KEY (exit_id) REFERENCES `{SHIPPING_TABLES['exits']}` (id)
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -369,7 +503,85 @@ def init_shipping_material_tables():
             """
         )
 
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['movement_adjustments']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              movement_type VARCHAR(20) NOT NULL,
+              record_id BIGINT UNSIGNED NOT NULL,
+              folio VARCHAR(40) NULL,
+              part_number VARCHAR(64) NOT NULL,
+              adjustment_action VARCHAR(20) NOT NULL DEFAULT 'update',
+              previous_values_json LONGTEXT NOT NULL,
+              new_values_json LONGTEXT NOT NULL,
+              changed_fields_json LONGTEXT NOT NULL,
+              notes TEXT NULL,
+              adjusted_by VARCHAR(120) NULL,
+              adjusted_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              KEY idx_adjustments_type_record (movement_type, record_id),
+              KEY idx_adjustments_part_number (part_number),
+              KEY idx_adjustments_adjusted_at (adjusted_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['inventory_closures']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              part_number VARCHAR(64) NOT NULL,
+              initial_quantity INT NOT NULL DEFAULT 0,
+              closed_at DATETIME NOT NULL,
+              closure_label VARCHAR(120) NULL,
+              closed_by VARCHAR(120) NULL,
+              notes TEXT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              KEY idx_inventory_closures_part_closed_at (part_number, closed_at),
+              KEY idx_inventory_closures_closed_at (closed_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
         remove_deprecated_location_defaults(cursor)
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["exits"],
+            "split_from_exit_id",
+            "BIGINT UNSIGNED NULL AFTER `exit_folio`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["exits"],
+            "split_root_exit_id",
+            "BIGINT UNSIGNED NULL AFTER `split_from_exit_id`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["exits"],
+            "departure_code",
+            "VARCHAR(120) NULL AFTER `destination_area`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["exits"],
+            "departure_assigned_at",
+            "DATETIME NULL AFTER `departure_code`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["exits"],
+            "departure_assigned_by",
+            "VARCHAR(120) NULL AFTER `departure_assigned_at`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["movement_adjustments"],
+            "notes",
+            "TEXT NULL AFTER `changed_fields_json`",
+        )
         conn.commit()
         print("Tablas compartidas de embarques creadas/verificadas correctamente")
         return True
@@ -640,6 +852,1257 @@ def create_hidden_return_layer(cursor, inventory, return_folio, payload):
             payload.get("movementAt"),
         ),
     )
+
+
+def fetch_exit_record_for_update(cursor, exit_id):
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          exit_folio,
+          split_from_exit_id,
+          split_root_exit_id,
+          inventory_id,
+          catalog_id,
+          part_number,
+          quantity,
+          previous_quantity,
+          new_quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          fifo_allocation_json,
+          destination_area,
+          departure_code,
+          departure_assigned_at,
+          departure_assigned_by,
+          reason,
+          requested_by,
+          remarks,
+          registered_by,
+          movement_at
+        FROM `{SHIPPING_TABLES['exits']}`
+        WHERE id = %s
+        LIMIT 1
+        FOR UPDATE
+        """,
+        (exit_id,),
+    )
+    return cursor.fetchone()
+
+
+def insert_departure_history_record(
+    cursor,
+    exit_row,
+    departure_code,
+    assigned_by,
+    assigned_at,
+    notes=None,
+):
+    previous_departure_code = normalize_departure_code(exit_row.get("departure_code")) or None
+    action = "reassigned" if previous_departure_code else "assigned"
+
+    cursor.execute(
+        f"""
+        INSERT INTO `{SHIPPING_TABLES['departure_history']}` (
+          exit_id,
+          exit_folio,
+          inventory_id,
+          catalog_id,
+          part_number,
+          quantity,
+          departure_code,
+          previous_departure_code,
+          assignment_action,
+          product_model,
+          customer,
+          destination_area,
+          reason,
+          assigned_by,
+          assigned_at,
+          notes
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            exit_row["id"],
+            exit_row.get("exit_folio"),
+            exit_row.get("inventory_id"),
+            exit_row.get("catalog_id"),
+            exit_row.get("part_number"),
+            normalize_integer(exit_row.get("quantity")) or 0,
+            departure_code,
+            previous_departure_code,
+            action,
+            exit_row.get("product_model"),
+            exit_row.get("customer"),
+            exit_row.get("destination_area"),
+            exit_row.get("reason"),
+            normalize_search(assigned_by) or "Sistema",
+            assigned_at,
+            normalize_search(notes) or None,
+        ),
+    )
+
+
+def create_split_exit_record(cursor, source_exit_row, split_quantity, split_allocations):
+    split_folio = generate_split_exit_folio(cursor, source_exit_row.get("exit_folio"))
+    split_root_exit_id = (
+        normalize_integer(source_exit_row.get("split_root_exit_id"))
+        or normalize_integer(source_exit_row.get("id"))
+        or None
+    )
+    source_new_quantity = normalize_integer(source_exit_row.get("new_quantity")) or 0
+    split_quantity_value = normalize_integer(split_quantity) or 0
+    split_previous_quantity = source_new_quantity + split_quantity_value
+    first_split_allocation = split_allocations[0] if split_allocations else {}
+
+    cursor.execute(
+        f"""
+        INSERT INTO `{SHIPPING_TABLES['exits']}` (
+          exit_folio,
+          split_from_exit_id,
+          split_root_exit_id,
+          inventory_id,
+          catalog_id,
+          part_number,
+          quantity,
+          previous_quantity,
+          new_quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          fifo_allocation_json,
+          destination_area,
+          departure_code,
+          departure_assigned_at,
+          departure_assigned_by,
+          reason,
+          requested_by,
+          remarks,
+          registered_by,
+          movement_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            split_folio,
+            source_exit_row.get("id"),
+            split_root_exit_id,
+            source_exit_row.get("inventory_id"),
+            source_exit_row.get("catalog_id"),
+            source_exit_row.get("part_number"),
+            split_quantity_value,
+            split_previous_quantity,
+            source_new_quantity,
+            source_exit_row.get("product_model"),
+            source_exit_row.get("description"),
+            source_exit_row.get("customer"),
+            first_split_allocation.get("zoneCode") or source_exit_row.get("zone_code"),
+            first_split_allocation.get("locationCode")
+            or source_exit_row.get("location_code"),
+            json.dumps(split_allocations) if split_allocations else None,
+            source_exit_row.get("destination_area"),
+            None,
+            None,
+            None,
+            source_exit_row.get("reason"),
+            source_exit_row.get("requested_by"),
+            source_exit_row.get("remarks"),
+            source_exit_row.get("registered_by"),
+            source_exit_row.get("movement_at"),
+        ),
+    )
+    return {
+        "id": cursor.lastrowid,
+        "folio": split_folio,
+        "quantity": split_quantity_value,
+    }
+
+
+def assign_exit_departure_value(
+    exit_id,
+    departure_code,
+    assigned_by,
+    departure_quantity=None,
+    notes=None,
+    assigned_at=None,
+):
+    normalized_departure = normalize_departure_code(departure_code)
+    if not normalized_departure:
+        return {
+            "success": False,
+            "error": "Se requiere un departure valido",
+        }, 400
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_transaction_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+        exit_row = fetch_exit_record_for_update(cursor, exit_id)
+        if not exit_row:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "La salida solicitada no existe",
+            }, 404
+
+        row_quantity = normalize_integer(exit_row.get("quantity")) or 0
+        assigned_quantity = normalize_integer(departure_quantity)
+        if assigned_quantity is None:
+            assigned_quantity = row_quantity
+        if assigned_quantity <= 0:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "La cantidad a asignar al departure debe ser mayor a cero",
+            }, 400
+        if assigned_quantity > row_quantity:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "La cantidad del departure no puede ser mayor a la cantidad del registro",
+                "availableQuantity": row_quantity,
+            }, 400
+
+        current_departure = normalize_departure_code(exit_row.get("departure_code"))
+        if current_departure and current_departure != normalized_departure:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "La salida ya tiene un departure asignado",
+            }, 409
+        if current_departure == normalized_departure:
+            if assigned_quantity != row_quantity:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "La salida ya tiene un departure asignado; usa el registro restante para otra asignacion",
+                }, 409
+            conn.rollback()
+            return {
+                "success": True,
+                "id": exit_row["id"],
+                "folio": exit_row.get("exit_folio"),
+                "departureCode": normalized_departure,
+                "assignedQuantity": row_quantity,
+                "unchanged": True,
+                "message": "El departure ya estaba asignado",
+            }, 200
+
+        assignment_timestamp = to_sql_datetime(assigned_at)
+        normalized_assigned_by = normalize_search(assigned_by) or "Sistema"
+        fifo_allocations = parse_fifo_allocations(exit_row.get("fifo_allocation_json"))
+        assigned_allocations, remaining_allocations = split_fifo_allocations(
+            fifo_allocations,
+            assigned_quantity,
+        )
+        split_record = None
+        quantity_to_keep = assigned_quantity
+        remaining_quantity = row_quantity - assigned_quantity
+        previous_quantity = normalize_integer(exit_row.get("previous_quantity")) or 0
+        assigned_new_quantity = previous_quantity - quantity_to_keep
+
+        if remaining_quantity > 0:
+            split_record = create_split_exit_record(
+                cursor,
+                exit_row,
+                remaining_quantity,
+                remaining_allocations,
+            )
+
+        cursor.execute(
+            f"""
+            UPDATE `{SHIPPING_TABLES['exits']}`
+            SET quantity = %s,
+                new_quantity = %s,
+                fifo_allocation_json = %s,
+                departure_code = %s,
+                departure_assigned_at = %s,
+                departure_assigned_by = %s
+            WHERE id = %s
+            """,
+            (
+                quantity_to_keep,
+                assigned_new_quantity,
+                json.dumps(assigned_allocations) if assigned_allocations else None,
+                normalized_departure,
+                assignment_timestamp,
+                normalized_assigned_by,
+                exit_row["id"],
+            ),
+        )
+
+        assigned_exit_row = {
+            **exit_row,
+            "quantity": quantity_to_keep,
+            "new_quantity": assigned_new_quantity,
+            "fifo_allocation_json": json.dumps(assigned_allocations)
+            if assigned_allocations
+            else None,
+        }
+        insert_departure_history_record(
+            cursor,
+            assigned_exit_row,
+            normalized_departure,
+            normalized_assigned_by,
+            assignment_timestamp,
+            notes=notes,
+        )
+
+        conn.commit()
+        return {
+            "success": True,
+            "id": exit_row["id"],
+            "folio": exit_row.get("exit_folio"),
+            "departureCode": normalized_departure,
+            "assignedQuantity": quantity_to_keep,
+            "remainingQuantity": remaining_quantity,
+            "splitCreated": bool(split_record),
+            "splitExitId": split_record.get("id") if split_record else None,
+            "splitFolio": split_record.get("folio") if split_record else None,
+            "assignedAt": serialize_datetime(assignment_timestamp),
+            "assignedBy": normalized_assigned_by,
+            "message": (
+                "Departure asignado y salida dividida correctamente"
+                if split_record
+                else "Departure asignado correctamente"
+            ),
+        }, 200
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def get_departure_history_records(limit=300, departure_code=None, exit_id=None):
+    limit_value = min(max(normalize_integer(limit) or 300, 1), 2000)
+    where_clauses = ["1 = 1"]
+    params = []
+
+    normalized_departure = normalize_departure_code(departure_code)
+    if normalized_departure:
+        where_clauses.append("departure_code = %s")
+        params.append(normalized_departure)
+
+    normalized_exit_id = normalize_integer(exit_id)
+    if normalized_exit_id:
+        where_clauses.append("exit_id = %s")
+        params.append(normalized_exit_id)
+
+    conn = get_db_connection()
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+    try:
+        cursor.execute(
+            f"""
+            SELECT
+              id,
+              exit_id,
+              exit_folio,
+              part_number,
+              quantity,
+              departure_code,
+              previous_departure_code,
+              assignment_action,
+              product_model,
+              customer,
+              destination_area,
+              reason,
+              assigned_by,
+              assigned_at,
+              notes,
+              created_at
+            FROM `{SHIPPING_TABLES['departure_history']}`
+            WHERE {" AND ".join(where_clauses)}
+            ORDER BY assigned_at DESC, id DESC
+            LIMIT %s
+            """,
+            tuple(params + [limit_value]),
+        )
+        rows = [serialize_row(row) for row in cursor.fetchall()]
+        return {"success": True, "history": rows, "total": len(rows)}
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def normalize_movement_type(raw_value):
+    normalized = normalize_search(raw_value).lower()
+    mapping = {
+        "entrada": "entry",
+        "entradas": "entry",
+        "entry": "entry",
+        "salida": "exit",
+        "salidas": "exit",
+        "exit": "exit",
+        "retorno": "return",
+        "retornos": "return",
+        "return": "return",
+    }
+    return mapping.get(normalized, normalized)
+
+
+def json_dumps_safe(value):
+    return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def normalize_optional_text(raw_value):
+    value = normalize_search(raw_value)
+    return value or None
+
+
+def generate_return_layer_folio(return_row):
+    return_id = normalize_integer(return_row.get("id"))
+    if return_id:
+        return f"EMB-LYR-{return_id}"
+    return generate_movement_folio("EMB-LYR")
+
+
+def fetch_entry_record_for_update(cursor, entry_id):
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          entry_folio,
+          inventory_id,
+          catalog_id,
+          part_number,
+          quantity,
+          available_quantity,
+          previous_quantity,
+          new_quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          reference_code,
+          batch_no,
+          notes,
+          registered_by,
+          movement_at,
+          created_at
+        FROM `{SHIPPING_TABLES['entries']}`
+        WHERE id = %s
+          AND COALESCE(is_fifo_layer_only, 0) = 0
+        LIMIT 1
+        FOR UPDATE
+        """,
+        (entry_id,),
+    )
+    return cursor.fetchone()
+
+
+def fetch_return_record_for_update(cursor, return_id):
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          return_folio,
+          inventory_id,
+          catalog_id,
+          part_number,
+          return_quantity,
+          loss_quantity,
+          previous_quantity,
+          new_quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          reason,
+          remarks,
+          registered_by,
+          movement_at,
+          created_at
+        FROM `{SHIPPING_TABLES['returns']}`
+        WHERE id = %s
+        LIMIT 1
+        FOR UPDATE
+        """,
+        (return_id,),
+    )
+    return cursor.fetchone()
+
+
+def build_movement_adjustment_snapshot(movement_type, row):
+    normalized_type = normalize_movement_type(movement_type)
+    if normalized_type == "entry":
+        snapshot = {
+            "id": row.get("id"),
+            "folio": row.get("entry_folio"),
+            "part_number": row.get("part_number"),
+            "quantity": normalize_integer(row.get("quantity")) or 0,
+            "available_quantity": normalize_integer(row.get("available_quantity")) or 0,
+            "product_model": normalize_optional_text(row.get("product_model")),
+            "description": normalize_optional_text(row.get("description")),
+            "customer": normalize_optional_text(row.get("customer")),
+            "zone_code": normalize_optional_text(row.get("zone_code")),
+            "location_code": normalize_optional_text(row.get("location_code")),
+            "reference_code": normalize_optional_text(row.get("reference_code")),
+            "batch_no": normalize_optional_text(row.get("batch_no")),
+            "notes": normalize_optional_text(row.get("notes")),
+            "registered_by": normalize_optional_text(row.get("registered_by")),
+            "movement_at": serialize_datetime(row.get("movement_at")),
+        }
+        return serialize_row(snapshot)
+
+    if normalized_type == "exit":
+        snapshot = {
+            "id": row.get("id"),
+            "folio": row.get("exit_folio"),
+            "part_number": row.get("part_number"),
+            "quantity": normalize_integer(row.get("quantity")) or 0,
+            "previous_quantity": normalize_integer(row.get("previous_quantity")) or 0,
+            "new_quantity": normalize_integer(row.get("new_quantity")) or 0,
+            "product_model": normalize_optional_text(row.get("product_model")),
+            "description": normalize_optional_text(row.get("description")),
+            "customer": normalize_optional_text(row.get("customer")),
+            "zone_code": normalize_optional_text(row.get("zone_code")),
+            "location_code": normalize_optional_text(row.get("location_code")),
+            "destination_area": normalize_optional_text(row.get("destination_area")),
+            "departure_code": normalize_optional_text(row.get("departure_code")),
+            "reason": normalize_optional_text(row.get("reason")),
+            "requested_by": normalize_optional_text(row.get("requested_by")),
+            "remarks": normalize_optional_text(row.get("remarks")),
+            "registered_by": normalize_optional_text(row.get("registered_by")),
+            "movement_at": serialize_datetime(row.get("movement_at")),
+        }
+        return serialize_row(snapshot)
+
+    snapshot = {
+        "id": row.get("id"),
+        "folio": row.get("return_folio"),
+        "part_number": row.get("part_number"),
+        "return_quantity": normalize_integer(row.get("return_quantity")) or 0,
+        "loss_quantity": normalize_integer(row.get("loss_quantity")) or 0,
+        "previous_quantity": normalize_integer(row.get("previous_quantity")) or 0,
+        "new_quantity": normalize_integer(row.get("new_quantity")) or 0,
+        "product_model": normalize_optional_text(row.get("product_model")),
+        "description": normalize_optional_text(row.get("description")),
+        "customer": normalize_optional_text(row.get("customer")),
+        "zone_code": normalize_optional_text(row.get("zone_code")),
+        "location_code": normalize_optional_text(row.get("location_code")),
+        "reason": normalize_optional_text(row.get("reason")),
+        "remarks": normalize_optional_text(row.get("remarks")),
+        "registered_by": normalize_optional_text(row.get("registered_by")),
+        "movement_at": serialize_datetime(row.get("movement_at")),
+    }
+    return serialize_row(snapshot)
+
+
+def insert_movement_adjustment_record(
+    cursor,
+    movement_type,
+    record_id,
+    folio,
+    part_number,
+    previous_values,
+    new_values,
+    changed_fields,
+    adjusted_by,
+    adjusted_at,
+    notes=None,
+):
+    cursor.execute(
+        f"""
+        INSERT INTO `{SHIPPING_TABLES['movement_adjustments']}` (
+          movement_type,
+          record_id,
+          folio,
+          part_number,
+          adjustment_action,
+          previous_values_json,
+          new_values_json,
+          changed_fields_json,
+          notes,
+          adjusted_by,
+          adjusted_at
+        ) VALUES (%s, %s, %s, %s, 'update', %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            movement_type,
+            record_id,
+            folio,
+            part_number,
+            json_dumps_safe(previous_values),
+            json_dumps_safe(new_values),
+            json_dumps_safe(changed_fields),
+            normalize_optional_text(notes),
+            normalize_optional_text(adjusted_by) or "Sistema",
+            adjusted_at,
+        ),
+    )
+
+
+def load_rebuild_movements_for_part(cursor, part_number):
+    normalized_part = normalize_part_number(part_number)
+    if not normalized_part:
+        return []
+
+    movements = []
+
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          entry_folio AS folio,
+          quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          reference_code,
+          batch_no,
+          notes,
+          registered_by,
+          movement_at,
+          created_at
+        FROM `{SHIPPING_TABLES['entries']}`
+        WHERE part_number = %s
+          AND COALESCE(is_fifo_layer_only, 0) = 0
+        """,
+        (normalized_part,),
+    )
+    for row in cursor.fetchall():
+        movements.append(
+            {
+                **row,
+                "movement_type": "entry",
+                "sort_at": row.get("movement_at") or row.get("created_at"),
+                "sort_order": 1,
+            }
+        )
+
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          return_folio AS folio,
+          return_quantity,
+          loss_quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          reason,
+          remarks,
+          registered_by,
+          movement_at,
+          created_at
+        FROM `{SHIPPING_TABLES['returns']}`
+        WHERE part_number = %s
+        """,
+        (normalized_part,),
+    )
+    for row in cursor.fetchall():
+        movements.append(
+            {
+                **row,
+                "movement_type": "return",
+                "sort_at": row.get("movement_at") or row.get("created_at"),
+                "sort_order": 2,
+            }
+        )
+
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          exit_folio AS folio,
+          quantity,
+          product_model,
+          description,
+          customer,
+          zone_code,
+          location_code,
+          destination_area,
+          departure_code,
+          reason,
+          requested_by,
+          remarks,
+          registered_by,
+          movement_at,
+          created_at
+        FROM `{SHIPPING_TABLES['exits']}`
+        WHERE part_number = %s
+        """,
+        (normalized_part,),
+    )
+    for row in cursor.fetchall():
+        movements.append(
+            {
+                **row,
+                "movement_type": "exit",
+                "sort_at": row.get("movement_at") or row.get("created_at"),
+                "sort_order": 3,
+            }
+        )
+
+    movements.sort(
+        key=lambda row: (
+            row.get("sort_at") or datetime.min,
+            row.get("sort_order") or 9,
+            normalize_integer(row.get("id")) or 0,
+        )
+    )
+    return movements
+
+
+def rebuild_part_inventory_state(cursor, part_number):
+    normalized_part = normalize_part_number(part_number)
+    if not normalized_part:
+        return None
+
+    inventory = ensure_inventory_record(cursor, normalized_part)
+    if not inventory:
+        return None
+
+    cursor.execute(
+        f"""
+        DELETE FROM `{SHIPPING_TABLES['entries']}`
+        WHERE part_number = %s
+          AND COALESCE(is_fifo_layer_only, 0) = 1
+        """,
+        (normalized_part,),
+    )
+
+    movements = load_rebuild_movements_for_part(cursor, normalized_part)
+    layer_queue = []
+    tracked_available = {}
+    current_quantity = 0
+    last_entry_at = None
+    last_exit_at = None
+    last_return_at = None
+
+    for movement in movements:
+        movement_type = movement.get("movement_type")
+        movement_at = movement.get("movement_at") or movement.get("created_at") or to_sql_datetime()
+
+        if movement_type == "entry":
+            quantity = normalize_integer(movement.get("quantity")) or 0
+            previous_quantity = current_quantity
+            new_quantity = previous_quantity + quantity
+            available_quantity = resolve_available_layer_quantity(previous_quantity, quantity)
+
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['entries']}`
+                SET previous_quantity = %s,
+                    new_quantity = %s,
+                    available_quantity = %s
+                WHERE id = %s
+                """,
+                (
+                    previous_quantity,
+                    new_quantity,
+                    available_quantity,
+                    movement["id"],
+                ),
+            )
+
+            tracked_available[movement["id"]] = available_quantity
+            if available_quantity > 0:
+                layer_queue.append(
+                    {
+                        "entry_id": movement["id"],
+                        "entry_folio": movement.get("folio"),
+                        "available_quantity": available_quantity,
+                        "zone_code": movement.get("zone_code"),
+                        "location_code": movement.get("location_code"),
+                        "movement_at": movement_at,
+                    }
+                )
+
+            current_quantity = new_quantity
+            last_entry_at = movement_at
+            continue
+
+        if movement_type == "return":
+            return_quantity = normalize_integer(movement.get("return_quantity")) or 0
+            loss_quantity = normalize_integer(movement.get("loss_quantity")) or 0
+            net_quantity = return_quantity - loss_quantity
+            previous_quantity = current_quantity
+            new_quantity = previous_quantity + net_quantity
+
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['returns']}`
+                SET previous_quantity = %s,
+                    new_quantity = %s
+                WHERE id = %s
+                """,
+                (
+                    previous_quantity,
+                    new_quantity,
+                    movement["id"],
+                ),
+            )
+
+            available_quantity = resolve_available_layer_quantity(
+                previous_quantity,
+                net_quantity,
+            )
+            if net_quantity > 0 and available_quantity > 0:
+                hidden_folio = generate_return_layer_folio(movement)
+                cursor.execute(
+                    f"""
+                    INSERT INTO `{SHIPPING_TABLES['entries']}` (
+                      entry_folio,
+                      inventory_id,
+                      catalog_id,
+                      part_number,
+                      quantity,
+                      available_quantity,
+                      is_fifo_layer_only,
+                      previous_quantity,
+                      new_quantity,
+                      product_model,
+                      description,
+                      customer,
+                      zone_code,
+                      location_code,
+                      reference_code,
+                      batch_no,
+                      notes,
+                      registered_by,
+                      movement_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, 1, 0, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        hidden_folio,
+                        inventory["id"],
+                        inventory.get("catalog_id") or inventory.get("catalog_ref_id"),
+                        normalized_part,
+                        available_quantity,
+                        available_quantity,
+                        available_quantity,
+                        movement.get("product_model")
+                        or inventory.get("product_model")
+                        or inventory.get("catalog_model"),
+                        movement.get("description")
+                        or inventory.get("description")
+                        or inventory.get("catalog_description"),
+                        movement.get("customer")
+                        or inventory.get("customer")
+                        or inventory.get("catalog_customer"),
+                        movement.get("zone_code")
+                        or inventory.get("zone_code")
+                        or inventory.get("catalog_zone_code"),
+                        movement.get("location_code"),
+                        f"RETORNO:{movement.get('folio')}",
+                        None,
+                        movement.get("remarks") or "Capa FIFO generada por retorno",
+                        movement.get("registered_by") or "Sistema",
+                        movement_at,
+                    ),
+                )
+                hidden_entry_id = cursor.lastrowid
+                tracked_available[hidden_entry_id] = available_quantity
+                layer_queue.append(
+                    {
+                        "entry_id": hidden_entry_id,
+                        "entry_folio": hidden_folio,
+                        "available_quantity": available_quantity,
+                        "zone_code": movement.get("zone_code")
+                        or inventory.get("zone_code")
+                        or inventory.get("catalog_zone_code"),
+                        "location_code": movement.get("location_code"),
+                        "movement_at": movement_at,
+                    }
+                )
+
+            current_quantity = new_quantity
+            last_return_at = movement_at
+            continue
+
+        quantity = normalize_integer(movement.get("quantity")) or 0
+        previous_quantity = current_quantity
+        remaining_quantity = quantity
+        allocations = []
+
+        for layer in layer_queue:
+            available_quantity = normalize_integer(layer.get("available_quantity")) or 0
+            if remaining_quantity <= 0:
+                break
+            if available_quantity <= 0:
+                continue
+
+            consumed_quantity = min(available_quantity, remaining_quantity)
+            allocations.append(
+                {
+                    "entryId": layer["entry_id"],
+                    "entryFolio": layer.get("entry_folio"),
+                    "consumedQuantity": consumed_quantity,
+                    "previousAvailable": available_quantity,
+                    "nextAvailable": available_quantity - consumed_quantity,
+                    "zoneCode": layer.get("zone_code"),
+                    "locationCode": layer.get("location_code"),
+                    "movementAt": serialize_datetime(layer.get("movement_at")),
+                }
+            )
+            layer["available_quantity"] = available_quantity - consumed_quantity
+            tracked_available[layer["entry_id"]] = layer["available_quantity"]
+            remaining_quantity -= consumed_quantity
+
+        new_quantity = previous_quantity - quantity
+        first_allocation = allocations[0] if allocations else {}
+        cursor.execute(
+            f"""
+            UPDATE `{SHIPPING_TABLES['exits']}`
+            SET previous_quantity = %s,
+                new_quantity = %s,
+                fifo_allocation_json = %s,
+                zone_code = %s,
+                location_code = %s
+            WHERE id = %s
+            """,
+            (
+                previous_quantity,
+                new_quantity,
+                json_dumps_safe(allocations) if allocations else None,
+                first_allocation.get("zoneCode") or movement.get("zone_code"),
+                first_allocation.get("locationCode") or movement.get("location_code"),
+                movement["id"],
+            ),
+        )
+
+        current_quantity = new_quantity
+        last_exit_at = movement_at
+
+    for entry_id, available_quantity in tracked_available.items():
+        cursor.execute(
+            f"""
+            UPDATE `{SHIPPING_TABLES['entries']}`
+            SET available_quantity = %s
+            WHERE id = %s
+            """,
+            (
+                normalize_integer(available_quantity) or 0,
+                entry_id,
+            ),
+        )
+
+    update_inventory_snapshot(
+        cursor,
+        inventory["id"],
+        {
+            "current_quantity": current_quantity,
+            "last_entry_at": last_entry_at,
+            "last_exit_at": last_exit_at,
+            "last_return_at": last_return_at,
+        },
+    )
+
+    return {
+        "partNumber": normalized_part,
+        "currentQuantity": current_quantity,
+    }
+
+
+def fetch_all_embarques_parts(cursor):
+    cursor.execute(
+        f"""
+        SELECT DISTINCT part_number
+        FROM `{SHIPPING_TABLES['inventory']}`
+        WHERE part_number IS NOT NULL
+          AND TRIM(part_number) <> ''
+        ORDER BY part_number ASC
+        """
+    )
+    return [normalize_part_number(row.get("part_number")) for row in cursor.fetchall()]
+
+
+def adjust_shipping_movement_record(
+    movement_type,
+    record_id,
+    changes,
+    adjusted_by,
+    notes=None,
+):
+    normalized_type = normalize_movement_type(movement_type)
+    if normalized_type not in {"entry", "exit", "return"}:
+        return {
+            "success": False,
+            "error": "Tipo de movimiento no soportado",
+        }, 400
+
+    record_id_value = normalize_integer(record_id)
+    if not record_id_value:
+        return {
+            "success": False,
+            "error": "Registro de movimiento invalido",
+        }, 400
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_transaction_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+        if normalized_type == "entry":
+            current_row = fetch_entry_record_for_update(cursor, record_id_value)
+            table_name = SHIPPING_TABLES["entries"]
+            folio_field = "entry_folio"
+            allowed_text_fields = {
+                "product_model",
+                "description",
+                "customer",
+                "zone_code",
+                "location_code",
+                "reference_code",
+                "batch_no",
+                "notes",
+                "registered_by",
+            }
+            quantity_field = "quantity"
+        elif normalized_type == "exit":
+            current_row = fetch_exit_record_for_update(cursor, record_id_value)
+            table_name = SHIPPING_TABLES["exits"]
+            folio_field = "exit_folio"
+            allowed_text_fields = {
+                "product_model",
+                "description",
+                "customer",
+                "zone_code",
+                "location_code",
+                "destination_area",
+                "reason",
+                "requested_by",
+                "remarks",
+                "registered_by",
+            }
+            quantity_field = "quantity"
+        else:
+            current_row = fetch_return_record_for_update(cursor, record_id_value)
+            table_name = SHIPPING_TABLES["returns"]
+            folio_field = "return_folio"
+            allowed_text_fields = {
+                "product_model",
+                "description",
+                "customer",
+                "zone_code",
+                "location_code",
+                "reason",
+                "remarks",
+                "registered_by",
+            }
+            quantity_field = None
+
+        if not current_row:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "El movimiento solicitado no existe",
+            }, 404
+
+        old_snapshot = build_movement_adjustment_snapshot(normalized_type, current_row)
+        updated_row = {**current_row}
+        update_payload = {}
+        rebuild_parts = {normalize_part_number(current_row.get("part_number"))}
+
+        if "part_number" in changes:
+            next_part_number = normalize_part_number(changes.get("part_number"))
+            if not next_part_number:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "Se requiere un numero de parte valido",
+                }, 400
+
+            if next_part_number != normalize_part_number(current_row.get("part_number")):
+                next_inventory = ensure_inventory_record(cursor, next_part_number)
+                if not next_inventory:
+                    conn.rollback()
+                    return {
+                        "success": False,
+                        "error": "El numero de parte no existe en el catalogo de embarques",
+                    }, 404
+
+                update_payload["part_number"] = next_part_number
+                update_payload["inventory_id"] = next_inventory["id"]
+                update_payload["catalog_id"] = (
+                    next_inventory.get("catalog_id") or next_inventory.get("catalog_ref_id")
+                )
+                updated_row["part_number"] = next_part_number
+                updated_row["inventory_id"] = next_inventory["id"]
+                updated_row["catalog_id"] = (
+                    next_inventory.get("catalog_id") or next_inventory.get("catalog_ref_id")
+                )
+                rebuild_parts.add(next_part_number)
+
+        if "movement_at" in changes:
+            raw_movement_at = normalize_search(changes.get("movement_at"))
+            if not raw_movement_at:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "La fecha del movimiento es obligatoria",
+                }, 400
+
+            current_movement_at = to_sql_datetime(current_row.get("movement_at"))
+            try:
+                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw_movement_at):
+                    next_date = datetime.strptime(raw_movement_at, "%Y-%m-%d")
+                    next_movement_at = current_movement_at.replace(
+                        year=next_date.year,
+                        month=next_date.month,
+                        day=next_date.day,
+                    )
+                else:
+                    next_movement_at = to_sql_datetime(raw_movement_at)
+            except ValueError:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "La fecha del movimiento no es valida",
+                }, 400
+
+            update_payload["movement_at"] = next_movement_at
+            updated_row["movement_at"] = next_movement_at
+
+        if normalized_type in {"entry", "exit"} and quantity_field in changes:
+            next_quantity = normalize_integer(changes.get(quantity_field))
+            if next_quantity is None or next_quantity <= 0:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "La cantidad debe ser un entero mayor a cero",
+                }, 400
+            update_payload[quantity_field] = next_quantity
+            updated_row[quantity_field] = next_quantity
+
+        if normalized_type == "return":
+            next_return_quantity = (
+                normalize_integer(changes.get("return_quantity"))
+                if "return_quantity" in changes
+                else normalize_integer(current_row.get("return_quantity"))
+            ) or 0
+            next_loss_quantity = (
+                normalize_integer(changes.get("loss_quantity"))
+                if "loss_quantity" in changes
+                else normalize_integer(current_row.get("loss_quantity"))
+            ) or 0
+
+            if next_return_quantity <= 0:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "La cantidad de retorno debe ser mayor a cero",
+                }, 400
+
+            if next_loss_quantity < 0 or next_loss_quantity > next_return_quantity:
+                conn.rollback()
+                return {
+                    "success": False,
+                    "error": "La merma no puede ser mayor que la cantidad retornada",
+                }, 400
+
+            if "return_quantity" in changes:
+                update_payload["return_quantity"] = next_return_quantity
+                updated_row["return_quantity"] = next_return_quantity
+            if "loss_quantity" in changes:
+                update_payload["loss_quantity"] = next_loss_quantity
+                updated_row["loss_quantity"] = next_loss_quantity
+
+        for field_name in allowed_text_fields:
+            if field_name not in changes:
+                continue
+            next_value = normalize_optional_text(changes.get(field_name))
+            update_payload[field_name] = next_value
+            updated_row[field_name] = next_value
+
+        if normalized_type == "exit" and "departure_code" in changes:
+            next_departure = normalize_departure_code(changes.get("departure_code")) or None
+            update_payload["departure_code"] = next_departure
+            update_payload["departure_assigned_at"] = to_sql_datetime()
+            update_payload["departure_assigned_by"] = normalize_optional_text(adjusted_by) or "Sistema"
+            updated_row["departure_code"] = next_departure
+            updated_row["departure_assigned_at"] = update_payload["departure_assigned_at"]
+            updated_row["departure_assigned_by"] = update_payload["departure_assigned_by"]
+
+        new_snapshot = build_movement_adjustment_snapshot(normalized_type, updated_row)
+        changed_fields = {
+            field_name: {
+                "previous": old_snapshot.get(field_name),
+                "new": new_snapshot.get(field_name),
+            }
+            for field_name in new_snapshot.keys()
+            if old_snapshot.get(field_name) != new_snapshot.get(field_name)
+        }
+
+        if not changed_fields:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "No se detectaron cambios para guardar",
+            }, 400
+
+        assignments = ", ".join([f"`{field_name}` = %s" for field_name in update_payload.keys()])
+        params = list(update_payload.values()) + [record_id_value]
+        cursor.execute(
+            f"""
+            UPDATE `{table_name}`
+            SET {assignments}
+            WHERE id = %s
+            """,
+            tuple(params),
+        )
+
+        adjusted_at = to_sql_datetime()
+        insert_movement_adjustment_record(
+            cursor,
+            normalized_type,
+            record_id_value,
+            new_snapshot.get("folio"),
+            new_snapshot.get("part_number"),
+            old_snapshot,
+            new_snapshot,
+            changed_fields,
+            adjusted_by,
+            adjusted_at,
+            notes=notes,
+        )
+
+        for rebuild_part in sorted({part for part in rebuild_parts if part}):
+            rebuild_part_inventory_state(cursor, rebuild_part)
+
+        conn.commit()
+        return {
+            "success": True,
+            "movementType": normalized_type,
+            "recordId": record_id_value,
+            "folio": new_snapshot.get("folio"),
+            "partNumber": new_snapshot.get("part_number"),
+            "changedFields": changed_fields,
+            "adjustedAt": serialize_datetime(adjusted_at),
+            "adjustedBy": normalize_optional_text(adjusted_by) or "Sistema",
+            "message": "Movimiento actualizado correctamente",
+        }, 200
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 def merge_catalog_record(base_record, next_record):
@@ -1100,6 +2563,8 @@ def list_exits():
             "zone_code",
             "location_code",
             "destination_area",
+            "departure_code",
+            "departure_assigned_by",
             "reason",
             "requested_by",
         ],
@@ -1125,6 +2590,9 @@ def list_exits():
               location_code,
               fifo_allocation_json,
               destination_area,
+              departure_code,
+              departure_assigned_at,
+              departure_assigned_by,
               reason,
               requested_by,
               remarks,
@@ -1185,6 +2653,9 @@ def create_exit():
         previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
         fifo_layers = load_fifo_layers(cursor, inventory["part_number"])
         fifo_plan = build_fifo_allocations(fifo_layers, quantity)
+        departure_code = normalize_departure_code(
+            data.get("departureCode") or data.get("departure")
+        )
 
         new_quantity = previous_quantity - quantity
         movement_at = to_sql_datetime(data.get("exitedAt"))
@@ -1218,12 +2689,15 @@ def create_exit():
               location_code,
               fifo_allocation_json,
               destination_area,
+              departure_code,
+              departure_assigned_at,
+              departure_assigned_by,
               reason,
               requested_by,
               remarks,
               registered_by,
               movement_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 exit_folio,
@@ -1244,6 +2718,15 @@ def create_exit():
                 normalize_search(data.get("destinationArea"))
                 or normalize_search(data.get("department"))
                 or "Embarques",
+                departure_code or None,
+                movement_at if departure_code else None,
+                (
+                    normalize_search(data.get("registeredBy"))
+                    or normalize_search(data.get("userName"))
+                    or "Usuario local"
+                )
+                if departure_code
+                else None,
                 normalize_search(data.get("reason"))
                 or normalize_search(data.get("process"))
                 or "Salida de producto terminado",
@@ -1259,12 +2742,43 @@ def create_exit():
         )
 
         record_id = cursor.lastrowid
+        if departure_code:
+            insert_departure_history_record(
+                cursor,
+                {
+                    "id": record_id,
+                    "exit_folio": exit_folio,
+                    "inventory_id": inventory["id"],
+                    "catalog_id": inventory.get("catalog_id")
+                    or inventory.get("catalog_ref_id"),
+                    "part_number": inventory["part_number"],
+                    "quantity": quantity,
+                    "product_model": inventory.get("product_model")
+                    or inventory.get("catalog_model"),
+                    "customer": inventory.get("customer")
+                    or inventory.get("catalog_customer"),
+                    "destination_area": normalize_search(data.get("destinationArea"))
+                    or normalize_search(data.get("department"))
+                    or "Embarques",
+                    "departure_code": None,
+                    "reason": normalize_search(data.get("reason"))
+                    or normalize_search(data.get("process"))
+                    or "Salida de producto terminado",
+                },
+                departure_code,
+                normalize_search(data.get("registeredBy"))
+                or normalize_search(data.get("userName"))
+                or "Usuario local",
+                movement_at,
+                notes=normalize_search(data.get("remarks")) or None,
+            )
         conn.commit()
         return jsonify(
             {
                 "success": True,
                 "id": record_id,
                 "folio": exit_folio,
+                "departureCode": departure_code or None,
                 "currentQuantity": new_quantity,
                 "message": "Salida registrada",
             }
@@ -1336,6 +2850,36 @@ def list_returns():
     finally:
         cursor.close()
         conn.close()
+
+
+@shipping_material_api.route("/exits/<int:exit_id>/departure", methods=["POST", "PUT", "PATCH"])
+@manejo_errores
+def assign_exit_departure():
+    data = request.get_json(silent=True) or {}
+    payload, status_code = assign_exit_departure_value(
+        exit_id,
+        data.get("departureCode") or data.get("departure"),
+        data.get("assignedBy") or data.get("registeredBy") or "Sistema",
+        departure_quantity=(
+            data.get("departureQuantity")
+            if data.get("departureQuantity") is not None
+            else data.get("quantity")
+        ),
+        notes=data.get("notes"),
+        assigned_at=data.get("assignedAt"),
+    )
+    return jsonify(payload), status_code
+
+
+@shipping_material_api.route("/departures/history", methods=["GET"])
+@manejo_errores
+def list_departure_history():
+    payload = get_departure_history_records(
+        limit=request.args.get("limit"),
+        departure_code=request.args.get("departureCode") or request.args.get("departure"),
+        exit_id=request.args.get("exitId"),
+    )
+    return jsonify(payload)
 
 
 @shipping_material_api.route("/returns", methods=["POST"])

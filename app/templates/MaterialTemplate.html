@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
+    <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260415b') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -522,11 +523,20 @@
                 <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
-        <!-- Return Warehousing -->
-        <div id="return-warehousing-register-unique-container" style="display: none;">
+        <!-- Almacén de Embarques -->
+        <div id="almacen-embarques-entradas-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
-        <div id="return-warehousing-history-unique-container" style="display: none;">
+        <div id="almacen-embarques-salidas-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+        <div id="almacen-embarques-retorno-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+        <div id="almacen-embarques-movimientos-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+        <div id="almacen-embarques-inventario-general-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 

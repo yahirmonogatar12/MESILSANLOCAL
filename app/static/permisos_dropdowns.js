@@ -181,13 +181,28 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_CONTROL_DE_PROCESO",
-        "seccion": "Return Warehousing",
-        "boton": "Return Warehousing Register"
+        "seccion": "Almacén de Embarques",
+        "boton": "Entradas almacen embarques"
     },
     {
         "pagina": "LISTA_CONTROL_DE_PROCESO",
-        "seccion": "Return Warehousing",
-        "boton": "Return Warehousing History"
+        "seccion": "Almacén de Embarques",
+        "boton": "Salidas almacen embarques"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_PROCESO",
+        "seccion": "Almacén de Embarques",
+        "boton": "Retorno almacen embarques"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_PROCESO",
+        "seccion": "Almacén de Embarques",
+        "boton": "Modificar movimientos embarques"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_PROCESO",
+        "seccion": "Almacén de Embarques",
+        "boton": "Inventario general embarques"
     },
     {
         "pagina": "LISTA_CONTROL_DE_PROCESO",

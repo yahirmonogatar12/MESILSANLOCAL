@@ -204,8 +204,11 @@ document.addEventListener("DOMContentLoaded", function () {
       "search-packaging-history-unique-container",
       "shipping-register-management-unique-container",
       "search-shipping-history-unique-container",
-      "return-warehousing-register-unique-container",
-      "return-warehousing-history-unique-container",
+      "almacen-embarques-entradas-unique-container",
+      "almacen-embarques-salidas-unique-container",
+      "almacen-embarques-retorno-unique-container",
+      "almacen-embarques-movimientos-unique-container",
+      "almacen-embarques-inventario-general-unique-container",
       "registro-movimiento-identificacion-unique-container",
       "control-otras-identificaciones-unique-container",
       "control-movimiento-ns-producto-unique-container",
@@ -2145,8 +2148,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  // Return Warehousing Register
-  window.mostrarReturnWarehousingRegister = function () {
+  function mostrarModuloAlmacenEmbarques(
+    containerId,
+    templatePath,
+    initFunctionName,
+  ) {
     try {
       const controlProcesoButton =
         document.getElementById("Control de proceso");
@@ -2176,9 +2182,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (controlProcesoContentArea)
         controlProcesoContentArea.style.display = "block";
 
-      const container = document.getElementById(
-        "return-warehousing-register-unique-container",
-      );
+      const container = document.getElementById(containerId);
       if (!container) {
         console.error("Contenedor no encontrado");
         return;
@@ -2189,14 +2193,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (typeof window.cargarContenidoDinamico === "function") {
         window.cargarContenidoDinamico(
-          "return-warehousing-register-unique-container",
-          "/return-warehousing-register-ajax",
+          containerId,
+          templatePath,
           () => {
-            if (
-              typeof window.inicializarReturnWarehousingRegisterAjax ===
-              "function"
-            ) {
-              window.inicializarReturnWarehousingRegisterAjax();
+            if (typeof window[initFunctionName] === "function") {
+              window[initFunctionName]();
             }
           },
         );
@@ -2206,65 +2207,49 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  // Return Warehousing History
-  window.mostrarReturnWarehousingHistory = function () {
-    try {
-      const controlProcesoButton =
-        document.getElementById("Control de proceso");
-      if (controlProcesoButton) {
-        controlProcesoButton.classList.add("active");
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de proceso") {
-            btn.classList.remove("active");
-          }
-        });
-      }
+  // Almacén de Embarques - Entradas
+  window.mostrarAlmacenEmbarquesEntradas = function () {
+    mostrarModuloAlmacenEmbarques(
+      "almacen-embarques-entradas-unique-container",
+      "/almacen-embarques-entradas-ajax",
+      "inicializarAlmacenEmbarquesEntradasAjax",
+    );
+  };
 
-      if (typeof window.hideAllMaterialContainers === "function") {
-        window.hideAllMaterialContainers();
-      }
+  // Almacén de Embarques - Salidas
+  window.mostrarAlmacenEmbarquesSalidas = function () {
+    mostrarModuloAlmacenEmbarques(
+      "almacen-embarques-salidas-unique-container",
+      "/almacen-embarques-salidas-ajax",
+      "inicializarAlmacenEmbarquesSalidasAjax",
+    );
+  };
 
-      const materialContainer = document.getElementById("material-container");
-      const controlProcesoContent = document.getElementById(
-        "control-proceso-content",
-      );
-      const controlProcesoContentArea = document.getElementById(
-        "control-proceso-content-area",
-      );
+  // Almacén de Embarques - Retorno
+  window.mostrarAlmacenEmbarquesRetorno = function () {
+    mostrarModuloAlmacenEmbarques(
+      "almacen-embarques-retorno-unique-container",
+      "/almacen-embarques-retorno-ajax",
+      "inicializarAlmacenEmbarquesRetornoAjax",
+    );
+  };
 
-      if (materialContainer) materialContainer.style.display = "block";
-      if (controlProcesoContent) controlProcesoContent.style.display = "block";
-      if (controlProcesoContentArea)
-        controlProcesoContentArea.style.display = "block";
+  // Almacén de Embarques - Modificar movimientos
+  window.mostrarAlmacenEmbarquesMovimientos = function () {
+    mostrarModuloAlmacenEmbarques(
+      "almacen-embarques-movimientos-unique-container",
+      "/almacen-embarques-movimientos-ajax",
+      "inicializarAlmacenEmbarquesMovimientosAjax",
+    );
+  };
 
-      const container = document.getElementById(
-        "return-warehousing-history-unique-container",
-      );
-      if (!container) {
-        console.error("Contenedor no encontrado");
-        return;
-      }
-
-      container.style.display = "block";
-      container.style.opacity = "1";
-
-      if (typeof window.cargarContenidoDinamico === "function") {
-        window.cargarContenidoDinamico(
-          "return-warehousing-history-unique-container",
-          "/return-warehousing-history-ajax",
-          () => {
-            if (
-              typeof window.inicializarReturnWarehousingHistoryAjax ===
-              "function"
-            ) {
-              window.inicializarReturnWarehousingHistoryAjax();
-            }
-          },
-        );
-      }
-    } catch (error) {
-      console.error("Error crítico:", error);
-    }
+  // Almacén de Embarques - Inventario general
+  window.mostrarAlmacenEmbarquesInventarioGeneral = function () {
+    mostrarModuloAlmacenEmbarques(
+      "almacen-embarques-inventario-general-unique-container",
+      "/almacen-embarques-inventario-general-ajax",
+      "inicializarAlmacenEmbarquesInventarioGeneralAjax",
+    );
   };
 
   // Registro de movimiento de identificación

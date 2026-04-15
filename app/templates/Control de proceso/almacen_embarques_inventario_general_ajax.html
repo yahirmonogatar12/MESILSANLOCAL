@@ -1,0 +1,100 @@
+<div
+    id="almacen-embarques-inventory-module"
+    class="almacen-embarques-history-module"
+    data-module-type="inventory"
+>
+    <div class="ae-filters-card">
+        <div class="ae-card-header">
+            <h3>Filtros de búsqueda</h3>
+        </div>
+        <div class="ae-filters">
+            <div class="ae-filter-group ae-filter-group--wide">
+                <label for="almacen-embarques-inventory-search">Buscar</label>
+                <input
+                    type="text"
+                    id="almacen-embarques-inventory-search"
+                    placeholder="No. parte, modelo o cliente"
+                >
+            </div>
+            <div class="ae-filter-group">
+                <label for="almacen-embarques-inventory-date-from">Fecha desde</label>
+                <input type="date" id="almacen-embarques-inventory-date-from">
+            </div>
+            <div class="ae-filter-group">
+                <label for="almacen-embarques-inventory-date-to">Fecha hasta</label>
+                <input type="date" id="almacen-embarques-inventory-date-to">
+            </div>
+            <button id="almacen-embarques-inventory-search-btn" class="ae-btn-primary">
+                Consultar
+            </button>
+            <button id="almacen-embarques-inventory-clear-btn" class="ae-btn-secondary">
+                Limpiar filtros
+            </button>
+            <button id="almacen-embarques-inventory-export-btn" class="ae-btn-export">
+                Exportar Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="ae-results-card">
+        <div class="ae-card-header">
+            <h3>Inventario general</h3>
+            <span id="almacen-embarques-inventory-count" class="ae-record-count">
+                0 registros
+            </span>
+            <span id="almacen-embarques-inventory-status" class="ae-status-text"></span>
+        </div>
+        <div class="ae-table-shell">
+            <div class="ae-table-head">
+                <table class="ae-history-table ae-history-table--head">
+                    <colgroup>
+                        <col style="width: 13%;">
+                        <col style="width: 16%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col style="width: 9%;">
+                        <col style="width: 9%;">
+                        <col style="width: 11%;">
+                        <col style="width: 11%;">
+                        <col style="width: 11%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>No. parte</th>
+                            <th>Modelo</th>
+                            <th>Cliente</th>
+                            <th>Inv. inicial</th>
+                            <th>Entradas</th>
+                            <th>Salidas</th>
+                            <th>Entradas retorno</th>
+                            <th>Salidas retorno</th>
+                            <th>Cantidad total</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="ae-table-body-wrap">
+                <table class="ae-history-table ae-history-table--body">
+                    <colgroup>
+                        <col style="width: 13%;">
+                        <col style="width: 16%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col style="width: 9%;">
+                        <col style="width: 9%;">
+                        <col style="width: 11%;">
+                        <col style="width: 11%;">
+                        <col style="width: 11%;">
+                    </colgroup>
+                    <tbody id="almacen-embarques-inventory-tbody">
+                        <tr>
+                            <td colspan="9" class="ae-empty-cell">Cargando inventario...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260415a') }}"></script>

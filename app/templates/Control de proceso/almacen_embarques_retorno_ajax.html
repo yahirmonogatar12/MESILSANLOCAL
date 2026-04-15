@@ -1,0 +1,103 @@
+<div
+    id="almacen-embarques-returns-module"
+    class="almacen-embarques-history-module"
+    data-module-type="returns"
+>
+    <div class="ae-filters-card">
+        <div class="ae-card-header">
+            <h3>Filtros de búsqueda</h3>
+        </div>
+        <div class="ae-filters">
+            <div class="ae-filter-group ae-filter-group--wide">
+                <label for="almacen-embarques-returns-search">Buscar</label>
+                <input
+                    type="text"
+                    id="almacen-embarques-returns-search"
+                    placeholder="No. parte, folio, tipo, cliente o usuario"
+                >
+            </div>
+            <div class="ae-filter-group">
+                <label for="almacen-embarques-returns-date-from">Fecha desde</label>
+                <input type="date" id="almacen-embarques-returns-date-from">
+            </div>
+            <div class="ae-filter-group">
+                <label for="almacen-embarques-returns-date-to">Fecha hasta</label>
+                <input type="date" id="almacen-embarques-returns-date-to">
+            </div>
+            <button id="almacen-embarques-returns-search-btn" class="ae-btn-primary">
+                Consultar
+            </button>
+            <button id="almacen-embarques-returns-clear-btn" class="ae-btn-secondary">
+                Limpiar filtros
+            </button>
+            <button id="almacen-embarques-returns-export-btn" class="ae-btn-export">
+                Exportar Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="ae-results-card">
+        <div class="ae-card-header">
+            <h3>Historial de retornos</h3>
+            <span id="almacen-embarques-returns-count" class="ae-record-count">
+                0 registros
+            </span>
+            <span id="almacen-embarques-returns-status" class="ae-status-text"></span>
+        </div>
+        <div class="ae-table-shell">
+            <div class="ae-table-head">
+                <table class="ae-history-table ae-history-table--head">
+                    <colgroup>
+                        <col style="width: 7%;">
+                        <col style="width: 7%;">
+                        <col style="width: 16%;">
+                        <col style="width: 11%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col style="width: 13%;">
+                        <col style="width: 9%;">
+                        <col style="width: 7%;">
+                        <col style="width: 10%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Folio</th>
+                            <th>No. parte</th>
+                            <th>Cant. retorno</th>
+                            <th>Cant. pérdida</th>
+                            <th>Modelo</th>
+                            <th>Cliente</th>
+                            <th>Tipo</th>
+                            <th>Usuario</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="ae-table-body-wrap">
+                <table class="ae-history-table ae-history-table--body">
+                    <colgroup>
+                        <col style="width: 7%;">
+                        <col style="width: 7%;">
+                        <col style="width: 16%;">
+                        <col style="width: 11%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col style="width: 13%;">
+                        <col style="width: 9%;">
+                        <col style="width: 7%;">
+                        <col style="width: 10%;">
+                    </colgroup>
+                    <tbody id="almacen-embarques-returns-tbody">
+                        <tr>
+                            <td colspan="10" class="ae-empty-cell">Cargando historial...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260415b') }}"></script>
