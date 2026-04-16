@@ -1,11 +1,11 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260415b";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260416g";
 
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260415b")) {
+      if (!currentLink.getAttribute("href")?.includes("20260416g")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -280,36 +280,44 @@
   }
 
   function syncScrollableHeight(moduleRoot) {
-    const bodyWrap = moduleRoot?.querySelector(".ae-table-body-wrap");
-    if (!bodyWrap) {
+    const bodyWraps = moduleRoot?.querySelectorAll(".ae-table-body-wrap");
+    if (!bodyWraps?.length) {
       return;
     }
 
     const viewportHeight =
       window.innerHeight || document.documentElement.clientHeight || 0;
-    const rect = bodyWrap.getBoundingClientRect();
-    const bottomGap = 20;
-    const availableHeight = Math.max(220, viewportHeight - rect.top - bottomGap);
-
-    bodyWrap.style.height = `${availableHeight}px`;
-    bodyWrap.style.maxHeight = `${availableHeight}px`;
+    bodyWraps.forEach((bodyWrap) => {
+      const rect = bodyWrap.getBoundingClientRect();
+      const bottomGap = 20;
+      const availableHeight = Math.max(220, viewportHeight - rect.top - bottomGap);
+      bodyWrap.style.height = `${availableHeight}px`;
+      bodyWrap.style.maxHeight = `${availableHeight}px`;
+    });
   }
 
   function syncTableWidths(moduleRoot) {
-    const headerWrap = moduleRoot?.querySelector(".ae-table-head");
-    const headerTable = moduleRoot?.querySelector(".ae-history-table--head");
-    const bodyWrap = moduleRoot?.querySelector(".ae-table-body-wrap");
-    const bodyTable = moduleRoot?.querySelector(".ae-history-table--body");
-    if (!headerWrap || !headerTable || !bodyWrap || !bodyTable) {
+    const tableShells = moduleRoot?.querySelectorAll(".ae-table-shell");
+    if (!tableShells?.length) {
       return;
     }
 
-    const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
-    const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
+    tableShells.forEach((tableShell) => {
+      const headerWrap = tableShell.querySelector(".ae-table-head");
+      const headerTable = tableShell.querySelector(".ae-history-table--head");
+      const bodyWrap = tableShell.querySelector(".ae-table-body-wrap");
+      const bodyTable = tableShell.querySelector(".ae-history-table--body");
+      if (!headerWrap || !headerTable || !bodyWrap || !bodyTable) {
+        return;
+      }
 
-    headerWrap.style.paddingRight = `${scrollbarWidth}px`;
-    headerTable.style.width = `${targetWidth}px`;
-    bodyTable.style.width = `${targetWidth}px`;
+      const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
+      const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
+
+      headerWrap.style.paddingRight = `${scrollbarWidth}px`;
+      headerTable.style.width = `${targetWidth}px`;
+      bodyTable.style.width = `${targetWidth}px`;
+    });
   }
 
   function getElements(prefix) {
@@ -323,6 +331,27 @@
       countLabel: document.getElementById(`${prefix}-count`),
       statusLabel: document.getElementById(`${prefix}-status`),
       tableBody: document.getElementById(`${prefix}-tbody`),
+    };
+  }
+
+  function getReturnModuleElements() {
+    return {
+      movementType: document.getElementById("almacen-embarques-returns-movement-type"),
+      partNumber: document.getElementById("almacen-embarques-returns-part-number"),
+      quantity: document.getElementById("almacen-embarques-returns-quantity"),
+      reason: document.getElementById("almacen-embarques-returns-reason"),
+      location: document.getElementById("almacen-embarques-returns-location"),
+      remarks: document.getElementById("almacen-embarques-returns-remarks"),
+      submitBtn: document.getElementById("almacen-embarques-returns-submit-btn"),
+      formStatus: document.getElementById("almacen-embarques-returns-form-status"),
+      entryExportBtn: document.getElementById("almacen-embarques-return-in-export-btn"),
+      entryBody: document.getElementById("almacen-embarques-return-in-tbody"),
+      entryCount: document.getElementById("almacen-embarques-return-in-count"),
+      entryStatus: document.getElementById("almacen-embarques-return-in-status"),
+      exitExportBtn: document.getElementById("almacen-embarques-return-out-export-btn"),
+      exitBody: document.getElementById("almacen-embarques-return-out-tbody"),
+      exitCount: document.getElementById("almacen-embarques-return-out-count"),
+      exitStatus: document.getElementById("almacen-embarques-return-out-status"),
     };
   }
 
@@ -447,6 +476,259 @@
         `;
       })
       .join("");
+  }
+
+  function renderReturnEntryRows(rows) {
+    return rows
+      .map((row) => {
+        const quantity = Math.max(
+          0,
+          Number(row.return_quantity || 0) - Number(row.loss_quantity || 0),
+        );
+        return `
+          <tr>
+            <td>${escapeHtml(row.fecha)}</td>
+            <td>${escapeHtml(row.hora)}</td>
+            <td>${escapeHtml(row.folio)}</td>
+            <td><strong>${escapeHtml(row.part_number)}</strong></td>
+            <td>${formatNumber(quantity)}</td>
+            <td>${escapeHtml(row.product_model || "-")}</td>
+            <td>${buildBadge(row.reason || "Retorno", "success")}</td>
+            <td>${escapeHtml(row.registered_by || "-")}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function renderReturnExitRows(rows) {
+    return rows
+      .map((row) => `
+        <tr>
+          <td>${escapeHtml(row.fecha)}</td>
+          <td>${escapeHtml(row.hora)}</td>
+          <td>${escapeHtml(row.folio)}</td>
+          <td><strong>${escapeHtml(row.part_number)}</strong></td>
+          <td>${formatNumber(row.loss_quantity)}</td>
+          <td>${escapeHtml(row.product_model || "-")}</td>
+          <td>${buildBadge(row.reason || "Salida retorno", "warning")}</td>
+          <td>${escapeHtml(row.registered_by || "-")}</td>
+        </tr>
+      `)
+      .join("");
+  }
+
+  function setReturnFormStatus(message, isError = false) {
+    const { formStatus } = getReturnModuleElements();
+    if (!formStatus) {
+      return;
+    }
+    formStatus.textContent = message || "";
+    formStatus.style.color = isError ? "#ff8f8f" : "#8fb8ff";
+  }
+
+  function renderReturnHistoryTable(targetBody, targetCount, rows, emptyMessage, renderer) {
+    if (!targetBody || !targetCount) {
+      return;
+    }
+
+    if (!rows.length) {
+      targetCount.textContent = "0 registros";
+      targetBody.innerHTML = `<tr><td colspan="8" class="ae-empty-cell">${escapeHtml(
+        emptyMessage,
+      )}</td></tr>`;
+      return;
+    }
+
+    const suffix = rows.length === 1 ? "registro" : "registros";
+    targetCount.textContent = `${rows.length} ${suffix}`;
+    targetBody.innerHTML = renderer(rows);
+  }
+
+  async function loadReturnsModule() {
+    const elements = getReturnModuleElements();
+    if (!elements.entryBody || !elements.exitBody) {
+      return;
+    }
+
+    elements.entryBody.innerHTML =
+      '<tr><td colspan="8" class="ae-empty-cell">Cargando historial...</td></tr>';
+    elements.exitBody.innerHTML =
+      '<tr><td colspan="8" class="ae-empty-cell">Cargando historial...</td></tr>';
+
+    if (elements.entryStatus) {
+      elements.entryStatus.textContent = "Consultando datos...";
+      elements.entryStatus.style.color = "#8fb8ff";
+    }
+    if (elements.exitStatus) {
+      elements.exitStatus.textContent = "Consultando datos...";
+      elements.exitStatus.style.color = "#8fb8ff";
+    }
+
+    try {
+      const response = await fetch("/api/almacen-embarques/retorno", {
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const rows = await response.json();
+      if (!Array.isArray(rows)) {
+        throw new Error("Respuesta inválida del servidor");
+      }
+
+      const entryRows = rows.filter(
+        (row) => Number(row.return_quantity || 0) - Number(row.loss_quantity || 0) > 0,
+      );
+      const exitRows = rows.filter((row) => Number(row.loss_quantity || 0) > 0);
+
+      renderReturnHistoryTable(
+        elements.entryBody,
+        elements.entryCount,
+        entryRows,
+        "No hay entradas de retorno registradas.",
+        renderReturnEntryRows,
+      );
+      renderReturnHistoryTable(
+        elements.exitBody,
+        elements.exitCount,
+        exitRows,
+        "No hay salidas de retorno registradas.",
+        renderReturnExitRows,
+      );
+
+      const updatedAt = new Date().toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      if (elements.entryStatus) {
+        elements.entryStatus.textContent = `Actualizado a las ${updatedAt}`;
+        elements.entryStatus.style.color = "#8fb8ff";
+      }
+      if (elements.exitStatus) {
+        elements.exitStatus.textContent = `Actualizado a las ${updatedAt}`;
+        elements.exitStatus.style.color = "#8fb8ff";
+      }
+
+      const moduleRoot = document.getElementById("almacen-embarques-returns-module");
+      syncScrollableHeight(moduleRoot);
+      syncTableWidths(moduleRoot);
+    } catch (error) {
+      console.error("Error cargando módulo retornos:", error);
+      renderReturnHistoryTable(
+        elements.entryBody,
+        elements.entryCount,
+        [],
+        "No fue posible cargar entradas de retorno.",
+        renderReturnEntryRows,
+      );
+      renderReturnHistoryTable(
+        elements.exitBody,
+        elements.exitCount,
+        [],
+        "No fue posible cargar salidas de retorno.",
+        renderReturnExitRows,
+      );
+      if (elements.entryStatus) {
+        elements.entryStatus.textContent = "Error al consultar historial";
+        elements.entryStatus.style.color = "#ff8f8f";
+      }
+      if (elements.exitStatus) {
+        elements.exitStatus.textContent = "Error al consultar historial";
+        elements.exitStatus.style.color = "#ff8f8f";
+      }
+    }
+  }
+
+  function clearReturnForm() {
+    const elements = getReturnModuleElements();
+    if (elements.movementType) elements.movementType.value = "entry";
+    if (elements.partNumber) elements.partNumber.value = "";
+    if (elements.quantity) elements.quantity.value = "";
+    if (elements.reason) elements.reason.value = "Exceso";
+    if (elements.location) elements.location.value = "";
+    if (elements.remarks) elements.remarks.value = "";
+    setReturnFormStatus("");
+  }
+
+  function exportReturnsByMovement(movementType) {
+    const params = new URLSearchParams();
+    params.set("movement", movementType);
+    window.open(`/api/almacen-embarques/retorno/export?${params.toString()}`, "_blank");
+  }
+
+  async function submitReturnForm() {
+    const moduleRoot = document.getElementById("almacen-embarques-returns-module");
+    const elements = getReturnModuleElements();
+    if (!moduleRoot || !elements.submitBtn) {
+      return;
+    }
+
+    const movementType = elements.movementType?.value || "entry";
+    const partNumber = elements.partNumber?.value?.trim()?.toUpperCase() || "";
+    const quantity = Number((elements.quantity?.value || "").replace(/\D+/g, ""));
+    const reason = elements.reason?.value || "Exceso";
+    const location = elements.location?.value?.trim() || "";
+    const remarks = elements.remarks?.value?.trim() || "";
+    const registeredBy = moduleRoot.dataset.registeredBy || "Sistema";
+
+    if (!partNumber) {
+      setReturnFormStatus("El número de parte es obligatorio.", true);
+      elements.partNumber?.focus();
+      return;
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setReturnFormStatus("La cantidad debe ser mayor a cero.", true);
+      elements.quantity?.focus();
+      return;
+    }
+
+    const requestBody = {
+      partNumber,
+      returnQty: quantity,
+      lossQty: movementType === "exit" ? quantity : 0,
+      location,
+      reason: movementType === "exit" ? `${reason} / Salida retorno` : reason,
+      remarks,
+      registeredBy,
+    };
+
+    try {
+      elements.submitBtn.disabled = true;
+      elements.submitBtn.textContent =
+        movementType === "exit" ? "Guardando..." : "Guardando...";
+      setReturnFormStatus("Guardando movimiento...");
+
+      const response = await fetch("/api/shipping/material/returns", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      clearReturnForm();
+      setReturnFormStatus(
+        movementType === "exit"
+          ? "Salida de retorno registrada correctamente."
+          : "Entrada de retorno registrada correctamente.",
+      );
+      await loadReturnsModule();
+    } catch (error) {
+      setReturnFormStatus(error.message || "No fue posible registrar el movimiento.", true);
+    } finally {
+      elements.submitBtn.disabled = false;
+      elements.submitBtn.textContent = "Registrar";
+    }
   }
 
   async function loadModule(config) {
@@ -602,31 +884,108 @@
     );
   }
 
+  function bindScrollableShells(moduleRoot) {
+    if (!moduleRoot) {
+      return;
+    }
+
+    const tableShells = moduleRoot.querySelectorAll(".ae-table-shell");
+    tableShells.forEach((tableShell) => {
+      const headerWrap = tableShell.querySelector(".ae-table-head");
+      const bodyWrap = tableShell.querySelector(".ae-table-body-wrap");
+      if (!headerWrap || !bodyWrap || bodyWrap.dataset.scrollBound === "true") {
+        return;
+      }
+
+      bodyWrap.addEventListener("scroll", () => {
+        headerWrap.scrollLeft = bodyWrap.scrollLeft;
+      });
+      bodyWrap.dataset.scrollBound = "true";
+    });
+  }
+
+  function bindModuleResize(moduleRoot) {
+    if (!moduleRoot || moduleRoot.dataset.resizeBound === "true") {
+      return;
+    }
+
+    const updateHeight = () => {
+      syncScrollableHeight(moduleRoot);
+      syncTableWidths(moduleRoot);
+    };
+
+    window.addEventListener("resize", updateHeight);
+    requestAnimationFrame(() => requestAnimationFrame(updateHeight));
+    moduleRoot.dataset.resizeBound = "true";
+  }
+
+  function bindReturnsModule(config) {
+    const moduleRoot = document.getElementById(`${config.prefix}-module`);
+    const elements = getReturnModuleElements();
+    if (!moduleRoot || !elements.entryBody || !elements.exitBody) {
+      return;
+    }
+
+    bindScrollableShells(moduleRoot);
+    bindModuleResize(moduleRoot);
+
+    if (elements.quantity && elements.quantity.dataset.numericBound !== "true") {
+      elements.quantity.addEventListener("input", () => {
+        elements.quantity.value = elements.quantity.value.replace(/\D+/g, "");
+      });
+      elements.quantity.dataset.numericBound = "true";
+    }
+
+    if (elements.submitBtn && elements.submitBtn.dataset.bound !== "true") {
+      elements.submitBtn.addEventListener("click", submitReturnForm);
+      elements.submitBtn.dataset.bound = "true";
+    }
+
+    if (elements.entryExportBtn && elements.entryExportBtn.dataset.bound !== "true") {
+      elements.entryExportBtn.addEventListener("click", () => exportReturnsByMovement("entry"));
+      elements.entryExportBtn.dataset.bound = "true";
+    }
+
+    if (elements.exitExportBtn && elements.exitExportBtn.dataset.bound !== "true") {
+      elements.exitExportBtn.addEventListener("click", () => exportReturnsByMovement("exit"));
+      elements.exitExportBtn.dataset.bound = "true";
+    }
+
+    if (elements.partNumber && elements.partNumber.dataset.bound !== "true") {
+      elements.partNumber.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          submitReturnForm();
+        }
+      });
+      elements.partNumber.dataset.bound = "true";
+    }
+
+    if (elements.quantity && elements.quantity.dataset.submitBound !== "true") {
+      elements.quantity.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          submitReturnForm();
+        }
+      });
+      elements.quantity.dataset.submitBound = "true";
+    }
+  }
+
   function bindModule(config) {
+    const moduleRoot = document.getElementById(`${config.prefix}-module`);
+    if (config.prefix === "almacen-embarques-returns") {
+      bindReturnsModule(config);
+      return;
+    }
+
     const elements = getElements(config.prefix);
     if (!elements.tableBody) {
       return;
     }
 
-    const moduleRoot = document.getElementById(`${config.prefix}-module`);
-    const headerWrap = moduleRoot?.querySelector(".ae-table-head");
-    const bodyWrap = moduleRoot?.querySelector(".ae-table-body-wrap");
-    if (headerWrap && bodyWrap && bodyWrap.dataset.scrollBound !== "true") {
-      bodyWrap.addEventListener("scroll", () => {
-        headerWrap.scrollLeft = bodyWrap.scrollLeft;
-      });
-      bodyWrap.dataset.scrollBound = "true";
-    }
-
-    if (moduleRoot && moduleRoot.dataset.resizeBound !== "true") {
-      const updateHeight = () => {
-        syncScrollableHeight(moduleRoot);
-        syncTableWidths(moduleRoot);
-      };
-      window.addEventListener("resize", updateHeight);
-      requestAnimationFrame(() => requestAnimationFrame(updateHeight));
-      moduleRoot.dataset.resizeBound = "true";
-    }
+    bindScrollableShells(moduleRoot);
+    bindModuleResize(moduleRoot);
 
     if (config.prefix === "almacen-embarques-exits" && elements.tableBody.dataset.departureBound !== "true") {
       elements.tableBody.addEventListener("keydown", (event) => {
@@ -684,6 +1043,11 @@
         })(),
       ),
     );
+    if (config.prefix === "almacen-embarques-returns") {
+      loadReturnsModule();
+      return;
+    }
+
     loadModule(config);
   }
 
@@ -714,7 +1078,7 @@
       prefix: "almacen-embarques-returns",
       apiUrl: "/api/almacen-embarques/retorno",
       exportUrl: "/api/almacen-embarques/retorno/export",
-      colspan: 10,
+      colspan: 8,
       emptyMessage: "No hay retornos registrados para los filtros actuales.",
       renderer: renderReturnsRows,
     });

@@ -167,7 +167,109 @@
     color: var(--ilsan-text-gray);
 }
 
+.ae-register-card .ae-card-header {
+    align-items: center;
+}
+
+.ae-register-card .ae-card-header .ae-status-text {
+    margin-left: auto;
+}
+
+.ae-register-form {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 12px 16px 16px;
+    align-items: end;
+}
+
+.ae-register-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.ae-register-field--compact {
+    min-width: 0;
+}
+
+.ae-register-field--wide {
+    flex: 0 0 auto;
+}
+
+.ae-register-field--full {
+    grid-column: 1 / -1;
+}
+
+.ae-register-field--movement {
+    width: 180px;
+}
+
+.ae-register-field--reason {
+    width: 180px;
+}
+
+.ae-register-field--part-number {
+    max-width: 180px;
+    width: 180px;
+}
+
+.ae-register-field--quantity {
+    width: 180px;
+}
+
+.ae-register-field label {
+    color: var(--ilsan-text-light);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.ae-register-field input,
+.ae-register-field select,
+.ae-register-field textarea {
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    padding: 7px 9px;
+    font-size: 0.78rem;
+    transition: all 0.3s ease;
+}
+
+.ae-register-field input:focus,
+.ae-register-field select:focus,
+.ae-register-field textarea:focus {
+    outline: none;
+    border-color: var(--ilsan-accent-blue);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.ae-register-form__action {
+    align-self: end;
+    min-height: 36px;
+    min-width: 96px;
+    width: 96px;
+    flex: 0 0 96px;
+}
+
+.ae-split-results {
+    display: grid;
+    gap: 18px;
+}
+
+.ae-split-results--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .ae-btn-primary,
+.ae-btn-success,
 .ae-btn-export,
 .ae-btn-secondary {
     border: none;
@@ -195,6 +297,21 @@
     box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
 }
 
+.ae-btn-success {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 8px 8px;
+    font-size: 0.76rem;
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+    min-width: 96px;
+}
+
+.ae-btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+}
+
 .ae-btn-export {
     background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
     color: white;
@@ -213,13 +330,17 @@
     margin-left: auto;
 }
 
+.ae-results-card .ae-card-header .ae-btn-export {
+    margin-left: 6px;
+}
+
 .ae-btn-secondary {
     background: rgba(255, 255, 255, 0.05);
     color: var(--ilsan-text-light);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 5px;
-    padding: 7px 12px;
-    font-size: 0.75rem;
+    padding: 7px 10px;
+    font-size: 0.72rem;
 }
 
 .ae-btn-secondary:hover {
@@ -1072,5 +1193,28 @@
     .ae-confirm-modal__summary,
     .ae-confirm-modal__comparison {
         grid-template-columns: 1fr;
+    }
+
+    .ae-register-form,
+    .ae-split-results--two {
+        grid-template-columns: 1fr;
+    }
+
+    .ae-register-form {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .ae-register-field,
+    .ae-register-field--wide,
+    .ae-register-field--part-number,
+    .ae-register-field--movement,
+    .ae-register-field--reason,
+    .ae-register-field--quantity,
+    .ae-register-form__action {
+        width: 100%;
+        max-width: none;
+        flex: initial;
     }
 }

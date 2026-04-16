@@ -9992,10 +9992,50 @@ def export_almacen_embarques_retorno():
     """Exportar historial de retornos de almacén de embarques a Excel."""
     try:
         rows = _obtener_historial_retorno_almacen_embarques(limit=5000)
-        return _exportar_historial_embarques_excel(
-            "Retorno Embarques",
-            "retorno_almacen_embarques.xlsx",
-            {
+        movement = (request.args.get("movement", "") or "").strip().lower()
+
+        if movement == "entry":
+            rows = [
+                row
+                for row in rows
+                if (row.get("return_quantity") or 0) - (row.get("loss_quantity") or 0) > 0
+            ]
+            for row in rows:
+                row["movement_quantity"] = max(
+                    0, (row.get("return_quantity") or 0) - (row.get("loss_quantity") or 0)
+                )
+            sheet_name = "Entradas Retorno"
+            filename = "entradas_retorno_almacen_embarques.xlsx"
+            headers = {
+                "Fecha": "fecha",
+                "Hora": "hora",
+                "Folio": "folio",
+                "No. Parte": "part_number",
+                "Cantidad entrada": "movement_quantity",
+                "Modelo": "product_model",
+                "Tipo": "reason",
+                "Usuario": "registered_by",
+            }
+        elif movement == "exit":
+            rows = [row for row in rows if (row.get("loss_quantity") or 0) > 0]
+            for row in rows:
+                row["movement_quantity"] = row.get("loss_quantity") or 0
+            sheet_name = "Salidas Retorno"
+            filename = "salidas_retorno_almacen_embarques.xlsx"
+            headers = {
+                "Fecha": "fecha",
+                "Hora": "hora",
+                "Folio": "folio",
+                "No. Parte": "part_number",
+                "Cantidad salida": "movement_quantity",
+                "Modelo": "product_model",
+                "Tipo": "reason",
+                "Usuario": "registered_by",
+            }
+        else:
+            sheet_name = "Retorno Embarques"
+            filename = "retorno_almacen_embarques.xlsx"
+            headers = {
                 "Fecha": "fecha",
                 "Hora": "hora",
                 "Folio": "folio",
@@ -10006,7 +10046,12 @@ def export_almacen_embarques_retorno():
                 "Cliente": "customer",
                 "Tipo": "reason",
                 "Usuario": "registered_by",
-            },
+            }
+
+        return _exportar_historial_embarques_excel(
+            sheet_name,
+            filename,
+            headers,
             rows,
         )
     except Exception as e:
