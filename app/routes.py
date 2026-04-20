@@ -3,6 +3,9 @@ import os
 import re
 import socket
 import subprocess
+import csv
+import hashlib
+import io
 import tempfile
 import threading
 import time
@@ -80,6 +83,7 @@ from .db_mysql import (
     obtener_materiales,
 )
 from .db_mysql import obtener_modelos_bom as obtener_modelos_bom_db
+from .config_mysql import get_pooled_connection
 
 # Importar modelos y funciones PO → WO
 from .po_wo_models import (
@@ -9570,37 +9574,28 @@ def _obtener_detalle_movimiento_almacen_embarques(movement_type, record_id):
 def _obtener_inventario_general_almacen_embarques(limit=5000):
     limit = min(max(int(limit or 5000), 1), 20000)
     search = (request.args.get("search", "") or "").strip()
-    fecha_desde = (request.args.get("fecha_desde", "") or "").strip()
-    fecha_hasta = (request.args.get("fecha_hasta", "") or "").strip()
+    part_number_key_expr = "CONVERT(%s USING utf8mb4) COLLATE utf8mb4_unicode_ci"
 
     closure_subquery = f"""
-        SELECT cierre.part_number, cierre.initial_quantity, cierre.closed_at, cierre.closure_label
+        SELECT
+            cierre.part_number,
+            {part_number_key_expr % 'cierre.part_number'} AS part_number_key,
+            cierre.initial_quantity,
+            cierre.closed_at,
+            cierre.closure_label
         FROM `{SHIPPING_TABLES['inventory_closures']}` cierre
         INNER JOIN (
-            SELECT part_number, MAX(closed_at) AS latest_closed_at
+            SELECT
+                {part_number_key_expr % 'part_number'} AS part_number_key,
+                MAX(closed_at) AS latest_closed_at
             FROM `{SHIPPING_TABLES['inventory_closures']}`
-            GROUP BY part_number
+            GROUP BY {part_number_key_expr % 'part_number'}
         ) ultimo
-            ON ultimo.part_number = cierre.part_number
+            ON ultimo.part_number_key = {part_number_key_expr % 'cierre.part_number'}
            AND ultimo.latest_closed_at = cierre.closed_at
     """
 
-    date_entries_filter = ""
-    date_exits_filter = ""
-    date_returns_filter = ""
     params = []
-
-    if fecha_desde:
-        date_entries_filter += " AND DATE(COALESCE(e.movement_at, e.created_at)) >= %s"
-        date_exits_filter += " AND DATE(COALESCE(s.movement_at, s.created_at)) >= %s"
-        date_returns_filter += " AND DATE(COALESCE(r.movement_at, r.created_at)) >= %s"
-        params.extend([fecha_desde, fecha_desde, fecha_desde])
-
-    if fecha_hasta:
-        date_entries_filter += " AND DATE(COALESCE(e.movement_at, e.created_at)) <= %s"
-        date_exits_filter += " AND DATE(COALESCE(s.movement_at, s.created_at)) <= %s"
-        date_returns_filter += " AND DATE(COALESCE(r.movement_at, r.created_at)) <= %s"
-        params.extend([fecha_hasta, fecha_hasta, fecha_hasta])
 
     sql = f"""
         SELECT
@@ -9617,45 +9612,42 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
             COALESCE(retornos.return_exits_qty, 0) AS return_exits_qty
         FROM `{SHIPPING_TABLES['inventory']}` i
         LEFT JOIN ({closure_subquery}) cierre
-            ON cierre.part_number = i.part_number
+            ON cierre.part_number_key = {part_number_key_expr % 'i.part_number'}
         LEFT JOIN (
             SELECT
-                e.part_number,
+                {part_number_key_expr % 'e.part_number'} AS part_number_key,
                 COALESCE(SUM(e.quantity), 0) AS entries_qty
             FROM `{SHIPPING_TABLES['entries']}` e
             LEFT JOIN ({closure_subquery}) cierre_e
-                ON cierre_e.part_number = e.part_number
+                ON cierre_e.part_number_key = {part_number_key_expr % 'e.part_number'}
             WHERE COALESCE(e.is_fifo_layer_only, 0) = 0
               AND COALESCE(e.movement_at, e.created_at) >= COALESCE(cierre_e.closed_at, '1000-01-01')
-              {date_entries_filter}
-            GROUP BY e.part_number
+            GROUP BY {part_number_key_expr % 'e.part_number'}
         ) entradas
-            ON entradas.part_number = i.part_number
+            ON entradas.part_number_key = {part_number_key_expr % 'i.part_number'}
         LEFT JOIN (
             SELECT
-                s.part_number,
+                {part_number_key_expr % 's.part_number'} AS part_number_key,
                 COALESCE(SUM(s.quantity), 0) AS exits_qty
             FROM `{SHIPPING_TABLES['exits']}` s
             LEFT JOIN ({closure_subquery}) cierre_s
-                ON cierre_s.part_number = s.part_number
+                ON cierre_s.part_number_key = {part_number_key_expr % 's.part_number'}
             WHERE COALESCE(s.movement_at, s.created_at) >= COALESCE(cierre_s.closed_at, '1000-01-01')
-              {date_exits_filter}
-            GROUP BY s.part_number
+            GROUP BY {part_number_key_expr % 's.part_number'}
         ) salidas
-            ON salidas.part_number = i.part_number
+            ON salidas.part_number_key = {part_number_key_expr % 'i.part_number'}
         LEFT JOIN (
             SELECT
-                r.part_number,
+                {part_number_key_expr % 'r.part_number'} AS part_number_key,
                 COALESCE(SUM(r.return_quantity), 0) AS return_entries_qty,
                 COALESCE(SUM(r.loss_quantity), 0) AS return_exits_qty
             FROM `{SHIPPING_TABLES['returns']}` r
             LEFT JOIN ({closure_subquery}) cierre_r
-                ON cierre_r.part_number = r.part_number
+                ON cierre_r.part_number_key = {part_number_key_expr % 'r.part_number'}
             WHERE COALESCE(r.movement_at, r.created_at) >= COALESCE(cierre_r.closed_at, '1000-01-01')
-              {date_returns_filter}
-            GROUP BY r.part_number
+            GROUP BY {part_number_key_expr % 'r.part_number'}
         ) retornos
-            ON retornos.part_number = i.part_number
+            ON retornos.part_number_key = {part_number_key_expr % 'i.part_number'}
         WHERE 1 = 1
     """
 
@@ -9663,12 +9655,10 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
         like_value = f"%{search}%"
         sql += """
             AND (
-                COALESCE(i.part_number, '') LIKE %s
-                OR COALESCE(i.product_model, '') LIKE %s
-                OR COALESCE(i.customer, '') LIKE %s
+                COALESCE(i.part_number, '') COLLATE utf8mb4_unicode_ci LIKE %s
             )
         """
-        params.extend([like_value, like_value, like_value])
+        params.append(like_value)
 
     sql += " ORDER BY i.part_number ASC LIMIT %s"
     params.append(limit)
@@ -9727,6 +9717,390 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
             "latest_period_start": latest_period_start or "",
         },
     }
+
+
+def _obtener_usuario_display_actual():
+    return (
+        session.get("nombre_completo")
+        or session.get("usuario")
+        or "Sistema"
+    ).strip()
+
+
+def _obtener_contexto_cierre_inventario_embarques():
+    fecha_actual = obtener_fecha_hora_mexico()
+    meses = [
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
+    ]
+    mes_label = f"{meses[fecha_actual.month - 1]} {fecha_actual.year}"
+    return {
+        "closureDate": fecha_actual.strftime("%Y-%m-%d"),
+        "closureDateTime": fecha_actual.strftime("%Y-%m-%d %H:%M:%S"),
+        "closureMonth": fecha_actual.strftime("%Y-%m"),
+        "closureMonthLabel": mes_label,
+        "closureLabel": f"Cierre {mes_label}",
+        "closureUser": _obtener_usuario_display_actual(),
+    }
+
+
+def _normalizar_header_csv_cierre_embarques(value):
+    return re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()).strip("_")
+
+
+def _construir_preview_cierre_inventario_embarques(current_rows, csv_quantities=None):
+    preview_rows = []
+    differing_parts = []
+    negative_difference_parts = []
+    matching_rows = 0
+    total_rows = len(current_rows)
+
+    csv_quantities = csv_quantities or {}
+
+    for row in current_rows:
+        part_number = _normalizar_texto_embarques_historial(row.get("part_number"))
+        system_quantity = _normalizar_numero_embarques_historial(
+            row.get("current_quantity")
+        )
+        csv_current_qty = csv_quantities.get(part_number)
+        difference_qty = (
+            csv_current_qty - system_quantity
+            if csv_current_qty is not None
+            else None
+        )
+        applied_initial_qty = (
+            max(csv_current_qty, 0) if csv_current_qty is not None else None
+        )
+
+        if csv_current_qty is not None:
+            if difference_qty == 0:
+                matching_rows += 1
+            else:
+                differing_parts.append(part_number)
+                if difference_qty < 0:
+                    negative_difference_parts.append(part_number)
+
+        preview_rows.append(
+            {
+                "part_number": part_number,
+                "product_model": _normalizar_texto_embarques_historial(
+                    row.get("product_model")
+                ),
+                "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+                "system_quantity": system_quantity,
+                "csv_current_qty": csv_current_qty,
+                "difference_quantity": difference_qty,
+                "applied_initial_quantity": applied_initial_qty,
+                "status": (
+                    "pendiente"
+                    if csv_current_qty is None
+                    else "igual"
+                    if difference_qty == 0
+                    else "diferencia"
+                ),
+            }
+        )
+
+    accuracy_pct = (
+        round((matching_rows / total_rows) * 100, 2) if total_rows and csv_quantities else 0
+    )
+    serializable_rows = [
+        {
+            "part_number": row["part_number"],
+            "system_quantity": row["system_quantity"],
+            "csv_current_qty": row["csv_current_qty"],
+            "difference_quantity": row["difference_quantity"],
+            "applied_initial_quantity": row["applied_initial_quantity"],
+        }
+        for row in preview_rows
+    ]
+    rows_hash = hashlib.sha256(
+        json.dumps(
+            serializable_rows,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+    return {
+        "rows": preview_rows,
+        "summary": {
+            "totalRows": total_rows,
+            "matchingRows": matching_rows,
+            "differenceRows": len(differing_parts),
+            "negativeDifferenceRows": len(negative_difference_parts),
+            "accuracyPct": accuracy_pct,
+            "differencePartNumbers": differing_parts,
+            "negativeDifferencePartNumbers": negative_difference_parts,
+            "rowsHash": rows_hash,
+        },
+    }
+
+
+def _parsear_csv_cierre_inventario_embarques(file_storage, expected_part_numbers):
+    raw_bytes = file_storage.read()
+    csv_hash = hashlib.sha256(raw_bytes).hexdigest()
+
+    try:
+        decoded = raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        try:
+            decoded = raw_bytes.decode("latin-1")
+        except UnicodeDecodeError as exc:
+            return {
+                "valid": False,
+                "errors": [f"No fue posible leer el CSV: {exc}"],
+                "csvHash": csv_hash,
+                "rows": {},
+            }
+
+    reader = csv.reader(io.StringIO(decoded))
+    try:
+        headers = next(reader)
+    except StopIteration:
+        return {
+            "valid": False,
+            "errors": ["El archivo CSV está vacío."],
+            "csvHash": csv_hash,
+            "rows": {},
+        }
+
+    normalized_headers = [_normalizar_header_csv_cierre_embarques(h) for h in headers]
+    if set(normalized_headers) != {"part_number", "current_qty"} or len(normalized_headers) != 2:
+        return {
+            "valid": False,
+            "errors": [
+                "El CSV debe contener exactamente las columnas part_number y current_qty."
+            ],
+            "csvHash": csv_hash,
+            "rows": {},
+        }
+
+    part_idx = normalized_headers.index("part_number")
+    qty_idx = normalized_headers.index("current_qty")
+
+    parsed_rows = {}
+    errors = []
+
+    for line_number, row in enumerate(reader, start=2):
+        if not row or not any(str(cell or "").strip() for cell in row):
+            continue
+
+        if len(row) <= max(part_idx, qty_idx):
+            errors.append(
+                f"Línea {line_number}: faltan columnas requeridas para part_number y current_qty."
+            )
+            continue
+
+        part_number = _normalizar_texto_embarques_historial(row[part_idx]).upper()
+        qty_raw = str(row[qty_idx] or "").strip()
+
+        if not part_number:
+            errors.append(f"Línea {line_number}: part_number es obligatorio.")
+            continue
+
+        if qty_raw == "":
+            errors.append(
+                f"Línea {line_number}: current_qty no puede estar vacío. Usa 0 si no hay físico."
+            )
+            continue
+
+        if not re.fullmatch(r"-?\d+", qty_raw):
+            errors.append(
+                f"Línea {line_number}: current_qty debe ser un entero para {part_number}."
+            )
+            continue
+
+        current_qty = int(qty_raw)
+        if current_qty < 0:
+            errors.append(
+                f"Línea {line_number}: current_qty no permite negativos para {part_number}."
+            )
+            continue
+
+        if part_number in parsed_rows:
+            errors.append(f"Línea {line_number}: part_number duplicado {part_number}.")
+            continue
+
+        parsed_rows[part_number] = current_qty
+
+    expected_set = set(expected_part_numbers)
+    uploaded_set = set(parsed_rows.keys())
+    missing_parts = sorted(expected_set - uploaded_set)
+    extra_parts = sorted(uploaded_set - expected_set)
+
+    if missing_parts:
+        muestra = ", ".join(missing_parts[:8])
+        suffix = "..." if len(missing_parts) > 8 else ""
+        errors.append(
+            f"Faltan {len(missing_parts)} números de parte del catálogo completo. Ejemplo: {muestra}{suffix}"
+        )
+
+    if extra_parts:
+        muestra = ", ".join(extra_parts[:8])
+        suffix = "..." if len(extra_parts) > 8 else ""
+        errors.append(
+            f"El CSV contiene {len(extra_parts)} números de parte fuera del catálogo actual. Ejemplo: {muestra}{suffix}"
+        )
+
+    return {
+        "valid": not errors,
+        "errors": errors,
+        "csvHash": csv_hash,
+        "rows": parsed_rows,
+    }
+
+
+def _guardar_borrador_cierre_inventario_embarques(payload, csv_file_name, csv_hash):
+    conn = get_pooled_connection()
+    if conn is None:
+        raise RuntimeError("No fue posible obtener conexión MySQL para guardar el borrador.")
+
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        conn.autocommit(False)
+        cursor.execute(
+            f"""
+            UPDATE `{SHIPPING_TABLES['inventory_closure_batches']}`
+            SET status = 'superseded'
+            WHERE status = 'draft'
+              AND created_by = %s
+              AND closure_month = %s
+            """,
+            (payload["metadata"]["closureUser"], payload["metadata"]["closureMonth"]),
+        )
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['inventory_closure_batches']}` (
+              closure_label,
+              closure_month,
+              closed_at,
+              status,
+              created_by,
+              csv_file_name,
+              csv_hash,
+              rows_hash,
+              payload_json,
+              accuracy_pct,
+              total_rows,
+              differing_rows
+            ) VALUES (%s, %s, %s, 'draft', %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                payload["metadata"]["closureLabel"],
+                payload["metadata"]["closureMonth"],
+                payload["metadata"]["closureDateTime"],
+                payload["metadata"]["closureUser"],
+                csv_file_name,
+                csv_hash,
+                payload["summary"]["rowsHash"],
+                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                payload["summary"]["accuracyPct"],
+                payload["summary"]["totalRows"],
+                payload["summary"]["differenceRows"],
+            ),
+        )
+        batch_id = cursor.lastrowid
+        conn.commit()
+        return batch_id
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def _obtener_historial_cierres_inventario_embarques(limit=20, include_last_draft_for=None):
+    rows = execute_query(
+        f"""
+        SELECT
+          id,
+          closure_label,
+          closure_month,
+          status,
+          created_by,
+          confirmed_by,
+          closed_at,
+          confirmed_at,
+          accuracy_pct,
+          total_rows,
+          differing_rows,
+          csv_hash,
+          rows_hash
+        FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+        WHERE status = 'confirmed'
+        ORDER BY COALESCE(confirmed_at, created_at) DESC, id DESC
+        LIMIT %s
+        """,
+        (limit,),
+        fetch="all",
+    ) or []
+
+    if include_last_draft_for:
+        draft_row = execute_query(
+            f"""
+            SELECT
+              id,
+              closure_label,
+              closure_month,
+              status,
+              created_by,
+              confirmed_by,
+              closed_at,
+              confirmed_at,
+              accuracy_pct,
+              total_rows,
+              differing_rows,
+              csv_hash,
+              rows_hash
+            FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+            WHERE status = 'draft'
+              AND created_by = %s
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            (include_last_draft_for,),
+            fetch="one",
+        )
+        if draft_row:
+            rows.insert(0, draft_row)
+
+    history_rows = []
+    for row in rows:
+        history_rows.append(
+            {
+                "id": row.get("id"),
+                "closure_label": _normalizar_texto_embarques_historial(row.get("closure_label")),
+                "closure_month": _normalizar_texto_embarques_historial(row.get("closure_month")),
+                "status": _normalizar_texto_embarques_historial(row.get("status")),
+                "created_by": _normalizar_texto_embarques_historial(row.get("created_by")),
+                "confirmed_by": _normalizar_texto_embarques_historial(row.get("confirmed_by")),
+                "closed_at": _normalizar_texto_embarques_historial(row.get("closed_at")),
+                "confirmed_at": _normalizar_texto_embarques_historial(row.get("confirmed_at")),
+                "accuracy_pct": _normalizar_numero_embarques_historial(row.get("accuracy_pct")),
+                "total_rows": _normalizar_numero_embarques_historial(row.get("total_rows")),
+                "differing_rows": _normalizar_numero_embarques_historial(row.get("differing_rows")),
+                "csv_hash": _normalizar_texto_embarques_historial(row.get("csv_hash")),
+                "rows_hash": _normalizar_texto_embarques_historial(row.get("rows_hash")),
+            }
+        )
+    return history_rows
 
 
 def _exportar_historial_embarques_excel(sheet_name, filename, headers, rows):
@@ -10205,6 +10579,375 @@ def export_almacen_embarques_inventario_general():
     except Exception as e:
         print(
             f"Error exportando inventario general embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/cierre/bootstrap")
+@login_requerido
+def api_almacen_embarques_inventario_cierre_bootstrap():
+    """Obtener contexto inicial y baseline del cierre de inventario de embarques."""
+    try:
+        payload = _obtener_inventario_general_almacen_embarques(limit=20000)
+        preview = _construir_preview_cierre_inventario_embarques(payload.get("rows") or [])
+        return jsonify(
+            {
+                "success": True,
+                "metadata": _obtener_contexto_cierre_inventario_embarques(),
+                "preview": preview,
+                "history": _obtener_historial_cierres_inventario_embarques(
+                    include_last_draft_for=_obtener_usuario_display_actual()
+                ),
+            }
+        )
+    except Exception as e:
+        print(
+            f"Error bootstrap cierre inventario embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/cierre/template")
+@login_requerido
+def api_almacen_embarques_inventario_cierre_template():
+    """Descargar plantilla CSV del catálogo completo para cierre de inventario."""
+    try:
+        payload = _obtener_inventario_general_almacen_embarques(limit=20000)
+        output = io.StringIO()
+        writer = csv.writer(output, lineterminator="\n")
+        writer.writerow(["part_number", "current_qty"])
+        for row in payload.get("rows") or []:
+            writer.writerow([row.get("part_number") or "", ""])
+
+        content = output.getvalue().encode("utf-8-sig")
+        filename = f"plantilla_cierre_inventario_embarques_{datetime.now().strftime('%Y%m%d')}.csv"
+        return send_file(
+            io.BytesIO(content),
+            mimetype="text/csv",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        print(
+            f"Error generando plantilla CSV cierre inventario embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/cierre/preview", methods=["POST"])
+@login_requerido
+def api_almacen_embarques_inventario_cierre_preview():
+    """Validar CSV de cierre y generar preview persistente en borrador."""
+    try:
+        csv_file = request.files.get("closure_file")
+        if not csv_file or not csv_file.filename:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Debes seleccionar un archivo CSV para validar.",
+                }
+            ), 400
+
+        current_payload = _obtener_inventario_general_almacen_embarques(limit=20000)
+        current_rows = current_payload.get("rows") or []
+        expected_parts = [row.get("part_number") for row in current_rows if row.get("part_number")]
+
+        parsed_csv = _parsear_csv_cierre_inventario_embarques(csv_file, expected_parts)
+        preview = _construir_preview_cierre_inventario_embarques(
+            current_rows,
+            parsed_csv.get("rows") if parsed_csv.get("rows") else None,
+        )
+        metadata = _obtener_contexto_cierre_inventario_embarques()
+
+        response_payload = {
+            "success": True,
+            "valid": parsed_csv["valid"],
+            "metadata": metadata,
+            "preview": preview,
+            "errors": parsed_csv.get("errors") or [],
+            "history": _obtener_historial_cierres_inventario_embarques(
+                include_last_draft_for=_obtener_usuario_display_actual()
+            ),
+            "batchId": None,
+        }
+
+        if parsed_csv["valid"]:
+            draft_payload = {
+                "metadata": {
+                    **metadata,
+                    "csvFileName": csv_file.filename,
+                    "csvHash": parsed_csv["csvHash"],
+                },
+                "summary": preview["summary"],
+                "rows": preview["rows"],
+            }
+            batch_id = _guardar_borrador_cierre_inventario_embarques(
+                draft_payload,
+                csv_file.filename,
+                parsed_csv["csvHash"],
+            )
+            response_payload["batchId"] = batch_id
+
+        return jsonify(response_payload)
+    except Exception as e:
+        print(
+            f"Error preview cierre inventario embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/cierre/confirm", methods=["POST"])
+@login_requerido
+def api_almacen_embarques_inventario_cierre_confirm():
+    """Confirmar lote de cierre validado y registrarlo como base del siguiente periodo."""
+    try:
+        data = request.get_json(silent=True) or {}
+        batch_id = int(data.get("batchId") or 0)
+        if batch_id <= 0:
+            return jsonify({"success": False, "error": "batchId inválido."}), 400
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexión MySQL para confirmar el cierre.")
+
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        usuario_actual = _obtener_usuario_display_actual()
+
+        try:
+            conn.autocommit(False)
+            cursor.execute(
+                f"""
+                SELECT *
+                FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (batch_id,),
+            )
+            batch_row = cursor.fetchone()
+            if not batch_row:
+                return jsonify({"success": False, "error": "No se encontró el borrador del cierre."}), 404
+
+            if (batch_row.get("status") or "").lower() != "draft":
+                return jsonify({"success": False, "error": "El lote indicado ya no está disponible para confirmar."}), 409
+
+            cursor.execute(
+                f"""
+                SELECT id
+                FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+                WHERE closure_month = %s
+                  AND status = 'confirmed'
+                LIMIT 1
+                """,
+                (batch_row.get("closure_month"),),
+            )
+            existing_confirmed = cursor.fetchone()
+            if existing_confirmed:
+                return jsonify({"success": False, "error": "Ya existe un cierre confirmado para ese mes."}), 409
+
+            payload_json = batch_row.get("payload_json") or "{}"
+            payload = json.loads(payload_json)
+            preview_rows = payload.get("rows") or []
+            metadata = payload.get("metadata") or {}
+
+            for row in preview_rows:
+                csv_current_qty = row.get("csv_current_qty")
+                if csv_current_qty is None:
+                    raise ValueError(
+                        f"El lote contiene part_numbers sin inventario físico cargado: {row.get('part_number')}"
+                    )
+
+                cursor.execute(
+                    f"""
+                    INSERT INTO `{SHIPPING_TABLES['inventory_closures']}` (
+                      closure_batch_id,
+                      part_number,
+                      initial_quantity,
+                      system_quantity,
+                      difference_quantity,
+                      raw_current_quantity,
+                      closed_at,
+                      closure_label,
+                      closed_by,
+                      notes
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        batch_id,
+                        row.get("part_number"),
+                        max(int(row.get("applied_initial_quantity") or 0), 0),
+                        int(row.get("system_quantity") or 0),
+                        int(row.get("difference_quantity") or 0),
+                        int(csv_current_qty),
+                        metadata.get("closureDateTime"),
+                        metadata.get("closureLabel"),
+                        usuario_actual,
+                        json.dumps(
+                            {
+                                "status": row.get("status"),
+                                "csvHash": metadata.get("csvHash"),
+                                "rowsHash": payload.get("summary", {}).get("rowsHash"),
+                            },
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                    ),
+                )
+
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['inventory_closure_batches']}`
+                SET status = 'confirmed',
+                    confirmed_by = %s,
+                    confirmed_at = %s
+                WHERE id = %s
+                """,
+                (usuario_actual, metadata.get("closureDateTime"), batch_id),
+            )
+
+            conn.commit()
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Cierre de inventario confirmado correctamente.",
+                    "history": _obtener_historial_cierres_inventario_embarques(
+                        include_last_draft_for=_obtener_usuario_display_actual()
+                    ),
+                }
+            )
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            try:
+                conn.autocommit(True)
+            except Exception:
+                pass
+            cursor.close()
+            conn.close()
+    except Exception as e:
+        print(
+            f"Error confirmando cierre inventario embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/cierre/cancel", methods=["POST"])
+@login_requerido
+def api_almacen_embarques_inventario_cierre_cancel():
+    """Cancelar un borrador de preview de cierre para reiniciar el proceso."""
+    try:
+        data = request.get_json(silent=True) or {}
+        batch_id = int(data.get("batchId") or 0)
+        if batch_id <= 0:
+            return jsonify({"success": False, "error": "batchId inválido."}), 400
+
+        usuario_actual = _obtener_usuario_display_actual()
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexión MySQL para cancelar el borrador.")
+
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        try:
+            conn.autocommit(False)
+            cursor.execute(
+                f"""
+                SELECT id, status, created_by
+                FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (batch_id,),
+            )
+            batch_row = cursor.fetchone()
+            if not batch_row:
+                return jsonify({"success": False, "error": "No se encontró el borrador del cierre."}), 404
+
+            if (batch_row.get("status") or "").lower() != "draft":
+                return jsonify({"success": False, "error": "Solo se pueden cancelar previews en estado draft."}), 409
+
+            if (
+                (batch_row.get("created_by") or "").strip().lower()
+                != (usuario_actual or "").strip().lower()
+            ):
+                return jsonify({"success": False, "error": "Solo el usuario que generó el preview puede cancelarlo."}), 403
+
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['inventory_closure_batches']}`
+                SET status = 'cancelled'
+                WHERE id = %s
+                """,
+                (batch_id,),
+            )
+            conn.commit()
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Preview cancelado correctamente.",
+                    "history": _obtener_historial_cierres_inventario_embarques(
+                        include_last_draft_for=_obtener_usuario_display_actual()
+                    ),
+                }
+            )
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            try:
+                conn.autocommit(True)
+            except Exception:
+                pass
+            cursor.close()
+            conn.close()
+    except Exception as e:
+        print(
+            f"Error cancelando preview de cierre inventario embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/cierre/history/<int:batch_id>")
+@login_requerido
+def api_almacen_embarques_inventario_cierre_history_detail(batch_id):
+    """Consultar detalle completo de un cierre de inventario."""
+    try:
+        row = execute_query(
+            f"""
+            SELECT *
+            FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (batch_id,),
+            fetch="one",
+        )
+        if not row:
+            return jsonify({"success": False, "error": "No se encontró el cierre solicitado."}), 404
+
+        payload = json.loads(row.get("payload_json") or "{}")
+        return jsonify(
+            {
+                "success": True,
+                "batch": {
+                    "id": row.get("id"),
+                    "closure_label": row.get("closure_label"),
+                    "closure_month": row.get("closure_month"),
+                "status": row.get("status"),
+                "created_by": row.get("created_by"),
+                "confirmed_by": row.get("confirmed_by"),
+                "closed_at": _normalizar_texto_embarques_historial(row.get("closed_at")),
+                "confirmed_at": _normalizar_texto_embarques_historial(row.get("confirmed_at")),
+                "accuracy_pct": row.get("accuracy_pct"),
+                "csv_hash": row.get("csv_hash"),
+                "rows_hash": row.get("rows_hash"),
+            },
+                "payload": payload,
+            }
+        )
+    except Exception as e:
+        print(
+            f"Error consultando detalle de cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
 

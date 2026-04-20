@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260415a";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260417h";
 
   const movementModuleState = {
     rows: [],
@@ -18,10 +18,20 @@
     afterRows: [],
   };
 
+  const inventoryClosureState = {
+    batchId: null,
+    valid: false,
+    rows: [],
+    summary: null,
+    history: [],
+    metadata: null,
+    config: null,
+  };
+
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260415a")) {
+      if (!currentLink.getAttribute("href")?.includes("20260417h")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -91,6 +101,11 @@
     if (elements.searchInput?.value.trim()) {
       params.set("search", elements.searchInput.value.trim());
     }
+
+    if (prefix === "almacen-embarques-inventory") {
+      return params;
+    }
+
     if (elements.typeSelect?.value) {
       params.set("tipo", elements.typeSelect.value);
     }
@@ -153,20 +168,27 @@
   }
 
   function syncTableWidths(moduleRoot) {
-    const headerWrap = moduleRoot?.querySelector(".ae-table-head");
-    const headerTable = moduleRoot?.querySelector(".ae-history-table--head");
-    const bodyWrap = moduleRoot?.querySelector(".ae-table-body-wrap");
-    const bodyTable = moduleRoot?.querySelector(".ae-history-table--body");
-    if (!headerWrap || !headerTable || !bodyWrap || !bodyTable) {
+    const shells = moduleRoot?.querySelectorAll(".ae-table-shell");
+    if (!shells?.length) {
       return;
     }
 
-    const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
-    const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
+    shells.forEach((shell) => {
+      const headerWrap = shell.querySelector(":scope > .ae-table-head");
+      const headerTable = shell.querySelector(".ae-history-table--head");
+      const bodyWrap = shell.querySelector(":scope > .ae-table-body-wrap");
+      const bodyTable = shell.querySelector(".ae-history-table--body");
+      if (!headerWrap || !headerTable || !bodyWrap || !bodyTable) {
+        return;
+      }
 
-    headerWrap.style.paddingRight = `${scrollbarWidth}px`;
-    headerTable.style.width = `${targetWidth}px`;
-    bodyTable.style.width = `${targetWidth}px`;
+      const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
+      const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
+
+      headerWrap.style.paddingRight = `${scrollbarWidth}px`;
+      headerTable.style.width = `${targetWidth}px`;
+      bodyTable.style.width = `${targetWidth}px`;
+    });
   }
 
   function getMovementRecordKey(row) {
@@ -368,6 +390,500 @@
         `,
       )
       .join("");
+  }
+
+  function getInventoryClosureElements() {
+    return {
+      stage: document.getElementById("almacen-embarques-inventory-stage"),
+      openBtn: document.getElementById("almacen-embarques-inventory-open-closure-btn"),
+      backBtn: document.getElementById("almacen-embarques-inventory-closure-back-btn"),
+      statusLabel: document.getElementById("almacen-embarques-inventory-closure-status"),
+      dateInput: document.getElementById("almacen-embarques-inventory-closure-date"),
+      userInput: document.getElementById("almacen-embarques-inventory-closure-user"),
+      monthInput: document.getElementById("almacen-embarques-inventory-closure-month"),
+      fileInput: document.getElementById("almacen-embarques-inventory-closure-file"),
+      templateBtn: document.getElementById("almacen-embarques-inventory-closure-template-btn"),
+      resetBtn: document.getElementById("almacen-embarques-inventory-closure-reset-btn"),
+      previewBtn: document.getElementById("almacen-embarques-inventory-closure-preview-btn"),
+      confirmBtn: document.getElementById("almacen-embarques-inventory-closure-confirm-btn"),
+      errorsWrap: document.getElementById("almacen-embarques-inventory-closure-errors"),
+      donut: document.getElementById("almacen-embarques-inventory-closure-donut"),
+      accuracyLabel: document.getElementById("almacen-embarques-inventory-closure-accuracy"),
+      previewCount: document.getElementById("almacen-embarques-inventory-closure-preview-count"),
+      previewTbody: document.getElementById("almacen-embarques-inventory-closure-preview-tbody"),
+      historyCount: document.getElementById("almacen-embarques-inventory-closure-history-count"),
+      historyTbody: document.getElementById("almacen-embarques-inventory-closure-history-tbody"),
+    };
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  function setInventoryClosureStatus(message = "", isError = false) {
+    const { statusLabel } = getInventoryClosureElements();
+    if (!statusLabel) {
+      return;
+    }
+    statusLabel.textContent = message;
+    statusLabel.style.color = isError ? "#ff9a9a" : "#8fb8ff";
+  }
+
+  function setInventoryClosureView(isOpen) {
+    const moduleRoot = getModuleRoot("almacen-embarques-inventory");
+    if (!moduleRoot) {
+      return;
+    }
+    moduleRoot.classList.toggle("is-closure-active", Boolean(isOpen));
+  }
+
+  function renderInventoryClosureErrors(errors = []) {
+    const { errorsWrap } = getInventoryClosureElements();
+    if (!errorsWrap) {
+      return;
+    }
+    if (!errors.length) {
+      errorsWrap.innerHTML = "";
+      return;
+    }
+
+    errorsWrap.innerHTML = errors
+      .map(
+        (error) =>
+          `<span class="ae-closure-error-chip">${escapeHtml(error)}</span>`,
+      )
+      .join("");
+  }
+
+  function renderInventoryClosurePreviewRows(rows) {
+    return rows
+      .map((row) => {
+        const statusVariant =
+          row.status === "igual"
+            ? "success"
+            : row.status === "diferencia"
+              ? "warning"
+              : "neutral";
+
+        return `
+          <tr>
+            <td><strong>${escapeHtml(row.part_number || "-")}</strong></td>
+            <td>${escapeHtml(row.product_model || "-")}</td>
+            <td>${formatNumber(row.system_quantity)}</td>
+            <td>${row.csv_current_qty === null || row.csv_current_qty === undefined ? "-" : formatNumber(row.csv_current_qty)}</td>
+            <td>${row.difference_quantity === null || row.difference_quantity === undefined ? "-" : formatNumber(row.difference_quantity)}</td>
+            <td>${row.applied_initial_quantity === null || row.applied_initial_quantity === undefined ? "-" : formatNumber(row.applied_initial_quantity)}</td>
+            <td>${buildBadge(row.status || "pendiente", statusVariant)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function renderInventoryClosureHistoryRows(rows) {
+    return rows
+      .map((row) => {
+        const statusVariant =
+          row.status === "confirmed"
+            ? "success"
+            : row.status === "draft"
+              ? "warning"
+              : "neutral";
+
+        return `
+          <tr>
+            <td>${escapeHtml(row.closure_label || "-")}</td>
+            <td>${escapeHtml(row.closure_month || "-")}</td>
+            <td>${escapeHtml(row.confirmed_at || row.closed_at || "-")}</td>
+            <td>${escapeHtml(row.confirmed_by || row.created_by || "-")}</td>
+            <td>${formatNumber(row.accuracy_pct)}%</td>
+            <td class="ae-closure-history-hash">${escapeHtml((row.rows_hash || "-").slice(0, 12))}</td>
+            <td>${buildBadge(row.status || "-", statusVariant)}</td>
+            <td>
+              <button
+                type="button"
+                class="ae-btn-inline ae-btn-inline-edit"
+                data-action="view-closure-history"
+                data-batch-id="${escapeHtml(row.id)}"
+              >
+                ${row.status === "draft" ? "Retomar" : "Ver"}
+              </button>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function updateInventoryClosureSummary(summary = {}, rows = []) {
+    const {
+      donut,
+      accuracyLabel,
+      previewCount,
+    } = getInventoryClosureElements();
+
+    const accuracy = Number(summary.accuracyPct || 0);
+    const boundedAccuracy = Math.max(0, Math.min(100, accuracy));
+    const degrees = (boundedAccuracy / 100) * 360;
+
+    if (donut) {
+      donut.style.background = `conic-gradient(#27ae60 0deg, #27ae60 ${degrees}deg, rgba(255,255,255,0.08) ${degrees}deg)`;
+    }
+    if (accuracyLabel) accuracyLabel.textContent = `${formatNumber(boundedAccuracy)}%`;
+
+    if (previewCount) {
+      const rowsCount = rows.length || summary.totalRows || 0;
+      previewCount.textContent = `${rowsCount} ${rowsCount === 1 ? "registro" : "registros"}`;
+    }
+  }
+
+  function renderInventoryClosurePreview(payload) {
+    const { previewTbody, confirmBtn, historyCount, historyTbody } = getInventoryClosureElements();
+    const preview = payload.preview || { rows: [], summary: {} };
+    const rows = preview.rows || [];
+
+    inventoryClosureState.batchId = payload.batchId || null;
+    inventoryClosureState.valid = Boolean(payload.valid);
+    inventoryClosureState.rows = rows;
+    inventoryClosureState.summary = preview.summary || {};
+    inventoryClosureState.history = payload.history || inventoryClosureState.history || [];
+    inventoryClosureState.metadata = payload.metadata || inventoryClosureState.metadata;
+
+    if (previewTbody) {
+      previewTbody.innerHTML = rows.length
+        ? renderInventoryClosurePreviewRows(rows)
+        : `<tr><td colspan="7" class="ae-empty-cell">Sin datos de preview.</td></tr>`;
+    }
+
+    updateInventoryClosureSummary(preview.summary || {}, rows);
+    renderInventoryClosureErrors(payload.errors || []);
+
+    if (confirmBtn) {
+      confirmBtn.disabled = !payload.valid || !payload.batchId;
+    }
+
+    if (historyTbody) {
+      historyTbody.innerHTML = inventoryClosureState.history.length
+        ? renderInventoryClosureHistoryRows(inventoryClosureState.history)
+        : `<tr><td colspan="8" class="ae-empty-cell">Sin cierres registrados.</td></tr>`;
+    }
+    if (historyCount) {
+      const rowsCount = inventoryClosureState.history.length;
+      historyCount.textContent = `${rowsCount} ${rowsCount === 1 ? "registro" : "registros"}`;
+    }
+  }
+
+  function fillInventoryClosureMetadata(metadata = {}) {
+    const { dateInput, userInput, monthInput } = getInventoryClosureElements();
+    if (dateInput) dateInput.value = metadata.closureDate || "";
+    if (userInput) userInput.value = metadata.closureUser || "";
+    if (monthInput) monthInput.value = metadata.closureMonthLabel || "";
+  }
+
+  async function loadInventoryClosureBootstrap() {
+    const elements = getInventoryClosureElements();
+    if (!elements.previewTbody) {
+      return;
+    }
+
+    elements.previewTbody.innerHTML =
+      '<tr><td colspan="7" class="ae-empty-cell">Cargando baseline del cierre...</td></tr>';
+    setInventoryClosureStatus("Cargando contexto del cierre...");
+
+    const response = await fetch(
+      "/api/almacen-embarques/inventario-general/cierre/bootstrap",
+      { credentials: "same-origin" },
+    );
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok || payload.success === false) {
+      throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+    }
+
+    fillInventoryClosureMetadata(payload.metadata || {});
+    renderInventoryClosurePreview({
+      ...payload,
+      valid: false,
+      batchId: null,
+      errors: [],
+    });
+    setInventoryClosureStatus("Baseline cargado. Descarga la plantilla y valida el CSV.");
+  }
+
+  async function previewInventoryClosure() {
+    const { fileInput, previewBtn } = getInventoryClosureElements();
+    const selectedFile = fileInput?.files?.[0];
+    if (!selectedFile) {
+      renderInventoryClosureErrors(["Debes seleccionar un archivo CSV para validar."]);
+      setInventoryClosureStatus("Archivo CSV requerido.", true);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("closure_file", selectedFile);
+    const minimumDelay = sleep(2000);
+
+    try {
+      previewBtn.disabled = true;
+      previewBtn.classList.add("ae-btn-loading");
+      previewBtn.textContent = "Validando...";
+      setInventoryClosureStatus("Validando archivo CSV...");
+      const response = await fetch(
+        "/api/almacen-embarques/inventario-general/cierre/preview",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          body: formData,
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      await minimumDelay;
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      fillInventoryClosureMetadata(payload.metadata || {});
+      renderInventoryClosurePreview(payload);
+      if (payload.valid) {
+        setInventoryClosureStatus("Preview validado. Ya puedes confirmar el cierre.");
+      } else {
+        setInventoryClosureStatus("El CSV contiene errores y no se puede confirmar.", true);
+      }
+    } catch (error) {
+      await minimumDelay;
+      renderInventoryClosureErrors([error.message || "No fue posible validar el CSV."]);
+      setInventoryClosureStatus(error.message || "Error validando el CSV.", true);
+    } finally {
+      previewBtn.disabled = false;
+      previewBtn.classList.remove("ae-btn-loading");
+      previewBtn.textContent = "Validar preview";
+    }
+  }
+
+  async function resetInventoryClosure() {
+    const { fileInput, confirmBtn, previewBtn } = getInventoryClosureElements();
+
+    const currentBatchId = inventoryClosureState.batchId;
+
+    if (currentBatchId) {
+      const response = await fetch(
+        "/api/almacen-embarques/inventario-general/cierre/cancel",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ batchId: currentBatchId }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+    }
+
+    inventoryClosureState.batchId = null;
+    inventoryClosureState.valid = false;
+    inventoryClosureState.rows = [];
+    inventoryClosureState.summary = {};
+
+    if (fileInput) {
+      fileInput.value = "";
+    }
+
+    renderInventoryClosureErrors([]);
+    setInventoryClosureStatus("Reiniciando carga del cierre...");
+
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+    }
+
+    if (previewBtn) {
+      previewBtn.disabled = false;
+      previewBtn.classList.remove("ae-btn-loading");
+      previewBtn.textContent = "Validar preview";
+    }
+
+    await loadInventoryClosureBootstrap();
+  }
+
+  async function confirmInventoryClosure() {
+    const { confirmBtn } = getInventoryClosureElements();
+    if (!inventoryClosureState.batchId) {
+      setInventoryClosureStatus("No hay un preview válido para confirmar.", true);
+      return;
+    }
+
+    try {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "Confirmando...";
+      setInventoryClosureStatus("Confirmando cierre de inventario...");
+      const response = await fetch(
+        "/api/almacen-embarques/inventario-general/cierre/confirm",
+        {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ batchId: inventoryClosureState.batchId }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      inventoryClosureState.batchId = null;
+      inventoryClosureState.valid = false;
+      renderInventoryClosureErrors([]);
+      setInventoryClosureStatus(payload.message || "Cierre confirmado correctamente.");
+
+      if (payload.history) {
+        inventoryClosureState.history = payload.history;
+        renderInventoryClosurePreview({
+          valid: false,
+          batchId: null,
+          preview: {
+            rows: inventoryClosureState.rows,
+            summary: inventoryClosureState.summary || {},
+          },
+          history: payload.history,
+          metadata: inventoryClosureState.metadata || {},
+          errors: [],
+        });
+      }
+
+      if (inventoryClosureState.config) {
+        await loadModule(inventoryClosureState.config);
+      }
+    } catch (error) {
+      setInventoryClosureStatus(error.message || "No fue posible confirmar el cierre.", true);
+    } finally {
+      confirmBtn.disabled = !inventoryClosureState.valid || !inventoryClosureState.batchId;
+      confirmBtn.textContent = "Confirmar cierre";
+    }
+  }
+
+  async function loadInventoryClosureHistoryDetail(batchId) {
+    try {
+      setInventoryClosureStatus("Consultando detalle del cierre...");
+      const response = await fetch(
+        `/api/almacen-embarques/inventario-general/cierre/history/${encodeURIComponent(batchId)}`,
+        { credentials: "same-origin" },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      fillInventoryClosureMetadata({
+        closureDate: payload.payload?.metadata?.closureDate || payload.batch?.closed_at || "",
+        closureUser: payload.batch?.confirmed_by || payload.batch?.created_by || "",
+        closureMonthLabel: payload.payload?.metadata?.closureMonthLabel || payload.batch?.closure_month || "",
+      });
+      renderInventoryClosurePreview({
+        valid: payload.batch?.status === "draft",
+        batchId: payload.batch?.status === "draft" ? payload.batch?.id : null,
+        preview: {
+          rows: payload.payload?.rows || [],
+          summary: payload.payload?.summary || {},
+        },
+        history: inventoryClosureState.history,
+        metadata: payload.payload?.metadata || inventoryClosureState.metadata || {},
+        errors: [],
+      });
+      setInventoryClosureStatus(
+        payload.batch?.status === "draft"
+          ? `Preview pendiente retomado: ${payload.batch?.closure_label || "cierre"}.`
+          : `Consultando ${payload.batch?.closure_label || "cierre"}.`,
+      );
+    } catch (error) {
+      setInventoryClosureStatus(error.message || "No fue posible consultar el cierre.", true);
+    }
+  }
+
+  function bindInventoryClosureModule(config) {
+    const elements = getInventoryClosureElements();
+    if (!elements.openBtn || elements.openBtn.dataset.bound === "true") {
+      return;
+    }
+
+    inventoryClosureState.config = config;
+
+    const closurePane = document.querySelector(".ae-inventory-pane--closure");
+    const legacyToolbar = closurePane?.querySelector(".ae-closure-toolbar");
+    const closureHeader = closurePane?.querySelector(".ae-closure-meta-card .ae-card-header");
+    let titleGroup = closureHeader?.querySelector(".ae-card-header__title-group");
+
+    if (closureHeader && elements.backBtn) {
+      if (!titleGroup) {
+        titleGroup = document.createElement("div");
+        titleGroup.className = "ae-card-header__title-group";
+        const title = closureHeader.querySelector("h3");
+        if (title) {
+          closureHeader.insertBefore(titleGroup, title);
+          titleGroup.appendChild(title);
+        } else {
+          closureHeader.prepend(titleGroup);
+        }
+      }
+
+      if (!titleGroup.contains(elements.backBtn)) {
+        titleGroup.prepend(elements.backBtn);
+      }
+    }
+
+    legacyToolbar?.remove();
+
+    elements.openBtn.addEventListener("click", async () => {
+      try {
+        setInventoryClosureView(true);
+        await loadInventoryClosureBootstrap();
+      } catch (error) {
+        renderInventoryClosureErrors([error.message || "No fue posible cargar el cierre."]);
+        setInventoryClosureStatus(error.message || "No fue posible cargar el cierre.", true);
+      }
+    });
+
+    elements.backBtn?.addEventListener("click", () => {
+      setInventoryClosureView(false);
+      setInventoryClosureStatus("");
+    });
+
+    elements.templateBtn?.addEventListener("click", () => {
+      window.open(
+        "/api/almacen-embarques/inventario-general/cierre/template",
+        "_blank",
+      );
+    });
+
+    elements.resetBtn?.addEventListener("click", async () => {
+      try {
+        await resetInventoryClosure();
+      } catch (error) {
+        renderInventoryClosureErrors([error.message || "No fue posible reiniciar la carga."]);
+        setInventoryClosureStatus(error.message || "No fue posible reiniciar la carga.", true);
+      }
+    });
+
+    elements.previewBtn?.addEventListener("click", previewInventoryClosure);
+    elements.confirmBtn?.addEventListener("click", confirmInventoryClosure);
+
+    elements.historyTbody?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-action='view-closure-history']");
+      if (!button) {
+        return;
+      }
+      loadInventoryClosureHistoryDetail(button.dataset.batchId);
+    });
+
+    elements.openBtn.dataset.bound = "true";
   }
 
   async function loadModule(config) {
@@ -850,14 +1366,18 @@
     }
 
     const moduleRoot = getModuleRoot(config.prefix);
-    const headerWrap = moduleRoot?.querySelector(".ae-table-head");
-    const bodyWrap = moduleRoot?.querySelector(".ae-table-body-wrap");
-    if (headerWrap && bodyWrap && bodyWrap.dataset.scrollBound !== "true") {
+    const tableShells = moduleRoot?.querySelectorAll(".ae-table-shell") || [];
+    tableShells.forEach((shell) => {
+      const headerWrap = shell.querySelector(":scope > .ae-table-head");
+      const bodyWrap = shell.querySelector(":scope > .ae-table-body-wrap");
+      if (!headerWrap || !bodyWrap || bodyWrap.dataset.scrollBound === "true") {
+        return;
+      }
       bodyWrap.addEventListener("scroll", () => {
         headerWrap.scrollLeft = bodyWrap.scrollLeft;
       });
       bodyWrap.dataset.scrollBound = "true";
-    }
+    });
 
     if (moduleRoot && moduleRoot.dataset.resizeBound !== "true") {
       const updateHeight = () => {
@@ -920,27 +1440,32 @@
   };
 
   window.inicializarAlmacenEmbarquesInventarioGeneralAjax = function () {
-    initializeModule({
+    const inventoryConfig = {
       prefix: "almacen-embarques-inventory",
       apiUrl: "/api/almacen-embarques/inventario-general",
       exportUrl: "/api/almacen-embarques/inventario-general/export",
       colspan: 9,
       emptyMessage: "No hay registros de inventario para los filtros actuales.",
       renderer: renderInventoryRows,
-      onAfterLoad(payload) {
-        const summary = payload?.summary || {};
-        if (summary.has_closure && summary.latest_period_start) {
+      onAfterLoad() {
+        const currentSearch =
+          getElements("almacen-embarques-inventory").searchInput?.value.trim() || "";
+        if (currentSearch) {
           setStatus(
             "almacen-embarques-inventory",
-            `Movimientos acumulados desde el cierre ${summary.latest_period_start}`,
+            `Inventario actual filtrado por no. parte: ${currentSearch}`,
           );
-        } else {
-          setStatus(
-            "almacen-embarques-inventory",
-            "Sin cierre previo: mostrando acumulado total del historial",
-          );
+          return;
         }
+
+        setStatus(
+          "almacen-embarques-inventory",
+          "Inventario actual del catálogo completo",
+        );
       },
-    });
+    };
+
+    bindInventoryClosureModule(inventoryConfig);
+    initializeModule(inventoryConfig);
   };
 })();

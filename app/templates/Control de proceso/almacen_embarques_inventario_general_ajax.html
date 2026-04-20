@@ -3,98 +3,265 @@
     class="almacen-embarques-history-module"
     data-module-type="inventory"
 >
-    <div class="ae-filters-card">
-        <div class="ae-card-header">
-            <h3>Filtros de búsqueda</h3>
-        </div>
-        <div class="ae-filters">
-            <div class="ae-filter-group ae-filter-group--wide">
-                <label for="almacen-embarques-inventory-search">Buscar</label>
-                <input
-                    type="text"
-                    id="almacen-embarques-inventory-search"
-                    placeholder="No. parte, modelo o cliente"
-                >
+    <div id="almacen-embarques-inventory-stage" class="ae-inventory-stage">
+        <section class="ae-inventory-pane ae-inventory-pane--main">
+            <div class="ae-filters-card">
+                <div class="ae-card-header">
+                    <h3>Catálogo actual</h3>
+                </div>
+                <div class="ae-filters">
+                    <div class="ae-filter-group ae-filter-group--wide">
+                        <label for="almacen-embarques-inventory-search">No. parte</label>
+                        <input
+                            type="text"
+                            id="almacen-embarques-inventory-search"
+                            placeholder="Filtrar por no. parte"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                    </div>
+                    <button id="almacen-embarques-inventory-search-btn" class="ae-btn-primary">
+                        Buscar
+                    </button>
+                    <button id="almacen-embarques-inventory-clear-btn" class="ae-btn-secondary">
+                        Limpiar
+                    </button>
+                    <button id="almacen-embarques-inventory-export-btn" class="ae-btn-export">
+                        Exportar Excel
+                    </button>
+                    <button id="almacen-embarques-inventory-open-closure-btn" class="ae-btn-primary">
+                        Cierre de inventario
+                    </button>
+                </div>
             </div>
-            <div class="ae-filter-group">
-                <label for="almacen-embarques-inventory-date-from">Fecha desde</label>
-                <input type="date" id="almacen-embarques-inventory-date-from">
-            </div>
-            <div class="ae-filter-group">
-                <label for="almacen-embarques-inventory-date-to">Fecha hasta</label>
-                <input type="date" id="almacen-embarques-inventory-date-to">
-            </div>
-            <button id="almacen-embarques-inventory-search-btn" class="ae-btn-primary">
-                Consultar
-            </button>
-            <button id="almacen-embarques-inventory-clear-btn" class="ae-btn-secondary">
-                Limpiar filtros
-            </button>
-            <button id="almacen-embarques-inventory-export-btn" class="ae-btn-export">
-                Exportar Excel
-            </button>
-        </div>
-    </div>
 
-    <div class="ae-results-card">
-        <div class="ae-card-header">
-            <h3>Inventario general</h3>
-            <span id="almacen-embarques-inventory-count" class="ae-record-count">
-                0 registros
-            </span>
-            <span id="almacen-embarques-inventory-status" class="ae-status-text"></span>
-        </div>
-        <div class="ae-table-shell">
-            <div class="ae-table-head">
-                <table class="ae-history-table ae-history-table--head">
-                    <colgroup>
-                        <col style="width: 13%;">
-                        <col style="width: 16%;">
-                        <col style="width: 10%;">
-                        <col style="width: 10%;">
-                        <col style="width: 9%;">
-                        <col style="width: 9%;">
-                        <col style="width: 11%;">
-                        <col style="width: 11%;">
-                        <col style="width: 11%;">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th>No. parte</th>
-                            <th>Modelo</th>
-                            <th>Cliente</th>
-                            <th>Inv. inicial</th>
-                            <th>Entradas</th>
-                            <th>Salidas</th>
-                            <th>Entradas retorno</th>
-                            <th>Salidas retorno</th>
-                            <th>Cantidad total</th>
-                        </tr>
-                    </thead>
-                </table>
+            <div class="ae-results-card">
+                <div class="ae-card-header">
+                    <h3>Inventario general</h3>
+                    <span id="almacen-embarques-inventory-count" class="ae-record-count">
+                        0 registros
+                    </span>
+                    <span id="almacen-embarques-inventory-status" class="ae-status-text"></span>
+                </div>
+                <div class="ae-table-shell">
+                    <div class="ae-table-head">
+                        <table class="ae-history-table ae-history-table--head">
+                            <colgroup>
+                                <col style="width: 13%;">
+                                <col style="width: 16%;">
+                                <col style="width: 10%;">
+                                <col style="width: 10%;">
+                                <col style="width: 9%;">
+                                <col style="width: 9%;">
+                                <col style="width: 11%;">
+                                <col style="width: 11%;">
+                                <col style="width: 11%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>No. parte</th>
+                                    <th>Modelo</th>
+                                    <th>Cliente</th>
+                                    <th>Inv. inicial</th>
+                                    <th>Entradas</th>
+                                    <th>Salidas</th>
+                                    <th>Entradas retorno</th>
+                                    <th>Salidas retorno</th>
+                                    <th>Cantidad total</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="ae-table-body-wrap">
+                        <table class="ae-history-table ae-history-table--body">
+                            <colgroup>
+                                <col style="width: 13%;">
+                                <col style="width: 16%;">
+                                <col style="width: 10%;">
+                                <col style="width: 10%;">
+                                <col style="width: 9%;">
+                                <col style="width: 9%;">
+                                <col style="width: 11%;">
+                                <col style="width: 11%;">
+                                <col style="width: 11%;">
+                            </colgroup>
+                            <tbody id="almacen-embarques-inventory-tbody">
+                                <tr>
+                                    <td colspan="9" class="ae-empty-cell">Cargando inventario...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="ae-table-body-wrap">
-                <table class="ae-history-table ae-history-table--body">
-                    <colgroup>
-                        <col style="width: 13%;">
-                        <col style="width: 16%;">
-                        <col style="width: 10%;">
-                        <col style="width: 10%;">
-                        <col style="width: 9%;">
-                        <col style="width: 9%;">
-                        <col style="width: 11%;">
-                        <col style="width: 11%;">
-                        <col style="width: 11%;">
-                    </colgroup>
-                    <tbody id="almacen-embarques-inventory-tbody">
-                        <tr>
-                            <td colspan="9" class="ae-empty-cell">Cargando inventario...</td>
-                        </tr>
-                    </tbody>
-                </table>
+        </section>
+
+        <section class="ae-inventory-pane ae-inventory-pane--closure">
+            <div class="ae-filters-card ae-closure-meta-card">
+                <div class="ae-card-header ae-card-header--closure">
+                    <div class="ae-card-header__title-group">
+                        <button id="almacen-embarques-inventory-closure-back-btn" class="ae-back-btn" type="button" aria-label="Regresar a inventario">
+                            &#8592;
+                        </button>
+                        <h3>Datos del cierre</h3>
+                    </div>
+                    <span id="almacen-embarques-inventory-closure-status" class="ae-status-text"></span>
+                </div>
+                <div class="ae-closure-meta-grid">
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-inventory-closure-date">Fecha</label>
+                        <input type="text" id="almacen-embarques-inventory-closure-date" readonly>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-inventory-closure-user">Usuario</label>
+                        <input type="text" id="almacen-embarques-inventory-closure-user" readonly>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-inventory-closure-month">Mes del cierre</label>
+                        <input type="text" id="almacen-embarques-inventory-closure-month" readonly>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-inventory-closure-file">CSV de inventario físico</label>
+                        <input type="file" id="almacen-embarques-inventory-closure-file" accept=".csv,text/csv">
+                    </div>
+                    <button id="almacen-embarques-inventory-closure-template-btn" class="ae-btn-secondary" type="button">
+                        Descargar plantilla
+                    </button>
+                    <button id="almacen-embarques-inventory-closure-reset-btn" class="ae-btn-secondary" type="button">
+                        Reiniciar carga
+                    </button>
+                    <button id="almacen-embarques-inventory-closure-preview-btn" class="ae-btn-primary" type="button">
+                        Validar preview
+                    </button>
+                    <button id="almacen-embarques-inventory-closure-confirm-btn" class="ae-btn-success" type="button" disabled>
+                        Confirmar cierre
+                    </button>
+                </div>
+                <div id="almacen-embarques-inventory-closure-errors" class="ae-closure-errors"></div>
             </div>
-        </div>
+
+            <div class="ae-closure-preview-layout">
+                <div class="ae-results-card ae-closure-summary-card">
+                    <div class="ae-card-header">
+                        <h3>Accuracy del cierre</h3>
+                    </div>
+                    <div class="ae-closure-summary-body">
+                        <div id="almacen-embarques-inventory-closure-donut" class="ae-closure-donut">
+                            <div class="ae-closure-donut__inner">
+                                <strong id="almacen-embarques-inventory-closure-accuracy">0%</strong>
+                                <span>Accuracy</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ae-results-card ae-closure-preview-card">
+                    <div class="ae-card-header">
+                        <h3>Preview del cierre</h3>
+                        <span id="almacen-embarques-inventory-closure-preview-count" class="ae-record-count">0 registros</span>
+                    </div>
+                    <div class="ae-table-shell">
+                        <div class="ae-table-head">
+                            <table class="ae-history-table ae-history-table--head">
+                                <colgroup>
+                                    <col style="width: 18%;">
+                                    <col style="width: 15%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 19%;">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>No. parte</th>
+                                        <th>Modelo</th>
+                                        <th>Sistema actual</th>
+                                        <th>CSV actual</th>
+                                        <th>Diferencia</th>
+                                        <th>Inv. inicial</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <div class="ae-table-body-wrap">
+                            <table class="ae-history-table ae-history-table--body">
+                                <colgroup>
+                                    <col style="width: 18%;">
+                                    <col style="width: 15%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 12%;">
+                                    <col style="width: 19%;">
+                                </colgroup>
+                                <tbody id="almacen-embarques-inventory-closure-preview-tbody">
+                                    <tr>
+                                        <td colspan="7" class="ae-empty-cell">Cargando preview base...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ae-results-card">
+                <div class="ae-card-header">
+                    <h3>Historial de cierres</h3>
+                    <span id="almacen-embarques-inventory-closure-history-count" class="ae-record-count">0 registros</span>
+                </div>
+                <div class="ae-table-shell">
+                    <div class="ae-table-head">
+                        <table class="ae-history-table ae-history-table--head">
+                            <colgroup>
+                                <col style="width: 16%;">
+                                <col style="width: 12%;">
+                                <col style="width: 14%;">
+                                <col style="width: 14%;">
+                                <col style="width: 10%;">
+                                <col style="width: 10%;">
+                                <col style="width: 14%;">
+                                <col style="width: 10%;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Cierre</th>
+                                    <th>Mes</th>
+                                    <th>Fecha</th>
+                                    <th>Usuario</th>
+                                    <th>Accuracy</th>
+                                    <th>Hash</th>
+                                    <th>Estado</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="ae-table-body-wrap">
+                        <table class="ae-history-table ae-history-table--body">
+                            <colgroup>
+                                <col style="width: 16%;">
+                                <col style="width: 12%;">
+                                <col style="width: 14%;">
+                                <col style="width: 14%;">
+                                <col style="width: 10%;">
+                                <col style="width: 10%;">
+                                <col style="width: 14%;">
+                                <col style="width: 10%;">
+                            </colgroup>
+                            <tbody id="almacen-embarques-inventory-closure-history-tbody">
+                                <tr>
+                                    <td colspan="8" class="ae-empty-cell">Sin cierres registrados.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260415a') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260417h') }}"></script>

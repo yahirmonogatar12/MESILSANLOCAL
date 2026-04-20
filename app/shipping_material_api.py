@@ -24,6 +24,7 @@ SHIPPING_TABLES = {
     "departure_history": "embarques_departure_historial",
     "movement_adjustments": "embarques_movimiento_ajustes_historial",
     "inventory_closures": "embarques_inventario_cierres",
+    "inventory_closure_batches": "embarques_inventario_cierre_lotes",
 }
 
 shipping_material_api = Blueprint(
@@ -545,6 +546,34 @@ def init_shipping_material_tables():
             """
         )
 
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['inventory_closure_batches']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              closure_label VARCHAR(120) NOT NULL,
+              closure_month CHAR(7) NOT NULL,
+              closed_at DATETIME NOT NULL,
+              status VARCHAR(20) NOT NULL DEFAULT 'draft',
+              created_by VARCHAR(120) NULL,
+              confirmed_by VARCHAR(120) NULL,
+              csv_file_name VARCHAR(255) NULL,
+              csv_hash CHAR(64) NULL,
+              rows_hash CHAR(64) NULL,
+              payload_json LONGTEXT NULL,
+              accuracy_pct DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+              total_rows INT NOT NULL DEFAULT 0,
+              differing_rows INT NOT NULL DEFAULT 0,
+              notes TEXT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              confirmed_at DATETIME NULL,
+              PRIMARY KEY (id),
+              KEY idx_inventory_closure_batches_month (closure_month),
+              KEY idx_inventory_closure_batches_status (status),
+              KEY idx_inventory_closure_batches_closed_at (closed_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
         remove_deprecated_location_defaults(cursor)
         ensure_column(
             cursor,
@@ -581,6 +610,30 @@ def init_shipping_material_tables():
             SHIPPING_TABLES["movement_adjustments"],
             "notes",
             "TEXT NULL AFTER `changed_fields_json`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["inventory_closures"],
+            "closure_batch_id",
+            "BIGINT UNSIGNED NULL AFTER `id`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["inventory_closures"],
+            "system_quantity",
+            "INT NULL AFTER `initial_quantity`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["inventory_closures"],
+            "difference_quantity",
+            "INT NULL AFTER `system_quantity`",
+        )
+        ensure_column(
+            cursor,
+            SHIPPING_TABLES["inventory_closures"],
+            "raw_current_quantity",
+            "INT NULL AFTER `difference_quantity`",
         )
         conn.commit()
         print("Tablas compartidas de embarques creadas/verificadas correctamente")
