@@ -117,7 +117,22 @@ async function downloadVisionPassFailFile(url, fallbackName, successMessage) {
     });
 
     if (!response.ok) {
-      throw new Error(`Error al descargar archivo (status ${response.status})`);
+      const contentType = response.headers.get("content-type") || "";
+      let errorMessage = `Error al descargar archivo (status ${response.status})`;
+
+      if (contentType.includes("application/json")) {
+        const errorData = await response.json().catch(() => null);
+        if (errorData?.error) {
+          errorMessage = `${errorMessage}: ${errorData.error}`;
+        }
+      } else {
+        const errorText = await response.text().catch(() => "");
+        if (errorText) {
+          errorMessage = `${errorMessage}: ${errorText.slice(0, 180)}`;
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
     const blob = await response.blob();

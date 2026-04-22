@@ -10,6 +10,8 @@ import tempfile
 import threading
 import time
 import traceback
+import struct
+import zlib
 from pathlib import Path
 
 # Intentar importar MySQLdb, si no está disponible usar PyMySQL como alternativa
@@ -20888,6 +20890,28 @@ def _build_history_vision_pass_fail_summary_query():
     return sql, tuple(params) if params else None
 
 
+VISION_PASS_FAIL_EXCEL_IMAGE_WIDTH = 430
+VISION_PASS_FAIL_EXCEL_IMAGE_HEIGHT = 28
+
+
+def _measure_vision_pass_fail_excel_text(draw, text, font):
+    if hasattr(draw, "textbbox"):
+        left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+        return right - left, bottom - top
+
+    if hasattr(draw, "textsize"):
+        return draw.textsize(text, font=font)
+
+    if hasattr(font, "getbbox"):
+        left, top, right, bottom = font.getbbox(text)
+        return right - left, bottom - top
+
+    if hasattr(font, "getsize"):
+        return font.getsize(text)
+
+    return (max(len(text), 1) * 8, 12)
+
+
 def _load_vision_pass_fail_excel_font(size=12, bold=False):
     from PIL import ImageFont
 
@@ -20961,11 +20985,16 @@ def _build_vision_pass_fail_excel_bar_image(porcentaje_ok, porcentaje_ng):
     pass_font = _load_vision_pass_fail_excel_font(size=12, bold=True)
     fail_font = _load_vision_pass_fail_excel_font(size=12, bold=True)
 
-    pass_bbox = draw.textbbox((0, 0), pass_label, font=pass_font)
-    pass_text_width = pass_bbox[2] - pass_bbox[0]
-    pass_text_height = pass_bbox[3] - pass_bbox[1]
+    pass_text_width, pass_text_height = _measure_vision_pass_fail_excel_text(
+        draw, pass_label, pass_font
+    )
     pass_center_x = bar_x + max(ok_width / 2, min(bar_width / 2, 70))
-    pass_text_x = int(max(bar_x + 10, min(pass_center_x - pass_text_width / 2, bar_width - pass_text_width - 10)))
+    pass_text_x = int(
+        max(
+            bar_x + 10,
+            min(pass_center_x - pass_text_width / 2, bar_width - pass_text_width - 10),
+        )
+    )
     pass_text_y = int(bar_y + (bar_height - pass_text_height) / 2 - 1)
     draw.text(
         (pass_text_x, pass_text_y),
@@ -20974,8 +21003,9 @@ def _build_vision_pass_fail_excel_bar_image(porcentaje_ok, porcentaje_ng):
         fill="#FFFFFF",
     )
 
-    fail_bbox = draw.textbbox((0, 0), fail_label, font=fail_font)
-    fail_text_height = fail_bbox[3] - fail_bbox[1]
+    _, fail_text_height = _measure_vision_pass_fail_excel_text(
+        draw, fail_label, fail_font
+    )
     fail_text_x = bar_width + label_gap
     fail_text_y = int(bar_y + (bar_height - fail_text_height) / 2 - 1)
     draw.text(
@@ -20989,6 +21019,266 @@ def _build_vision_pass_fail_excel_bar_image(porcentaje_ok, porcentaje_ng):
     image.save(output, format="PNG")
     output.seek(0)
     return output
+
+
+def _vision_pass_fail_bitmap_font():
+    return {
+        "0": ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
+        "1": ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
+        "2": ("01110", "10001", "00001", "00010", "00100", "01000", "11111"),
+        "3": ("11110", "00001", "00001", "01110", "00001", "00001", "11110"),
+        "4": ("00010", "00110", "01010", "10010", "11111", "00010", "00010"),
+        "5": ("11111", "10000", "10000", "11110", "00001", "00001", "11110"),
+        "6": ("01110", "10000", "10000", "11110", "10001", "10001", "01110"),
+        "7": ("11111", "00001", "00010", "00100", "01000", "01000", "01000"),
+        "8": ("01110", "10001", "10001", "01110", "10001", "10001", "01110"),
+        "9": ("01110", "10001", "10001", "01111", "00001", "00001", "01110"),
+        ".": ("00000", "00000", "00000", "00000", "00000", "00110", "00110"),
+        "%": ("11001", "11010", "00100", "01000", "10110", "00110", "00000"),
+        " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
+    }
+
+
+def _vision_pass_fail_text_width(text, scale=2, spacing=1):
+    if not text:
+        return 0
+
+    glyph_count = len(text)
+    return (glyph_count * 5 * scale) + ((glyph_count - 1) * spacing * scale)
+
+
+def _set_vision_pass_fail_pixel(pixels, width, x, y, color):
+    if x < 0 or y < 0:
+        return
+
+    idx = ((y * width) + x) * 4
+    if idx < 0 or idx + 3 >= len(pixels):
+        return
+
+    pixels[idx] = color[0]
+    pixels[idx + 1] = color[1]
+    pixels[idx + 2] = color[2]
+    pixels[idx + 3] = color[3]
+
+
+def _fill_vision_pass_fail_rounded_rect(
+    pixels, canvas_width, x, y, width, height, radius, color
+):
+    radius = max(0, min(radius, width // 2, height // 2))
+    radius_sq = radius * radius
+
+    for local_y in range(height):
+        for local_x in range(width):
+            if radius == 0:
+                inside = True
+            elif radius <= local_x < width - radius or radius <= local_y < height - radius:
+                inside = True
+            else:
+                corner_x = radius if local_x < radius else width - radius - 1
+                corner_y = radius if local_y < radius else height - radius - 1
+                delta_x = local_x - corner_x
+                delta_y = local_y - corner_y
+                inside = (delta_x * delta_x) + (delta_y * delta_y) <= radius_sq
+
+            if inside:
+                _set_vision_pass_fail_pixel(
+                    pixels, canvas_width, x + local_x, y + local_y, color
+                )
+
+
+def _draw_vision_pass_fail_bitmap_text(
+    pixels, canvas_width, x, y, text, color, scale=2, spacing=1
+):
+    font_map = _vision_pass_fail_bitmap_font()
+    cursor_x = x
+
+    for char in text:
+        glyph = font_map.get(char, font_map[" "])
+        for row_idx, row in enumerate(glyph):
+            for col_idx, pixel in enumerate(row):
+                if pixel != "1":
+                    continue
+
+                for scale_y in range(scale):
+                    for scale_x in range(scale):
+                        _set_vision_pass_fail_pixel(
+                            pixels,
+                            canvas_width,
+                            cursor_x + (col_idx * scale) + scale_x,
+                            y + (row_idx * scale) + scale_y,
+                            color,
+                        )
+
+        cursor_x += (5 * scale) + (spacing * scale)
+
+
+def _build_vision_pass_fail_excel_bar_png_bytes(porcentaje_ok, porcentaje_ng):
+    pass_rate = max(0.0, min(100.0, float(porcentaje_ok or 0)))
+    fail_rate = max(0.0, min(100.0, float(porcentaje_ng or 0)))
+
+    canvas_width = VISION_PASS_FAIL_EXCEL_IMAGE_WIDTH
+    canvas_height = VISION_PASS_FAIL_EXCEL_IMAGE_HEIGHT
+    bar_width = 350
+    bar_height = 20
+    label_gap = 8
+    radius = bar_height // 2
+    bar_x = 0
+    bar_y = (canvas_height - bar_height) // 2
+
+    ok_width = int(round((pass_rate / 100.0) * bar_width))
+    ok_width = max(0, min(bar_width, ok_width))
+    ng_width = max(0, bar_width - ok_width)
+
+    pixels = bytearray(canvas_width * canvas_height * 4)
+
+    _fill_vision_pass_fail_rounded_rect(
+        pixels, canvas_width, bar_x, bar_y, bar_width, bar_height, radius, (26, 39, 64, 255)
+    )
+
+    for local_y in range(bar_height):
+        for local_x in range(bar_width):
+            if radius <= local_x < bar_width - radius or radius <= local_y < bar_height - radius:
+                inside = True
+            else:
+                corner_x = radius if local_x < radius else bar_width - radius - 1
+                corner_y = radius if local_y < radius else bar_height - radius - 1
+                delta_x = local_x - corner_x
+                delta_y = local_y - corner_y
+                inside = (delta_x * delta_x) + (delta_y * delta_y) <= radius * radius
+
+            if not inside:
+                continue
+
+            if ok_width > 0 and local_x < ok_width:
+                color = (76, 175, 99, 255)
+            elif ng_width > 0 and local_x >= bar_width - ng_width:
+                color = (228, 84, 84, 255)
+            else:
+                color = (26, 39, 64, 255)
+
+            _set_vision_pass_fail_pixel(
+                pixels, canvas_width, bar_x + local_x, bar_y + local_y, color
+            )
+
+    pass_label = f"{pass_rate:.2f}%"
+    fail_label = f"{fail_rate:.2f}%"
+
+    scale = 2
+    pass_text_width = _vision_pass_fail_text_width(pass_label, scale=scale, spacing=1)
+    pass_center_x = bar_x + max(ok_width / 2, min(bar_width / 2, 70))
+    pass_text_x = int(
+        max(bar_x + 10, min(pass_center_x - pass_text_width / 2, bar_width - pass_text_width - 10))
+    )
+    pass_text_y = bar_y + max(0, (bar_height - (7 * scale)) // 2)
+    _draw_vision_pass_fail_bitmap_text(
+        pixels,
+        canvas_width,
+        pass_text_x,
+        pass_text_y,
+        pass_label,
+        (255, 255, 255, 255),
+        scale=scale,
+        spacing=1,
+    )
+
+    fail_text_x = bar_width + label_gap
+    fail_text_y = bar_y + max(0, (bar_height - (7 * scale)) // 2)
+    _draw_vision_pass_fail_bitmap_text(
+        pixels,
+        canvas_width,
+        fail_text_x,
+        fail_text_y,
+        fail_label,
+        (31, 31, 31, 255),
+        scale=scale,
+        spacing=1,
+    )
+
+    raw_rows = bytearray()
+    stride = canvas_width * 4
+    for row_idx in range(canvas_height):
+        raw_rows.append(0)
+        start = row_idx * stride
+        raw_rows.extend(pixels[start : start + stride])
+
+    compressed = zlib.compress(bytes(raw_rows), 9)
+
+    def png_chunk(chunk_type, data):
+        return (
+            struct.pack(">I", len(data))
+            + chunk_type
+            + data
+            + struct.pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+        )
+
+    png_bytes = bytearray()
+    png_bytes.extend(b"\x89PNG\r\n\x1a\n")
+    png_bytes.extend(
+        png_chunk(
+            b"IHDR",
+            struct.pack(
+                ">IIBBBBB",
+                canvas_width,
+                canvas_height,
+                8,
+                6,
+                0,
+                0,
+                0,
+            ),
+        )
+    )
+    png_bytes.extend(png_chunk(b"IDAT", compressed))
+    png_bytes.extend(png_chunk(b"IEND", b""))
+    return bytes(png_bytes)
+
+
+def _create_vision_pass_fail_excel_image(porcentaje_ok, porcentaje_ng):
+    from openpyxl.drawing.image import Image as XLImage
+
+    try:
+        image_buffer = _build_vision_pass_fail_excel_bar_image(
+            porcentaje_ok, porcentaje_ng
+        )
+        excel_image = XLImage(image_buffer)
+    except Exception:
+        png_bytes = _build_vision_pass_fail_excel_bar_png_bytes(
+            porcentaje_ok, porcentaje_ng
+        )
+
+        class RawPngExcelImage(XLImage):
+            def __init__(self, raw_bytes, width, height):
+                self.ref = io.BytesIO(raw_bytes)
+                self._raw_bytes = raw_bytes
+                self.width = width
+                self.height = height
+                self.format = "png"
+
+            def _data(self):
+                return self._raw_bytes
+
+        excel_image = RawPngExcelImage(
+            png_bytes,
+            VISION_PASS_FAIL_EXCEL_IMAGE_WIDTH,
+            VISION_PASS_FAIL_EXCEL_IMAGE_HEIGHT,
+        )
+
+    excel_image.width = VISION_PASS_FAIL_EXCEL_IMAGE_WIDTH
+    excel_image.height = VISION_PASS_FAIL_EXCEL_IMAGE_HEIGHT
+    return excel_image
+
+
+def _send_excel_download(output, filename):
+    send_kwargs = {
+        "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "as_attachment": True,
+    }
+
+    try:
+        return send_file(output, download_name=filename, **send_kwargs)
+    except TypeError:
+        output.seek(0)
+        return send_file(output, attachment_filename=filename, **send_kwargs)
 
 
 @app.route("/historial-vision")
@@ -21094,13 +21384,11 @@ def export_vision_pass_fail_summary_excel():
         from io import BytesIO
 
         from openpyxl import Workbook
-        from openpyxl.drawing.image import Image as XLImage
         from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
         wb = Workbook()
         ws = wb.active
         ws.title = "Vision Pass Fail"
-        image_buffers = []
 
         header_fill = PatternFill(
             start_color="3f6b6e", end_color="3f6b6e", fill_type="solid"
@@ -21162,13 +21450,9 @@ def export_vision_pass_fail_summary_excel():
             image_cell.alignment = Alignment(horizontal="center", vertical="center")
             image_cell.border = border
 
-            image_buffer = _build_vision_pass_fail_excel_bar_image(
+            excel_image = _create_vision_pass_fail_excel_image(
                 porcentaje_ok, porcentaje_ng
             )
-            image_buffers.append(image_buffer)
-            excel_image = XLImage(image_buffer)
-            excel_image.width = 430
-            excel_image.height = 28
             ws.add_image(excel_image, f"H{row_idx}")
             ws.row_dimensions[row_idx].height = 24
 
@@ -21186,12 +21470,7 @@ def export_vision_pass_fail_summary_excel():
         filename = (
             f"historial_vision_pass_fail_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         )
-        return send_file(
-            output,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            as_attachment=True,
-            download_name=filename,
-        )
+        return _send_excel_download(output, filename)
     except Exception as e:
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
