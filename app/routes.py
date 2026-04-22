@@ -20853,13 +20853,14 @@ def _build_history_vision_query():
 
 
 def _build_history_vision_pass_fail_summary_query():
-    """Construir query y parámetros para el resumen Pass/Fail de history_vision."""
+    """Construir query y parámetros para el resumen Pass/Fail de history_vision por línea y número de parte."""
     fecha_desde = request.args.get("fecha_desde", "").strip()
     fecha_hasta = request.args.get("fecha_hasta", "").strip()
     numero_parte = request.args.get("numero_parte", "").strip()
 
     sql = (
         "SELECT "
+        "COALESCE(NULLIF(TRIM(machine_name), ''), 'SIN LINEA') AS linea, "
         "COALESCE(NULLIF(TRIM(part_code), ''), 'SIN NUMERO DE PARTE') AS numero_parte, "
         "COUNT(*) AS total, "
         "SUM(CASE WHEN UPPER(COALESCE(result, '')) = 'OK' THEN 1 ELSE 0 END) AS ok_count, "
@@ -20879,11 +20880,115 @@ def _build_history_vision_pass_fail_summary_query():
         params.append(f"%{numero_parte}%")
 
     sql += (
-        " GROUP BY COALESCE(NULLIF(TRIM(part_code), ''), 'SIN NUMERO DE PARTE')"
-        " ORDER BY total DESC, numero_parte ASC"
+        " GROUP BY COALESCE(NULLIF(TRIM(machine_name), ''), 'SIN LINEA'),"
+        " COALESCE(NULLIF(TRIM(part_code), ''), 'SIN NUMERO DE PARTE')"
+        " ORDER BY linea ASC, total DESC, numero_parte ASC"
     )
 
     return sql, tuple(params) if params else None
+
+
+def _load_vision_pass_fail_excel_font(size=12, bold=False):
+    from PIL import ImageFont
+
+    windows_font_dir = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    font_candidates = [
+        windows_font_dir / ("arialbd.ttf" if bold else "arial.ttf"),
+        windows_font_dir / ("calibrib.ttf" if bold else "calibri.ttf"),
+    ]
+
+    for font_path in font_candidates:
+        try:
+            if font_path.is_file():
+                return ImageFont.truetype(str(font_path), size=size)
+        except OSError:
+            continue
+
+    return ImageFont.load_default()
+
+
+def _build_vision_pass_fail_excel_bar_image(porcentaje_ok, porcentaje_ng):
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    pass_rate = max(0.0, min(100.0, float(porcentaje_ok or 0)))
+    fail_rate = max(0.0, min(100.0, float(porcentaje_ng or 0)))
+
+    canvas_width = 430
+    canvas_height = 28
+    bar_width = 350
+    bar_height = 20
+    label_gap = 8
+    label_width = canvas_width - bar_width - label_gap
+    radius = bar_height // 2
+
+    ok_width = int(round((pass_rate / 100.0) * bar_width))
+    ok_width = max(0, min(bar_width, ok_width))
+    ng_width = max(0, bar_width - ok_width)
+
+    image = Image.new("RGBA", (canvas_width, canvas_height), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+
+    bar_x = 0
+    bar_y = (canvas_height - bar_height) // 2
+
+    # Base dark bar
+    draw.rounded_rectangle(
+        (bar_x, bar_y, bar_x + bar_width, bar_y + bar_height),
+        radius=radius,
+        fill="#1A2740",
+    )
+
+    # Draw segments inside a rounded mask for clean edges
+    segments = Image.new("RGBA", (bar_width, bar_height), (0, 0, 0, 0))
+    segments_draw = ImageDraw.Draw(segments)
+    if ok_width > 0:
+        segments_draw.rectangle((0, 0, ok_width, bar_height), fill="#4CAF63")
+    if ng_width > 0:
+        segments_draw.rectangle(
+            (bar_width - ng_width, 0, bar_width, bar_height), fill="#E45454"
+        )
+
+    mask = Image.new("L", (bar_width, bar_height), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.rounded_rectangle((0, 0, bar_width, bar_height), radius=radius, fill=255)
+    image.paste(segments, (bar_x, bar_y), mask)
+
+    pass_label = f"{pass_rate:.2f}%"
+    fail_label = f"{fail_rate:.2f}%"
+
+    pass_font = _load_vision_pass_fail_excel_font(size=12, bold=True)
+    fail_font = _load_vision_pass_fail_excel_font(size=12, bold=True)
+
+    pass_bbox = draw.textbbox((0, 0), pass_label, font=pass_font)
+    pass_text_width = pass_bbox[2] - pass_bbox[0]
+    pass_text_height = pass_bbox[3] - pass_bbox[1]
+    pass_center_x = bar_x + max(ok_width / 2, min(bar_width / 2, 70))
+    pass_text_x = int(max(bar_x + 10, min(pass_center_x - pass_text_width / 2, bar_width - pass_text_width - 10)))
+    pass_text_y = int(bar_y + (bar_height - pass_text_height) / 2 - 1)
+    draw.text(
+        (pass_text_x, pass_text_y),
+        pass_label,
+        font=pass_font,
+        fill="#FFFFFF",
+    )
+
+    fail_bbox = draw.textbbox((0, 0), fail_label, font=fail_font)
+    fail_text_height = fail_bbox[3] - fail_bbox[1]
+    fail_text_x = bar_width + label_gap
+    fail_text_y = int(bar_y + (bar_height - fail_text_height) / 2 - 1)
+    draw.text(
+        (fail_text_x, fail_text_y),
+        fail_label,
+        font=fail_font,
+        fill="#1F1F1F",
+    )
+
+    output = BytesIO()
+    image.save(output, format="PNG")
+    output.seek(0)
+    return output
 
 
 @app.route("/historial-vision")
@@ -20945,7 +21050,7 @@ def vision_data_api():
 @app.route("/api/vision/pass-fail-summary")
 @login_requerido
 def vision_pass_fail_summary_api():
-    """Obtener resumen agrupado por número de parte para history_vision."""
+    """Obtener resumen agrupado por línea y número de parte para history_vision."""
     try:
         sql, params = _build_history_vision_pass_fail_summary_query()
         rows = execute_query(sql, params, fetch="all") or []
@@ -20960,6 +21065,7 @@ def vision_pass_fail_summary_api():
 
             result.append(
                 {
+                    "linea": _vision_format_value(row.get("linea", "")) or "",
                     "numero_parte": _vision_format_value(
                         row.get("numero_parte", "")
                     )
@@ -20988,11 +21094,13 @@ def export_vision_pass_fail_summary_excel():
         from io import BytesIO
 
         from openpyxl import Workbook
+        from openpyxl.drawing.image import Image as XLImage
         from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
         wb = Workbook()
         ws = wb.active
         ws.title = "Vision Pass Fail"
+        image_buffers = []
 
         header_fill = PatternFill(
             start_color="3f6b6e", end_color="3f6b6e", fill_type="solid"
@@ -21008,7 +21116,16 @@ def export_vision_pass_fail_summary_excel():
             bottom=Side(style="thin", color="000000"),
         )
 
-        headers = ["Numero de parte", "Total", "OK", "NG", "% Pass", "% Fail"]
+        headers = [
+            "Linea",
+            "Numero de parte",
+            "Total",
+            "OK",
+            "NG",
+            "% Pass",
+            "% Fail",
+            "PORCENTAJE",
+        ]
 
         for col_num, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_num, value=header)
@@ -21025,6 +21142,7 @@ def export_vision_pass_fail_summary_excel():
             porcentaje_ng = round((ng_count / total) * 100, 2) if total else 0
 
             values = [
+                _vision_format_value(row.get("linea", "")) or "",
                 _vision_format_value(row.get("numero_parte", "")) or "",
                 total,
                 ok_count,
@@ -21039,10 +21157,27 @@ def export_vision_pass_fail_summary_excel():
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = border
 
-        column_widths = [28, 14, 12, 12, 14, 14]
+            image_cell = ws.cell(row=row_idx, column=8, value="")
+            image_cell.fill = cell_fill
+            image_cell.alignment = Alignment(horizontal="center", vertical="center")
+            image_cell.border = border
+
+            image_buffer = _build_vision_pass_fail_excel_bar_image(
+                porcentaje_ok, porcentaje_ng
+            )
+            image_buffers.append(image_buffer)
+            excel_image = XLImage(image_buffer)
+            excel_image.width = 430
+            excel_image.height = 28
+            ws.add_image(excel_image, f"H{row_idx}")
+            ws.row_dimensions[row_idx].height = 24
+
+        column_widths = [20, 28, 14, 12, 12, 14, 14, 58]
         for col_num, width in enumerate(column_widths, start=1):
             column_letter = ws.cell(row=1, column=col_num).column_letter
             ws.column_dimensions[column_letter].width = width
+
+        ws.freeze_panes = "A2"
 
         output = BytesIO()
         wb.save(output)

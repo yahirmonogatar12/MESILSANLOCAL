@@ -173,7 +173,7 @@ async function loadHistorialVisionPassFailData() {
 
     const recordCount = document.getElementById("vision-pass-fail-record-count");
     if (recordCount) {
-      recordCount.textContent = `${visionPassFailModuleData.length} part number${visionPassFailModuleData.length !== 1 ? "s" : ""}`;
+      recordCount.textContent = `${visionPassFailModuleData.length} registro${visionPassFailModuleData.length !== 1 ? "s" : ""}`;
     }
 
     renderHistorialVisionPassFailTable(visionPassFailModuleData);
@@ -194,7 +194,7 @@ function renderHistorialVisionPassFailTable(data) {
 
   if (!Array.isArray(data) || data.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="6" class="vision-pass-fail-table-empty">No se encontraron registros.</td></tr>';
+      '<tr><td colspan="8" class="vision-pass-fail-table-empty">No se encontraron registros.</td></tr>';
     return;
   }
 
@@ -205,16 +205,46 @@ function renderHistorialVisionPassFailTable(data) {
 
       return `
         <tr>
+          <td>${escapeVisionPassFailHtml(row.linea ?? "")}</td>
           <td>${escapeVisionPassFailHtml(row.numero_parte ?? "")}</td>
           <td>${escapeVisionPassFailHtml(row.total ?? 0)}</td>
           <td>${escapeVisionPassFailHtml(row.ok_count ?? 0)}</td>
           <td>${escapeVisionPassFailHtml(row.ng_count ?? 0)}</td>
           <td class="${passRate >= 90 ? "vision-pass-fail-rate-good" : "vision-pass-fail-rate-neutral"}">${escapeVisionPassFailHtml(formatVisionPassFailPercent(passRate))}</td>
           <td class="${failRate > 10 ? "vision-pass-fail-rate-bad" : "vision-pass-fail-rate-neutral"}">${escapeVisionPassFailHtml(formatVisionPassFailPercent(failRate))}</td>
+          <td>${buildVisionPassFailBar(passRate, failRate)}</td>
         </tr>
       `;
     })
     .join("");
+}
+
+function buildVisionPassFailBar(passRate, failRate) {
+  const okWidth = normalizeVisionPassFailBarWidth(passRate);
+  const ngWidth = normalizeVisionPassFailBarWidth(failRate);
+  const passLabel = formatVisionPassFailPercent(passRate);
+  const failLabel = formatVisionPassFailPercent(failRate);
+
+  return `
+    <div class="vision-pass-fail-bar-row" aria-label="OK ${passLabel} NG ${failLabel}">
+      <div class="vision-pass-fail-bar">
+        <span class="vision-pass-fail-bar-ok" style="width: ${okWidth}%">
+          <span class="vision-pass-fail-bar-label">${escapeVisionPassFailHtml(passLabel)}</span>
+        </span>
+        <span class="vision-pass-fail-bar-ng" style="width: ${ngWidth}%"></span>
+      </div>
+      <span class="vision-pass-fail-bar-side-label">${escapeVisionPassFailHtml(failLabel)}</span>
+    </div>
+  `;
+}
+
+function normalizeVisionPassFailBarWidth(value) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, numeric));
 }
 
 function formatVisionPassFailPercent(value) {
