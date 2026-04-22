@@ -20852,6 +20852,40 @@ def _build_history_vision_query():
     return sql, tuple(params) if params else None
 
 
+def _build_history_vision_pass_fail_summary_query():
+    """Construir query y parámetros para el resumen Pass/Fail de history_vision."""
+    fecha_desde = request.args.get("fecha_desde", "").strip()
+    fecha_hasta = request.args.get("fecha_hasta", "").strip()
+    numero_parte = request.args.get("numero_parte", "").strip()
+
+    sql = (
+        "SELECT "
+        "COALESCE(NULLIF(TRIM(part_code), ''), 'SIN NUMERO DE PARTE') AS numero_parte, "
+        "COUNT(*) AS total, "
+        "SUM(CASE WHEN UPPER(COALESCE(result, '')) = 'OK' THEN 1 ELSE 0 END) AS ok_count, "
+        "SUM(CASE WHEN UPPER(COALESCE(result, '')) = 'NG' THEN 1 ELSE 0 END) AS ng_count "
+        "FROM history_vision WHERE 1=1"
+    )
+    params = []
+
+    if fecha_desde:
+        sql += " AND log_date >= %s"
+        params.append(fecha_desde)
+    if fecha_hasta:
+        sql += " AND log_date <= %s"
+        params.append(fecha_hasta)
+    if numero_parte:
+        sql += " AND part_code LIKE %s"
+        params.append(f"%{numero_parte}%")
+
+    sql += (
+        " GROUP BY COALESCE(NULLIF(TRIM(part_code), ''), 'SIN NUMERO DE PARTE')"
+        " ORDER BY total DESC, numero_parte ASC"
+    )
+
+    return sql, tuple(params) if params else None
+
+
 @app.route("/historial-vision")
 @app.route("/historial-vision-ajax")
 @login_requerido
@@ -20861,6 +20895,18 @@ def historial_vision():
         return render_template("Control de resultados/history_vision.html")
     except Exception as e:
         print(f"Error al cargar Historial Vision: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route("/historial-vision-pass-fail")
+@app.route("/historial-vision-pass-fail-ajax")
+@login_requerido
+def historial_vision_pass_fail():
+    """Servir la página de Historial Vision % Pass/Fail."""
+    try:
+        return render_template("Control de resultados/history_vision_pass_fail.html")
+    except Exception as e:
+        print(f"Error al cargar Historial Vision % Pass/Fail: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -20892,6 +20938,125 @@ def vision_data_api():
             )
 
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+@app.route("/api/vision/pass-fail-summary")
+@login_requerido
+def vision_pass_fail_summary_api():
+    """Obtener resumen agrupado por número de parte para history_vision."""
+    try:
+        sql, params = _build_history_vision_pass_fail_summary_query()
+        rows = execute_query(sql, params, fetch="all") or []
+
+        result = []
+        for row in rows:
+            total = int(row.get("total") or 0)
+            ok_count = int(row.get("ok_count") or 0)
+            ng_count = int(row.get("ng_count") or 0)
+            porcentaje_ok = round((ok_count / total) * 100, 2) if total else 0
+            porcentaje_ng = round((ng_count / total) * 100, 2) if total else 0
+
+            result.append(
+                {
+                    "numero_parte": _vision_format_value(
+                        row.get("numero_parte", "")
+                    )
+                    or "",
+                    "total": total,
+                    "ok_count": ok_count,
+                    "ng_count": ng_count,
+                    "porcentaje_ok": porcentaje_ok,
+                    "porcentaje_ng": porcentaje_ng,
+                }
+            )
+
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+@app.route("/api/vision/pass-fail-summary/export")
+@login_requerido
+def export_vision_pass_fail_summary_excel():
+    """Exportar resumen Pass/Fail de Vision a un archivo de Excel."""
+    try:
+        sql, params = _build_history_vision_pass_fail_summary_query()
+        rows = execute_query(sql, params, fetch="all") or []
+
+        from io import BytesIO
+
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Vision Pass Fail"
+
+        header_fill = PatternFill(
+            start_color="3f6b6e", end_color="3f6b6e", fill_type="solid"
+        )
+        cell_fill = PatternFill(
+            start_color="a1a09c", end_color="a1a09c", fill_type="solid"
+        )
+        header_font = Font(bold=True, color="FFFFFF", size=10)
+        border = Border(
+            left=Side(style="thin", color="000000"),
+            right=Side(style="thin", color="000000"),
+            top=Side(style="thin", color="000000"),
+            bottom=Side(style="thin", color="000000"),
+        )
+
+        headers = ["Numero de parte", "Total", "OK", "NG", "% Pass", "% Fail"]
+
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = border
+
+        for row_idx, row in enumerate(rows, start=2):
+            total = int(row.get("total") or 0)
+            ok_count = int(row.get("ok_count") or 0)
+            ng_count = int(row.get("ng_count") or 0)
+            porcentaje_ok = round((ok_count / total) * 100, 2) if total else 0
+            porcentaje_ng = round((ng_count / total) * 100, 2) if total else 0
+
+            values = [
+                _vision_format_value(row.get("numero_parte", "")) or "",
+                total,
+                ok_count,
+                ng_count,
+                porcentaje_ok,
+                porcentaje_ng,
+            ]
+
+            for col_num, value in enumerate(values, start=1):
+                cell = ws.cell(row=row_idx, column=col_num, value=value)
+                cell.fill = cell_fill
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = border
+
+        column_widths = [28, 14, 12, 12, 14, 14]
+        for col_num, width in enumerate(column_widths, start=1):
+            column_letter = ws.cell(row=1, column=col_num).column_letter
+            ws.column_dimensions[column_letter].width = width
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = (
+            f"historial_vision_pass_fail_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        )
+        return send_file(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
+        )
     except Exception as e:
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 

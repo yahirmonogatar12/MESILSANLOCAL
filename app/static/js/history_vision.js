@@ -11,6 +11,109 @@ const visionPreviewState = {
   dragStartX: 0,
   dragStartY: 0,
 };
+const VISION_FILTERS_STORAGE_KEY = "historialVisionFilters";
+
+function getVisionToday() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getVisionFilterElements() {
+  return {
+    fechaDesde: document.getElementById("vision-filter-fecha-desde"),
+    fechaHasta: document.getElementById("vision-filter-fecha-hasta"),
+    linea: document.getElementById("vision-filter-linea"),
+    resultado: document.getElementById("vision-filter-resultado"),
+    numeroParte: document.getElementById("vision-filter-numero-parte"),
+    qr: document.getElementById("vision-filter-qr"),
+    barcode: document.getElementById("vision-filter-barcode"),
+  };
+}
+
+function getStoredVisionFilters() {
+  try {
+    const rawValue = window.sessionStorage.getItem(VISION_FILTERS_STORAGE_KEY);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return parsedValue && typeof parsedValue === "object" ? parsedValue : null;
+  } catch (error) {
+    console.warn("No se pudo leer el estado de filtros de Vision", error);
+    return null;
+  }
+}
+
+function saveVisionFilters(filters = null) {
+  const elements = getVisionFilterElements();
+  const nextFilters = filters || {
+    fechaDesde: elements.fechaDesde?.value || "",
+    fechaHasta: elements.fechaHasta?.value || "",
+    linea: elements.linea?.value || "",
+    resultado: elements.resultado?.value || "",
+    numeroParte: elements.numeroParte?.value || "",
+    qr: elements.qr?.value || "",
+    barcode: elements.barcode?.value || "",
+  };
+
+  try {
+    window.sessionStorage.setItem(
+      VISION_FILTERS_STORAGE_KEY,
+      JSON.stringify(nextFilters),
+    );
+  } catch (error) {
+    console.warn("No se pudo guardar el estado de filtros de Vision", error);
+  }
+
+  return nextFilters;
+}
+
+function resolveVisionFilters() {
+  const elements = getVisionFilterElements();
+  const storedFilters = getStoredVisionFilters() || {};
+  const today = getVisionToday();
+
+  const resolvedFilters = {
+    fechaDesde: elements.fechaDesde?.value || storedFilters.fechaDesde || today,
+    fechaHasta: elements.fechaHasta?.value || storedFilters.fechaHasta || today,
+    linea: elements.linea?.value || storedFilters.linea || "",
+    resultado: elements.resultado?.value || storedFilters.resultado || "",
+    numeroParte: elements.numeroParte?.value || storedFilters.numeroParte || "",
+    qr: elements.qr?.value || storedFilters.qr || "",
+    barcode: elements.barcode?.value || storedFilters.barcode || "",
+  };
+
+  if (elements.fechaDesde) {
+    elements.fechaDesde.value = resolvedFilters.fechaDesde;
+  }
+
+  if (elements.fechaHasta) {
+    elements.fechaHasta.value = resolvedFilters.fechaHasta;
+  }
+
+  if (elements.linea) {
+    elements.linea.value = resolvedFilters.linea;
+  }
+
+  if (elements.resultado) {
+    elements.resultado.value = resolvedFilters.resultado;
+  }
+
+  if (elements.numeroParte) {
+    elements.numeroParte.value = resolvedFilters.numeroParte;
+  }
+
+  if (elements.qr) {
+    elements.qr.value = resolvedFilters.qr;
+  }
+
+  if (elements.barcode) {
+    elements.barcode.value = resolvedFilters.barcode;
+  }
+
+  saveVisionFilters(resolvedFilters);
+  return resolvedFilters;
+}
 
 function getVisionPreviewImage() {
   return document.getElementById("vision-preview-image");
@@ -78,6 +181,7 @@ function adjustVisionPreviewZoom(delta) {
 }
 
 function cleanupVisionModule() {
+  saveVisionFilters();
   currentVisionPreviewToken += 1;
   hideVisionLoading();
   hideVisionImageLoading();
@@ -158,18 +262,15 @@ async function loadHistorialVisionData() {
   showVisionLoading();
 
   try {
-    const fechaDesde =
-      document.getElementById("vision-filter-fecha-desde")?.value || "";
-    const fechaHasta =
-      document.getElementById("vision-filter-fecha-hasta")?.value || "";
-    const linea = document.getElementById("vision-filter-linea")?.value || "";
-    const resultado =
-      document.getElementById("vision-filter-resultado")?.value || "";
-    const numeroParte =
-      document.getElementById("vision-filter-numero-parte")?.value || "";
-    const qr = document.getElementById("vision-filter-qr")?.value || "";
-    const barcode =
-      document.getElementById("vision-filter-barcode")?.value || "";
+    const {
+      fechaDesde,
+      fechaHasta,
+      linea,
+      resultado,
+      numeroParte,
+      qr,
+      barcode,
+    } = resolveVisionFilters();
 
     const url =
       `/api/vision/data?fecha_desde=${encodeURIComponent(fechaDesde)}` +
@@ -243,17 +344,15 @@ function renderHistorialVisionTable(data) {
 }
 
 async function exportHistorialVisionToExcel() {
-  const fechaDesde =
-    document.getElementById("vision-filter-fecha-desde")?.value || "";
-  const fechaHasta =
-    document.getElementById("vision-filter-fecha-hasta")?.value || "";
-  const linea = document.getElementById("vision-filter-linea")?.value || "";
-  const resultado =
-    document.getElementById("vision-filter-resultado")?.value || "";
-  const numeroParte =
-    document.getElementById("vision-filter-numero-parte")?.value || "";
-  const qr = document.getElementById("vision-filter-qr")?.value || "";
-  const barcode = document.getElementById("vision-filter-barcode")?.value || "";
+  const {
+    fechaDesde,
+    fechaHasta,
+    linea,
+    resultado,
+    numeroParte,
+    qr,
+    barcode,
+  } = resolveVisionFilters();
 
   const url =
     `/api/vision/export?fecha_desde=${encodeURIComponent(fechaDesde)}` +
@@ -644,6 +743,35 @@ function initializeHistorialVisionEventListeners() {
     }
   });
 
+  document.body.addEventListener("input", function (e) {
+    const visionRoot = document.getElementById("historial-vision-root");
+    if (!visionRoot || !e.target || !visionRoot.contains(e.target)) {
+      return;
+    }
+
+    if (
+      e.target.id === "vision-filter-fecha-desde" ||
+      e.target.id === "vision-filter-fecha-hasta" ||
+      e.target.id === "vision-filter-linea" ||
+      e.target.id === "vision-filter-numero-parte" ||
+      e.target.id === "vision-filter-qr" ||
+      e.target.id === "vision-filter-barcode"
+    ) {
+      saveVisionFilters();
+    }
+  });
+
+  document.body.addEventListener("change", function (e) {
+    const visionRoot = document.getElementById("historial-vision-root");
+    if (!visionRoot || !e.target || !visionRoot.contains(e.target)) {
+      return;
+    }
+
+    if (e.target.id === "vision-filter-resultado") {
+      saveVisionFilters();
+    }
+  });
+
   document.body.addEventListener(
     "wheel",
     function (e) {
@@ -749,17 +877,7 @@ function showVisionNotification(message, type = "info") {
 }
 
 function setVisionDefaultDate() {
-  const today = new Date().toISOString().split("T")[0];
-  const fechaDesdeInput = document.getElementById("vision-filter-fecha-desde");
-  const fechaHastaInput = document.getElementById("vision-filter-fecha-hasta");
-
-  if (fechaDesdeInput && !fechaDesdeInput.value) {
-    fechaDesdeInput.value = today;
-  }
-
-  if (fechaHastaInput && !fechaHastaInput.value) {
-    fechaHastaInput.value = today;
-  }
+  resolveVisionFilters();
 }
 
 function escapeVisionHtml(value) {

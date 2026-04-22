@@ -93,7 +93,8 @@
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_DE_CONTROL_DE_RESULTADOS"
                             data-permiso-seccion="Historial de maquinas calidad"
-                            data-permiso-boton="Historial de maquina de TOUCH">Historial de maquina de TOUCH</li>
+                            data-permiso-boton="Historial de maquina Vision % Pass/Fail"
+                            onclick="window.parent.mostrarHistorialVisionPassFail ? window.parent.mostrarHistorialVisionPassFail() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-vision-pass-fail-unique-container', '/historial-vision-pass-fail-ajax') : window.location.href='/historial-vision-pass-fail')">Historial de maquina Vision % Pass/Fail</li>
                 </ul>
             </li>
             <li class="sidebar-section">
