@@ -20624,23 +20624,55 @@ def _vision_candidate_hour_directories(root_path, part_code, reference_dt):
     if next_delta <= 1.0:
         candidate_hours.append(next_hour)
 
+    ebr_prefix = str(part_code or "").strip().upper()[:11]
+    candidate_part_directories = []
+    seen_part_directories = set()
+
+    def append_part_directory(path_obj):
+        path_key = os.path.normcase(os.path.normpath(str(path_obj)))
+        if path_key in seen_part_directories:
+            return
+        seen_part_directories.add(path_key)
+        candidate_part_directories.append(path_obj)
+
+    append_part_directory(root_path / part_code)
+
+    if ebr_prefix and ebr_prefix != str(part_code or "").strip().upper():
+        append_part_directory(root_path / ebr_prefix)
+
+    try:
+        if root_path.is_dir() and ebr_prefix:
+            matching_directories = sorted(
+                [
+                    child
+                    for child in root_path.iterdir()
+                    if child.is_dir()
+                    and child.name.strip().upper()[:11] == ebr_prefix
+                ],
+                key=lambda path: path.name.lower(),
+            )
+            for matching_directory in matching_directories:
+                append_part_directory(matching_directory)
+    except OSError:
+        pass
+
     directories = []
     seen_directories = set()
-    for candidate_hour in candidate_hours:
-        base_dir = (
-            root_path
-            / part_code
-            / "Image(Process)"
-            / candidate_hour.strftime("%Y")
-            / candidate_hour.strftime("%m")
-            / candidate_hour.strftime("%d")
-            / candidate_hour.strftime("%H")
-        )
-        dir_key = os.path.normcase(os.path.normpath(str(base_dir)))
-        if dir_key in seen_directories:
-            continue
-        seen_directories.add(dir_key)
-        directories.append(base_dir)
+    for part_directory in candidate_part_directories:
+        for candidate_hour in candidate_hours:
+            base_dir = (
+                part_directory
+                / "Image(Process)"
+                / candidate_hour.strftime("%Y")
+                / candidate_hour.strftime("%m")
+                / candidate_hour.strftime("%d")
+                / candidate_hour.strftime("%H")
+            )
+            dir_key = os.path.normcase(os.path.normpath(str(base_dir)))
+            if dir_key in seen_directories:
+                continue
+            seen_directories.add(dir_key)
+            directories.append(base_dir)
 
     return directories
 
@@ -20683,6 +20715,7 @@ def _resolve_history_vision_image(record):
     image_extensions = {".jpg", ".jpeg", ".png", ".bmp"}
     expected_result = str(record.get("result") or "").strip().upper()
     part_code = str(record.get("part_code") or "").strip()
+    part_code_prefix = part_code.upper()[:11]
     reference_dt = _vision_reference_datetime(record)
     share_roots = _vision_candidate_share_roots(record)
 
@@ -20713,8 +20746,9 @@ def _resolve_history_vision_image(record):
         result_payload["error"] = "No se encontraron rutas compartidas candidatas."
         return result_payload
 
+    filename_part_prefix = part_code_prefix or part_code.upper()
     filename_pattern = re.compile(
-        rf"^{re.escape(part_code)}_(?P<side>[^_]+)_(?P<stamp>\d{{8}}_\d{{9}})_(?P<result>OK|NG)\.(?P<ext>jpg|jpeg|png|bmp)$",
+        rf"^{re.escape(filename_part_prefix)}(?:[^_]*)_(?P<side>[^_]+)_(?P<stamp>\d{{8}}_\d{{9}})_(?P<result>OK|NG)\.(?P<ext>jpg|jpeg|png|bmp)$",
         re.IGNORECASE,
     )
 
@@ -20916,9 +20950,24 @@ def _load_vision_pass_fail_excel_font(size=12, bold=False):
     from PIL import ImageFont
 
     windows_font_dir = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    preferred_font_names = [
+        "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+        "Arial Bold.ttf" if bold else "Arial.ttf",
+        "Calibri Bold.ttf" if bold else "Calibri.ttf",
+        "arialbd.ttf" if bold else "arial.ttf",
+        "calibrib.ttf" if bold else "calibri.ttf",
+    ]
+
+    for font_name in preferred_font_names:
+        try:
+            return ImageFont.truetype(font_name, size=size)
+        except OSError:
+            continue
+
     font_candidates = [
         windows_font_dir / ("arialbd.ttf" if bold else "arial.ttf"),
         windows_font_dir / ("calibrib.ttf" if bold else "calibri.ttf"),
+        windows_font_dir / ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"),
     ]
 
     for font_path in font_candidates:
@@ -21021,30 +21070,16 @@ def _build_vision_pass_fail_excel_bar_image(porcentaje_ok, porcentaje_ng):
     return output
 
 
-def _vision_pass_fail_bitmap_font():
-    return {
-        "0": ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
-        "1": ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
-        "2": ("01110", "10001", "00001", "00010", "00100", "01000", "11111"),
-        "3": ("11110", "00001", "00001", "01110", "00001", "00001", "11110"),
-        "4": ("00010", "00110", "01010", "10010", "11111", "00010", "00010"),
-        "5": ("11111", "10000", "10000", "11110", "00001", "00001", "11110"),
-        "6": ("01110", "10000", "10000", "11110", "10001", "10001", "01110"),
-        "7": ("11111", "00001", "00010", "00100", "01000", "01000", "01000"),
-        "8": ("01110", "10001", "10001", "01110", "10001", "10001", "01110"),
-        "9": ("01110", "10001", "10001", "01111", "00001", "00001", "01110"),
-        ".": ("00000", "00000", "00000", "00000", "00000", "00110", "00110"),
-        "%": ("11001", "11010", "00100", "01000", "10110", "00110", "00000"),
-        " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
-    }
-
-
-def _vision_pass_fail_text_width(text, scale=2, spacing=1):
+def _vision_pass_fail_text_width(text, char_width=10, spacing=3):
     if not text:
         return 0
 
-    glyph_count = len(text)
-    return (glyph_count * 5 * scale) + ((glyph_count - 1) * spacing * scale)
+    width = 0
+    for idx, char in enumerate(text):
+        width += _get_vision_pass_fail_char_width(char, char_width)
+        if idx < len(text) - 1:
+            width += spacing
+    return width
 
 
 def _set_vision_pass_fail_pixel(pixels, width, x, y, color):
@@ -21086,30 +21121,285 @@ def _fill_vision_pass_fail_rounded_rect(
                 )
 
 
-def _draw_vision_pass_fail_bitmap_text(
-    pixels, canvas_width, x, y, text, color, scale=2, spacing=1
+def _draw_vision_pass_fail_disc(pixels, canvas_width, center_x, center_y, radius, color):
+    radius_sq = radius * radius
+    for local_y in range(-radius, radius + 1):
+        for local_x in range(-radius, radius + 1):
+            if (local_x * local_x) + (local_y * local_y) <= radius_sq:
+                _set_vision_pass_fail_pixel(
+                    pixels,
+                    canvas_width,
+                    center_x + local_x,
+                    center_y + local_y,
+                    color,
+                )
+
+
+def _draw_vision_pass_fail_line(
+    pixels, canvas_width, x1, y1, x2, y2, thickness, color
 ):
-    font_map = _vision_pass_fail_bitmap_font()
+    dx = x2 - x1
+    dy = y2 - y1
+    steps = max(abs(dx), abs(dy), 1)
+    radius = max(1, thickness // 2)
+
+    for step in range(steps + 1):
+        point_x = int(round(x1 + (dx * step / steps)))
+        point_y = int(round(y1 + (dy * step / steps)))
+        _draw_vision_pass_fail_disc(
+            pixels, canvas_width, point_x, point_y, radius, color
+        )
+
+
+def _draw_vision_pass_fail_segment(
+    pixels,
+    canvas_width,
+    origin_x,
+    origin_y,
+    segment_name,
+    color,
+    char_width=10,
+    char_height=14,
+    thickness=2,
+):
+    mid_y = origin_y + (char_height // 2)
+    bottom_y = origin_y + char_height - thickness
+    right_x = origin_x + char_width - thickness
+    horizontal_width = char_width - (thickness * 2)
+    vertical_height = (char_height // 2) - thickness - 1
+    radius = max(1, thickness // 2)
+
+    if segment_name == "top":
+        _fill_vision_pass_fail_rounded_rect(
+            pixels,
+            canvas_width,
+            origin_x + thickness,
+            origin_y,
+            horizontal_width,
+            thickness,
+            radius,
+            color,
+        )
+    elif segment_name == "middle":
+        _fill_vision_pass_fail_rounded_rect(
+            pixels,
+            canvas_width,
+            origin_x + thickness,
+            mid_y - (thickness // 2),
+            horizontal_width,
+            thickness,
+            radius,
+            color,
+        )
+    elif segment_name == "bottom":
+        _fill_vision_pass_fail_rounded_rect(
+            pixels,
+            canvas_width,
+            origin_x + thickness,
+            bottom_y,
+            horizontal_width,
+            thickness,
+            radius,
+            color,
+        )
+    elif segment_name == "upper_left":
+        _fill_vision_pass_fail_rounded_rect(
+            pixels,
+            canvas_width,
+            origin_x,
+            origin_y + thickness,
+            thickness,
+            vertical_height,
+            radius,
+            color,
+        )
+    elif segment_name == "upper_right":
+        _fill_vision_pass_fail_rounded_rect(
+            pixels,
+            canvas_width,
+            right_x,
+            origin_y + thickness,
+            thickness,
+            vertical_height,
+            radius,
+            color,
+        )
+    elif segment_name == "lower_left":
+        _fill_vision_pass_fail_rounded_rect(
+            pixels,
+            canvas_width,
+            origin_x,
+            mid_y + 1,
+            thickness,
+            vertical_height,
+            radius,
+            color,
+        )
+    elif segment_name == "lower_right":
+        _fill_vision_pass_fail_rounded_rect(
+            pixels,
+            canvas_width,
+            right_x,
+            mid_y + 1,
+            thickness,
+            vertical_height,
+            radius,
+            color,
+        )
+
+
+def _get_vision_pass_fail_segments(char):
+    segment_map = {
+        "0": (
+            "top",
+            "upper_left",
+            "upper_right",
+            "lower_left",
+            "lower_right",
+            "bottom",
+        ),
+        "1": ("upper_right", "lower_right"),
+        "2": ("top", "upper_right", "middle", "lower_left", "bottom"),
+        "3": ("top", "upper_right", "middle", "lower_right", "bottom"),
+        "4": ("upper_left", "upper_right", "middle", "lower_right"),
+        "5": ("top", "upper_left", "middle", "lower_right", "bottom"),
+        "6": (
+            "top",
+            "upper_left",
+            "middle",
+            "lower_left",
+            "lower_right",
+            "bottom",
+        ),
+        "7": ("top", "upper_right", "lower_right"),
+        "8": (
+            "top",
+            "upper_left",
+            "upper_right",
+            "middle",
+            "lower_left",
+            "lower_right",
+            "bottom",
+        ),
+        "9": (
+            "top",
+            "upper_left",
+            "upper_right",
+            "middle",
+            "lower_right",
+            "bottom",
+        ),
+    }
+    return segment_map.get(char, ())
+
+
+def _get_vision_pass_fail_char_width(char, default_width=10):
+    if char == "1":
+        return default_width - 2
+    if char == ".":
+        return 4
+    if char == "%":
+        return default_width + 2
+    if char == " ":
+        return max(3, default_width // 2)
+    return default_width
+
+
+def _draw_vision_pass_fail_vector_char(
+    pixels,
+    canvas_width,
+    x,
+    y,
+    char,
+    color,
+    char_width=10,
+    char_height=14,
+    thickness=2,
+):
+    actual_width = _get_vision_pass_fail_char_width(char, char_width)
+
+    if char.isdigit():
+        for segment_name in _get_vision_pass_fail_segments(char):
+            _draw_vision_pass_fail_segment(
+                pixels,
+                canvas_width,
+                x,
+                y,
+                segment_name,
+                color,
+                char_width=actual_width,
+                char_height=char_height,
+                thickness=thickness,
+            )
+        return actual_width
+
+    if char == ".":
+        radius = max(1, thickness)
+        _draw_vision_pass_fail_disc(
+            pixels,
+            canvas_width,
+            x + radius,
+            y + char_height - radius - 1,
+            radius,
+            color,
+        )
+        return actual_width
+
+    if char == "%":
+        disc_radius = max(1, thickness)
+        _draw_vision_pass_fail_disc(
+            pixels, canvas_width, x + 2, y + 3, disc_radius, color
+        )
+        _draw_vision_pass_fail_disc(
+            pixels,
+            canvas_width,
+            x + actual_width - 3,
+            y + char_height - 3,
+            disc_radius,
+            color,
+        )
+        _draw_vision_pass_fail_line(
+            pixels,
+            canvas_width,
+            x + actual_width - 3,
+            y + 1,
+            x + 2,
+            y + char_height - 2,
+            thickness,
+            color,
+        )
+        return actual_width
+
+    return actual_width
+
+
+def _draw_vision_pass_fail_vector_text(
+    pixels,
+    canvas_width,
+    x,
+    y,
+    text,
+    color,
+    char_width=10,
+    char_height=14,
+    thickness=2,
+    spacing=3,
+):
     cursor_x = x
-
-    for char in text:
-        glyph = font_map.get(char, font_map[" "])
-        for row_idx, row in enumerate(glyph):
-            for col_idx, pixel in enumerate(row):
-                if pixel != "1":
-                    continue
-
-                for scale_y in range(scale):
-                    for scale_x in range(scale):
-                        _set_vision_pass_fail_pixel(
-                            pixels,
-                            canvas_width,
-                            cursor_x + (col_idx * scale) + scale_x,
-                            y + (row_idx * scale) + scale_y,
-                            color,
-                        )
-
-        cursor_x += (5 * scale) + (spacing * scale)
+    for idx, char in enumerate(text):
+        cursor_x += _draw_vision_pass_fail_vector_char(
+            pixels,
+            canvas_width,
+            cursor_x,
+            y,
+            char,
+            color,
+            char_width=char_width,
+            char_height=char_height,
+            thickness=thickness,
+        )
+        if idx < len(text) - 1:
+            cursor_x += spacing
 
 
 def _build_vision_pass_fail_excel_bar_png_bytes(porcentaje_ok, porcentaje_ng):
@@ -21163,35 +21453,47 @@ def _build_vision_pass_fail_excel_bar_png_bytes(porcentaje_ok, porcentaje_ng):
     pass_label = f"{pass_rate:.2f}%"
     fail_label = f"{fail_rate:.2f}%"
 
-    scale = 2
-    pass_text_width = _vision_pass_fail_text_width(pass_label, scale=scale, spacing=1)
+    char_width = 10
+    char_height = 14
+    thickness = 2
+    spacing = 2
+    pass_text_width = _vision_pass_fail_text_width(
+        pass_label, char_width=char_width, spacing=spacing
+    )
     pass_center_x = bar_x + max(ok_width / 2, min(bar_width / 2, 70))
     pass_text_x = int(
-        max(bar_x + 10, min(pass_center_x - pass_text_width / 2, bar_width - pass_text_width - 10))
+        max(
+            bar_x + 10,
+            min(pass_center_x - pass_text_width / 2, bar_width - pass_text_width - 10),
+        )
     )
-    pass_text_y = bar_y + max(0, (bar_height - (7 * scale)) // 2)
-    _draw_vision_pass_fail_bitmap_text(
+    pass_text_y = bar_y + max(0, (bar_height - char_height) // 2)
+    _draw_vision_pass_fail_vector_text(
         pixels,
         canvas_width,
         pass_text_x,
         pass_text_y,
         pass_label,
         (255, 255, 255, 255),
-        scale=scale,
-        spacing=1,
+        char_width=char_width,
+        char_height=char_height,
+        thickness=thickness,
+        spacing=spacing,
     )
 
     fail_text_x = bar_width + label_gap
-    fail_text_y = bar_y + max(0, (bar_height - (7 * scale)) // 2)
-    _draw_vision_pass_fail_bitmap_text(
+    fail_text_y = bar_y + max(0, (bar_height - char_height) // 2)
+    _draw_vision_pass_fail_vector_text(
         pixels,
         canvas_width,
         fail_text_x,
         fail_text_y,
         fail_label,
         (31, 31, 31, 255),
-        scale=scale,
-        spacing=1,
+        char_width=char_width,
+        char_height=char_height,
+        thickness=thickness,
+        spacing=spacing,
     )
 
     raw_rows = bytearray()
