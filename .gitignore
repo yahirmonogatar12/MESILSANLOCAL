@@ -68,3 +68,4 @@ logs/
 
 # Dev
 run_dev.py
+.env.example
