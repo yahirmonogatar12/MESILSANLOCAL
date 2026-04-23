@@ -11,6 +11,7 @@ import threading
 import time
 import traceback
 import struct
+import sys
 import zlib
 from pathlib import Path
 
@@ -27,6 +28,21 @@ from datetime import date, datetime, timedelta
 from datetime import time as dt_time
 from decimal import Decimal
 from functools import wraps
+
+
+def _configure_stdio():
+    """Force UTF-8 stdio when available to avoid Windows cp1252 log crashes."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None or not hasattr(stream, "reconfigure"):
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+_configure_stdio()
 
 
 def obtener_fecha_hora_mexico():
@@ -963,7 +979,8 @@ def material():
     # Si no tenemos el nombre completo en la sesión, obtenerlo de la BD
     if not nombre_completo and usuario != "Invitado":
         print(
-            f"⚠️ Nombre completo no encontrado en sesión para {usuario}, obteniendo de BD..."
+            f"[material] Nombre completo no encontrado en sesión para {usuario}, "
+            "obteniendo de BD..."
         )
         from .auth_system import auth_system
 
@@ -978,7 +995,8 @@ def material():
             nombre_completo = usuario  # Fallback al username
             session["nombre_completo"] = usuario
             print(
-                f"⚠️ No se pudo obtener nombre completo de BD, usando username: {usuario}"
+                f"[material] No se pudo obtener nombre completo de BD, usando "
+                f"username: {usuario}"
             )
 
     # Si todavía no tenemos nombre completo, usar el username
@@ -1015,7 +1033,7 @@ def dashboard():
                 nombre_completo = result["nombre_completo"]
                 session["nombre_completo"] = nombre_completo
         except Exception as e:
-            print(f"⚠️ Error obteniendo nombre completo para dashboard: {e}")
+            print(f"[dashboard] Error obteniendo nombre completo: {e}")
             nombre_completo = usuario
 
     if not nombre_completo:

@@ -1,10 +1,26 @@
 import os
+import sys
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 _cached_app = None
+
+
+def _configure_stdio():
+    """Force UTF-8 stdio when available to avoid Windows cp1252 crashes on logs."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None or not hasattr(stream, "reconfigure"):
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+_configure_stdio()
 
 
 def _env_flag(name, default=False):

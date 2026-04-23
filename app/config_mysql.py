@@ -35,8 +35,12 @@ MYSQL_CONFIG = {
     'write_timeout': int(os.getenv('MYSQL_WRITE_TIMEOUT', '10'))
 }
 
-# Imprimir config una sola vez al cargar el módulo
-print(f"🔧 MySQL Config: host={MYSQL_CONFIG['host']}, port={MYSQL_CONFIG['port']}, db={MYSQL_CONFIG['db']}, user={MYSQL_CONFIG['user']}")
+# Imprimir config una sola vez al cargar el módulo.
+# Mantenerlo ASCII evita UnicodeEncodeError en consolas Windows cp1252.
+print(
+    f"[MySQL Config] host={MYSQL_CONFIG['host']}, port={MYSQL_CONFIG['port']}, "
+    f"db={MYSQL_CONFIG['db']}, user={MYSQL_CONFIG['user']}"
+)
 
 # ============ CONNECTION POOL ============
 _pool = []
