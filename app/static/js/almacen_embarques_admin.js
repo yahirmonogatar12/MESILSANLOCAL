@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260417h";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260422g";
 
   const movementModuleState = {
     rows: [],
@@ -18,6 +18,13 @@
     afterRows: [],
   };
 
+  const deleteState = {
+    config: null,
+    movementType: "",
+    recordId: null,
+    row: null,
+  };
+
   const inventoryClosureState = {
     batchId: null,
     valid: false,
@@ -31,7 +38,7 @@
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260417h")) {
+      if (!currentLink.getAttribute("href")?.includes("20260422g")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -88,6 +95,63 @@
       statusLabel: document.getElementById(`${prefix}-status`),
       tableBody: document.getElementById(`${prefix}-tbody`),
     };
+  }
+
+  function normalizeModuleTableColumns(moduleRoot, prefix) {
+    if (!moduleRoot || moduleRoot.dataset[`normalized${prefix}`] === "true") {
+      return;
+    }
+
+    const labelsToRemove =
+      prefix === "almacen-embarques-movements"
+        ? ["Zona", "Ubicación / Destino"]
+        : [];
+
+    if (!labelsToRemove.length) {
+      moduleRoot.dataset[`normalized${prefix}`] = "true";
+      return;
+    }
+
+    const headTable = moduleRoot.querySelector(".ae-history-table--head");
+    const bodyTable = moduleRoot.querySelector(".ae-history-table--body");
+    const headerRow = headTable?.querySelector("thead tr");
+    if (!headTable || !bodyTable || !headerRow) {
+      return;
+    }
+
+    const indexesToRemove = Array.from(headerRow.children)
+      .map((cell, index) => ({
+        index,
+        label: String(cell.textContent || "").trim(),
+      }))
+      .filter(({ label }) => labelsToRemove.includes(label))
+      .map(({ index }) => index)
+      .sort((a, b) => b - a);
+
+    if (!indexesToRemove.length) {
+      moduleRoot.dataset[`normalized${prefix}`] = "true";
+      return;
+    }
+
+    [headTable, bodyTable].forEach((table) => {
+      table.querySelectorAll("colgroup").forEach((colgroup) => {
+        indexesToRemove.forEach((index) => {
+          colgroup.children[index]?.remove();
+        });
+      });
+    });
+
+    indexesToRemove.forEach((index) => {
+      headerRow.children[index]?.remove();
+    });
+
+    bodyTable.querySelectorAll("tbody tr").forEach((row) => {
+      indexesToRemove.forEach((index) => {
+        row.children[index]?.remove();
+      });
+    });
+
+    moduleRoot.dataset[`normalized${prefix}`] = "true";
   }
 
   function getModuleRoot(prefix) {
@@ -183,11 +247,173 @@
       }
 
       const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
-      const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
+      const explicitWidth = getExplicitTableWidth(headerTable);
+      const targetWidth = Math.max(bodyWrap.clientWidth, explicitWidth || bodyTable.scrollWidth);
 
       headerWrap.style.paddingRight = `${scrollbarWidth}px`;
       headerTable.style.width = `${targetWidth}px`;
       bodyTable.style.width = `${targetWidth}px`;
+    });
+  }
+
+  function getExplicitTableWidth(table) {
+    const cols = table?.querySelectorAll("colgroup col");
+    if (!cols?.length) {
+      return 0;
+    }
+
+    return Array.from(cols).reduce((total, col) => {
+      const width = parseFloat(col.style.width || "0");
+      return total + (Number.isFinite(width) ? width : 0);
+    }, 0);
+  }
+
+  function getHeaderCellMinimumWidth(cell) {
+    const headerText = String(cell?.textContent || "")
+      .trim()
+      .toLowerCase();
+
+    if (headerText === "acción" || headerText === "accion") {
+      return 180;
+    }
+
+    if (headerText === "departure") {
+      return 120;
+    }
+
+    if (headerText.includes("ubicación") || headerText.includes("destino")) {
+      return 160;
+    }
+
+    if (headerText.includes("folio")) {
+      return 180;
+    }
+
+    if (headerText.includes("no. parte")) {
+      return 140;
+    }
+
+    if (headerText.includes("modelo")) {
+      return 140;
+    }
+
+    return 72;
+  }
+
+  function freezeShellColumnWidths(shell) {
+    if (!shell || shell.dataset.colWidthsReady === "true") {
+      return;
+    }
+
+    const headerTable = shell.querySelector(".ae-history-table--head");
+    const bodyTable = shell.querySelector(".ae-history-table--body");
+    const headerCells = headerTable?.querySelectorAll("thead th");
+    const headerCols = headerTable?.querySelectorAll("colgroup col");
+    const bodyCols = bodyTable?.querySelectorAll("colgroup col");
+    if (!headerTable || !bodyTable || !headerCells?.length || !headerCols?.length || !bodyCols?.length) {
+      return;
+    }
+
+    const widths = Array.from(headerCells).map((cell) =>
+      Math.max(
+        getHeaderCellMinimumWidth(cell),
+        Math.ceil(cell.getBoundingClientRect().width),
+      ),
+    );
+
+    widths.forEach((width, index) => {
+      [headerCols[index], bodyCols[index]].forEach((col) => {
+        if (!col) {
+          return;
+        }
+        col.style.width = `${width}px`;
+        col.style.minWidth = `${width}px`;
+        col.style.maxWidth = `${width}px`;
+      });
+    });
+
+    const totalWidth = widths.reduce((sum, width) => sum + width, 0);
+    headerTable.style.width = `${totalWidth}px`;
+    bodyTable.style.width = `${totalWidth}px`;
+    shell.dataset.colWidthsReady = "true";
+  }
+
+  function updateShellColumnWidth(shell, columnIndex, nextWidth) {
+    const headerTable = shell?.querySelector(".ae-history-table--head");
+    const bodyTable = shell?.querySelector(".ae-history-table--body");
+    const headerCols = headerTable?.querySelectorAll("colgroup col");
+    const bodyCols = bodyTable?.querySelectorAll("colgroup col");
+    if (!headerTable || !bodyTable || !headerCols?.[columnIndex] || !bodyCols?.[columnIndex]) {
+      return;
+    }
+
+    const headerCells = headerTable?.querySelectorAll("thead th");
+    const minWidth = headerCells?.[columnIndex]
+      ? getHeaderCellMinimumWidth(headerCells[columnIndex])
+      : 72;
+    const width = Math.max(minWidth, Math.round(nextWidth));
+    [headerCols[columnIndex], bodyCols[columnIndex]].forEach((col) => {
+      col.style.width = `${width}px`;
+      col.style.minWidth = `${width}px`;
+      col.style.maxWidth = `${width}px`;
+    });
+
+    const totalWidth = getExplicitTableWidth(headerTable);
+    headerTable.style.width = `${totalWidth}px`;
+    bodyTable.style.width = `${totalWidth}px`;
+  }
+
+  function initResizableShells(moduleRoot) {
+    const shells = moduleRoot?.querySelectorAll(".ae-table-shell");
+    if (!shells?.length) {
+      return;
+    }
+
+    shells.forEach((shell) => {
+      freezeShellColumnWidths(shell);
+
+      const headerTable = shell.querySelector(".ae-history-table--head");
+      const headerCells = headerTable?.querySelectorAll("thead th");
+      if (!headerTable || !headerCells?.length || shell.dataset.resizeReady === "true") {
+        return;
+      }
+
+      headerCells.forEach((cell, index) => {
+        if (cell.querySelector(".ae-col-resizer")) {
+          return;
+        }
+
+        const handle = document.createElement("div");
+        handle.className = "ae-col-resizer";
+        handle.setAttribute("data-column-index", String(index));
+        handle.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const startX = event.clientX;
+          const startWidth = cell.getBoundingClientRect().width;
+          document.body.classList.add("ae-col-resizing");
+
+          const onMouseMove = (moveEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            updateShellColumnWidth(shell, index, startWidth + deltaX);
+            syncTableWidths(moduleRoot);
+          };
+
+          const onMouseUp = () => {
+            document.body.classList.remove("ae-col-resizing");
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+          };
+
+          window.addEventListener("mousemove", onMouseMove);
+          window.addEventListener("mouseup", onMouseUp);
+        });
+
+        cell.appendChild(handle);
+      });
+
+      shell.dataset.resizeReady = "true";
     });
   }
 
@@ -228,18 +454,6 @@
         type: "integer",
         previous: getMovementQuantity(row),
       },
-      {
-        name: "zona",
-        label: "Zona",
-        type: "text",
-        previous: row.zone_code || "",
-      },
-      {
-        name: "ubicacion_destino",
-        label: "Ubicación / Destino",
-        type: "text",
-        previous: getMovementLocationValue(row),
-      },
     ];
 
     if (row.movement_type === "exit") {
@@ -260,10 +474,6 @@
         return getMovementDateValue(row);
       case "cantidad":
         return String(getMovementQuantity(row) ?? "");
-      case "zona":
-        return row.zone_code || "";
-      case "ubicacion_destino":
-        return getMovementLocationValue(row);
       case "departure":
         return row.departure_code || "";
       default:
@@ -307,18 +517,26 @@
         <td>${formatNumber(getMovementQuantity(row))}</td>
         <td>${escapeHtml(row.product_model || "-")}</td>
         <td>${escapeHtml(row.customer || "-")}</td>
-        <td>${escapeHtml(row.zone_code || "-")}</td>
-        <td>${escapeHtml(getMovementLocationValue(row) || "-")}</td>
         <td>${escapeHtml(row.departure_code || "-")}</td>
         <td>
-          <button
-            type="button"
-            class="ae-btn-inline ae-btn-inline-edit"
-            data-action="edit-movement"
-            data-record-key="${escapeHtml(getMovementRecordKey(row))}"
-          >
-            Editar
-          </button>
+          <div class="ae-inline-actions ae-inline-actions--row">
+            <button
+              type="button"
+              class="ae-btn-inline ae-btn-inline-edit"
+              data-action="edit-movement"
+              data-record-key="${escapeHtml(getMovementRecordKey(row))}"
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              class="ae-btn-inline ae-btn-inline-delete"
+              data-action="delete-movement"
+              data-record-key="${escapeHtml(getMovementRecordKey(row))}"
+            >
+              Eliminar
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -335,8 +553,6 @@
         <td class="ae-edit-cell">${getEditableInputMarkup("cantidad", row)}</td>
         <td>${escapeHtml(row.product_model || "-")}</td>
         <td>${escapeHtml(row.customer || "-")}</td>
-        <td class="ae-edit-cell">${getEditableInputMarkup("zona", row)}</td>
-        <td class="ae-edit-cell">${getEditableInputMarkup("ubicacion_destino", row)}</td>
         <td class="ae-edit-cell">${getEditableInputMarkup("departure", row)}</td>
         <td>
           <div class="ae-inline-actions">
@@ -1218,6 +1434,180 @@
     setConfirmModalError("");
   }
 
+  function getDeleteModal() {
+    let modal = document.getElementById("ae-movement-delete-modal");
+    if (modal) {
+      return modal;
+    }
+
+    modal = document.createElement("div");
+    modal.id = "ae-movement-delete-modal";
+    modal.className = "ae-confirm-modal";
+    modal.innerHTML = `
+      <div class="ae-confirm-modal__backdrop" data-action="cancel-delete"></div>
+      <div class="ae-confirm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ae-delete-modal-title">
+        <div class="ae-confirm-modal__header">
+          <h4 id="ae-delete-modal-title">Confirmar eliminación</h4>
+          <button type="button" class="ae-confirm-modal__close" data-action="cancel-delete" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="ae-confirm-modal__body">
+          <div class="ae-confirm-modal__summary">
+            <div><span>Tipo</span><strong data-role="delete-type"></strong></div>
+            <div><span>Folio</span><strong data-role="delete-folio"></strong></div>
+            <div><span>No. parte</span><strong data-role="delete-part"></strong></div>
+          </div>
+          <div class="ae-confirm-modal__warning">
+            Esta acción eliminará el movimiento y recalculará el inventario del número de parte.
+          </div>
+          <div class="ae-confirm-modal__field">
+            <label for="ae-delete-password">Contraseña actual</label>
+            <input
+              id="ae-delete-password"
+              type="password"
+              data-role="delete-password"
+              placeholder="Confirma tu contraseña para eliminar"
+              autocomplete="current-password"
+              required
+            >
+          </div>
+          <div class="ae-confirm-modal__error" data-role="delete-error"></div>
+        </div>
+        <div class="ae-confirm-modal__actions">
+          <button type="button" class="ae-btn-inline ae-btn-inline-cancel" data-action="cancel-delete">Cancelar</button>
+          <button type="button" class="ae-btn-inline ae-btn-inline-delete" data-action="submit-delete">Eliminar</button>
+        </div>
+      </div>
+    `;
+
+    modal.addEventListener("click", (event) => {
+      const actionElement = event.target.closest("[data-action]");
+      if (!actionElement) {
+        return;
+      }
+
+      if (actionElement.dataset.action === "cancel-delete") {
+        closeDeleteModal();
+        return;
+      }
+
+      if (actionElement.dataset.action === "submit-delete") {
+        submitMovementDelete();
+      }
+    });
+
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDeleteModal();
+        return;
+      }
+
+      if (event.key === "Enter" && event.target?.dataset?.role === "delete-password") {
+        event.preventDefault();
+        submitMovementDelete();
+      }
+    });
+
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function setDeleteModalError(message = "") {
+    const modal = getDeleteModal();
+    const errorElement = modal.querySelector('[data-role="delete-error"]');
+    if (errorElement) {
+      errorElement.textContent = message;
+    }
+  }
+
+  function openDeleteModal(config, row) {
+    if (!config || !row) {
+      return;
+    }
+
+    const modal = getDeleteModal();
+    deleteState.config = config;
+    deleteState.movementType = row.movement_type;
+    deleteState.recordId = row.record_id;
+    deleteState.row = cloneMovementRow(row);
+
+    modal.querySelector('[data-role="delete-type"]').textContent =
+      row.movement_label || row.movement_type || "-";
+    modal.querySelector('[data-role="delete-folio"]').textContent = row.folio || "-";
+    modal.querySelector('[data-role="delete-part"]').textContent = row.part_number || "-";
+
+    const passwordField = modal.querySelector('[data-role="delete-password"]');
+    if (passwordField) {
+      passwordField.value = "";
+    }
+
+    setDeleteModalError("");
+    modal.classList.add("is-open");
+    passwordField?.focus();
+  }
+
+  function closeDeleteModal() {
+    const modal = document.getElementById("ae-movement-delete-modal");
+    modal?.classList.remove("is-open");
+    setDeleteModalError("");
+  }
+
+  async function submitMovementDelete() {
+    const modal = document.getElementById("ae-movement-delete-modal");
+    const { config, movementType, recordId } = deleteState;
+    if (!modal || !config || !movementType || !recordId) {
+      return;
+    }
+
+    const passwordField = modal.querySelector('[data-role="delete-password"]');
+    const deleteButton = modal.querySelector('[data-action="submit-delete"]');
+    const password = passwordField?.value?.trim() || "";
+
+    if (!password) {
+      setDeleteModalError("Debes confirmar tu contraseña actual.");
+      passwordField?.focus();
+      return;
+    }
+
+    try {
+      setDeleteModalError("");
+      deleteButton.disabled = true;
+      deleteButton.textContent = "Eliminando...";
+
+      const response = await fetch(
+        `/api/almacen-embarques/movimientos/${encodeURIComponent(movementType)}/${encodeURIComponent(
+          recordId,
+        )}`,
+        {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            password,
+          }),
+        },
+      );
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+
+      closeDeleteModal();
+      cancelMovementEdit();
+      setStatus(config.prefix, payload.message || "Movimiento eliminado correctamente");
+      await loadModule(config);
+    } catch (error) {
+      setDeleteModalError(error.message || "No fue posible eliminar el movimiento.");
+    } finally {
+      deleteButton.disabled = false;
+      deleteButton.textContent = "Eliminar";
+    }
+  }
+
   async function submitMovementChanges() {
     const modal = document.getElementById("ae-movement-confirm-modal");
     const { config, movementType, recordId, changes } = confirmState;
@@ -1292,6 +1682,15 @@
         startMovementEdit(recordKey);
       }
 
+      if (button.dataset.action === "delete-movement" && recordKey) {
+        const currentRow = movementModuleState.rows.find(
+          (row) => getMovementRecordKey(row) === recordKey,
+        );
+        if (currentRow) {
+          openDeleteModal(config, currentRow);
+        }
+      }
+
       if (button.dataset.action === "cancel-edit-movement") {
         cancelMovementEdit();
       }
@@ -1360,12 +1759,14 @@
   }
 
   function bindModule(config) {
+    const moduleRoot = getModuleRoot(config.prefix);
+    normalizeModuleTableColumns(moduleRoot, config.prefix);
+
     const elements = getElements(config.prefix);
     if (!elements.tableBody) {
       return;
     }
 
-    const moduleRoot = getModuleRoot(config.prefix);
     const tableShells = moduleRoot?.querySelectorAll(".ae-table-shell") || [];
     tableShells.forEach((shell) => {
       const headerWrap = shell.querySelector(":scope > .ae-table-head");
@@ -1381,6 +1782,7 @@
 
     if (moduleRoot && moduleRoot.dataset.resizeBound !== "true") {
       const updateHeight = () => {
+        initResizableShells(moduleRoot);
         syncScrollableHeight(moduleRoot);
         syncTableWidths(moduleRoot);
       };
@@ -1433,7 +1835,7 @@
       prefix: "almacen-embarques-movements",
       apiUrl: "/api/almacen-embarques/movimientos",
       exportUrl: "/api/almacen-embarques/movimientos/export",
-      colspan: 12,
+      colspan: 10,
       emptyMessage: "No hay movimientos disponibles para los filtros actuales.",
       renderer: renderMovementsRows,
     });

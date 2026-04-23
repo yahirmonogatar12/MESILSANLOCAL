@@ -106,6 +106,7 @@ from .shipping_material_api import (
     SHIPPING_TABLES,
     adjust_shipping_movement_record,
     assign_exit_departure_value,
+    delete_shipping_movement_record,
     get_departure_history_records,
     init_shipping_material_tables,
     register_shipping_material_routes,
@@ -9727,6 +9728,48 @@ def _obtener_usuario_display_actual():
     ).strip()
 
 
+def _validar_password_usuario_actual(raw_password):
+    usuario = (session.get("usuario") or "").strip()
+    password = str(raw_password or "").strip()
+
+    if not usuario:
+        return False, "No se encontro un usuario valido en sesion"
+    if not password:
+        return False, "Debes confirmar tu contraseña actual"
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            raise RuntimeError("No se pudo obtener conexion a la base de datos")
+
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute(
+            """
+            SELECT password_hash
+            FROM usuarios_sistema
+            WHERE username = %s
+            LIMIT 1
+            """,
+            (usuario,),
+        )
+        usuario_row = cursor.fetchone()
+        password_hash_actual = (usuario_row or {}).get("password_hash") or ""
+
+        if not password_hash_actual:
+            return False, "No fue posible validar tu contraseña actual"
+        if password_hash_actual != auth_system.hash_password(password):
+            return False, "La contraseña es incorrecta"
+
+        return True, ""
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
 def _obtener_contexto_cierre_inventario_embarques():
     fecha_actual = obtener_fecha_hora_mexico()
     meses = [
@@ -10534,6 +10577,34 @@ def api_almacen_embarques_movimiento_update(movement_type, record_id):
     except Exception as e:
         print(
             f"Error actualizando movimiento {movement_type}/{record_id}: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route(
+    "/api/almacen-embarques/movimientos/<movement_type>/<int:record_id>",
+    methods=["DELETE"],
+)
+@login_requerido
+def api_almacen_embarques_movimiento_delete(movement_type, record_id):
+    """Eliminar un movimiento de embarques con confirmación de contraseña."""
+    try:
+        data = request.get_json(silent=True) or {}
+        password = data.get("password")
+        is_valid_password, password_error = _validar_password_usuario_actual(password)
+        if not is_valid_password:
+            return jsonify({"success": False, "error": password_error}), 400
+
+        payload, status_code = delete_shipping_movement_record(
+            movement_type,
+            record_id,
+            _obtener_usuario_display_actual(),
+            notes=(data.get("notes") or "").strip() or None,
+        )
+        return jsonify(payload), status_code
+    except Exception as e:
+        print(
+            f"Error eliminando movimiento {movement_type}/{record_id}: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
 

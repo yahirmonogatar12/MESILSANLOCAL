@@ -1468,6 +1468,7 @@ def insert_movement_adjustment_record(
     adjusted_by,
     adjusted_at,
     notes=None,
+    adjustment_action="update",
 ):
     cursor.execute(
         f"""
@@ -1483,13 +1484,14 @@ def insert_movement_adjustment_record(
           notes,
           adjusted_by,
           adjusted_at
-        ) VALUES (%s, %s, %s, %s, 'update', %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             movement_type,
             record_id,
             folio,
             part_number,
+            normalize_optional_text(adjustment_action) or "update",
             json_dumps_safe(previous_values),
             json_dumps_safe(new_values),
             json_dumps_safe(changed_fields),
@@ -2146,6 +2148,147 @@ def adjust_shipping_movement_record(
             "adjustedAt": serialize_datetime(adjusted_at),
             "adjustedBy": normalize_optional_text(adjusted_by) or "Sistema",
             "message": "Movimiento actualizado correctamente",
+        }, 200
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+def delete_shipping_movement_record(
+    movement_type,
+    record_id,
+    adjusted_by,
+    notes=None,
+):
+    normalized_type = normalize_movement_type(movement_type)
+    if normalized_type not in {"entry", "exit", "return"}:
+        return {
+            "success": False,
+            "error": "Tipo de movimiento no soportado",
+        }, 400
+
+    record_id_value = normalize_integer(record_id)
+    if not record_id_value:
+        return {
+            "success": False,
+            "error": "Registro de movimiento invalido",
+        }, 400
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_transaction_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+
+        if normalized_type == "entry":
+            current_row = fetch_entry_record_for_update(cursor, record_id_value)
+            table_name = SHIPPING_TABLES["entries"]
+            folio_field = "entry_folio"
+        elif normalized_type == "exit":
+            current_row = fetch_exit_record_for_update(cursor, record_id_value)
+            table_name = SHIPPING_TABLES["exits"]
+            folio_field = "exit_folio"
+        else:
+            current_row = fetch_return_record_for_update(cursor, record_id_value)
+            table_name = SHIPPING_TABLES["returns"]
+            folio_field = "return_folio"
+
+        if not current_row:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "El movimiento solicitado no existe",
+            }, 404
+
+        old_snapshot = build_movement_adjustment_snapshot(normalized_type, current_row)
+        normalized_part = normalize_part_number(current_row.get("part_number"))
+        deleted_folio = normalize_optional_text(current_row.get(folio_field))
+
+        if normalized_type == "exit":
+            cursor.execute(
+                f"""
+                DELETE FROM `{SHIPPING_TABLES['departure_history']}`
+                WHERE exit_id = %s
+                """,
+                (record_id_value,),
+            )
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['exits']}`
+                SET split_from_exit_id = NULL
+                WHERE split_from_exit_id = %s
+                """,
+                (record_id_value,),
+            )
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['exits']}`
+                SET split_root_exit_id = NULL
+                WHERE split_root_exit_id = %s
+                """,
+                (record_id_value,),
+            )
+
+        cursor.execute(
+            f"""
+            DELETE FROM `{table_name}`
+            WHERE id = %s
+            """,
+            (record_id_value,),
+        )
+
+        if cursor.rowcount <= 0:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": "No fue posible eliminar el movimiento solicitado",
+            }, 404
+
+        adjusted_at = to_sql_datetime()
+        insert_movement_adjustment_record(
+            cursor,
+            normalized_type,
+            record_id_value,
+            deleted_folio,
+            normalized_part,
+            old_snapshot,
+            {
+                "deleted": True,
+                "movement_type": normalized_type,
+                "record_id": record_id_value,
+            },
+            {
+                "deleted": {
+                    "previous": False,
+                    "new": True,
+                }
+            },
+            adjusted_by,
+            adjusted_at,
+            notes=notes,
+            adjustment_action="delete",
+        )
+
+        if normalized_part:
+            rebuild_part_inventory_state(cursor, normalized_part)
+
+        conn.commit()
+        return {
+            "success": True,
+            "movementType": normalized_type,
+            "recordId": record_id_value,
+            "folio": deleted_folio,
+            "partNumber": normalized_part,
+            "adjustedAt": serialize_datetime(adjusted_at),
+            "adjustedBy": normalize_optional_text(adjusted_by) or "Sistema",
+            "message": "Movimiento eliminado correctamente",
         }, 200
     except Exception:
         if conn:

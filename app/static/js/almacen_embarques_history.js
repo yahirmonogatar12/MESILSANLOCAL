@@ -1,11 +1,11 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260416g";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260422g";
 
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260416g")) {
+      if (!currentLink.getAttribute("href")?.includes("20260422g")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -47,6 +47,20 @@
 
   function buildBadge(text, variant) {
     return `<span class="history-badge history-badge--${variant}">${escapeHtml(text)}</span>`;
+  }
+
+  function getNormalizedReturnType(rawValue) {
+    const value = String(rawValue || "").trim();
+    if (!value) {
+      return "Sin tipo";
+    }
+    if (/os\s*&\s*d/i.test(value)) {
+      return "OS&D";
+    }
+    if (/exceso/i.test(value)) {
+      return "Exceso";
+    }
+    return value;
   }
 
   function buildDepartureCell(row) {
@@ -312,11 +326,174 @@
       }
 
       const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
-      const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
+      const explicitWidth = getExplicitTableWidth(headerTable);
+      const targetWidth = Math.max(bodyWrap.clientWidth, explicitWidth || bodyTable.scrollWidth);
 
       headerWrap.style.paddingRight = `${scrollbarWidth}px`;
       headerTable.style.width = `${targetWidth}px`;
       bodyTable.style.width = `${targetWidth}px`;
+    });
+  }
+
+  function getExplicitTableWidth(table) {
+    const cols = table?.querySelectorAll("colgroup col");
+    if (!cols?.length) {
+      return 0;
+    }
+
+    return Array.from(cols).reduce((total, col) => {
+      const width = parseFloat(col.style.width || "0");
+      return total + (Number.isFinite(width) ? width : 0);
+    }, 0);
+  }
+
+  function getHeaderCellMinimumWidth(cell) {
+    const headerText = String(cell?.textContent || "")
+      .trim()
+      .toLowerCase();
+
+    if (headerText === "acción" || headerText === "accion") {
+      return 180;
+    }
+
+    if (headerText === "departure") {
+      return 120;
+    }
+
+    if (headerText.includes("ubicación") || headerText.includes("destino")) {
+      return 160;
+    }
+
+    if (headerText.includes("folio")) {
+      return 180;
+    }
+
+    if (headerText.includes("no. parte")) {
+      return 140;
+    }
+
+    if (headerText.includes("modelo")) {
+      return 140;
+    }
+
+    return 72;
+  }
+
+  function freezeShellColumnWidths(tableShell) {
+    if (!tableShell || tableShell.dataset.colWidthsReady === "true") {
+      return;
+    }
+
+    const headerTable = tableShell.querySelector(".ae-history-table--head");
+    const bodyTable = tableShell.querySelector(".ae-history-table--body");
+    const headerCells = headerTable?.querySelectorAll("thead th");
+    const headerCols = headerTable?.querySelectorAll("colgroup col");
+    const bodyCols = bodyTable?.querySelectorAll("colgroup col");
+    if (!headerTable || !bodyTable || !headerCells?.length || !headerCols?.length || !bodyCols?.length) {
+      return;
+    }
+
+    const widths = Array.from(headerCells).map((cell) =>
+      Math.max(
+        getHeaderCellMinimumWidth(cell),
+        Math.ceil(cell.getBoundingClientRect().width),
+      ),
+    );
+
+    widths.forEach((width, index) => {
+      [headerCols[index], bodyCols[index]].forEach((col) => {
+        if (!col) {
+          return;
+        }
+        col.style.width = `${width}px`;
+        col.style.minWidth = `${width}px`;
+        col.style.maxWidth = `${width}px`;
+      });
+    });
+
+    const totalWidth = widths.reduce((sum, width) => sum + width, 0);
+    headerTable.style.width = `${totalWidth}px`;
+    bodyTable.style.width = `${totalWidth}px`;
+    tableShell.dataset.colWidthsReady = "true";
+  }
+
+  function updateShellColumnWidth(tableShell, columnIndex, nextWidth) {
+    const headerTable = tableShell?.querySelector(".ae-history-table--head");
+    const bodyTable = tableShell?.querySelector(".ae-history-table--body");
+    const headerCols = headerTable?.querySelectorAll("colgroup col");
+    const bodyCols = bodyTable?.querySelectorAll("colgroup col");
+    if (!headerTable || !bodyTable || !headerCols?.[columnIndex] || !bodyCols?.[columnIndex]) {
+      return;
+    }
+
+    const headerCells = headerTable?.querySelectorAll("thead th");
+    const minWidth = headerCells?.[columnIndex]
+      ? getHeaderCellMinimumWidth(headerCells[columnIndex])
+      : 72;
+    const width = Math.max(minWidth, Math.round(nextWidth));
+    [headerCols[columnIndex], bodyCols[columnIndex]].forEach((col) => {
+      col.style.width = `${width}px`;
+      col.style.minWidth = `${width}px`;
+      col.style.maxWidth = `${width}px`;
+    });
+
+    const totalWidth = getExplicitTableWidth(headerTable);
+    headerTable.style.width = `${totalWidth}px`;
+    bodyTable.style.width = `${totalWidth}px`;
+  }
+
+  function initResizableShells(moduleRoot) {
+    const tableShells = moduleRoot?.querySelectorAll(".ae-table-shell");
+    if (!tableShells?.length) {
+      return;
+    }
+
+    tableShells.forEach((tableShell) => {
+      freezeShellColumnWidths(tableShell);
+
+      const headerTable = tableShell.querySelector(".ae-history-table--head");
+      const headerCells = headerTable?.querySelectorAll("thead th");
+      if (!headerTable || !headerCells?.length || tableShell.dataset.resizeReady === "true") {
+        return;
+      }
+
+      headerCells.forEach((cell, index) => {
+        if (cell.querySelector(".ae-col-resizer")) {
+          return;
+        }
+
+        const handle = document.createElement("div");
+        handle.className = "ae-col-resizer";
+        handle.setAttribute("data-column-index", String(index));
+        handle.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const startX = event.clientX;
+          const startWidth = cell.getBoundingClientRect().width;
+
+          document.body.classList.add("ae-col-resizing");
+
+          const onMouseMove = (moveEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            updateShellColumnWidth(tableShell, index, startWidth + deltaX);
+            syncTableWidths(moduleRoot);
+          };
+
+          const onMouseUp = () => {
+            document.body.classList.remove("ae-col-resizing");
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+          };
+
+          window.addEventListener("mousemove", onMouseMove);
+          window.addEventListener("mouseup", onMouseUp);
+        });
+
+        cell.appendChild(handle);
+      });
+
+      tableShell.dataset.resizeReady = "true";
     });
   }
 
@@ -332,6 +509,61 @@
       statusLabel: document.getElementById(`${prefix}-status`),
       tableBody: document.getElementById(`${prefix}-tbody`),
     };
+  }
+
+  function normalizeModuleTableColumns(moduleRoot, prefix) {
+    if (!moduleRoot || moduleRoot.dataset[`normalized${prefix}`] === "true") {
+      return;
+    }
+
+    const labelsToRemove =
+      prefix === "almacen-embarques-exits" ? ["Destino", "Motivo"] : [];
+
+    if (!labelsToRemove.length) {
+      moduleRoot.dataset[`normalized${prefix}`] = "true";
+      return;
+    }
+
+    const headTable = moduleRoot.querySelector(".ae-history-table--head");
+    const bodyTable = moduleRoot.querySelector(".ae-history-table--body");
+    const headerRow = headTable?.querySelector("thead tr");
+    if (!headTable || !bodyTable || !headerRow) {
+      return;
+    }
+
+    const indexesToRemove = Array.from(headerRow.children)
+      .map((cell, index) => ({
+        index,
+        label: String(cell.textContent || "").trim(),
+      }))
+      .filter(({ label }) => labelsToRemove.includes(label))
+      .map(({ index }) => index)
+      .sort((a, b) => b - a);
+
+    if (!indexesToRemove.length) {
+      moduleRoot.dataset[`normalized${prefix}`] = "true";
+      return;
+    }
+
+    [headTable, bodyTable].forEach((table) => {
+      table.querySelectorAll("colgroup").forEach((colgroup) => {
+        indexesToRemove.forEach((index) => {
+          colgroup.children[index]?.remove();
+        });
+      });
+    });
+
+    indexesToRemove.forEach((index) => {
+      headerRow.children[index]?.remove();
+    });
+
+    bodyTable.querySelectorAll("tbody tr").forEach((row) => {
+      indexesToRemove.forEach((index) => {
+        row.children[index]?.remove();
+      });
+    });
+
+    moduleRoot.dataset[`normalized${prefix}`] = "true";
   }
 
   function getReturnModuleElements() {
@@ -444,8 +676,6 @@
             <td>${buildDepartureCell(row)}</td>
             <td>${escapeHtml(row.product_model || "-")}</td>
             <td>${escapeHtml(row.customer || "-")}</td>
-            <td>${escapeHtml(row.destination_area || "-")}</td>
-            <td>${escapeHtml(row.reason || "-")}</td>
             <td>${escapeHtml(row.registered_by || "-")}</td>
           </tr>
         `,
@@ -456,7 +686,7 @@
   function renderReturnsRows(rows) {
     return rows
       .map((row) => {
-        const badgeText = row.reason || "Sin tipo";
+        const badgeText = getNormalizedReturnType(row.reason);
         const badgeVariant =
           badgeText.toLowerCase() === "os&d" ? "warning" : "success";
 
@@ -485,6 +715,7 @@
           0,
           Number(row.return_quantity || 0) - Number(row.loss_quantity || 0),
         );
+        const returnType = getNormalizedReturnType(row.reason);
         return `
           <tr>
             <td>${escapeHtml(row.fecha)}</td>
@@ -493,7 +724,7 @@
             <td><strong>${escapeHtml(row.part_number)}</strong></td>
             <td>${formatNumber(quantity)}</td>
             <td>${escapeHtml(row.product_model || "-")}</td>
-            <td>${buildBadge(row.reason || "Retorno", "success")}</td>
+            <td>${buildBadge(returnType, returnType === "OS&D" ? "warning" : "success")}</td>
             <td>${escapeHtml(row.registered_by || "-")}</td>
           </tr>
         `;
@@ -503,18 +734,21 @@
 
   function renderReturnExitRows(rows) {
     return rows
-      .map((row) => `
-        <tr>
-          <td>${escapeHtml(row.fecha)}</td>
-          <td>${escapeHtml(row.hora)}</td>
-          <td>${escapeHtml(row.folio)}</td>
-          <td><strong>${escapeHtml(row.part_number)}</strong></td>
-          <td>${formatNumber(row.loss_quantity)}</td>
-          <td>${escapeHtml(row.product_model || "-")}</td>
-          <td>${buildBadge(row.reason || "Salida retorno", "warning")}</td>
-          <td>${escapeHtml(row.registered_by || "-")}</td>
-        </tr>
-      `)
+      .map((row) => {
+        const returnType = getNormalizedReturnType(row.reason);
+        return `
+          <tr>
+            <td>${escapeHtml(row.fecha)}</td>
+            <td>${escapeHtml(row.hora)}</td>
+            <td>${escapeHtml(row.folio)}</td>
+            <td><strong>${escapeHtml(row.part_number)}</strong></td>
+            <td>${formatNumber(row.loss_quantity)}</td>
+            <td>${escapeHtml(row.product_model || "-")}</td>
+            <td>${buildBadge(returnType, returnType === "OS&D" ? "warning" : "success")}</td>
+            <td>${escapeHtml(row.registered_by || "-")}</td>
+          </tr>
+        `;
+      })
       .join("");
   }
 
@@ -910,6 +1144,7 @@
     }
 
     const updateHeight = () => {
+      initResizableShells(moduleRoot);
       syncScrollableHeight(moduleRoot);
       syncTableWidths(moduleRoot);
     };
@@ -974,6 +1209,7 @@
 
   function bindModule(config) {
     const moduleRoot = document.getElementById(`${config.prefix}-module`);
+    normalizeModuleTableColumns(moduleRoot, config.prefix);
     if (config.prefix === "almacen-embarques-returns") {
       bindReturnsModule(config);
       return;
@@ -1067,7 +1303,7 @@
       prefix: "almacen-embarques-exits",
       apiUrl: "/api/almacen-embarques/salidas",
       exportUrl: "/api/almacen-embarques/salidas/export",
-      colspan: 11,
+      colspan: 9,
       emptyMessage: "No hay salidas registradas para los filtros actuales.",
       renderer: renderExitsRows,
     });
