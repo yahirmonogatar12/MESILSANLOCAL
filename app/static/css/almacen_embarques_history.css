@@ -755,6 +755,44 @@
     height: 44px;
     line-height: 1.15;
     vertical-align: middle;
+    position: relative;
+}
+
+.ae-column-resizer {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 4;
+    touch-action: none;
+}
+
+.ae-column-resizer::after {
+    content: "";
+    position: absolute;
+    top: 9px;
+    bottom: 9px;
+    left: 3px;
+    width: 2px;
+    border-radius: 999px;
+    background: rgba(143, 184, 255, 0.28);
+    opacity: 0;
+    transition: opacity 0.16s ease, background 0.16s ease;
+}
+
+.ae-history-table thead th:hover .ae-column-resizer::after,
+.ae-column-resizer:hover::after,
+body.ae-column-resizing .ae-column-resizer::after {
+    opacity: 1;
+    background: rgba(143, 184, 255, 0.86);
+}
+
+body.ae-column-resizing,
+body.ae-column-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
 }
 
 .ae-history-table thead th:first-child {
@@ -769,7 +807,7 @@
     color: var(--ilsan-text-secondary);
     background-color: var(--ilsan-dark-secondary);
     transition: background-color 0.2s ease;
-    max-width: 200px;
+    max-width: none;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

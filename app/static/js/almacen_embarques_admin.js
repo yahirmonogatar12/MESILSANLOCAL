@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260427a";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260427c";
 
   const movementModuleState = {
     rows: [],
@@ -38,7 +38,7 @@
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260427a")) {
+      if (!currentLink.getAttribute("href")?.includes("20260427c")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -190,11 +190,482 @@
       }
 
       const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
-      const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
+      const bodyCols = [...(bodyTable.querySelectorAll("colgroup col") || [])];
+      const headerCells = [...(headerTable.querySelectorAll("thead th") || [])];
+      const labels = shell.__aeColumnLabels?.length
+        ? shell.__aeColumnLabels
+        : headerCells.map((cell) => cell.textContent || "");
+      shell.__aeColumnLabels = labels;
+      const currentWidths = bodyCols.map((col, index) =>
+        getColWidthPx(
+          col,
+          headerCells[index]?.getBoundingClientRect().width || getColumnMinWidth(labels[index]),
+          bodyWrap.clientWidth || shell.clientWidth || 1,
+        ),
+      );
+      const appliedWidths = currentWidths.length
+        ? applyColumnWidths(shell, currentWidths, {
+            preferPriority: false,
+            fillAvailable: shell.__aeCompactColumns !== true,
+          })
+        : [];
+      const targetWidth = appliedWidths.length
+        ? appliedWidths.reduce((sum, width) => sum + width, 0)
+        : bodyWrap.clientWidth;
 
       headerWrap.style.paddingRight = `${scrollbarWidth}px`;
       headerTable.style.width = `${targetWidth}px`;
+      headerTable.style.minWidth = `${targetWidth}px`;
       bodyTable.style.width = `${targetWidth}px`;
+      bodyTable.style.minWidth = `${targetWidth}px`;
+    });
+  }
+
+  function normalizeColumnLabel(label) {
+    return String(label || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function getColumnMinWidth(label) {
+    const normalized = normalizeColumnLabel(label);
+    if (normalized.includes("accion")) return 148;
+    if (normalized.includes("folio")) return 150;
+    if (normalized.includes("departure")) return 140;
+    if (normalized.includes("no. parte") || normalized.includes("no parte")) return 130;
+    if (normalized.includes("modelo")) return 108;
+    if (normalized.includes("fecha") || normalized.includes("hora")) return 78;
+    if (normalized.includes("cantidad") || normalized.includes("cant.")) return 82;
+    if (normalized.includes("cliente")) return 72;
+    return 70;
+  }
+
+  function getPriorityColumnIndexes(labels) {
+    return labels
+      .map((label, index) => ({ label: normalizeColumnLabel(label), index }))
+      .filter(
+        ({ label }) =>
+          label.includes("folio") ||
+          label.includes("no. parte") ||
+          label.includes("no parte") ||
+          label.includes("departure"),
+      )
+      .map(({ index }) => index);
+  }
+
+  function getShellResizeKey(moduleRoot, tableShell, shellIndex, labels) {
+    const moduleId = moduleRoot?.id || "almacen-embarques";
+    const signature = labels.map(normalizeColumnLabel).join("|");
+    return `ae-column-widths:${moduleId}:${shellIndex}:${signature}`;
+  }
+
+  function getColWidthPx(col, fallbackWidth, baseWidth) {
+    const rawWidth = col?.style?.width?.trim() || "";
+    if (rawWidth.endsWith("%")) {
+      const percent = Number.parseFloat(rawWidth);
+      if (Number.isFinite(percent)) {
+        return Math.round((baseWidth * percent) / 100);
+      }
+    }
+    if (rawWidth.endsWith("px")) {
+      const px = Number.parseFloat(rawWidth);
+      if (Number.isFinite(px)) {
+        return Math.round(px);
+      }
+    }
+    return Math.round(fallbackWidth);
+  }
+
+  function getAvailableTableWidth(tableShell) {
+    const bodyWrap =
+      tableShell.querySelector(":scope > .ae-table-body-wrap") ||
+      tableShell.querySelector(".ae-table-body-wrap");
+    return Math.max(
+      1,
+      Math.floor(bodyWrap?.clientWidth || tableShell.clientWidth || 0),
+    );
+  }
+
+  function getDistributionIndexes(labels, preferPriority) {
+    const priorityIndexes = preferPriority ? getPriorityColumnIndexes(labels) : [];
+    return priorityIndexes.length
+      ? priorityIndexes
+      : labels.map((_, index) => index);
+  }
+
+  function growWidthsEvenly(widths, amount, indexes) {
+    if (amount <= 0 || !indexes.length) {
+      return widths;
+    }
+
+    let remaining = Math.round(amount);
+    let cursor = 0;
+    while (remaining > 0) {
+      widths[indexes[cursor % indexes.length]] += 1;
+      remaining -= 1;
+      cursor += 1;
+    }
+    return widths;
+  }
+
+  function reduceWidthsEvenly(widths, minWidths, amount, indexes) {
+    let remaining = Math.round(amount);
+    let candidates = indexes.filter((index) => widths[index] > minWidths[index]);
+
+    while (remaining > 0 && candidates.length) {
+      let changed = false;
+      candidates = candidates.filter((index) => {
+        if (remaining <= 0) {
+          return widths[index] > minWidths[index];
+        }
+        widths[index] -= 1;
+        remaining -= 1;
+        changed = true;
+        return widths[index] > minWidths[index];
+      });
+
+      if (!changed) {
+        break;
+      }
+    }
+
+    return widths;
+  }
+
+  function settleWidthTotal(
+    widths,
+    minWidths,
+    labels,
+    targetWidth,
+    preferPriority,
+    fillAvailable,
+  ) {
+    const roundedWidths = widths.map((width) => Math.max(1, Math.round(width)));
+    const indexes = getDistributionIndexes(labels, preferPriority);
+    let total = roundedWidths.reduce((sum, width) => sum + width, 0);
+
+    if (total < targetWidth && fillAvailable) {
+      growWidthsEvenly(roundedWidths, targetWidth - total, indexes);
+    } else if (total > targetWidth) {
+      reduceWidthsEvenly(roundedWidths, minWidths, total - targetWidth, indexes);
+    }
+
+    total = roundedWidths.reduce((sum, width) => sum + width, 0);
+    if (fillAvailable && total !== targetWidth && roundedWidths.length) {
+      const lastIndex = roundedWidths.length - 1;
+      roundedWidths[lastIndex] = Math.max(1, roundedWidths[lastIndex] + targetWidth - total);
+    }
+
+    return roundedWidths;
+  }
+
+  function normalizeWidthsToAvailable(widths, labels, availableWidth, options = {}) {
+    if (!widths.length) {
+      return [];
+    }
+
+    const targetWidth = Math.max(1, Math.floor(availableWidth));
+    const minWidths = widths.map((_, index) => getColumnMinWidth(labels[index]));
+    const minTotal = minWidths.reduce((sum, width) => sum + width, 0);
+    const preferPriority = options.preferPriority !== false;
+    const fillAvailable = options.fillAvailable !== false;
+
+    if (minTotal > targetWidth) {
+      const ratio = targetWidth / minTotal;
+      const scaledWidths = minWidths.map((width) => Math.max(1, Math.floor(width * ratio)));
+      return settleWidthTotal(
+        scaledWidths,
+        scaledWidths.map(() => 1),
+        labels,
+        targetWidth,
+        false,
+        true,
+      );
+    }
+
+    const normalized = widths.map((width, index) =>
+      Math.max(minWidths[index], Math.round(Number(width) || minWidths[index])),
+    );
+    const total = normalized.reduce((sum, width) => sum + width, 0);
+
+    if (total > targetWidth) {
+      reduceWidthsEvenly(
+        normalized,
+        minWidths,
+        total - targetWidth,
+        normalized.map((_, index) => index),
+      );
+    } else if (total < targetWidth && fillAvailable) {
+      growWidthsEvenly(
+        normalized,
+        targetWidth - total,
+        getDistributionIndexes(labels, preferPriority),
+      );
+    }
+
+    return settleWidthTotal(
+      normalized,
+      minWidths,
+      labels,
+      targetWidth,
+      preferPriority,
+      fillAvailable,
+    );
+  }
+
+  function resizeColumnWithinAvailable(widths, labels, columnIndex, delta, availableWidth) {
+    const targetWidth = Math.max(1, Math.floor(availableWidth));
+    const startWidths = normalizeWidthsToAvailable(widths, labels, targetWidth, {
+      preferPriority: false,
+      fillAvailable: false,
+    });
+    const minWidths = startWidths.map((_, index) => getColumnMinWidth(labels[index]));
+    const minTotal = minWidths.reduce((sum, width) => sum + width, 0);
+    if (minTotal > targetWidth) {
+      return normalizeWidthsToAvailable(startWidths, labels, targetWidth, {
+        preferPriority: false,
+      });
+    }
+
+    const nextWidths = startWidths.slice();
+    const otherIndexes = nextWidths
+      .map((_, index) => index)
+      .filter((index) => index !== columnIndex);
+    const otherMinTotal = otherIndexes.reduce((sum, index) => sum + minWidths[index], 0);
+    const startTotal = startWidths.reduce((sum, width) => sum + width, 0);
+    const activeMin = minWidths[columnIndex];
+    const activeMax = Math.max(activeMin, targetWidth - otherMinTotal);
+    const activeWidth = Math.min(
+      activeMax,
+      Math.max(activeMin, Math.round(startWidths[columnIndex] + delta)),
+    );
+    const actualDelta = activeWidth - startWidths[columnIndex];
+
+    nextWidths[columnIndex] = activeWidth;
+
+    const overflow = startTotal + actualDelta - targetWidth;
+    if (overflow > 0) {
+      reduceWidthsEvenly(nextWidths, minWidths, overflow, otherIndexes);
+    }
+
+    return normalizeWidthsToAvailable(nextWidths, labels, targetWidth, {
+      preferPriority: false,
+      fillAvailable: false,
+    });
+  }
+
+  function expandWidthsToAvailable(widths, labels, availableWidth) {
+    return normalizeWidthsToAvailable(widths, labels, availableWidth, {
+      preferPriority: true,
+    });
+  }
+
+  function applyColumnWidths(tableShell, widths, options = {}) {
+    const headerTable = tableShell.querySelector(".ae-history-table--head");
+    const bodyTable = tableShell.querySelector(".ae-history-table--body");
+    const headerCols = [...(headerTable?.querySelectorAll("colgroup col") || [])];
+    const bodyCols = [...(bodyTable?.querySelectorAll("colgroup col") || [])];
+    const bodyWrap =
+      tableShell.querySelector(":scope > .ae-table-body-wrap") ||
+      tableShell.querySelector(".ae-table-body-wrap");
+    if (!headerTable || !bodyTable || !headerCols.length || !bodyCols.length) {
+      return widths;
+    }
+
+    const count = Math.min(headerCols.length, bodyCols.length, widths.length);
+    const normalizedWidths = widths.slice(0, count).map((width, index) => {
+      const label = tableShell.__aeColumnLabels?.[index] || "";
+      return Math.max(getColumnMinWidth(label), Math.round(Number(width) || 0));
+    });
+
+    const availableWidth = getAvailableTableWidth(tableShell);
+    const finalWidths = normalizeWidthsToAvailable(
+      normalizedWidths,
+      tableShell.__aeColumnLabels || [],
+      availableWidth,
+      {
+        preferPriority: options.preferPriority !== false,
+        fillAvailable: options.fillAvailable !== false,
+      },
+    );
+
+    finalWidths.forEach((width, index) => {
+      headerCols[index].style.width = `${width}px`;
+      bodyCols[index].style.width = `${width}px`;
+    });
+
+    const tableWidth = finalWidths.reduce((sum, width) => sum + width, 0);
+    headerTable.style.width = `${tableWidth}px`;
+    headerTable.style.minWidth = `${tableWidth}px`;
+    bodyTable.style.width = `${tableWidth}px`;
+    bodyTable.style.minWidth = `${tableWidth}px`;
+
+    if (options.persist && tableShell.__aeResizeStorageKey) {
+      try {
+        localStorage.setItem(tableShell.__aeResizeStorageKey, JSON.stringify(finalWidths));
+      } catch (error) {
+        // localStorage puede estar bloqueado por políticas del navegador.
+      }
+    }
+
+    return finalWidths;
+  }
+
+  function getInitialColumnWidths(tableShell) {
+    const headerTable = tableShell.querySelector(".ae-history-table--head");
+    const bodyWrap =
+      tableShell.querySelector(":scope > .ae-table-body-wrap") ||
+      tableShell.querySelector(".ae-table-body-wrap");
+    const headerCols = [...(headerTable?.querySelectorAll("colgroup col") || [])];
+    const headerCells = [...(headerTable?.querySelectorAll("thead th") || [])];
+    const labels = headerCells.map((cell) => cell.textContent || "");
+    tableShell.__aeColumnLabels = labels;
+
+    if (tableShell.__aeResizeStorageKey) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(tableShell.__aeResizeStorageKey) || "null");
+        if (
+          Array.isArray(saved) &&
+          saved.length === headerCols.length &&
+          saved.every((width) => Number.isFinite(Number(width)))
+        ) {
+          return normalizeWidthsToAvailable(
+            saved.map((width, index) =>
+              Math.max(getColumnMinWidth(labels[index]), Math.round(Number(width))),
+            ),
+            labels,
+            getAvailableTableWidth(tableShell),
+            { preferPriority: false },
+          );
+        }
+      } catch (error) {
+        // Se ignoran preferencias corruptas.
+      }
+    }
+
+    const availableWidth = getAvailableTableWidth(tableShell);
+    const fallbackWidth = availableWidth / Math.max(1, headerCols.length);
+    const widths = headerCols.map((col, index) =>
+      Math.max(
+        getColumnMinWidth(labels[index]),
+        getColWidthPx(col, headerCells[index]?.getBoundingClientRect().width || fallbackWidth, availableWidth),
+      ),
+    );
+
+    return expandWidthsToAvailable(widths, labels, availableWidth);
+  }
+
+  function getCurrentColumnWidths(tableShell) {
+    const headerTable = tableShell.querySelector(".ae-history-table--head");
+    const bodyTable = tableShell.querySelector(".ae-history-table--body");
+    const bodyCols = [...(bodyTable?.querySelectorAll("colgroup col") || [])];
+    const headerCells = [...(headerTable?.querySelectorAll("thead th") || [])];
+    const labels = tableShell.__aeColumnLabels?.length
+      ? tableShell.__aeColumnLabels
+      : headerCells.map((cell) => cell.textContent || "");
+    tableShell.__aeColumnLabels = labels;
+
+    if (!bodyCols.length) {
+      return getInitialColumnWidths(tableShell);
+    }
+
+    const availableWidth = getAvailableTableWidth(tableShell);
+    return bodyCols.map((col, index) =>
+      getColWidthPx(
+        col,
+        headerCells[index]?.getBoundingClientRect().width || getColumnMinWidth(labels[index]),
+        availableWidth,
+      ),
+    );
+  }
+
+  function bindColumnResizers(moduleRoot) {
+    const tableShells = moduleRoot?.querySelectorAll(".ae-table-shell");
+    if (!tableShells?.length) {
+      return;
+    }
+
+    tableShells.forEach((tableShell, shellIndex) => {
+      const headerCells = [...tableShell.querySelectorAll(".ae-history-table--head thead th")];
+      if (!headerCells.length) {
+        return;
+      }
+
+      const labels = headerCells.map((cell) => cell.textContent || "");
+      tableShell.__aeColumnLabels = labels;
+      tableShell.__aeResizeStorageKey = getShellResizeKey(moduleRoot, tableShell, shellIndex, labels);
+
+      if (tableShell.dataset.columnWidthsReady !== "true") {
+        const initialWidths = getInitialColumnWidths(tableShell);
+        applyColumnWidths(tableShell, initialWidths);
+        tableShell.__aeCompactColumns = false;
+        tableShell.dataset.columnWidthsReady = "true";
+      }
+
+      if (tableShell.dataset.columnResizeBound === "true") {
+        return;
+      }
+
+      headerCells.forEach((headerCell, columnIndex) => {
+        headerCell.classList.add("ae-resizable-th");
+        if (!headerCell.querySelector(":scope > .ae-column-resizer")) {
+          const handle = document.createElement("span");
+          handle.className = "ae-column-resizer";
+          handle.setAttribute("aria-hidden", "true");
+          headerCell.appendChild(handle);
+        }
+
+        const handle = headerCell.querySelector(":scope > .ae-column-resizer");
+        handle.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const startX = event.clientX;
+          const startWidths = applyColumnWidths(tableShell, getCurrentColumnWidths(tableShell), {
+            preferPriority: false,
+            fillAvailable: tableShell.__aeCompactColumns !== true,
+          });
+          const availableWidth = getAvailableTableWidth(tableShell);
+
+          document.body.classList.add("ae-column-resizing");
+          handle.setPointerCapture?.(event.pointerId);
+
+          const moveHandler = (moveEvent) => {
+            const delta = moveEvent.clientX - startX;
+            const nextWidths = resizeColumnWithinAvailable(
+              startWidths,
+              labels,
+              columnIndex,
+              delta,
+              availableWidth,
+            );
+            tableShell.__aeCompactColumns =
+              nextWidths.reduce((sum, width) => sum + width, 0) < availableWidth;
+            applyColumnWidths(tableShell, nextWidths, {
+              persist: true,
+              preferPriority: false,
+              fillAvailable: false,
+            });
+            syncTableWidths(moduleRoot);
+          };
+
+          const upHandler = () => {
+            document.body.classList.remove("ae-column-resizing");
+            document.removeEventListener("pointermove", moveHandler);
+            document.removeEventListener("pointerup", upHandler);
+            document.removeEventListener("pointercancel", upHandler);
+            syncTableWidths(moduleRoot);
+          };
+
+          document.addEventListener("pointermove", moveHandler);
+          document.addEventListener("pointerup", upHandler);
+          document.addEventListener("pointercancel", upHandler);
+        });
+      });
+
+      tableShell.dataset.columnResizeBound = "true";
     });
   }
 
@@ -1602,8 +2073,11 @@
       bodyWrap.dataset.scrollBound = "true";
     });
 
+    bindColumnResizers(moduleRoot);
+
     if (moduleRoot && moduleRoot.dataset.resizeBound !== "true") {
       const updateHeight = () => {
+        bindColumnResizers(moduleRoot);
         syncScrollableHeight(moduleRoot);
         syncTableWidths(moduleRoot);
       };
@@ -1644,6 +2118,7 @@
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         const moduleRoot = getModuleRoot(config.prefix);
+        bindColumnResizers(moduleRoot);
         syncScrollableHeight(moduleRoot);
         syncTableWidths(moduleRoot);
       }),
