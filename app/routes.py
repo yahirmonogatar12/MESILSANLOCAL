@@ -408,6 +408,50 @@ def login_requerido(f):
     return decorada
 
 
+PUBLIC_ROUTE_ENDPOINTS = {
+    "index",
+    "inicio",
+    "login",
+    "api_health",
+    "favicon",
+    "front_plan_static",
+    "static",
+}
+
+
+def _request_expects_json():
+    accept = request.headers.get("Accept", "")
+    requested_with = request.headers.get("X-Requested-With", "")
+    return (
+        request.path.startswith("/api/")
+        or request.is_json
+        or "application/json" in accept
+        or requested_with == "XMLHttpRequest"
+    )
+
+
+@app.before_request
+def require_login_by_default():
+    """Protect routes by default and keep a short explicit public allowlist."""
+    endpoint = request.endpoint
+
+    # Let Flask resolve 404/405 normally when there is no matched endpoint.
+    if endpoint is None:
+        return None
+
+    # Static assets and a small set of public endpoints remain accessible.
+    if endpoint in PUBLIC_ROUTE_ENDPOINTS or endpoint.endswith(".static"):
+        return None
+
+    if "usuario" in session:
+        return None
+
+    if _request_expects_json():
+        return jsonify({"error": "Usuario no autenticado", "redirect": "/login"}), 401
+
+    return redirect(url_for("inicio"))
+
+
 def render_landing_page(login_error=None, login_username=None):
     """Renderiza la landing page con o sin sesión activa."""
     authenticated = "usuario" in session
