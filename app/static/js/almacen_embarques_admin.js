@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260422g";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260417h";
 
   const movementModuleState = {
     rows: [],
@@ -38,7 +38,7 @@
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260422g")) {
+      if (!currentLink.getAttribute("href")?.includes("20260417h")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -95,63 +95,6 @@
       statusLabel: document.getElementById(`${prefix}-status`),
       tableBody: document.getElementById(`${prefix}-tbody`),
     };
-  }
-
-  function normalizeModuleTableColumns(moduleRoot, prefix) {
-    if (!moduleRoot || moduleRoot.dataset[`normalized${prefix}`] === "true") {
-      return;
-    }
-
-    const labelsToRemove =
-      prefix === "almacen-embarques-movements"
-        ? ["Zona", "Ubicación / Destino"]
-        : [];
-
-    if (!labelsToRemove.length) {
-      moduleRoot.dataset[`normalized${prefix}`] = "true";
-      return;
-    }
-
-    const headTable = moduleRoot.querySelector(".ae-history-table--head");
-    const bodyTable = moduleRoot.querySelector(".ae-history-table--body");
-    const headerRow = headTable?.querySelector("thead tr");
-    if (!headTable || !bodyTable || !headerRow) {
-      return;
-    }
-
-    const indexesToRemove = Array.from(headerRow.children)
-      .map((cell, index) => ({
-        index,
-        label: String(cell.textContent || "").trim(),
-      }))
-      .filter(({ label }) => labelsToRemove.includes(label))
-      .map(({ index }) => index)
-      .sort((a, b) => b - a);
-
-    if (!indexesToRemove.length) {
-      moduleRoot.dataset[`normalized${prefix}`] = "true";
-      return;
-    }
-
-    [headTable, bodyTable].forEach((table) => {
-      table.querySelectorAll("colgroup").forEach((colgroup) => {
-        indexesToRemove.forEach((index) => {
-          colgroup.children[index]?.remove();
-        });
-      });
-    });
-
-    indexesToRemove.forEach((index) => {
-      headerRow.children[index]?.remove();
-    });
-
-    bodyTable.querySelectorAll("tbody tr").forEach((row) => {
-      indexesToRemove.forEach((index) => {
-        row.children[index]?.remove();
-      });
-    });
-
-    moduleRoot.dataset[`normalized${prefix}`] = "true";
   }
 
   function getModuleRoot(prefix) {
@@ -247,173 +190,11 @@
       }
 
       const scrollbarWidth = Math.max(0, bodyWrap.offsetWidth - bodyWrap.clientWidth);
-      const explicitWidth = getExplicitTableWidth(headerTable);
-      const targetWidth = Math.max(bodyWrap.clientWidth, explicitWidth || bodyTable.scrollWidth);
+      const targetWidth = Math.max(bodyWrap.clientWidth, bodyTable.scrollWidth);
 
       headerWrap.style.paddingRight = `${scrollbarWidth}px`;
       headerTable.style.width = `${targetWidth}px`;
       bodyTable.style.width = `${targetWidth}px`;
-    });
-  }
-
-  function getExplicitTableWidth(table) {
-    const cols = table?.querySelectorAll("colgroup col");
-    if (!cols?.length) {
-      return 0;
-    }
-
-    return Array.from(cols).reduce((total, col) => {
-      const width = parseFloat(col.style.width || "0");
-      return total + (Number.isFinite(width) ? width : 0);
-    }, 0);
-  }
-
-  function getHeaderCellMinimumWidth(cell) {
-    const headerText = String(cell?.textContent || "")
-      .trim()
-      .toLowerCase();
-
-    if (headerText === "acción" || headerText === "accion") {
-      return 180;
-    }
-
-    if (headerText === "departure") {
-      return 120;
-    }
-
-    if (headerText.includes("ubicación") || headerText.includes("destino")) {
-      return 160;
-    }
-
-    if (headerText.includes("folio")) {
-      return 180;
-    }
-
-    if (headerText.includes("no. parte")) {
-      return 140;
-    }
-
-    if (headerText.includes("modelo")) {
-      return 140;
-    }
-
-    return 72;
-  }
-
-  function freezeShellColumnWidths(shell) {
-    if (!shell || shell.dataset.colWidthsReady === "true") {
-      return;
-    }
-
-    const headerTable = shell.querySelector(".ae-history-table--head");
-    const bodyTable = shell.querySelector(".ae-history-table--body");
-    const headerCells = headerTable?.querySelectorAll("thead th");
-    const headerCols = headerTable?.querySelectorAll("colgroup col");
-    const bodyCols = bodyTable?.querySelectorAll("colgroup col");
-    if (!headerTable || !bodyTable || !headerCells?.length || !headerCols?.length || !bodyCols?.length) {
-      return;
-    }
-
-    const widths = Array.from(headerCells).map((cell) =>
-      Math.max(
-        getHeaderCellMinimumWidth(cell),
-        Math.ceil(cell.getBoundingClientRect().width),
-      ),
-    );
-
-    widths.forEach((width, index) => {
-      [headerCols[index], bodyCols[index]].forEach((col) => {
-        if (!col) {
-          return;
-        }
-        col.style.width = `${width}px`;
-        col.style.minWidth = `${width}px`;
-        col.style.maxWidth = `${width}px`;
-      });
-    });
-
-    const totalWidth = widths.reduce((sum, width) => sum + width, 0);
-    headerTable.style.width = `${totalWidth}px`;
-    bodyTable.style.width = `${totalWidth}px`;
-    shell.dataset.colWidthsReady = "true";
-  }
-
-  function updateShellColumnWidth(shell, columnIndex, nextWidth) {
-    const headerTable = shell?.querySelector(".ae-history-table--head");
-    const bodyTable = shell?.querySelector(".ae-history-table--body");
-    const headerCols = headerTable?.querySelectorAll("colgroup col");
-    const bodyCols = bodyTable?.querySelectorAll("colgroup col");
-    if (!headerTable || !bodyTable || !headerCols?.[columnIndex] || !bodyCols?.[columnIndex]) {
-      return;
-    }
-
-    const headerCells = headerTable?.querySelectorAll("thead th");
-    const minWidth = headerCells?.[columnIndex]
-      ? getHeaderCellMinimumWidth(headerCells[columnIndex])
-      : 72;
-    const width = Math.max(minWidth, Math.round(nextWidth));
-    [headerCols[columnIndex], bodyCols[columnIndex]].forEach((col) => {
-      col.style.width = `${width}px`;
-      col.style.minWidth = `${width}px`;
-      col.style.maxWidth = `${width}px`;
-    });
-
-    const totalWidth = getExplicitTableWidth(headerTable);
-    headerTable.style.width = `${totalWidth}px`;
-    bodyTable.style.width = `${totalWidth}px`;
-  }
-
-  function initResizableShells(moduleRoot) {
-    const shells = moduleRoot?.querySelectorAll(".ae-table-shell");
-    if (!shells?.length) {
-      return;
-    }
-
-    shells.forEach((shell) => {
-      freezeShellColumnWidths(shell);
-
-      const headerTable = shell.querySelector(".ae-history-table--head");
-      const headerCells = headerTable?.querySelectorAll("thead th");
-      if (!headerTable || !headerCells?.length || shell.dataset.resizeReady === "true") {
-        return;
-      }
-
-      headerCells.forEach((cell, index) => {
-        if (cell.querySelector(".ae-col-resizer")) {
-          return;
-        }
-
-        const handle = document.createElement("div");
-        handle.className = "ae-col-resizer";
-        handle.setAttribute("data-column-index", String(index));
-        handle.addEventListener("mousedown", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-
-          const startX = event.clientX;
-          const startWidth = cell.getBoundingClientRect().width;
-          document.body.classList.add("ae-col-resizing");
-
-          const onMouseMove = (moveEvent) => {
-            const deltaX = moveEvent.clientX - startX;
-            updateShellColumnWidth(shell, index, startWidth + deltaX);
-            syncTableWidths(moduleRoot);
-          };
-
-          const onMouseUp = () => {
-            document.body.classList.remove("ae-col-resizing");
-            window.removeEventListener("mousemove", onMouseMove);
-            window.removeEventListener("mouseup", onMouseUp);
-          };
-
-          window.addEventListener("mousemove", onMouseMove);
-          window.addEventListener("mouseup", onMouseUp);
-        });
-
-        cell.appendChild(handle);
-      });
-
-      shell.dataset.resizeReady = "true";
     });
   }
 
@@ -454,6 +235,18 @@
         type: "integer",
         previous: getMovementQuantity(row),
       },
+      {
+        name: "zona",
+        label: "Zona",
+        type: "text",
+        previous: row.zone_code || "",
+      },
+      {
+        name: "ubicacion_destino",
+        label: "Ubicación / Destino",
+        type: "text",
+        previous: getMovementLocationValue(row),
+      },
     ];
 
     if (row.movement_type === "exit") {
@@ -474,6 +267,10 @@
         return getMovementDateValue(row);
       case "cantidad":
         return String(getMovementQuantity(row) ?? "");
+      case "zona":
+        return row.zone_code || "";
+      case "ubicacion_destino":
+        return getMovementLocationValue(row);
       case "departure":
         return row.departure_code || "";
       default:
@@ -517,9 +314,11 @@
         <td>${formatNumber(getMovementQuantity(row))}</td>
         <td>${escapeHtml(row.product_model || "-")}</td>
         <td>${escapeHtml(row.customer || "-")}</td>
+        <td>${escapeHtml(row.zone_code || "-")}</td>
+        <td>${escapeHtml(getMovementLocationValue(row) || "-")}</td>
         <td>${escapeHtml(row.departure_code || "-")}</td>
         <td>
-          <div class="ae-inline-actions ae-inline-actions--row">
+          <div class="ae-inline-actions">
             <button
               type="button"
               class="ae-btn-inline ae-btn-inline-edit"
@@ -553,6 +352,8 @@
         <td class="ae-edit-cell">${getEditableInputMarkup("cantidad", row)}</td>
         <td>${escapeHtml(row.product_model || "-")}</td>
         <td>${escapeHtml(row.customer || "-")}</td>
+        <td class="ae-edit-cell">${getEditableInputMarkup("zona", row)}</td>
+        <td class="ae-edit-cell">${getEditableInputMarkup("ubicacion_destino", row)}</td>
         <td class="ae-edit-cell">${getEditableInputMarkup("departure", row)}</td>
         <td>
           <div class="ae-inline-actions">
@@ -1759,14 +1560,12 @@
   }
 
   function bindModule(config) {
-    const moduleRoot = getModuleRoot(config.prefix);
-    normalizeModuleTableColumns(moduleRoot, config.prefix);
-
     const elements = getElements(config.prefix);
     if (!elements.tableBody) {
       return;
     }
 
+    const moduleRoot = getModuleRoot(config.prefix);
     const tableShells = moduleRoot?.querySelectorAll(".ae-table-shell") || [];
     tableShells.forEach((shell) => {
       const headerWrap = shell.querySelector(":scope > .ae-table-head");
@@ -1782,7 +1581,6 @@
 
     if (moduleRoot && moduleRoot.dataset.resizeBound !== "true") {
       const updateHeight = () => {
-        initResizableShells(moduleRoot);
         syncScrollableHeight(moduleRoot);
         syncTableWidths(moduleRoot);
       };
@@ -1835,7 +1633,7 @@
       prefix: "almacen-embarques-movements",
       apiUrl: "/api/almacen-embarques/movimientos",
       exportUrl: "/api/almacen-embarques/movimientos/export",
-      colspan: 10,
+      colspan: 12,
       emptyMessage: "No hay movimientos disponibles para los filtros actuales.",
       renderer: renderMovementsRows,
     });

@@ -39,7 +39,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
-    <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260422g') }}">
+    <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260424a') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -596,16 +596,6 @@
 
         <!-- Contenedor específico para Historial de Cambios de Parámetros ICT -->
         <div id="historial-cambios-parametros-ict-unique-container" style="display: none;">
-            <!-- El contenido se cargará dinámicamente con AJAX -->
-        </div>
-
-        <!-- Contenedor específico para Historial Vision -->
-        <div id="historial-vision-unique-container" style="display: none;">
-            <!-- El contenido se cargará dinámicamente con AJAX -->
-        </div>
-
-        <!-- Contenedor específico para Historial Vision % Pass/Fail -->
-        <div id="historial-vision-pass-fail-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -1934,7 +1924,6 @@
                 // 3. CARGAR EL CONTENIDO DINÁMICAMENTE
                 return fetch(templatePath, {
                     method: 'GET',
-                    cache: 'no-store',
                     credentials: 'same-origin', // Incluir cookies de sesión
                     signal: controller.signal,
                     headers: {

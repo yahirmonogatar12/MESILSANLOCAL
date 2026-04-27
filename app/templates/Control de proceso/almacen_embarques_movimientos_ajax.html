@@ -13,7 +13,7 @@
                 <input
                     type="text"
                     id="almacen-embarques-movements-search"
-                    placeholder="No. parte, folio, departure, cliente o usuario"
+                    placeholder="No. parte, folio, departure, zona, ubicación, cliente o usuario"
                 >
             </div>
             <div class="ae-filter-group">
@@ -55,18 +55,20 @@
         </div>
         <div class="ae-table-shell">
             <div class="ae-table-head">
-                <table class="ae-history-table ae-history-table--movements ae-history-table--head">
+                <table class="ae-history-table ae-history-table--head">
                     <colgroup>
-                        <col style="width: 8%;">
+                        <col style="width: 7%;">
                         <col style="width: 6%;">
                         <col style="width: 8%;">
-                        <col style="width: 16%;">
-                        <col style="width: 11%;">
-                        <col style="width: 7%;">
+                        <col style="width: 15%;">
                         <col style="width: 11%;">
                         <col style="width: 7%;">
                         <col style="width: 10%;">
-                        <col style="width: 16%;">
+                        <col style="width: 8%;">
+                        <col style="width: 7%;">
+                        <col style="width: 10%;">
+                        <col style="width: 5%;">
+                        <col style="width: 7%;">
                     </colgroup>
                     <thead>
                         <tr>
@@ -78,6 +80,8 @@
                             <th>Cantidad</th>
                             <th>Modelo</th>
                             <th>Cliente</th>
+                            <th>Zona</th>
+                            <th>Ubicación / Destino</th>
                             <th>Departure</th>
                             <th>Acción</th>
                         </tr>
@@ -85,22 +89,24 @@
                 </table>
             </div>
             <div class="ae-table-body-wrap">
-                <table class="ae-history-table ae-history-table--movements ae-history-table--body">
+                <table class="ae-history-table ae-history-table--body">
                     <colgroup>
-                        <col style="width: 8%;">
+                        <col style="width: 7%;">
                         <col style="width: 6%;">
                         <col style="width: 8%;">
-                        <col style="width: 16%;">
-                        <col style="width: 11%;">
-                        <col style="width: 7%;">
+                        <col style="width: 15%;">
                         <col style="width: 11%;">
                         <col style="width: 7%;">
                         <col style="width: 10%;">
-                        <col style="width: 16%;">
+                        <col style="width: 8%;">
+                        <col style="width: 7%;">
+                        <col style="width: 10%;">
+                        <col style="width: 5%;">
+                        <col style="width: 7%;">
                     </colgroup>
                     <tbody id="almacen-embarques-movements-tbody">
                         <tr>
-                            <td colspan="10" class="ae-empty-cell">Cargando movimientos...</td>
+                            <td colspan="12" class="ae-empty-cell">Cargando movimientos...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -109,4 +115,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260422g') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260424a') }}"></script>

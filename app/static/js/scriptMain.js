@@ -249,8 +249,6 @@ document.addEventListener("DOMContentLoaded", function () {
       "historial-ict-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
-      "historial-vision-unique-container",
-      "historial-vision-pass-fail-unique-container",
     ];
 
     controlResultadosAjaxContainers.forEach((containerId) => {
@@ -4363,8 +4361,6 @@ window.mostrarHistorialICT = function () {
     const controlResultadosContainers = [
       "control-resultados-info-container",
       "historial-aoi-unique-container",
-      "historial-vision-unique-container",
-      "historial-vision-pass-fail-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -4444,114 +4440,6 @@ window.mostrarHistorialICT = function () {
   }
 };
 
-// Función AJAX para Historial Vision - GLOBAL
-window.mostrarHistorialVision = function () {
-  try {
-    const controlResultadosButton = document.getElementById(
-      "Control de resultados",
-    );
-    if (controlResultadosButton) {
-      controlResultadosButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de resultados") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    if (typeof window.limpiarHistorialVision === "function") {
-      window.limpiarHistorialVision();
-    }
-
-    const controlResultadosContainers = [
-      "control-resultados-info-container",
-      "historial-aoi-unique-container",
-      "historial-ict-unique-container",
-      "historial-cambios-parametros-ict-unique-container",
-      "historial-maquina-ict-pass-fail-unique-container",
-      "historial-vision-unique-container",
-      "historial-vision-pass-fail-unique-container",
-    ];
-
-    controlResultadosContainers.forEach((containerId) => {
-      const container = document.getElementById(containerId);
-      if (container) {
-        container.style.display = "none";
-      }
-    });
-
-    const materialContainer = document.getElementById("material-container");
-    const controlResultadosContent = document.getElementById(
-      "control-resultados-content",
-    );
-    const controlResultadosContentArea = document.getElementById(
-      "control-resultados-content-area",
-    );
-
-    if (materialContainer) {
-      materialContainer.style.display = "block";
-    }
-
-    if (controlResultadosContent) {
-      controlResultadosContent.style.display = "block";
-      controlResultadosContent.style.width = "100%";
-      controlResultadosContent.style.maxWidth = "none";
-    }
-
-    if (controlResultadosContentArea) {
-      controlResultadosContentArea.style.display = "block";
-      controlResultadosContentArea.style.width = "100%";
-      controlResultadosContentArea.style.maxWidth = "none";
-      controlResultadosContentArea.style.margin = "0";
-      controlResultadosContentArea.style.paddingRight = "0";
-    }
-
-    const historialVisionContainer = document.getElementById(
-      "historial-vision-unique-container",
-    );
-    if (!historialVisionContainer) {
-      console.error("El contenedor Historial Vision no existe en el HTML");
-      return;
-    }
-
-    historialVisionContainer.style.display = "block";
-    historialVisionContainer.style.opacity = "1";
-    historialVisionContainer.style.width = "100%";
-    historialVisionContainer.style.maxWidth = "none";
-    historialVisionContainer.style.margin = "0";
-    historialVisionContainer.style.visibility = "visible";
-
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window.cargarContenidoDinamico(
-        "historial-vision-unique-container",
-        "/historial-vision-ajax",
-        () => {
-          const intentarInicializarVision = () => {
-            if (
-              typeof window.initializeHistorialVisionEventListeners ===
-              "function"
-            ) {
-              window.initializeHistorialVisionEventListeners();
-            }
-            if (typeof window.loadHistorialVisionData === "function") {
-              window.loadHistorialVisionData();
-            }
-          };
-
-          intentarInicializarVision();
-          setTimeout(intentarInicializarVision, 200);
-        },
-      );
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarHistorialVision:", error);
-  }
-};
-
 // ============================================================
 // Función AJAX para Historial de Maquinas ICT % Pass/Fail
 // ============================================================
@@ -4580,8 +4468,6 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
       "historial-ict-unique-container",
       "historial-cambios-parametros-ict-unique-container",
       "historial-maquina-ict-pass-fail-unique-container",
-      "historial-vision-unique-container",
-      "historial-vision-pass-fail-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -4654,119 +4540,7 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
 };
 
 // ============================================================
-// Funcion AJAX para Historial de Maquina Vision % Pass/Fail
-// ============================================================
-window.mostrarHistorialVisionPassFail = function () {
-  try {
-    const controlResultadosButton = document.getElementById(
-      "Control de resultados",
-    );
-    if (controlResultadosButton) {
-      controlResultadosButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de resultados") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    if (typeof window.limpiarHistorialVisionPassFail === "function") {
-      window.limpiarHistorialVisionPassFail();
-    }
-
-    const controlResultadosContainers = [
-      "control-resultados-info-container",
-      "historial-aoi-unique-container",
-      "historial-ict-unique-container",
-      "historial-cambios-parametros-ict-unique-container",
-      "historial-maquina-ict-pass-fail-unique-container",
-      "historial-vision-unique-container",
-      "historial-vision-pass-fail-unique-container",
-    ];
-
-    controlResultadosContainers.forEach((containerId) => {
-      const container = document.getElementById(containerId);
-      if (container) {
-        container.style.display = "none";
-      }
-    });
-
-    const materialContainer = document.getElementById("material-container");
-    const controlResultadosContent = document.getElementById(
-      "control-resultados-content",
-    );
-    const controlResultadosContentArea = document.getElementById(
-      "control-resultados-content-area",
-    );
-
-    if (materialContainer) {
-      materialContainer.style.display = "block";
-    }
-
-    if (controlResultadosContent) {
-      controlResultadosContent.style.display = "block";
-      controlResultadosContent.style.width = "100%";
-      controlResultadosContent.style.maxWidth = "none";
-    }
-
-    if (controlResultadosContentArea) {
-      controlResultadosContentArea.style.display = "block";
-      controlResultadosContentArea.style.width = "100%";
-      controlResultadosContentArea.style.maxWidth = "none";
-      controlResultadosContentArea.style.margin = "0";
-      controlResultadosContentArea.style.paddingRight = "0";
-    }
-
-    const historialVisionPassFailContainer = document.getElementById(
-      "historial-vision-pass-fail-unique-container",
-    );
-    if (!historialVisionPassFailContainer) {
-      console.error(
-        "El contenedor Historial Vision % Pass/Fail no existe en el HTML",
-      );
-      return;
-    }
-
-    historialVisionPassFailContainer.style.display = "block";
-    historialVisionPassFailContainer.style.opacity = "1";
-    historialVisionPassFailContainer.style.width = "100%";
-    historialVisionPassFailContainer.style.maxWidth = "none";
-    historialVisionPassFailContainer.style.margin = "0";
-    historialVisionPassFailContainer.style.visibility = "visible";
-
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window.cargarContenidoDinamico(
-        "historial-vision-pass-fail-unique-container",
-        "/historial-vision-pass-fail-ajax",
-        () => {
-          const intentarInicializarVisionPassFail = () => {
-            if (
-              typeof window.initializeHistorialVisionPassFailEventListeners ===
-              "function"
-            ) {
-              window.initializeHistorialVisionPassFailEventListeners();
-            }
-            if (typeof window.loadHistorialVisionPassFailData === "function") {
-              window.loadHistorialVisionPassFailData();
-            }
-          };
-
-          intentarInicializarVisionPassFail();
-          setTimeout(intentarInicializarVisionPassFail, 200);
-        },
-      );
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarHistorialVisionPassFail:", error);
-  }
-};
-
-// ============================================================
-// Funcion AJAX para Historial de Cambios de Parametros ICT
+// Función AJAX para Historial de Cambios de Parámetros ICT
 // ============================================================
 window.mostrarHistorialCambiosParametrosICT = function () {
   try {
@@ -4791,8 +4565,6 @@ window.mostrarHistorialCambiosParametrosICT = function () {
       "control-resultados-info-container",
       "historial-aoi-unique-container",
       "historial-ict-unique-container",
-      "historial-vision-unique-container",
-      "historial-vision-pass-fail-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {

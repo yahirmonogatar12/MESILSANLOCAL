@@ -13,7 +13,7 @@
                 <input
                     type="text"
                     id="almacen-embarques-exits-search"
-                    placeholder="No. parte, folio, departure, cliente o usuario"
+                    placeholder="No. parte, folio, departure, destino, motivo, cliente o usuario"
                 >
             </div>
             <div class="ae-filter-group">
@@ -46,17 +46,19 @@
         </div>
         <div class="ae-table-shell">
             <div class="ae-table-head">
-                <table class="ae-history-table ae-history-table--exits ae-history-table--head">
+                <table class="ae-history-table ae-history-table--head">
                     <colgroup>
-                        <col style="width: 8%;">
+                        <col style="width: 7%;">
                         <col style="width: 6%;">
-                        <col style="width: 18%;">
-                        <col style="width: 11%;">
+                        <col style="width: 16%;">
+                        <col style="width: 10%;">
+                        <col style="width: 7%;">
+                        <col style="width: 12%;">
+                        <col style="width: 12%;">
+                        <col style="width: 6%;">
                         <col style="width: 8%;">
-                        <col style="width: 15%;">
-                        <col style="width: 13%;">
                         <col style="width: 8%;">
-                        <col style="width: 13%;">
+                        <col style="width: 8%;">
                     </colgroup>
                     <thead>
                         <tr>
@@ -68,27 +70,31 @@
                             <th>Departure</th>
                             <th>Modelo</th>
                             <th>Cliente</th>
+                            <th>Destino</th>
+                            <th>Motivo</th>
                             <th>Usuario</th>
                         </tr>
                     </thead>
                 </table>
             </div>
             <div class="ae-table-body-wrap">
-                <table class="ae-history-table ae-history-table--exits ae-history-table--body">
+                <table class="ae-history-table ae-history-table--body">
                     <colgroup>
-                        <col style="width: 8%;">
+                        <col style="width: 7%;">
                         <col style="width: 6%;">
-                        <col style="width: 18%;">
-                        <col style="width: 11%;">
+                        <col style="width: 16%;">
+                        <col style="width: 10%;">
+                        <col style="width: 7%;">
+                        <col style="width: 12%;">
+                        <col style="width: 12%;">
+                        <col style="width: 6%;">
                         <col style="width: 8%;">
-                        <col style="width: 15%;">
-                        <col style="width: 13%;">
                         <col style="width: 8%;">
-                        <col style="width: 13%;">
+                        <col style="width: 8%;">
                     </colgroup>
                     <tbody id="almacen-embarques-exits-tbody">
                         <tr>
-                            <td colspan="9" class="ae-empty-cell">Cargando historial...</td>
+                            <td colspan="11" class="ae-empty-cell">Cargando historial...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -97,4 +103,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260422g') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260416g') }}"></script>

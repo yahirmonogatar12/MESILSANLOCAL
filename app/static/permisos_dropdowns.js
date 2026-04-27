@@ -332,12 +332,12 @@ const allDropdowns = [
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
         "seccion": "Historial de maquinas calidad",
-        "boton": "Historial de maquina vision"
+        "boton": "Historial de maquina MCU"
     },
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",
         "seccion": "Historial de maquinas calidad",
-        "boton": "Historial de maquina Vision % Pass/Fail"
+        "boton": "Historial de maquina de TOUCH"
     },
     {
         "pagina": "LISTA_DE_CONTROL_DE_RESULTADOS",

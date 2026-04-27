@@ -2249,7 +2249,7 @@ def delete_shipping_movement_record(
             return {
                 "success": False,
                 "error": "No fue posible eliminar el movimiento solicitado",
-            }, 404
+            }, 500
 
         adjusted_at = to_sql_datetime()
         insert_movement_adjustment_record(
@@ -2259,17 +2259,8 @@ def delete_shipping_movement_record(
             deleted_folio,
             normalized_part,
             old_snapshot,
-            {
-                "deleted": True,
-                "movement_type": normalized_type,
-                "record_id": record_id_value,
-            },
-            {
-                "deleted": {
-                    "previous": False,
-                    "new": True,
-                }
-            },
+            {},
+            {"deleted": True},
             adjusted_by,
             adjusted_at,
             notes=notes,

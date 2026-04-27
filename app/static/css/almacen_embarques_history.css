@@ -27,13 +27,13 @@
 #almacen-embarques-entradas-unique-container[style*="display: block"],
 #almacen-embarques-salidas-unique-container[style*="display: block"],
 #almacen-embarques-retorno-unique-container[style*="display: block"],
-#almacen-embarques-movimientos-unique-container[style*="display: block"],   
+#almacen-embarques-movimientos-unique-container[style*="display: block"],
 #almacen-embarques-inventario-general-unique-container[style*="display: block"] {
     overflow: hidden !important;
     min-height: 0 !important;
     height: 100% !important;
     max-height: 100% !important;
-    padding: 5px !important;    
+    padding: 5px !important;
     margin-top: 0 !important;
     border: none !important;
     background: transparent !important;
@@ -655,8 +655,8 @@
 
 .ae-btn-inline-delete {
     color: #ffffff;
-    background: linear-gradient(135deg, #c0392b 0%, #922b21 100%);
-    box-shadow: 0 2px 8px rgba(192, 57, 43, 0.34);
+    background: linear-gradient(135deg, #e74c3c 0%, #b83227 100%);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
 }
 
 .ae-table-shell {
@@ -724,47 +724,18 @@
 
 .ae-history-table {
     width: 100%;
-    min-width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     background-color: var(--ilsan-dark-secondary);
     table-layout: fixed;
 }
 
-.ae-history-table--entries {
-    min-width: 1160px;
-}
-
-.ae-history-table--exits {
-    min-width: 1120px;
-}
-
-.ae-history-table--returns {
-    min-width: 980px;
-}
-
-.ae-history-table--movements {
-    min-width: 1220px;
-}
-
-.ae-history-table--inventory {
-    min-width: 1120px;
-}
-
-.ae-history-table--closure-preview {
-    min-width: 1160px;
-}
-
-.ae-history-table--closure-history {
-    min-width: 1080px;
-}
-
 .ae-history-table th,
 .ae-history-table td {
     border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 8px 8px;
+    padding: 8px 6px;
     text-align: center;
-    font-size: clamp(0.75rem, 0.68rem + 0.18vw, 0.82rem);
+    font-size: 0.8rem;
 }
 
 .ae-history-table thead th {
@@ -774,7 +745,7 @@
     color: var(--ilsan-text-light);
     font-weight: 600;
     text-transform: uppercase;
-    font-size: clamp(0.66rem, 0.61rem + 0.16vw, 0.72rem);
+    font-size: 0.7rem;
     letter-spacing: 0.3px;
     white-space: nowrap;
     background-clip: border-box;
@@ -784,7 +755,6 @@
     height: 44px;
     line-height: 1.15;
     vertical-align: middle;
-    position: relative;
 }
 
 .ae-history-table thead th:first-child {
@@ -799,7 +769,7 @@
     color: var(--ilsan-text-secondary);
     background-color: var(--ilsan-dark-secondary);
     transition: background-color 0.2s ease;
-    max-width: 280px;
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -856,24 +826,10 @@
 
 .ae-inline-actions {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    align-items: stretch;
-}
-
-.ae-inline-actions--row {
     flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: nowrap;
     gap: 6px;
-    width: 100%;
-}
-
-.ae-inline-actions--row .ae-btn-inline {
-    min-width: 68px;
-    padding: 7px 8px;
-    font-size: 0.72rem;
+    align-items: center;
+    justify-content: center;
     white-space: nowrap;
 }
 
@@ -977,6 +933,17 @@
     gap: 16px;
 }
 
+.ae-confirm-modal__warning {
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(231, 76, 60, 0.35);
+    border-radius: 10px;
+    color: #ffd5cf;
+    background: rgba(231, 76, 60, 0.12);
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+
 .ae-confirm-modal__column {
     padding: 12px 14px;
     background: #242938;
@@ -1040,31 +1007,10 @@
     min-height: 96px;
 }
 
-.ae-confirm-modal__field input {
-    width: 100%;
-    background: #1c2230;
-    color: var(--ilsan-text-light);
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 0.86rem;
-}
-
-.ae-confirm-modal__field input:focus,
 .ae-confirm-modal__field textarea:focus {
     outline: none;
     border-color: var(--ilsan-accent-blue);
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.18);
-}
-
-.ae-confirm-modal__warning {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: rgba(192, 57, 43, 0.14);
-    border: 1px solid rgba(192, 57, 43, 0.22);
-    color: #ffd5cf;
-    font-size: 0.84rem;
-    line-height: 1.45;
 }
 
 .ae-confirm-modal__error {
@@ -1461,45 +1407,6 @@
     text-overflow: ellipsis;
 }
 
-.ae-history-table--movements.ae-history-table--body td:last-child,
-.ae-history-table--closure-history.ae-history-table--body td:last-child {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: nowrap;
-}
-
-.ae-col-resizer {
-    position: absolute;
-    top: 0;
-    right: -4px;
-    width: 10px;
-    height: 100%;
-    cursor: col-resize;
-    z-index: 3;
-}
-
-.ae-col-resizer::before {
-    content: "";
-    position: absolute;
-    top: 8px;
-    bottom: 8px;
-    left: 4px;
-    width: 2px;
-    border-radius: 999px;
-    background: rgba(143, 184, 255, 0.14);
-    transition: background-color 0.16s ease;
-}
-
-.ae-history-table thead th:hover .ae-col-resizer::before,
-.ae-col-resizer:hover::before {
-    background: rgba(143, 184, 255, 0.55);
-}
-
-body.ae-col-resizing {
-    cursor: col-resize !important;
-    user-select: none !important;
-}
-
 .ae-closure-history-hash {
     font-family: Consolas, "Courier New", monospace;
     font-size: 0.72rem;
@@ -1593,17 +1500,6 @@ body.ae-col-resizing {
         table-layout: fixed;
     }
 
-    .ae-history-table th,
-    .ae-history-table td {
-        padding: 7px 6px;
-        font-size: 0.74rem;
-    }
-
-    .ae-history-table thead th {
-        font-size: 0.64rem;
-        letter-spacing: 0.2px;
-    }
-
     .ae-inline-actions {
         flex-direction: row;
         justify-content: center;
@@ -1652,16 +1548,5 @@ body.ae-col-resizing {
         width: 100%;
         max-width: none;
         flex: initial;
-    }
-}
-
-@media (max-width: 1366px) {
-    .ae-history-table th,
-    .ae-history-table td {
-        padding: 7px 6px;
-    }
-
-    .ae-history-table tbody td {
-        max-width: 220px;
     }
 }
