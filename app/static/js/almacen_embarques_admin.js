@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260417h";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260427a";
 
   const movementModuleState = {
     rows: [],
@@ -38,7 +38,7 @@
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260417h")) {
+      if (!currentLink.getAttribute("href")?.includes("20260427a")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -1271,6 +1271,16 @@
               required
             >
           </div>
+          <div class="ae-confirm-modal__field">
+            <label for="ae-delete-notes">Comentario de eliminación</label>
+            <textarea
+              id="ae-delete-notes"
+              data-role="delete-notes"
+              rows="3"
+              placeholder="Describe por qué se elimina el movimiento"
+              required
+            ></textarea>
+          </div>
           <div class="ae-confirm-modal__error" data-role="delete-error"></div>
         </div>
         <div class="ae-confirm-modal__actions">
@@ -1341,6 +1351,10 @@
     if (passwordField) {
       passwordField.value = "";
     }
+    const notesField = modal.querySelector('[data-role="delete-notes"]');
+    if (notesField) {
+      notesField.value = "";
+    }
 
     setDeleteModalError("");
     modal.classList.add("is-open");
@@ -1361,12 +1375,20 @@
     }
 
     const passwordField = modal.querySelector('[data-role="delete-password"]');
+    const notesField = modal.querySelector('[data-role="delete-notes"]');
     const deleteButton = modal.querySelector('[data-action="submit-delete"]');
     const password = passwordField?.value?.trim() || "";
+    const notes = notesField?.value?.trim() || "";
 
     if (!password) {
       setDeleteModalError("Debes confirmar tu contraseña actual.");
       passwordField?.focus();
+      return;
+    }
+
+    if (!notes) {
+      setDeleteModalError("El comentario de eliminación es obligatorio.");
+      notesField?.focus();
       return;
     }
 
@@ -1388,6 +1410,7 @@
           },
           body: JSON.stringify({
             password,
+            notes,
           }),
         },
       );

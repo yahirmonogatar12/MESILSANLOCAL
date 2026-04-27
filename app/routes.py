@@ -108,6 +108,7 @@ from .shipping_material_api import (
     assign_exit_departure_value,
     delete_shipping_movement_record,
     get_departure_history_records,
+    get_dict_cursor,
     init_shipping_material_tables,
     register_shipping_material_routes,
 )
@@ -9788,7 +9789,7 @@ def _validar_password_usuario_actual(raw_password):
         if conn is None:
             raise RuntimeError("No se pudo obtener conexion a la base de datos")
 
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = conn.cursor()
         cursor.execute(
             """
             SELECT password_hash
@@ -9799,7 +9800,12 @@ def _validar_password_usuario_actual(raw_password):
             (usuario,),
         )
         usuario_row = cursor.fetchone()
-        password_hash_actual = (usuario_row or {}).get("password_hash") or ""
+        if isinstance(usuario_row, dict):
+            password_hash_actual = usuario_row.get("password_hash") or ""
+        elif usuario_row:
+            password_hash_actual = usuario_row[0] or ""
+        else:
+            password_hash_actual = ""
 
         if not password_hash_actual:
             return False, "No fue posible validar tu contraseña actual"
@@ -10054,7 +10060,7 @@ def _guardar_borrador_cierre_inventario_embarques(payload, csv_file_name, csv_ha
     if conn is None:
         raise RuntimeError("No fue posible obtener conexión MySQL para guardar el borrador.")
 
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor = get_dict_cursor(conn)
     try:
         conn.autocommit(False)
         cursor.execute(
@@ -10635,6 +10641,10 @@ def api_almacen_embarques_movimiento_delete(movement_type, record_id):
     try:
         data = request.get_json(silent=True) or {}
         password = data.get("password")
+        notes = (data.get("notes") or "").strip()
+        if not notes:
+            return jsonify({"success": False, "error": "El comentario de eliminación es obligatorio"}), 400
+
         is_valid_password, password_error = _validar_password_usuario_actual(password)
         if not is_valid_password:
             return jsonify({"success": False, "error": password_error}), 400
@@ -10643,7 +10653,7 @@ def api_almacen_embarques_movimiento_delete(movement_type, record_id):
             movement_type,
             record_id,
             _obtener_usuario_display_actual(),
-            notes=(data.get("notes") or "").strip() or None,
+            notes=notes,
         )
         return jsonify(payload), status_code
     except Exception as e:
@@ -10825,7 +10835,7 @@ def api_almacen_embarques_inventario_cierre_confirm():
         if conn is None:
             raise RuntimeError("No fue posible obtener conexión MySQL para confirmar el cierre.")
 
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
         usuario_actual = _obtener_usuario_display_actual()
 
         try:
@@ -10962,7 +10972,7 @@ def api_almacen_embarques_inventario_cierre_cancel():
         if conn is None:
             raise RuntimeError("No fue posible obtener conexión MySQL para cancelar el borrador.")
 
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
         try:
             conn.autocommit(False)
             cursor.execute(

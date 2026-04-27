@@ -34,6 +34,25 @@ shipping_material_api = Blueprint(
 )
 
 
+def get_dict_cursor(conn):
+    """Crear cursor tipo diccionario sin depender de MySQLdb.cursors."""
+    mysql_cursors = getattr(MySQLdb, "cursors", None)
+    dict_cursor = getattr(mysql_cursors, "DictCursor", None)
+
+    if dict_cursor is None:
+        try:
+            import pymysql
+
+            dict_cursor = pymysql.cursors.DictCursor
+        except Exception:
+            dict_cursor = None
+
+    if dict_cursor is not None:
+        return conn.cursor(dict_cursor)
+
+    return conn.cursor()
+
+
 def normalize_search(raw_value):
     return str(raw_value or "").strip()
 
@@ -1095,7 +1114,7 @@ def assign_exit_departure_value(
 
     try:
         conn = get_transaction_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
 
         exit_row = fetch_exit_record_for_update(cursor, exit_id)
         if not exit_row:
@@ -1254,7 +1273,7 @@ def get_departure_history_records(limit=300, departure_code=None, exit_id=None):
         params.append(normalized_exit_id)
 
     conn = get_db_connection()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor = get_dict_cursor(conn)
 
     try:
         cursor.execute(
@@ -1908,7 +1927,7 @@ def adjust_shipping_movement_record(
 
     try:
         conn = get_transaction_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
 
         if normalized_type == "entry":
             current_row = fetch_entry_record_for_update(cursor, record_id_value)
@@ -2185,7 +2204,7 @@ def delete_shipping_movement_record(
 
     try:
         conn = get_transaction_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
 
         if normalized_type == "entry":
             current_row = fetch_entry_record_for_update(cursor, record_id_value)
@@ -2502,7 +2521,7 @@ def import_catalog():
         parsed = parse_catalog_rows(source_path)
         source_file = os.path.basename(source_path)
         conn = get_transaction_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
 
         if reset:
             reset_shipping_data(cursor)
@@ -2555,7 +2574,7 @@ def list_entries():
     )
 
     conn = get_db_connection()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor = get_dict_cursor(conn)
 
     try:
         cursor.execute(
@@ -2621,7 +2640,7 @@ def create_entry():
 
     try:
         conn = get_transaction_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
 
         inventory = ensure_inventory_record(cursor, part_number)
         if not inventory:
@@ -2758,7 +2777,7 @@ def list_exits():
     )
 
     conn = get_db_connection()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor = get_dict_cursor(conn)
 
     try:
         cursor.execute(
@@ -2825,7 +2844,7 @@ def create_exit():
 
     try:
         conn = get_transaction_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
 
         inventory = ensure_inventory_record(cursor, part_number)
         if not inventory:
@@ -3001,7 +3020,7 @@ def list_returns():
     )
 
     conn = get_db_connection()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor = get_dict_cursor(conn)
 
     try:
         cursor.execute(
@@ -3102,7 +3121,7 @@ def create_return():
 
     try:
         conn = get_transaction_connection()
-        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+        cursor = get_dict_cursor(conn)
 
         inventory = ensure_inventory_record(cursor, part_number)
         if not inventory:
@@ -3244,7 +3263,7 @@ def get_inventory():
 
     where_clause = f"WHERE {' AND '.join(where)}" if where else ""
     conn = get_db_connection()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor = get_dict_cursor(conn)
 
     try:
         cursor.execute(
@@ -3286,7 +3305,7 @@ def get_today_stats():
         target_date = datetime.now().date()
 
     conn = get_db_connection()
-    cursor = conn.cursor(MySQLdb.cursors.DictCursor)
+    cursor = get_dict_cursor(conn)
 
     try:
         cursor.execute(
