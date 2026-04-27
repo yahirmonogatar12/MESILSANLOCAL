@@ -33,6 +33,9 @@ LPT6.txt
 LPT7.txt
 LPT8.txt
 LPT9.txt
+./history/
+.history
+.playwright-cli
 
 # Python
 __pycache__/
