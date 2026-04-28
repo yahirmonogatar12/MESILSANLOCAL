@@ -132,6 +132,10 @@ document.addEventListener("DOMContentLoaded", function () {
       operacionLineaSMTContainer.style.display = "none";
     }
 
+    // Ocultar área de Control de Calidad
+    const calidadContentArea = document.getElementById("calidad-content-area");
+    if (calidadContentArea) calidadContentArea.style.display = "none";
+
     // Ocultar contenedor de Plan SMD Diario
     const planSmdDiarioContainer = document.getElementById(
       "plan-smd-diario-unique-container",
@@ -302,6 +306,26 @@ document.addEventListener("DOMContentLoaded", function () {
     );
     if (controlModelosSMTContainer) {
       controlModelosSMTContainer.style.display = "none";
+    }
+
+    // Ocultar wrappers de otras secciones que pueden quedar visibles
+    // (mismo patrón que control-proceso-content-area y control-resultados-content-area)
+    const materialContentAreaEl = document.getElementById("material-content-area");
+    if (materialContentAreaEl) {
+      materialContentAreaEl.style.cssText = "";
+      materialContentAreaEl.style.display = "none";
+    }
+
+    const produccionContentAreaEl = document.getElementById("produccion-content-area");
+    if (produccionContentAreaEl) {
+      produccionContentAreaEl.style.cssText = "";
+      produccionContentAreaEl.style.display = "none";
+    }
+
+    const informacionBasicaContentAreaEl = document.getElementById("informacion-basica-content-area");
+    if (informacionBasicaContentAreaEl) {
+      informacionBasicaContentAreaEl.style.cssText = "";
+      informacionBasicaContentAreaEl.style.display = "none";
     }
   }
 
@@ -715,6 +739,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // FORZAR ocultar el área de material cuando no estés en Control de material
         materialContentArea.style.display = "none";
       } else if (this.id === "Control de calidad") {
+        hideAllMaterialContainers();
         materialContainer.style.display = "block";
         controlCalidadContent.style.display = "block";
         // FORZAR ocultar el área de material cuando no estés en Control de material
@@ -4253,6 +4278,57 @@ window.mostrarControlInspeccionOQC = function () {
     }
   } catch (error) {
     console.error("Error crítico en mostrarControlInspeccionOQC:", error);
+  }
+};
+
+// Función AJAX para Historial de liberacion LQC - GLOBAL
+window.mostrarHistorialLiberacionLQC = function () {
+  try {
+    // Activar el botón correcto en la navegación
+    const controlCalidadButton = document.getElementById("Control de calidad");
+    if (controlCalidadButton) {
+      controlCalidadButton.classList.add("active");
+      document.querySelectorAll(".nav-button").forEach((btn) => {
+        if (btn.id !== "Control de calidad") {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
+    // Ocultar todos los contenedores primero
+    if (typeof window.hideAllMaterialContainers === "function") {
+      window.hideAllMaterialContainers();
+    }
+
+    // Mostrar el área de calidad — igual que todos los demás módulos de calidad
+    const materialContainer = document.getElementById("material-container");
+    const controlCalidadContent = document.getElementById("control-calidad-content");
+    const calidadContentArea = document.getElementById("calidad-content-area");
+
+    if (materialContainer) materialContainer.style.display = "block";
+    if (controlCalidadContent) controlCalidadContent.style.display = "block";
+    if (calidadContentArea) calidadContentArea.style.display = "block";
+
+    // Cargar contenido directamente en calidad-content-area (mismo patrón que OQC y demás)
+    if (typeof window.cargarContenidoDinamico === "function") {
+      window
+        .cargarContenidoDinamico(
+          "calidad-content-area",
+          "/historial-liberacion-lqc-ajax",
+          () => {
+            if (typeof window.inicializarHistorialLiberacionLQC === "function") {
+              window.inicializarHistorialLiberacionLQC();
+            }
+          },
+        )
+        .catch((error) => {
+          console.error("Error cargando Historial de liberacion LQC:", error);
+        });
+    } else {
+      console.error("La función cargarContenidoDinamico no está disponible");
+    }
+  } catch (error) {
+    console.error("Error crítico en mostrarHistorialLiberacionLQC:", error);
   }
 };
 

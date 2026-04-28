@@ -487,7 +487,8 @@ html, body {
 }
 
 /* Área de contenido específica para Control de Calidad */
-.control-calidad-content-area {
+.control-calidad-content-area,
+.calidad-content-area {
     flex: 1;
     padding: 0;
     overflow-y: auto;
@@ -584,10 +585,11 @@ body:has(.produccion-content-area[style*="display: block"]) {
 }
 
 /* Contenedores individuales de Control de Calidad */
-.control-calidad-content-area > div {
+.control-calidad-content-area > div,
+.calidad-content-area > div {
     background-color: #32323E;
     color: lightgray;
-    padding: 5px;
+    padding: 0px;
     border-radius: 0;
     box-shadow: none;
     margin-bottom: 0;
@@ -1902,6 +1904,25 @@ body {
     max-height: calc(100vh - var(--header-height) - 10px) !important;
     padding: 5px !important;
     margin-top: 5px !important;
+}
+
+/* El contenedor real de Control de Calidad en MaterialTemplate es `calidad-content-area`.
+   Mantenerlo explícito evita que el panel derecho se mida solo por el contenido cargado. */
+.calidad-content-area {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    background-color: #32323E !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    max-height: calc(100vh - var(--header-height) - 10px) !important;
+    padding: 5px !important;
+    margin-top: 5px !important;
+}
+
+.calidad-content-area > div {
+    width: 100% !important;
+    max-width: none !important;
 }
 
 /* Contenedores de módulos específicos */

@@ -103,11 +103,16 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse show sidebar-dropdown-list" id="sidebarOtrasIdentificaciones">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Inspeccion de calidad" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Inspeccion de calidad"
                             data-permiso-boton="Control de inspeccion de OQC"
                             onclick="window.parent.mostrarControlInspeccionOQC ? window.parent.mostrarControlInspeccionOQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-inspeccion-oqc-ajax') : window.location.href='/control-inspeccion-oqc-ajax')">Control de inspeccion de OQC</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Inspeccion de calidad"
+                            data-permiso-boton="Historial de liberacion LQC"
+                            onclick="window.parent.mostrarHistorialLiberacionLQC ? window.parent.mostrarHistorialLiberacionLQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-liberacion-lqc-ajax') : window.location.href='/historial-liberacion-lqc-ajax')">Historial de liberacion LQC</li>
                 </ul>
             </li>
         </ul>

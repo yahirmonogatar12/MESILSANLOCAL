@@ -18054,6 +18054,244 @@ def control_inspeccion_oqc_ajax():
     return render_template("Control de calidad/control_inspeccion_oqc_ajax.html")
 
 
+@app.route("/historial-liberacion-lqc-ajax")
+@login_requerido
+def historial_liberacion_lqc_ajax():
+    """Template para Historial de liberacion LQC"""
+    return render_template("Control de calidad/historial_liberacion_lqc_ajax.html")
+
+
+def _lqc_fecha_operativa(now=None):
+    from datetime import datetime, timedelta
+    now = now or datetime.now()
+    corte = now.replace(hour=7, minute=30, second=0, microsecond=0)
+    if now >= corte:
+        return now.date()
+    return (now - timedelta(days=1)).date()
+
+
+def _lqc_parse_fecha(value, fallback):
+    from datetime import datetime
+    try:
+        return datetime.strptime(str(value or ""), "%Y-%m-%d").date()
+    except Exception:
+        return fallback
+
+
+def _lqc_ventana_operativa(fecha_inicio, fecha_fin):
+    from datetime import datetime, time, timedelta
+    inicio = datetime.combine(fecha_inicio, time(7, 30))
+    fin = datetime.combine(fecha_fin + timedelta(days=1), time(7, 30))
+    return inicio, fin
+
+
+@app.route("/api/smt-scanner/lineas")
+@login_requerido
+def api_smt_scanner_lineas():
+    """Resumen de escaneos LQC por linea real usando box_scans + plan_main."""
+    try:
+        from datetime import datetime, timedelta
+        ahora_dt = datetime.now()
+        fecha_operativa = _lqc_fecha_operativa(ahora_dt)
+        ventana_inicio, ventana_fin = _lqc_ventana_operativa(fecha_operativa, fecha_operativa)
+        ventana_fin_consulta = min(ahora_dt, ventana_fin)
+        hoy = fecha_operativa.isoformat()
+        ahora = ahora_dt.strftime('%Y-%m-%d %H:%M:%S')
+        inicio_sql = ventana_inicio.strftime('%Y-%m-%d %H:%M:%S')
+        fin_sql = ventana_fin_consulta.strftime('%Y-%m-%d %H:%M:%S')
+        lineas_config = ['M1','M2','M3','M4','DP1','DP2','DP3','H1']
+        line_expr = "COALESCE(NULLIF(p.line, ''), 'SIN PLAN')"
+        slot_expr = """
+                    DATE_ADD(
+                        STR_TO_DATE(
+                            DATE_FORMAT(DATE_SUB(b.last_scan, INTERVAL 30 MINUTE), '%%Y-%%m-%%d %%H:00:00'),
+                            '%%Y-%%m-%%d %%H:%%i:%%s'
+                        ),
+                        INTERVAL 30 MINUTE
+                    )
+        """
+
+        conn = get_pooled_connection()
+        if conn is None:
+            return jsonify({"success": True, "lineas": [], "uph_hoy": {}})
+
+        cursor = get_dict_cursor(conn)
+        try:
+            # Total por linea de la fecha operativa actual; corte 07:30.
+            cursor.execute(f"""
+                SELECT
+                    {line_expr} AS linea,
+                    COUNT(*) AS total_hoy
+                FROM box_scans b
+                LEFT JOIN plan_main p ON p.lot_no = b.lot_no
+                WHERE b.last_scan >= %s
+                  AND b.last_scan < %s
+                GROUP BY linea
+            """, (inicio_sql, fin_sql))
+            rows = cursor.fetchall()
+            counts = {r['linea']: int(r['total_hoy'] or 0) for r in rows}
+
+            # UPH por bloque real de hora; evita mezclar horas iguales de dias distintos.
+            cursor.execute(f"""
+                SELECT
+                    {line_expr} AS linea,
+                    DATE_FORMAT({slot_expr}, '%%Y-%%m-%%d %%H:%%i:%%s') AS slot_key,
+                    HOUR({slot_expr}) AS hora,
+                    COUNT(*) AS total
+                FROM box_scans b
+                LEFT JOIN plan_main p ON p.lot_no = b.lot_no
+                WHERE b.last_scan >= %s
+                  AND b.last_scan < %s
+                GROUP BY linea, slot_key, hora
+                ORDER BY slot_key
+            """, (inicio_sql, fin_sql))
+            uph_rows = cursor.fetchall()
+            uph_hoy = {}
+            uph_slots_map = {}
+            for r in uph_rows:
+                l = r['linea']
+                slot_key = r['slot_key']
+                if l not in uph_hoy:
+                    uph_hoy[l] = {}
+                uph_hoy[l][slot_key] = int(r['total'] or 0)
+                if slot_key not in uph_slots_map:
+                    uph_slots_map[slot_key] = {
+                        "key": slot_key,
+                        "label": "",
+                        "hour": int(r['hora'] or 0),
+                    }
+            uph_slots = []
+            if ventana_fin_consulta >= ventana_inicio:
+                start_slot = ventana_inicio
+                end_slot = ventana_fin
+                current_slot = start_slot
+                while current_slot < end_slot:
+                    key = current_slot.strftime('%Y-%m-%d %H:%M:%S')
+                    slot = uph_slots_map.get(key, {
+                        "key": key,
+                        "hour": current_slot.hour,
+                    })
+                    slot["label"] = current_slot.strftime('%H:%M')
+                    uph_slots.append(slot)
+                    current_slot += timedelta(hours=1)
+
+            ordered_lines = lineas_config[:]
+            ordered_lines.extend(
+                sorted([line for line in counts.keys() if line not in ordered_lines])
+            )
+            lineas = [{"linea": l, "total_hoy": counts.get(l, 0)} for l in ordered_lines]
+            return jsonify({
+                "success": True,
+                "fecha_consulta": hoy,
+                "actualizado": ahora,
+                "ventana_inicio": inicio_sql,
+                "ventana_fin": fin_sql,
+                "lineas": lineas,
+                "uph_hoy": uph_hoy,
+                "uph_slots": uph_slots,
+            })
+        finally:
+            cursor.close()
+            conn.close()
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "lineas": [], "uph_hoy": {}}), 500
+
+
+@app.route("/api/smt-scanner/datos")
+@login_requerido
+def api_smt_scanner_datos():
+    """Registros LQC desde box_scans filtrados por linea real y rango de fechas."""
+    try:
+        from datetime import datetime
+        fecha_default = _lqc_fecha_operativa()
+        lineas = [l.strip() for l in request.args.getlist("lineas") if l.strip()]
+        fecha_inicio = _lqc_parse_fecha(request.args.get("fecha_inicio"), fecha_default)
+        fecha_fin = _lqc_parse_fecha(request.args.get("fecha_fin"), fecha_default)
+        if fecha_fin < fecha_inicio:
+            fecha_inicio, fecha_fin = fecha_fin, fecha_inicio
+        ventana_inicio, ventana_fin = _lqc_ventana_operativa(fecha_inicio, fecha_fin)
+        inicio_sql = ventana_inicio.strftime('%Y-%m-%d %H:%M:%S')
+        fin_sql = ventana_fin.strftime('%Y-%m-%d %H:%M:%S')
+        turno_filtro = request.args.get("turno", "Todos")
+        line_expr = "COALESCE(NULLIF(p.line, ''), 'SIN PLAN')"
+        fecha_operativa_expr = """
+                    CASE
+                        WHEN TIME(b.last_scan) >= '07:30:00' THEN DATE(b.last_scan)
+                        ELSE DATE_SUB(DATE(b.last_scan), INTERVAL 1 DAY)
+                    END
+        """
+        turno_expr = """
+                    CASE
+                        WHEN TIME(b.last_scan) >= '07:30:00' AND TIME(b.last_scan) < '15:30:00' THEN 'DIA'
+                        WHEN TIME(b.last_scan) >= '15:30:00' AND TIME(b.last_scan) < '23:30:00' THEN 'TIEMPO EXTRA'
+                        ELSE 'NOCHE'
+                    END
+        """
+
+        conn = get_pooled_connection()
+        if conn is None:
+            return jsonify({"success": True, "records": []})
+
+        cursor = get_dict_cursor(conn)
+        try:
+            where_conditions = ["b.last_scan >= %s", "b.last_scan < %s"]
+            params = [inicio_sql, fin_sql]
+
+            if lineas:
+                placeholders = ','.join(['%s'] * len(lineas))
+                where_conditions.append(f"{line_expr} IN ({placeholders})")
+                params.extend(lineas)
+
+            if turno_filtro != 'Todos':
+                where_conditions.append(f"{turno_expr} = %s")
+                params.append(turno_filtro)
+
+            where_clause = " AND ".join(where_conditions)
+            query = f"""
+                SELECT
+                    {line_expr} AS linea,
+                    {fecha_operativa_expr} AS fecha,
+                    COALESCE(NULLIF(p.part_no, ''), LEFT(b.serial, GREATEST(CHAR_LENGTH(b.serial) - 12, 1))) AS part,
+                    COALESCE(NULLIF(p.model_code, ''), '') AS model_code,
+                    COALESCE(b.lot_no, '') AS lot_no,
+                    b.box_code,
+                    b.serial,
+                    b.status AS box_status,
+                    b.first_scan,
+                    b.last_scan,
+                    {turno_expr} AS turno
+                FROM box_scans b
+                LEFT JOIN plan_main p ON p.lot_no = b.lot_no
+                WHERE {where_clause}
+                ORDER BY b.last_scan DESC, b.id DESC
+                LIMIT 50000
+            """
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
+            records = []
+            for r in rows:
+                records.append({
+                    "linea": r['linea'],
+                    "fecha": str(r['fecha']) if r['fecha'] else '',
+                    "part": r['part'] or '',
+                    "model_code": r.get('model_code') or '',
+                    "lot_no": r.get('lot_no') or '',
+                    "box_code": r.get('box_code') or '',
+                    "serial": r['serial'] or '',
+                    "status": r.get('box_status') or '',
+                    "first_scan": str(r.get('first_scan')).replace('T', ' ') if r.get('first_scan') else '',
+                    "last_scan": str(r['last_scan']).replace('T', ' ') if r['last_scan'] else '',
+                    "turno": r['turno'],
+                })
+            return jsonify({"success": True, "records": records, "total": len(records)})
+        finally:
+            cursor.close()
+            conn.close()
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "records": []}), 500
+
+
 # ============================================================================
 # CONTROL DE MATERIAL - RUTAS AJAX
 # ============================================================================

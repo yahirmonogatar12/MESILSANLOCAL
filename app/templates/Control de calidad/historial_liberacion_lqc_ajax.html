@@ -1,0 +1,641 @@
+<!-- TEMPLATE AJAX: Historial de Liberacion LQC - SMT Scanner -->
+<!-- SUFIJO: -lqc-scanner | CONTENEDOR: historial-liberacion-lqc-unique-container -->
+
+<div id="lqc-smts-shell"></div>
+
+<style>
+#lqc-smts-shell { background:#32323E; min-height:500px; color:lightgray; font-family:'Inter','Segoe UI',sans-serif; font-size:13px; }
+#lqc-smts-shell *{box-sizing:border-box;}
+#lqc-smts-shell ::-webkit-scrollbar{width:6px;height:6px;}
+#lqc-smts-shell ::-webkit-scrollbar-track{background:#2c3e50;}
+#lqc-smts-shell ::-webkit-scrollbar-thumb{background:#20688C;border-radius:3px;}
+
+/* Grid screen */
+.lqcs-grid-wrap{padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:1.2rem;}
+.lqcs-heading{color:#ecf0f1;font-size:1rem;font-weight:600;text-align:center;}
+.lqcs-sub{color:#95a5a6;font-size:0.78rem;text-align:center;margin-top:-0.5rem;}
+.lqcs-line-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0.9rem;width:100%;max-width:820px;}
+.lqcs-line-card{background:#40424F;border:1px solid #20688C;border-radius:8px;padding:1.6rem 1rem;display:flex;flex-direction:column;align-items:center;gap:0.5rem;cursor:pointer;transition:all .2s;user-select:none;}
+.lqcs-line-card:hover{border-color:#3498db;transform:translateY(-3px);box-shadow:0 6px 20px rgba(52,152,219,.2);}
+.lqcs-line-card:active{transform:scale(.96);}
+.lqcs-line-name{font-size:2.2rem;font-weight:700;color:#ecf0f1;letter-spacing:-1px;}
+.lqcs-line-badge{font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(52,152,219,.15);color:#3498db;border:1px solid rgba(52,152,219,.35);}
+.lqcs-all-btn{display:inline-flex;align-items:center;gap:8px;padding:.5rem 1rem;background:#172A46;border:1px solid #20688C;border-radius:6px;color:#ecf0f1;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .2s;}
+.lqcs-all-btn:hover{background:#20688C;}
+
+/* Chart */
+.lqcs-chart-box{background:#40424F;border:1px solid #20688C;border-radius:8px;padding:1.2rem 1.5rem;width:100%;max-width:820px;}
+.lqcs-chart-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.8rem;}
+.lqcs-chart-title{color:#ecf0f1;font-size:.85rem;font-weight:600;}
+.lqcs-chart-legend{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.lqcs-legend-pill{display:flex;align-items:center;gap:4px;cursor:pointer;padding:2px 7px;border-radius:4px;border:1px solid #5F6375;transition:all .15s;font-size:.65rem;color:#ecf0f1;font-weight:600;}
+.lqcs-legend-pill.active{background:rgba(52,152,219,.15);border-color:#3498db;}
+.lqcs-legend-dot{width:9px;height:9px;border-radius:2px;}
+
+/* Table screen */
+.lqcs-table-screen{display:flex;flex-direction:column;height:calc(100vh - 150px);min-height:560px;overflow:hidden;}
+.lqcs-table-header{background:#172A46;border-bottom:1px solid #20688C;padding:.7rem 1.5rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;}
+.lqcs-back-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;background:rgba(32,104,140,.12);border:1px solid #20688C;border-radius:4px;color:#b8c3cf;font-size:.8rem;cursor:pointer;transition:all .2s;}
+.lqcs-back-btn:hover{border-color:#3498db;color:#ecf0f1;background:rgba(52,152,219,.14);}
+.lqcs-pill{display:flex;align-items:center;gap:7px;background:#20688C;border-radius:6px;padding:6px 12px;}
+.lqcs-pill-name{font-size:1.1rem;font-weight:700;color:#ecf0f1;}
+.lqcs-pill-sub{font-size:.72rem;color:rgba(255,255,255,.6);}
+.lqcs-filters{padding:.8rem 1.5rem;background:#263849;border-bottom:1px solid #20688C;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.lqcs-filter-group{display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(23,42,70,.58);border:1px solid rgba(32,104,140,.65);border-radius:6px;}
+.lqcs-filter-group-main{flex:1 1 360px;}
+.lqcs-filter-lbl{font-size:.75rem;color:#95a5a6;white-space:nowrap;}
+.lqcs-date,.lqcs-sel{background:#40424F;color:#ecf0f1;border:1px solid #20688C;border-radius:4px;padding:6px 9px;font-size:.8rem;outline:none;color-scheme:dark;}
+.lqcs-date:focus,.lqcs-sel:focus{border-color:#3498db;}
+.lqcs-date{min-width:138px;}
+.lqcs-sep{width:1px;height:22px;background:#5F6375;}
+.lqcs-view-toggle{display:flex;border:1px solid #20688C;border-radius:4px;overflow:hidden;}
+.lqcs-view-btn{padding:5px 12px;background:transparent;color:#95a5a6;font-size:.78rem;border:none;cursor:pointer;transition:all .15s;}
+.lqcs-view-btn.active{background:#3498db;color:#fff;}
+.lqcs-today-btn{padding:5px 10px;background:transparent;border:1px solid #20688C;border-radius:4px;color:#3498db;font-size:.78rem;cursor:pointer;}
+.lqcs-today-btn:hover{background:rgba(52,152,219,.12);}
+.lqcs-apply-btn{padding:6px 12px;background:#20688C;border:1px solid #3498db;border-radius:4px;color:#ecf0f1;font-size:.78rem;font-weight:600;cursor:pointer;}
+.lqcs-apply-btn:hover{background:#3498db;color:#fff;}
+.lqcs-export-btn{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#456636;border:none;border-radius:4px;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;}
+.lqcs-export-btn:hover{background:#5a7c42;}
+
+/* Stats */
+.lqcs-stats{display:flex;gap:.8rem;padding:.65rem 1.5rem;background:#172A46;border-bottom:1px solid #20688C;}
+.lqcs-stat-card{min-width:86px;padding:7px 10px;background:rgba(64,66,79,.52);border:1px solid rgba(32,104,140,.55);border-radius:6px;}
+.lqcs-stat-val{font-size:1.1rem;font-weight:700;color:#ecf0f1;display:block;}
+.lqcs-stat-lbl{font-size:.68rem;color:#95a5a6;}
+#lqcs-content-area{display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden;}
+
+/* Search bar */
+.lqcs-search-bar{padding:.5rem 1.5rem;background:#2a2d38;border-bottom:1px solid #20688C;display:flex;align-items:center;gap:8px;}
+.lqcs-search-input{background:#40424F;color:#ecf0f1;border:1px solid #20688C;border-radius:4px;padding:5px 10px;font-size:.8rem;outline:none;min-width:220px;flex:1;}
+.lqcs-search-input:focus{border-color:#3498db;}
+.lqcs-search-clear{padding:4px 8px;background:transparent;border:1px solid #5F6375;border-radius:4px;color:#95a5a6;font-size:.75rem;cursor:pointer;}
+.lqcs-search-count{font-size:.72rem;color:#95a5a6;margin-left:auto;white-space:nowrap;}
+
+/* Table */
+.lqcs-table-wrap{overflow:auto;flex:1;min-height:240px;}
+.lqcs-tbl{width:max-content;min-width:100%;border-collapse:collapse;font-size:.8rem;}
+.lqcs-tbl thead th{background:#172A46;color:#ecf0f1;padding:8px 12px;text-align:left;border:1px solid #20688C;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:10;box-shadow:0 1px 0 #20688C;}
+.lqcs-tbl tbody td{padding:6px 12px;border:1px solid #5F6375;background:#40424F;color:lightgray;white-space:nowrap;}
+.lqcs-tbl tbody tr:nth-child(even) td{background:#44475A;}
+.lqcs-tbl tbody tr:hover td{background:#34334E;}
+.lqcs-badge-linea{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.72rem;font-weight:700;background:rgba(52,152,219,.15);color:#3498db;border:1px solid rgba(52,152,219,.3);}
+.lqcs-chip{font-size:.68rem;font-weight:600;padding:2px 6px;border-radius:3px;}
+.lqcs-chip-dia{background:rgba(52,152,219,.15);color:#3498db;}
+.lqcs-chip-extra{background:rgba(80,38,150,.2);color:#8e44ad;}
+.lqcs-chip-noche{background:rgba(39,174,96,.15);color:#27ae60;}
+.lqcs-empty{text-align:center;padding:3rem;color:#95a5a6;font-size:.9rem;}
+
+/* Pagination */
+.lqcs-page-bar{display:flex;align-items:center;justify-content:space-between;padding:.5rem 1rem;background:#172A46;border-top:1px solid #20688C;}
+.lqcs-page-btn{padding:3px 10px;background:#40424F;border:1px solid #20688C;border-radius:4px;color:#ecf0f1;cursor:pointer;font-size:.78rem;}
+.lqcs-page-btn:disabled{opacity:.4;cursor:not-allowed;}
+.lqcs-page-info{font-size:.78rem;color:#95a5a6;}
+
+/* Loading */
+.lqcs-loading{text-align:center;padding:3rem;color:#3498db;font-size:.9rem;}
+.lqcs-spin{display:inline-block;width:16px;height:16px;border:3px solid rgba(52,152,219,.3);border-top-color:#3498db;border-radius:50%;animation:lqcsSpin .8s linear infinite;margin-right:8px;vertical-align:middle;}
+@keyframes lqcsSpin{to{transform:rotate(360deg);}}
+</style>
+
+<script>
+(function() {
+  'use strict';
+
+  var LINES = ['M1','M2','M3','M4','DP1','DP2','DP3','H1'];
+  var LINE_COLORS = {M1:'#3498db',M2:'#2980b9',M3:'#8e44ad',M4:'#502696',DP1:'#27ae60',DP2:'#229954',DP3:'#1a7a44',H1:'#1abc9c','SIN PLAN':'#95a5a6'};
+  var COLOR_PALETTE = ['#3498db','#2980b9','#8e44ad','#502696','#27ae60','#229954','#1a7a44','#1abc9c','#f39c12','#d35400','#95a5a6'];
+  var DEFAULT_SHIFT_HOURS = [7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5,6];
+
+  // State
+  var state = {
+    view: 'grid',
+    selectedLines: [],
+    allLines: false,
+    records: [],
+    tableView: 'summary',
+    dateFrom: todayStr(),
+    dateTo: todayStr(),
+    turno: 'Todos',
+    searchQ: '',
+    page: 1,
+    loading: false,
+    counts: {},
+    uphData: {},
+    uphSlots: [],
+    chartSel: null  // null=total, 'M1'=line
+  };
+  var PER_PAGE = 100;
+
+  // Helpers
+  function todayStr() {
+    var d = new Date();
+    var corte = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 7, 30, 0, 0);
+    if (d < corte) d.setDate(d.getDate() - 1);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function fmtDate(ds) { if(!ds) return '-'; var p=String(ds).slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  function getTurno(h) { if(h>=7&&h<15) return 'DIA'; if(h>=15&&h<23) return 'TIEMPO EXTRA'; return 'NOCHE'; }
+  function chipClass(t) { if(t==='DIA') return 'lqcs-chip-dia'; if(t==='TIEMPO EXTRA') return 'lqcs-chip-extra'; return 'lqcs-chip-noche'; }
+  function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function shell() { return document.getElementById('lqc-smts-shell'); }
+  function lineColor(line, index) {
+    var safeIndex = index >= 0 ? index : 0;
+    if (!LINE_COLORS[line]) LINE_COLORS[line] = COLOR_PALETTE[safeIndex % COLOR_PALETTE.length];
+    return LINE_COLORS[line];
+  }
+  function syncLines(lineas) {
+    var next = (lineas || []).map(function(l){ return l.linea; }).filter(Boolean);
+    if (next.length) LINES = next;
+    LINES.forEach(function(line, index){ lineColor(line, index); });
+    if (state.chartSel && LINES.indexOf(state.chartSel) === -1) state.chartSel = null;
+  }
+  function buttonLines() {
+    return LINES.filter(function(line){ return line !== 'SIN PLAN'; });
+  }
+  function isAllLinesMode() {
+    return state.allLines === true;
+  }
+  function syncDateInputs(changed) {
+    var fromEl = document.getElementById('lqcs-from');
+    var toEl = document.getElementById('lqcs-to');
+    if (!fromEl || !toEl) return;
+    var today = todayStr();
+    if (!fromEl.value) fromEl.value = state.dateFrom || today;
+    if (!toEl.value) toEl.value = state.dateTo || fromEl.value;
+    if (fromEl.value > toEl.value) {
+      if (changed === 'from') toEl.value = fromEl.value;
+      else fromEl.value = toEl.value;
+    }
+    fromEl.max = toEl.value || today;
+    toEl.min = fromEl.value || '';
+    toEl.max = today;
+    state.dateFrom = fromEl.value;
+    state.dateTo = toEl.value;
+  }
+  function defaultUphSlots() {
+    return DEFAULT_SHIFT_HOURS.map(function(h, i){
+      return {
+        key: String(h),
+        label: String(h).padStart(2,'0')+':30',
+        hour: h
+      };
+    });
+  }
+  function slotShiftColor(hour) {
+    if (hour >= 7 && hour < 15) return 'rgba(52,152,219,0.07)';
+    if (hour >= 15 && hour < 23) return 'rgba(80,38,150,0.07)';
+    return 'rgba(39,174,96,0.07)';
+  }
+
+  // Export CSV
+  function exportCSV(filename, headers, rows) {
+    var e = function(v){ return '"'+String(v||'').replace(/"/g,'""')+'"'; };
+    var lines = [headers.map(e).join(',')].concat(rows.map(function(r){ return r.map(e).join(','); }));
+    var blob = new Blob([lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+  }
+
+  // SVG Trend Chart
+  function buildChart() {
+    var uphData = state.uphData;
+    var sel = state.chartSel;
+    var W=780, H=220, PL=48, PR=16, PT=16, PB=60;
+    var chartW=W-PL-PR, chartH=H-PT-PB;
+    var slotData = state.uphSlots && state.uphSlots.length ? state.uphSlots : defaultUphSlots();
+    var slots=slotData.length, xStep=slots > 1 ? chartW/(slots-1) : chartW;
+
+    // Build points
+    var pts;
+    if (sel === null) {
+      pts = slotData.map(function(slot){ return {slot:slot,uph:LINES.reduce(function(s,l){ return s+((uphData[l]||{})[slot.key]||0); },0)}; });
+    } else {
+      pts = slotData.map(function(slot){ return {slot:slot,uph:((uphData[sel]||{})[slot.key]||0)}; });
+    }
+    var color = sel===null ? '#3498db' : lineColor(sel, LINES.indexOf(sel));
+    var maxUPH = Math.max.apply(null, pts.map(function(p){return p.uph;}));
+    if (!maxUPH) maxUPH=1;
+    function yScale(v){ return chartH-(v/maxUPH)*chartH; }
+
+    var pathD = pts.map(function(p,i){ return (i===0?'M':'L')+(PL+i*xStep).toFixed(1)+','+(PT+yScale(p.uph)).toFixed(1); }).join(' ');
+    var fillD = pathD+' L'+(PL+(slots-1)*xStep).toFixed(1)+','+(PT+chartH)+' L'+PL+','+(PT+chartH)+' Z';
+
+    var zonesSVG = slotData.map(function(slot, i){
+      var x1 = slots === 1 ? PL : Math.max(PL, PL+(i-.5)*xStep);
+      var x2 = slots === 1 ? PL+chartW : Math.min(PL+chartW, PL+(i+.5)*xStep);
+      return '<rect x="'+x1+'" y="'+PT+'" width="'+Math.max(1,x2-x1)+'" height="'+chartH+'" fill="'+slotShiftColor(slot.hour)+'"/>';
+    }).join('');
+
+    var gridSVG = '';
+    for(var gi=0;gi<5;gi++){
+      var gv=Math.round((maxUPH/4)*gi), gy=PT+yScale(gv);
+      gridSVG += '<line x1="'+PL+'" x2="'+(PL+chartW)+'" y1="'+gy+'" y2="'+gy+'" stroke="#2a2d38" stroke-width="1"/>'
+        +'<text x="'+(PL-5)+'" y="'+(gy+4)+'" text-anchor="end" font-size="9" fill="#5F6375">'+gv+'</text>';
+    }
+
+    var tickSVG = slotData.map(function(slot, idx){
+      var x=PL+idx*xStep, lbl=slotData[idx].label;
+      return '<line x1="'+x+'" x2="'+x+'" y1="'+(PT+chartH)+'" y2="'+(PT+chartH+4)+'" stroke="#5F6375"/>'
+        +'<text x="'+x+'" y="'+(PT+chartH+17)+'" text-anchor="end" font-size="7.5" fill="#95a5a6" transform="rotate(-45 '+x+' '+(PT+chartH+17)+')">'+esc(lbl)+'</text>';
+    }).join('');
+
+    var circlesSVG = pts.map(function(p,i){
+      if(!p.uph) return '';
+      var cx=PL+i*xStep, cy=PT+yScale(p.uph);
+      return '<circle cx="'+cx+'" cy="'+cy+'" r="3.5" fill="'+color+'" opacity="0.8" data-lqclabel="'+esc(p.slot.label)+'" data-lqcuph="'+p.uph+'" class="lqcs-chart-dot"/>';
+    }).join('');
+
+    var labelStr = sel===null ? 'Total todas las lineas' : sel;
+    var legendHTML = '<div class="lqcs-legend-pill'+(sel===null?' active':'')+'" data-lqcline="__total__">'
+      +'<div class="lqcs-legend-dot" style="background:#3498db;width:14px;height:3px;border-radius:2px;"></div>Total</div>';
+    legendHTML += buttonLines().map(function(l){
+      return '<div class="lqcs-legend-pill'+(sel===l?' active':'')+'" data-lqcline="'+l+'">'
+        +'<div class="lqcs-legend-dot" style="background:'+lineColor(l, LINES.indexOf(l))+';"></div>'+esc(l)+'</div>';
+    }).join('');
+
+    return '<div class="lqcs-chart-box"><div class="lqcs-chart-top">'
+      +'<div class="lqcs-chart-title"><span style="color:'+color+'">'+esc(labelStr)+'</span>'
+      +' <span style="font-size:.68rem;color:#95a5a6;font-weight:400;">- UPH por hora</span></div>'
+      +'<div class="lqcs-chart-legend" id="lqcs-legend">'+legendHTML+'</div>'
+      +'</div>'
+      +'<div id="lqcs-tooltip" style="position:fixed;display:none;background:#172A46;border:1px solid #20688C;border-radius:4px;padding:4px 8px;font-size:10px;color:#ecf0f1;pointer-events:none;z-index:9999;"></div>'
+      +'<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="overflow:visible;">'
+      +zonesSVG+gridSVG+tickSVG
+      +'<path d="'+fillD+'" fill="'+color+'" opacity="0.07"/>'
+      +'<path d="'+pathD+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+      +circlesSVG
+      +'</svg></div>';
+  }
+
+  // Grid Screen
+  function renderGrid() {
+    var visibleLines = buttonLines();
+    var countsHTML = visibleLines.map(function(l, i){
+      var c = state.counts[l]||0;
+      return '<div class="lqcs-line-card" data-lqcl="'+esc(l)+'" style="border-color:'+lineColor(l, i)+';">'
+        +'<div class="lqcs-line-name">'+esc(l)+'</div>'
+        +'<div class="lqcs-line-badge">'+c.toLocaleString()+' hoy</div>'
+        +'</div>';
+    }).join('');
+
+    shell().innerHTML = '<div class="lqcs-grid-wrap">'
+      +'<div class="lqcs-heading">Selecciona una l\xednea</div>'
+      +'<div class="lqcs-sub">Haz clic para ver los escaneos del d\xeda</div>'
+      +'<div class="lqcs-line-grid">'+countsHTML+'</div>'
+      +'<div><div class="lqcs-all-btn" id="lqcs-all-btn">Ver todas las l\xedneas</div></div>'
+      +'<div id="lqcs-chart-area" style="width:100%;max-width:820px;">'+buildChart()+'</div>'
+      +'</div>';
+
+    bindGridEvents();
+  }
+
+  function bindGridEvents() {
+    var s = shell();
+    s.querySelectorAll('.lqcs-line-card').forEach(function(el){
+      el.addEventListener('click', function(){ openLine(this.dataset.lqcl); });
+    });
+    var allBtn = s.querySelector('#lqcs-all-btn');
+    if (allBtn) allBtn.addEventListener('click', openAll);
+    bindChartLegend();
+    bindChartDots();
+  }
+
+  function bindChartLegend() {
+    var s = shell();
+    s.querySelectorAll('.lqcs-legend-pill').forEach(function(el){
+      el.addEventListener('click', function(){
+        var l = this.dataset.lqcline;
+        state.chartSel = (l==='__total__') ? null : (state.chartSel===l ? null : l);
+        var area = document.getElementById('lqcs-chart-area');
+        if (area) { area.innerHTML = buildChart(); bindChartLegend(); bindChartDots(); }
+      });
+    });
+  }
+
+  function bindChartDots() {
+      var tooltip = document.getElementById('lqcs-tooltip');
+    if (!tooltip) return;
+    shell().querySelectorAll('.lqcs-chart-dot').forEach(function(dot){
+      dot.addEventListener('mouseenter', function(e){
+        tooltip.style.display='block';
+        tooltip.textContent = this.dataset.lqclabel+' - '+this.dataset.lqcuph+' uph';
+      });
+      dot.addEventListener('mousemove', function(e){
+        tooltip.style.left=(e.clientX+12)+'px';
+        tooltip.style.top=(e.clientY-28)+'px';
+      });
+      dot.addEventListener('mouseleave', function(){
+        tooltip.style.display='none';
+      });
+    });
+  }
+
+  // Table Screen
+  function renderTable() {
+    var allLines = isAllLinesMode();
+    var title = allLines ? 'Todas las l\xedneas' : state.selectedLines[0];
+    var pillSub = allLines ? '<span class="lqcs-pill-sub">General</span>' : '';
+
+    var filtersHTML = '<div class="lqcs-filters">'
+      +'<div class="lqcs-filter-group lqcs-filter-group-main">'
+      +'<span class="lqcs-filter-lbl">Fecha:</span>'
+      +'<input type="date" class="lqcs-date" id="lqcs-from" value="'+state.dateFrom+'">'
+      +'<span class="lqcs-filter-lbl">a</span>'
+      +'<input type="date" class="lqcs-date" id="lqcs-to" value="'+state.dateTo+'">'
+      +'<button class="lqcs-apply-btn" id="lqcs-apply">Aplicar</button>'
+      +'<button class="lqcs-today-btn" id="lqcs-today">Hoy</button>'
+      +'</div>'
+      +'<div class="lqcs-filter-group">'
+      +'<span class="lqcs-filter-lbl">Turno:</span>'
+      +'<select class="lqcs-sel" id="lqcs-turno"><option>Todos</option><option>DIA</option><option>TIEMPO EXTRA</option><option>NOCHE</option></select>'
+      +'</div>'
+      +'<div class="lqcs-filter-group">'
+      +'<div class="lqcs-view-toggle">'
+      +'<button class="lqcs-view-btn'+(state.tableView==='summary'?' active':'')+'" id="lqcs-v-sum">Resumen</button>'
+      +'<button class="lqcs-view-btn'+(state.tableView==='detail'?' active':'')+'" id="lqcs-v-det">Detalle</button>'
+      +'</div>'
+      +'</div>'
+      +'<div class="lqcs-filter-group">'
+      +'<button class="lqcs-export-btn" id="lqcs-export">Exportar</button>'
+      +'</div>'
+      +'</div>';
+
+    shell().innerHTML = '<div class="lqcs-table-screen">'
+      +'<div class="lqcs-table-header">'
+      +'<button class="lqcs-back-btn" id="lqcs-back">Lineas</button>'
+      +'<div class="lqcs-pill"><div style="width:8px;height:8px;border-radius:50%;background:#3498db;"></div>'
+      +'<span class="lqcs-pill-name">'+esc(title)+'</span>'+pillSub+'</div>'
+      +'</div>'
+      +filtersHTML
+      +'<div id="lqcs-search-area"></div>'
+      +'<div class="lqcs-stats">'
+      +'<div class="lqcs-stat-card"><span class="lqcs-stat-val" id="lqcs-total-v">...</span><span class="lqcs-stat-lbl">Total piezas</span></div>'
+      +'<div class="lqcs-stat-card"><span class="lqcs-stat-val" id="lqcs-parts-v">...</span><span class="lqcs-stat-lbl">No. partes</span></div>'
+      +'</div>'
+      +'<div id="lqcs-content-area"><div class="lqcs-loading"><span class="lqcs-spin"></span>Cargando...</div></div>'
+      +'</div>';
+
+    // Set turno select value
+    var selEl = document.getElementById('lqcs-turno');
+    if (selEl) selEl.value = state.turno;
+    syncDateInputs();
+
+    bindTableEvents();
+    loadTableData();
+  }
+
+  function bindTableEvents() {
+    var backBtn = document.getElementById('lqcs-back');
+    if (backBtn) backBtn.addEventListener('click', function(){ state.view='grid'; state.records=[]; renderGrid(); loadGridData(); });
+
+    var fromEl = document.getElementById('lqcs-from');
+    var toEl   = document.getElementById('lqcs-to');
+    if (fromEl) fromEl.addEventListener('change', function(){ syncDateInputs('from'); });
+    if (toEl)   toEl.addEventListener('change',   function(){ syncDateInputs('to'); });
+
+    var applyBtn = document.getElementById('lqcs-apply');
+    if (applyBtn) applyBtn.addEventListener('click', function(){ syncDateInputs(); loadTableData(); });
+
+    var todayBtn = document.getElementById('lqcs-today');
+    if (todayBtn) todayBtn.addEventListener('click', function(){
+      state.dateFrom=state.dateTo=todayStr();
+      var f=document.getElementById('lqcs-from'), t=document.getElementById('lqcs-to');
+      if(f)f.value=state.dateFrom; if(t)t.value=state.dateTo;
+      syncDateInputs();
+      loadTableData();
+    });
+
+    var turnoEl = document.getElementById('lqcs-turno');
+    if (turnoEl) turnoEl.addEventListener('change', function(){ state.turno=this.value; loadTableData(); });
+
+    var vSum = document.getElementById('lqcs-v-sum');
+    var vDet = document.getElementById('lqcs-v-det');
+    if (vSum) vSum.addEventListener('click', function(){ state.tableView='summary'; state.searchQ=''; state.page=1; renderContentArea(); });
+    if (vDet) vDet.addEventListener('click', function(){ state.tableView='detail';  state.searchQ=''; state.page=1; renderContentArea(); });
+
+    var expBtn = document.getElementById('lqcs-export');
+    if (expBtn) expBtn.addEventListener('click', doExport);
+  }
+
+  function loadGridData() {
+    fetch('/api/smt-scanner/lineas')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.success) {
+          syncLines(d.lineas||[]);
+          var c={};
+          (d.lineas||[]).forEach(function(l){ c[l.linea]=l.total_hoy||0; });
+          state.counts = c;
+          state.uphData = d.uph_hoy||{};
+          state.uphSlots = d.uph_slots||[];
+          renderGrid();
+        }
+      })
+      .catch(function(){});
+  }
+
+  function loadTableData() {
+    var area = document.getElementById('lqcs-content-area');
+    if (area) area.innerHTML = '<div class="lqcs-loading"><span class="lqcs-spin"></span>Cargando...</div>';
+    var tv = document.getElementById('lqcs-total-v'), pv = document.getElementById('lqcs-parts-v');
+    if(tv) tv.textContent='...'; if(pv) pv.textContent='...';
+
+    var params = new URLSearchParams();
+    if (!isAllLinesMode()) {
+      state.selectedLines.forEach(function(l){ params.append('lineas', l); });
+    }
+    params.set('fecha_inicio', state.dateFrom);
+    params.set('fecha_fin',    state.dateTo);
+    if (state.turno !== 'Todos') params.set('turno', state.turno);
+
+    fetch('/api/smt-scanner/datos?'+params.toString())
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        state.records = d.success ? (d.records||[]) : [];
+        state.page = 1;
+        updateStats();
+        renderContentArea();
+      })
+      .catch(function(){ state.records=[]; updateStats(); renderContentArea(); });
+  }
+
+  function updateStats() {
+    var tv = document.getElementById('lqcs-total-v'), pv = document.getElementById('lqcs-parts-v');
+    if(tv) tv.textContent = state.records.length.toLocaleString();
+    if(pv) {
+      var parts = {};
+      state.records.forEach(function(r){ parts[r.part]=1; });
+      pv.textContent = Object.keys(parts).length;
+    }
+  }
+
+  function renderContentArea() {
+    var area = document.getElementById('lqcs-content-area');
+    if (!area) return;
+    var allLines = isAllLinesMode();
+
+    // Filter by search
+    var filtered = state.records;
+    if (state.searchQ) {
+      var q = state.searchQ.toLowerCase();
+      filtered = state.records.filter(function(r){
+        return [
+          r.linea, r.part, r.model_code, r.lot_no, r.box_code, r.serial,
+          r.status, r.turno, String(r.fecha), String(r.last_scan)
+        ].join(' ').toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    // Toggle button styles
+    var vSum = document.getElementById('lqcs-v-sum'), vDet = document.getElementById('lqcs-v-det');
+    if(vSum){ vSum.className='lqcs-view-btn'+(state.tableView==='summary'?' active':''); }
+    if(vDet){ vDet.className='lqcs-view-btn'+(state.tableView==='detail'?' active':''); }
+
+    if (state.tableView === 'summary') {
+      area.innerHTML = buildSummaryView(filtered, allLines);
+    } else {
+      area.innerHTML = buildDetailView(filtered, allLines);
+    }
+    bindContentEvents(filtered, allLines);
+  }
+
+  function buildSearchBar(filtered, total, grouped) {
+    var suffix = grouped ? ' grupos / '+total+' escaneos' : ' de '+total+' escaneos';
+    return '<div class="lqcs-search-bar">'
+      +'<span style="color:#95a5a6;font-size:.75rem;">Buscar:</span>'
+      +'<input class="lqcs-search-input" id="lqcs-search" placeholder="Buscar..." value="'+esc(state.searchQ)+'">'
+      +(state.searchQ ? '<button class="lqcs-search-clear" id="lqcs-search-clear">Limpiar</button>' : '')
+      +'<span class="lqcs-search-count">'+filtered+suffix+'</span>'
+      +'</div>';
+  }
+  function renderSearchArea(filtered, total, grouped) {
+    var searchArea = document.getElementById('lqcs-search-area');
+    if (searchArea) searchArea.innerHTML = buildSearchBar(filtered, total, grouped);
+  }
+
+  function buildSummaryView(filtered, allLines) {
+    // En modo general, agrupa solo por fecha operativa y numero de parte.
+    var map={};
+    filtered.forEach(function(r){
+      var k = allLines ? (r.fecha+'|'+r.part) : (r.linea+'|'+r.fecha+'|'+r.part+'|'+(r.lot_no||''));
+      if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),model_code:r.model_code||'',total:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
+      map[k].total++;
+      map[k][r.turno]=(map[k][r.turno]||0)+1;
+    });
+    var groups=Object.values(map).sort(function(a,b){return b.total-a.total;});
+
+    renderSearchArea(groups.length, state.records.length, true);
+    if (!groups.length) return '<div class="lqcs-empty">Sin registros</div>';
+
+    var thLinea = '';
+    var thLote = allLines ? '' : '<th>LOTE</th>';
+    var rows = groups.map(function(g){
+      var tdLinea = '';
+      var tdLote = allLines ? '' : '<td style="font-family:monospace;font-size:.72rem;color:#95a5a6;">'+esc(g.lot_no||'-')+'</td>';
+      var tdDia   = g.DIA>0   ? '<span class="lqcs-chip lqcs-chip-dia">'+g.DIA+'</span>'   : '<span style="color:#5F6375">-</span>';
+      var tdExtra = g['TIEMPO EXTRA']>0 ? '<span class="lqcs-chip lqcs-chip-extra">'+g['TIEMPO EXTRA']+'</span>' : '<span style="color:#5F6375">-</span>';
+      var tdNoche = g.NOCHE>0 ? '<span class="lqcs-chip lqcs-chip-noche">'+g.NOCHE+'</span>' : '<span style="color:#5F6375">-</span>';
+      return '<tr>'+tdLinea+'<td>'+fmtDate(g.fecha)+'</td><td style="color:#ecf0f1;font-weight:500;">'+esc(g.part)+'</td>'
+        +tdLote
+        +'<td style="text-align:center;color:#3498db;font-weight:700;">'+g.total.toLocaleString()+'</td>'
+        +'<td style="text-align:center;">'+tdDia+'</td><td style="text-align:center;">'+tdExtra+'</td><td style="text-align:center;">'+tdNoche+'</td></tr>';
+    }).join('');
+
+    return '<div class="lqcs-table-wrap"><table class="lqcs-tbl"><thead><tr>'
+      +thLinea+'<th>FECHA</th><th>N\xdaMERO DE PARTE</th>'+thLote+'<th style="text-align:center;">TOTAL</th>'
+      +'<th style="text-align:center;">DIA</th><th style="text-align:center;">T. EXTRA</th><th style="text-align:center;">NOCHE</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  function buildDetailView(filtered, allLines) {
+    var total=filtered.length;
+    var slice=filtered;
+
+    renderSearchArea(total, state.records.length);
+    if (!slice.length) return '<div class="lqcs-empty">Sin registros</div>';
+
+    var thLinea = allLines ? '<th>L\xcdNEA</th>' : '';
+    var rows = slice.map(function(r){
+      var tdLinea = allLines ? '<td><span class="lqcs-badge-linea">'+esc(r.linea)+'</span></td>' : '';
+      return '<tr>'+tdLinea+'<td>'+fmtDate(r.fecha)+'</td>'
+        +'<td style="color:#ecf0f1;font-weight:500;">'+esc(r.part)+'</td>'
+        +'<td style="font-family:monospace;font-size:.72rem;color:#95a5a6;">'+esc(r.lot_no||'-')+'</td>'
+        +'<td style="font-family:monospace;font-size:.72rem;color:#95a5a6;">'+esc(r.box_code||'-')+'</td>'
+        +'<td style="text-align:center;color:#3498db;font-weight:600;">1</td>'
+        +'<td><span class="lqcs-chip '+chipClass(r.turno)+'">'+esc(r.turno)+'</span></td>'
+        +'<td>'+esc(r.status||'-')+'</td>'
+        +'<td style="font-family:monospace;font-size:.72rem;color:#95a5a6;">'+esc(r.serial)+'</td>'
+        +'<td style="color:#95a5a6;font-size:.75rem;">'+esc(r.last_scan)+'</td>'
+        +'</tr>';
+    }).join('');
+
+    return '<div class="lqcs-table-wrap"><table class="lqcs-tbl"><thead><tr>'
+      +thLinea+'<th>FECHA</th><th>N\xdaMERO DE PARTE</th><th>LOTE</th><th>CAJA</th><th style="text-align:center;">CANTIDAD</th>'
+      +'<th>TURNO</th><th>ESTADO</th><th>SERIAL</th><th>\xdaLTIMO ESCANEO</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  function bindContentEvents(filtered, allLines) {
+    // Search
+    var searchEl = document.getElementById('lqcs-search');
+    if (searchEl) {
+      searchEl.addEventListener('input', function(){
+        state.searchQ=this.value; state.page=1; renderContentArea();
+        var nextSearch = document.getElementById('lqcs-search');
+        if (nextSearch) {
+          nextSearch.focus();
+          nextSearch.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
+        }
+      });
+    }
+    var clearEl = document.getElementById('lqcs-search-clear');
+    if (clearEl) clearEl.addEventListener('click', function(){ state.searchQ=''; state.page=1; renderContentArea(); });
+
+    // Pagination
+    var prevBtn = document.getElementById('lqcs-prev');
+    var nextBtn = document.getElementById('lqcs-next');
+    if (prevBtn) prevBtn.addEventListener('click', function(){ state.page--; renderContentArea(); });
+    if (nextBtn) nextBtn.addEventListener('click', function(){ state.page++; renderContentArea(); });
+  }
+
+  // Export
+  function doExport() {
+    var allLines = isAllLinesMode();
+    var dateLabel = state.dateFrom+'_'+state.dateTo;
+    var lineLabel = allLines ? 'todas' : state.selectedLines.join('-');
+    if (state.tableView === 'summary') {
+      var map={};
+      state.records.forEach(function(r){
+        var k = allLines ? (r.fecha+'|'+r.part) : (r.linea+'|'+r.fecha+'|'+r.part+'|'+(r.lot_no||''));
+        if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),total:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
+        map[k].total++; map[k][r.turno]=(map[k][r.turno]||0)+1;
+      });
+      var groups=Object.values(map);
+      var hdr = allLines ? ['FECHA','NUMERO DE PARTE','TOTAL','DIA','TIEMPO EXTRA','NOCHE'] : ['FECHA','NUMERO DE PARTE','LOTE','TOTAL','DIA','TIEMPO EXTRA','NOCHE'];
+      var rows = groups.map(function(g){ return allLines?[g.fecha,g.part,g.total,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]:[g.fecha,g.part,g.lot_no,g.total,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]; });
+      exportCSV('resumen_'+lineLabel+'_'+dateLabel+'.csv', hdr, rows);
+    } else {
+      var hdr2 = allLines ? ['LINEA','FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','SERIAL','ULTIMO ESCANEO'] : ['FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','SERIAL','ULTIMO ESCANEO'];
+      var rows2 = state.records.map(function(r){ return allLines?[r.linea,r.fecha,r.part,r.lot_no,r.box_code,1,r.turno,r.status,r.serial,r.last_scan]:[r.fecha,r.part,r.lot_no,r.box_code,1,r.turno,r.status,r.serial,r.last_scan]; });
+      exportCSV('detalle_'+lineLabel+'_'+dateLabel+'.csv', hdr2, rows2);
+    }
+  }
+
+  // Navigation
+  function openLine(line) { state.selectedLines=[line]; state.allLines=false; state.view='table'; state.records=[]; state.page=1; renderTable(); }
+  function openAll()      { state.selectedLines=[]; state.allLines=true; state.view='table'; state.records=[]; state.page=1; renderTable(); }
+
+  // Init
+  function init() {
+    state = { view:'grid', selectedLines:[], records:[], tableView:'summary',
+      dateFrom:todayStr(), dateTo:todayStr(), turno:'Todos', searchQ:'', page:1,
+      loading:false, counts:{}, uphData:{}, uphSlots:[], allLines:false, chartSel:null };
+    renderGrid();
+    loadGridData();
+  }
+
+  window.inicializarHistorialLiberacionLQC = init;
+  init();
+})();
+</script>

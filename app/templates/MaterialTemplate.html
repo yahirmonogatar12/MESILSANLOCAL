@@ -573,6 +573,11 @@
         <!-- </div> -->
     </div>
 
+    <!-- Contenedor específico para el contenido de Control de Calidad (LADO DERECHO) -->
+    <div class="calidad-content-area" id="calidad-content-area" style="display: none;">
+        <!-- El contenido se cargará dinámicamente con AJAX (cargarContenidoDinamico) -->
+    </div>
+
     <!-- Contenedor específico para el contenido de Control de Resultados (LADO DERECHO) -->
     <div class="control-resultados-content-area" id="control-resultados-content-area" style="display: none;">
         <!-- Contenedor por defecto con información general -->
@@ -1228,7 +1233,7 @@
                     { id: 'material-container', section: 'control-material' },
                     { id: 'produccion-content-area', section: 'control-produccion' },
                     { id: 'control-proceso-content-area', section: 'control-proceso' },
-                    { id: 'control-calidad-content-area', section: 'control-calidad' }
+                    { id: 'calidad-content-area', section: 'control-calidad' }
                 ];
 
                 // Buscar cuál contenedor está visible
@@ -1483,7 +1488,7 @@
                 'material-container',
                 'produccion-content-area',
                 'control-proceso-content-area',
-                'control-calidad-content-area'
+                'calidad-content-area'
             ];
 
             contentAreas.forEach(areaId => {
@@ -2050,6 +2055,7 @@
             const produccionContentArea = document.getElementById('produccion-content-area');
             const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
             const controlResultadosContentArea = document.getElementById('control-resultados-content-area');
+            const calidadContentArea = document.getElementById('calidad-content-area');
             const informacionBasicaContentArea = document.getElementById('informacion-basica-content-area');
             const materialInfoContainer = document.getElementById('material-info-container');
             const controlAlmacenContainer = document.getElementById('control-almacen-container');
@@ -2087,6 +2093,8 @@
                 materialContentArea.style.display = 'none';
                 produccionContentArea.style.display = 'none';
                 controlProcesoContentArea.style.display = 'none';
+                controlResultadosContentArea.style.display = 'none';
+                calidadContentArea.style.display = 'none';
                 informacionBasicaContentArea.style.display = 'none';
 
                 // FORZAR ocultar también los sidebars
@@ -3367,6 +3375,7 @@ function hideAllMaterialContainers() {
                         window.mostrarControlProceso();
 
                     } else if (this.id === 'Control de calidad') {
+                        hideAllContent();
                         materialContainer.style.display = 'block';
                         controlCalidadContent.style.display = 'block';
                         materialContentArea.style.display = 'none';
