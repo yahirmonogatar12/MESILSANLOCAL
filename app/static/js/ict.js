@@ -4,22 +4,59 @@ let allDefects = [];
 let currentBarcode = "";
 let currentTimestamp = "";
 
+// Registros marcados para comparacion. Clave = `${barcode}|${ts}`.
+const selectedCompareRecords = new Map();
+let compareRunsData = [];
+
+// Campos a comparar y resaltar diferencias (auditoria)
+const COMPARE_FIELDS = [
+  { key: "act_value", label: "ACT" },
+  { key: "act_unit", label: "UNIT" },
+  { key: "std_value", label: "STD" },
+  { key: "std_unit", label: "UNIT" },
+  { key: "m_value", label: "M" },
+  { key: "r_value", label: "R" },
+  { key: "hlim_pct", label: "HLIM %", suffix: "%" },
+  { key: "llim_pct", label: "LLIM %", suffix: "%" },
+  { key: "hp_value", label: "HP" },
+  { key: "lp_value", label: "LP" },
+  { key: "ws_value", label: "WS" },
+  { key: "ds_value", label: "DS" },
+  { key: "rc_value", label: "RC" },
+  { key: "p_flag", label: "P" },
+  { key: "j_flag", label: "J" },
+];
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function cleanupIctModule() {
-  ["ict-table-loading", "ict-defects-loading"].forEach(id => {
+  ["ict-table-loading", "ict-defects-loading", "ict-compare-loading"].forEach(id => {
     const loader = document.getElementById(id);
     if (loader) {
       loader.classList.remove("active");
     }
   });
 
-  const modal = document.getElementById("defects-modal");
-  if (modal) {
-    modal.classList.remove("active");
-    const container = document.getElementById("historial-ict-unique-container");
-    if (container && modal.parentNode === document.body) {
-      container.appendChild(modal);
+  const container = document.getElementById("historial-ict-unique-container");
+  ["defects-modal", "compare-modal"].forEach(id => {
+    const modal = document.getElementById(id);
+    if (modal) {
+      modal.classList.remove("active");
+      if (container && modal.parentNode === document.body) {
+        container.appendChild(modal);
+      }
     }
-  }
+  });
+
+  selectedCompareRecords.clear();
+  compareRunsData = [];
 }
 
 window.limpiarHistorialICT = cleanupIctModule;
@@ -28,7 +65,14 @@ async function downloadFile(url, fallbackName, successMessage) {
   try {
     const response = await fetch(url, { method: "GET", credentials: "same-origin" });
     if (!response.ok) {
-      throw new Error(`Error al descargar archivo (status ${response.status})`);
+      let errorMessage = `Error al descargar archivo (status ${response.status})`;
+      try {
+        const errorBody = await response.json();
+        errorMessage = errorBody?.error || errorMessage;
+      } catch (_) {
+        // Mantener el error HTTP si el backend no envio JSON.
+      }
+      throw new Error(errorMessage);
     }
 
     const blob = await response.blob();
@@ -56,7 +100,7 @@ async function downloadFile(url, fallbackName, successMessage) {
     }
   } catch (error) {
     console.error(error);
-    showNotification("Error al descargar el archivo", "error");
+    showNotification(error.message || "Error al descargar el archivo", "error");
   }
 }
 
@@ -142,25 +186,113 @@ function renderIctTable(data) {
   
   data.forEach(row => {
     const tr = document.createElement("tr");
+    tr.classList.add("ict-row-openable");
+    const barcode = row.barcode ?? "";
+    const ts = row.ts ?? "";
+    tr.dataset.barcode = barcode;
+    tr.dataset.ts = ts;
     if (row.resultado === "NG") {
       tr.classList.add("ict-row-ng");
-      tr.dataset.barcode = row.barcode;
-      tr.dataset.ts = row.ts;
     }
+    const compareKey = `${barcode}|${ts}`;
+    const isChecked = selectedCompareRecords.has(compareKey);
+    if (isChecked) tr.classList.add("ict-row-selected");
     tr.innerHTML = `
-      <td>${row.fecha ?? ""}</td>
-      <td>${row.hora ?? ""}</td>
-      <td>${row.linea ?? ""}</td>
-      <td>${row.ict ?? ""}</td>
-      <td>${row.resultado ?? ""}</td>
-      <td>${row.no_parte ?? ""}</td>
-      <td>${row.barcode ?? ""}</td>
-      <td>${row.fuente_archivo ?? ""}</td>
-      <td title="${row.defect_code ?? ""}">${row.defect_code ?? ""}</td>
-      <td title="${row.defect_valor ?? ""}">${row.defect_valor ?? ""}</td>
+      <td class="ict-col-check"><input type="checkbox" class="ict-compare-check" data-barcode="${escapeHtml(barcode)}" data-ts="${escapeHtml(ts)}" data-fecha="${escapeHtml(row.fecha)}" data-hora="${escapeHtml(row.hora)}" data-linea="${escapeHtml(row.linea)}" data-resultado="${escapeHtml(row.resultado)}"${isChecked ? " checked" : ""}></td>
+      <td>${escapeHtml(row.fecha)}</td>
+      <td>${escapeHtml(row.hora)}</td>
+      <td>${escapeHtml(row.linea)}</td>
+      <td>${escapeHtml(row.ict)}</td>
+      <td>${escapeHtml(row.resultado)}</td>
+      <td>${escapeHtml(row.no_parte)}</td>
+      <td>${escapeHtml(row.barcode)}</td>
+      <td>${escapeHtml(row.fuente_archivo)}</td>
+      <td title="${escapeHtml(row.defect_code)}">${escapeHtml(row.defect_code)}</td>
+      <td title="${escapeHtml(row.defect_valor)}">${escapeHtml(row.defect_valor)}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  syncSelectAllCheckbox();
+  updateCompareButton();
+}
+
+/**
+ * Marcar/desmarcar un registro para comparacion
+ */
+function toggleCompareSelection(checkbox) {
+  const barcode = checkbox.dataset.barcode || "";
+  const ts = checkbox.dataset.ts || "";
+  const key = `${barcode}|${ts}`;
+  const row = checkbox.closest("tr");
+
+  if (checkbox.checked) {
+    selectedCompareRecords.set(key, {
+      barcode,
+      ts,
+      fecha: checkbox.dataset.fecha || "",
+      hora: checkbox.dataset.hora || "",
+      linea: checkbox.dataset.linea || "",
+      resultado: checkbox.dataset.resultado || "",
+    });
+    row?.classList.add("ict-row-selected");
+  } else {
+    selectedCompareRecords.delete(key);
+    row?.classList.remove("ict-row-selected");
+  }
+
+  syncSelectAllCheckbox();
+  updateCompareButton();
+}
+
+/**
+ * Marcar/desmarcar todos los registros visibles
+ */
+function toggleSelectAllCompare(checkAll) {
+  const checks = document.querySelectorAll(".ict-compare-check");
+  checks.forEach(cb => {
+    if (cb.checked !== checkAll) {
+      cb.checked = checkAll;
+      toggleCompareSelection(cb);
+    }
+  });
+}
+
+function syncSelectAllCheckbox() {
+  const selectAll = document.getElementById("select-all-ict");
+  if (!selectAll) return;
+  const checks = Array.from(document.querySelectorAll(".ict-compare-check"));
+  if (checks.length === 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+    return;
+  }
+  const checkedCount = checks.filter(c => c.checked).length;
+  selectAll.checked = checkedCount === checks.length;
+  selectAll.indeterminate = checkedCount > 0 && checkedCount < checks.length;
+}
+
+function updateCompareButton() {
+  const btn = document.getElementById("btn-compare");
+  const counter = document.getElementById("compare-count");
+  const count = selectedCompareRecords.size;
+
+  if (btn) {
+    btn.disabled = count < 2;
+    btn.classList.toggle("active", count >= 2);
+    btn.title = count < 2
+      ? "Selecciona 2 o mas registros para comparar parametros"
+      : `Comparar ${count} registros`;
+  }
+
+  if (counter) {
+    if (count > 0) {
+      counter.style.display = "";
+      counter.textContent = `${count} seleccionado${count !== 1 ? "s" : ""}`;
+    } else {
+      counter.style.display = "none";
+    }
+  }
 }
 
 /**
@@ -184,6 +316,11 @@ async function openDefectsModal(barcode, ts) {
   const modalBarcode = document.getElementById("modal-barcode");
   if (modalBarcode) {
     modalBarcode.textContent = barcode;
+  }
+
+  const filterSelect = document.getElementById("modal-filter-resultado");
+  if (filterSelect) {
+    filterSelect.value = "";
   }
   
   // Cargar los defectos
@@ -210,14 +347,20 @@ async function loadDefects(barcode, ts) {
     const url = `/api/ict/defects?barcode=${encodeURIComponent(barcode)}&ts=${encodeURIComponent(ts ?? "")}`;
     const r = await fetch(url);
     const data = await r.json();
+    if (!r.ok) {
+      throw new Error(data?.error || `Error al cargar parametros (status ${r.status})`);
+    }
     
     // Guardar todos los defectos
-    allDefects = data;
+    allDefects = Array.isArray(data) ? data : [];
     
     // Aplicar el filtro actual
     filterDefects();
   } catch (error) {
-    showNotification("Error al cargar parámetros", "error");
+    console.error(error);
+    allDefects = [];
+    renderDefectsTable([]);
+    showNotification(error.message || "Error al cargar parametros", "error");
   } finally {
     hideLoading("modal");
   }
@@ -246,6 +389,13 @@ function renderDefectsTable(defects) {
   if (!tbody) return;
   
   tbody.innerHTML = "";
+
+  if (!defects.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="25" style="text-align:center;color:#95a5a6;padding:18px;">Sin parametros para mostrar</td>';
+    tbody.appendChild(tr);
+    return;
+  }
   
   defects.forEach(d => {
     const tr = document.createElement("tr");
@@ -258,34 +408,198 @@ function renderDefectsTable(defects) {
     const llim = d.llim_pct ? `${d.llim_pct}%` : "";
     
     tr.innerHTML = `
-      <td>${fecha}</td>
-      <td>${hora}</td>
-      <td>${d.linea ?? ""}</td>
-      <td>${d.ict ?? ""}</td>
-      <td>${d.barcode ?? ""}</td>
-      <td>${d.componente ?? ""}</td>
-      <td>${d.pinref ?? ""}</td>
-      <td>${d.act_value ?? ""}</td>
-      <td>${d.act_unit ?? ""}</td>
-      <td>${d.std_value ?? ""}</td>
-      <td>${d.std_unit ?? ""}</td>
-      <td>${d.meas_value ?? ""}</td>
-      <td>${d.m_value ?? ""}</td>
-      <td>${d.r_value ?? ""}</td>
-      <td>${hlim}</td>
-      <td>${llim}</td>
-      <td>${d.hp_value ?? ""}</td>
-      <td>${d.lp_value ?? ""}</td>
-      <td>${d.ws_value ?? ""}</td>
-      <td>${d.ds_value ?? ""}</td>
-      <td>${d.rc_value ?? ""}</td>
-      <td>${d.p_flag ?? ""}</td>
-      <td>${d.j_flag ?? ""}</td>
-      <td>${d.resultado_local ?? ""}</td>
-      <td>${d.defecto_tipo ?? ""}</td>
+      <td>${escapeHtml(fecha)}</td>
+      <td>${escapeHtml(hora)}</td>
+      <td>${escapeHtml(d.linea)}</td>
+      <td>${escapeHtml(d.ict)}</td>
+      <td>${escapeHtml(d.barcode)}</td>
+      <td>${escapeHtml(d.componente)}</td>
+      <td>${escapeHtml(d.pinref)}</td>
+      <td>${escapeHtml(d.act_value)}</td>
+      <td>${escapeHtml(d.act_unit)}</td>
+      <td>${escapeHtml(d.std_value)}</td>
+      <td>${escapeHtml(d.std_unit)}</td>
+      <td>${escapeHtml(d.meas_value)}</td>
+      <td>${escapeHtml(d.m_value)}</td>
+      <td>${escapeHtml(d.r_value)}</td>
+      <td>${escapeHtml(hlim)}</td>
+      <td>${escapeHtml(llim)}</td>
+      <td>${escapeHtml(d.hp_value)}</td>
+      <td>${escapeHtml(d.lp_value)}</td>
+      <td>${escapeHtml(d.ws_value)}</td>
+      <td>${escapeHtml(d.ds_value)}</td>
+      <td>${escapeHtml(d.rc_value)}</td>
+      <td>${escapeHtml(d.p_flag)}</td>
+      <td>${escapeHtml(d.j_flag)}</td>
+      <td>${escapeHtml(d.resultado_local)}</td>
+      <td>${escapeHtml(d.defecto_tipo)}</td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+/**
+ * Abrir modal de comparacion de parametros
+ */
+async function openCompareModal() {
+  if (selectedCompareRecords.size < 2) {
+    showNotification("Selecciona al menos 2 registros para comparar", "error");
+    return;
+  }
+
+  const modal = document.getElementById("compare-modal");
+  if (modal) {
+    if (modal.parentNode !== document.body) {
+      document.body.appendChild(modal);
+    }
+    modal.classList.add("active");
+  }
+
+  const loader = document.getElementById("ict-compare-loading");
+  if (loader) loader.classList.add("active");
+
+  const tbody = document.getElementById("compare-body");
+  if (tbody) tbody.innerHTML = "";
+
+  const runs = Array.from(selectedCompareRecords.values());
+  try {
+    const fetched = await Promise.all(runs.map(async (rec, idx) => {
+      const url = `/api/ict/defects?barcode=${encodeURIComponent(rec.barcode)}&ts=${encodeURIComponent(rec.ts ?? "")}`;
+      const r = await fetch(url);
+      const data = await r.json();
+      if (!r.ok) {
+        throw new Error(data?.error || `Error cargando ${rec.barcode}`);
+      }
+      return {
+        runIndex: idx + 1,
+        ...rec,
+        defects: Array.isArray(data) ? data : [],
+      };
+    }));
+    compareRunsData = fetched;
+    renderCompareTable();
+  } catch (error) {
+    console.error(error);
+    compareRunsData = [];
+    showNotification(error.message || "Error al cargar parametros", "error");
+  } finally {
+    if (loader) loader.classList.remove("active");
+  }
+}
+
+function closeCompareModal() {
+  const modal = document.getElementById("compare-modal");
+  if (modal) modal.classList.remove("active");
+}
+
+/**
+ * Comparar valores normalizando vacios y casing
+ */
+function normalizeCompareValue(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+/**
+ * Construir tabla de comparacion con resaltado de diferencias
+ */
+function renderCompareTable() {
+  const tbody = document.getElementById("compare-body");
+  const summaryRuns = document.getElementById("compare-runs-summary");
+  const summaryDiff = document.getElementById("compare-diff-summary");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const onlyDiffs = document.getElementById("compare-only-diffs")?.checked ?? true;
+
+  // Agrupar por (componente, pinref)
+  const groups = new Map();
+  compareRunsData.forEach(run => {
+    run.defects.forEach(d => {
+      const componente = d.componente ?? "";
+      const pinref = d.pinref ?? "";
+      const key = `${componente}||${pinref}`;
+      if (!groups.has(key)) {
+        groups.set(key, { componente, pinref, runs: new Map() });
+      }
+      groups.get(key).runs.set(run.runIndex, d);
+    });
+  });
+
+  let totalDiffGroups = 0;
+  const sortedGroups = Array.from(groups.values()).sort((a, b) => {
+    const ca = (a.componente || "").localeCompare(b.componente || "");
+    if (ca !== 0) return ca;
+    return (a.pinref || "").localeCompare(b.pinref || "");
+  });
+
+  sortedGroups.forEach(group => {
+    // Determinar campos con diferencia y filas faltantes
+    const diffFields = new Set();
+    COMPARE_FIELDS.forEach(f => {
+      const values = new Set();
+      compareRunsData.forEach(run => {
+        const d = group.runs.get(run.runIndex);
+        if (d) values.add(normalizeCompareValue(d[f.key]));
+      });
+      if (values.size > 1) diffFields.add(f.key);
+    });
+
+    const missingInSomeRun = compareRunsData.some(run => !group.runs.has(run.runIndex));
+    const hasAnyDiff = diffFields.size > 0 || missingInSomeRun;
+    if (hasAnyDiff) totalDiffGroups++;
+
+    if (onlyDiffs && !hasAnyDiff) return;
+
+    compareRunsData.forEach((run, idx) => {
+      const d = group.runs.get(run.runIndex);
+      const tr = document.createElement("tr");
+      tr.classList.add("compare-row");
+      if (idx === 0) tr.classList.add("compare-group-start");
+      if (hasAnyDiff) tr.classList.add("compare-group-diff");
+      if (!d) tr.classList.add("compare-row-missing");
+
+      const runLabel = `#${run.runIndex} - ${escapeHtml(run.barcode)} <span class="compare-run-meta">${escapeHtml(run.fecha)} ${escapeHtml(run.hora)}</span>`;
+
+      let html = `
+        <td class="compare-cell-key">${escapeHtml(group.componente)}</td>
+        <td class="compare-cell-key">${escapeHtml(group.pinref)}</td>
+        <td class="compare-cell-run">${runLabel}</td>
+      `;
+
+      COMPARE_FIELDS.forEach(f => {
+        if (!d) {
+          html += `<td class="compare-missing">&mdash;</td>`;
+          return;
+        }
+        const raw = d[f.key];
+        const value = (raw === null || raw === undefined || raw === "") ? "" : raw;
+        const display = (value !== "" && f.suffix) ? `${value}${f.suffix}` : value;
+        const isDiff = diffFields.has(f.key);
+        html += `<td class="${isDiff ? "compare-diff" : ""}">${escapeHtml(display)}</td>`;
+      });
+
+      tr.innerHTML = html;
+      tbody.appendChild(tr);
+    });
+  });
+
+  if (summaryRuns) {
+    summaryRuns.textContent = `${compareRunsData.length} registro${compareRunsData.length !== 1 ? "s" : ""}`;
+  }
+  if (summaryDiff) {
+    summaryDiff.textContent = `${totalDiffGroups} pin${totalDiffGroups !== 1 ? "es" : ""} con diferencias`;
+  }
+
+  if (!tbody.children.length) {
+    const tr = document.createElement("tr");
+    const colspan = 3 + COMPARE_FIELDS.length;
+    const msg = onlyDiffs && groups.size > 0
+      ? "Sin diferencias entre los registros seleccionados"
+      : "Sin parametros para comparar";
+    tr.innerHTML = `<td colspan="${colspan}" style="text-align:center;color:#95a5a6;padding:18px;">${msg}</td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 /**
@@ -347,20 +661,24 @@ function initializeIctEventListeners() {
       return;
     }
 
-    // Cerrar modal
-    if (target.classList.contains("close-modal") || target.closest(".close-modal")) {
+    // Boton comparar parametros
+    if (target.id === "btn-compare" || target.closest("#btn-compare")) {
       e.preventDefault();
-      closeDefectsModal();
+      const btn = document.getElementById("btn-compare");
+      if (btn && !btn.disabled) openCompareModal();
       return;
     }
 
-    // Click en fila NG (doble click)
-    const ngRow = target.closest(".ict-row-ng");
-    if (ngRow && e.detail === 2) {
+    // Cerrar modal (delegado por data-close para distinguir cual cerrar)
+    const closeBtn = target.closest(".close-modal");
+    if (closeBtn) {
       e.preventDefault();
-      const barcode = ngRow.dataset.barcode;
-      const ts = ngRow.dataset.ts;
-      openDefectsModal(barcode, ts);
+      const which = closeBtn.dataset.close;
+      if (which === "compare-modal") {
+        closeCompareModal();
+      } else {
+        closeDefectsModal();
+      }
       return;
     }
 
@@ -368,6 +686,30 @@ function initializeIctEventListeners() {
     if (target.id === "defects-modal") {
       e.preventDefault();
       closeDefectsModal();
+      return;
+    }
+    if (target.id === "compare-modal") {
+      e.preventDefault();
+      closeCompareModal();
+      return;
+    }
+
+    // Click en checkbox o celda de checkbox: detener propagacion para evitar abrir defects
+    if (target.classList.contains("ict-compare-check") || target.id === "select-all-ict") {
+      e.stopPropagation();
+      return;
+    }
+    if (target.classList.contains("ict-col-check") || target.closest(".ict-col-check")) {
+      return;
+    }
+
+    // Doble click en cualquier fila para abrir parametros locales
+    const openableRow = target.closest(".ict-row-openable");
+    if (openableRow && e.detail === 2) {
+      e.preventDefault();
+      const barcode = openableRow.dataset.barcode;
+      const ts = openableRow.dataset.ts;
+      openDefectsModal(barcode, ts);
       return;
     }
   });
@@ -379,6 +721,24 @@ function initializeIctEventListeners() {
       filterDefects();
       return;
     }
+
+    // Toggle "solo mostrar diferencias" en modal de comparacion
+    if (e.target.id === "compare-only-diffs") {
+      renderCompareTable();
+      return;
+    }
+
+    // Cambios en checkbox individual (cuando se cambia con teclado)
+    if (e.target.classList && e.target.classList.contains("ict-compare-check")) {
+      toggleCompareSelection(e.target);
+      return;
+    }
+
+    // Cambio en select-all
+    if (e.target.id === "select-all-ict") {
+      toggleSelectAllCompare(e.target.checked);
+      return;
+    }
   });
 
   // Event delegation para input (búsqueda con debounce)
@@ -388,8 +748,8 @@ function initializeIctEventListeners() {
       clearTimeout(barcodeTimer);
       const barcodeValue = e.target.value.trim();
       
-      // Si hay barcode, buscar en toda la DB (sin fecha)
-      if (barcodeValue.length > 0) {
+      // Buscar automaticamente solo con prefijos suficientemente especificos.
+      if (barcodeValue.length >= 6 || barcodeValue.length === 0) {
         barcodeTimer = setTimeout(() => {
           loadIctData();
         }, 500);
@@ -460,6 +820,8 @@ window.closeDefectsModal = closeDefectsModal;
 window.exportIctToExcel = exportIctToExcel;
 window.exportDefectsToExcel = exportDefectsToExcel;
 window.filterDefects = filterDefects;
+window.openCompareModal = openCompareModal;
+window.closeCompareModal = closeCompareModal;
 
 // ====== Auto-inicialización ======
 

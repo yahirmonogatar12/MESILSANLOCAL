@@ -116,6 +116,13 @@ from .shipping_material_api import (
     register_shipping_material_routes,
 )
 from .smd_inventory_api import register_smd_inventory_routes
+from .services.ict_lgd_parser import (
+    IctLgdError,
+    IctLgdNotFoundError,
+    IctLgdPathError,
+    get_lgd_parameters_for_barcode,
+    resolve_lgd_path,
+)
 from .tickets_portal import create_tickets_blueprint
 from .user_admin import user_admin_bp
 
@@ -11351,7 +11358,7 @@ def ict_pass_fail_api():
         )
         params = []
 
-        if fecha:
+        if fecha and not barcode_like:
             sql += " AND fecha=%s"
             params.append(fecha)
         if linea:
@@ -11408,7 +11415,7 @@ def ict_pass_fail_export():
         )
         params = []
 
-        if fecha:
+        if fecha and not barcode_like:
             sql += " AND fecha=%s"
             params.append(fecha)
         if linea:
@@ -20795,6 +20802,21 @@ def convertir_linea_smt_reverso(linea_bd):
 
 
 # ====== HISTORIAL ICT (FRONT FULL DEFECTS 2) ======
+def _append_indexable_text_filter(sql, params, column_name, raw_value, exact_min_length=12):
+    """Agregar filtro exacto o por prefijo para evitar LIKE con comodin inicial."""
+    value = (raw_value or "").strip()
+    if not value:
+        return sql
+
+    if len(value) >= exact_min_length:
+        sql += f" AND {column_name}=%s"
+        params.append(value)
+    else:
+        sql += f" AND {column_name} LIKE %s"
+        params.append(f"{value}%")
+    return sql
+
+
 def _ict_format_row(row):
     """Convertir campos fecha/hora a cadenas serializables."""
     if not row:
@@ -20813,6 +20835,38 @@ def _ict_format_row(row):
         else:
             formatted[key] = value
     return formatted
+
+
+def _ict_find_history_record(barcode, ts=None):
+    """Buscar el registro resumen que apunta al archivo LGD local."""
+    sql = (
+        "SELECT barcode, ts, fuente_archivo, linea, ict "
+        "FROM history_ict WHERE barcode=%s"
+    )
+    params = [barcode]
+    if ts:
+        sql += " AND ts=%s"
+        params.append(ts)
+    sql += " ORDER BY ts DESC LIMIT 1"
+    return execute_query(sql, tuple(params), fetch="one")
+
+
+def _ict_load_local_parameters(barcode, ts=None):
+    history_row = _ict_find_history_record(barcode, ts)
+    if not history_row:
+        raise IctLgdNotFoundError("No se encontro el registro ICT solicitado.")
+
+    source_file = (history_row.get("fuente_archivo") or "").strip()
+    if not source_file:
+        raise IctLgdPathError("El registro no tiene fuente_archivo.")
+
+    lgd_path = resolve_lgd_path(source_file)
+    rows = get_lgd_parameters_for_barcode(str(lgd_path), barcode)
+    for row in rows:
+        row.setdefault("linea", history_row.get("linea"))
+        row.setdefault("ict", history_row.get("ict"))
+        row.setdefault("fuente_archivo", source_file)
+    return rows, source_file
 
 
 def _vision_format_value(value):
@@ -22357,6 +22411,8 @@ def ict_data_api():
         linea = request.args.get("linea", "").strip()
         resultado = request.args.get("resultado", "").strip()
         barcode_like = request.args.get("barcode_like", "").strip()
+        if barcode_like and len(barcode_like) < 6:
+            return jsonify([])
 
         sql = (
             "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
@@ -22375,8 +22431,7 @@ def ict_data_api():
             sql += " AND resultado=%s"
             params.append(resultado)
         if barcode_like:
-            sql += " AND barcode LIKE %s"
-            params.append(f"%{barcode_like}%")
+            sql = _append_indexable_text_filter(sql, params, "barcode", barcode_like)
 
         sql += " ORDER BY ts DESC LIMIT 500"
         rows = execute_query(sql, tuple(params), fetch="all") or []
@@ -22393,25 +22448,19 @@ def ict_data_api():
 def ict_defects_api():
     """Obtener defectos asociados a un barcode espec��fico."""
     barcode = request.args.get("barcode", "").strip()
+    ts = request.args.get("ts", "").strip()
     if not barcode:
         return jsonify([])
 
     try:
-        sql = (
-            "SELECT d.barcode, h.linea, h.ict, d.componente, d.pinref, d.act_value, d.act_unit, "
-            "d.std_value, d.std_unit, d.meas_value, "
-            "d.m_value, d.r_value, d.hlim_pct, d.llim_pct, "
-            "d.hp_value, d.lp_value, d.ws_value, d.ds_value, d.rc_value, "
-            "d.p_flag, d.j_flag, d.resultado_local, d.defecto_tipo, d.ts "
-            "FROM history_ict_defects d "
-            "LEFT JOIN history_ict h ON d.barcode COLLATE utf8mb4_unicode_ci = h.barcode COLLATE utf8mb4_unicode_ci "
-            "AND d.ts = h.ts "
-            "WHERE d.barcode=%s "
-            "ORDER BY d.ts DESC, d.componente LIMIT 1000"
-        )
-
-        rows = execute_query(sql, (barcode,), fetch="all") or []
+        rows, _ = _ict_load_local_parameters(barcode, ts)
         return jsonify([_ict_format_row(row) for row in rows])
+    except IctLgdNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except IctLgdPathError as e:
+        return jsonify({"error": str(e)}), 400
+    except IctLgdError as e:
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         import traceback
 
@@ -22427,6 +22476,8 @@ def export_ict_excel():
         linea = request.args.get("linea", "").strip()
         resultado = request.args.get("resultado", "").strip()
         barcode_like = request.args.get("barcode_like", "").strip()
+        if barcode_like and len(barcode_like) < 6:
+            return jsonify({"error": "Barcode demasiado corto para exportar"}), 400
 
         sql = (
             "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
@@ -22445,8 +22496,7 @@ def export_ict_excel():
             sql += " AND resultado=%s"
             params.append(resultado)
         if barcode_like:
-            sql += " AND barcode LIKE %s"
-            params.append(f"%{barcode_like}%")
+            sql = _append_indexable_text_filter(sql, params, "barcode", barcode_like)
 
         sql += " ORDER BY ts DESC LIMIT 500"
         rows = execute_query(sql, tuple(params), fetch="all") or []
@@ -22530,6 +22580,12 @@ def export_ict_excel():
             as_attachment=True,
             download_name=filename,
         )
+    except IctLgdNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except IctLgdPathError as e:
+        return jsonify({"error": str(e)}), 400
+    except IctLgdError as e:
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         import traceback
 
@@ -22541,33 +22597,16 @@ def export_ict_excel():
 def export_ict_defects_excel():
     """Exportar detalles de defectos ICT a un archivo de Excel."""
     barcode = request.args.get("barcode", "").strip()
+    ts = request.args.get("ts", "").strip()
     resultado_filter = request.args.get("resultado", "").strip()
 
     if not barcode:
         return jsonify({"error": "Barcode requerido"}), 400
 
     try:
-        sql = (
-            "SELECT d.barcode, h.linea, h.ict, d.componente, d.pinref, d.act_value, d.act_unit, "
-            "d.std_value, d.std_unit, d.meas_value, "
-            "d.m_value, d.r_value, d.hlim_pct, d.llim_pct, "
-            "d.hp_value, d.lp_value, d.ws_value, d.ds_value, d.rc_value, "
-            "d.p_flag, d.j_flag, d.resultado_local, d.defecto_tipo, d.ts, "
-            "DATE(d.ts) AS fecha, TIME(d.ts) AS hora "
-            "FROM history_ict_defects d "
-            "LEFT JOIN history_ict h ON d.barcode COLLATE utf8mb4_unicode_ci = h.barcode COLLATE utf8mb4_unicode_ci "
-            "AND d.ts = h.ts "
-            "WHERE d.barcode=%s "
-        )
-        params = [barcode]
-
+        rows, _ = _ict_load_local_parameters(barcode, ts)
         if resultado_filter:
-            sql += " AND d.resultado_local=%s"
-            params.append(resultado_filter)
-
-        sql += " ORDER BY d.ts DESC, d.componente LIMIT 1000"
-
-        rows = execute_query(sql, tuple(params), fetch="all") or []
+            rows = [row for row in rows if row.get("resultado_local") == resultado_filter]
 
         from io import BytesIO
 
@@ -22683,6 +22722,12 @@ def export_ict_defects_excel():
             as_attachment=True,
             download_name=filename,
         )
+    except IctLgdNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except IctLgdPathError as e:
+        return jsonify({"error": str(e)}), 400
+    except IctLgdError as e:
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         import traceback
 

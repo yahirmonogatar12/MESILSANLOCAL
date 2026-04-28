@@ -506,6 +506,11 @@
     background-color: var(--ilsan-hover);
 }
 
+/* Filas del historial con parametros locales */
+.ict-row-openable {
+    cursor: pointer;
+}
+
 /* Fila NG (roja, clickeable) */
 .ict-row-ng {
     background-color: var(--ict-ng-row) !important;
@@ -838,12 +843,170 @@
 .modal-body {
     padding: 16px 20px 20px;
     max-height: 65vh;
-    overflow-y: auto;
+    overflow: hidden;
     flex: 1;
+    min-height: 0;
 }
 
 .modal-body .table-wrap {
-    max-height: none;
+    max-height: 65vh;
+    min-height: 260px;
+    overflow: auto;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ========== COMPARACION DE PARAMETROS (AUDITORIA) ========== */
+
+/* Columna de checkbox en tabla principal */
+.ict-col-check {
+    width: 36px;
+    text-align: center;
+    padding: 4px 6px !important;
+}
+
+.ict-col-check input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ilsan-accent-blue);
+}
+
+#ict-table tbody tr.ict-row-selected td {
+    background-color: rgba(52, 152, 219, 0.18) !important;
+    box-shadow: inset 3px 0 0 var(--ilsan-accent-blue);
+}
+
+#btn-compare:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+#btn-compare.active {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border-color: rgba(52, 152, 219, 0.5);
+    color: #fff;
+}
+
+/* Toggle "solo mostrar diferencias" */
+.compare-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ilsan-text-light);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.compare-toggle input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ilsan-accent-blue);
+    cursor: pointer;
+}
+
+.compare-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    color: var(--ilsan-text-gray);
+    font-size: 0.75rem;
+}
+
+.compare-legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-right: 2px;
+    vertical-align: middle;
+}
+
+.compare-diff-swatch {
+    background: rgba(231, 76, 60, 0.4);
+    border-color: rgba(231, 76, 60, 0.7);
+}
+
+.compare-missing-swatch {
+    background: repeating-linear-gradient(45deg, rgba(149, 165, 166, 0.25), rgba(149, 165, 166, 0.25) 4px, transparent 4px, transparent 8px);
+    border-color: rgba(149, 165, 166, 0.5);
+}
+
+/* Tabla de comparacion */
+#ict-compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+#ict-compare-table th,
+#ict-compare-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    white-space: nowrap;
+}
+
+#ict-compare-table thead th {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: var(--ilsan-text-light);
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    z-index: 5;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+#ict-compare-table tbody tr.compare-group-start td {
+    border-top: 2px solid rgba(52, 152, 219, 0.35);
+}
+
+#ict-compare-table tbody tr.compare-group-diff.compare-group-start td {
+    border-top: 2px solid rgba(231, 76, 60, 0.55);
+}
+
+#ict-compare-table tbody tr:hover td {
+    background-color: rgba(52, 152, 219, 0.08);
+}
+
+.compare-cell-key {
+    font-weight: 700;
+    color: var(--ilsan-accent-blue) !important;
+}
+
+.compare-cell-run {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.72rem;
+    color: var(--ilsan-text-gray) !important;
+}
+
+.compare-run-meta {
+    color: var(--ilsan-text-gray);
+    opacity: 0.75;
+    margin-left: 4px;
+}
+
+td.compare-diff {
+    background-color: rgba(231, 76, 60, 0.25) !important;
+    color: #ffd6d1 !important;
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px rgba(231, 76, 60, 0.5);
+}
+
+td.compare-missing {
+    background: repeating-linear-gradient(45deg, rgba(149, 165, 166, 0.12), rgba(149, 165, 166, 0.12) 4px, transparent 4px, transparent 8px);
+    color: var(--ilsan-text-gray) !important;
+    text-align: center;
+}
+
+#ict-compare-table tbody tr.compare-row-missing td.compare-cell-key,
+#ict-compare-table tbody tr.compare-row-missing td.compare-cell-run {
+    opacity: 0.6;
 }

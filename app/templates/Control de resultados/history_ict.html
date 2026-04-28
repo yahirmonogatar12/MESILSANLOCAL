@@ -84,6 +84,13 @@
       </svg>
       <h3>Registros de Pruebas</h3>
       <span class="record-count" id="record-count">0 registros</span>
+      <span class="record-count" id="compare-count" style="display:none;">0 seleccionados</span>
+      <button id="btn-compare" class="btn-export" disabled title="Selecciona 2 o mas registros para comparar parametros">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"></path>
+        </svg>
+        Comparar parametros
+      </button>
       <button id="btn-export-excel" class="btn-export">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -99,6 +106,7 @@
       <table id="ict-table">
         <thead>
           <tr>
+            <th class="ict-col-check"><input type="checkbox" id="select-all-ict" title="Seleccionar todos"></th>
             <th>Fecha</th>
             <th>Hora</th>
             <th>Línea</th>
@@ -113,6 +121,162 @@
         </thead>
         <tbody id="ict-body"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Modal de parametros ICT desde archivo local -->
+  <div id="defects-modal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="defects-modal-title">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
+            <path d="M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            <path d="M9 12h6M9 16h6"></path>
+          </svg>
+          <div>
+            <h3 id="defects-modal-title">Parametros ICT</h3>
+            <span class="modal-subtitle">Barcode: <span id="modal-barcode"></span></span>
+          </div>
+        </div>
+        <button type="button" class="close-modal" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-filters">
+        <label for="modal-filter-resultado">
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4"></path>
+            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Resultado
+        </label>
+        <select id="modal-filter-resultado">
+          <option value="">Todos</option>
+          <option value="OK">OK</option>
+          <option value="NG">NG</option>
+        </select>
+        <button id="btn-export-defects-excel" type="button" class="btn-export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 10v6m0 0l-3-3m3 3l3-3"></path>
+            <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Exportar Excel
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="table-wrap">
+          <div class="table-loading" id="ict-defects-loading">
+            <div class="spinner"></div>
+            <span>Cargando parametros...</span>
+          </div>
+          <table id="ict-defects-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Linea</th>
+                <th>ICT</th>
+                <th>Barcode</th>
+                <th>Componente</th>
+                <th>Pinref</th>
+                <th>ACT</th>
+                <th>Unit</th>
+                <th>STD</th>
+                <th>Unit</th>
+                <th>MEAS</th>
+                <th>M</th>
+                <th>R</th>
+                <th>HLIM %</th>
+                <th>LLIM %</th>
+                <th>HP</th>
+                <th>LP</th>
+                <th>WS</th>
+                <th>DS</th>
+                <th>RC</th>
+                <th>P</th>
+                <th>J</th>
+                <th>Resultado</th>
+                <th>Defecto</th>
+              </tr>
+            </thead>
+            <tbody id="defects-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de comparacion de parametros (auditoria) -->
+  <div id="compare-modal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="compare-modal-title">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"></path>
+          </svg>
+          <div>
+            <h3 id="compare-modal-title">Comparacion de Parametros ICT</h3>
+            <span class="modal-subtitle"><span id="compare-runs-summary">0 registros</span> &middot; <span id="compare-diff-summary">0 diferencias</span></span>
+          </div>
+        </div>
+        <button type="button" class="close-modal" data-close="compare-modal" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-filters">
+        <label for="compare-only-diffs" class="compare-toggle">
+          <input type="checkbox" id="compare-only-diffs" checked>
+          <span>Solo mostrar diferencias</span>
+        </label>
+        <div class="compare-legend">
+          <span class="compare-legend-swatch compare-diff-swatch"></span>
+          <span>Valor cambio entre ejecuciones</span>
+          <span class="compare-legend-swatch compare-missing-swatch"></span>
+          <span>No medido en esta ejecucion</span>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="table-wrap">
+          <div class="table-loading" id="ict-compare-loading">
+            <div class="spinner"></div>
+            <span>Cargando parametros...</span>
+          </div>
+          <table id="ict-compare-table">
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Pinref</th>
+                <th>Ejecucion</th>
+                <th>ACT</th>
+                <th>UNIT</th>
+                <th>STD</th>
+                <th>UNIT</th>
+                <th>M</th>
+                <th>R</th>
+                <th>HLIM %</th>
+                <th>LLIM %</th>
+                <th>HP</th>
+                <th>LP</th>
+                <th>WS</th>
+                <th>DS</th>
+                <th>RC</th>
+                <th>P</th>
+                <th>J</th>
+              </tr>
+            </thead>
+            <tbody id="compare-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
