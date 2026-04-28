@@ -18264,7 +18264,6 @@ def api_smt_scanner_datos():
                 LEFT JOIN plan_main p ON p.lot_no = b.lot_no
                 WHERE {where_clause}
                 ORDER BY b.last_scan DESC, b.id DESC
-                LIMIT 50000
             """
             cursor.execute(query, params)
             rows = cursor.fetchall()

@@ -125,7 +125,7 @@
     uphSlots: [],
     chartSel: null  // null=total, 'M1'=line
   };
-  var PER_PAGE = 100;
+  var PER_PAGE = 500;
 
   // Helpers
   function todayStr() {
@@ -519,10 +519,12 @@
     var map={};
     filtered.forEach(function(r){
       var k = allLines ? (r.fecha+'|'+r.part) : (r.linea+'|'+r.fecha+'|'+r.part+'|'+(r.lot_no||''));
-      if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),model_code:r.model_code||'',total:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
+      if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),model_code:r.model_code||'',total:0,seriales:{},unicas:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
       map[k].total++;
+      if (r.serial) map[k].seriales[r.serial]=1;
       map[k][r.turno]=(map[k][r.turno]||0)+1;
     });
+    Object.keys(map).forEach(function(k){ map[k].unicas = Object.keys(map[k].seriales).length; });
     var groups=Object.values(map).sort(function(a,b){return b.total-a.total;});
 
     renderSearchArea(groups.length, state.records.length, true);
@@ -539,18 +541,23 @@
       return '<tr>'+tdLinea+'<td>'+fmtDate(g.fecha)+'</td><td style="color:#ecf0f1;font-weight:500;">'+esc(g.part)+'</td>'
         +tdLote
         +'<td style="text-align:center;color:#3498db;font-weight:700;">'+g.total.toLocaleString()+'</td>'
+        +'<td style="text-align:center;color:#27ae60;font-weight:700;">'+g.unicas.toLocaleString()+'</td>'
         +'<td style="text-align:center;">'+tdDia+'</td><td style="text-align:center;">'+tdExtra+'</td><td style="text-align:center;">'+tdNoche+'</td></tr>';
     }).join('');
 
     return '<div class="lqcs-table-wrap"><table class="lqcs-tbl"><thead><tr>'
-      +thLinea+'<th>FECHA</th><th>N\xdaMERO DE PARTE</th>'+thLote+'<th style="text-align:center;">TOTAL</th>'
+      +thLinea+'<th>FECHA</th><th>N\xdaMERO DE PARTE</th>'+thLote+'<th style="text-align:center;">TOTAL</th><th style="text-align:center;">UNICAS</th>'
       +'<th style="text-align:center;">DIA</th><th style="text-align:center;">T. EXTRA</th><th style="text-align:center;">NOCHE</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
   function buildDetailView(filtered, allLines) {
     var total=filtered.length;
-    var slice=filtered;
+    var pages=Math.max(1,Math.ceil(total/PER_PAGE));
+    var safePage=Math.min(Math.max(state.page,1),pages);
+    state.page=safePage;
+    var start=(safePage-1)*PER_PAGE;
+    var slice=filtered.slice(start, start+PER_PAGE);
 
     renderSearchArea(total, state.records.length);
     if (!slice.length) return '<div class="lqcs-empty">Sin registros</div>';
@@ -570,10 +577,18 @@
         +'</tr>';
     }).join('');
 
+    var pagBar = total>PER_PAGE ? '<div class="lqcs-page-bar">'
+      +'<span class="lqcs-page-info">'+(start+1)+'-'+Math.min(start+PER_PAGE,total)+' de '+total+' escaneos</span>'
+      +'<div style="display:flex;gap:4px;align-items:center;">'
+      +'<button class="lqcs-page-btn" id="lqcs-prev"'+(safePage<=1?' disabled':'')+'>Ant.</button>'
+      +'<span class="lqcs-page-info">Pag. '+safePage+'/'+pages+'</span>'
+      +'<button class="lqcs-page-btn" id="lqcs-next"'+(safePage>=pages?' disabled':'')+'>Sig.</button>'
+      +'</div></div>' : '';
+
     return '<div class="lqcs-table-wrap"><table class="lqcs-tbl"><thead><tr>'
       +thLinea+'<th>FECHA</th><th>N\xdaMERO DE PARTE</th><th>LOTE</th><th>CAJA</th><th style="text-align:center;">CANTIDAD</th>'
       +'<th>TURNO</th><th>ESTADO</th><th>SERIAL</th><th>\xdaLTIMO ESCANEO</th>'
-      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'+pagBar;
   }
 
   function bindContentEvents(filtered, allLines) {
@@ -608,12 +623,15 @@
       var map={};
       state.records.forEach(function(r){
         var k = allLines ? (r.fecha+'|'+r.part) : (r.linea+'|'+r.fecha+'|'+r.part+'|'+(r.lot_no||''));
-        if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),total:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
-        map[k].total++; map[k][r.turno]=(map[k][r.turno]||0)+1;
+        if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),total:0,seriales:{},unicas:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
+        map[k].total++;
+        if (r.serial) map[k].seriales[r.serial]=1;
+        map[k][r.turno]=(map[k][r.turno]||0)+1;
       });
+      Object.keys(map).forEach(function(k){ map[k].unicas = Object.keys(map[k].seriales).length; });
       var groups=Object.values(map);
-      var hdr = allLines ? ['FECHA','NUMERO DE PARTE','TOTAL','DIA','TIEMPO EXTRA','NOCHE'] : ['FECHA','NUMERO DE PARTE','LOTE','TOTAL','DIA','TIEMPO EXTRA','NOCHE'];
-      var rows = groups.map(function(g){ return allLines?[g.fecha,g.part,g.total,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]:[g.fecha,g.part,g.lot_no,g.total,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]; });
+      var hdr = allLines ? ['FECHA','NUMERO DE PARTE','TOTAL','UNICAS','DIA','TIEMPO EXTRA','NOCHE'] : ['FECHA','NUMERO DE PARTE','LOTE','TOTAL','UNICAS','DIA','TIEMPO EXTRA','NOCHE'];
+      var rows = groups.map(function(g){ return allLines?[g.fecha,g.part,g.total,g.unicas,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]:[g.fecha,g.part,g.lot_no,g.total,g.unicas,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]; });
       exportCSV('resumen_'+lineLabel+'_'+dateLabel+'.csv', hdr, rows);
     } else {
       var hdr2 = allLines ? ['LINEA','FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','SERIAL','ULTIMO ESCANEO'] : ['FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','SERIAL','ULTIMO ESCANEO'];
