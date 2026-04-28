@@ -11349,6 +11349,11 @@ def ict_pass_fail_api():
         linea = request.args.get("linea", "").strip()
         no_parte = request.args.get("no_parte", "").strip()
 
+        if not fecha and not linea and not no_parte:
+            return jsonify({
+                "error": "Indica al menos un filtro (fecha, linea o part number) para evitar consultas pesadas"
+            }), 400
+
         sql = (
             "SELECT fecha, linea, ict, no_parte, "
             "COUNT(DISTINCT CASE WHEN resultado='OK' THEN barcode END) AS ok_count, "
@@ -11358,7 +11363,7 @@ def ict_pass_fail_api():
         )
         params = []
 
-        if fecha and not barcode_like:
+        if fecha:
             sql += " AND fecha=%s"
             params.append(fecha)
         if linea:
@@ -11406,6 +11411,11 @@ def ict_pass_fail_export():
         linea = request.args.get("linea", "").strip()
         no_parte = request.args.get("no_parte", "").strip()
 
+        if not fecha and not linea and not no_parte:
+            return jsonify({
+                "error": "Indica al menos un filtro (fecha, linea o part number) para exportar"
+            }), 400
+
         sql = (
             "SELECT fecha, linea, ict, no_parte, "
             "COUNT(DISTINCT CASE WHEN resultado='OK' THEN barcode END) AS ok_count, "
@@ -11415,7 +11425,7 @@ def ict_pass_fail_export():
         )
         params = []
 
-        if fecha and not barcode_like:
+        if fecha:
             sql += " AND fecha=%s"
             params.append(fecha)
         if linea:
@@ -22716,6 +22726,215 @@ def export_ict_defects_excel():
         filename = (
             f"parametros_{barcode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         )
+        return send_file(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except IctLgdNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except IctLgdPathError as e:
+        return jsonify({"error": str(e)}), 400
+    except IctLgdError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        import traceback
+
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
+
+@app.route("/api/ict/export-compare", methods=["POST"])
+@login_requerido
+def export_ict_compare_excel():
+    """Exportar comparacion de parametros ICT entre varias ejecuciones (auditoria).
+
+    Body JSON: { runs: [{barcode, ts, fecha, hora, linea, resultado}, ...], only_diffs: bool }
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        runs_input = payload.get("runs") or []
+        only_diffs = bool(payload.get("only_diffs", True))
+
+        if len(runs_input) < 2:
+            return jsonify({"error": "Se requieren al menos 2 ejecuciones"}), 400
+
+        runs = []
+        for idx, rec in enumerate(runs_input, start=1):
+            barcode = (rec.get("barcode") or "").strip()
+            ts = (rec.get("ts") or "").strip()
+            if not barcode:
+                continue
+            rows, _ = _ict_load_local_parameters(barcode, ts)
+            runs.append({
+                "run_index": idx,
+                "barcode": barcode,
+                "ts": ts,
+                "fecha": rec.get("fecha") or "",
+                "hora": rec.get("hora") or "",
+                "linea": rec.get("linea") or "",
+                "resultado": rec.get("resultado") or "",
+                "defects": [_ict_format_row(row) for row in rows],
+            })
+
+        if len(runs) < 2:
+            return jsonify({"error": "No se pudieron cargar parametros de las ejecuciones"}), 400
+
+        compare_fields = [
+            ("act_value", "ACT", ""),
+            ("act_unit", "UNIT", ""),
+            ("std_value", "STD", ""),
+            ("std_unit", "UNIT", ""),
+            ("m_value", "M", ""),
+            ("r_value", "R", ""),
+            ("hlim_pct", "HLIM %", "%"),
+            ("llim_pct", "LLIM %", "%"),
+            ("hp_value", "HP", ""),
+            ("lp_value", "LP", ""),
+            ("ws_value", "WS", ""),
+            ("ds_value", "DS", ""),
+            ("rc_value", "RC", ""),
+            ("p_flag", "P", ""),
+            ("j_flag", "J", ""),
+        ]
+
+        groups = {}
+        for run in runs:
+            for d in run["defects"]:
+                key = (d.get("componente") or "", d.get("pinref") or "")
+                if key not in groups:
+                    groups[key] = {"componente": key[0], "pinref": key[1], "by_run": {}}
+                groups[key]["by_run"][run["run_index"]] = d
+
+        def _norm(v):
+            if v is None:
+                return ""
+            return str(v).strip()
+
+        from io import BytesIO
+
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Comparacion ICT"
+
+        header_fill = PatternFill(start_color="3f6b6e", end_color="3f6b6e", fill_type="solid")
+        cell_fill = PatternFill(start_color="a1a09c", end_color="a1a09c", fill_type="solid")
+        diff_fill = PatternFill(start_color="f4b3ad", end_color="f4b3ad", fill_type="solid")
+        missing_fill = PatternFill(start_color="d9d9d9", end_color="d9d9d9", fill_type="solid")
+        info_fill = PatternFill(start_color="dde6e8", end_color="dde6e8", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=10)
+        title_font = Font(bold=True, color="000000", size=12)
+        info_font = Font(bold=True, color="000000", size=9)
+        diff_font = Font(bold=True, color="8b0000", size=10)
+        thin = Side(style="thin", color="000000")
+        border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        ws.cell(row=1, column=1, value="COMPARACION DE PARAMETROS ICT - AUDITORIA").font = title_font
+        ws.cell(row=2, column=1, value=f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        ws.cell(row=2, column=2, value=f"Solo diferencias: {'SI' if only_diffs else 'NO'}")
+
+        info_headers = ["#", "Barcode", "Fecha", "Hora", "Linea", "Resultado"]
+        for col_num, h in enumerate(info_headers, start=1):
+            c = ws.cell(row=4, column=col_num, value=h)
+            c.fill = header_fill
+            c.font = header_font
+            c.alignment = Alignment(horizontal="center", vertical="center")
+            c.border = border
+
+        for i, run in enumerate(runs, start=5):
+            for col_num, value in enumerate([
+                f"#{run['run_index']}",
+                run["barcode"],
+                run["fecha"],
+                run["hora"],
+                run["linea"],
+                run["resultado"],
+            ], start=1):
+                c = ws.cell(row=i, column=col_num, value=value)
+                c.fill = info_fill
+                c.font = info_font
+                c.alignment = Alignment(horizontal="center", vertical="center")
+                c.border = border
+
+        table_start_row = 5 + len(runs) + 2
+        table_headers = ["Componente", "Pinref", "Ejecucion"] + [f[1] for f in compare_fields]
+        for col_num, h in enumerate(table_headers, start=1):
+            c = ws.cell(row=table_start_row, column=col_num, value=h)
+            c.fill = header_fill
+            c.font = header_font
+            c.alignment = Alignment(horizontal="center", vertical="center")
+            c.border = border
+
+        sorted_keys = sorted(groups.keys(), key=lambda k: (k[0] or "", k[1] or ""))
+
+        current_row = table_start_row + 1
+        for key in sorted_keys:
+            group = groups[key]
+
+            diff_keys = set()
+            for f in compare_fields:
+                values = set()
+                for run in runs:
+                    d = group["by_run"].get(run["run_index"])
+                    if d:
+                        values.add(_norm(d.get(f[0])))
+                if len(values) > 1:
+                    diff_keys.add(f[0])
+
+            missing_in_some = any(run["run_index"] not in group["by_run"] for run in runs)
+            has_any_diff = bool(diff_keys) or missing_in_some
+
+            if only_diffs and not has_any_diff:
+                continue
+
+            for run in runs:
+                d = group["by_run"].get(run["run_index"])
+                run_label = f"#{run['run_index']} - {run['barcode']} {run['fecha']} {run['hora']}"
+                row_values = [group["componente"], group["pinref"], run_label]
+
+                for f in compare_fields:
+                    if not d:
+                        row_values.append("--")
+                        continue
+                    raw = d.get(f[0])
+                    if raw is None or raw == "":
+                        row_values.append("")
+                    else:
+                        suffix = f[2]
+                        row_values.append(f"{raw}{suffix}" if suffix else raw)
+
+                for col_num, value in enumerate(row_values, start=1):
+                    cell = ws.cell(row=current_row, column=col_num, value=value)
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                    cell.border = border
+
+                    if col_num <= 3:
+                        cell.fill = cell_fill
+                    else:
+                        field = compare_fields[col_num - 4]
+                        if not d:
+                            cell.fill = missing_fill
+                        elif field[0] in diff_keys:
+                            cell.fill = diff_fill
+                            cell.font = diff_font
+                        else:
+                            cell.fill = cell_fill
+
+                current_row += 1
+
+        widths = [18, 12, 38] + [12] * len(compare_fields)
+        for col_idx, width in enumerate(widths, start=1):
+            column_letter = ws.cell(row=table_start_row, column=col_idx).column_letter
+            ws.column_dimensions[column_letter].width = width
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename = f"comparacion_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         return send_file(
             output,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

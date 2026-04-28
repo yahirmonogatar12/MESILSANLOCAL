@@ -61,9 +61,9 @@ function cleanupIctModule() {
 
 window.limpiarHistorialICT = cleanupIctModule;
 
-async function downloadFile(url, fallbackName, successMessage) {
+async function downloadFile(url, fallbackName, successMessage, options = {}) {
   try {
-    const response = await fetch(url, { method: "GET", credentials: "same-origin" });
+    const response = await fetch(url, { method: "GET", credentials: "same-origin", ...options });
     if (!response.ok) {
       let errorMessage = `Error al descargar archivo (status ${response.status})`;
       try {
@@ -603,6 +603,38 @@ function renderCompareTable() {
 }
 
 /**
+ * Exportar comparacion de parametros a Excel
+ */
+async function exportCompareToExcel() {
+  if (!compareRunsData.length) {
+    showNotification("Primero ejecuta una comparacion", "error");
+    return;
+  }
+
+  const onlyDiffs = document.getElementById("compare-only-diffs")?.checked ?? true;
+
+  const runs = compareRunsData.map(r => ({
+    barcode: r.barcode,
+    ts: r.ts,
+    fecha: r.fecha,
+    hora: r.hora,
+    linea: r.linea,
+    resultado: r.resultado,
+  }));
+
+  await downloadFile(
+    "/api/ict/export-compare",
+    `comparacion_ict_${Date.now()}.xlsx`,
+    "Comparacion exportada",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runs, only_diffs: onlyDiffs }),
+    }
+  );
+}
+
+/**
  * Exportar historial ICT a Excel
  */
 async function exportIctToExcel() {
@@ -658,6 +690,13 @@ function initializeIctEventListeners() {
     if (target.id === "btn-export-defects-excel" || target.closest("#btn-export-defects-excel")) {
       e.preventDefault();
       exportDefectsToExcel();
+      return;
+    }
+
+    // Boton exportar comparacion
+    if (target.id === "btn-export-compare-excel" || target.closest("#btn-export-compare-excel")) {
+      e.preventDefault();
+      exportCompareToExcel();
       return;
     }
 
@@ -822,6 +861,7 @@ window.exportDefectsToExcel = exportDefectsToExcel;
 window.filterDefects = filterDefects;
 window.openCompareModal = openCompareModal;
 window.closeCompareModal = closeCompareModal;
+window.exportCompareToExcel = exportCompareToExcel;
 
 // ====== Auto-inicialización ======
 
