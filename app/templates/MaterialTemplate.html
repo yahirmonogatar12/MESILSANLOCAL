@@ -267,7 +267,7 @@
     <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js"></script>
-    <script src="/static/js/scriptMain.js"></script>
+    <script src="/static/js/scriptMain.js?v=20260429e"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -1914,6 +1914,20 @@
                         window.cleanupPlanSMT();
                     } catch(e) {
                         console.warn('Error en cleanupPlanSMT:', e);
+                    }
+                }
+                if (typeof window.limpiarHistorialICT === 'function') {
+                    try {
+                        window.limpiarHistorialICT();
+                    } catch(e) {
+                        console.warn('Error en limpiarHistorialICT:', e);
+                    }
+                }
+                if (typeof window.limpiarHistorialICTPassFail === 'function') {
+                    try {
+                        window.limpiarHistorialICTPassFail();
+                    } catch(e) {
+                        console.warn('Error en limpiarHistorialICTPassFail:', e);
                     }
                 }
                 // Agregar más funciones de limpieza aquí para otros módulos si es necesario

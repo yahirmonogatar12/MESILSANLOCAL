@@ -4435,10 +4435,15 @@ window.mostrarHistorialICT = function () {
     if (typeof window.limpiarHistorialICT === "function") {
       window.limpiarHistorialICT();
     }
+    if (typeof window.limpiarHistorialICTPassFail === "function") {
+      window.limpiarHistorialICTPassFail();
+    }
 
     const controlResultadosContainers = [
       "control-resultados-info-container",
       "historial-aoi-unique-container",
+      "historial-maquina-ict-pass-fail-unique-container",
+      "historial-cambios-parametros-ict-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
     ];
@@ -4651,6 +4656,13 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
       window.hideAllMaterialContainers();
     }
 
+    if (typeof window.limpiarHistorialICT === "function") {
+      window.limpiarHistorialICT();
+    }
+    if (typeof window.limpiarHistorialICTPassFail === "function") {
+      window.limpiarHistorialICTPassFail();
+    }
+
     // Ocultar otros contenedores de Control de Resultados
     const controlResultadosContainers = [
       "control-resultados-info-container",
@@ -4717,12 +4729,25 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
         "/historial-maquina-ict-pass-fail",
         () => {
           // Ejecutar inicialización del módulo si existe
-          if (typeof window.initializeIctPassFailEventListeners === "function") {
-            window.initializeIctPassFailEventListeners();
-          }
-          if (typeof window.loadIctPassFailData === "function") {
-            window.loadIctPassFailData();
-          }
+          const intentarInicializarIctPassFail = () => {
+            if (
+              typeof window.initializeHistorialIctPassFailEventListeners ===
+              "function"
+            ) {
+              window.initializeHistorialIctPassFailEventListeners();
+            } else if (typeof window.initializeIctPassFailEventListeners === "function") {
+              window.initializeIctPassFailEventListeners();
+            }
+
+            if (typeof window.loadHistorialIctPassFailData === "function") {
+              window.loadHistorialIctPassFailData();
+            } else if (typeof window.loadIctPassFailData === "function") {
+              window.loadIctPassFailData();
+            }
+          };
+
+          intentarInicializarIctPassFail();
+          setTimeout(intentarInicializarIctPassFail, 200);
         },
       );
     }

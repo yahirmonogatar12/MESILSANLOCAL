@@ -161,6 +161,243 @@
     white-space: nowrap;
 }
 
+.ict-pass-fail-summary-row {
+    cursor: pointer;
+}
+
+.ict-pass-fail-summary-row:hover td {
+    box-shadow: inset 0 0 0 9999px rgba(52, 152, 219, 0.08);
+}
+
+body.ict-pass-fail-detail-open {
+    overflow: hidden;
+}
+
+.ict-pass-fail-detail-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483600;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+}
+
+.ict-pass-fail-detail-modal.is-open {
+    display: flex;
+}
+
+.ict-pass-fail-detail-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(9, 12, 20, 0.76);
+}
+
+.ict-pass-fail-detail-dialog {
+    position: relative;
+    width: min(1500px, 96vw);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(52, 152, 219, 0.42);
+    border-radius: 8px;
+    background: var(--ilsan-dark-primary);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.ict-pass-fail-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(52, 152, 219, 0.28);
+    background: linear-gradient(135deg, var(--ilsan-dark-header), #202a3d);
+}
+
+.ict-pass-fail-detail-header h3 {
+    margin: 0;
+    color: var(--ilsan-text-light);
+    font-size: 1.05rem;
+}
+
+.ict-pass-fail-detail-header p {
+    margin: 6px 0 0;
+    color: var(--ilsan-text-gray);
+    font-size: 0.82rem;
+}
+
+.ict-pass-fail-detail-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 95, 95, 0.55);
+    border-radius: 7px;
+    background: rgba(255, 95, 95, 0.08);
+    color: #ffb3b3;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.ict-pass-fail-detail-close:hover {
+    background: rgba(255, 95, 95, 0.22);
+    color: #ffffff;
+}
+
+.ict-pass-fail-detail-body {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 18px 18px;
+}
+
+.ict-pass-fail-detail-summary {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.ict-pass-fail-detail-stat {
+    min-height: 70px;
+    padding: 12px;
+    border: 1px solid rgba(52, 152, 219, 0.24);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.045);
+}
+
+.ict-pass-fail-detail-stat span {
+    display: block;
+    color: var(--ilsan-text-gray);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.ict-pass-fail-detail-stat strong {
+    display: block;
+    margin-top: 8px;
+    color: var(--ilsan-text-light);
+    font-size: 1.2rem;
+}
+
+.ict-pass-fail-detail-stat-good strong {
+    color: #c8e6c9;
+}
+
+.ict-pass-fail-detail-stat-bad strong {
+    color: #ffcccc;
+}
+
+.ict-pass-fail-detail-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    padding: 12px;
+    border: 1px solid rgba(52, 152, 219, 0.22);
+    border-radius: 7px;
+    background: rgba(15, 30, 48, 0.55);
+}
+
+.ict-pass-fail-detail-controls .filter-group input,
+.ict-pass-fail-detail-controls .filter-group select {
+    width: 240px;
+}
+
+.ict-pass-fail-detail-table-wrap {
+    position: relative;
+    min-height: 260px;
+    max-height: 50vh;
+    overflow: auto;
+    border: 1px solid rgba(52, 152, 219, 0.28);
+    border-radius: 7px;
+    background: var(--ilsan-dark-secondary);
+}
+
+#ict-pass-fail-detail-table {
+    width: 100%;
+    min-width: 1380px;
+    border-collapse: collapse;
+    background: var(--ilsan-dark-secondary);
+}
+
+#ict-pass-fail-detail-table th,
+#ict-pass-fail-detail-table td {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 7px;
+    text-align: center;
+    font-size: 0.78rem;
+}
+
+#ict-pass-fail-detail-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: linear-gradient(135deg, #102844 0%, #223047 100%);
+    color: var(--ilsan-text-light);
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+
+#ict-pass-fail-detail-table tbody td {
+    color: var(--ilsan-text-secondary);
+    background: var(--ilsan-dark-secondary);
+}
+
+#ict-pass-fail-detail-table tbody tr:nth-child(even) td {
+    background: #44475A;
+}
+
+#ict-pass-fail-detail-table tbody tr.ict-pass-fail-detail-repair-row td {
+    color: #ffe4e4;
+}
+
+.ict-pass-fail-detail-defect-cell {
+    max-width: 260px;
+    text-align: left !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ict-pass-fail-detail-badge,
+.ict-pass-fail-detail-badge-ok,
+.ict-pass-fail-detail-badge-ng,
+.ict-pass-fail-detail-badge-warn,
+.ict-pass-fail-detail-badge-repair {
+    display: inline-flex;
+    min-width: 34px;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.ict-pass-fail-detail-badge {
+    color: #d7ecff;
+    background: rgba(52, 152, 219, 0.18);
+}
+
+.ict-pass-fail-detail-badge-ok {
+    color: #ffffff;
+    background: #2f8f55;
+}
+
+.ict-pass-fail-detail-badge-ng,
+.ict-pass-fail-detail-badge-repair {
+    color: #ffffff;
+    background: #a83232;
+}
+
+.ict-pass-fail-detail-badge-warn {
+    color: #1c2533;
+    background: #d6a94f;
+}
+
 @media (max-width: 768px) {
     #ict-pass-fail-filters {
         flex-direction: column;
@@ -203,5 +440,24 @@
     .ict-pass-fail-bar-label,
     .ict-pass-fail-bar-side-label {
         font-size: 0.78rem;
+    }
+
+    .ict-pass-fail-detail-modal {
+        padding: 10px;
+    }
+
+    .ict-pass-fail-detail-dialog {
+        width: 100%;
+        max-height: 95vh;
+    }
+
+    .ict-pass-fail-detail-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ict-pass-fail-detail-controls .filter-group,
+    .ict-pass-fail-detail-controls .filter-group input,
+    .ict-pass-fail-detail-controls .filter-group select {
+        width: 100%;
     }
 }
