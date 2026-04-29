@@ -135,7 +135,13 @@
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
   function fmtDate(ds) { if(!ds) return '-'; var p=String(ds).slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
-  function getTurno(h) { if(h>=7&&h<15) return 'DIA'; if(h>=15&&h<23) return 'TIEMPO EXTRA'; return 'NOCHE'; }
+  // Turnos: DIA 07:30-17:30, TIEMPO EXTRA 17:30-22:00, NOCHE 22:00-07:30 (mismo dia operativo).
+  function getTurno(hour, minute) {
+    var t = hour + (minute || 0) / 60;
+    if (t >= 7.5 && t < 17.5) return 'DIA';
+    if (t >= 17.5 && t < 22)  return 'TIEMPO EXTRA';
+    return 'NOCHE';
+  }
   function chipClass(t) { if(t==='DIA') return 'lqcs-chip-dia'; if(t==='TIEMPO EXTRA') return 'lqcs-chip-extra'; return 'lqcs-chip-noche'; }
   function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function shell() { return document.getElementById('lqc-smts-shell'); }
@@ -182,10 +188,17 @@
       };
     });
   }
-  function slotShiftColor(hour) {
-    if (hour >= 7 && hour < 15) return 'rgba(52,152,219,0.07)';
-    if (hour >= 15 && hour < 23) return 'rgba(80,38,150,0.07)';
-    return 'rgba(39,174,96,0.07)';
+  function slotShiftColor(slot) {
+    // Slots son de 30 min; cada slot representa [slot, slot+30min).
+    var hour = (slot && typeof slot.hour === 'number') ? slot.hour : 0;
+    var minute = 0;
+    if (slot && slot.label && slot.label.indexOf(':') !== -1) {
+      minute = parseInt(slot.label.split(':')[1], 10) || 0;
+    }
+    var t = hour + minute / 60;
+    if (t >= 7.5 && t < 17.5) return 'rgba(52,152,219,0.07)';   // DIA
+    if (t >= 17.5 && t < 22)  return 'rgba(80,38,150,0.07)';    // TIEMPO EXTRA
+    return 'rgba(39,174,96,0.07)';                              // NOCHE
   }
 
   // Export CSV

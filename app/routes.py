@@ -18815,8 +18815,8 @@ def api_smt_scanner_datos():
         """
         turno_expr = """
                     CASE
-                        WHEN TIME(b.last_scan) >= '07:30:00' AND TIME(b.last_scan) < '15:30:00' THEN 'DIA'
-                        WHEN TIME(b.last_scan) >= '15:30:00' AND TIME(b.last_scan) < '23:30:00' THEN 'TIEMPO EXTRA'
+                        WHEN TIME(b.last_scan) >= '07:30:00' AND TIME(b.last_scan) < '17:30:00' THEN 'DIA'
+                        WHEN TIME(b.last_scan) >= '17:30:00' AND TIME(b.last_scan) < '22:00:00' THEN 'TIEMPO EXTRA'
                         ELSE 'NOCHE'
                     END
         """
