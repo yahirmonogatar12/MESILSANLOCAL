@@ -1,5 +1,6 @@
 import os
 import re
+import threading
 from collections import OrderedDict, defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ ICT_BASE_DIR = os.environ.get(
 )
 _CACHE_MAX = 64
 _PARSE_CACHE = OrderedDict()
+_PARSE_CACHE_LOCK = threading.RLock()
 
 NUM_HYPHEN_RE = re.compile(r"(\d+)\s*-\s*(\d+)")
 FLOAT_RE = re.compile(r"[-+]?\d+\.\d+")
@@ -353,21 +355,24 @@ def _cache_key(abs_path: str):
 
 def parse_lgd_payload(abs_path: str, base_dir: str = ICT_BASE_DIR):
     key = _cache_key(abs_path)
-    cached = _PARSE_CACHE.get(key)
-    if cached is not None:
-        _PARSE_CACHE.move_to_end(key)
-        return cached
 
-    # Drop stale cache entries for the same path with older mtime/size.
-    same_path = key[0]
-    for old_key in list(_PARSE_CACHE.keys()):
-        if old_key[0] == same_path:
-            _PARSE_CACHE.pop(old_key, None)
+    with _PARSE_CACHE_LOCK:
+        cached = _PARSE_CACHE.get(key)
+        if cached is not None:
+            _PARSE_CACHE.move_to_end(key)
+            return cached
 
     payload = _parse_file_uncached(abs_path, base_dir)
-    _PARSE_CACHE[key] = payload
-    while len(_PARSE_CACHE) > _CACHE_MAX:
-        _PARSE_CACHE.popitem(last=False)
+
+    with _PARSE_CACHE_LOCK:
+        same_path = key[0]
+        for old_key in list(_PARSE_CACHE.keys()):
+            if old_key[0] == same_path:
+                _PARSE_CACHE.pop(old_key, None)
+        _PARSE_CACHE[key] = payload
+        while len(_PARSE_CACHE) > _CACHE_MAX:
+            _PARSE_CACHE.popitem(last=False)
+
     return payload
 
 

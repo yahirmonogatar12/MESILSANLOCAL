@@ -6,6 +6,7 @@
   <title>Historial Cambios Parámetros ICT</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ict.css') }}">
+  <script defer src="{{ url_for('static', filename='js/historial_cambios_parametros_ict.js') }}"></script>
   <style>
     /* ===== ESTILOS ADICIONALES ESPECÍFICOS PARA ESTA TABLA ===== */
     #cp-params-table {
@@ -169,6 +170,40 @@
     .results-card {
       animation: fadeInUp 0.5s ease;
     }
+
+    /* ===== BARRA DE PROGRESO ===== */
+    .cp-progress {
+      margin-top: 12px;
+      width: 320px;
+      max-width: 80vw;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cp-progress-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .cp-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%);
+      transition: width 0.25s ease;
+      border-radius: 4px;
+    }
+
+    .cp-progress-label {
+      font-size: 0.72rem;
+      color: var(--ilsan-text-gray);
+      text-align: center;
+      font-family: 'Consolas', 'Courier New', monospace;
+      letter-spacing: 0.3px;
+    }
   </style>
 </head>
 <body id="cp-params-container">
@@ -184,7 +219,7 @@
     </div>
 
     <div id="cp-ict-filters">
-      <!-- Fecha Desde -->
+      <!-- Dia -->
       <div class="filter-group">
         <label>
           <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -193,47 +228,9 @@
             <line x1="8" y1="2" x2="8" y2="6"/>
             <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          Fecha Desde
+          Dia
         </label>
-        <input type="date" id="cp-filter-fecha-desde">
-      </div>
-
-      <!-- Fecha Hasta -->
-      <div class="filter-group">
-        <label>
-          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-          Fecha Hasta
-        </label>
-        <input type="date" id="cp-filter-fecha-hasta">
-      </div>
-
-      <!-- Hora Desde -->
-      <div class="filter-group">
-        <label>
-          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          Hora Desde
-        </label>
-        <input type="time" id="cp-filter-hora-desde">
-      </div>
-
-      <!-- Hora Hasta -->
-      <div class="filter-group">
-        <label>
-          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          Hora Hasta
-        </label>
-        <input type="time" id="cp-filter-hora-hasta">
+        <input type="date" id="cp-filter-dia">
       </div>
 
       <!-- ICT -->
@@ -244,7 +241,18 @@
           </svg>
           ICT
         </label>
-        <input type="text" id="cp-filter-ict" placeholder="Ej. ICT1 M2">
+        <select id="cp-filter-ict">
+          <option value="">Seleccione…</option>
+          <option value="ALL">Todas (puede tardar)</option>
+          <option value="ICT1 M1">ICT1 M1</option>
+          <option value="ICT2 M1">ICT2 M1</option>
+          <option value="ICT1 M2">ICT1 M2</option>
+          <option value="ICT2 M2">ICT2 M2</option>
+          <option value="ICT1 M3">ICT1 M3</option>
+          <option value="ICT2 M3">ICT2 M3</option>
+          <option value="ICT1 M4">ICT1 M4</option>
+          <option value="ICT2 M4">ICT2 M4</option>
+        </select>
       </div>
 
       <!-- STD / Fuente -->
@@ -320,7 +328,10 @@
       <!-- Spinner de carga -->
       <div class="table-loading" id="cp-table-loading">
         <div class="spinner"></div>
-        <span></span>Cargando datos…</span>
+        <div class="cp-progress" id="cp-progress" style="display:none;">
+          <div class="cp-progress-bar"><div class="cp-progress-fill" id="cp-progress-fill"></div></div>
+          <span class="cp-progress-label" id="cp-progress-label">Iniciando…</span>
+        </div>
       </div>
 
       <!-- Tabla -->
@@ -355,256 +366,6 @@
 
 </div><!-- /.ict-page -->
 
-<script>
-(function () {
-  'use strict';
 
-  /* ===== HELPERS ===== */
-  function el(id) { return document.getElementById(id); }
-
-  function escHtml(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  /* ===== ESTADO UI ===== */
-  function mostrarCargando(v) {
-    var loading = el('cp-table-loading');
-    if (loading) loading.classList.toggle('active', v);
-  }
-
-  function mostrarSinDatos(v) {
-    var nd = el('cp-no-data');
-    if (nd) nd.style.display = v ? 'block' : 'none';
-  }
-
-  function setNoDataMessage(main, detail) {
-    var nd = el('cp-no-data');
-    if (!nd) return;
-    var ps = nd.querySelectorAll('p');
-    if (ps[0]) ps[0].textContent = main;
-    if (ps[1]) ps[1].textContent = detail || '';
-  }
-
-  function actualizarContador(n) {
-    var cnt = el('cp-record-count');
-    if (cnt) cnt.textContent = n + ' registro' + (n !== 1 ? 's' : '');
-  }
-
-  function mostrarWarnings(warnings) {
-    var box = el('cp-warning-box');
-    if (!box) return;
-    if (!warnings || warnings.length === 0) {
-      box.style.display = 'none';
-      box.innerHTML = '';
-      return;
-    }
-    box.innerHTML = warnings.slice(0, 5).map(escHtml).join('<br>');
-    if (warnings.length > 5) {
-      box.innerHTML += '<br>' + escHtml('+' + (warnings.length - 5) + ' advertencias mas.');
-    }
-    box.style.display = 'block';
-  }
-
-  function mostrarMeta(meta) {
-    var line = el('cp-meta-line');
-    if (!line) return;
-    if (!meta) {
-      line.style.display = 'none';
-      line.textContent = '';
-      return;
-    }
-    line.textContent =
-      'Archivos consultados: ' + (meta.archivos_consultados || 0) +
-      ' | Archivos leidos: ' + (meta.archivos_leidos || 0) +
-      ' | Snapshots: ' + (meta.snapshots || 0) +
-      ' | Cambios: ' + (meta.eventos || 0);
-    line.style.display = 'block';
-  }
-
-  /* ===== CONSTRUIR PARAMS ===== */
-  function buildParams() {
-    var p = new URLSearchParams();
-    var fDesde = el('cp-filter-fecha-desde');
-    var fHasta = el('cp-filter-fecha-hasta');
-    var hDesde = el('cp-filter-hora-desde');
-    var hHasta = el('cp-filter-hora-hasta');
-    var ict    = el('cp-filter-ict');
-    var noParte = el('cp-filter-no-parte');
-    var comp   = el('cp-filter-componente');
-    var param  = el('cp-filter-parametro');
-
-    if (fDesde && fDesde.value) p.set('fecha_desde', fDesde.value);
-    if (fHasta && fHasta.value) p.set('fecha_hasta', fHasta.value);
-    if (hDesde && hDesde.value) p.set('hora_desde',  hDesde.value);
-    if (hHasta && hHasta.value) p.set('hora_hasta',  hHasta.value);
-    if (ict   && ict.value.trim())  p.set('ict',        ict.value.trim());
-    if (noParte && noParte.value.trim()) p.set('no_parte', noParte.value.trim());
-    if (comp  && comp.value.trim()) p.set('componente', comp.value.trim());
-    if (param && param.value.trim()) p.set('parametro', param.value.trim());
-
-    return p;
-  }
-
-  /* ===== RENDERIZAR FILA ===== */
-  function renderFila(row, idx) {
-    var tr = document.createElement('tr');
-    var vAnterior = row.valor_anterior != null ? row.valor_anterior : '';
-    var vNuevo    = row.valor_nuevo    != null ? row.valor_nuevo    : '';
-
-    tr.innerHTML =
-      '<td class="cp-row-num">' + idx + '</td>' +
-      '<td>' + escHtml(row.jornada || row.fecha || '') + '</td>' +
-      '<td>' + escHtml(row.hora  || '') + '</td>' +
-      '<td class="cp-col-ict">'  + escHtml(row.ict        || '') + '</td>' +
-      '<td title="' + escHtml(row.no_parte || row.std || '') + '">' + escHtml(row.no_parte || row.std || '') + '</td>' +
-      '<td>' + escHtml(row.componente || '') + '</td>' +
-      '<td class="cp-col-param">' + escHtml(row.parametro  || '') + '</td>' +
-      '<td><span class="cp-val-old" title="' + escHtml(vAnterior) + '">' + escHtml(vAnterior || '—') + '</span></td>' +
-      '<td><span class="cp-val-new" title="' + escHtml(vNuevo)    + '">' + escHtml(vNuevo    || '—') + '</span></td>';
-
-    tr.innerHTML += '<td title="' + escHtml(row.archivo || '') + '">' + escHtml(row.archivo || '') + '</td>';
-    return tr;
-  }
-
-  /* ===== CARGAR DATOS ===== */
-  function loadCambiosParametrosICT() {
-    var params = buildParams();
-    var ict = el('cp-filter-ict');
-    if (!ict || !ict.value.trim()) {
-      actualizarContador(0);
-      var tableElRequired = el('cp-params-table');
-      if (tableElRequired) tableElRequired.style.display = 'none';
-      setNoDataMessage('ICT es requerido.', 'Capture un valor como ICT1, ICT1 M2 o 1 para consultar.');
-      mostrarSinDatos(true);
-      mostrarWarnings([]);
-      mostrarMeta(null);
-      return;
-    }
-    mostrarCargando(true);
-    mostrarSinDatos(false);
-    setNoDataMessage('No se encontraron registros con los filtros aplicados.', 'Ajuste los filtros y vuelva a consultar.');
-    mostrarWarnings([]);
-    mostrarMeta(null);
-
-    var tbody = el('cp-params-body');
-    if (tbody) tbody.innerHTML = '';
-
-    var tableEl = el('cp-params-table');
-
-    fetch('/api/ict/param-changes?' + params.toString(), {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    })
-    .then(function (res) {
-      return res.json().catch(function () {
-        return { error: 'HTTP ' + res.status };
-      }).then(function (payload) {
-        if (!res.ok) throw new Error(payload.error || ('HTTP ' + res.status));
-        return payload;
-      });
-    })
-    .then(function (data) {
-      mostrarCargando(false);
-      var rows = Array.isArray(data) ? data : (data.data || data.rows || []);
-      mostrarWarnings(Array.isArray(data.warnings) ? data.warnings : []);
-      mostrarMeta(data.meta || null);
-
-      actualizarContador(rows.length);
-
-      if (rows.length === 0) {
-        if (tableEl) tableEl.style.display = 'none';
-        mostrarSinDatos(true);
-        return;
-      }
-
-      if (tableEl) tableEl.style.display = '';
-      mostrarSinDatos(false);
-
-      rows.forEach(function (row, idx) {
-        if (tbody) tbody.appendChild(renderFila(row, idx + 1));
-      });
-    })
-    .catch(function (err) {
-      console.error('[CambiosICT] Error:', err);
-      mostrarCargando(false);
-      if (tableEl) tableEl.style.display = 'none';
-      mostrarSinDatos(true);
-      setNoDataMessage(err.message || 'Error al cargar los datos.', 'Verifique los filtros y vuelva a consultar.');
-    });
-  }
-
-  /* ===== EXPORTAR ===== */
-  function exportarExcel() {
-    var ict = el('cp-filter-ict');
-    if (!ict || !ict.value.trim()) {
-      setNoDataMessage('ICT es requerido.', 'Capture un valor como ICT1, ICT1 M2 o 1 antes de exportar.');
-      mostrarSinDatos(true);
-      return;
-    }
-    var params = buildParams();
-    window.location.href = '/api/ict/param-changes/export?' + params.toString();
-  }
-
-  /* ===== INIT ===== */
-  function initializeCambiosParametrosICT() {
-    /* Ocultar tabla inicialmente */
-    var tableEl = el('cp-params-table');
-    if (tableEl) tableEl.style.display = 'none';
-
-    /* Fecha de hoy por defecto */
-    var hoy = new Date().toISOString().split('T')[0];
-    var fDesde = el('cp-filter-fecha-desde');
-    var fHasta = el('cp-filter-fecha-hasta');
-    if (fDesde && !fDesde.value) fDesde.value = hoy;
-    if (fHasta && !fHasta.value) fHasta.value = hoy;
-
-    /* Botón consultar */
-    var btnConsultar = el('cp-btn-consultar');
-    if (btnConsultar) {
-      btnConsultar.addEventListener('click', loadCambiosParametrosICT);
-    }
-
-    /* Botón exportar */
-    var btnExport = el('cp-btn-export');
-    if (btnExport) {
-      btnExport.addEventListener('click', exportarExcel);
-    }
-
-    /* Enter en cualquier input dispara consulta */
-    var inputIds = [
-      'cp-filter-fecha-desde', 'cp-filter-fecha-hasta',
-      'cp-filter-hora-desde',  'cp-filter-hora-hasta',
-      'cp-filter-ict',         'cp-filter-no-parte',
-      'cp-filter-componente',  'cp-filter-parametro'
-    ];
-    inputIds.forEach(function (id) {
-      var inp = el(id);
-      if (inp) {
-        inp.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') loadCambiosParametrosICT();
-        });
-      }
-    });
-
-    mostrarSinDatos(true);
-  }
-
-  /* ===== EXPONER GLOBALMENTE ===== */
-  window.initializeCambiosParametrosICT = initializeCambiosParametrosICT;
-  window.loadCambiosParametrosICT       = loadCambiosParametrosICT;
-
-  /* ===== AUTO-INIT ===== */
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeCambiosParametrosICT);
-  } else {
-    initializeCambiosParametrosICT();
-  }
-
-})();
-</script>
 </body>
 </html>

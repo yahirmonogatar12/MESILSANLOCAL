@@ -12,6 +12,7 @@ import time
 import traceback
 import struct
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 
 # Intentar importar MySQLdb, si no está disponible usar PyMySQL como alternativa
 try:
@@ -11729,7 +11730,64 @@ def historial_cambios_parametros_ict_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
+def crear_indice_history_ict_audit():
+    """Crea indice cubriente para acelerar el modulo de Cambios de Parametros ICT.
+
+    El SQL de _ict_compute_parameter_changes filtra por (ict, ts) y agrupa por
+    (no_parte, linea, ict, fuente_archivo). Este indice cubre el WHERE + GROUP BY
+    sin tocar la tabla base.
+    """
+    try:
+        execute_query(
+            "CREATE INDEX idx_history_ict_audit "
+            "ON history_ict (ict, ts, no_parte, linea, fuente_archivo)"
+        )
+        print("Indice idx_history_ict_audit creado")
+    except Exception as e:
+        msg = str(e)
+        if "1061" in msg or "Duplicate key name" in msg:
+            return
+        print(f"(info) idx_history_ict_audit no se pudo crear: {e}")
+
+
+if STARTUP_INIT_ENABLED:
+    _startup_log("Asegurando indice idx_history_ict_audit")
+    crear_indice_history_ict_audit()
+
+
 _ICT_PARAM_JORNADA_START = dt_time(7, 30)
+
+# ----- Progreso de calculo de cambios de parametros ICT -----
+# Diccionario en memoria con el progreso de cada request activo, identificado
+# por progress_id que envia el frontend. Permite barra de progreso real.
+_ICT_PARAM_PROGRESS = {}
+_ICT_PARAM_PROGRESS_LOCK = threading.Lock()
+_ICT_PARAM_PROGRESS_TTL = 120  # segundos
+
+
+def _ict_param_progress_set(progress_id, **fields):
+    if not progress_id:
+        return
+    with _ICT_PARAM_PROGRESS_LOCK:
+        now = time.monotonic()
+        # Evict entradas viejas para evitar crecimiento ilimitado
+        stale = [pid for pid, st in _ICT_PARAM_PROGRESS.items()
+                 if now - st.get("started", now) > _ICT_PARAM_PROGRESS_TTL]
+        for pid in stale:
+            _ICT_PARAM_PROGRESS.pop(pid, None)
+        state = _ICT_PARAM_PROGRESS.setdefault(progress_id, {"started": now})
+        state.update(fields)
+
+
+def _ict_param_progress_increment(progress_id, by=1):
+    if not progress_id:
+        return
+    with _ICT_PARAM_PROGRESS_LOCK:
+        state = _ICT_PARAM_PROGRESS.get(progress_id)
+        if state:
+            state["done"] = state.get("done", 0) + by
+
+
 _ICT_PARAM_CHANGE_FIELDS = (
     ("std_value", "STD"),
     ("std_unit", "UNIT (STD)"),
@@ -11918,13 +11976,20 @@ def _ict_compute_parameter_changes(
     componente_filter="",
     parametro_filter="",
     limit=1000,
+    ict_all=False,
+    progress_id=None,
 ):
+    _ict_param_progress_set(progress_id, total=0, done=0, phase="iniciando")
     start_date = _ict_param_parse_date(fecha_desde, "fecha_desde")
     end_date = _ict_param_parse_date(fecha_hasta or fecha_desde, "fecha_hasta")
     if end_date < start_date:
         raise ValueError("fecha_hasta no puede ser menor que fecha_desde.")
 
-    ict_value, line_filter = _ict_param_parse_ict_filter(ict_filter)
+    if ict_all:
+        ict_value = None
+        line_filter = ""
+    else:
+        ict_value, line_filter = _ict_param_parse_ict_filter(ict_filter)
     hora_desde_value = _ict_param_parse_time(hora_desde, "hora_desde")
     hora_hasta_value = _ict_param_parse_time(hora_hasta, "hora_hasta")
     no_parte_filter = (no_parte_filter or "").strip()
@@ -11941,11 +12006,13 @@ def _ict_compute_parameter_changes(
         "ict, fuente_archivo "
         "FROM history_ict "
         "WHERE ts >= %s AND ts < %s "
-        "AND ict = %s "
         "AND fuente_archivo IS NOT NULL AND fuente_archivo <> ''"
     )
-    params = [jornada_start, jornada_end, ict_value]
+    params = [jornada_start, jornada_end]
 
+    if ict_value is not None:
+        sql += " AND ict = %s"
+        params.append(ict_value)
     if line_filter:
         sql += " AND linea = %s"
         params.append(line_filter)
@@ -11961,26 +12028,63 @@ def _ict_compute_parameter_changes(
         "ORDER BY no_parte ASC, linea ASC, ict ASC, first_ts ASC"
     )
 
+    _ict_param_progress_set(progress_id, phase="consultando_db")
     source_rows = execute_query(sql, tuple(params), fetch="all") or []
     warnings = []
+    warnings_lock = threading.Lock()
     groups = {}
-    files_read = 0
 
+    # Pre-filtrar por hora y deduplicar por fuente_archivo:
+    # Muchos source_rows pueden apuntar al mismo .lgd (mismo programa).
+    # Parseamos cada archivo una sola vez y reusamos el snapshot al reconstruir grupos.
+    eligible_rows = []
+    unique_files = {}
     for source_row in source_rows:
         ts = _ict_param_as_datetime(source_row.get("first_ts"))
         if not ts or not _ict_param_time_allowed(ts, hora_desde_value, hora_hasta_value):
             continue
-
         source_file = source_row.get("fuente_archivo") or ""
-        snapshot = _ict_param_load_snapshot(
-            source_file,
-            source_row.get("barcode"),
-            warnings,
-        )
+        if not source_file:
+            continue
+        eligible_rows.append((ts, source_row))
+        existing = unique_files.get(source_file)
+        # Conservar el barcode + ts mas tempranos como representante para el parseo
+        if existing is None or ts < existing[0]:
+            unique_files[source_file] = (ts, source_row.get("barcode") or "")
+
+    _ict_param_progress_set(
+        progress_id,
+        total=len(unique_files),
+        done=0,
+        phase="parseando_archivos",
+    )
+
+    def _parse_one(item):
+        source_file, (_ts, barcode) = item
+        local_warnings = []
+        snapshot = _ict_param_load_snapshot(source_file, barcode, local_warnings)
+        _ict_param_progress_increment(progress_id)
+        return source_file, snapshot, local_warnings
+
+    snapshot_by_file = {}
+    if unique_files:
+        max_workers = min(8, len(unique_files))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for source_file, snapshot, local_warnings in executor.map(_parse_one, list(unique_files.items())):
+                snapshot_by_file[source_file] = snapshot
+                if local_warnings:
+                    with warnings_lock:
+                        warnings.extend(local_warnings)
+
+    _ict_param_progress_set(progress_id, phase="detectando_cambios")
+    files_read = sum(1 for snap in snapshot_by_file.values() if snap is not None)
+
+    for ts, source_row in eligible_rows:
+        source_file = source_row.get("fuente_archivo") or ""
+        snapshot = snapshot_by_file.get(source_file)
         if snapshot is None:
             continue
 
-        files_read += 1
         group_key = (
             str(source_row.get("linea") or ""),
             str(source_row.get("ict") or ""),
@@ -12049,11 +12153,14 @@ def _ict_compute_parameter_changes(
     if limit and total_events > limit:
         warnings.append(f"Se muestran {limit} de {total_events} cambios. Use filtros para reducir la consulta.")
 
+    _ict_param_progress_set(progress_id, phase="completado")
+
     return {
         "rows": limited_events,
         "warnings": warnings,
         "meta": {
             "archivos_consultados": len(source_rows),
+            "archivos_unicos": len(unique_files),
             "archivos_leidos": files_read,
             "archivos_faltantes": file_warning_count,
             "snapshots": sum(len(items) for items in groups.values()),
@@ -12063,6 +12170,26 @@ def _ict_compute_parameter_changes(
             "jornada_fin": jornada_end.strftime("%Y-%m-%d %H:%M:%S"),
         },
     }
+
+
+@app.route("/api/ict/param-changes/progress")
+@login_requerido
+def ict_param_changes_progress():
+    """Devuelve el progreso del calculo de cambios de parametros ICT.
+
+    El frontend manda progress_id al iniciar la consulta principal y luego
+    pollea este endpoint para alimentar la barra de progreso.
+    """
+    pid = request.args.get("id", "").strip()
+    with _ICT_PARAM_PROGRESS_LOCK:
+        state = _ICT_PARAM_PROGRESS.get(pid)
+        if not state:
+            return jsonify({"total": 0, "done": 0, "phase": "desconocido"})
+        return jsonify({
+            "total": state.get("total", 0),
+            "done": state.get("done", 0),
+            "phase": state.get("phase", ""),
+        })
 
 
 @app.route("/api/ict/param-changes")
@@ -12087,6 +12214,8 @@ def ict_param_changes_api():
             componente_filter=request.args.get("componente", "").strip(),
             parametro_filter=request.args.get("parametro", "").strip(),
             limit=1000,
+            ict_all=request.args.get("ict_all", "").strip() == "1",
+            progress_id=request.args.get("progress_id", "").strip() or None,
         )
         return jsonify(payload)
     except ValueError as e:
@@ -12119,6 +12248,8 @@ def ict_param_changes_export():
             componente_filter=request.args.get("componente", "").strip(),
             parametro_filter=request.args.get("parametro", "").strip(),
             limit=5000,
+            ict_all=request.args.get("ict_all", "").strip() == "1",
+            progress_id=request.args.get("progress_id", "").strip() or None,
         )
         rows = payload.get("rows", [])
 
