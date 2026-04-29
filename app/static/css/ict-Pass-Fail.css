@@ -1,174 +1,20 @@
-/* Estilos del módulo ICT - Tema ILSAN */
-
-/* Variables específicas ICT */
-:root {
-    --ict-ng-row: #8e2323;
-    --ict-ok-row: #456636;
-    --ict-ng-hover: #a82828;
-    --ict-opening-row: #e67e22;
-}
-
-/* Contenedor principal */
-.pf-ict-page {
+#historial-ict-pass-fail-root {
     width: 100%;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    flex: 1;
+    background: transparent;
 }
 
-/* ========== HEADER CON ESTADÍSTICAS ========== */
-.pf-page-header {
-    background: linear-gradient(135deg, var(--ilsan-dark-secondary) 0%, #2d2d3f 100%);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+#historial-ict-pass-fail-root,
+#historial-ict-pass-fail-root * {
+    box-sizing: border-box;
 }
 
-.pf-header-content h1 {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--ilsan-text-light);
-    font-size: 1.5rem;
-    margin: 0 0 6px 0;
-    font-weight: 700;
-}
-
-.pf-header-icon {
-    width: 28px;
-    height: 28px;
-    color: var(--ilsan-accent-blue);
-}
-
-.pf-header-subtitle {
-    color: var(--ilsan-text-gray);
-    font-size: 0.85rem;
-    margin: 0 0 16px 38px;
-}
-
-/* Tarjetas de estadísticas */
-.pf-stats-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-    margin-top: 16px;
-}
-
-.pf-stat-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.3s ease;
-}
-
-.pf-stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.pf-stat-icon {
-    width: 36px;
-    height: 36px;
-    padding: 8px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.pf-stat-icon-total {
-    color: var(--ilsan-accent-blue);
-    background: rgba(52, 152, 219, 0.15);
-}
-
-.pf-stat-icon-ok {
-    color: #27ae60;
-    background: rgba(39, 174, 96, 0.15);
-}
-
-.pf-stat-icon-ng {
-    color: #e74c3c;
-    background: rgba(231, 76, 60, 0.15);
-}
-
-.pf-stat-card-ok:hover {
-    border-color: rgba(39, 174, 96, 0.3);
-}
-
-.pf-stat-card-ng:hover {
-    border-color: rgba(231, 76, 60, 0.3);
-}
-
-.pf-stat-content {
-    flex: 1;
-}
-
-.pf-stat-value {
-    color: var(--ilsan-text-light);
-    font-size: 1.5rem;
-    font-weight: 700;
-    line-height: 1;
-}
-
-.pf-stat-label {
-    color: var(--ilsan-text-gray);
-    font-size: 0.75rem;
-    margin-top: 2px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* ========== TARJETAS (CARDS) ========== */
-.pf-filters-card,
-.pf-results-card {
-    background: var(--ilsan-dark-secondary);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-    margin-bottom: 16px;
-    overflow: hidden;
-    width: 100%;
-}
-
-.pf-card-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.pf-card-icon {
-    width: 16px;
-    height: 16px;
-    color: var(--ilsan-accent-blue);
-}
-
-.pf-card-header h3 {
-    color: var(--ilsan-text-light);
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin: 0;
-    flex: 1;
-}
-
-.pf-record-count {
-    color: var(--ilsan-text-gray);
-    font-size: 0.8rem;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 3px 10px;
-    border-radius: 16px;
-}
-
-/* ========== FILTROS ========== */
-#pf-ict-filters {
+#ict-pass-fail-filters {
     display: flex;
     flex-wrap: wrap;
     column-gap: 10px;
@@ -179,88 +25,12 @@
     justify-content: flex-start;
 }
 
-.pf-filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+#ict-pass-fail-filters .filter-group input,
+#ict-pass-fail-filters .filter-group select {
+    width: 180px;
 }
 
-.pf-filter-group label {
-    color: var(--ilsan-text-light);
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.pf-input-icon {
-    width: 12px;
-    height: 12px;
-    color: var(--ilsan-accent-blue);
-}
-
-.pf-filter-group input,
-.pf-filter-group select {
-    background-color: rgba(255, 255, 255, 0.03);
-    color: var(--ilsan-text-light);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-    padding: 6px 8px;
-    font-size: 0.8rem;
-    transition: all 0.3s ease;
-    width: 160px;
-}
-
-.pf-filter-group select option {
-    background-color: #ffffff;
-    color: #000000;
-    padding: 8px;
-}
-
-.pf-filter-group input:focus,
-.pf-filter-group select:focus {
-    outline: none;
-    border-color: var(--ilsan-accent-blue);
-    background-color: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
-}
-
-.pf-filter-group input::placeholder {
-    color: var(--ilsan-text-gray);
-}
-
-.pf-btn-primary {
-    background: linear-gradient(135deg, var(--ilsan-accent-blue) 0%, var(--ilsan-accent-dark-blue) 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 18px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
-    white-space: nowrap;
-    letter-spacing: 0.3px;
-}
-
-.pf-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
-}
-
-.pf-btn-primary:active {
-    transform: translateY(0);
-}
-
-#pf-ict-filters .pf-btn-primary {
+#ict-pass-fail-filters .btn-primary {
     width: auto;
     min-width: 110px;
     align-self: flex-end;
@@ -268,161 +38,27 @@
     padding: 9px 16px;
 }
 
-#pf-btn-consultar {
-    margin-top: 0;
-    align-self: center;
+.ict-pass-fail-results-hint {
+    padding: 0 18px 14px;
+    color: var(--ilsan-text-gray);
+    font-size: 0.82rem;
 }
 
-.pf-btn-icon {
-    width: 14px;
-    height: 14px;
-}
-
-/* Botón exportar Excel */
-.pf-btn-export {
-    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 6px 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
-    white-space: nowrap;
-}
-
-.pf-btn-export:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.4);
-}
-
-.pf-btn-export:active {
-    transform: translateY(0);
-}
-
-.pf-btn-export svg {
-    width: 14px;
-    height: 14px;
-}
-
-/* Contenedor de tabla */
-.pf-table-wrap {
-    position: relative;
-    max-height: clamp(360px, 60vh, 780px);
-    min-height: clamp(260px, 45vh, 520px);
-    overflow: auto;
-    border-radius: 0 0 16px 16px;
-}
-
-/* Scrollbar personalizado */
-.pf-table-wrap::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
-}
-
-.pf-table-wrap::-webkit-scrollbar-track {
-    background: var(--ilsan-dark-tertiary);
-    border-radius: 10px;
-    margin: 4px;
-}
-
-.pf-table-wrap::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, var(--ilsan-accent-blue), var(--ilsan-accent-dark-blue));
-    border-radius: 10px;
-    border: 2px solid var(--ilsan-dark-tertiary);
-    transition: all 0.3s ease;
-}
-
-.pf-table-wrap::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, var(--ilsan-accent-dark-blue), var(--ilsan-accent-blue));
-    border-color: var(--ilsan-dark-secondary);
-}
-
-.pf-table-wrap::-webkit-scrollbar-corner {
-    background: var(--ilsan-dark-tertiary);
-}
-
-/* Scrollbar para Firefox */
-.pf-table-wrap {
-    scrollbar-width: thin;
-    scrollbar-color: var(--ilsan-accent-blue) var(--ilsan-dark-tertiary);
-}
-
-/* Indicador de carga local */
-.pf-table-loading {
-    position: absolute;
-    top: var(--thead-height, 0px);
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    background: linear-gradient(135deg, rgba(20, 24, 36, 0.92), rgba(28, 32, 48, 0.85));
-    backdrop-filter: blur(2px);
-    color: var(--ilsan-text-light);
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    z-index: 20;
-    pointer-events: none;
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
-}
-
-.pf-table-loading.active {
-    display: flex;
-}
-
-.pf-table-loading span {
-    font-size: 0.85rem;
-}
-
-.pf-spinner {
-    width: 36px;
-    height: 36px;
-    border: 4px solid rgba(52, 152, 219, 0.2);
-    border-top: 4px solid var(--ilsan-accent-blue);
-    border-radius: 50%;
-    animation: pf-spin 1s linear infinite;
-    margin: 0;
-}
-
-@keyframes pf-spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-/* Tablas */
-#pf-ict-table,
-#pf-ict-defects-table {
+#ict-pass-fail-table {
     width: 100%;
     border-collapse: collapse;
     background-color: var(--ilsan-dark-secondary);
 }
 
-#pf-ict-table th,
-#pf-ict-table td,
-#pf-ict-defects-table th,
-#pf-ict-defects-table td {
+#ict-pass-fail-table th,
+#ict-pass-fail-table td {
     border: 1px solid rgba(255, 255, 255, 0.05);
     padding: 8px 6px;
     text-align: center;
     font-size: 0.8rem;
 }
 
-#pf-ict-table thead th,
-#pf-ict-defects-table thead th {
+#ict-pass-fail-table thead th {
     background: linear-gradient(135deg, var(--ilsan-dark-header) 0%, #2a2a3c 100%);
     color: var(--ilsan-text-light);
     position: sticky;
@@ -432,192 +68,140 @@
     font-size: 0.7rem;
     letter-spacing: 0.3px;
     z-index: 10;
-    font-weight: 600;
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-#pf-ict-table tbody td,
-#pf-ict-defects-table tbody td {
+#ict-pass-fail-table tbody td {
     color: var(--ilsan-text-secondary);
     background-color: var(--ilsan-dark-secondary);
     transition: background-color 0.2s ease;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-/* Columnas específicas con ancho limitado */
-#pf-ict-table td:nth-child(9),
-/* Defect Code */
-#pf-ict-table td:nth-child(10) {
-    /* Defect Valor */
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: help;
-    position: relative;
-}
-
-/* Tooltip simple al hacer hover */
-#pf-ict-table td:nth-child(9):hover,
-#pf-ict-table td:nth-child(10):hover {
-    background-color: var(--ilsan-hover);
-}
-
-#pf-ict-table td:nth-child(9)::after,
-#pf-ict-table td:nth-child(10)::after {
-    content: attr(title);
-    position: absolute;
-    left: 0;
-    top: 100%;
-    background-color: var(--ilsan-dark-header);
-    color: var(--ilsan-text-light);
-    padding: 8px 12px;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    white-space: normal;
-    max-width: 300px;
-    z-index: 1000;
-    font-size: 0.8rem;
-    border: 1px solid var(--ilsan-border);
-    display: none;
-    word-wrap: break-word;
-}
-
-#pf-ict-table td:nth-child(9):hover::after,
-#pf-ict-table td:nth-child(10):hover::after {
-    display: block;
-}
-
-#pf-ict-table tbody tr:nth-child(even) td,
-#pf-ict-defects-table tbody tr:nth-child(even) td {
+#ict-pass-fail-table tbody tr:nth-child(even) td {
     background-color: #44475A;
 }
 
-#pf-ict-table tbody tr {
-    transition: all 0.2s ease;
-}
-
-#pf-ict-table tbody tr:hover td,
-#pf-ict-defects-table tbody tr:hover td {
+#ict-pass-fail-table tbody tr:hover td {
     background-color: var(--ilsan-hover);
 }
 
-/* Fila NG (roja, clickeable) */
-.pf-ict-row-ng {
-    background-color: var(--ict-ng-row) !important;
-    color: #fff !important;
-    cursor: pointer;
-    font-weight: 500;
+#ict-pass-fail-table .ict-pass-fail-table-empty {
+    color: var(--ilsan-text-gray);
+    font-style: italic;
+    padding: 24px 12px;
 }
 
-.pf-ict-row-ng:hover {
-    background-color: var(--ict-ng-hover) !important;
-}
-
-.pf-ict-row-ng td {
-    background-color: transparent !important;
-    color: #fff !important;
-}
-
-/* Filas de defectos por tipo de resultado */
-#pf-ict-defects-table tbody tr[data-resultado="NG"] td,
-#pf-ict-defects-table tbody tr[data-resultado="OPENING"] td {
-    background-color: rgba(142, 35, 35, 0.3) !important;
-    color: #ffcccc !important;
-    font-weight: 500;
-}
-
-#pf-ict-defects-table tbody tr[data-resultado="OK"] td {
-    background-color: rgba(69, 102, 54, 0.2) !important;
+.ict-pass-fail-rate-good {
     color: #c8e6c9 !important;
+    font-weight: 700;
 }
 
-#pf-ict-defects-table tbody tr[data-resultado="NG"]:hover td,
-#pf-ict-defects-table tbody tr[data-resultado="OPENING"]:hover td {
-    background-color: rgba(142, 35, 35, 0.5) !important;
+.ict-pass-fail-rate-bad {
+    color: #ffcccc !important;
+    font-weight: 700;
 }
 
-#pf-ict-defects-table tbody tr[data-resultado="OK"]:hover td {
-    background-color: rgba(69, 102, 54, 0.35) !important;
+.ict-pass-fail-rate-neutral {
+    color: #d7ecff !important;
+    font-weight: 600;
 }
 
-/* Animaciones para las tarjetas */
-.pf-filters-card,
-.pf-results-card {
-    animation: pf-fadeInUp 0.5s ease;
+#ict-pass-fail-table td:last-child {
+    min-width: 260px;
 }
 
-@keyframes pf-fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.ict-pass-fail-bar-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-    .pf-stats-container {
-        grid-template-columns: repeat(3, 1fr);
-    }
+.ict-pass-fail-bar {
+    flex: 1;
+    height: 28px;
+    display: flex;
+    overflow: hidden;
+    border-radius: 7px;
+    background: #182335;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.ict-pass-fail-bar-ok {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #5aa469;
+    min-width: 0;
+}
+
+.ict-pass-fail-bar-ng {
+    background: #d65a5a;
+    min-width: 0;
+}
+
+.ict-pass-fail-bar-label {
+    padding: 0 10px;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+.ict-pass-fail-bar-side-label {
+    min-width: 52px;
+    color: var(--ilsan-text-light);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
 }
 
 @media (max-width: 768px) {
-    #pf-ict-container {
-        padding: 16px 16px 32px;
-    }
-
-    .pf-ict-page {
-        gap: 16px;
-    }
-
-    .pf-page-header {
-        padding: 20px;
-    }
-
-    .pf-header-content h1 {
-        font-size: 1.5rem;
-    }
-
-    .pf-header-icon {
-        width: 28px;
-        height: 28px;
-    }
-
-    .pf-header-subtitle {
-        font-size: 0.85rem;
-        margin-left: 36px;
-    }
-
-    .pf-stats-container {
-        grid-template-columns: 1fr;
-    }
-
-    #pf-ict-filters {
+    #ict-pass-fail-filters {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .pf-filter-group {
+    #historial-ict-pass-fail-root {
+        min-height: auto;
+        padding: 16px 16px 32px;
+        gap: 16px;
+    }
+
+    #ict-pass-fail-filters .filter-group {
         max-width: none;
         width: 100%;
     }
 
-    #pf-ict-filters .pf-btn-primary {
+    #ict-pass-fail-filters .filter-group input,
+    #ict-pass-fail-filters .filter-group select,
+    #ict-pass-fail-filters .btn-primary,
+    #ict-pass-fail-filters .btn-export {
         width: 100%;
         margin-left: 0;
     }
 
-    .pf-table-wrap {
-        max-height: 40vh;
+    #ict-pass-fail-table th,
+    #ict-pass-fail-table td {
+        font-size: 0.75rem;
+        padding: 6px 4px;
+    }
+
+    #ict-pass-fail-table td:last-child {
+        min-width: 200px;
+    }
+
+    .ict-pass-fail-bar {
+        height: 24px;
+    }
+
+    .ict-pass-fail-bar-label,
+    .ict-pass-fail-bar-side-label {
+        font-size: 0.78rem;
     }
 }
-

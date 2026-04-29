@@ -1,109 +1,127 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Módulo - ILSAN</title>
+  <title>Historial ICT % Pass/Fail - ILSAN</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ict.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ict-Pass-Fail.css') }}">
   <script defer src="{{ url_for('static', filename='js/ict-Pass-Fail.js') }}"></script>
 </head>
-
-<!-- El prefijo "pf-" es para evitar conflictos en el DOM -->
-
-<body id="pf-ict-container">
-  <div class="pf-ict-page">
-
-  <!-- Tarjeta de filtros -->
-  <div class="pf-filters-card">
-    <div class="pf-card-header">
-      <svg class="pf-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-      </svg>
-      <h3>Filtros de Búsqueda</h3>
-    </div>
-    <div id="pf-ict-filters">
-      <div class="pf-filter-group">
-        <label>
-          <svg class="pf-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
-          Fecha
-        </label>
-        <input type="date" id="pf-filter-fecha">
-      </div>
-      
-      <div class="pf-filter-group">
-        <label>
-          <svg class="pf-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
-          </svg>
-          Línea
-        </label>
-        <input type="text" id="pf-filter-linea" placeholder="M1, M2...">
-      </div>
-      
-      <div class="pf-filter-group">
-        <label>
-          <svg class="pf-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
-          </svg>
-          Part Number
-        </label>
-        <input type="text" id="pf-filter-part-number" placeholder="Buscar por part number...">
-      </div>
-      
-      <button id="pf-btn-consultar" class="pf-btn-primary">
-        <svg class="pf-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+<body id="ict-pass-fail-container">
+  <div id="historial-ict-pass-fail-root" class="ict-page">
+    <div class="filters-card">
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
         </svg>
-        Consultar
-      </button>
+        <h3>Filtros de Busqueda</h3>
+      </div>
+      <div id="ict-pass-fail-filters">
+        <div class="filter-group">
+          <label for="ict-pass-fail-filter-fecha-desde">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Fecha desde
+          </label>
+          <input type="date" id="ict-pass-fail-filter-fecha-desde">
+        </div>
+
+        <div class="filter-group">
+          <label for="ict-pass-fail-filter-fecha-hasta">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Fecha hasta
+          </label>
+          <input type="date" id="ict-pass-fail-filter-fecha-hasta">
+        </div>
+
+        <div class="filter-group">
+          <label for="ict-pass-fail-filter-numero-parte">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+            </svg>
+            Numero de parte
+          </label>
+          <input type="text" id="ict-pass-fail-filter-numero-parte" placeholder="Filtrar por numero de parte">
+        </div>
+
+        <div class="filter-group">
+          <label for="ict-pass-fail-filter-turno">
+            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 8v4l3 3"></path>
+              <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Turno
+          </label>
+          <select id="ict-pass-fail-filter-turno">
+            <option value="">Todos</option>
+            <option value="DIA">Dia</option>
+            <option value="TIEMPO EXTRA">Tiempo extra</option>
+            <option value="NOCHE">Noche</option>
+          </select>
+        </div>
+
+        <button id="ict-pass-fail-btn-consultar" class="btn-primary" type="button">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          Consultar
+        </button>
+      </div>
+    </div>
+
+    <div class="results-card">
+      <div class="card-header">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        <h3>Historial de maquina ICT % Pass/Fail</h3>
+        <span id="ict-pass-fail-record-count" class="record-count">0 registros</span>
+        <button id="ict-pass-fail-btn-export-excel" class="btn-export" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Exportar Excel
+        </button>
+      </div>
+      <div class="ict-pass-fail-results-hint">
+        Resumen agrupado por fecha de jornada, linea, ICT, turno y numero de parte usando el rango de fechas seleccionado sobre el historial de ICT.
+      </div>
+      <div class="table-wrap">
+        <div class="table-loading" id="ict-pass-fail-table-loading">
+          <div class="spinner"></div>
+          <span>Cargando datos...</span>
+        </div>
+        <table id="ict-pass-fail-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Linea</th>
+              <th>ICT</th>
+              <th>Turno</th>
+              <th>Numero de parte</th>
+              <th>Total</th>
+              <th>OK</th>
+              <th>NG</th>
+              <th>% Pass</th>
+              <th>% Fail</th>
+              <th>Porcentaje</th>
+            </tr>
+          </thead>
+          <tbody id="ict-pass-fail-body"></tbody>
+        </table>
+      </div>
     </div>
   </div>
-
-  <!-- Tarjeta de resultados -->
-  <div class="pf-results-card">
-    <div class="pf-card-header">
-      <svg class="pf-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-      </svg>
-      <h3>Registro de ICT Pass/Fail</h3>
-      <span class="pf-record-count" id="pf-record-count">0 registros</span>
-      <button id="pf-btn-export-excel" class="pf-btn-export">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-        </svg>
-        Exportar Excel
-      </button>
-    </div>
-    <div class="pf-table-wrap">
-      <div class="pf-table-loading" id="pf-ict-table-loading">
-        <div class="pf-spinner"></div>
-        <span>Cargando datos...</span>
-      </div>
-      <table id="pf-ict-table">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Línea</th>
-            <th>ICT</th>
-            <th>No. Parte</th>
-            <th>OK</th>
-            <th>NG</th>
-            <th>%OK</th>
-            <th>%NG</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody id="pf-ict-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
 </body>
 </html>

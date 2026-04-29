@@ -11330,6 +11330,7 @@ def historial_ict_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 @app.route("/historial-maquina-ict-pass-fail")
+@app.route("/historial-maquina-ict-pass-fail-ajax")
 @login_requerido
 def historial_maquina_ict_pass_fail():
     """Servir la página de Historial maquina ICT % Pass/Fail"""
@@ -11340,60 +11341,102 @@ def historial_maquina_ict_pass_fail():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
+def _build_history_ict_pass_fail_summary_query():
+    """Construir query para resumen Pass/Fail de ICT por jornada, turno, linea y numero de parte."""
+    fecha_desde = (
+        request.args.get("fecha_desde", "").strip()
+        or request.args.get("fecha", "").strip()
+    )
+    fecha_hasta = request.args.get("fecha_hasta", "").strip() or fecha_desde
+    numero_parte = (
+        request.args.get("numero_parte", "").strip()
+        or request.args.get("no_parte", "").strip()
+    )
+    turno = request.args.get("turno", "").strip().upper()
+
+    fecha_jornada_expr = (
+        "CASE WHEN TIME(ts) >= '07:30:00' "
+        "THEN DATE(ts) ELSE DATE(DATE_SUB(ts, INTERVAL 1 DAY)) END"
+    )
+    turno_expr = (
+        "CASE "
+        "WHEN TIME(ts) >= '07:30:00' AND TIME(ts) < '17:30:00' THEN 'DIA' "
+        "WHEN TIME(ts) >= '17:30:00' AND TIME(ts) < '22:00:00' THEN 'TIEMPO EXTRA' "
+        "ELSE 'NOCHE' "
+        "END"
+    )
+
+    sql = (
+        "SELECT "
+        f"{fecha_jornada_expr} AS fecha, "
+        "COALESCE(NULLIF(TRIM(linea), ''), 'SIN LINEA') AS linea, "
+        "COALESCE(ict, 0) AS ict, "
+        f"{turno_expr} AS turno, "
+        "COALESCE(NULLIF(TRIM(no_parte), ''), 'SIN NUMERO DE PARTE') AS numero_parte, "
+        "COUNT(*) AS total, "
+        "SUM(CASE WHEN UPPER(COALESCE(resultado, '')) = 'OK' THEN 1 ELSE 0 END) AS ok_count, "
+        "SUM(CASE WHEN UPPER(COALESCE(resultado, '')) = 'NG' THEN 1 ELSE 0 END) AS ng_count "
+        "FROM history_ict WHERE 1=1"
+    )
+    params = []
+
+    if fecha_desde:
+        start_date = datetime.strptime(fecha_desde, "%Y-%m-%d").date()
+        params.append(datetime.combine(start_date, dt_time(7, 30)))
+        sql += " AND ts >= %s"
+    if fecha_hasta:
+        end_date = datetime.strptime(fecha_hasta, "%Y-%m-%d").date()
+        params.append(datetime.combine(end_date + timedelta(days=1), dt_time(7, 30)))
+        sql += " AND ts < %s"
+    if numero_parte:
+        sql += " AND no_parte LIKE %s"
+        params.append(f"{numero_parte}%")
+    if turno in {"DIA", "TIEMPO EXTRA", "NOCHE"}:
+        sql += f" AND {turno_expr}=%s"
+        params.append(turno)
+
+    sql += (
+        f" GROUP BY {fecha_jornada_expr},"
+        " COALESCE(NULLIF(TRIM(linea), ''), 'SIN LINEA'),"
+        " COALESCE(ict, 0),"
+        f" {turno_expr},"
+        " COALESCE(NULLIF(TRIM(no_parte), ''), 'SIN NUMERO DE PARTE')"
+        " ORDER BY fecha ASC, linea ASC, ict ASC, FIELD(turno, 'DIA', 'TIEMPO EXTRA', 'NOCHE'), total DESC, numero_parte ASC"
+    )
+
+    return sql, tuple(params) if params else None
+
+
 @app.route("/api/ict/pass-fail")
 @login_requerido
 def ict_pass_fail_api():
-    """Obtener conteo distintivo Pass/Fail agrupado por fecha, línea, ICT y no_parte."""
+    """Obtener resumen Pass/Fail de ICT con el mismo formato que Vision."""
     try:
-        fecha = request.args.get("fecha", "").strip()
-        linea = request.args.get("linea", "").strip()
-        no_parte = request.args.get("no_parte", "").strip()
-
-        if not fecha and not linea and not no_parte:
-            return jsonify({
-                "error": "Indica al menos un filtro (fecha, linea o part number) para evitar consultas pesadas"
-            }), 400
-
-        sql = (
-            "SELECT fecha, linea, ict, no_parte, "
-            "COUNT(DISTINCT CASE WHEN resultado='OK' THEN barcode END) AS ok_count, "
-            "COUNT(DISTINCT CASE WHEN resultado='NG' THEN barcode END) AS ng_count, "
-            "COUNT(DISTINCT barcode) AS total "
-            "FROM history_ict WHERE 1=1"
-        )
-        params = []
-
-        if fecha:
-            sql += " AND fecha=%s"
-            params.append(fecha)
-        if linea:
-            sql += " AND linea=%s"
-            params.append(linea)
-        if no_parte:
-            sql += " AND no_parte LIKE %s"
-            params.append(f"%{no_parte}%")
-
-        sql += " GROUP BY fecha, linea, ict, no_parte ORDER BY fecha DESC, linea, ict, no_parte LIMIT 2000"
-        rows = execute_query(sql, tuple(params) if params else None, fetch="all") or []
+        sql, params = _build_history_ict_pass_fail_summary_query()
+        rows = execute_query(sql, params, fetch="all") or []
 
         result = []
         for row in rows:
-            ok = row.get("ok_count", 0) or 0
-            ng = row.get("ng_count", 0) or 0
-            total = row.get("total", 0) or 0
-            pct_ok = round(ok / total * 100, 2) if total > 0 else 0
-            pct_ng = round(ng / total * 100, 2) if total > 0 else 0
-            result.append({
-                "fecha": str(row.get("fecha", "")) if row.get("fecha") else "",
-                "linea": row.get("linea", "") or "",
-                "ict": row.get("ict", "") or "",
-                "no_parte": row.get("no_parte", "") or "",
-                "ok_count": ok,
-                "ng_count": ng,
-                "pct_ok": pct_ok,
-                "pct_ng": pct_ng,
-                "total": total,
-            })
+            total = int(row.get("total") or 0)
+            ok_count = int(row.get("ok_count") or 0)
+            ng_count = int(row.get("ng_count") or 0)
+            porcentaje_ok = round((ok_count / total) * 100, 2) if total else 0
+            porcentaje_ng = round((ng_count / total) * 100, 2) if total else 0
+
+            result.append(
+                {
+                    "fecha": _ict_format_row({"fecha": row.get("fecha")}).get("fecha", ""),
+                    "linea": row.get("linea", "") or "",
+                    "ict": row.get("ict", "") or "",
+                    "turno": row.get("turno", "") or "",
+                    "numero_parte": row.get("numero_parte", "") or "",
+                    "total": total,
+                    "ok_count": ok_count,
+                    "ng_count": ng_count,
+                    "porcentaje_ok": porcentaje_ok,
+                    "porcentaje_ng": porcentaje_ng,
+                }
+            )
 
         return jsonify(result)
     except Exception as e:
@@ -11405,97 +11448,111 @@ def ict_pass_fail_api():
 @app.route("/api/ict/pass-fail/export")
 @login_requerido
 def ict_pass_fail_export():
-    """Exportar conteo Pass/Fail agrupado a Excel."""
+    """Exportar resumen Pass/Fail de ICT a un archivo de Excel."""
     try:
-        fecha = request.args.get("fecha", "").strip()
-        linea = request.args.get("linea", "").strip()
-        no_parte = request.args.get("no_parte", "").strip()
-
-        if not fecha and not linea and not no_parte:
-            return jsonify({
-                "error": "Indica al menos un filtro (fecha, linea o part number) para exportar"
-            }), 400
-
-        sql = (
-            "SELECT fecha, linea, ict, no_parte, "
-            "COUNT(DISTINCT CASE WHEN resultado='OK' THEN barcode END) AS ok_count, "
-            "COUNT(DISTINCT CASE WHEN resultado='NG' THEN barcode END) AS ng_count, "
-            "COUNT(DISTINCT barcode) AS total "
-            "FROM history_ict WHERE 1=1"
-        )
-        params = []
-
-        if fecha:
-            sql += " AND fecha=%s"
-            params.append(fecha)
-        if linea:
-            sql += " AND linea=%s"
-            params.append(linea)
-        if no_parte:
-            sql += " AND no_parte LIKE %s"
-            params.append(f"%{no_parte}%")
-
-        sql += " GROUP BY fecha, linea, ict, no_parte ORDER BY fecha DESC, linea, ict, no_parte LIMIT 5000"
-        rows = execute_query(sql, tuple(params) if params else None, fetch="all") or []
+        sql, params = _build_history_ict_pass_fail_summary_query()
+        rows = execute_query(sql, params, fetch="all") or []
 
         from io import BytesIO
 
         from openpyxl import Workbook
-        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
         wb = Workbook()
         ws = wb.active
-        ws.title = "ICT Pass-Fail"
+        ws.title = "ICT Pass Fail"
 
-        headers = ["Fecha", "Línea", "ICT", "No. Parte", "OK", "NG", "%OK", "%NG", "Total"]
-        header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
+        header_fill = PatternFill(
+            start_color="3f6b6e", end_color="3f6b6e", fill_type="solid"
+        )
+        cell_fill = PatternFill(
+            start_color="a1a09c", end_color="a1a09c", fill_type="solid"
+        )
+        header_font = Font(bold=True, color="FFFFFF", size=10)
+        border = Border(
+            left=Side(style="thin", color="000000"),
+            right=Side(style="thin", color="000000"),
+            top=Side(style="thin", color="000000"),
+            bottom=Side(style="thin", color="000000"),
+        )
 
-        for col_idx, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_idx, value=header)
+        headers = [
+            "Fecha",
+            "Linea",
+            "ICT",
+            "Turno",
+            "Numero de parte",
+            "Total",
+            "OK",
+            "NG",
+            "% Pass",
+            "% Fail",
+            "PORCENTAJE",
+        ]
+
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num, value=header)
             cell.fill = header_fill
             cell.font = header_font
-            cell.alignment = Alignment(horizontal="center")
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = border
 
-        for row_idx, row in enumerate(rows, 2):
-            ok = row.get("ok_count", 0) or 0
-            ng = row.get("ng_count", 0) or 0
-            total = row.get("total", 0) or 0
-            pct_ok = round(ok / total * 100, 2) if total > 0 else 0
-            pct_ng = round(ng / total * 100, 2) if total > 0 else 0
+        for row_idx, row in enumerate(rows, start=2):
+            total = int(row.get("total") or 0)
+            ok_count = int(row.get("ok_count") or 0)
+            ng_count = int(row.get("ng_count") or 0)
+            porcentaje_ok = round((ok_count / total) * 100, 2) if total else 0
+            porcentaje_ng = round((ng_count / total) * 100, 2) if total else 0
 
-            ws.cell(row=row_idx, column=1, value=str(row.get("fecha", "")) if row.get("fecha") else "")
-            ws.cell(row=row_idx, column=2, value=row.get("linea", "") or "")
-            ws.cell(row=row_idx, column=3, value=row.get("ict", "") or "")
-            ws.cell(row=row_idx, column=4, value=row.get("no_parte", "") or "")
-            ws.cell(row=row_idx, column=5, value=ok)
-            ws.cell(row=row_idx, column=6, value=ng)
-            ws.cell(row=row_idx, column=7, value=f"{pct_ok}%")
-            ws.cell(row=row_idx, column=8, value=f"{pct_ng}%")
-            ws.cell(row=row_idx, column=9, value=total)
+            values = [
+                _ict_format_row({"fecha": row.get("fecha")}).get("fecha", ""),
+                row.get("linea", "") or "",
+                row.get("ict", "") or "",
+                row.get("turno", "") or "",
+                row.get("numero_parte", "") or "",
+                total,
+                ok_count,
+                ng_count,
+                porcentaje_ok,
+                porcentaje_ng,
+            ]
 
-        col_widths = [12, 8, 8, 20, 8, 8, 8, 8, 8]
-        for col_idx, width in enumerate(col_widths, 1):
-            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = width
+            for col_num, value in enumerate(values, start=1):
+                cell = ws.cell(row=row_idx, column=col_num, value=value)
+                cell.fill = cell_fill
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = border
+
+            image_cell = ws.cell(row=row_idx, column=11, value="")
+            image_cell.fill = cell_fill
+            image_cell.alignment = Alignment(horizontal="center", vertical="center")
+            image_cell.border = border
+
+            excel_image = _create_vision_pass_fail_excel_image(
+                porcentaje_ok, porcentaje_ng
+            )
+            ws.add_image(excel_image, f"K{row_idx}")
+            ws.row_dimensions[row_idx].height = 24
+
+        column_widths = [14, 20, 10, 18, 28, 14, 12, 12, 14, 14, 58]
+        for col_num, width in enumerate(column_widths, start=1):
+            column_letter = ws.cell(row=1, column=col_num).column_letter
+            ws.column_dimensions[column_letter].width = width
+
+        ws.freeze_panes = "A2"
 
         output = BytesIO()
         wb.save(output)
         output.seek(0)
 
-        from flask import Response
-
-        filename = f"ict_pass_fail_{fecha or 'todos'}.xlsx"
-        return Response(
-            output.getvalue(),
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        filename = (
+            f"historial_ict_pass_fail_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         )
+        return _send_excel_download(output, filename)
     except Exception as e:
         import traceback
 
-        print(f"Error exportando ICT Pass/Fail: {e}\n{traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route("/historial-cambios-parametros-ict-ajax")
 @login_requerido
