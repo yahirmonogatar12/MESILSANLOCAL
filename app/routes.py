@@ -11729,94 +11729,368 @@ def historial_cambios_parametros_ict_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
+_ICT_PARAM_JORNADA_START = dt_time(7, 30)
+_ICT_PARAM_CHANGE_FIELDS = (
+    ("std_value", "STD"),
+    ("std_unit", "UNIT (STD)"),
+    ("hlim_pct", "HLIM %"),
+    ("llim_pct", "LLIM %"),
+    ("hp_value", "HP"),
+    ("lp_value", "LP"),
+    ("ws_value", "WS"),
+    ("ds_value", "DS"),
+    ("rc_value", "RC"),
+    ("p_flag", "P"),
+    ("j_flag", "J"),
+)
+
+
+def _ict_param_parse_date(value, field_name):
+    value = (value or "").strip()
+    if not value:
+        raise ValueError(f"{field_name} es requerido.")
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"{field_name} debe tener formato YYYY-MM-DD.") from exc
+
+
+def _ict_param_parse_time(value, field_name):
+    value = (value or "").strip()
+    if not value:
+        return None
+    for fmt in ("%H:%M", "%H:%M:%S"):
+        try:
+            return datetime.strptime(value, fmt).time()
+        except ValueError:
+            continue
+    raise ValueError(f"{field_name} debe tener formato HH:MM.")
+
+
+def _ict_param_as_datetime(value):
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, date):
+        return datetime.combine(value, dt_time.min)
+    if isinstance(value, str):
+        raw = value.strip()
+        for fmt in (
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%dT%H:%M:%S.%f",
+        ):
+            try:
+                return datetime.strptime(raw, fmt)
+            except ValueError:
+                continue
+    return None
+
+
+def _ict_param_parse_ict_filter(raw_value):
+    raw = (raw_value or "").strip().upper()
+    if not raw:
+        raise ValueError("ICT es requerido.")
+
+    ict_match = re.search(r"\bICT\s*([0-9]+)\b", raw)
+    if ict_match:
+        ict_value = int(ict_match.group(1))
+    elif raw.isdigit():
+        ict_value = int(raw)
+    else:
+        raise ValueError("ICT debe ser un numero o texto como ICT1.")
+
+    line_match = re.search(r"\b(M|DP|H)\s*([0-9]+)\b", raw)
+    line_value = f"{line_match.group(1)}{line_match.group(2)}" if line_match else ""
+    return ict_value, line_value
+
+
+def _ict_param_format_ict(linea, ict):
+    linea = str(linea or "").strip()
+    ict = str(ict or "").strip()
+    if linea and ict:
+        return f"{linea} ICT{ict}"
+    if ict:
+        return f"ICT{ict}"
+    return linea
+
+
+def _ict_param_jornada_label(ts_value):
+    ts = _ict_param_as_datetime(ts_value)
+    if not ts:
+        return ""
+    jornada = ts.date() if ts.time() >= _ICT_PARAM_JORNADA_START else ts.date() - timedelta(days=1)
+    return jornada.isoformat()
+
+
+def _ict_param_time_allowed(ts_value, hora_desde, hora_hasta):
+    ts = _ict_param_as_datetime(ts_value)
+    if not ts:
+        return False
+    current = ts.time()
+    if hora_desde and hora_hasta:
+        if hora_desde <= hora_hasta:
+            return hora_desde <= current <= hora_hasta
+        return current >= hora_desde or current <= hora_hasta
+    if hora_desde:
+        return current >= hora_desde
+    if hora_hasta:
+        return current <= hora_hasta
+    return True
+
+
+def _ict_param_compare_token(value):
+    if value is None:
+        return ("empty", "")
+    raw = str(value).strip()
+    if raw == "":
+        return ("empty", "")
+    try:
+        return ("num", Decimal(raw.replace(",", "")).normalize())
+    except Exception:
+        return ("text", raw.upper())
+
+
+def _ict_param_display_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value).strip()
+
+
+def _ict_param_component_label(componente, pinref):
+    componente = str(componente or "").strip()
+    pinref = str(pinref or "").strip()
+    if componente and pinref:
+        return f"{componente} / {pinref}"
+    return componente or pinref
+
+
+def _ict_param_build_snapshot(param_rows):
+    snapshot = {}
+    for row in param_rows:
+        componente = str(row.get("componente") or "").strip()
+        pinref = str(row.get("pinref") or "").strip()
+        if not componente and not pinref:
+            continue
+        snapshot[(componente, pinref)] = {
+            key: row.get(key) for key, _label in _ICT_PARAM_CHANGE_FIELDS
+        }
+    return snapshot
+
+
+def _ict_param_load_snapshot(source_file, barcode, warnings):
+    source_file = str(source_file or "").strip()
+    barcode = str(barcode or "").strip()
+    if not source_file:
+        warnings.append("Se omitio un registro sin fuente_archivo.")
+        return None
+    if not barcode:
+        warnings.append(f"Se omitio {source_file}: no tiene barcode representativo.")
+        return None
+
+    try:
+        lgd_path = resolve_lgd_path(source_file)
+        param_rows = get_lgd_parameters_for_barcode(str(lgd_path), barcode)
+    except (IctLgdError, OSError) as exc:
+        warnings.append(f"No se pudo leer {source_file}: {exc}")
+        return None
+    except Exception as exc:
+        warnings.append(f"No se pudo parsear {source_file}: {exc}")
+        return None
+
+    if not param_rows:
+        warnings.append(f"Sin parametros para {barcode} en {source_file}.")
+        return None
+    return _ict_param_build_snapshot(param_rows)
+
+
+def _ict_compute_parameter_changes(
+    fecha_desde,
+    fecha_hasta,
+    hora_desde,
+    hora_hasta,
+    ict_filter,
+    no_parte_filter="",
+    componente_filter="",
+    parametro_filter="",
+    limit=1000,
+):
+    start_date = _ict_param_parse_date(fecha_desde, "fecha_desde")
+    end_date = _ict_param_parse_date(fecha_hasta or fecha_desde, "fecha_hasta")
+    if end_date < start_date:
+        raise ValueError("fecha_hasta no puede ser menor que fecha_desde.")
+
+    ict_value, line_filter = _ict_param_parse_ict_filter(ict_filter)
+    hora_desde_value = _ict_param_parse_time(hora_desde, "hora_desde")
+    hora_hasta_value = _ict_param_parse_time(hora_hasta, "hora_hasta")
+    no_parte_filter = (no_parte_filter or "").strip()
+    componente_filter = (componente_filter or "").strip().lower()
+    parametro_filter = (parametro_filter or "").strip().lower()
+
+    jornada_start = datetime.combine(start_date, _ICT_PARAM_JORNADA_START)
+    jornada_end = datetime.combine(end_date + timedelta(days=1), _ICT_PARAM_JORNADA_START)
+
+    sql = (
+        "SELECT MIN(barcode) AS barcode, MIN(ts) AS first_ts, "
+        "COALESCE(NULLIF(TRIM(no_parte), ''), 'SIN NUMERO DE PARTE') AS no_parte, "
+        "COALESCE(NULLIF(TRIM(linea), ''), 'SIN LINEA') AS linea, "
+        "ict, fuente_archivo "
+        "FROM history_ict "
+        "WHERE ts >= %s AND ts < %s "
+        "AND ict = %s "
+        "AND fuente_archivo IS NOT NULL AND fuente_archivo <> ''"
+    )
+    params = [jornada_start, jornada_end, ict_value]
+
+    if line_filter:
+        sql += " AND linea = %s"
+        params.append(line_filter)
+    if no_parte_filter:
+        sql += " AND no_parte LIKE %s"
+        params.append(f"{no_parte_filter}%")
+
+    sql += (
+        " GROUP BY "
+        "COALESCE(NULLIF(TRIM(no_parte), ''), 'SIN NUMERO DE PARTE'), "
+        "COALESCE(NULLIF(TRIM(linea), ''), 'SIN LINEA'), "
+        "ict, fuente_archivo "
+        "ORDER BY no_parte ASC, linea ASC, ict ASC, first_ts ASC"
+    )
+
+    source_rows = execute_query(sql, tuple(params), fetch="all") or []
+    warnings = []
+    groups = {}
+    files_read = 0
+
+    for source_row in source_rows:
+        ts = _ict_param_as_datetime(source_row.get("first_ts"))
+        if not ts or not _ict_param_time_allowed(ts, hora_desde_value, hora_hasta_value):
+            continue
+
+        source_file = source_row.get("fuente_archivo") or ""
+        snapshot = _ict_param_load_snapshot(
+            source_file,
+            source_row.get("barcode"),
+            warnings,
+        )
+        if snapshot is None:
+            continue
+
+        files_read += 1
+        group_key = (
+            str(source_row.get("linea") or ""),
+            str(source_row.get("ict") or ""),
+            str(source_row.get("no_parte") or ""),
+        )
+        groups.setdefault(group_key, []).append(
+            {
+                "ts": ts,
+                "snapshot": snapshot,
+                "source_file": source_file,
+                "barcode": source_row.get("barcode") or "",
+                "linea": source_row.get("linea") or "",
+                "ict": source_row.get("ict") or "",
+                "no_parte": source_row.get("no_parte") or "",
+            }
+        )
+
+    events = []
+    for group_key in sorted(groups):
+        snapshots = sorted(groups[group_key], key=lambda item: item["ts"])
+        for previous, current in zip(snapshots, snapshots[1:]):
+            previous_snapshot = previous["snapshot"]
+            current_snapshot = current["snapshot"]
+            shared_keys = sorted(
+                set(previous_snapshot.keys()) & set(current_snapshot.keys()),
+                key=lambda item: (item[0], item[1]),
+            )
+            for comp_key in shared_keys:
+                component_label = _ict_param_component_label(*comp_key)
+                if componente_filter and componente_filter not in component_label.lower():
+                    continue
+
+                for field_key, field_label in _ICT_PARAM_CHANGE_FIELDS:
+                    if parametro_filter and parametro_filter not in field_label.lower():
+                        continue
+                    old_value = previous_snapshot[comp_key].get(field_key)
+                    new_value = current_snapshot[comp_key].get(field_key)
+                    if _ict_param_compare_token(old_value) == _ict_param_compare_token(new_value):
+                        continue
+
+                    events.append(
+                        {
+                            "jornada": _ict_param_jornada_label(current["ts"]),
+                            "fecha": _ict_param_jornada_label(current["ts"]),
+                            "hora": current["ts"].strftime("%H:%M:%S"),
+                            "ict": _ict_param_format_ict(current["linea"], current["ict"]),
+                            "ict_num": current["ict"],
+                            "linea": current["linea"],
+                            "no_parte": current["no_parte"],
+                            "std": current["no_parte"],
+                            "componente": component_label,
+                            "parametro": field_label,
+                            "valor_anterior": _ict_param_display_value(old_value),
+                            "valor_nuevo": _ict_param_display_value(new_value),
+                            "archivo": current["source_file"],
+                            "archivo_anterior": previous["source_file"],
+                            "barcode": current["barcode"],
+                            "barcode_anterior": previous["barcode"],
+                        }
+                    )
+
+    events.sort(key=lambda row: (row.get("jornada", ""), row.get("hora", "")), reverse=True)
+    total_events = len(events)
+    limited_events = events[:limit] if limit else events
+    file_warning_count = len(warnings)
+    if limit and total_events > limit:
+        warnings.append(f"Se muestran {limit} de {total_events} cambios. Use filtros para reducir la consulta.")
+
+    return {
+        "rows": limited_events,
+        "warnings": warnings,
+        "meta": {
+            "archivos_consultados": len(source_rows),
+            "archivos_leidos": files_read,
+            "archivos_faltantes": file_warning_count,
+            "snapshots": sum(len(items) for items in groups.values()),
+            "eventos": total_events,
+            "limite": limit,
+            "jornada_inicio": jornada_start.strftime("%Y-%m-%d %H:%M:%S"),
+            "jornada_fin": jornada_end.strftime("%Y-%m-%d %H:%M:%S"),
+        },
+    }
+
+
 @app.route("/api/ict/param-changes")
 @login_requerido
 def ict_param_changes_api():
-    """API para obtener historial de cambios de parámetros ICT.
-
-    Columnas esperadas en la tabla history_changes_ict:
-      Event_time, ict, source_filename, part_name, field_name, old_value, new_value
-
-    NOTA: Ajusta el nombre de la tabla si es diferente en tu base de datos.
-    """
+    """API para obtener cambios de parametros ICT desde archivos LGD locales."""
     try:
-        # Soportar tanto fecha única como rango fecha_desde / fecha_hasta
         fecha = request.args.get("fecha", "").strip()
         fecha_desde = request.args.get("fecha_desde", "").strip()
         fecha_hasta = request.args.get("fecha_hasta", "").strip()
-        hora_desde = request.args.get("hora_desde", "").strip()
-        hora_hasta = request.args.get("hora_hasta", "").strip()
-        ict_filter = request.args.get("ict", "").strip()
-        std_filter = request.args.get("std", "").strip()
-        componente = request.args.get("componente", "").strip()  # part_name
-        parametro = request.args.get("parametro", "").strip()  # field_name
-
-        sql = (
-            "SELECT "
-            "  DATE(Event_time)  AS fecha, "
-            "  DATE_FORMAT(Event_time, '%%H:%%i:%%s')  AS hora, "
-            "  ict, "
-            "  source_filename   AS std, "
-            "  part_name         AS componente, "
-            "  field_name        AS parametro, "
-            "  old_value         AS valor_anterior, "
-            "  new_value         AS valor_nuevo "
-            "FROM history_changes_ict "
-            "WHERE 1=1"
+        payload = _ict_compute_parameter_changes(
+            fecha_desde=fecha_desde or fecha,
+            fecha_hasta=fecha_hasta or fecha_desde or fecha,
+            hora_desde=request.args.get("hora_desde", "").strip(),
+            hora_hasta=request.args.get("hora_hasta", "").strip(),
+            ict_filter=request.args.get("ict", "").strip(),
+            no_parte_filter=(
+                request.args.get("no_parte", "").strip()
+                or request.args.get("numero_parte", "").strip()
+                or request.args.get("std", "").strip()
+            ),
+            componente_filter=request.args.get("componente", "").strip(),
+            parametro_filter=request.args.get("parametro", "").strip(),
+            limit=1000,
         )
-        params = []
-
-        # Filtro de fecha: rango tiene prioridad sobre fecha única
-        if fecha_desde:
-            sql += " AND DATE(Event_time) >= %s"
-            params.append(fecha_desde)
-        elif fecha:
-            sql += " AND DATE(Event_time) = %s"
-            params.append(fecha)
-
-        if fecha_hasta:
-            sql += " AND DATE(Event_time) <= %s"
-            params.append(fecha_hasta)
-
-        if hora_desde:
-            sql += " AND TIME(Event_time) >= %s"
-            params.append(hora_desde)
-        if hora_hasta:
-            sql += " AND TIME(Event_time) <= %s"
-            params.append(hora_hasta)
-        if ict_filter:
-            sql += " AND ict = %s"
-            params.append(ict_filter)
-        if std_filter:
-            sql += " AND source_filename LIKE %s"
-            params.append(f"%{std_filter}%")
-        if componente:
-            sql += " AND part_name LIKE %s"
-            params.append(f"%{componente}%")
-        if parametro:
-            sql += " AND field_name LIKE %s"
-            params.append(f"%{parametro}%")
-
-        sql += " ORDER BY Event_time DESC LIMIT 1000"
-
-        rows = execute_query(sql, tuple(params) if params else None, fetch="all") or []
-
-        result = []
-        for row in rows:
-            result.append(
-                {
-                    "fecha": str(row.get("fecha", "")) if row.get("fecha") else "",
-                    "hora": str(row.get("hora", "")) if row.get("hora") else "",
-                    "ict": row.get("ict", "") or "",
-                    "std": row.get("std", "") or "",
-                    "componente": row.get("componente", "") or "",
-                    "parametro": row.get("parametro", "") or "",
-                    "valor_anterior": row.get("valor_anterior", "") or "",
-                    "valor_nuevo": row.get("valor_nuevo", "") or "",
-                }
-            )
-
-        return jsonify(result)
+        return jsonify(payload)
+    except ValueError as e:
+        return jsonify({"error": str(e), "rows": [], "warnings": [], "meta": {}}), 400
     except Exception as e:
         import traceback
 
@@ -11826,68 +12100,27 @@ def ict_param_changes_api():
 @app.route("/api/ict/param-changes/export")
 @login_requerido
 def ict_param_changes_export():
-    """Exportar historial de cambios de parámetros ICT a Excel."""
+    """Exportar cambios de parametros ICT calculados desde LGD locales."""
     try:
-        # Soportar tanto fecha única como rango fecha_desde / fecha_hasta
         fecha = request.args.get("fecha", "").strip()
         fecha_desde = request.args.get("fecha_desde", "").strip()
         fecha_hasta = request.args.get("fecha_hasta", "").strip()
-        hora_desde = request.args.get("hora_desde", "").strip()
-        hora_hasta = request.args.get("hora_hasta", "").strip()
-        ict_filter = request.args.get("ict", "").strip()
-        std_filter = request.args.get("std", "").strip()
-        componente = request.args.get("componente", "").strip()
-        parametro = request.args.get("parametro", "").strip()
-
-        sql = (
-            "SELECT "
-            "  DATE(Event_time)  AS fecha, "
-            "  DATE_FORMAT(Event_time, '%%H:%%i:%%s')  AS hora, "
-            "  ict, "
-            "  source_filename   AS std, "
-            "  part_name         AS componente, "
-            "  field_name        AS parametro, "
-            "  old_value         AS valor_anterior, "
-            "  new_value         AS valor_nuevo "
-            "FROM history_changes_ict "
-            "WHERE 1=1"
+        payload = _ict_compute_parameter_changes(
+            fecha_desde=fecha_desde or fecha,
+            fecha_hasta=fecha_hasta or fecha_desde or fecha,
+            hora_desde=request.args.get("hora_desde", "").strip(),
+            hora_hasta=request.args.get("hora_hasta", "").strip(),
+            ict_filter=request.args.get("ict", "").strip(),
+            no_parte_filter=(
+                request.args.get("no_parte", "").strip()
+                or request.args.get("numero_parte", "").strip()
+                or request.args.get("std", "").strip()
+            ),
+            componente_filter=request.args.get("componente", "").strip(),
+            parametro_filter=request.args.get("parametro", "").strip(),
+            limit=5000,
         )
-        params = []
-
-        # Filtro de fecha: rango tiene prioridad sobre fecha única
-        if fecha_desde:
-            sql += " AND DATE(Event_time) >= %s"
-            params.append(fecha_desde)
-        elif fecha:
-            sql += " AND DATE(Event_time) = %s"
-            params.append(fecha)
-
-        if fecha_hasta:
-            sql += " AND DATE(Event_time) <= %s"
-            params.append(fecha_hasta)
-
-        if hora_desde:
-            sql += " AND TIME(Event_time) >= %s"
-            params.append(hora_desde)
-        if hora_hasta:
-            sql += " AND TIME(Event_time) <= %s"
-            params.append(hora_hasta)
-        if ict_filter:
-            sql += " AND ict = %s"
-            params.append(ict_filter)
-        if std_filter:
-            sql += " AND source_filename LIKE %s"
-            params.append(f"%{std_filter}%")
-        if componente:
-            sql += " AND part_name LIKE %s"
-            params.append(f"%{componente}%")
-        if parametro:
-            sql += " AND field_name LIKE %s"
-            params.append(f"%{parametro}%")
-
-        sql += " ORDER BY Event_time DESC LIMIT 5000"
-
-        rows = execute_query(sql, tuple(params) if params else None, fetch="all") or []
+        rows = payload.get("rows", [])
 
         from io import BytesIO
 
@@ -11896,17 +12129,18 @@ def ict_param_changes_export():
 
         wb = Workbook()
         ws = wb.active
-        ws.title = "Cambios Parámetros ICT"
+        ws.title = "Cambios Parametros ICT"
 
         headers = [
-            "Fecha",
+            "Jornada",
             "Hora",
             "ICT",
-            "STD (Fuente)",
+            "No Parte",
             "Componente",
-            "Parámetro",
+            "Parametro",
             "Valor Anterior",
             "Valor Nuevo",
+            "Archivo",
         ]
         header_fill = PatternFill(
             start_color="1F4E79", end_color="1F4E79", fill_type="solid"
@@ -11920,41 +12154,33 @@ def ict_param_changes_export():
             cell.alignment = Alignment(horizontal="center")
 
         for row_idx, row in enumerate(rows, 2):
-            ws.cell(
-                row=row_idx,
-                column=1,
-                value=str(row.get("fecha", "")) if row.get("fecha") else "",
-            )
-            ws.cell(
-                row=row_idx,
-                column=2,
-                value=str(row.get("hora", "")) if row.get("hora") else "",
-            )
+            ws.cell(row=row_idx, column=1, value=row.get("jornada", "") or "")
+            ws.cell(row=row_idx, column=2, value=row.get("hora", "") or "")
             ws.cell(row=row_idx, column=3, value=row.get("ict", "") or "")
-            ws.cell(row=row_idx, column=4, value=row.get("std", "") or "")
+            ws.cell(row=row_idx, column=4, value=row.get("no_parte", "") or "")
             ws.cell(row=row_idx, column=5, value=row.get("componente", "") or "")
             ws.cell(row=row_idx, column=6, value=row.get("parametro", "") or "")
             ws.cell(row=row_idx, column=7, value=row.get("valor_anterior", "") or "")
             ws.cell(row=row_idx, column=8, value=row.get("valor_nuevo", "") or "")
+            ws.cell(row=row_idx, column=9, value=row.get("archivo", "") or "")
 
-        col_widths = [12, 10, 12, 30, 25, 25, 20, 20]
+        col_widths = [12, 10, 14, 22, 25, 22, 20, 20, 48]
         for col_idx, width in enumerate(col_widths, 1):
             ws.column_dimensions[
                 ws.cell(row=1, column=col_idx).column_letter
             ].width = width
+        ws.freeze_panes = "A2"
 
         output = BytesIO()
         wb.save(output)
         output.seek(0)
 
-        from flask import Response
-
-        filename = f"cambios_parametros_ict_{fecha or 'todos'}.xlsx"
-        return Response(
-            output.getvalue(),
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        filename = (
+            f"cambios_parametros_ict_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         )
+        return _send_excel_download(output, filename)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         import traceback
 

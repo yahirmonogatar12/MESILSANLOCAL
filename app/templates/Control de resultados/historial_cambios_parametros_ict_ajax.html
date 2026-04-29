@@ -125,6 +125,28 @@
       margin-right: auto;
     }
 
+    .cp-warning-box,
+    .cp-meta-line {
+      margin: 0 18px 12px;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      display: none;
+    }
+
+    .cp-warning-box {
+      background: rgba(180, 120, 30, 0.16);
+      border: 1px solid rgba(230, 170, 70, 0.35);
+      color: #ffd48a;
+      text-align: left;
+    }
+
+    .cp-meta-line {
+      background: rgba(52, 152, 219, 0.12);
+      border: 1px solid rgba(52, 152, 219, 0.28);
+      color: #9fd0f2;
+    }
+
     /* Forzar que el #ict-filters de este módulo use su propio ID */
     #cp-ict-filters {
       display: flex;
@@ -232,9 +254,9 @@
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          STD (Fuente)
+          No Parte
         </label>
-        <input type="text" id="cp-filter-std" placeholder="source_filename…">
+        <input type="text" id="cp-filter-no-parte" placeholder="Ej. EBR30299369">
       </div>
 
       <!-- Componente -->
@@ -291,6 +313,9 @@
       </button>
     </div>
 
+    <div id="cp-warning-box" class="cp-warning-box"></div>
+    <div id="cp-meta-line" class="cp-meta-line"></div>
+
     <div class="table-wrap">
       <!-- Spinner de carga -->
       <div class="table-loading" id="cp-table-loading">
@@ -303,14 +328,15 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Fecha</th>
+            <th>Jornada</th>
             <th>Hora</th>
             <th>ICT</th>
-            <th>STD (Fuente)</th>
+            <th>No Parte</th>
             <th>Componente</th>
             <th>Parámetro</th>
             <th>Valor Anterior</th>
             <th>Valor Nuevo</th>
+            <th>Archivo</th>
           </tr>
         </thead>
         <tbody id="cp-params-body"></tbody>
@@ -355,9 +381,48 @@
     if (nd) nd.style.display = v ? 'block' : 'none';
   }
 
+  function setNoDataMessage(main, detail) {
+    var nd = el('cp-no-data');
+    if (!nd) return;
+    var ps = nd.querySelectorAll('p');
+    if (ps[0]) ps[0].textContent = main;
+    if (ps[1]) ps[1].textContent = detail || '';
+  }
+
   function actualizarContador(n) {
     var cnt = el('cp-record-count');
     if (cnt) cnt.textContent = n + ' registro' + (n !== 1 ? 's' : '');
+  }
+
+  function mostrarWarnings(warnings) {
+    var box = el('cp-warning-box');
+    if (!box) return;
+    if (!warnings || warnings.length === 0) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+    box.innerHTML = warnings.slice(0, 5).map(escHtml).join('<br>');
+    if (warnings.length > 5) {
+      box.innerHTML += '<br>' + escHtml('+' + (warnings.length - 5) + ' advertencias mas.');
+    }
+    box.style.display = 'block';
+  }
+
+  function mostrarMeta(meta) {
+    var line = el('cp-meta-line');
+    if (!line) return;
+    if (!meta) {
+      line.style.display = 'none';
+      line.textContent = '';
+      return;
+    }
+    line.textContent =
+      'Archivos consultados: ' + (meta.archivos_consultados || 0) +
+      ' | Archivos leidos: ' + (meta.archivos_leidos || 0) +
+      ' | Snapshots: ' + (meta.snapshots || 0) +
+      ' | Cambios: ' + (meta.eventos || 0);
+    line.style.display = 'block';
   }
 
   /* ===== CONSTRUIR PARAMS ===== */
@@ -368,7 +433,7 @@
     var hDesde = el('cp-filter-hora-desde');
     var hHasta = el('cp-filter-hora-hasta');
     var ict    = el('cp-filter-ict');
-    var std    = el('cp-filter-std');
+    var noParte = el('cp-filter-no-parte');
     var comp   = el('cp-filter-componente');
     var param  = el('cp-filter-parametro');
 
@@ -377,7 +442,7 @@
     if (hDesde && hDesde.value) p.set('hora_desde',  hDesde.value);
     if (hHasta && hHasta.value) p.set('hora_hasta',  hHasta.value);
     if (ict   && ict.value.trim())  p.set('ict',        ict.value.trim());
-    if (std   && std.value.trim())  p.set('std',        std.value.trim());
+    if (noParte && noParte.value.trim()) p.set('no_parte', noParte.value.trim());
     if (comp  && comp.value.trim()) p.set('componente', comp.value.trim());
     if (param && param.value.trim()) p.set('parametro', param.value.trim());
 
@@ -392,23 +457,38 @@
 
     tr.innerHTML =
       '<td class="cp-row-num">' + idx + '</td>' +
-      '<td>' + escHtml(row.fecha || '') + '</td>' +
+      '<td>' + escHtml(row.jornada || row.fecha || '') + '</td>' +
       '<td>' + escHtml(row.hora  || '') + '</td>' +
       '<td class="cp-col-ict">'  + escHtml(row.ict        || '') + '</td>' +
-      '<td title="' + escHtml(row.std || '') + '">' + escHtml(row.std        || '') + '</td>' +
+      '<td title="' + escHtml(row.no_parte || row.std || '') + '">' + escHtml(row.no_parte || row.std || '') + '</td>' +
       '<td>' + escHtml(row.componente || '') + '</td>' +
       '<td class="cp-col-param">' + escHtml(row.parametro  || '') + '</td>' +
       '<td><span class="cp-val-old" title="' + escHtml(vAnterior) + '">' + escHtml(vAnterior || '—') + '</span></td>' +
       '<td><span class="cp-val-new" title="' + escHtml(vNuevo)    + '">' + escHtml(vNuevo    || '—') + '</span></td>';
 
+    tr.innerHTML += '<td title="' + escHtml(row.archivo || '') + '">' + escHtml(row.archivo || '') + '</td>';
     return tr;
   }
 
   /* ===== CARGAR DATOS ===== */
   function loadCambiosParametrosICT() {
     var params = buildParams();
+    var ict = el('cp-filter-ict');
+    if (!ict || !ict.value.trim()) {
+      actualizarContador(0);
+      var tableElRequired = el('cp-params-table');
+      if (tableElRequired) tableElRequired.style.display = 'none';
+      setNoDataMessage('ICT es requerido.', 'Capture un valor como ICT1, ICT1 M2 o 1 para consultar.');
+      mostrarSinDatos(true);
+      mostrarWarnings([]);
+      mostrarMeta(null);
+      return;
+    }
     mostrarCargando(true);
     mostrarSinDatos(false);
+    setNoDataMessage('No se encontraron registros con los filtros aplicados.', 'Ajuste los filtros y vuelva a consultar.');
+    mostrarWarnings([]);
+    mostrarMeta(null);
 
     var tbody = el('cp-params-body');
     if (tbody) tbody.innerHTML = '';
@@ -420,12 +500,18 @@
       headers: { 'Accept': 'application/json' }
     })
     .then(function (res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
+      return res.json().catch(function () {
+        return { error: 'HTTP ' + res.status };
+      }).then(function (payload) {
+        if (!res.ok) throw new Error(payload.error || ('HTTP ' + res.status));
+        return payload;
+      });
     })
     .then(function (data) {
       mostrarCargando(false);
       var rows = Array.isArray(data) ? data : (data.data || data.rows || []);
+      mostrarWarnings(Array.isArray(data.warnings) ? data.warnings : []);
+      mostrarMeta(data.meta || null);
 
       actualizarContador(rows.length);
 
@@ -447,16 +533,18 @@
       mostrarCargando(false);
       if (tableEl) tableEl.style.display = 'none';
       mostrarSinDatos(true);
-      var nd = el('cp-no-data');
-      if (nd) {
-        var ps = nd.querySelectorAll('p');
-        if (ps[0]) ps[0].textContent = 'Error al cargar los datos. Verifique la conexión.';
-      }
+      setNoDataMessage(err.message || 'Error al cargar los datos.', 'Verifique los filtros y vuelva a consultar.');
     });
   }
 
   /* ===== EXPORTAR ===== */
   function exportarExcel() {
+    var ict = el('cp-filter-ict');
+    if (!ict || !ict.value.trim()) {
+      setNoDataMessage('ICT es requerido.', 'Capture un valor como ICT1, ICT1 M2 o 1 antes de exportar.');
+      mostrarSinDatos(true);
+      return;
+    }
     var params = buildParams();
     window.location.href = '/api/ict/param-changes/export?' + params.toString();
   }
@@ -490,7 +578,7 @@
     var inputIds = [
       'cp-filter-fecha-desde', 'cp-filter-fecha-hasta',
       'cp-filter-hora-desde',  'cp-filter-hora-hasta',
-      'cp-filter-ict',         'cp-filter-std',
+      'cp-filter-ict',         'cp-filter-no-parte',
       'cp-filter-componente',  'cp-filter-parametro'
     ];
     inputIds.forEach(function (id) {
@@ -502,8 +590,7 @@
       }
     });
 
-    /* Carga inicial automática */
-    loadCambiosParametrosICT();
+    mostrarSinDatos(true);
   }
 
   /* ===== EXPONER GLOBALMENTE ===== */
