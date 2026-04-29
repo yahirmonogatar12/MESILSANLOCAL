@@ -1093,14 +1093,12 @@ body.ae-column-resizing * {
 }
 
 .ae-departure-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 110px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: rgba(39, 174, 96, 0.2);
-    border: 1px solid rgba(39, 174, 96, 0.32);
+    display: inline;
+    min-width: 0;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    border: 0;
     color: var(--ilsan-text-light);
     font-size: 0.76rem;
     font-weight: 700;

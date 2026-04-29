@@ -1,11 +1,11 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260427c";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260427d";
 
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260427c")) {
+      if (!currentLink.getAttribute("href")?.includes("20260427d")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -53,7 +53,7 @@
     if (row.departure_code) {
       return `
         <div class="ae-departure-view">
-          <span class="ae-departure-badge">${escapeHtml(row.departure_code)}</span>
+          ${escapeHtml(row.departure_code)}
         </div>
       `;
     }
