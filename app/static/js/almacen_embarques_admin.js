@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260427d";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260430b";
 
   const movementModuleState = {
     rows: [],
@@ -38,7 +38,7 @@
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260427d")) {
+      if (!currentLink.getAttribute("href")?.includes("20260430b")) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;

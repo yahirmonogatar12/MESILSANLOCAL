@@ -23,6 +23,8 @@ SHIPPING_TABLES = {
     "returns": "embarques_retorno_material",
     "departure_history": "embarques_departure_historial",
     "movement_adjustments": "embarques_movimiento_ajustes_historial",
+    "manual_adjustment_batches": "embarques_movimiento_lotes_ajuste",
+    "manual_adjustment_items": "embarques_movimiento_lote_items",
     "inventory_closures": "embarques_inventario_cierres",
     "inventory_closure_batches": "embarques_inventario_cierre_lotes",
 }
@@ -543,6 +545,63 @@ def init_shipping_material_tables():
               KEY idx_adjustments_type_record (movement_type, record_id),
               KEY idx_adjustments_part_number (part_number),
               KEY idx_adjustments_adjusted_at (adjusted_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['manual_adjustment_batches']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              batch_code VARCHAR(80) NOT NULL,
+              movement_type VARCHAR(20) NOT NULL,
+              movement_at DATETIME NOT NULL,
+              status VARCHAR(20) NOT NULL DEFAULT 'draft',
+              reason TEXT NOT NULL,
+              created_by VARCHAR(120) NULL,
+              confirmed_by VARCHAR(120) NULL,
+              source_file_name VARCHAR(255) NULL,
+              source_file_hash CHAR(64) NULL,
+              rows_hash CHAR(64) NULL,
+              payload_json LONGTEXT NULL,
+              closure_impact_json LONGTEXT NULL,
+              total_rows INT NOT NULL DEFAULT 0,
+              total_quantity INT NOT NULL DEFAULT 0,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              confirmed_at DATETIME NULL,
+              cancelled_at DATETIME NULL,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_manual_adjustment_batch_code (batch_code),
+              KEY idx_manual_adjustment_batches_type_status (movement_type, status),
+              KEY idx_manual_adjustment_batches_movement_at (movement_at),
+              KEY idx_manual_adjustment_batches_created_by (created_by)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['manual_adjustment_items']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              batch_id BIGINT UNSIGNED NOT NULL,
+              row_number INT NOT NULL,
+              part_number VARCHAR(64) NOT NULL,
+              quantity INT NOT NULL,
+              inventory_id BIGINT UNSIGNED NULL,
+              catalog_id BIGINT UNSIGNED NULL,
+              folio VARCHAR(40) NULL,
+              previous_quantity INT NULL,
+              new_quantity INT NULL,
+              status VARCHAR(20) NOT NULL DEFAULT 'draft',
+              error_message TEXT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              KEY idx_manual_adjustment_items_batch (batch_id),
+              KEY idx_manual_adjustment_items_part_number (part_number),
+              CONSTRAINT fk_manual_adjustment_items_batch
+                FOREIGN KEY (batch_id) REFERENCES `{SHIPPING_TABLES['manual_adjustment_batches']}` (id)
+                ON UPDATE CASCADE
+                ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
         )

@@ -1,11 +1,13 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260427d";
+  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260430b";
+  const ASSET_VERSION = "20260430b";
+  const adjustmentState = {};
 
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260427d")) {
+      if (!currentLink.getAttribute("href")?.includes(ASSET_VERSION)) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -793,6 +795,31 @@
     };
   }
 
+  function getAdjustmentElements(prefix) {
+    return {
+      openBtn: document.getElementById(`${prefix}-adjustment-open-btn`),
+      modal: document.getElementById(`${prefix}-adjustment-modal`),
+      dateInput: document.getElementById(`${prefix}-adjustment-date`),
+      reasonInput: document.getElementById(`${prefix}-adjustment-reason`),
+      fileInput: document.getElementById(`${prefix}-adjustment-file`),
+      manualDateInput: document.getElementById(`${prefix}-adjustment-manual-date`),
+      manualPartInput: document.getElementById(`${prefix}-adjustment-manual-part`),
+      manualQuantityInput: document.getElementById(`${prefix}-adjustment-manual-quantity`),
+      manualReasonInput: document.getElementById(`${prefix}-adjustment-manual-reason`),
+      manualSubmitBtn: document.getElementById(`${prefix}-adjustment-manual-submit-btn`),
+      templateBtn: document.getElementById(`${prefix}-adjustment-template-btn`),
+      previewBtn: document.getElementById(`${prefix}-adjustment-preview-btn`),
+      confirmBtn: document.getElementById(`${prefix}-adjustment-confirm-btn`),
+      resetBtn: document.getElementById(`${prefix}-adjustment-reset-btn`),
+      statusLabel: document.getElementById(`${prefix}-adjustment-status`),
+      errorsWrap: document.getElementById(`${prefix}-adjustment-errors`),
+      previewWrap: document.getElementById(`${prefix}-adjustment-preview`),
+      summaryLabel: document.getElementById(`${prefix}-adjustment-summary`),
+      impactLabel: document.getElementById(`${prefix}-adjustment-impact`),
+      previewBody: document.getElementById(`${prefix}-adjustment-tbody`),
+    };
+  }
+
   function getReturnModuleElements() {
     return {
       movementType: document.getElementById("almacen-embarques-returns-movement-type"),
@@ -841,6 +868,371 @@
 
     statusLabel.textContent = message;
     statusLabel.style.color = isError ? "#ff8f8f" : "#8fb8ff";
+  }
+
+  function setAdjustmentStatus(prefix, message, isError = false) {
+    const { statusLabel } = getAdjustmentElements(prefix);
+    if (!statusLabel) {
+      return;
+    }
+    statusLabel.textContent = message || "";
+    statusLabel.style.color = isError ? "#ff8f8f" : "#8fb8ff";
+  }
+
+  function renderAdjustmentErrors(prefix, errors = []) {
+    const { errorsWrap } = getAdjustmentElements(prefix);
+    if (!errorsWrap) {
+      return;
+    }
+    const visibleErrors = errors.filter(Boolean);
+    if (!visibleErrors.length) {
+      errorsWrap.innerHTML = "";
+      return;
+    }
+    errorsWrap.innerHTML = visibleErrors
+      .slice(0, 8)
+      .map((error) => `<span class="ae-adjustment-error-chip">${escapeHtml(error)}</span>`)
+      .join("");
+  }
+
+  function setDefaultAdjustmentDate(prefix) {
+    const { dateInput, manualDateInput } = getAdjustmentElements(prefix);
+    const now = new Date();
+    const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    if (dateInput && !dateInput.value) {
+      dateInput.value = localIso;
+    }
+    if (manualDateInput && !manualDateInput.value) {
+      manualDateInput.value = localIso;
+    }
+  }
+
+  function openAdjustmentModal(config) {
+    const elements = getAdjustmentElements(config.prefix);
+    if (!elements.modal) {
+      return;
+    }
+    elements.modal.classList.remove("is-hidden");
+    elements.modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("ae-modal-open");
+    setDefaultAdjustmentDate(config.prefix);
+    requestAnimationFrame(() => {
+      elements.manualPartInput?.focus();
+    });
+  }
+
+  function closeAdjustmentModal(prefix) {
+    const elements = getAdjustmentElements(prefix);
+    if (!elements.modal) {
+      return;
+    }
+    elements.modal.classList.add("is-hidden");
+    elements.modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("ae-modal-open");
+  }
+
+  function renderAdjustmentPreview(prefix, preview) {
+    const elements = getAdjustmentElements(prefix);
+    if (!elements.previewWrap || !elements.previewBody) {
+      return;
+    }
+
+    const rows = preview?.rows || [];
+    const summary = preview?.summary || {};
+    const closureImpact = preview?.closureImpact || {};
+
+    if (!rows.length) {
+      elements.previewWrap.classList.add("is-hidden");
+      elements.previewBody.innerHTML = "";
+      if (elements.summaryLabel) {
+        elements.summaryLabel.textContent = "Sin preview validado";
+      }
+      if (elements.impactLabel) {
+        elements.impactLabel.textContent = "";
+      }
+      return;
+    }
+
+    elements.previewWrap.classList.remove("is-hidden");
+    if (elements.summaryLabel) {
+      elements.summaryLabel.textContent = `${formatNumber(summary.totalRows)} registros · ${formatNumber(summary.totalQuantity)} piezas`;
+    }
+    if (elements.impactLabel) {
+      elements.impactLabel.textContent = closureImpact.affected
+        ? `${formatNumber(closureImpact.affectedRows)} cierres impactados`
+        : "Sin impacto en cierres";
+      elements.impactLabel.classList.toggle("is-warning", Boolean(closureImpact.affected));
+    }
+    elements.previewBody.innerHTML = rows
+      .map(
+        (row) => `
+          <tr>
+            <td><strong>${escapeHtml(row.part_number)}</strong></td>
+            <td>${formatNumber(row.quantity)}</td>
+            <td>${formatNumber(row.current_quantity)}</td>
+            <td>${formatNumber(row.new_quantity)}</td>
+            <td>${escapeHtml(row.product_model || "-")}</td>
+            <td>${row.closureImpactCount ? `${formatNumber(row.closureImpactCount)} cierre(s)` : "Sin cierre"}</td>
+          </tr>
+        `,
+      )
+      .join("");
+  }
+
+  async function resetAdjustment(config, cancelDraft = true) {
+    const prefix = config.prefix;
+    const elements = getAdjustmentElements(prefix);
+    const currentBatchId = adjustmentState[prefix]?.batchId;
+
+    if (cancelDraft && currentBatchId) {
+      try {
+        await fetch(`/api/almacen-embarques/${config.adjustmentModule}/ajustes/cancel`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ batchId: currentBatchId }),
+        });
+      } catch (error) {
+        console.warn("No fue posible cancelar el preview pendiente:", error);
+      }
+    }
+
+    adjustmentState[prefix] = { batchId: null, preview: null };
+    if (elements.reasonInput) elements.reasonInput.value = "";
+    if (elements.fileInput) elements.fileInput.value = "";
+    if (elements.manualPartInput) elements.manualPartInput.value = "";
+    if (elements.manualQuantityInput) elements.manualQuantityInput.value = "";
+    if (elements.manualReasonInput) elements.manualReasonInput.value = "";
+    if (elements.confirmBtn) elements.confirmBtn.disabled = true;
+    renderAdjustmentErrors(prefix, []);
+    renderAdjustmentPreview(prefix, null);
+    setDefaultAdjustmentDate(prefix);
+    setAdjustmentStatus(prefix, "");
+  }
+
+  function downloadAdjustmentTemplate(config) {
+    window.open(`/api/almacen-embarques/${config.adjustmentModule}/ajustes/template`, "_blank");
+  }
+
+  async function submitManualAdjustment(config) {
+    const prefix = config.prefix;
+    const elements = getAdjustmentElements(prefix);
+    const movementAt = elements.manualDateInput?.value || "";
+    const partNumber = elements.manualPartInput?.value?.trim() || "";
+    const quantity = Number(elements.manualQuantityInput?.value || 0);
+    const reason = elements.manualReasonInput?.value?.trim() || "";
+
+    renderAdjustmentErrors(prefix, []);
+    if (!movementAt) {
+      setAdjustmentStatus(prefix, "Captura la fecha del movimiento", true);
+      elements.manualDateInput?.focus();
+      return;
+    }
+    if (!partNumber) {
+      setAdjustmentStatus(prefix, "Captura el número de parte", true);
+      elements.manualPartInput?.focus();
+      return;
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setAdjustmentStatus(prefix, "Captura una cantidad mayor a cero", true);
+      elements.manualQuantityInput?.focus();
+      return;
+    }
+    if (!reason) {
+      setAdjustmentStatus(prefix, "Captura el motivo del registro", true);
+      elements.manualReasonInput?.focus();
+      return;
+    }
+
+    const originalText = elements.manualSubmitBtn?.textContent;
+    if (elements.manualSubmitBtn) {
+      elements.manualSubmitBtn.disabled = true;
+      elements.manualSubmitBtn.textContent = "Registrando...";
+    }
+    setAdjustmentStatus(prefix, "Registrando movimiento...");
+
+    try {
+      const response = await fetch(`/api/almacen-embarques/${config.adjustmentModule}/ajustes/manual`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          movementAt,
+          partNumber,
+          quantity,
+          reason,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+
+      setAdjustmentStatus(prefix, `${config.adjustmentLabel || "Movimiento"} registrado correctamente.`);
+      if (elements.manualPartInput) elements.manualPartInput.value = "";
+      if (elements.manualQuantityInput) elements.manualQuantityInput.value = "";
+      if (elements.manualReasonInput) elements.manualReasonInput.value = "";
+      await loadModule(config);
+      elements.manualPartInput?.focus();
+    } catch (error) {
+      console.error("Error registrando ajuste manual:", error);
+      renderAdjustmentErrors(prefix, [error.message || "No fue posible registrar el movimiento."]);
+      setAdjustmentStatus(prefix, "Error registrando movimiento", true);
+    } finally {
+      if (elements.manualSubmitBtn) {
+        elements.manualSubmitBtn.disabled = false;
+        elements.manualSubmitBtn.textContent = originalText || "Registrar";
+      }
+    }
+  }
+
+  async function validateAdjustmentPreview(config) {
+    const prefix = config.prefix;
+    const elements = getAdjustmentElements(prefix);
+    const file = elements.fileInput?.files?.[0];
+    const reason = elements.reasonInput?.value?.trim() || "";
+    const movementAt = elements.dateInput?.value || "";
+
+    renderAdjustmentErrors(prefix, []);
+    renderAdjustmentPreview(prefix, null);
+
+    if (!movementAt) {
+      setAdjustmentStatus(prefix, "Captura la fecha del movimiento", true);
+      elements.dateInput?.focus();
+      return;
+    }
+    if (!reason) {
+      setAdjustmentStatus(prefix, "Captura el motivo del ajuste", true);
+      elements.reasonInput?.focus();
+      return;
+    }
+    if (!file) {
+      setAdjustmentStatus(prefix, "Selecciona un archivo CSV o Excel", true);
+      elements.fileInput?.focus();
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("adjustment_file", file);
+    formData.append("reason", reason);
+    formData.append("movement_at", movementAt);
+
+    const originalText = elements.previewBtn?.textContent;
+    if (elements.previewBtn) {
+      elements.previewBtn.disabled = true;
+      elements.previewBtn.textContent = "Validando...";
+    }
+    if (elements.confirmBtn) {
+      elements.confirmBtn.disabled = true;
+    }
+    setAdjustmentStatus(prefix, "Validando archivo...");
+
+    try {
+      const response = await fetch(`/api/almacen-embarques/${config.adjustmentModule}/ajustes/preview`, {
+        method: "POST",
+        credentials: "same-origin",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+      if (!payload.valid) {
+        renderAdjustmentErrors(prefix, payload.errors || ["El archivo contiene errores."]);
+        setAdjustmentStatus(prefix, "Preview no válido", true);
+        adjustmentState[prefix] = { batchId: null, preview: null };
+        return;
+      }
+
+      adjustmentState[prefix] = {
+        batchId: payload.batchId,
+        batchCode: payload.batchCode,
+        preview: payload.preview,
+      };
+      renderAdjustmentPreview(prefix, payload.preview);
+      if (elements.confirmBtn) {
+        elements.confirmBtn.disabled = false;
+      }
+      const impacted = payload.preview?.closureImpact?.affectedRows || 0;
+      setAdjustmentStatus(
+        prefix,
+        impacted
+          ? `Preview listo. Impacta ${formatNumber(impacted)} cierre(s).`
+          : "Preview listo para confirmar.",
+      );
+    } catch (error) {
+      console.error("Error validando ajuste por lote:", error);
+      renderAdjustmentErrors(prefix, [error.message || "No fue posible validar el archivo."]);
+      setAdjustmentStatus(prefix, "Error validando archivo", true);
+    } finally {
+      if (elements.previewBtn) {
+        elements.previewBtn.disabled = false;
+        elements.previewBtn.textContent = originalText || "Validar";
+      }
+    }
+  }
+
+  async function confirmAdjustment(config) {
+    const prefix = config.prefix;
+    const elements = getAdjustmentElements(prefix);
+    const batchId = adjustmentState[prefix]?.batchId;
+    if (!batchId) {
+      setAdjustmentStatus(prefix, "Primero valida un preview", true);
+      return;
+    }
+
+    const originalText = elements.confirmBtn?.textContent;
+    if (elements.confirmBtn) {
+      elements.confirmBtn.disabled = true;
+      elements.confirmBtn.textContent = "Confirmando...";
+    }
+    setAdjustmentStatus(prefix, "Aplicando lote...");
+
+    try {
+      const response = await fetch(`/api/almacen-embarques/${config.adjustmentModule}/ajustes/confirm`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ batchId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+
+      setAdjustmentStatus(
+        prefix,
+        `${payload.insertedRows || 0} registros aplicados. ${payload.updatedClosureRows || 0} cierres recalculados.`,
+      );
+      adjustmentState[prefix] = { batchId: null, preview: null };
+      if (elements.fileInput) elements.fileInput.value = "";
+      if (elements.reasonInput) elements.reasonInput.value = "";
+      renderAdjustmentErrors(prefix, []);
+      renderAdjustmentPreview(prefix, null);
+      await loadModule(config);
+    } catch (error) {
+      console.error("Error confirmando ajuste por lote:", error);
+      renderAdjustmentErrors(prefix, [error.message || "No fue posible confirmar el lote."]);
+      setAdjustmentStatus(prefix, "Error confirmando lote", true);
+      if (elements.confirmBtn) {
+        elements.confirmBtn.disabled = false;
+      }
+    } finally {
+      if (elements.confirmBtn) {
+        elements.confirmBtn.textContent = originalText || "Confirmar";
+      }
+    }
   }
 
   function setLoading(prefix, colspan, message) {
@@ -1446,6 +1838,57 @@
     bindScrollableShells(moduleRoot);
     bindColumnResizers(moduleRoot);
     bindModuleResize(moduleRoot);
+    setDefaultAdjustmentDate(config.prefix);
+
+    const adjustmentElements = getAdjustmentElements(config.prefix);
+    if (config.adjustmentModule && adjustmentElements.openBtn && adjustmentElements.openBtn.dataset.bound !== "true") {
+      adjustmentElements.openBtn.addEventListener("click", () => openAdjustmentModal(config));
+      adjustmentElements.openBtn.dataset.bound = "true";
+    }
+    if (config.adjustmentModule && adjustmentElements.modal && adjustmentElements.modal.dataset.closeBound !== "true") {
+      adjustmentElements.modal.querySelectorAll("[data-adjustment-close]").forEach((button) => {
+        button.addEventListener("click", () => closeAdjustmentModal(config.prefix));
+      });
+      adjustmentElements.modal.dataset.closeBound = "true";
+    }
+    if (config.adjustmentModule && adjustmentElements.manualQuantityInput && adjustmentElements.manualQuantityInput.dataset.numericBound !== "true") {
+      adjustmentElements.manualQuantityInput.addEventListener("input", () => {
+        adjustmentElements.manualQuantityInput.value = adjustmentElements.manualQuantityInput.value.replace(/\D+/g, "");
+      });
+      adjustmentElements.manualQuantityInput.dataset.numericBound = "true";
+    }
+    if (config.adjustmentModule && adjustmentElements.manualSubmitBtn && adjustmentElements.manualSubmitBtn.dataset.bound !== "true") {
+      adjustmentElements.manualSubmitBtn.addEventListener("click", () => submitManualAdjustment(config));
+      adjustmentElements.manualSubmitBtn.dataset.bound = "true";
+    }
+    [adjustmentElements.manualPartInput, adjustmentElements.manualQuantityInput, adjustmentElements.manualReasonInput].forEach((input) => {
+      if (!config.adjustmentModule || !input || input.dataset.enterBound === "true") {
+        return;
+      }
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          submitManualAdjustment(config);
+        }
+      });
+      input.dataset.enterBound = "true";
+    });
+    if (config.adjustmentModule && adjustmentElements.templateBtn && adjustmentElements.templateBtn.dataset.bound !== "true") {
+      adjustmentElements.templateBtn.addEventListener("click", () => downloadAdjustmentTemplate(config));
+      adjustmentElements.templateBtn.dataset.bound = "true";
+    }
+    if (config.adjustmentModule && adjustmentElements.previewBtn && adjustmentElements.previewBtn.dataset.bound !== "true") {
+      adjustmentElements.previewBtn.addEventListener("click", () => validateAdjustmentPreview(config));
+      adjustmentElements.previewBtn.dataset.bound = "true";
+    }
+    if (config.adjustmentModule && adjustmentElements.confirmBtn && adjustmentElements.confirmBtn.dataset.bound !== "true") {
+      adjustmentElements.confirmBtn.addEventListener("click", () => confirmAdjustment(config));
+      adjustmentElements.confirmBtn.dataset.bound = "true";
+    }
+    if (config.adjustmentModule && adjustmentElements.resetBtn && adjustmentElements.resetBtn.dataset.bound !== "true") {
+      adjustmentElements.resetBtn.addEventListener("click", () => resetAdjustment(config, true));
+      adjustmentElements.resetBtn.dataset.bound = "true";
+    }
 
     if (config.prefix === "almacen-embarques-exits" && elements.tableBody.dataset.departureBound !== "true") {
       elements.tableBody.addEventListener("keydown", (event) => {
@@ -1517,6 +1960,8 @@
       prefix: "almacen-embarques-entries",
       apiUrl: "/api/almacen-embarques/entradas",
       exportUrl: "/api/almacen-embarques/entradas/export",
+      adjustmentModule: "entradas",
+      adjustmentLabel: "Entrada",
       colspan: 10,
       emptyMessage: "No hay entradas registradas para los filtros actuales.",
       renderer: renderEntriesRows,
@@ -1528,6 +1973,8 @@
       prefix: "almacen-embarques-exits",
       apiUrl: "/api/almacen-embarques/salidas",
       exportUrl: "/api/almacen-embarques/salidas/export",
+      adjustmentModule: "salidas",
+      adjustmentLabel: "Salida",
       colspan: 9,
       emptyMessage: "No hay salidas registradas para los filtros actuales.",
       renderer: renderExitsRows,

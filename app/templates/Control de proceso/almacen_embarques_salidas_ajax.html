@@ -30,9 +30,120 @@
             <button id="almacen-embarques-exits-clear-btn" class="ae-btn-secondary">
                 Limpiar filtros
             </button>
+            <button id="almacen-embarques-exits-adjustment-open-btn" class="ae-btn-success" type="button">
+                Registrar Salida
+            </button>
             <button id="almacen-embarques-exits-export-btn" class="ae-btn-export">
                 Exportar Excel
             </button>
+        </div>
+    </div>
+
+    <div
+        id="almacen-embarques-exits-adjustment-modal"
+        class="ae-registration-modal is-hidden"
+        aria-hidden="true"
+    >
+        <div class="ae-registration-modal__backdrop" data-adjustment-close="true"></div>
+        <div class="ae-registration-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="almacen-embarques-exits-adjustment-title">
+            <div class="ae-registration-modal__header">
+                <div>
+                    <h3 id="almacen-embarques-exits-adjustment-title">Registrar Salida</h3>
+                    <p>Captura una salida individual o valida un archivo por lote.</p>
+                </div>
+                <button class="ae-registration-modal__close" type="button" data-adjustment-close="true" aria-label="Cerrar">
+                    &times;
+                </button>
+            </div>
+            <div class="ae-registration-modal__body">
+                <section class="ae-adjustment-section">
+                    <h4>Registro por número de parte</h4>
+                    <div class="ae-manual-adjustment-form ae-manual-adjustment-form--single">
+                        <div class="ae-filter-group">
+                            <label for="almacen-embarques-exits-adjustment-manual-date">Fecha del movimiento</label>
+                            <input type="datetime-local" id="almacen-embarques-exits-adjustment-manual-date">
+                        </div>
+                        <div class="ae-filter-group">
+                            <label for="almacen-embarques-exits-adjustment-manual-part">No. parte</label>
+                            <input type="text" id="almacen-embarques-exits-adjustment-manual-part" placeholder="Número de parte">
+                        </div>
+                        <div class="ae-filter-group">
+                            <label for="almacen-embarques-exits-adjustment-manual-quantity">Cantidad</label>
+                            <input type="text" id="almacen-embarques-exits-adjustment-manual-quantity" inputmode="numeric" placeholder="0">
+                        </div>
+                        <div class="ae-filter-group ae-filter-group--wide">
+                            <label for="almacen-embarques-exits-adjustment-manual-reason">Motivo</label>
+                            <input type="text" id="almacen-embarques-exits-adjustment-manual-reason" placeholder="Motivo obligatorio">
+                        </div>
+                        <button id="almacen-embarques-exits-adjustment-manual-submit-btn" class="ae-btn-success" type="button">
+                            Registrar
+                        </button>
+                    </div>
+                </section>
+                <section class="ae-adjustment-section">
+                    <h4>Registro por archivo</h4>
+                    <div class="ae-manual-adjustment-form">
+                        <div class="ae-filter-group">
+                            <label for="almacen-embarques-exits-adjustment-date">Fecha del movimiento</label>
+                            <input type="datetime-local" id="almacen-embarques-exits-adjustment-date">
+                        </div>
+                        <div class="ae-filter-group ae-filter-group--wide">
+                            <label for="almacen-embarques-exits-adjustment-reason">Motivo</label>
+                            <input
+                                type="text"
+                                id="almacen-embarques-exits-adjustment-reason"
+                                placeholder="Motivo obligatorio del ajuste"
+                            >
+                        </div>
+                        <div class="ae-filter-group ae-filter-group--file">
+                            <label for="almacen-embarques-exits-adjustment-file">Archivo CSV/XLSX</label>
+                            <input
+                                type="file"
+                                id="almacen-embarques-exits-adjustment-file"
+                                accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                            >
+                        </div>
+                        <button id="almacen-embarques-exits-adjustment-template-btn" class="ae-btn-secondary" type="button">
+                            Plantilla
+                        </button>
+                        <button id="almacen-embarques-exits-adjustment-preview-btn" class="ae-btn-primary" type="button">
+                            Validar
+                        </button>
+                        <button id="almacen-embarques-exits-adjustment-confirm-btn" class="ae-btn-success" type="button" disabled>
+                            Confirmar
+                        </button>
+                        <button id="almacen-embarques-exits-adjustment-reset-btn" class="ae-btn-secondary" type="button">
+                            Limpiar
+                        </button>
+                    </div>
+                    <div id="almacen-embarques-exits-adjustment-errors" class="ae-adjustment-errors"></div>
+                    <div id="almacen-embarques-exits-adjustment-preview" class="ae-adjustment-preview is-hidden">
+                        <div class="ae-adjustment-preview__summary">
+                            <strong id="almacen-embarques-exits-adjustment-summary">Sin preview validado</strong>
+                            <span id="almacen-embarques-exits-adjustment-impact"></span>
+                        </div>
+                        <div class="ae-adjustment-preview__table-wrap">
+                            <table class="ae-history-table ae-history-table--compact">
+                                <thead>
+                                    <tr>
+                                        <th>No. parte</th>
+                                        <th>Cantidad</th>
+                                        <th>Actual</th>
+                                        <th>Nuevo</th>
+                                        <th>Modelo</th>
+                                        <th>Impacto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="almacen-embarques-exits-adjustment-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="ae-registration-modal__footer">
+                <span id="almacen-embarques-exits-adjustment-status" class="ae-status-text"></span>
+                <button class="ae-btn-secondary" type="button" data-adjustment-close="true">Cerrar</button>
+            </div>
         </div>
     </div>
 
@@ -97,4 +208,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260427d') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260430b') }}"></script>
