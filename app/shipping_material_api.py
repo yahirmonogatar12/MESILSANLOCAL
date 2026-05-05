@@ -27,6 +27,7 @@ SHIPPING_TABLES = {
     "manual_adjustment_items": "embarques_movimiento_lote_items",
     "inventory_closures": "embarques_inventario_cierres",
     "inventory_closure_batches": "embarques_inventario_cierre_lotes",
+    "catalog_adjustments": "embarques_catalogo_ajustes_historial",
 }
 
 shipping_material_api = Blueprint(
@@ -551,6 +552,33 @@ def init_shipping_material_tables():
 
         cursor.execute(
             f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['catalog_adjustments']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              catalog_id BIGINT UNSIGNED NULL,
+              inventory_id BIGINT UNSIGNED NULL,
+              action VARCHAR(30) NOT NULL,
+              part_number_before VARCHAR(64) NULL,
+              part_number_after VARCHAR(64) NULL,
+              previous_values_json LONGTEXT NULL,
+              new_values_json LONGTEXT NULL,
+              changed_fields_json LONGTEXT NULL,
+              notes TEXT NULL,
+              adjusted_by VARCHAR(120) NULL,
+              adjusted_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              KEY idx_catalog_adjustments_catalog (catalog_id),
+              KEY idx_catalog_adjustments_inventory (inventory_id),
+              KEY idx_catalog_adjustments_part_before (part_number_before),
+              KEY idx_catalog_adjustments_part_after (part_number_after),
+              KEY idx_catalog_adjustments_action (action),
+              KEY idx_catalog_adjustments_adjusted_at (adjusted_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
             CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['manual_adjustment_batches']}` (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
               batch_code VARCHAR(80) NOT NULL,
@@ -584,7 +612,7 @@ def init_shipping_material_tables():
             CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['manual_adjustment_items']}` (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
               batch_id BIGINT UNSIGNED NOT NULL,
-              row_number INT NOT NULL,
+              `row_number` INT NOT NULL,
               part_number VARCHAR(64) NOT NULL,
               quantity INT NOT NULL,
               inventory_id BIGINT UNSIGNED NULL,

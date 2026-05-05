@@ -154,6 +154,15 @@ window.mostrarAlmacenEmbarquesInventarioGeneral = function() {
     );
 };
 
+// Almacén de Embarques - Catálogo
+window.mostrarAlmacenEmbarquesCatalogo = function() {
+    mostrarModuloControlProceso(
+        'almacen-embarques-catalogo-unique-container',
+        '/almacen-embarques-catalogo-ajax?v=20260505c',
+        'inicializarAlmacenEmbarquesCatalogoAjax'
+    );
+};
+
 // Registro de movimiento de identificacion
 window.mostrarRegistroMovimientoIdentificacion = function() {
     mostrarModuloControlProceso(

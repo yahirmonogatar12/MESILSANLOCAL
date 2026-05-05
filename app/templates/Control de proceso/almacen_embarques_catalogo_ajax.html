@@ -1,0 +1,200 @@
+<div
+    id="almacen-embarques-catalog-module"
+    class="almacen-embarques-history-module"
+    data-module-type="catalog"
+>
+    <div class="ae-filters-card">
+        <div class="ae-card-header">
+            <h3>Catálogo de números de parte</h3>
+            <span id="almacen-embarques-catalog-status" class="ae-status-text"></span>
+        </div>
+        <div class="ae-filters">
+            <div class="ae-filter-group ae-filter-group--wide">
+                <label for="almacen-embarques-catalog-search">Buscar</label>
+                <input
+                    type="text"
+                    id="almacen-embarques-catalog-search"
+                    placeholder="No. parte, modelo, descripción o cliente"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+            </div>
+            <div class="ae-filter-group">
+                <label for="almacen-embarques-catalog-type">Estatus</label>
+                <select id="almacen-embarques-catalog-type">
+                    <option value="">Todos</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                </select>
+            </div>
+            <button id="almacen-embarques-catalog-search-btn" class="ae-btn-primary">
+                Buscar
+            </button>
+            <button id="almacen-embarques-catalog-clear-btn" class="ae-btn-secondary">
+                Limpiar
+            </button>
+            <button id="almacen-embarques-catalog-new-btn" class="ae-btn-success" type="button">
+                Agregar no. parte
+            </button>
+            <button id="almacen-embarques-catalog-export-btn" class="ae-btn-export">
+                Exportar Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="ae-results-card">
+        <div class="ae-card-header">
+            <h3>Administración de catálogo</h3>
+            <span id="almacen-embarques-catalog-count" class="ae-record-count">
+                0 registros
+            </span>
+        </div>
+        <div class="ae-table-shell">
+            <div class="ae-table-head">
+                <table class="ae-history-table ae-history-table--head">
+                    <colgroup>
+                        <col style="width: 15%;">
+                        <col style="width: 12%;">
+                        <col style="width: 9%;">
+                        <col style="width: 18%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 10%;">
+                        <col style="width: 8%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>No. parte</th>
+                            <th>Modelo</th>
+                            <th>Estatus</th>
+                            <th>Descripción</th>
+                            <th>Std pack</th>
+                            <th>Cliente</th>
+                            <th>Zona</th>
+                            <th>Cantidad actual</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="ae-table-body-wrap">
+                <table class="ae-history-table ae-history-table--body">
+                    <colgroup>
+                        <col style="width: 15%;">
+                        <col style="width: 12%;">
+                        <col style="width: 9%;">
+                        <col style="width: 18%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 10%;">
+                        <col style="width: 8%;">
+                    </colgroup>
+                    <tbody id="almacen-embarques-catalog-tbody">
+                        <tr>
+                            <td colspan="9" class="ae-empty-cell">Cargando catálogo...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="almacen-embarques-catalog-modal" class="ae-registration-modal is-hidden" aria-hidden="true">
+        <div class="ae-registration-modal__backdrop" data-action="cancel-catalog-form"></div>
+        <div class="ae-registration-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="almacen-embarques-catalog-modal-title">
+            <div class="ae-registration-modal__header">
+                <div>
+                    <h3 id="almacen-embarques-catalog-modal-title">Agregar número de parte</h3>
+                    <p>El alta crea el registro en catálogo y su renglón de inventario en cero.</p>
+                </div>
+                <button class="ae-registration-modal__close" type="button" data-action="cancel-catalog-form" aria-label="Cerrar">
+                    &times;
+                </button>
+            </div>
+            <div class="ae-registration-modal__body">
+                <div class="ae-catalog-form-grid">
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-catalog-form-part">No. parte</label>
+                        <input type="text" id="almacen-embarques-catalog-form-part" autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-catalog-form-model">Modelo</label>
+                        <input type="text" id="almacen-embarques-catalog-form-model" autocomplete="off">
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-catalog-form-status">Estatus</label>
+                        <select id="almacen-embarques-catalog-form-status">
+                            <option value="activo">Activo</option>
+                            <option value="inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-catalog-form-pack">Std pack</label>
+                        <input type="text" id="almacen-embarques-catalog-form-pack" inputmode="numeric" autocomplete="off">
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-catalog-form-customer">Cliente</label>
+                        <input type="text" id="almacen-embarques-catalog-form-customer" autocomplete="off">
+                    </div>
+                    <div class="ae-filter-group">
+                        <label for="almacen-embarques-catalog-form-zone">Zona</label>
+                        <input type="text" id="almacen-embarques-catalog-form-zone" autocomplete="off">
+                    </div>
+                    <div class="ae-filter-group ae-filter-group--wide">
+                        <label for="almacen-embarques-catalog-form-description">Descripción</label>
+                        <input type="text" id="almacen-embarques-catalog-form-description" autocomplete="off">
+                    </div>
+                    <div class="ae-filter-group ae-filter-group--wide">
+                        <label for="almacen-embarques-catalog-form-notes">Motivo del cambio</label>
+                        <input type="text" id="almacen-embarques-catalog-form-notes" placeholder="Obligatorio al editar">
+                    </div>
+                </div>
+                <div id="almacen-embarques-catalog-form-error" class="ae-confirm-modal__error"></div>
+            </div>
+            <div class="ae-registration-modal__footer">
+                <button class="ae-btn-inline ae-btn-inline-cancel" type="button" data-action="cancel-catalog-form">
+                    Cancelar
+                </button>
+                <button id="almacen-embarques-catalog-form-submit" class="ae-btn-inline ae-btn-inline-save" type="button">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="almacen-embarques-catalog-delete-modal" class="ae-confirm-modal is-hidden" aria-hidden="true">
+        <div class="ae-confirm-modal__backdrop" data-action="cancel-catalog-delete"></div>
+        <div class="ae-confirm-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="almacen-embarques-catalog-delete-title">
+            <div class="ae-confirm-modal__header">
+                <h4 id="almacen-embarques-catalog-delete-title">Confirmar eliminación</h4>
+                <button type="button" class="ae-confirm-modal__close" data-action="cancel-catalog-delete" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="ae-confirm-modal__body">
+                <div class="ae-confirm-modal__summary">
+                    <div><span>No. parte</span><strong data-role="catalog-delete-part"></strong></div>
+                    <div><span>Cantidad actual</span><strong data-role="catalog-delete-stock"></strong></div>
+                </div>
+                <div class="ae-confirm-modal__warning" data-role="catalog-delete-warning">
+                    Confirma la eliminación solo cuando el número de parte ya no tenga cantidad ni movimientos pendientes del periodo.
+                </div>
+                <div class="ae-confirm-modal__field">
+                    <label for="almacen-embarques-catalog-delete-password">Contraseña actual</label>
+                    <input id="almacen-embarques-catalog-delete-password" type="password" data-role="catalog-delete-password" autocomplete="current-password">
+                </div>
+                <div class="ae-confirm-modal__field">
+                    <label for="almacen-embarques-catalog-delete-notes">Comentario de eliminación</label>
+                    <textarea id="almacen-embarques-catalog-delete-notes" data-role="catalog-delete-notes" rows="4" placeholder="Describe por qué se elimina o desactiva el número de parte"></textarea>
+                </div>
+                <div class="ae-confirm-modal__error" data-role="catalog-delete-error"></div>
+            </div>
+            <div class="ae-confirm-modal__actions">
+                <button type="button" class="ae-btn-inline ae-btn-inline-cancel" data-action="cancel-catalog-delete">Cancelar</button>
+                <button type="button" class="ae-btn-inline ae-btn-inline-delete" data-action="submit-catalog-delete">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/almacen_embarques_admin.js', v='20260505c') }}"></script>

@@ -46,6 +46,7 @@ import pandas as pd
 from flask import (
     Flask,
     jsonify,
+    make_response,
     redirect,
     render_template,
     request,
@@ -9783,6 +9784,839 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
     }
 
 
+CATALOG_FIELD_KEYS = [
+    "part_number",
+    "product_model",
+    "product_status",
+    "description",
+    "standard_pack",
+    "customer",
+    "zone_code",
+]
+
+
+def _normalizar_estado_catalogo_embarques(raw_value):
+    value = normalize_search(raw_value).lower()
+    if value in {"inactivo", "inactive", "baja", "0", "false"}:
+        return "inactivo"
+    return "activo"
+
+
+def _normalizar_standard_pack_catalogo_embarques(raw_value):
+    parsed = normalize_integer(raw_value)
+    if parsed is None or parsed <= 0:
+        return 1
+    return parsed
+
+
+def _serializar_catalogo_embarques(row):
+    if not row:
+        return {}
+    return {
+        "catalog_id": row.get("catalog_id") or row.get("id"),
+        "inventory_id": row.get("inventory_id"),
+        "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
+        "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
+        "product_status": _normalizar_texto_embarques_historial(row.get("product_status")),
+        "description": _normalizar_texto_embarques_historial(row.get("description")),
+        "standard_pack": _normalizar_numero_embarques_historial(row.get("standard_pack")),
+        "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+        "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+        "current_quantity": _normalizar_numero_embarques_historial(row.get("current_quantity")),
+        "entries_count": _normalizar_numero_embarques_historial(row.get("entries_count")),
+        "exits_count": _normalizar_numero_embarques_historial(row.get("exits_count")),
+        "returns_count": _normalizar_numero_embarques_historial(row.get("returns_count")),
+        "departure_count": _normalizar_numero_embarques_historial(row.get("departure_count")),
+        "closure_count": _normalizar_numero_embarques_historial(row.get("closure_count")),
+    }
+
+
+def _registrar_auditoria_catalogo_embarques(
+    cursor,
+    action,
+    previous_values,
+    new_values,
+    changed_fields,
+    notes,
+):
+    previous_values = previous_values or {}
+    new_values = new_values or {}
+    catalog_id = (
+        new_values.get("catalog_id")
+        or new_values.get("id")
+        or previous_values.get("catalog_id")
+        or previous_values.get("id")
+    )
+    inventory_id = new_values.get("inventory_id") or previous_values.get("inventory_id")
+    part_before = previous_values.get("part_number")
+    part_after = new_values.get("part_number")
+    cursor.execute(
+        f"""
+        INSERT INTO `{SHIPPING_TABLES['catalog_adjustments']}` (
+          catalog_id,
+          inventory_id,
+          action,
+          part_number_before,
+          part_number_after,
+          previous_values_json,
+          new_values_json,
+          changed_fields_json,
+          notes,
+          adjusted_by,
+          adjusted_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            catalog_id,
+            inventory_id,
+            action,
+            part_before,
+            part_after,
+            json.dumps(previous_values, ensure_ascii=False, default=str, separators=(",", ":")),
+            json.dumps(new_values, ensure_ascii=False, default=str, separators=(",", ":")),
+            json.dumps(changed_fields or [], ensure_ascii=False, separators=(",", ":")),
+            normalize_search(notes),
+            _obtener_usuario_display_actual(),
+            obtener_fecha_hora_mexico(),
+        ),
+    )
+
+
+def _obtener_catalogo_almacen_embarques(limit=5000):
+    limit = min(max(int(limit or 5000), 1), 20000)
+    search = normalize_search(request.args.get("search"))
+    status = normalize_search(request.args.get("status")).lower()
+    params = []
+    part_number_key_expr = "CONVERT(%s USING utf8mb4) COLLATE utf8mb4_unicode_ci"
+    latest_closure_subquery = f"""
+        SELECT
+          {part_number_key_expr % 'part_number'} AS part_number_key,
+          MAX(closed_at) AS latest_closed_at
+        FROM `{SHIPPING_TABLES['inventory_closures']}`
+        GROUP BY {part_number_key_expr % 'part_number'}
+    """
+
+    sql = f"""
+        SELECT
+          c.id AS catalog_id,
+          i.id AS inventory_id,
+          c.part_number,
+          c.product_model,
+          c.product_status,
+          c.description,
+          c.standard_pack,
+          c.customer,
+          c.zone_code,
+          COALESCE(i.current_quantity, 0) AS current_quantity,
+          COALESCE(entry_counts.total_rows, 0) AS entries_count,
+          COALESCE(exit_counts.total_rows, 0) AS exits_count,
+          COALESCE(return_counts.total_rows, 0) AS returns_count,
+          COALESCE(departure_counts.total_rows, 0) AS departure_count,
+          COALESCE(closure_counts.total_rows, 0) AS closure_count,
+          COALESCE(entry_period_counts.total_rows, 0) AS period_entries_count,
+          COALESCE(exit_period_counts.total_rows, 0) AS period_exits_count,
+          COALESCE(return_period_counts.total_rows, 0) AS period_returns_count,
+          COALESCE(departure_period_counts.total_rows, 0) AS period_departure_count,
+          c.created_at,
+          c.updated_at
+        FROM `{SHIPPING_TABLES['catalog']}` c
+        LEFT JOIN `{SHIPPING_TABLES['inventory']}` i
+          ON i.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['entries']}`
+          GROUP BY catalog_id
+        ) entry_counts
+          ON entry_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['exits']}`
+          GROUP BY catalog_id
+        ) exit_counts
+          ON exit_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['returns']}`
+          GROUP BY catalog_id
+        ) return_counts
+          ON return_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['departure_history']}`
+          GROUP BY catalog_id
+        ) departure_counts
+          ON departure_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT e.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['entries']}` e
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 'e.part_number'}
+          WHERE e.movement_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY e.catalog_id
+        ) entry_period_counts
+          ON entry_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT s.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['exits']}` s
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 's.part_number'}
+          WHERE s.movement_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY s.catalog_id
+        ) exit_period_counts
+          ON exit_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT r.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['returns']}` r
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 'r.part_number'}
+          WHERE r.movement_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY r.catalog_id
+        ) return_period_counts
+          ON return_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT d.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['departure_history']}` d
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 'd.part_number'}
+          WHERE d.assigned_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY d.catalog_id
+        ) departure_period_counts
+          ON departure_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT part_number, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['inventory_closures']}`
+          GROUP BY part_number
+        ) closure_counts
+          ON closure_counts.part_number COLLATE utf8mb4_unicode_ci = c.part_number COLLATE utf8mb4_unicode_ci
+        WHERE 1 = 1
+    """
+
+    if search:
+        like_value = f"%{search}%"
+        sql += """
+          AND (
+            COALESCE(c.part_number, '') COLLATE utf8mb4_unicode_ci LIKE %s
+            OR COALESCE(c.product_model, '') COLLATE utf8mb4_unicode_ci LIKE %s
+            OR COALESCE(c.description, '') COLLATE utf8mb4_unicode_ci LIKE %s
+            OR COALESCE(c.customer, '') COLLATE utf8mb4_unicode_ci LIKE %s
+          )
+        """
+        params.extend([like_value, like_value, like_value, like_value])
+
+    if status in {"activo", "inactivo"}:
+        sql += " AND c.product_status = %s"
+        params.append(status)
+
+    sql += " ORDER BY c.part_number ASC LIMIT %s"
+    params.append(limit)
+
+    rows = execute_query(sql, tuple(params), fetch="all") or []
+    result_rows = []
+    for row in rows:
+        current_quantity = _normalizar_numero_embarques_historial(row.get("current_quantity"))
+        movement_count = sum(
+            _normalizar_numero_embarques_historial(row.get(key))
+            for key in (
+                "entries_count",
+                "exits_count",
+                "returns_count",
+                "departure_count",
+                "closure_count",
+            )
+        )
+        period_movement_count = sum(
+            _normalizar_numero_embarques_historial(row.get(key))
+            for key in (
+                "period_entries_count",
+                "period_exits_count",
+                "period_returns_count",
+                "period_departure_count",
+            )
+        )
+        result_rows.append(
+            {
+                "catalog_id": row.get("catalog_id"),
+                "inventory_id": row.get("inventory_id"),
+                "part_number": _normalizar_texto_embarques_historial(row.get("part_number")),
+                "product_model": _normalizar_texto_embarques_historial(row.get("product_model")),
+                "product_status": _normalizar_texto_embarques_historial(row.get("product_status")),
+                "description": _normalizar_texto_embarques_historial(row.get("description")),
+                "standard_pack": _normalizar_numero_embarques_historial(row.get("standard_pack")) or 1,
+                "customer": _normalizar_texto_embarques_historial(row.get("customer")),
+                "zone_code": _normalizar_texto_embarques_historial(row.get("zone_code")),
+                "current_quantity": current_quantity,
+                "movement_count": movement_count,
+                "period_movement_count": period_movement_count,
+                "entries_count": _normalizar_numero_embarques_historial(row.get("entries_count")),
+                "exits_count": _normalizar_numero_embarques_historial(row.get("exits_count")),
+                "returns_count": _normalizar_numero_embarques_historial(row.get("returns_count")),
+                "departure_count": _normalizar_numero_embarques_historial(row.get("departure_count")),
+                "closure_count": _normalizar_numero_embarques_historial(row.get("closure_count")),
+                "delete_mode": (
+                    "blocked_stock"
+                    if current_quantity != 0
+                    else "blocked_movements"
+                    if period_movement_count > 0
+                    else "soft_delete"
+                    if movement_count > 0
+                    else "hard_delete"
+                ),
+                "created_at": _normalizar_texto_embarques_historial(row.get("created_at")),
+                "updated_at": _normalizar_texto_embarques_historial(row.get("updated_at")),
+            }
+        )
+
+    return {"rows": result_rows, "summary": {"total_items": len(result_rows)}}
+
+
+def _obtener_catalogo_detalle_almacen_embarques(cursor, catalog_id, for_update=False):
+    lock_clause = " FOR UPDATE" if for_update else ""
+    part_number_key_expr = "CONVERT(%s USING utf8mb4) COLLATE utf8mb4_unicode_ci"
+    latest_closure_subquery = f"""
+        SELECT
+          {part_number_key_expr % 'part_number'} AS part_number_key,
+          MAX(closed_at) AS latest_closed_at
+        FROM `{SHIPPING_TABLES['inventory_closures']}`
+        GROUP BY {part_number_key_expr % 'part_number'}
+    """
+    cursor.execute(
+        f"""
+        SELECT
+          c.id AS catalog_id,
+          i.id AS inventory_id,
+          c.part_number,
+          c.product_model,
+          c.product_status,
+          c.description,
+          c.standard_pack,
+          c.customer,
+          c.zone_code,
+          COALESCE(i.current_quantity, 0) AS current_quantity,
+          COALESCE(entry_counts.total_rows, 0) AS entries_count,
+          COALESCE(exit_counts.total_rows, 0) AS exits_count,
+          COALESCE(return_counts.total_rows, 0) AS returns_count,
+          COALESCE(departure_counts.total_rows, 0) AS departure_count,
+          COALESCE(closure_counts.total_rows, 0) AS closure_count,
+          COALESCE(entry_period_counts.total_rows, 0) AS period_entries_count,
+          COALESCE(exit_period_counts.total_rows, 0) AS period_exits_count,
+          COALESCE(return_period_counts.total_rows, 0) AS period_returns_count,
+          COALESCE(departure_period_counts.total_rows, 0) AS period_departure_count
+        FROM `{SHIPPING_TABLES['catalog']}` c
+        LEFT JOIN `{SHIPPING_TABLES['inventory']}` i
+          ON i.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['entries']}`
+          GROUP BY catalog_id
+        ) entry_counts
+          ON entry_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['exits']}`
+          GROUP BY catalog_id
+        ) exit_counts
+          ON exit_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['returns']}`
+          GROUP BY catalog_id
+        ) return_counts
+          ON return_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['departure_history']}`
+          GROUP BY catalog_id
+        ) departure_counts
+          ON departure_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT e.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['entries']}` e
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 'e.part_number'}
+          WHERE e.movement_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY e.catalog_id
+        ) entry_period_counts
+          ON entry_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT s.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['exits']}` s
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 's.part_number'}
+          WHERE s.movement_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY s.catalog_id
+        ) exit_period_counts
+          ON exit_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT r.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['returns']}` r
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 'r.part_number'}
+          WHERE r.movement_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY r.catalog_id
+        ) return_period_counts
+          ON return_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT d.catalog_id, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['departure_history']}` d
+          LEFT JOIN ({latest_closure_subquery}) latest_closure
+            ON latest_closure.part_number_key = {part_number_key_expr % 'd.part_number'}
+          WHERE d.assigned_at >= COALESCE(latest_closure.latest_closed_at, '1000-01-01')
+          GROUP BY d.catalog_id
+        ) departure_period_counts
+          ON departure_period_counts.catalog_id = c.id
+        LEFT JOIN (
+          SELECT part_number, COUNT(*) AS total_rows
+          FROM `{SHIPPING_TABLES['inventory_closures']}`
+          GROUP BY part_number
+        ) closure_counts
+          ON closure_counts.part_number COLLATE utf8mb4_unicode_ci = c.part_number COLLATE utf8mb4_unicode_ci
+        WHERE c.id = %s
+        LIMIT 1{lock_clause}
+        """,
+        (catalog_id,),
+    )
+    return cursor.fetchone()
+
+
+def _validar_part_number_catalogo_unico(cursor, part_number, catalog_id=None, inventory_id=None):
+    cursor.execute(
+        f"""
+        SELECT id
+        FROM `{SHIPPING_TABLES['catalog']}`
+        WHERE part_number = %s
+          AND (%s IS NULL OR id <> %s)
+        LIMIT 1
+        """,
+        (part_number, catalog_id, catalog_id),
+    )
+    if cursor.fetchone():
+        return False, f"El número de parte {part_number} ya existe en el catálogo."
+
+    cursor.execute(
+        f"""
+        SELECT id
+        FROM `{SHIPPING_TABLES['inventory']}`
+        WHERE part_number = %s
+          AND (%s IS NULL OR id <> %s)
+        LIMIT 1
+        """,
+        (part_number, inventory_id, inventory_id),
+    )
+    if cursor.fetchone():
+        return False, f"El número de parte {part_number} ya existe en inventario actual."
+
+    return True, ""
+
+
+def _construir_payload_catalogo_embarques(data, current=None):
+    part_number = normalize_part_number(data.get("partNumber") or data.get("part_number"))
+    if not part_number and current:
+        part_number = normalize_part_number(current.get("part_number"))
+
+    return {
+        "part_number": part_number,
+        "product_model": normalize_search(data.get("productModel") or data.get("product_model")),
+        "product_status": _normalizar_estado_catalogo_embarques(
+            data.get("productStatus") or data.get("product_status") or "activo"
+        ),
+        "description": normalize_search(data.get("description")),
+        "standard_pack": _normalizar_standard_pack_catalogo_embarques(
+            data.get("standardPack") or data.get("standard_pack")
+        ),
+        "customer": normalize_search(data.get("customer")) or "LG",
+        "zone_code": normalize_search(data.get("zoneCode") or data.get("zone_code")) or "pending",
+    }
+
+
+def _crear_catalogo_almacen_embarques(data):
+    payload = _construir_payload_catalogo_embarques(data)
+    if not payload["part_number"]:
+        return {"success": False, "error": "El número de parte es obligatorio."}, 400
+
+    conn = get_pooled_connection()
+    if conn is None:
+        raise RuntimeError("No fue posible obtener conexión MySQL.")
+
+    cursor = get_dict_cursor(conn)
+    try:
+        conn.autocommit(False)
+        is_unique, error_message = _validar_part_number_catalogo_unico(
+            cursor,
+            payload["part_number"],
+        )
+        if not is_unique:
+            conn.rollback()
+            return {"success": False, "error": error_message}, 409
+
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['catalog']}` (
+              part_number,
+              product_model,
+              product_status,
+              description,
+              standard_pack,
+              customer,
+              zone_code,
+              source_file
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'portal_catalogo_embarques')
+            """,
+            (
+                payload["part_number"],
+                payload["product_model"],
+                payload["product_status"],
+                payload["description"],
+                payload["standard_pack"],
+                payload["customer"],
+                payload["zone_code"],
+            ),
+        )
+        catalog_id = cursor.lastrowid
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['inventory']}` (
+              catalog_id,
+              part_number,
+              product_model,
+              product_status,
+              description,
+              customer,
+              zone_code,
+              standard_pack,
+              current_quantity,
+              catalog_loaded_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %s)
+            """,
+            (
+                catalog_id,
+                payload["part_number"],
+                payload["product_model"],
+                payload["product_status"],
+                payload["description"],
+                payload["customer"],
+                payload["zone_code"],
+                payload["standard_pack"],
+                obtener_fecha_hora_mexico(),
+            ),
+        )
+        inventory_id = cursor.lastrowid
+        new_values = {
+            "catalog_id": catalog_id,
+            "inventory_id": inventory_id,
+            **payload,
+            "current_quantity": 0,
+        }
+        _registrar_auditoria_catalogo_embarques(
+            cursor,
+            "create",
+            {},
+            new_values,
+            list(payload.keys()),
+            data.get("notes") or "Alta desde portal",
+        )
+        conn.commit()
+        return {
+            "success": True,
+            "message": "Número de parte agregado correctamente.",
+            "row": new_values,
+        }, 201
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def _actualizar_catalogo_almacen_embarques(catalog_id, data):
+    notes = normalize_search(data.get("notes"))
+    if not notes:
+        return {"success": False, "error": "El motivo del cambio es obligatorio."}, 400
+
+    conn = get_pooled_connection()
+    if conn is None:
+        raise RuntimeError("No fue posible obtener conexión MySQL.")
+
+    cursor = get_dict_cursor(conn)
+    try:
+        conn.autocommit(False)
+        current = _obtener_catalogo_detalle_almacen_embarques(cursor, catalog_id, True)
+        if not current:
+            conn.rollback()
+            return {"success": False, "error": "Número de parte no encontrado."}, 404
+
+        previous_values = _serializar_catalogo_embarques(current)
+        payload = _construir_payload_catalogo_embarques(data, current)
+        if not payload["part_number"]:
+            conn.rollback()
+            return {"success": False, "error": "El número de parte es obligatorio."}, 400
+
+        is_unique, error_message = _validar_part_number_catalogo_unico(
+            cursor,
+            payload["part_number"],
+            catalog_id=current.get("catalog_id"),
+            inventory_id=current.get("inventory_id"),
+        )
+        if not is_unique:
+            conn.rollback()
+            return {"success": False, "error": error_message}, 409
+
+        changed_fields = []
+        for key in CATALOG_FIELD_KEYS:
+            previous_value = previous_values.get(key)
+            next_value = payload.get(key)
+            if key == "standard_pack":
+                previous_value = _normalizar_numero_embarques_historial(previous_value) or 1
+            if normalize_search(previous_value) != normalize_search(next_value):
+                changed_fields.append(key)
+
+        if not changed_fields:
+            conn.rollback()
+            return {"success": False, "error": "No hay cambios para guardar."}, 400
+
+        cursor.execute(
+            f"""
+            UPDATE `{SHIPPING_TABLES['catalog']}`
+            SET part_number = %s,
+                product_model = %s,
+                product_status = %s,
+                description = %s,
+                standard_pack = %s,
+                customer = %s,
+                zone_code = %s
+            WHERE id = %s
+            """,
+            (
+                payload["part_number"],
+                payload["product_model"],
+                payload["product_status"],
+                payload["description"],
+                payload["standard_pack"],
+                payload["customer"],
+                payload["zone_code"],
+                current.get("catalog_id"),
+            ),
+        )
+
+        cursor.execute(
+            f"""
+            UPDATE `{SHIPPING_TABLES['inventory']}`
+            SET part_number = %s,
+                product_model = %s,
+                product_status = %s,
+                description = %s,
+                customer = %s,
+                zone_code = %s,
+                standard_pack = %s
+            WHERE catalog_id = %s
+            """,
+            (
+                payload["part_number"],
+                payload["product_model"],
+                payload["product_status"],
+                payload["description"],
+                payload["customer"],
+                payload["zone_code"],
+                payload["standard_pack"],
+                current.get("catalog_id"),
+            ),
+        )
+
+        if "part_number" in changed_fields:
+            for table_key in ("entries", "exits", "returns", "departure_history"):
+                cursor.execute(
+                    f"""
+                    UPDATE `{SHIPPING_TABLES[table_key]}`
+                    SET part_number = %s
+                    WHERE catalog_id = %s
+                    """,
+                    (payload["part_number"], current.get("catalog_id")),
+                )
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['inventory_closures']}`
+                SET part_number = %s
+                WHERE part_number = %s
+                """,
+                (payload["part_number"], previous_values.get("part_number")),
+            )
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['manual_adjustment_items']}`
+                SET part_number = %s
+                WHERE part_number = %s
+                """,
+                (payload["part_number"], previous_values.get("part_number")),
+            )
+
+        next_values = {
+            **previous_values,
+            **payload,
+            "catalog_id": current.get("catalog_id"),
+            "inventory_id": current.get("inventory_id"),
+            "current_quantity": previous_values.get("current_quantity"),
+        }
+        _registrar_auditoria_catalogo_embarques(
+            cursor,
+            "update",
+            previous_values,
+            next_values,
+            changed_fields,
+            notes,
+        )
+        conn.commit()
+        return {
+            "success": True,
+            "message": "Número de parte actualizado correctamente.",
+            "changedFields": changed_fields,
+        }, 200
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def _eliminar_catalogo_almacen_embarques(catalog_id, data):
+    valid_password, password_error = _validar_password_usuario_actual(data.get("password"))
+    if not valid_password:
+        return {"success": False, "error": password_error}, 403
+
+    notes = normalize_search(data.get("notes"))
+    if not notes:
+        return {"success": False, "error": "El comentario de eliminación es obligatorio."}, 400
+
+    conn = get_pooled_connection()
+    if conn is None:
+        raise RuntimeError("No fue posible obtener conexión MySQL.")
+
+    cursor = get_dict_cursor(conn)
+    try:
+        conn.autocommit(False)
+        current = _obtener_catalogo_detalle_almacen_embarques(cursor, catalog_id, True)
+        if not current:
+            conn.rollback()
+            return {"success": False, "error": "Número de parte no encontrado."}, 404
+
+        previous_values = _serializar_catalogo_embarques(current)
+        current_quantity = _normalizar_numero_embarques_historial(current.get("current_quantity"))
+        movement_count = sum(
+            _normalizar_numero_embarques_historial(current.get(key))
+            for key in (
+                "entries_count",
+                "exits_count",
+                "returns_count",
+                "departure_count",
+                "closure_count",
+            )
+        )
+        period_movement_count = sum(
+            _normalizar_numero_embarques_historial(current.get(key))
+            for key in (
+                "period_entries_count",
+                "period_exits_count",
+                "period_returns_count",
+                "period_departure_count",
+            )
+        )
+
+        if current_quantity != 0:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": (
+                    "Este número de parte tiene stock. No se puede eliminar hasta haber "
+                    "consumido el total de inventario."
+                ),
+            }, 409
+
+        if period_movement_count > 0:
+            conn.rollback()
+            return {
+                "success": False,
+                "error": (
+                    "Este número de parte tiene movimientos registrados. No se puede "
+                    "eliminar hasta haber hecho el cierre mensual."
+                ),
+            }, 409
+
+        if movement_count > 0:
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['catalog']}`
+                SET product_status = 'inactivo'
+                WHERE id = %s
+                """,
+                (current.get("catalog_id"),),
+            )
+            cursor.execute(
+                f"""
+                UPDATE `{SHIPPING_TABLES['inventory']}`
+                SET product_status = 'inactivo'
+                WHERE catalog_id = %s
+                """,
+                (current.get("catalog_id"),),
+            )
+            new_values = dict(previous_values)
+            new_values["product_status"] = "inactivo"
+            _registrar_auditoria_catalogo_embarques(
+                cursor,
+                "soft_delete",
+                previous_values,
+                new_values,
+                ["product_status"],
+                notes,
+            )
+            conn.commit()
+            return {
+                "success": True,
+                "message": "Número de parte eliminado del catálogo activo.",
+                "deleteMode": "soft_delete",
+            }, 200
+
+        cursor.execute(
+            f"DELETE FROM `{SHIPPING_TABLES['inventory']}` WHERE catalog_id = %s",
+            (current.get("catalog_id"),),
+        )
+        cursor.execute(
+            f"DELETE FROM `{SHIPPING_TABLES['catalog']}` WHERE id = %s",
+            (current.get("catalog_id"),),
+        )
+        _registrar_auditoria_catalogo_embarques(
+            cursor,
+            "hard_delete",
+            previous_values,
+            {},
+            ["deleted"],
+            notes,
+        )
+        conn.commit()
+        return {
+            "success": True,
+            "message": "Número de parte eliminado correctamente.",
+            "deleteMode": "hard_delete",
+        }, 200
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
 def _obtener_usuario_display_actual():
     return (
         session.get("nombre_completo")
@@ -10511,7 +11345,7 @@ def _guardar_preview_ajuste_manual_embarques(
                 f"""
                 INSERT INTO `{SHIPPING_TABLES['manual_adjustment_items']}` (
                   batch_id,
-                  row_number,
+                  `row_number`,
                   part_number,
                   quantity,
                   status
@@ -10626,7 +11460,7 @@ def _confirmar_ajuste_manual_embarques(config, batch_id):
             SELECT *
             FROM `{SHIPPING_TABLES['manual_adjustment_items']}`
             WHERE batch_id = %s
-            ORDER BY row_number ASC, id ASC
+            ORDER BY `row_number` ASC, id ASC
             FOR UPDATE
             """,
             (batch_id,),
@@ -11150,6 +11984,23 @@ def almacen_embarques_inventario_general_ajax():
         print(
             f"Error al cargar template Almacén Embarques Inventario General AJAX: {e}"
         )
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+@app.route("/almacen-embarques-catalogo-ajax")
+@login_requerido
+def almacen_embarques_catalogo_ajax():
+    """Ruta AJAX para administrar catálogo de números de parte de embarques."""
+    try:
+        response = make_response(render_template(
+            "Control de proceso/almacen_embarques_catalogo_ajax.html"
+        ))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+    except Exception as e:
+        print(f"Error al cargar template Almacén Embarques Catálogo AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -11737,6 +12588,91 @@ def api_almacen_embarques_inventario_general():
         print(
             f"Error API inventario general embarques: {e}\n{traceback.format_exc()}"
         )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/catalogo")
+@login_requerido
+def api_almacen_embarques_catalogo():
+    """Obtener catálogo de números de parte de almacén de embarques."""
+    try:
+        init_shipping_material_tables()
+        payload = _obtener_catalogo_almacen_embarques()
+        return jsonify({"success": True, **payload})
+    except Exception as e:
+        print(f"Error API catálogo embarques: {e}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/catalogo", methods=["POST"])
+@login_requerido
+def api_almacen_embarques_catalogo_create():
+    """Crear un número de parte en catálogo e inventario de embarques."""
+    try:
+        init_shipping_material_tables()
+        data = request.get_json(silent=True) or {}
+        payload, status_code = _crear_catalogo_almacen_embarques(data)
+        return jsonify(payload), status_code
+    except Exception as e:
+        print(f"Error creando catálogo embarques: {e}\n{traceback.format_exc()}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/catalogo/<int:catalog_id>", methods=["PATCH"])
+@login_requerido
+def api_almacen_embarques_catalogo_update(catalog_id):
+    """Actualizar campos del catálogo de embarques y su snapshot de inventario."""
+    try:
+        init_shipping_material_tables()
+        data = request.get_json(silent=True) or {}
+        payload, status_code = _actualizar_catalogo_almacen_embarques(catalog_id, data)
+        return jsonify(payload), status_code
+    except Exception as e:
+        print(
+            f"Error actualizando catálogo embarques {catalog_id}: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/catalogo/<int:catalog_id>", methods=["DELETE"])
+@login_requerido
+def api_almacen_embarques_catalogo_delete(catalog_id):
+    """Eliminar o dar de baja lógica a un número de parte del catálogo."""
+    try:
+        init_shipping_material_tables()
+        data = request.get_json(silent=True) or {}
+        payload, status_code = _eliminar_catalogo_almacen_embarques(catalog_id, data)
+        return jsonify(payload), status_code
+    except Exception as e:
+        print(
+            f"Error eliminando catálogo embarques {catalog_id}: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/catalogo/export")
+@login_requerido
+def export_almacen_embarques_catalogo():
+    """Exportar catálogo de números de parte de embarques."""
+    try:
+        payload = _obtener_catalogo_almacen_embarques(limit=20000)
+        return _exportar_historial_embarques_excel(
+            "Catalogo Embarques",
+            "catalogo_almacen_embarques.xlsx",
+            {
+                "No. Parte": "part_number",
+                "Modelo": "product_model",
+                "Estatus": "product_status",
+                "Descripción": "description",
+                "Std Pack": "standard_pack",
+                "Cliente": "customer",
+                "Zona": "zone_code",
+                "Cantidad actual": "current_quantity",
+            },
+            payload.get("rows") or [],
+        )
+    except Exception as e:
+        print(f"Error exportando catálogo embarques: {e}\n{traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

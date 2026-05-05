@@ -1,6 +1,7 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260430b";
+  const ASSET_VERSION = "20260505c";
+  const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
     rows: [],
@@ -25,6 +26,12 @@
     row: null,
   };
 
+  const catalogModuleState = {
+    rows: [],
+    editingRow: null,
+    deletingRow: null,
+  };
+
   const inventoryClosureState = {
     batchId: null,
     valid: false,
@@ -38,7 +45,7 @@
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
     if (currentLink) {
-      if (!currentLink.getAttribute("href")?.includes("20260430b")) {
+      if (!currentLink.getAttribute("href")?.includes(ASSET_VERSION)) {
         currentLink.setAttribute("href", STYLESHEET_HREF);
       }
       return;
@@ -110,6 +117,13 @@
     }
 
     if (prefix === "almacen-embarques-inventory") {
+      return params;
+    }
+
+    if (prefix === "almacen-embarques-catalog") {
+      if (elements.typeSelect?.value) {
+        params.set("status", elements.typeSelect.value);
+      }
       return params;
     }
 
@@ -873,6 +887,53 @@
       .join("");
   }
 
+  function renderCatalogRows(rows) {
+    return rows
+      .map((row) => {
+        const status = String(row.product_status || "activo").toLowerCase();
+        const deleteTitle =
+          row.delete_mode === "blocked_stock"
+            ? "No se puede eliminar hasta consumir el total de inventario"
+            : row.delete_mode === "blocked_movements"
+            ? "No se puede eliminar hasta realizar el cierre mensual"
+            : "Disponible para eliminar del catálogo";
+        return `
+          <tr data-catalog-id="${escapeHtml(row.catalog_id)}">
+            <td><strong>${escapeHtml(row.part_number)}</strong></td>
+            <td>${escapeHtml(row.product_model || "-")}</td>
+            <td><span class="ae-status-pill ae-status-pill--${status === "inactivo" ? "inactive" : "active"}">${escapeHtml(row.product_status || "activo")}</span></td>
+            <td>${escapeHtml(row.description || "-")}</td>
+            <td>${formatNumber(row.standard_pack)}</td>
+            <td>${escapeHtml(row.customer || "-")}</td>
+            <td>${escapeHtml(row.zone_code || "-")}</td>
+            <td><strong>${formatNumber(row.current_quantity)}</strong></td>
+            <td>
+              <div class="ae-inline-actions">
+                <button
+                  type="button"
+                  class="ae-btn-inline ae-btn-inline-edit"
+                  data-action="edit-catalog"
+                  data-catalog-id="${escapeHtml(row.catalog_id)}"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="ae-btn-inline ae-btn-inline-delete"
+                  data-action="delete-catalog"
+                  data-catalog-id="${escapeHtml(row.catalog_id)}"
+                  title="${escapeHtml(deleteTitle)}"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
   function getInventoryClosureElements() {
     return {
       stage: document.getElementById("almacen-embarques-inventory-stage"),
@@ -1392,8 +1453,14 @@
       if (prefix === "almacen-embarques-movements") {
         movementModuleState.rows = rows.map((row) => cloneMovementRow(row));
       }
+      if (prefix === "almacen-embarques-catalog") {
+        catalogModuleState.rows = rows.map((row) => ({ ...row }));
+      }
 
       if (!rows.length) {
+        if (prefix === "almacen-embarques-catalog") {
+          catalogModuleState.rows = [];
+        }
         renderEmpty(prefix, colspan, emptyMessage);
         if (typeof config.onAfterLoad === "function") {
           config.onAfterLoad(payload);
@@ -1435,6 +1502,358 @@
     const params = buildQuery(config.prefix);
     const url = `${config.exportUrl}?${params.toString()}`;
     window.open(url, "_blank");
+  }
+
+  function getCatalogFormElements() {
+    return {
+      modal: document.getElementById("almacen-embarques-catalog-modal"),
+      title: document.getElementById("almacen-embarques-catalog-modal-title"),
+      partInput: document.getElementById("almacen-embarques-catalog-form-part"),
+      modelInput: document.getElementById("almacen-embarques-catalog-form-model"),
+      statusInput: document.getElementById("almacen-embarques-catalog-form-status"),
+      packInput: document.getElementById("almacen-embarques-catalog-form-pack"),
+      customerInput: document.getElementById("almacen-embarques-catalog-form-customer"),
+      zoneInput: document.getElementById("almacen-embarques-catalog-form-zone"),
+      descriptionInput: document.getElementById("almacen-embarques-catalog-form-description"),
+      notesInput: document.getElementById("almacen-embarques-catalog-form-notes"),
+      error: document.getElementById("almacen-embarques-catalog-form-error"),
+      submitBtn: document.getElementById("almacen-embarques-catalog-form-submit"),
+    };
+  }
+
+  function setCatalogFormError(message = "") {
+    const { error } = getCatalogFormElements();
+    if (error) {
+      error.textContent = message;
+    }
+  }
+
+  function setCatalogFormValue(input, value) {
+    if (input) {
+      input.value = value ?? "";
+    }
+  }
+
+  function openCatalogForm(row = null) {
+    const elements = getCatalogFormElements();
+    if (!elements.modal) {
+      return;
+    }
+    catalogModuleState.editingRow = row ? { ...row } : null;
+    if (elements.title) {
+      elements.title.textContent = row ? "Editar número de parte" : "Agregar número de parte";
+    }
+    setCatalogFormValue(elements.partInput, row?.part_number || "");
+    setCatalogFormValue(elements.modelInput, row?.product_model || "");
+    setCatalogFormValue(elements.statusInput, row?.product_status || "activo");
+    setCatalogFormValue(elements.packInput, row?.standard_pack || 1);
+    setCatalogFormValue(elements.customerInput, row?.customer || "LG");
+    setCatalogFormValue(elements.zoneInput, row?.zone_code || "pending");
+    setCatalogFormValue(elements.descriptionInput, row?.description || "");
+    setCatalogFormValue(elements.notesInput, "");
+    setCatalogFormError("");
+    elements.modal.classList.remove("is-hidden");
+    elements.modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("ae-modal-open");
+    requestAnimationFrame(() => elements.partInput?.focus());
+  }
+
+  function closeCatalogForm() {
+    const { modal } = getCatalogFormElements();
+    if (!modal) {
+      return;
+    }
+    modal.classList.add("is-hidden");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("ae-modal-open");
+    catalogModuleState.editingRow = null;
+  }
+
+  function collectCatalogFormPayload() {
+    const elements = getCatalogFormElements();
+    return {
+      partNumber: elements.partInput?.value?.trim() || "",
+      productModel: elements.modelInput?.value?.trim() || "",
+      productStatus: elements.statusInput?.value || "activo",
+      description: elements.descriptionInput?.value?.trim() || "",
+      standardPack: elements.packInput?.value?.trim() || "1",
+      customer: elements.customerInput?.value?.trim() || "LG",
+      zoneCode: elements.zoneInput?.value?.trim() || "pending",
+      notes: elements.notesInput?.value?.trim() || "",
+    };
+  }
+
+  async function submitCatalogForm(config) {
+    const elements = getCatalogFormElements();
+    const payload = collectCatalogFormPayload();
+    const editingRow = catalogModuleState.editingRow;
+
+    setCatalogFormError("");
+    if (!payload.partNumber) {
+      setCatalogFormError("El número de parte es obligatorio.");
+      elements.partInput?.focus();
+      return;
+    }
+    const numericPack = Number(payload.standardPack);
+    if (!Number.isFinite(numericPack) || numericPack <= 0) {
+      setCatalogFormError("Std pack debe ser mayor a cero.");
+      elements.packInput?.focus();
+      return;
+    }
+    if (editingRow && !payload.notes) {
+      setCatalogFormError("El motivo del cambio es obligatorio al editar.");
+      elements.notesInput?.focus();
+      return;
+    }
+
+    const originalText = elements.submitBtn?.textContent || "Guardar";
+    if (elements.submitBtn) {
+      elements.submitBtn.disabled = true;
+      elements.submitBtn.textContent = "Guardando...";
+    }
+
+    try {
+      const url = editingRow
+        ? `/api/almacen-embarques/catalogo/${encodeURIComponent(editingRow.catalog_id)}`
+        : "/api/almacen-embarques/catalogo";
+      const response = await fetch(url, {
+        method: editingRow ? "PATCH" : "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const responsePayload = await response.json().catch(() => ({}));
+      if (!response.ok || responsePayload.success === false) {
+        throw new Error(responsePayload.error || responsePayload.message || `HTTP ${response.status}`);
+      }
+
+      closeCatalogForm();
+      setStatus(config.prefix, responsePayload.message || "Catálogo actualizado correctamente");
+      await loadModule(config);
+    } catch (error) {
+      setCatalogFormError(error.message || "No fue posible guardar el número de parte.");
+    } finally {
+      if (elements.submitBtn) {
+        elements.submitBtn.disabled = false;
+        elements.submitBtn.textContent = originalText;
+      }
+    }
+  }
+
+  function getCatalogDeleteElements() {
+    return {
+      modal: document.getElementById("almacen-embarques-catalog-delete-modal"),
+      partLabel: document.querySelector('[data-role="catalog-delete-part"]'),
+      stockLabel: document.querySelector('[data-role="catalog-delete-stock"]'),
+      warning: document.querySelector('[data-role="catalog-delete-warning"]'),
+      passwordInput: document.querySelector('[data-role="catalog-delete-password"]'),
+      notesInput: document.querySelector('[data-role="catalog-delete-notes"]'),
+      error: document.querySelector('[data-role="catalog-delete-error"]'),
+      submitBtn: document.querySelector('[data-action="submit-catalog-delete"]'),
+    };
+  }
+
+  function setCatalogDeleteError(message = "") {
+    const { error } = getCatalogDeleteElements();
+    if (error) {
+      error.textContent = message;
+    }
+  }
+
+  function openCatalogDelete(row) {
+    const elements = getCatalogDeleteElements();
+    if (!elements.modal || !row) {
+      return;
+    }
+    catalogModuleState.deletingRow = { ...row };
+    if (elements.partLabel) elements.partLabel.textContent = row.part_number || "-";
+    if (elements.stockLabel) elements.stockLabel.textContent = formatNumber(row.current_quantity);
+    const isBlocked =
+      row.delete_mode === "blocked_stock" || row.delete_mode === "blocked_movements";
+    if (elements.warning) {
+      elements.warning.textContent =
+        row.delete_mode === "blocked_stock"
+          ? "Este número de parte tiene stock. No se puede eliminar hasta haber consumido el total de inventario."
+          : row.delete_mode === "blocked_movements"
+          ? "Este número de parte tiene movimientos registrados. No se puede eliminar hasta haber hecho el cierre mensual."
+          : "Este número de parte no tiene cantidad actual ni movimientos pendientes. Si confirmas, se eliminará del catálogo.";
+    }
+    if (elements.passwordInput) elements.passwordInput.value = "";
+    if (elements.notesInput) elements.notesInput.value = "";
+    elements.passwordInput?.closest(".ae-confirm-modal__field")?.classList.toggle("is-hidden", isBlocked);
+    elements.notesInput?.closest(".ae-confirm-modal__field")?.classList.toggle("is-hidden", isBlocked);
+    if (elements.submitBtn) {
+      elements.submitBtn.classList.toggle("is-hidden", isBlocked);
+    }
+    setCatalogDeleteError("");
+    elements.modal.classList.add("is-open");
+    elements.modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("ae-modal-open");
+    if (!isBlocked) {
+      requestAnimationFrame(() => elements.passwordInput?.focus());
+    }
+  }
+
+  function closeCatalogDelete() {
+    const { modal } = getCatalogDeleteElements();
+    if (!modal) {
+      return;
+    }
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("ae-modal-open");
+    catalogModuleState.deletingRow = null;
+  }
+
+  async function submitCatalogDelete(config) {
+    const elements = getCatalogDeleteElements();
+    const row = catalogModuleState.deletingRow;
+    const password = elements.passwordInput?.value || "";
+    const notes = elements.notesInput?.value?.trim() || "";
+    if (!row) {
+      return;
+    }
+    setCatalogDeleteError("");
+    if (row.delete_mode === "blocked_stock") {
+      setCatalogDeleteError(
+        "Este número de parte tiene stock. No se puede eliminar hasta haber consumido el total de inventario.",
+      );
+      return;
+    }
+    if (row.delete_mode === "blocked_movements") {
+      setCatalogDeleteError(
+        "Este número de parte tiene movimientos registrados. No se puede eliminar hasta haber hecho el cierre mensual.",
+      );
+      return;
+    }
+    if (!password) {
+      setCatalogDeleteError("Debes confirmar tu contraseña actual.");
+      elements.passwordInput?.focus();
+      return;
+    }
+    if (!notes) {
+      setCatalogDeleteError("El comentario de eliminación es obligatorio.");
+      elements.notesInput?.focus();
+      return;
+    }
+
+    const originalText = elements.submitBtn?.textContent || "Eliminar";
+    if (elements.submitBtn) {
+      elements.submitBtn.disabled = true;
+      elements.submitBtn.textContent = "Eliminando...";
+    }
+
+    try {
+      const response = await fetch(
+        `/api/almacen-embarques/catalogo/${encodeURIComponent(row.catalog_id)}`,
+        {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ password, notes }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.success === false) {
+        throw new Error(payload.error || payload.message || `HTTP ${response.status}`);
+      }
+      closeCatalogDelete();
+      setStatus(config.prefix, payload.message || "Número de parte eliminado correctamente");
+      await loadModule(config);
+    } catch (error) {
+      setCatalogDeleteError(error.message || "No fue posible eliminar el número de parte.");
+    } finally {
+      if (elements.submitBtn) {
+        elements.submitBtn.disabled = false;
+        elements.submitBtn.textContent = originalText;
+      }
+    }
+  }
+
+  function bindCatalogModule(config) {
+    const moduleRoot = getModuleRoot(config.prefix);
+    if (!moduleRoot || moduleRoot.dataset.catalogBound === "true") {
+      return;
+    }
+
+    const newBtn = document.getElementById("almacen-embarques-catalog-new-btn");
+    newBtn?.addEventListener("click", () => openCatalogForm(null));
+
+    moduleRoot.querySelectorAll('[data-action="cancel-catalog-form"]').forEach((button) => {
+      button.addEventListener("click", closeCatalogForm);
+    });
+    moduleRoot.querySelectorAll('[data-action="cancel-catalog-delete"]').forEach((button) => {
+      button.addEventListener("click", closeCatalogDelete);
+    });
+
+    const formElements = getCatalogFormElements();
+    formElements.submitBtn?.addEventListener("click", () => submitCatalogForm(config));
+    formElements.packInput?.addEventListener("input", () => {
+      formElements.packInput.value = formElements.packInput.value.replace(/\D+/g, "");
+    });
+    [
+      formElements.partInput,
+      formElements.modelInput,
+      formElements.statusInput,
+      formElements.packInput,
+      formElements.customerInput,
+      formElements.zoneInput,
+      formElements.descriptionInput,
+      formElements.notesInput,
+    ].forEach((input) => {
+      input?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          submitCatalogForm(config);
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeCatalogForm();
+        }
+      });
+    });
+
+    const deleteElements = getCatalogDeleteElements();
+    deleteElements.submitBtn?.addEventListener("click", () => submitCatalogDelete(config));
+    deleteElements.passwordInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submitCatalogDelete(config);
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCatalogDelete();
+      }
+    });
+
+    const { tableBody } = getElements(config.prefix);
+    tableBody?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-action]");
+      if (!button) {
+        return;
+      }
+      const catalogId = Number(button.dataset.catalogId || 0);
+      const row = catalogModuleState.rows.find(
+        (catalogRow) => Number(catalogRow.catalog_id) === catalogId,
+      );
+      if (!row) {
+        return;
+      }
+      if (button.dataset.action === "edit-catalog") {
+        openCatalogForm(row);
+      }
+      if (button.dataset.action === "delete-catalog") {
+        openCatalogDelete(row);
+      }
+    });
+
+    moduleRoot.dataset.catalogBound = "true";
   }
 
   function rerenderMovementTable() {
@@ -2103,6 +2522,9 @@
     if (config.prefix === "almacen-embarques-movements") {
       bindMovementTable(config);
     }
+    if (config.prefix === "almacen-embarques-catalog") {
+      bindCatalogModule(config);
+    }
   }
 
   function initializeModule(config) {
@@ -2158,5 +2580,33 @@
 
     bindInventoryClosureModule(inventoryConfig);
     initializeModule(inventoryConfig);
+  };
+
+  window.inicializarAlmacenEmbarquesCatalogoAjax = function () {
+    initializeModule({
+      prefix: "almacen-embarques-catalog",
+      apiUrl: "/api/almacen-embarques/catalogo",
+      exportUrl: "/api/almacen-embarques/catalogo/export",
+      colspan: 9,
+      emptyMessage: "No hay números de parte para los filtros actuales.",
+      renderer: renderCatalogRows,
+      onAfterLoad() {
+        const elements = getElements("almacen-embarques-catalog");
+        const activeFilters = [
+          elements.searchInput?.value?.trim(),
+          elements.typeSelect?.value,
+        ].filter(Boolean);
+        const updatedAt = new Date().toLocaleTimeString("es-MX", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        setStatus(
+          "almacen-embarques-catalog",
+          activeFilters.length
+            ? `Catálogo filtrado · Actualizado a las ${updatedAt}`
+            : `Catálogo completo · Actualizado a las ${updatedAt}`,
+        );
+      },
+    });
   };
 })();

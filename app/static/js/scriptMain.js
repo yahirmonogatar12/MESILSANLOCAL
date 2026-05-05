@@ -2279,6 +2279,15 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   };
 
+  // Almacén de Embarques - Catálogo
+  window.mostrarAlmacenEmbarquesCatalogo = function () {
+    mostrarModuloAlmacenEmbarques(
+      "almacen-embarques-catalogo-unique-container",
+      "/almacen-embarques-catalogo-ajax?v=20260505c",
+      "inicializarAlmacenEmbarquesCatalogoAjax",
+    );
+  };
+
   // Registro de movimiento de identificación
   window.mostrarRegistroMovimientoIdentificacion = function () {
     try {

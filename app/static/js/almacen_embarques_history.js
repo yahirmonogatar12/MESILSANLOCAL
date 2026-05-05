@@ -1,7 +1,7 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const STYLESHEET_HREF = "/static/css/almacen_embarques_history.css?v=20260430b";
-  const ASSET_VERSION = "20260430b";
+  const ASSET_VERSION = "20260505c";
+  const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
   const adjustmentState = {};
 
   function ensureModuleStyles() {

@@ -559,6 +559,41 @@ body.ae-modal-open {
     overflow: auto;
 }
 
+.ae-catalog-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.ae-catalog-form-grid .ae-filter-group--wide {
+    grid-column: span 3;
+}
+
+.ae-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 74px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+}
+
+.ae-status-pill--active {
+    color: #c7f7dc;
+    background: rgba(39, 174, 96, 0.18);
+    border: 1px solid rgba(39, 174, 96, 0.32);
+}
+
+.ae-status-pill--inactive {
+    color: #ffcfc8;
+    background: rgba(231, 76, 60, 0.15);
+    border: 1px solid rgba(231, 76, 60, 0.28);
+}
+
 .ae-history-table--compact {
     width: 100%;
     min-width: 760px;
@@ -1246,6 +1281,11 @@ body.ae-column-resizing * {
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.ae-confirm-modal__field.is-hidden,
+.ae-btn-inline.is-hidden {
+    display: none;
 }
 
 .ae-confirm-modal__field label {
