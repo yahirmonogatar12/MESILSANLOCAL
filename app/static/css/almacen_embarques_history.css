@@ -1659,7 +1659,7 @@ body.ae-column-resizing * {
     width: min(100%, 11in);
     min-height: 8.5in;
     margin: 0 auto;
-    padding: 0.45in;
+    padding: 0.98in 0.45in 0.45in;
     background: #ffffff;
     color: #162033;
     font-family: Arial, sans-serif;

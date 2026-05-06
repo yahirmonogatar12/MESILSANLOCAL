@@ -1708,7 +1708,7 @@
   <meta charset="utf-8">
   <title>Formato salidas de retorno</title>
   <style>
-    @page { size: letter landscape; margin: 10mm; }
+    @page { size: letter landscape; margin: 25mm 10mm 10mm; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -1720,7 +1720,7 @@
       width: 11in;
       min-height: 8.5in;
       margin: 0 auto;
-      padding: 0.45in;
+      padding: 0.72in 0.45in 0.45in;
       background: #fff;
     }
     .ae-return-print-sheet__header {
