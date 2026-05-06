@@ -1,8 +1,13 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260505c";
+  const ASSET_VERSION = "20260506a";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
   const adjustmentState = {};
+  const returnPrintState = {
+    exitRows: [],
+    selectedKeys: new Set(),
+    previewRows: [],
+  };
 
   function ensureModuleStyles() {
     const currentLink = document.getElementById(STYLESHEET_ID);
@@ -835,6 +840,7 @@
       entryCount: document.getElementById("almacen-embarques-return-in-count"),
       entryStatus: document.getElementById("almacen-embarques-return-in-status"),
       exitExportBtn: document.getElementById("almacen-embarques-return-out-export-btn"),
+      exitPrintBtn: document.getElementById("almacen-embarques-return-out-print-btn"),
       exitBody: document.getElementById("almacen-embarques-return-out-tbody"),
       exitCount: document.getElementById("almacen-embarques-return-out-count"),
       exitStatus: document.getElementById("almacen-embarques-return-out-status"),
@@ -1302,10 +1308,22 @@
       .join("");
   }
 
+  function normalizeReturnType(reason) {
+    const value = String(reason || "")
+      .split("/")
+      .map((part) => part.trim())
+      .filter(Boolean)[0];
+    return value || "Retorno";
+  }
+
+  function getReturnPrintRowKey(row) {
+    return String(row?.id || row?.folio || `${row?.part_number || ""}-${row?.hora || ""}`);
+  }
+
   function renderReturnsRows(rows) {
     return rows
       .map((row) => {
-        const badgeText = row.reason || "Sin tipo";
+        const badgeText = normalizeReturnType(row.reason || "Sin tipo");
         const badgeVariant =
           badgeText.toLowerCase() === "os&d" ? "warning" : "success";
 
@@ -1342,7 +1360,7 @@
             <td><strong>${escapeHtml(row.part_number)}</strong></td>
             <td>${formatNumber(quantity)}</td>
             <td>${escapeHtml(row.product_model || "-")}</td>
-            <td>${buildBadge(row.reason || "Retorno", "success")}</td>
+            <td>${escapeHtml(normalizeReturnType(row.reason || "Retorno"))}</td>
             <td>${escapeHtml(row.registered_by || "-")}</td>
           </tr>
         `;
@@ -1360,7 +1378,7 @@
           <td><strong>${escapeHtml(row.part_number)}</strong></td>
           <td>${formatNumber(row.loss_quantity)}</td>
           <td>${escapeHtml(row.product_model || "-")}</td>
-          <td>${buildBadge(row.reason || "Salida retorno", "warning")}</td>
+          <td>${escapeHtml(normalizeReturnType(row.reason || "Salida retorno"))}</td>
           <td>${escapeHtml(row.registered_by || "-")}</td>
         </tr>
       `)
@@ -1392,6 +1410,503 @@
     const suffix = rows.length === 1 ? "registro" : "registros";
     targetCount.textContent = `${rows.length} ${suffix}`;
     targetBody.innerHTML = renderer(rows);
+  }
+
+  function getReturnPrintModal() {
+    let modal = document.getElementById("ae-return-print-modal");
+    if (modal) {
+      return modal;
+    }
+
+    modal = document.createElement("div");
+    modal.id = "ae-return-print-modal";
+    modal.className = "ae-return-print-modal";
+    modal.innerHTML = `
+      <div class="ae-return-print-modal__backdrop" data-action="close-return-print"></div>
+      <div class="ae-return-print-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ae-return-print-title">
+        <div class="ae-return-print-modal__header">
+          <div>
+            <h4 id="ae-return-print-title">Formato de salidas de retorno</h4>
+            <p>Selecciona los registros que se incluirán en el formato imprimible.</p>
+          </div>
+          <button type="button" class="ae-return-print-modal__close" data-action="close-return-print" aria-label="Cerrar">
+            &times;
+          </button>
+        </div>
+        <div class="ae-return-print-modal__body">
+          <div class="ae-return-print-step" data-step="selection">
+            <div class="ae-return-print-toolbar">
+              <label class="ae-return-print-check-all">
+                <input type="checkbox" data-role="return-print-select-all">
+                Seleccionar todo
+              </label>
+              <span data-role="return-print-selected-count">0 seleccionados</span>
+            </div>
+            <div class="ae-return-print-table-wrap">
+              <table class="ae-history-table ae-return-print-table">
+                <thead>
+                  <tr>
+                    <th>Sel.</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Folio</th>
+                    <th>No. parte</th>
+                    <th>Cantidad</th>
+                    <th>Tipo</th>
+                    <th>Usuario</th>
+                  </tr>
+                </thead>
+                <tbody data-role="return-print-selection-body"></tbody>
+              </table>
+            </div>
+            <div class="ae-return-print-error" data-role="return-print-error"></div>
+          </div>
+          <div class="ae-return-print-step is-hidden" data-step="preview">
+            <div class="ae-return-print-preview-toolbar">
+              <button type="button" class="ae-btn-secondary" data-action="back-return-print-selection">
+                Volver a selección
+              </button>
+              <span data-role="return-print-preview-count"></span>
+            </div>
+            <div class="ae-return-print-preview-scroll">
+              <div data-role="return-print-preview"></div>
+            </div>
+          </div>
+        </div>
+        <div class="ae-return-print-modal__actions">
+          <button type="button" class="ae-btn-secondary" data-action="close-return-print">Cancelar</button>
+          <button type="button" class="ae-btn-primary" data-action="preview-return-print">Generar previsualización</button>
+          <button type="button" class="ae-btn-secondary is-hidden" data-action="download-return-print">Guardar</button>
+          <button type="button" class="ae-btn-success is-hidden" data-action="print-return-print">Imprimir</button>
+        </div>
+      </div>
+    `;
+
+    modal.addEventListener("click", (event) => {
+      const actionElement = event.target.closest("[data-action]");
+      if (!actionElement) {
+        return;
+      }
+
+      const action = actionElement.dataset.action;
+      if (action === "close-return-print") {
+        closeReturnPrintModal();
+      } else if (action === "preview-return-print") {
+        renderReturnPrintPreview();
+      } else if (action === "back-return-print-selection") {
+        setReturnPrintStep("selection");
+      } else if (action === "download-return-print") {
+        downloadReturnPrintPreview();
+      } else if (action === "print-return-print") {
+        printReturnPrintPreview();
+      }
+    });
+
+    modal.addEventListener("change", (event) => {
+      const target = event.target;
+      if (target.matches('[data-role="return-print-select-all"]')) {
+        const checked = target.checked;
+        returnPrintState.selectedKeys.clear();
+        if (checked) {
+          returnPrintState.exitRows.forEach((row) => {
+            returnPrintState.selectedKeys.add(getReturnPrintRowKey(row));
+          });
+        }
+        modal
+          .querySelectorAll('[data-role="return-print-row-checkbox"]')
+          .forEach((checkbox) => {
+            checkbox.checked = checked;
+          });
+        updateReturnPrintSelectionCount();
+        return;
+      }
+
+      if (target.matches('[data-role="return-print-row-checkbox"]')) {
+        const key = target.value;
+        if (target.checked) {
+          returnPrintState.selectedKeys.add(key);
+        } else {
+          returnPrintState.selectedKeys.delete(key);
+        }
+        syncReturnPrintSelectAll();
+        updateReturnPrintSelectionCount();
+      }
+    });
+
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function setReturnPrintStep(stepName) {
+    const modal = getReturnPrintModal();
+    const isPreview = stepName === "preview";
+    modal.querySelector('[data-step="selection"]')?.classList.toggle("is-hidden", isPreview);
+    modal.querySelector('[data-step="preview"]')?.classList.toggle("is-hidden", !isPreview);
+    modal.querySelector('[data-action="preview-return-print"]')?.classList.toggle("is-hidden", isPreview);
+    modal.querySelector('[data-action="download-return-print"]')?.classList.toggle("is-hidden", !isPreview);
+    modal.querySelector('[data-action="print-return-print"]')?.classList.toggle("is-hidden", !isPreview);
+  }
+
+  function setReturnPrintError(message = "") {
+    const errorLabel = getReturnPrintModal().querySelector('[data-role="return-print-error"]');
+    if (errorLabel) {
+      errorLabel.textContent = message;
+    }
+  }
+
+  function syncReturnPrintSelectAll() {
+    const modal = getReturnPrintModal();
+    const selectAll = modal.querySelector('[data-role="return-print-select-all"]');
+    if (!selectAll) {
+      return;
+    }
+    const total = returnPrintState.exitRows.length;
+    const selected = returnPrintState.selectedKeys.size;
+    selectAll.checked = total > 0 && selected === total;
+    selectAll.indeterminate = selected > 0 && selected < total;
+  }
+
+  function updateReturnPrintSelectionCount() {
+    const modal = getReturnPrintModal();
+    const countLabel = modal.querySelector('[data-role="return-print-selected-count"]');
+    const selected = returnPrintState.selectedKeys.size;
+    const total = returnPrintState.exitRows.length;
+    if (countLabel) {
+      countLabel.textContent = `${selected} de ${total} seleccionados`;
+    }
+  }
+
+  function renderReturnPrintSelectionRows() {
+    const modal = getReturnPrintModal();
+    const tbody = modal.querySelector('[data-role="return-print-selection-body"]');
+    if (!tbody) {
+      return;
+    }
+
+    if (!returnPrintState.exitRows.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" class="ae-empty-cell">No hay salidas de retorno disponibles para imprimir.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = returnPrintState.exitRows
+      .map((row) => {
+        const key = getReturnPrintRowKey(row);
+        return `
+          <tr>
+            <td>
+              <input
+                type="checkbox"
+                data-role="return-print-row-checkbox"
+                value="${escapeHtml(key)}"
+                ${returnPrintState.selectedKeys.has(key) ? "checked" : ""}
+              >
+            </td>
+            <td>${escapeHtml(row.fecha || "-")}</td>
+            <td>${escapeHtml(row.hora || "-")}</td>
+            <td>${escapeHtml(row.folio || "-")}</td>
+            <td><strong>${escapeHtml(row.part_number || "-")}</strong></td>
+            <td>${formatNumber(row.movement_quantity || row.loss_quantity)}</td>
+            <td>${escapeHtml(normalizeReturnType(row.reason || "Salida retorno"))}</td>
+            <td>${escapeHtml(row.registered_by || "-")}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function getSelectedReturnPrintRows() {
+    return returnPrintState.exitRows.filter((row) =>
+      returnPrintState.selectedKeys.has(getReturnPrintRowKey(row)),
+    );
+  }
+
+  function buildReturnPrintDocumentBody(rows) {
+    const generatedAt = new Date().toLocaleString("es-MX", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const totalQuantity = rows.reduce(
+      (sum, row) => sum + (Number(row.movement_quantity || row.loss_quantity || 0) || 0),
+      0,
+    );
+
+    return `
+      <section class="ae-return-print-sheet">
+        <header class="ae-return-print-sheet__header">
+          <div>
+            <span class="ae-return-print-sheet__eyebrow">Almacén de Embarques</span>
+            <h1>Salida de retorno</h1>
+          </div>
+          <div class="ae-return-print-sheet__meta">
+            <span>Generado</span>
+            <strong>${escapeHtml(generatedAt)}</strong>
+          </div>
+        </header>
+        <div class="ae-return-print-sheet__summary">
+          <div>
+            <span>Registros</span>
+            <strong>${formatNumber(rows.length)}</strong>
+          </div>
+          <div>
+            <span>Cantidad total</span>
+            <strong>${formatNumber(totalQuantity)}</strong>
+          </div>
+        </div>
+        <table class="ae-return-print-sheet__table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Folio</th>
+              <th>No. parte</th>
+              <th>Cantidad</th>
+              <th>Modelo</th>
+              <th>Tipo</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (row) => `
+                  <tr>
+                    <td>${escapeHtml(row.fecha || "-")}</td>
+                    <td>${escapeHtml(row.hora || "-")}</td>
+                    <td>${escapeHtml(row.folio || "-")}</td>
+                    <td>${escapeHtml(row.part_number || "-")}</td>
+                    <td>${formatNumber(row.movement_quantity || row.loss_quantity)}</td>
+                    <td>${escapeHtml(row.product_model || "-")}</td>
+                    <td>${escapeHtml(normalizeReturnType(row.reason || "Salida retorno"))}</td>
+                    <td>${escapeHtml(row.registered_by || "-")}</td>
+                  </tr>
+                `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+        <footer class="ae-return-print-sheet__footer">
+          <div>Entrega</div>
+          <div>Recibe</div>
+          <div>Validación</div>
+        </footer>
+      </section>
+    `;
+  }
+
+  function buildReturnPrintHtml(rows) {
+    const body = buildReturnPrintDocumentBody(rows);
+    return `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Formato salidas de retorno</title>
+  <style>
+    @page { size: letter landscape; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef1f5;
+      color: #162033;
+      font-family: Arial, sans-serif;
+    }
+    .ae-return-print-sheet {
+      width: 11in;
+      min-height: 8.5in;
+      margin: 0 auto;
+      padding: 0.45in;
+      background: #fff;
+    }
+    .ae-return-print-sheet__header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 3px solid #11213c;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+    }
+    .ae-return-print-sheet__eyebrow,
+    .ae-return-print-sheet__meta span,
+    .ae-return-print-sheet__summary span {
+      color: #63708a;
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 2px 0 0;
+      color: #11213c;
+      font-size: 28px;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+    .ae-return-print-sheet__meta {
+      text-align: right;
+      white-space: nowrap;
+    }
+    .ae-return-print-sheet__meta strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 13px;
+    }
+    .ae-return-print-sheet__summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .ae-return-print-sheet__summary div {
+      border: 1px solid #d5dbe7;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .ae-return-print-sheet__summary strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5px;
+    }
+    th {
+      background: #11213c;
+      color: #fff;
+      text-align: left;
+      padding: 7px 6px;
+      border: 1px solid #11213c;
+    }
+    td {
+      padding: 7px 6px;
+      border: 1px solid #d5dbe7;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f7f9fc; }
+    .ae-return-print-sheet__footer {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 48px;
+      color: #47536a;
+      font-size: 12px;
+      text-align: center;
+    }
+    .ae-return-print-sheet__footer div {
+      border-top: 1px solid #162033;
+      padding-top: 8px;
+    }
+    @media print {
+      body { background: #fff; }
+      .ae-return-print-sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>${body}</body>
+</html>`;
+  }
+
+  function renderReturnPrintPreview() {
+    const rows = getSelectedReturnPrintRows();
+    if (!rows.length) {
+      setReturnPrintError("Selecciona al menos un registro para generar el formato.");
+      return;
+    }
+
+    returnPrintState.previewRows = rows;
+    const modal = getReturnPrintModal();
+    const preview = modal.querySelector('[data-role="return-print-preview"]');
+    const countLabel = modal.querySelector('[data-role="return-print-preview-count"]');
+    if (preview) {
+      preview.innerHTML = buildReturnPrintDocumentBody(rows);
+    }
+    if (countLabel) {
+      countLabel.textContent = `${rows.length} ${rows.length === 1 ? "registro" : "registros"} en previsualización`;
+    }
+    setReturnPrintError("");
+    setReturnPrintStep("preview");
+  }
+
+  function openReturnPrintModal() {
+    const modal = getReturnPrintModal();
+    returnPrintState.selectedKeys.clear();
+    returnPrintState.previewRows = [];
+    setReturnPrintError("");
+    setReturnPrintStep("selection");
+    renderReturnPrintSelectionRows();
+    syncReturnPrintSelectAll();
+    updateReturnPrintSelectionCount();
+    modal.classList.add("is-open");
+  }
+
+  function closeReturnPrintModal() {
+    const modal = document.getElementById("ae-return-print-modal");
+    if (!modal) {
+      return;
+    }
+    modal.classList.remove("is-open");
+    returnPrintState.selectedKeys.clear();
+    returnPrintState.previewRows = [];
+    setReturnPrintError("");
+  }
+
+  function downloadReturnPrintPreview() {
+    const rows = returnPrintState.previewRows;
+    if (!rows.length) {
+      renderReturnPrintPreview();
+      return;
+    }
+
+    const html = buildReturnPrintHtml(rows);
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `formato_salidas_retorno_${timestamp}.html`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function printReturnPrintPreview() {
+    const rows = returnPrintState.previewRows;
+    if (!rows.length) {
+      renderReturnPrintPreview();
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      setReturnPrintError("El navegador bloqueó la ventana de impresión.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(buildReturnPrintHtml(rows));
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => {
+      try {
+        printWindow.print();
+      } catch (error) {
+        console.warn("No fue posible abrir impresión automáticamente:", error);
+      }
+    }, 350);
   }
 
   async function loadReturnsModule() {
@@ -1430,7 +1945,15 @@
       const entryRows = rows.filter(
         (row) => Number(row.return_quantity || 0) - Number(row.loss_quantity || 0) > 0,
       );
-      const exitRows = rows.filter((row) => Number(row.loss_quantity || 0) > 0);
+      const exitRows = rows
+        .filter((row) => Number(row.loss_quantity || 0) > 0)
+        .map((row) => ({
+          ...row,
+          movement_quantity: Number(row.loss_quantity || 0) || 0,
+        }));
+      returnPrintState.exitRows = exitRows;
+      returnPrintState.selectedKeys.clear();
+      returnPrintState.previewRows = [];
 
       renderReturnHistoryTable(
         elements.entryBody,
@@ -1459,6 +1982,12 @@
         elements.exitStatus.textContent = `Actualizado a las ${updatedAt}`;
         elements.exitStatus.style.color = "#8fb8ff";
       }
+      if (elements.exitPrintBtn) {
+        elements.exitPrintBtn.disabled = exitRows.length === 0;
+        elements.exitPrintBtn.title = exitRows.length
+          ? "Seleccionar salidas de retorno para imprimir"
+          : "No hay salidas de retorno disponibles para imprimir";
+      }
 
       const moduleRoot = document.getElementById("almacen-embarques-returns-module");
       syncScrollableHeight(moduleRoot);
@@ -1486,6 +2015,13 @@
       if (elements.exitStatus) {
         elements.exitStatus.textContent = "Error al consultar historial";
         elements.exitStatus.style.color = "#ff8f8f";
+      }
+      returnPrintState.exitRows = [];
+      returnPrintState.selectedKeys.clear();
+      returnPrintState.previewRows = [];
+      if (elements.exitPrintBtn) {
+        elements.exitPrintBtn.disabled = true;
+        elements.exitPrintBtn.title = "No hay salidas de retorno disponibles para imprimir";
       }
     }
   }
@@ -1800,6 +2336,11 @@
     if (elements.exitExportBtn && elements.exitExportBtn.dataset.bound !== "true") {
       elements.exitExportBtn.addEventListener("click", () => exportReturnsByMovement("exit"));
       elements.exitExportBtn.dataset.bound = "true";
+    }
+
+    if (elements.exitPrintBtn && elements.exitPrintBtn.dataset.bound !== "true") {
+      elements.exitPrintBtn.addEventListener("click", openReturnPrintModal);
+      elements.exitPrintBtn.dataset.bound = "true";
     }
 
     if (elements.partNumber && elements.partNumber.dataset.bound !== "true") {

@@ -9240,6 +9240,7 @@ def _obtener_historial_salidas_almacen_embarques(limit=300):
 def _obtener_historial_retorno_almacen_embarques(limit=300):
     sql = """
         SELECT
+            id,
             DATE(COALESCE(movement_at, created_at)) AS fecha,
             DATE_FORMAT(COALESCE(movement_at, created_at), '%%H:%%i:%%s') AS hora,
             return_folio AS folio,
@@ -9282,6 +9283,7 @@ def _obtener_historial_retorno_almacen_embarques(limit=300):
     rows = execute_query(sql, tuple(params), fetch="all") or []
     return [
         {
+            "id": row.get("id"),
             "fecha": _normalizar_texto_embarques_historial(row.get("fecha")),
             "hora": _normalizar_texto_embarques_historial(row.get("hora")),
             "folio": _normalizar_texto_embarques_historial(row.get("folio")),
@@ -11951,9 +11953,13 @@ def almacen_embarques_salidas_ajax():
 def almacen_embarques_retorno_ajax():
     """Ruta AJAX para visualizar historial de retornos de almacén de embarques."""
     try:
-        return render_template(
+        response = make_response(render_template(
             "Control de proceso/almacen_embarques_retorno_ajax.html"
-        )
+        ))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
     except Exception as e:
         print(f"Error al cargar template Almacén Embarques Retorno AJAX: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
