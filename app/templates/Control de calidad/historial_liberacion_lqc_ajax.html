@@ -84,6 +84,8 @@
 .lqcs-chip-dia{background:rgba(52,152,219,.15);color:#3498db;}
 .lqcs-chip-extra{background:rgba(80,38,150,.2);color:#8e44ad;}
 .lqcs-chip-noche{background:rgba(39,174,96,.15);color:#27ae60;}
+.lqcs-status-dup{background:rgba(231,76,60,.16);color:#ff8b7d;border:1px solid rgba(231,76,60,.35);}
+.lqcs-status-ok{background:rgba(39,174,96,.13);color:#6fdc94;border:1px solid rgba(39,174,96,.28);}
 .lqcs-empty{text-align:center;padding:3rem;color:#95a5a6;font-size:.9rem;}
 
 /* Pagination */
@@ -143,6 +145,11 @@
     return 'NOCHE';
   }
   function chipClass(t) { if(t==='DIA') return 'lqcs-chip-dia'; if(t==='TIEMPO EXTRA') return 'lqcs-chip-extra'; return 'lqcs-chip-noche'; }
+  function statusHTML(status) {
+    var s = status || '-';
+    var cls = String(s).toLowerCase().indexOf('duplic') !== -1 ? 'lqcs-status-dup' : 'lqcs-status-ok';
+    return '<span class="lqcs-chip '+cls+'">'+esc(s)+'</span>';
+  }
   function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function shell() { return document.getElementById('lqc-smts-shell'); }
   function lineColor(line, index) {
@@ -495,7 +502,8 @@
       filtered = state.records.filter(function(r){
         return [
           r.linea, r.part, r.model_code, r.lot_no, r.box_code, r.serial,
-          r.status, r.turno, String(r.fecha), String(r.last_scan)
+          r.status, r.turno, String(r.fecha), String(r.last_scan),
+          r.fechas_repetidas, r.escaneos_repetidos
         ].join(' ').toLowerCase().indexOf(q) !== -1;
       });
     }
@@ -532,12 +540,13 @@
     var map={};
     filtered.forEach(function(r){
       var k = allLines ? (r.fecha+'|'+r.part) : (r.linea+'|'+r.fecha+'|'+r.part+'|'+(r.lot_no||''));
-      if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),model_code:r.model_code||'',total:0,seriales:{},unicas:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
+      if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),model_code:r.model_code||'',total:0,seriales:{},unicas:0,repetidas:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
       map[k].total++;
       if (r.serial) map[k].seriales[r.serial]=1;
+      if (r.duplicado_historico || String(r.status||'').toLowerCase().indexOf('duplic') !== -1) map[k].repetidas++;
       map[k][r.turno]=(map[k][r.turno]||0)+1;
     });
-    Object.keys(map).forEach(function(k){ map[k].unicas = Object.keys(map[k].seriales).length; });
+    Object.keys(map).forEach(function(k){ map[k].unicas = Math.max(0, map[k].total - map[k].repetidas); });
     var groups=Object.values(map).sort(function(a,b){return b.total-a.total;});
 
     renderSearchArea(groups.length, state.records.length, true);
@@ -555,12 +564,13 @@
         +tdLote
         +'<td style="text-align:center;color:#3498db;font-weight:700;">'+g.total.toLocaleString()+'</td>'
         +'<td style="text-align:center;color:#27ae60;font-weight:700;">'+g.unicas.toLocaleString()+'</td>'
+        +'<td style="text-align:center;color:#ff8b7d;font-weight:700;">'+(g.repetidas ? g.repetidas.toLocaleString() : '-')+'</td>'
         +'<td style="text-align:center;">'+tdDia+'</td><td style="text-align:center;">'+tdExtra+'</td><td style="text-align:center;">'+tdNoche+'</td></tr>';
     }).join('');
 
     return '<div class="lqcs-table-wrap"><table class="lqcs-tbl"><thead><tr>'
       +thLinea+'<th>FECHA</th><th>N\xdaMERO DE PARTE</th>'+thLote+'<th style="text-align:center;">TOTAL</th><th style="text-align:center;">UNICAS</th>'
-      +'<th style="text-align:center;">DIA</th><th style="text-align:center;">T. EXTRA</th><th style="text-align:center;">NOCHE</th>'
+      +'<th style="text-align:center;">REPETIDAS HIST.</th><th style="text-align:center;">DIA</th><th style="text-align:center;">T. EXTRA</th><th style="text-align:center;">NOCHE</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
@@ -584,7 +594,9 @@
         +'<td style="font-family:monospace;font-size:.72rem;color:#95a5a6;">'+esc(r.box_code||'-')+'</td>'
         +'<td style="text-align:center;color:#3498db;font-weight:600;">1</td>'
         +'<td><span class="lqcs-chip '+chipClass(r.turno)+'">'+esc(r.turno)+'</span></td>'
-        +'<td>'+esc(r.status||'-')+'</td>'
+        +'<td>'+statusHTML(r.status)+'</td>'
+        +'<td style="color:#ffb0a7;font-size:.75rem;">'+esc(r.fechas_repetidas||'-')+'</td>'
+        +'<td style="color:#95a5a6;font-size:.75rem;">'+esc(r.escaneos_repetidos||'-')+'</td>'
         +'<td style="font-family:monospace;font-size:.72rem;color:#95a5a6;">'+esc(r.serial)+'</td>'
         +'<td style="color:#95a5a6;font-size:.75rem;">'+esc(r.last_scan)+'</td>'
         +'</tr>';
@@ -600,7 +612,7 @@
 
     return '<div class="lqcs-table-wrap"><table class="lqcs-tbl"><thead><tr>'
       +thLinea+'<th>FECHA</th><th>N\xdaMERO DE PARTE</th><th>LOTE</th><th>CAJA</th><th style="text-align:center;">CANTIDAD</th>'
-      +'<th>TURNO</th><th>ESTADO</th><th>SERIAL</th><th>\xdaLTIMO ESCANEO</th>'
+      +'<th>TURNO</th><th>ESTADO</th><th>FECHA HISTORICA</th><th>ESCANEO HISTORICO</th><th>SERIAL</th><th>\xdaLTIMO ESCANEO</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>'+pagBar;
   }
 
@@ -636,19 +648,20 @@
       var map={};
       state.records.forEach(function(r){
         var k = allLines ? (r.fecha+'|'+r.part) : (r.linea+'|'+r.fecha+'|'+r.part+'|'+(r.lot_no||''));
-        if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),total:0,seriales:{},unicas:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
+        if(!map[k]) map[k]={linea:r.linea,fecha:r.fecha,part:r.part,lot_no:allLines?'':(r.lot_no||''),total:0,seriales:{},unicas:0,repetidas:0,DIA:0,'TIEMPO EXTRA':0,NOCHE:0};
         map[k].total++;
         if (r.serial) map[k].seriales[r.serial]=1;
+        if (r.duplicado_historico || String(r.status||'').toLowerCase().indexOf('duplic') !== -1) map[k].repetidas++;
         map[k][r.turno]=(map[k][r.turno]||0)+1;
       });
-      Object.keys(map).forEach(function(k){ map[k].unicas = Object.keys(map[k].seriales).length; });
+      Object.keys(map).forEach(function(k){ map[k].unicas = Math.max(0, map[k].total - map[k].repetidas); });
       var groups=Object.values(map);
-      var hdr = allLines ? ['FECHA','NUMERO DE PARTE','TOTAL','UNICAS','DIA','TIEMPO EXTRA','NOCHE'] : ['FECHA','NUMERO DE PARTE','LOTE','TOTAL','UNICAS','DIA','TIEMPO EXTRA','NOCHE'];
-      var rows = groups.map(function(g){ return allLines?[g.fecha,g.part,g.total,g.unicas,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]:[g.fecha,g.part,g.lot_no,g.total,g.unicas,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]; });
+      var hdr = allLines ? ['FECHA','NUMERO DE PARTE','TOTAL','UNICAS','REPETIDAS HISTORICAS','DIA','TIEMPO EXTRA','NOCHE'] : ['FECHA','NUMERO DE PARTE','LOTE','TOTAL','UNICAS','REPETIDAS HISTORICAS','DIA','TIEMPO EXTRA','NOCHE'];
+      var rows = groups.map(function(g){ return allLines?[g.fecha,g.part,g.total,g.unicas,g.repetidas,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]:[g.fecha,g.part,g.lot_no,g.total,g.unicas,g.repetidas,g.DIA,g['TIEMPO EXTRA'],g.NOCHE]; });
       exportCSV('resumen_'+lineLabel+'_'+dateLabel+'.csv', hdr, rows);
     } else {
-      var hdr2 = allLines ? ['LINEA','FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','SERIAL','ULTIMO ESCANEO'] : ['FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','SERIAL','ULTIMO ESCANEO'];
-      var rows2 = state.records.map(function(r){ return allLines?[r.linea,r.fecha,r.part,r.lot_no,r.box_code,1,r.turno,r.status,r.serial,r.last_scan]:[r.fecha,r.part,r.lot_no,r.box_code,1,r.turno,r.status,r.serial,r.last_scan]; });
+      var hdr2 = allLines ? ['LINEA','FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','FECHA HISTORICA','ESCANEO HISTORICO','SERIAL','ULTIMO ESCANEO'] : ['FECHA','NUMERO DE PARTE','LOTE','CAJA','CANTIDAD','TURNO','ESTADO','FECHA HISTORICA','ESCANEO HISTORICO','SERIAL','ULTIMO ESCANEO'];
+      var rows2 = state.records.map(function(r){ return allLines?[r.linea,r.fecha,r.part,r.lot_no,r.box_code,1,r.turno,r.status,r.fechas_repetidas,r.escaneos_repetidos,r.serial,r.last_scan]:[r.fecha,r.part,r.lot_no,r.box_code,1,r.turno,r.status,r.fechas_repetidas,r.escaneos_repetidos,r.serial,r.last_scan]; });
       exportCSV('detalle_'+lineLabel+'_'+dateLabel+'.csv', hdr2, rows2);
     }
   }

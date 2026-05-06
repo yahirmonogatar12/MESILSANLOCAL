@@ -20842,6 +20842,7 @@ def api_smt_scanner_datos():
                     COALESCE(NULLIF(p.model_code, ''), '') AS model_code,
                     COALESCE(b.lot_no, '') AS lot_no,
                     b.box_code,
+                    b.id AS scan_id,
                     b.serial,
                     b.status AS box_status,
                     b.first_scan,
@@ -20855,8 +20856,76 @@ def api_smt_scanner_datos():
             cursor.execute(query, params)
             rows = cursor.fetchall()
 
+            historico_por_serial = {}
+            seriales = sorted({
+                str(r.get('serial') or '').strip()
+                for r in rows
+                if str(r.get('serial') or '').strip()
+            })
+            for i in range(0, len(seriales), 1000):
+                serial_chunk = seriales[i:i + 1000]
+                placeholders = ','.join(['%s'] * len(serial_chunk))
+                cursor.execute(f"""
+                    SELECT serial
+                    FROM box_scans
+                    WHERE serial IN ({placeholders})
+                    GROUP BY serial
+                    HAVING COUNT(*) > 1
+                """, serial_chunk)
+                for h in cursor.fetchall():
+                    serial = str(h.get('serial') or '').strip()
+                    if serial:
+                        historico_por_serial[serial] = []
+
+            seriales_repetidos = sorted(historico_por_serial.keys())
+            for i in range(0, len(seriales_repetidos), 1000):
+                serial_chunk = seriales_repetidos[i:i + 1000]
+                placeholders = ','.join(['%s'] * len(serial_chunk))
+                cursor.execute(f"""
+                    SELECT
+                        id,
+                        serial,
+                        CASE
+                            WHEN TIME(last_scan) >= '07:30:00' THEN DATE(last_scan)
+                            ELSE DATE_SUB(DATE(last_scan), INTERVAL 1 DAY)
+                        END AS fecha_operativa,
+                        last_scan
+                    FROM box_scans
+                    WHERE serial IN ({placeholders})
+                    ORDER BY serial, last_scan, id
+                """, serial_chunk)
+                for h in cursor.fetchall():
+                    serial = str(h.get('serial') or '').strip()
+                    if not serial:
+                        continue
+                    historico_por_serial[serial].append({
+                        "id": h.get('id'),
+                        "fecha": str(h.get('fecha_operativa')) if h.get('fecha_operativa') else '',
+                        "last_scan": str(h.get('last_scan')).replace('T', ' ') if h.get('last_scan') else '',
+                    })
+
             records = []
             for r in rows:
+                serial = r['serial'] or ''
+                historico = historico_por_serial.get(serial, [])
+                scan_id = r.get('scan_id')
+                otros_escaneos = [
+                    h for h in historico
+                    if scan_id is None or h.get('id') != scan_id
+                ]
+                fechas_repetidas = []
+                scans_repetidos = []
+                for h in otros_escaneos:
+                    fecha_hist = h.get('fecha') or ''
+                    scan_hist = h.get('last_scan') or ''
+                    if fecha_hist and fecha_hist not in fechas_repetidas:
+                        fechas_repetidas.append(fecha_hist)
+                    if scan_hist and scan_hist not in scans_repetidos:
+                        scans_repetidos.append(scan_hist)
+                es_duplicado_historico = len(otros_escaneos) > 0
+                status = r.get('box_status') or ''
+                if es_duplicado_historico:
+                    status = 'Duplicado'
                 records.append({
                     "linea": r['linea'],
                     "fecha": str(r['fecha']) if r['fecha'] else '',
@@ -20864,8 +20933,12 @@ def api_smt_scanner_datos():
                     "model_code": r.get('model_code') or '',
                     "lot_no": r.get('lot_no') or '',
                     "box_code": r.get('box_code') or '',
-                    "serial": r['serial'] or '',
-                    "status": r.get('box_status') or '',
+                    "serial": serial,
+                    "status": status,
+                    "duplicado_historico": es_duplicado_historico,
+                    "total_repeticiones": len(historico),
+                    "fechas_repetidas": ', '.join(fechas_repetidas),
+                    "escaneos_repetidos": ' | '.join(scans_repetidos[:5]),
                     "first_scan": str(r.get('first_scan')).replace('T', ' ') if r.get('first_scan') else '',
                     "last_scan": str(r['last_scan']).replace('T', ' ') if r['last_scan'] else '',
                     "turno": r['turno'],
