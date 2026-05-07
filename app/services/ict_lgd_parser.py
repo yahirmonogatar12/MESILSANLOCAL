@@ -11,7 +11,7 @@ ICT_BASE_DIR = os.environ.get(
     "ICT_ODATA_BASE_DIR",
     r"\\192.168.1.144\lg-pws\TDATA\ICT\ODATA",
 )
-_CACHE_MAX = 64
+_CACHE_MAX = 256
 _PARSE_CACHE = OrderedDict()
 _PARSE_CACHE_LOCK = threading.RLock()
 
@@ -382,5 +382,10 @@ def parse_lgd_file(abs_path: str, base_dir: str = ICT_BASE_DIR):
 
 
 def get_lgd_parameters_for_barcode(abs_path: str, barcode: str, base_dir: str = ICT_BASE_DIR):
+    """Devuelve las filas de parametros del barcode.
+
+    IMPORTANTE: las rows pertenecen al cache. NO las mutes aqui. Si necesitas
+    modificar, copia con `dict(row)` en el sitio del consumidor.
+    """
     payload = parse_lgd_payload(abs_path, base_dir)
-    return [dict(row) for row in payload["parameters_by_bc"].get(barcode, [])]
+    return payload["parameters_by_bc"].get(barcode, [])

@@ -204,6 +204,100 @@
       font-family: 'Consolas', 'Courier New', monospace;
       letter-spacing: 0.3px;
     }
+
+    /* Hint click-to-detail */
+    .cp-click-hint {
+      margin: 0 18px 8px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      color: var(--ilsan-text-gray);
+      font-style: italic;
+    }
+
+    /* Filas clickeables */
+    #cp-params-table tbody tr {
+      cursor: pointer;
+    }
+
+    /* Celda hora-cambio */
+    .cp-col-hora-cambio {
+      color: #ffd48a;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-weight: 600;
+    }
+
+    /* ===== MODAL DETALLE ===== */
+    .cp-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .cp-modal-overlay.active { display: flex; }
+    .cp-modal-card {
+      background: var(--ilsan-dark-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      width: 480px;
+      max-width: 90vw;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      animation: fadeInUp 0.25s ease;
+    }
+    .cp-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .cp-modal-title {
+      color: var(--ilsan-text-light);
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .cp-modal-close {
+      background: transparent;
+      border: none;
+      color: var(--ilsan-text-gray);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .cp-modal-close:hover { color: var(--ilsan-text-light); }
+    .cp-modal-body { padding: 14px 16px; font-size: 0.82rem; }
+    .cp-modal-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    }
+    .cp-modal-row:last-child { border-bottom: none; }
+    .cp-modal-key { color: var(--ilsan-text-gray); }
+    .cp-modal-val {
+      color: var(--ilsan-text-light);
+      font-family: 'Consolas', 'Courier New', monospace;
+      text-align: right;
+      max-width: 280px;
+      overflow-wrap: anywhere;
+    }
+    .cp-modal-spinner {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--ilsan-text-gray);
+    }
+    .cp-modal-error {
+      padding: 12px;
+      color: #ffb3b3;
+      background: rgba(142, 35, 35, 0.18);
+      border: 1px solid rgba(142, 35, 35, 0.35);
+      border-radius: 4px;
+      font-size: 0.78rem;
+    }
   </style>
 </head>
 <body id="cp-params-container">
@@ -231,6 +325,30 @@
           Dia
         </label>
         <input type="date" id="cp-filter-dia">
+      </div>
+
+      <!-- Hora desde -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Hora desde
+        </label>
+        <input type="time" id="cp-filter-hora-desde" step="60">
+      </div>
+
+      <!-- Hora hasta -->
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Hora hasta
+        </label>
+        <input type="time" id="cp-filter-hora-hasta" step="60">
       </div>
 
       <!-- ICT -->
@@ -323,6 +441,7 @@
 
     <div id="cp-warning-box" class="cp-warning-box"></div>
     <div id="cp-meta-line" class="cp-meta-line"></div>
+    <div class="cp-click-hint">Click una fila para ver el archivo y barcode/PCB del cambio.</div>
 
     <div class="table-wrap">
       <!-- Spinner de carga -->
@@ -340,14 +459,14 @@
           <tr>
             <th>#</th>
             <th>Jornada</th>
-            <th>Hora</th>
+            <th>Hora Cambio</th>
             <th>ICT</th>
             <th>No Parte</th>
             <th>Componente</th>
             <th>Parámetro</th>
             <th>Valor Anterior</th>
             <th>Valor Nuevo</th>
-            <th>Archivo</th>
+            <th>Detalle</th>
           </tr>
         </thead>
         <tbody id="cp-params-body"></tbody>
@@ -366,6 +485,23 @@
 
 </div><!-- /.ict-page -->
 
+<!-- Modal de detalle del cambio (busqueda binaria) -->
+<div id="cp-modal-detalle" class="cp-modal-overlay" role="dialog" aria-hidden="true">
+  <div class="cp-modal-card">
+    <div class="cp-modal-head">
+      <h4 class="cp-modal-title">Detalle del cambio</h4>
+      <button class="cp-modal-close" id="cp-modal-close" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <div class="cp-modal-body" id="cp-modal-body">
+      <div class="cp-modal-spinner" id="cp-modal-spinner">
+        <div class="spinner" style="margin: 0 auto 8px;"></div>
+        Buscando momento exacto…
+      </div>
+      <div id="cp-modal-content" style="display:none;"></div>
+      <div id="cp-modal-error" class="cp-modal-error" style="display:none;"></div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

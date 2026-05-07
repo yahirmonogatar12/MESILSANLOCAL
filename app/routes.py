@@ -13744,9 +13744,31 @@ def crear_indice_history_ict_audit():
         print(f"(info) idx_history_ict_audit no se pudo crear: {e}")
 
 
+def crear_indice_history_ict_ts_nopart():
+    """Indice cubriente para consultas sin filtro por ict (ict_all=1).
+
+    El indice idx_history_ict_audit empieza con (ict, ts, ...). Cuando la query
+    omite `AND ict = ?`, MySQL no puede usar el prefijo y cae a un scan completo.
+    Este segundo indice arranca en (ts, ...) para cubrir esos casos sin scan.
+    """
+    try:
+        execute_query(
+            "CREATE INDEX idx_history_ict_ts_nopart "
+            "ON history_ict (ts, no_parte, linea, fuente_archivo)"
+        )
+        print("Indice idx_history_ict_ts_nopart creado")
+    except Exception as e:
+        msg = str(e)
+        if "1061" in msg or "Duplicate key name" in msg:
+            return
+        print(f"(info) idx_history_ict_ts_nopart no se pudo crear: {e}")
+
+
 if STARTUP_INIT_ENABLED:
     _startup_log("Asegurando indice idx_history_ict_audit")
     crear_indice_history_ict_audit()
+    _startup_log("Asegurando indice idx_history_ict_ts_nopart")
+    crear_indice_history_ict_ts_nopart()
 
 
 _ICT_PARAM_JORNADA_START = dt_time(7, 30)
@@ -13922,15 +13944,27 @@ def _ict_param_component_label(componente, pinref):
 
 
 def _ict_param_build_snapshot(param_rows):
+    """Snapshot por (componente, pinref) con valores crudos y tokens
+    precomputados.
+
+    Estructura: {(comp, pin): {"values": {field: raw}, "tokens": {field: token}}}.
+    Precomputar el token (que invoca Decimal.normalize) ahorra ~22k normalizaciones
+    por grupo en el bucle de comparacion.
+    """
     snapshot = {}
+    fields = _ICT_PARAM_CHANGE_FIELDS
     for row in param_rows:
         componente = str(row.get("componente") or "").strip()
         pinref = str(row.get("pinref") or "").strip()
         if not componente and not pinref:
             continue
-        snapshot[(componente, pinref)] = {
-            key: row.get(key) for key, _label in _ICT_PARAM_CHANGE_FIELDS
-        }
+        values = {}
+        tokens = {}
+        for field_key, _label in fields:
+            v = row.get(field_key)
+            values[field_key] = v
+            tokens[field_key] = _ict_param_compare_token(v)
+        snapshot[(componente, pinref)] = {"values": values, "tokens": tokens}
     return snapshot
 
 
@@ -14026,13 +14060,12 @@ def _ict_compute_parameter_changes(
     source_rows = execute_query(sql, tuple(params), fetch="all") or []
     warnings = []
     warnings_lock = threading.Lock()
-    groups = {}
 
-    # Pre-filtrar por hora y deduplicar por fuente_archivo:
-    # Muchos source_rows pueden apuntar al mismo .lgd (mismo programa).
-    # Parseamos cada archivo una sola vez y reusamos el snapshot al reconstruir grupos.
-    eligible_rows = []
-    unique_files = {}
+    # Modo "pares consecutivos": para cada grupo (linea, ict, no_parte)
+    # ordenamos los archivos .lgd por ts y comparamos cada par consecutivo
+    # (i, i+1). Esto detecta cambios intermedios (ej. 0->5->0) que un modo
+    # primer-vs-ultimo perderia. Cada flip distinto se emite como una fila.
+    groups_raw = {}
     for source_row in source_rows:
         ts = _ict_param_as_datetime(source_row.get("first_ts"))
         if not ts or not _ict_param_time_allowed(ts, hora_desde_value, hora_hasta_value):
@@ -14040,11 +14073,34 @@ def _ict_compute_parameter_changes(
         source_file = source_row.get("fuente_archivo") or ""
         if not source_file:
             continue
-        eligible_rows.append((ts, source_row))
-        existing = unique_files.get(source_file)
-        # Conservar el barcode + ts mas tempranos como representante para el parseo
-        if existing is None or ts < existing[0]:
-            unique_files[source_file] = (ts, source_row.get("barcode") or "")
+        gkey = (
+            str(source_row.get("linea") or ""),
+            str(source_row.get("ict") or ""),
+            str(source_row.get("no_parte") or ""),
+        )
+        groups_raw.setdefault(gkey, []).append({
+            "ts": ts,
+            "source_file": source_file,
+            "barcode": source_row.get("barcode") or "",
+        })
+
+    plan = {}  # gkey -> [items ordenados, archivos distintos consecutivos]
+    for gkey, items in groups_raw.items():
+        items.sort(key=lambda item: item["ts"])
+        deduped = []
+        for it in items:
+            if deduped and deduped[-1]["source_file"] == it["source_file"]:
+                continue
+            deduped.append(it)
+        if len(deduped) >= 2:
+            plan[gkey] = deduped
+
+    unique_files = {}
+    for items in plan.values():
+        for it in items:
+            existing = unique_files.get(it["source_file"])
+            if existing is None or it["ts"] < existing[0]:
+                unique_files[it["source_file"]] = (it["ts"], it["barcode"])
 
     _ict_param_progress_set(
         progress_id,
@@ -14073,74 +14129,95 @@ def _ict_compute_parameter_changes(
     _ict_param_progress_set(progress_id, phase="detectando_cambios")
     files_read = sum(1 for snap in snapshot_by_file.values() if snap is not None)
 
-    for ts, source_row in eligible_rows:
-        source_file = source_row.get("fuente_archivo") or ""
-        snapshot = snapshot_by_file.get(source_file)
-        if snapshot is None:
-            continue
-
-        group_key = (
-            str(source_row.get("linea") or ""),
-            str(source_row.get("ict") or ""),
-            str(source_row.get("no_parte") or ""),
-        )
-        groups.setdefault(group_key, []).append(
-            {
-                "ts": ts,
-                "snapshot": snapshot,
-                "source_file": source_file,
-                "barcode": source_row.get("barcode") or "",
-                "linea": source_row.get("linea") or "",
-                "ict": source_row.get("ict") or "",
-                "no_parte": source_row.get("no_parte") or "",
-            }
-        )
+    # Optimizacion 1: filtrar campos por parametro_filter UNA VEZ por request,
+    # no por (par x componente).
+    fields_to_check = [
+        (k, l) for k, l in _ICT_PARAM_CHANGE_FIELDS
+        if not parametro_filter or parametro_filter in l.lower()
+    ]
 
     events = []
-    for group_key in sorted(groups):
-        snapshots = sorted(groups[group_key], key=lambda item: item["ts"])
-        for previous, current in zip(snapshots, snapshots[1:]):
-            previous_snapshot = previous["snapshot"]
-            current_snapshot = current["snapshot"]
-            shared_keys = sorted(
-                set(previous_snapshot.keys()) & set(current_snapshot.keys()),
-                key=lambda item: (item[0], item[1]),
-            )
-            for comp_key in shared_keys:
-                component_label = _ict_param_component_label(*comp_key)
-                if componente_filter and componente_filter not in component_label.lower():
+    grupos_con_cambios = 0
+    if fields_to_check:
+        for gkey in sorted(plan):
+            items = plan[gkey]
+            linea_value, ict_value_g, no_parte_value = gkey
+            grupo_tuvo_cambio = False
+            # Optimizacion 2: cachear shared_keys del grupo (interseccion de
+            # (comp, pin)). Se invalida solo si cambia la identidad del par de
+            # snapshots, lo cual rara vez sucede dentro del mismo grupo.
+            shared_keys_cache = None
+
+            for previous, current in zip(items, items[1:]):
+                prev_snapshot = snapshot_by_file.get(previous["source_file"])
+                curr_snapshot = snapshot_by_file.get(current["source_file"])
+                if prev_snapshot is None or curr_snapshot is None:
                     continue
 
-                for field_key, field_label in _ICT_PARAM_CHANGE_FIELDS:
-                    if parametro_filter and parametro_filter not in field_label.lower():
-                        continue
-                    old_value = previous_snapshot[comp_key].get(field_key)
-                    new_value = current_snapshot[comp_key].get(field_key)
-                    if _ict_param_compare_token(old_value) == _ict_param_compare_token(new_value):
-                        continue
-
-                    events.append(
-                        {
-                            "jornada": _ict_param_jornada_label(current["ts"]),
-                            "fecha": _ict_param_jornada_label(current["ts"]),
-                            "hora": current["ts"].strftime("%H:%M:%S"),
-                            "ict": _ict_param_format_ict(current["linea"], current["ict"]),
-                            "ict_num": current["ict"],
-                            "linea": current["linea"],
-                            "no_parte": current["no_parte"],
-                            "std": current["no_parte"],
-                            "componente": component_label,
-                            "parametro": field_label,
-                            "valor_anterior": _ict_param_display_value(old_value),
-                            "valor_nuevo": _ict_param_display_value(new_value),
-                            "archivo": current["source_file"],
-                            "archivo_anterior": previous["source_file"],
-                            "barcode": current["barcode"],
-                            "barcode_anterior": previous["barcode"],
-                        }
+                if (
+                    shared_keys_cache is None
+                    or shared_keys_cache[0] is not prev_snapshot
+                    or shared_keys_cache[1] is not curr_snapshot
+                ):
+                    shared = sorted(
+                        set(prev_snapshot.keys()) & set(curr_snapshot.keys()),
+                        key=lambda item: (item[0], item[1]),
                     )
+                    if componente_filter:
+                        shared = [
+                            ck for ck in shared
+                            if componente_filter in _ict_param_component_label(*ck).lower()
+                        ]
+                    shared_keys_cache = (prev_snapshot, curr_snapshot, shared)
+                shared_keys = shared_keys_cache[2]
 
-    events.sort(key=lambda row: (row.get("jornada", ""), row.get("hora", "")), reverse=True)
+                for comp_key in shared_keys:
+                    componente_raw, pinref_raw = comp_key
+                    prev_cell = prev_snapshot[comp_key]
+                    curr_cell = curr_snapshot[comp_key]
+                    prev_tokens = prev_cell["tokens"]
+                    curr_tokens = curr_cell["tokens"]
+                    prev_values = prev_cell["values"]
+                    curr_values = curr_cell["values"]
+                    component_label = None  # lazy
+
+                    for field_key, field_label in fields_to_check:
+                        # Optimizacion 3: comparacion con tokens precomputados,
+                        # cero llamadas a Decimal.normalize en este bucle.
+                        if prev_tokens[field_key] == curr_tokens[field_key]:
+                            continue
+                        if component_label is None:
+                            component_label = _ict_param_component_label(componente_raw, pinref_raw)
+
+                        grupo_tuvo_cambio = True
+                        events.append({
+                            "jornada": _ict_param_jornada_label(current["ts"]),
+                            "hora_anterior": previous["ts"].strftime("%H:%M:%S"),
+                            "hora_cambio": current["ts"].strftime("%H:%M:%S"),
+                            "ict": _ict_param_format_ict(linea_value, ict_value_g),
+                            "ict_num": ict_value_g,
+                            "linea": linea_value,
+                            "no_parte": no_parte_value,
+                            "std": no_parte_value,
+                            "componente": component_label,
+                            "componente_raw": componente_raw,
+                            "pinref": pinref_raw,
+                            "parametro": field_label,
+                            "field_key": field_key,
+                            "valor_anterior": _ict_param_display_value(prev_values[field_key]),
+                            "valor_nuevo": _ict_param_display_value(curr_values[field_key]),
+                            "archivo_anterior": previous["source_file"],
+                            "archivo_cambio": current["source_file"],
+                            "barcode_anterior": previous["barcode"],
+                            "barcode_cambio": current["barcode"],
+                        })
+            if grupo_tuvo_cambio:
+                grupos_con_cambios += 1
+
+    events.sort(
+        key=lambda row: (row.get("jornada", ""), row.get("hora_cambio", "")),
+        reverse=True,
+    )
     total_events = len(events)
     limited_events = events[:limit] if limit else events
     file_warning_count = len(warnings)
@@ -14154,10 +14231,11 @@ def _ict_compute_parameter_changes(
         "warnings": warnings,
         "meta": {
             "archivos_consultados": len(source_rows),
+            "grupos_total": len(groups_raw),
+            "grupos_con_cambios": grupos_con_cambios,
             "archivos_unicos": len(unique_files),
             "archivos_leidos": files_read,
             "archivos_faltantes": file_warning_count,
-            "snapshots": sum(len(items) for items in groups.values()),
             "eventos": total_events,
             "limite": limit,
             "jornada_inicio": jornada_start.strftime("%Y-%m-%d %H:%M:%S"),
@@ -14258,14 +14336,17 @@ def ict_param_changes_export():
 
         headers = [
             "Jornada",
-            "Hora",
+            "Hora Anterior",
+            "Hora Cambio",
             "ICT",
+            "Linea",
             "No Parte",
             "Componente",
             "Parametro",
             "Valor Anterior",
             "Valor Nuevo",
-            "Archivo",
+            "Archivo Anterior",
+            "Archivo Cambio",
         ]
         header_fill = PatternFill(
             start_color="1F4E79", end_color="1F4E79", fill_type="solid"
@@ -14280,16 +14361,19 @@ def ict_param_changes_export():
 
         for row_idx, row in enumerate(rows, 2):
             ws.cell(row=row_idx, column=1, value=row.get("jornada", "") or "")
-            ws.cell(row=row_idx, column=2, value=row.get("hora", "") or "")
-            ws.cell(row=row_idx, column=3, value=row.get("ict", "") or "")
-            ws.cell(row=row_idx, column=4, value=row.get("no_parte", "") or "")
-            ws.cell(row=row_idx, column=5, value=row.get("componente", "") or "")
-            ws.cell(row=row_idx, column=6, value=row.get("parametro", "") or "")
-            ws.cell(row=row_idx, column=7, value=row.get("valor_anterior", "") or "")
-            ws.cell(row=row_idx, column=8, value=row.get("valor_nuevo", "") or "")
-            ws.cell(row=row_idx, column=9, value=row.get("archivo", "") or "")
+            ws.cell(row=row_idx, column=2, value=row.get("hora_anterior", "") or "")
+            ws.cell(row=row_idx, column=3, value=row.get("hora_cambio", "") or "")
+            ws.cell(row=row_idx, column=4, value=row.get("ict", "") or "")
+            ws.cell(row=row_idx, column=5, value=row.get("linea", "") or "")
+            ws.cell(row=row_idx, column=6, value=row.get("no_parte", "") or "")
+            ws.cell(row=row_idx, column=7, value=row.get("componente", "") or "")
+            ws.cell(row=row_idx, column=8, value=row.get("parametro", "") or "")
+            ws.cell(row=row_idx, column=9, value=row.get("valor_anterior", "") or "")
+            ws.cell(row=row_idx, column=10, value=row.get("valor_nuevo", "") or "")
+            ws.cell(row=row_idx, column=11, value=row.get("archivo_anterior", "") or "")
+            ws.cell(row=row_idx, column=12, value=row.get("archivo_cambio", "") or "")
 
-        col_widths = [12, 10, 14, 22, 25, 22, 20, 20, 48]
+        col_widths = [12, 12, 12, 14, 8, 22, 25, 22, 20, 20, 48, 48]
         for col_idx, width in enumerate(col_widths, 1):
             ws.column_dimensions[
                 ws.cell(row=1, column=col_idx).column_letter
@@ -14311,6 +14395,146 @@ def ict_param_changes_export():
 
         print(f"Error exportando Cambios Parámetros ICT: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ict/param-changes/detail")
+@login_requerido
+def ict_param_changes_detail():
+    """Localiza el archivo .lgd mas temprano donde aparece valor_nuevo para un
+    parametro especifico de un (linea, ict, no_parte). Usa busqueda binaria
+    sobre los archivos del rango y un barrido lineal hacia atras para
+    parametros que oscilan."""
+    try:
+        fecha = request.args.get("fecha", "").strip()
+        fecha_desde_raw = request.args.get("fecha_desde", "").strip() or fecha
+        fecha_hasta_raw = (
+            request.args.get("fecha_hasta", "").strip()
+            or fecha_desde_raw
+            or fecha
+        )
+        linea = request.args.get("linea", "").strip()
+        ict_raw = request.args.get("ict", "").strip()
+        no_parte = request.args.get("no_parte", "").strip()
+        componente = request.args.get("componente", "")
+        pinref = request.args.get("pinref", "")
+        field_key = request.args.get("parametro", "").strip()
+        valor_nuevo = request.args.get("valor_nuevo", "")
+
+        valid_fields = {fk for fk, _ in _ICT_PARAM_CHANGE_FIELDS}
+        if field_key not in valid_fields:
+            return jsonify({"error": "Parametro desconocido."}), 400
+        if not no_parte:
+            return jsonify({"error": "no_parte es requerido."}), 400
+        if not ict_raw:
+            return jsonify({"error": "ict es requerido."}), 400
+
+        try:
+            ict_value = int(ict_raw)
+        except ValueError:
+            return jsonify({"error": "ict debe ser numerico."}), 400
+
+        start_date = _ict_param_parse_date(fecha_desde_raw, "fecha_desde")
+        end_date = _ict_param_parse_date(fecha_hasta_raw, "fecha_hasta")
+        if end_date < start_date:
+            return jsonify({"error": "fecha_hasta no puede ser menor que fecha_desde."}), 400
+
+        jornada_start = datetime.combine(start_date, _ICT_PARAM_JORNADA_START)
+        jornada_end = datetime.combine(end_date + timedelta(days=1), _ICT_PARAM_JORNADA_START)
+
+        sql = (
+            "SELECT MIN(barcode) AS barcode, MIN(ts) AS first_ts, fuente_archivo "
+            "FROM history_ict "
+            "WHERE ts >= %s AND ts < %s "
+            "AND ict = %s AND no_parte = %s "
+            "AND fuente_archivo IS NOT NULL AND fuente_archivo <> ''"
+        )
+        params = [jornada_start, jornada_end, ict_value, no_parte]
+        if linea:
+            sql += " AND linea = %s"
+            params.append(linea)
+        sql += (
+            " GROUP BY fuente_archivo "
+            "ORDER BY first_ts ASC"
+        )
+
+        rows = execute_query(sql, tuple(params), fetch="all") or []
+        files = []
+        for row in rows:
+            ts = _ict_param_as_datetime(row.get("first_ts"))
+            source_file = row.get("fuente_archivo") or ""
+            barcode = row.get("barcode") or ""
+            if not ts or not source_file:
+                continue
+            files.append({"ts": ts, "file": source_file, "barcode": barcode})
+
+        if not files:
+            return jsonify({"found": False, "reason": "Sin archivos en el rango."})
+
+        target_token = _ict_param_compare_token(valor_nuevo)
+        comp_key = (str(componente or ""), str(pinref or ""))
+        snap_cache = {}
+        warnings_local = []
+
+        def _matches(idx):
+            entry = files[idx]
+            cache_key = (entry["file"], entry["barcode"])
+            snap = snap_cache.get(cache_key)
+            if snap is None and cache_key not in snap_cache:
+                snap = _ict_param_load_snapshot(
+                    entry["file"], entry["barcode"], warnings_local
+                )
+                snap_cache[cache_key] = snap
+            if snap is None:
+                return None  # archivo no leible
+            cell = snap.get(comp_key)
+            if cell is None:
+                return False
+            # Snapshot ahora tiene la forma {"values": {...}, "tokens": {...}}.
+            # Usamos los tokens precomputados para evitar Decimal.normalize aqui.
+            return cell["tokens"].get(field_key) == target_token
+
+        last_idx = len(files) - 1
+        last_match = _matches(last_idx)
+        if last_match is None:
+            return jsonify({"found": False, "reason": "No se pudo leer el ultimo archivo."})
+        if last_match is False:
+            return jsonify({"found": False, "reason": "El valor nuevo no aparece en archivos posteriores."})
+
+        lo, hi = 0, last_idx
+        while lo < hi:
+            mid = (lo + hi) // 2
+            mid_match = _matches(mid)
+            if mid_match is True:
+                hi = mid
+            else:
+                # archivo no leible o sin valor_nuevo: buscar mas adelante
+                lo = mid + 1
+
+        # Barrido lineal hacia atras para tolerar oscilaciones
+        while lo > 0:
+            prev_match = _matches(lo - 1)
+            if prev_match is True:
+                lo -= 1
+            else:
+                break
+
+        target = files[lo]
+        return jsonify({
+            "found": True,
+            "hora": target["ts"].strftime("%H:%M:%S"),
+            "fecha": target["ts"].strftime("%Y-%m-%d"),
+            "ts": target["ts"].strftime("%Y-%m-%d %H:%M:%S"),
+            "archivo": target["file"],
+            "barcode": target["barcode"],
+            "archivos_consultados": len(files),
+            "archivos_parseados": len(snap_cache),
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        import traceback
+
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 @app.route("/historial-aoi-ajax")
@@ -23521,7 +23745,10 @@ def _ict_load_local_parameters(barcode, ts=None):
         raise IctLgdPathError("El registro no tiene fuente_archivo.")
 
     lgd_path = resolve_lgd_path(source_file)
-    rows = get_lgd_parameters_for_barcode(str(lgd_path), barcode)
+    cached_rows = get_lgd_parameters_for_barcode(str(lgd_path), barcode)
+    # Copia local porque vamos a setear linea/ict/fuente_archivo. El resultado
+    # de get_lgd_parameters_for_barcode comparte memoria con el cache global.
+    rows = [dict(row) for row in cached_rows]
     for row in rows:
         row.setdefault("linea", history_row.get("linea"))
         row.setdefault("ict", history_row.get("ict"))
@@ -25065,9 +25292,16 @@ def ict_front_full_defects2():
 @app.route("/api/ict/data")
 @login_requerido
 def ict_data_api():
-    """Obtener registros recientes del historial ICT con filtros opcionales."""
+    """Obtener registros recientes del historial ICT con filtros opcionales.
+
+    Soporta `fecha` (igualdad, retro-compatible) o `fecha_desde`/`fecha_hasta`
+    (rango). Si se envian ambos, prevalece el rango.
+    """
     try:
         fecha = request.args.get("fecha", "").strip()
+        fecha_desde = request.args.get("fecha_desde", "").strip()
+        fecha_hasta = request.args.get("fecha_hasta", "").strip()
+        no_parte = request.args.get("no_parte", "").strip()
         linea = request.args.get("linea", "").strip()
         resultado = request.args.get("resultado", "").strip()
         barcode_like = request.args.get("barcode_like", "").strip()
@@ -25081,9 +25315,19 @@ def ict_data_api():
         )
         params = []
 
-        if fecha:
+        if fecha_desde or fecha_hasta:
+            if fecha_desde:
+                sql += " AND fecha>=%s"
+                params.append(fecha_desde)
+            if fecha_hasta:
+                sql += " AND fecha<=%s"
+                params.append(fecha_hasta)
+        elif fecha:
             sql += " AND fecha=%s"
             params.append(fecha)
+        if no_parte:
+            sql += " AND no_parte LIKE %s"
+            params.append(f"{no_parte}%")
         if linea:
             sql += " AND linea=%s"
             params.append(linea)
@@ -25133,6 +25377,9 @@ def export_ict_excel():
     """Exportar el historial ICT filtrado a un archivo de Excel."""
     try:
         fecha = request.args.get("fecha", "").strip()
+        fecha_desde = request.args.get("fecha_desde", "").strip()
+        fecha_hasta = request.args.get("fecha_hasta", "").strip()
+        no_parte = request.args.get("no_parte", "").strip()
         linea = request.args.get("linea", "").strip()
         resultado = request.args.get("resultado", "").strip()
         barcode_like = request.args.get("barcode_like", "").strip()
@@ -25146,9 +25393,19 @@ def export_ict_excel():
         )
         params = []
 
-        if fecha:
+        if fecha_desde or fecha_hasta:
+            if fecha_desde:
+                sql += " AND fecha>=%s"
+                params.append(fecha_desde)
+            if fecha_hasta:
+                sql += " AND fecha<=%s"
+                params.append(fecha_hasta)
+        elif fecha:
             sql += " AND fecha=%s"
             params.append(fecha)
+        if no_parte:
+            sql += " AND no_parte LIKE %s"
+            params.append(f"{no_parte}%")
         if linea:
             sql += " AND linea=%s"
             params.append(linea)

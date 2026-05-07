@@ -145,17 +145,28 @@ async function loadIctData() {
   showLoading("main");
   
   try {
-    let fecha = document.getElementById("filter-fecha")?.value || "";
+    let fechaDesde = document.getElementById("filter-fecha-desde")?.value || "";
+    let fechaHasta = document.getElementById("filter-fecha-hasta")?.value || "";
+    let noParte    = document.getElementById("filter-no-parte")?.value || "";
     const linea = document.getElementById("filter-linea")?.value || "";
     const resultado = document.getElementById("filter-resultado")?.value || "";
     const barcode_like = document.getElementById("filter-barcode")?.value || "";
-    
-    // Si hay barcode, no filtrar por fecha (buscar en toda la DB)
+
+    // Si hay barcode, no filtrar por fecha ni no_parte (buscar en toda la DB)
     if (barcode_like.trim().length > 0) {
-      fecha = "";
+      fechaDesde = "";
+      fechaHasta = "";
+      noParte = "";
     }
 
-    const url = `/api/ict/data?fecha=${encodeURIComponent(fecha)}&linea=${encodeURIComponent(linea)}&resultado=${encodeURIComponent(resultado)}&barcode_like=${encodeURIComponent(barcode_like)}`;
+    const qs = new URLSearchParams();
+    if (fechaDesde) qs.set("fecha_desde", fechaDesde);
+    if (fechaHasta) qs.set("fecha_hasta", fechaHasta);
+    if (noParte.trim()) qs.set("no_parte", noParte.trim());
+    if (linea) qs.set("linea", linea);
+    if (resultado) qs.set("resultado", resultado);
+    if (barcode_like) qs.set("barcode_like", barcode_like);
+    const url = `/api/ict/data?${qs.toString()}`;
     const r = await fetch(url);
     const data = await r.json();
     
@@ -638,12 +649,21 @@ async function exportCompareToExcel() {
  * Exportar historial ICT a Excel
  */
 async function exportIctToExcel() {
-  const fecha = document.getElementById("filter-fecha")?.value || "";
+  const fechaDesde = document.getElementById("filter-fecha-desde")?.value || "";
+  const fechaHasta = document.getElementById("filter-fecha-hasta")?.value || "";
+  const noParte    = document.getElementById("filter-no-parte")?.value || "";
   const linea = document.getElementById("filter-linea")?.value || "";
   const resultado = document.getElementById("filter-resultado")?.value || "";
   const barcode_like = document.getElementById("filter-barcode")?.value || "";
 
-  const url = `/api/ict/export?fecha=${encodeURIComponent(fecha)}&linea=${encodeURIComponent(linea)}&resultado=${encodeURIComponent(resultado)}&barcode_like=${encodeURIComponent(barcode_like)}`;
+  const qs = new URLSearchParams();
+  if (fechaDesde) qs.set("fecha_desde", fechaDesde);
+  if (fechaHasta) qs.set("fecha_hasta", fechaHasta);
+  if (noParte.trim()) qs.set("no_parte", noParte.trim());
+  if (linea) qs.set("linea", linea);
+  if (resultado) qs.set("resultado", resultado);
+  if (barcode_like) qs.set("barcode_like", barcode_like);
+  const url = `/api/ict/export?${qs.toString()}`;
   await downloadFile(url, `historial_ict_${Date.now()}.xlsx`, "Exportación completada");
 }
 
@@ -786,13 +806,28 @@ function initializeIctEventListeners() {
     if (e.target.id === "filter-barcode") {
       clearTimeout(barcodeTimer);
       const barcodeValue = e.target.value.trim();
-      
+
       // Buscar automaticamente solo con prefijos suficientemente especificos.
       if (barcodeValue.length >= 6 || barcodeValue.length === 0) {
         barcodeTimer = setTimeout(() => {
           loadIctData();
         }, 500);
       }
+    }
+  });
+
+  // Enter en cualquier input de filtros dispara consulta
+  const filterInputIds = new Set([
+    "filter-fecha-desde",
+    "filter-fecha-hasta",
+    "filter-no-parte",
+    "filter-linea",
+    "filter-resultado",
+  ]);
+  document.body.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && filterInputIds.has(e.target.id)) {
+      e.preventDefault();
+      loadIctData();
     }
   });
 
@@ -840,11 +875,11 @@ function showNotification(message, type = "info") {
  * Establecer fecha del día por defecto
  */
 function setDefaultDate() {
-  const fechaInput = document.getElementById("filter-fecha");
-  if (fechaInput && !fechaInput.value) {
-    const today = new Date().toISOString().split('T')[0];
-    fechaInput.value = today;
-  }
+  const today = new Date().toISOString().split('T')[0];
+  const desde = document.getElementById("filter-fecha-desde");
+  const hasta = document.getElementById("filter-fecha-hasta");
+  if (desde && !desde.value) desde.value = today;
+  if (hasta && !hasta.value) hasta.value = today;
 }
 
 // ====== Exponer Funciones Globalmente (CRÍTICO) ======
