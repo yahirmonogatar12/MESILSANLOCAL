@@ -20923,8 +20923,14 @@ def api_smt_scanner_datos():
                     if scan_hist and scan_hist not in scans_repetidos:
                         scans_repetidos.append(scan_hist)
                 es_duplicado_historico = len(otros_escaneos) > 0
+                # El primer escaneo cronologico (id mas chico) es el ORIGINAL.
+                # Los siguientes son los duplicados reales.
+                es_original = False
+                if historico:
+                    primer_id = min((h.get('id') for h in historico if h.get('id') is not None), default=None)
+                    es_original = (primer_id is not None and scan_id == primer_id)
                 status = r.get('box_status') or ''
-                if es_duplicado_historico:
+                if es_duplicado_historico and not es_original:
                     status = 'Duplicado'
                 records.append({
                     "linea": r['linea'],
@@ -20935,7 +20941,8 @@ def api_smt_scanner_datos():
                     "box_code": r.get('box_code') or '',
                     "serial": serial,
                     "status": status,
-                    "duplicado_historico": es_duplicado_historico,
+                    "duplicado_historico": es_duplicado_historico and not es_original,
+                    "es_original": es_original,
                     "total_repeticiones": len(historico),
                     "fechas_repetidas": ', '.join(fechas_repetidas),
                     "escaneos_repetidos": ' | '.join(scans_repetidos[:5]),
