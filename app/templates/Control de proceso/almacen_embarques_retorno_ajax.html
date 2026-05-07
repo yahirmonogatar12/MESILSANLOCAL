@@ -49,6 +49,22 @@
                 Registrar
             </button>
         </div>
+        <div class="ae-return-date-filters">
+            <div class="ae-filter-group">
+                <label for="almacen-embarques-returns-date-from">Fecha desde</label>
+                <input type="date" id="almacen-embarques-returns-date-from">
+            </div>
+            <div class="ae-filter-group">
+                <label for="almacen-embarques-returns-date-to">Fecha hasta</label>
+                <input type="date" id="almacen-embarques-returns-date-to">
+            </div>
+            <button id="almacen-embarques-returns-filter-btn" class="ae-btn-primary" type="button">
+                Consultar
+            </button>
+            <button id="almacen-embarques-returns-today-btn" class="ae-btn-secondary" type="button">
+                Hoy
+            </button>
+        </div>
     </div>
 
     <div class="ae-split-results ae-split-results--two">
@@ -173,4 +189,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260506a') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260506c') }}"></script>

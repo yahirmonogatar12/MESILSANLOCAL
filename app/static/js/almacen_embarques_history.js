@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260506a";
+  const ASSET_VERSION = "20260506c";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
   const adjustmentState = {};
   const returnPrintState = {
@@ -786,6 +786,265 @@
     });
   }
 
+  function getReturnPrintColumnMinWidth(label) {
+    const normalized = normalizeColumnLabel(label);
+    if (normalized.includes("sel")) return 54;
+    if (normalized.includes("folio")) return 220;
+    if (normalized.includes("no. parte") || normalized.includes("no parte")) return 130;
+    if (normalized.includes("fecha")) return 110;
+    if (normalized.includes("hora")) return 90;
+    if (normalized.includes("cantidad")) return 88;
+    if (normalized.includes("tipo")) return 96;
+    if (normalized.includes("usuario")) return 118;
+    return getColumnMinWidth(label);
+  }
+
+  function getReturnPrintColumnDefaultWidth(label) {
+    const normalized = normalizeColumnLabel(label);
+    if (normalized.includes("sel")) return 54;
+    if (normalized.includes("folio")) return 330;
+    if (normalized.includes("no. parte") || normalized.includes("no parte")) return 150;
+    if (normalized.includes("fecha")) return 112;
+    if (normalized.includes("hora")) return 92;
+    if (normalized.includes("cantidad")) return 92;
+    if (normalized.includes("tipo")) return 108;
+    if (normalized.includes("usuario")) return 130;
+    return getReturnPrintColumnMinWidth(label);
+  }
+
+  function getReturnPrintTableAvailableWidth(table) {
+    const wrap = table?.closest(".ae-return-print-table-wrap");
+    return Math.max(1, Math.floor(wrap?.clientWidth || table?.clientWidth || 0));
+  }
+
+  function getReturnPrintResizeKey(labels) {
+    return `ae-column-widths:return-print-selection:${labels.map(normalizeColumnLabel).join("|")}`;
+  }
+
+  function normalizeReturnPrintColumnWidths(widths, labels, availableWidth, fillAvailable = true) {
+    const targetWidth = Math.max(1, Math.floor(availableWidth));
+    const minWidths = labels.map(getReturnPrintColumnMinWidth);
+    const minTotal = minWidths.reduce((sum, width) => sum + width, 0);
+    if (minTotal > targetWidth) {
+      const ratio = targetWidth / minTotal;
+      const scaled = minWidths.map((width) => Math.max(1, Math.floor(width * ratio)));
+      return settleWidthTotal(
+        scaled,
+        scaled.map(() => 1),
+        labels,
+        targetWidth,
+        false,
+        true,
+      );
+    }
+
+    const normalized = widths.map((width, index) =>
+      Math.max(minWidths[index], Math.round(Number(width) || minWidths[index])),
+    );
+    let total = normalized.reduce((sum, width) => sum + width, 0);
+
+    if (total > targetWidth) {
+      const folioIndex = labels.findIndex((label) => normalizeColumnLabel(label).includes("folio"));
+      const nonFolioIndexes = normalized
+        .map((_, index) => index)
+        .filter((index) => index !== folioIndex);
+      reduceWidthsEvenly(normalized, minWidths, total - targetWidth, nonFolioIndexes);
+      total = normalized.reduce((sum, width) => sum + width, 0);
+      if (total > targetWidth) {
+        reduceWidthsEvenly(
+          normalized,
+          minWidths,
+          total - targetWidth,
+          normalized.map((_, index) => index),
+        );
+      }
+    }
+
+    total = normalized.reduce((sum, width) => sum + width, 0);
+    if (fillAvailable && total < targetWidth) {
+      const folioIndex = labels.findIndex((label) => normalizeColumnLabel(label).includes("folio"));
+      normalized[folioIndex >= 0 ? folioIndex : normalized.length - 1] += targetWidth - total;
+    }
+
+    return normalized;
+  }
+
+  function getReturnPrintCurrentColumnWidths(table, labels) {
+    const cols = [...(table?.querySelectorAll("colgroup col") || [])];
+    const fallbackWidth = getReturnPrintTableAvailableWidth(table) / Math.max(1, labels.length);
+    return labels.map((label, index) =>
+      getColWidthPx(cols[index], getReturnPrintColumnDefaultWidth(label) || fallbackWidth, getReturnPrintTableAvailableWidth(table)),
+    );
+  }
+
+  function applyReturnPrintColumnWidths(table, widths, options = {}) {
+    const cols = [...(table?.querySelectorAll("colgroup col") || [])];
+    const headerCells = [...(table?.querySelectorAll("thead th") || [])];
+    if (!table || !cols.length || !headerCells.length) {
+      return [];
+    }
+
+    const labels = headerCells.map((cell) => cell.textContent || "");
+    const finalWidths = normalizeReturnPrintColumnWidths(
+      widths,
+      labels,
+      getReturnPrintTableAvailableWidth(table),
+      options.fillAvailable !== false,
+    );
+    finalWidths.forEach((width, index) => {
+      if (cols[index]) {
+        cols[index].style.width = `${width}px`;
+      }
+    });
+
+    const tableWidth = finalWidths.reduce((sum, width) => sum + width, 0);
+    table.style.width = `${tableWidth}px`;
+    table.style.minWidth = `${tableWidth}px`;
+
+    if (options.persist) {
+      try {
+        localStorage.setItem(getReturnPrintResizeKey(labels), JSON.stringify(finalWidths));
+      } catch (error) {
+        // localStorage puede estar bloqueado por políticas del navegador.
+      }
+    }
+
+    return finalWidths;
+  }
+
+  function resizeReturnPrintColumnWithinAvailable(widths, labels, columnIndex, delta, availableWidth) {
+    const targetWidth = Math.max(1, Math.floor(availableWidth));
+    const startWidths = normalizeReturnPrintColumnWidths(widths, labels, targetWidth, false);
+    const minWidths = labels.map(getReturnPrintColumnMinWidth);
+    const minTotal = minWidths.reduce((sum, width) => sum + width, 0);
+    if (minTotal > targetWidth) {
+      return normalizeReturnPrintColumnWidths(startWidths, labels, targetWidth, true);
+    }
+
+    const nextWidths = startWidths.slice();
+    const otherIndexes = nextWidths
+      .map((_, index) => index)
+      .filter((index) => index !== columnIndex);
+    const otherMinTotal = otherIndexes.reduce((sum, index) => sum + minWidths[index], 0);
+    const startTotal = startWidths.reduce((sum, width) => sum + width, 0);
+    const activeMin = minWidths[columnIndex];
+    const activeMax = Math.max(activeMin, targetWidth - otherMinTotal);
+    const activeWidth = Math.min(
+      activeMax,
+      Math.max(activeMin, Math.round(startWidths[columnIndex] + delta)),
+    );
+    const actualDelta = activeWidth - startWidths[columnIndex];
+
+    nextWidths[columnIndex] = activeWidth;
+
+    const overflow = startTotal + actualDelta - targetWidth;
+    if (overflow > 0) {
+      reduceWidthsEvenly(nextWidths, minWidths, overflow, otherIndexes);
+    }
+
+    return normalizeReturnPrintColumnWidths(nextWidths, labels, targetWidth, false);
+  }
+
+  function getReturnPrintInitialColumnWidths(table) {
+    const headerCells = [...(table?.querySelectorAll("thead th") || [])];
+    const labels = headerCells.map((cell) => cell.textContent || "");
+    try {
+      const saved = JSON.parse(localStorage.getItem(getReturnPrintResizeKey(labels)) || "null");
+      if (
+        Array.isArray(saved) &&
+        saved.length === labels.length &&
+        saved.every((width) => Number.isFinite(Number(width)))
+      ) {
+        return normalizeReturnPrintColumnWidths(
+          saved.map((width) => Math.round(Number(width))),
+          labels,
+          getReturnPrintTableAvailableWidth(table),
+        );
+      }
+    } catch (error) {
+      // Se ignoran preferencias corruptas.
+    }
+
+    return normalizeReturnPrintColumnWidths(
+      labels.map(getReturnPrintColumnDefaultWidth),
+      labels,
+      getReturnPrintTableAvailableWidth(table),
+    );
+  }
+
+  function bindReturnPrintTableResizers() {
+    const modal = document.getElementById("ae-return-print-modal");
+    const table = modal?.querySelector(".ae-return-print-table");
+    const headerCells = [...(table?.querySelectorAll("thead th") || [])];
+    if (!table || !headerCells.length) {
+      return;
+    }
+
+    if (table.dataset.columnWidthsReady !== "true") {
+      applyReturnPrintColumnWidths(table, getReturnPrintInitialColumnWidths(table));
+      table.dataset.columnWidthsReady = "true";
+    }
+
+    if (table.dataset.columnResizeBound === "true") {
+      return;
+    }
+
+    headerCells.forEach((headerCell, columnIndex) => {
+      headerCell.classList.add("ae-resizable-th");
+      if (!headerCell.querySelector(":scope > .ae-column-resizer")) {
+        const handle = document.createElement("span");
+        handle.className = "ae-column-resizer";
+        handle.setAttribute("aria-hidden", "true");
+        headerCell.appendChild(handle);
+      }
+
+      const handle = headerCell.querySelector(":scope > .ae-column-resizer");
+      handle.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const labels = headerCells.map((cell) => cell.textContent || "");
+        const startX = event.clientX;
+        const startWidths = applyReturnPrintColumnWidths(
+          table,
+          getReturnPrintCurrentColumnWidths(table, labels),
+        );
+        const availableWidth = getReturnPrintTableAvailableWidth(table);
+
+        document.body.classList.add("ae-column-resizing");
+        handle.setPointerCapture?.(event.pointerId);
+
+        const moveHandler = (moveEvent) => {
+          const delta = moveEvent.clientX - startX;
+          const nextWidths = resizeReturnPrintColumnWithinAvailable(
+            startWidths,
+            labels,
+            columnIndex,
+            delta,
+            availableWidth,
+          );
+          applyReturnPrintColumnWidths(table, nextWidths, {
+            persist: true,
+            fillAvailable: false,
+          });
+        };
+
+        const upHandler = () => {
+          document.body.classList.remove("ae-column-resizing");
+          document.removeEventListener("pointermove", moveHandler);
+          document.removeEventListener("pointerup", upHandler);
+          document.removeEventListener("pointercancel", upHandler);
+        };
+
+        document.addEventListener("pointermove", moveHandler);
+        document.addEventListener("pointerup", upHandler);
+        document.addEventListener("pointercancel", upHandler);
+      });
+    });
+
+    table.dataset.columnResizeBound = "true";
+  }
+
   function getElements(prefix) {
     return {
       searchInput: document.getElementById(`${prefix}-search`),
@@ -835,6 +1094,10 @@
       remarks: document.getElementById("almacen-embarques-returns-remarks"),
       submitBtn: document.getElementById("almacen-embarques-returns-submit-btn"),
       formStatus: document.getElementById("almacen-embarques-returns-form-status"),
+      dateFrom: document.getElementById("almacen-embarques-returns-date-from"),
+      dateTo: document.getElementById("almacen-embarques-returns-date-to"),
+      dateFilterBtn: document.getElementById("almacen-embarques-returns-filter-btn"),
+      dateTodayBtn: document.getElementById("almacen-embarques-returns-today-btn"),
       entryExportBtn: document.getElementById("almacen-embarques-return-in-export-btn"),
       entryBody: document.getElementById("almacen-embarques-return-in-tbody"),
       entryCount: document.getElementById("almacen-embarques-return-in-count"),
@@ -864,6 +1127,50 @@
     }
 
     return params;
+  }
+
+  function getTodayDateValue() {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 10);
+  }
+
+  function setReturnDateInputsToToday(elements) {
+    const today = getTodayDateValue();
+    if (elements.dateFrom) {
+      elements.dateFrom.value = today;
+    }
+    if (elements.dateTo) {
+      elements.dateTo.value = today;
+    }
+  }
+
+  function ensureReturnDefaultDates(elements) {
+    const today = getTodayDateValue();
+    if (elements.dateFrom && !elements.dateFrom.value) {
+      elements.dateFrom.value = today;
+    }
+    if (elements.dateTo && !elements.dateTo.value) {
+      elements.dateTo.value = today;
+    }
+  }
+
+  function buildDateParams(dateFrom, dateTo) {
+    const params = new URLSearchParams();
+    if (dateFrom) {
+      params.set("fecha_desde", dateFrom);
+    }
+    if (dateTo) {
+      params.set("fecha_hasta", dateTo);
+    }
+    return params;
+  }
+
+  function buildReturnHistoryParams() {
+    const elements = getReturnModuleElements();
+    ensureReturnDefaultDates(elements);
+    return buildDateParams(elements.dateFrom?.value || "", elements.dateTo?.value || "");
   }
 
   function setStatus(prefix, message, isError = false) {
@@ -1435,6 +1742,22 @@
         </div>
         <div class="ae-return-print-modal__body">
           <div class="ae-return-print-step" data-step="selection">
+            <div class="ae-return-print-filter-row">
+              <div class="ae-filter-group">
+                <label for="ae-return-print-date-from">Fecha desde</label>
+                <input type="date" id="ae-return-print-date-from" data-role="return-print-date-from">
+              </div>
+              <div class="ae-filter-group">
+                <label for="ae-return-print-date-to">Fecha hasta</label>
+                <input type="date" id="ae-return-print-date-to" data-role="return-print-date-to">
+              </div>
+              <button type="button" class="ae-btn-primary" data-action="filter-return-print-date">
+                Consultar
+              </button>
+              <button type="button" class="ae-btn-secondary" data-action="today-return-print-date">
+                Hoy
+              </button>
+            </div>
             <div class="ae-return-print-toolbar">
               <label class="ae-return-print-check-all">
                 <input type="checkbox" data-role="return-print-select-all">
@@ -1444,6 +1767,16 @@
             </div>
             <div class="ae-return-print-table-wrap">
               <table class="ae-history-table ae-return-print-table">
+                <colgroup>
+                  <col style="width: 54px;">
+                  <col style="width: 112px;">
+                  <col style="width: 92px;">
+                  <col style="width: 330px;">
+                  <col style="width: 150px;">
+                  <col style="width: 92px;">
+                  <col style="width: 108px;">
+                  <col style="width: 130px;">
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Sel.</th>
@@ -1495,6 +1828,11 @@
         renderReturnPrintPreview();
       } else if (action === "back-return-print-selection") {
         setReturnPrintStep("selection");
+      } else if (action === "filter-return-print-date") {
+        loadReturnPrintRows();
+      } else if (action === "today-return-print-date") {
+        setReturnPrintDatesToToday();
+        loadReturnPrintRows();
       } else if (action === "download-return-print") {
         downloadReturnPrintPreview();
       } else if (action === "print-return-print") {
@@ -1533,8 +1871,98 @@
       }
     });
 
+    modal.addEventListener("keydown", (event) => {
+      if (!event.target.matches('[data-role="return-print-date-from"], [data-role="return-print-date-to"]')) {
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        loadReturnPrintRows();
+      }
+    });
+
     document.body.appendChild(modal);
     return modal;
+  }
+
+  function getReturnPrintDateElements() {
+    const modal = getReturnPrintModal();
+    return {
+      dateFrom: modal.querySelector('[data-role="return-print-date-from"]'),
+      dateTo: modal.querySelector('[data-role="return-print-date-to"]'),
+    };
+  }
+
+  function setReturnPrintDatesToToday() {
+    setReturnDateInputsToToday(getReturnPrintDateElements());
+  }
+
+  function ensureReturnPrintDefaultDates() {
+    ensureReturnDefaultDates(getReturnPrintDateElements());
+  }
+
+  function buildReturnPrintParams() {
+    const { dateFrom, dateTo } = getReturnPrintDateElements();
+    ensureReturnPrintDefaultDates();
+    return buildDateParams(dateFrom?.value || "", dateTo?.value || "");
+  }
+
+  function renderReturnPrintLoadingRows(message = "Cargando salidas de retorno...") {
+    const modal = getReturnPrintModal();
+    const tbody = modal.querySelector('[data-role="return-print-selection-body"]');
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="8" class="ae-empty-cell">${escapeHtml(message)}</td></tr>`;
+    }
+    returnPrintState.exitRows = [];
+    returnPrintState.selectedKeys.clear();
+    returnPrintState.previewRows = [];
+    syncReturnPrintSelectAll();
+    updateReturnPrintSelectionCount();
+  }
+
+  async function loadReturnPrintRows() {
+    const modal = getReturnPrintModal();
+    renderReturnPrintLoadingRows();
+    setReturnPrintError("");
+    setReturnPrintStep("selection");
+
+    try {
+      const params = buildReturnPrintParams();
+      const response = await fetch(`/api/almacen-embarques/retorno?${params.toString()}`, {
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const rows = await response.json();
+      if (!Array.isArray(rows)) {
+        throw new Error("Respuesta inválida del servidor");
+      }
+
+      returnPrintState.exitRows = rows
+        .filter((row) => Number(row.loss_quantity || 0) > 0)
+        .map((row) => ({
+          ...row,
+          movement_quantity: Number(row.loss_quantity || 0) || 0,
+        }));
+      returnPrintState.selectedKeys.clear();
+      returnPrintState.previewRows = [];
+      renderReturnPrintSelectionRows();
+      syncReturnPrintSelectAll();
+      updateReturnPrintSelectionCount();
+    } catch (error) {
+      console.error("Error cargando salidas de retorno para impresión:", error);
+      returnPrintState.exitRows = [];
+      returnPrintState.selectedKeys.clear();
+      returnPrintState.previewRows = [];
+      renderReturnPrintSelectionRows();
+      setReturnPrintError(error.message || "No fue posible cargar salidas de retorno.");
+      syncReturnPrintSelectAll();
+      updateReturnPrintSelectionCount();
+    }
+
+    modal.querySelector('[data-role="return-print-date-from"]')?.focus();
   }
 
   function setReturnPrintStep(stepName) {
@@ -1845,11 +2273,11 @@
     returnPrintState.selectedKeys.clear();
     returnPrintState.previewRows = [];
     setReturnPrintError("");
+    setReturnPrintDatesToToday();
     setReturnPrintStep("selection");
-    renderReturnPrintSelectionRows();
-    syncReturnPrintSelectAll();
-    updateReturnPrintSelectionCount();
     modal.classList.add("is-open");
+    requestAnimationFrame(bindReturnPrintTableResizers);
+    loadReturnPrintRows();
   }
 
   function closeReturnPrintModal() {
@@ -1858,6 +2286,7 @@
       return;
     }
     modal.classList.remove("is-open");
+    returnPrintState.exitRows = [];
     returnPrintState.selectedKeys.clear();
     returnPrintState.previewRows = [];
     setReturnPrintError("");
@@ -1930,7 +2359,8 @@
     }
 
     try {
-      const response = await fetch("/api/almacen-embarques/retorno", {
+      const params = buildReturnHistoryParams();
+      const response = await fetch(`/api/almacen-embarques/retorno?${params.toString()}`, {
         credentials: "same-origin",
       });
       if (!response.ok) {
@@ -1951,7 +2381,6 @@
           ...row,
           movement_quantity: Number(row.loss_quantity || 0) || 0,
         }));
-      returnPrintState.exitRows = exitRows;
       returnPrintState.selectedKeys.clear();
       returnPrintState.previewRows = [];
 
@@ -1983,10 +2412,8 @@
         elements.exitStatus.style.color = "#8fb8ff";
       }
       if (elements.exitPrintBtn) {
-        elements.exitPrintBtn.disabled = exitRows.length === 0;
-        elements.exitPrintBtn.title = exitRows.length
-          ? "Seleccionar salidas de retorno para imprimir"
-          : "No hay salidas de retorno disponibles para imprimir";
+        elements.exitPrintBtn.disabled = false;
+        elements.exitPrintBtn.title = "Seleccionar salidas de retorno por fecha para imprimir";
       }
 
       const moduleRoot = document.getElementById("almacen-embarques-returns-module");
@@ -2038,7 +2465,7 @@
   }
 
   function exportReturnsByMovement(movementType) {
-    const params = new URLSearchParams();
+    const params = buildReturnHistoryParams();
     params.set("movement", movementType);
     window.open(`/api/almacen-embarques/retorno/export?${params.toString()}`, "_blank");
   }
@@ -2315,6 +2742,7 @@
     bindScrollableShells(moduleRoot);
     bindColumnResizers(moduleRoot);
     bindModuleResize(moduleRoot);
+    ensureReturnDefaultDates(elements);
 
     if (elements.quantity && elements.quantity.dataset.numericBound !== "true") {
       elements.quantity.addEventListener("input", () => {
@@ -2342,6 +2770,32 @@
       elements.exitPrintBtn.addEventListener("click", openReturnPrintModal);
       elements.exitPrintBtn.dataset.bound = "true";
     }
+
+    if (elements.dateFilterBtn && elements.dateFilterBtn.dataset.bound !== "true") {
+      elements.dateFilterBtn.addEventListener("click", loadReturnsModule);
+      elements.dateFilterBtn.dataset.bound = "true";
+    }
+
+    if (elements.dateTodayBtn && elements.dateTodayBtn.dataset.bound !== "true") {
+      elements.dateTodayBtn.addEventListener("click", () => {
+        setReturnDateInputsToToday(elements);
+        loadReturnsModule();
+      });
+      elements.dateTodayBtn.dataset.bound = "true";
+    }
+
+    [elements.dateFrom, elements.dateTo].forEach((input) => {
+      if (!input || input.dataset.bound === "true") {
+        return;
+      }
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          loadReturnsModule();
+        }
+      });
+      input.dataset.bound = "true";
+    });
 
     if (elements.partNumber && elements.partNumber.dataset.bound !== "true") {
       elements.partNumber.addEventListener("keydown", (event) => {

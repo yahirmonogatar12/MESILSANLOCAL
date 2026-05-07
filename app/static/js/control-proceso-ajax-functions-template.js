@@ -131,7 +131,7 @@ window.mostrarAlmacenEmbarquesSalidas = function() {
 window.mostrarAlmacenEmbarquesRetorno = function() {
     mostrarModuloControlProceso(
         'almacen-embarques-retorno-unique-container',
-        '/almacen-embarques-retorno-ajax?v=20260506a',
+        '/almacen-embarques-retorno-ajax?v=20260506c',
         'inicializarAlmacenEmbarquesRetornoAjax'
     );
 };
