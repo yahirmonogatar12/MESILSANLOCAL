@@ -1010,3 +1010,92 @@ td.compare-missing {
 #ict-compare-table tbody tr.compare-row-missing td.compare-cell-run {
     opacity: 0.6;
 }
+
+/* ========== PAGINACION HISTORIAL ICT ========== */
+.ict-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.8rem;
+    color: var(--ilsan-text-secondary);
+}
+
+.ict-pagination-info {
+    color: var(--ilsan-text-gray);
+}
+
+.ict-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ict-pagination-perpage {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 12px;
+    color: var(--ilsan-text-gray);
+}
+
+.ict-pagination-perpage select {
+    background: var(--ilsan-dark-secondary);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 0.78rem;
+}
+
+.btn-page {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+    min-width: 32px;
+}
+
+.btn-page:hover:not(:disabled) {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: rgba(52, 152, 219, 0.45);
+}
+
+.btn-page:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.ict-pagination-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--ilsan-text-secondary);
+    margin: 0 4px;
+}
+
+.ict-pagination-current input {
+    width: 56px;
+    background: var(--ilsan-dark-secondary);
+    color: var(--ilsan-text-light);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    padding: 3px 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.ict-pagination-current input::-webkit-outer-spin-button,
+.ict-pagination-current input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}

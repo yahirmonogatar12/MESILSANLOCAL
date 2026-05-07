@@ -4,6 +4,12 @@ let allDefects = [];
 let currentBarcode = "";
 let currentTimestamp = "";
 
+// Paginacion del historial
+let ictCurrentPage = 1;
+let ictPerPage = 200;
+let ictTotalRows = 0;
+let ictTotalPages = 1;
+
 // Registros marcados para comparacion. Clave = `${barcode}|${ts}`.
 const selectedCompareRecords = new Map();
 let compareRunsData = [];
@@ -139,16 +145,21 @@ function hideLoading(context = "main") {
 }
 
 /**
- * Cargar datos del historial ICT
+ * Cargar datos del historial ICT.
+ * @param {object} opts - { resetPage: bool } - si true reinicia a la pagina 1.
  */
-async function loadIctData() {
+async function loadIctData(opts) {
+  const resetPage = !opts || opts.resetPage !== false;
+  if (resetPage) ictCurrentPage = 1;
+
   showLoading("main");
-  
+
   try {
     let fechaDesde = document.getElementById("filter-fecha-desde")?.value || "";
     let fechaHasta = document.getElementById("filter-fecha-hasta")?.value || "";
     let noParte    = document.getElementById("filter-no-parte")?.value || "";
     const linea = document.getElementById("filter-linea")?.value || "";
+    const ict   = document.getElementById("filter-ict")?.value || "";
     const resultado = document.getElementById("filter-resultado")?.value || "";
     const barcode_like = document.getElementById("filter-barcode")?.value || "";
 
@@ -159,31 +170,99 @@ async function loadIctData() {
       noParte = "";
     }
 
+    // Sincronizar per_page del select con el estado
+    const perPageSel = document.getElementById("ict-per-page");
+    if (perPageSel && perPageSel.value) {
+      const v = parseInt(perPageSel.value, 10);
+      if (!isNaN(v) && v > 0) ictPerPage = v;
+    }
+
     const qs = new URLSearchParams();
     if (fechaDesde) qs.set("fecha_desde", fechaDesde);
     if (fechaHasta) qs.set("fecha_hasta", fechaHasta);
     if (noParte.trim()) qs.set("no_parte", noParte.trim());
     if (linea) qs.set("linea", linea);
+    if (ict) qs.set("ict", ict);
     if (resultado) qs.set("resultado", resultado);
     if (barcode_like) qs.set("barcode_like", barcode_like);
+    qs.set("page", String(ictCurrentPage));
+    qs.set("per_page", String(ictPerPage));
+
     const url = `/api/ict/data?${qs.toString()}`;
     const r = await fetch(url);
     const data = await r.json();
-    
-    ictModuleData = data;
 
-    // Actualizar contador de registros
-    const recordCount = document.getElementById("record-count");
-    if (recordCount) {
-      recordCount.textContent = `${data.length} registro${data.length !== 1 ? 's' : ''}`;
+    // Respuesta paginada esperada: { rows, total, page, per_page, total_pages }
+    const rows = Array.isArray(data) ? data : (data.rows || []);
+    ictTotalRows = Array.isArray(data) ? rows.length : (data.total || 0);
+    ictTotalPages = Array.isArray(data)
+      ? 1
+      : Math.max(1, data.total_pages || 1);
+    if (!Array.isArray(data) && data.page) {
+      ictCurrentPage = data.page;
     }
 
-    renderIctTable(data);
+    ictModuleData = rows;
+
+    // Contador en el header
+    const recordCount = document.getElementById("record-count");
+    if (recordCount) {
+      recordCount.textContent = `${ictTotalRows} registro${ictTotalRows !== 1 ? 's' : ''}`;
+    }
+
+    renderIctTable(rows);
+    renderIctPagination();
   } catch (error) {
     showNotification("Error al cargar datos", "error");
   } finally {
     hideLoading("main");
   }
+}
+
+/**
+ * Refrescar UI de paginacion segun estado actual.
+ */
+function renderIctPagination() {
+  const wrap = document.getElementById("ict-pagination");
+  if (!wrap) return;
+
+  if (ictTotalRows <= 0) {
+    wrap.style.display = "none";
+    return;
+  }
+  wrap.style.display = "";
+
+  const summary = document.getElementById("ict-pagination-summary");
+  const pageInput = document.getElementById("ict-page-input");
+  const pageTotal = document.getElementById("ict-page-total");
+  const btnFirst = document.getElementById("ict-page-first");
+  const btnPrev  = document.getElementById("ict-page-prev");
+  const btnNext  = document.getElementById("ict-page-next");
+  const btnLast  = document.getElementById("ict-page-last");
+
+  const start = (ictCurrentPage - 1) * ictPerPage + 1;
+  const end = Math.min(ictCurrentPage * ictPerPage, ictTotalRows);
+
+  if (summary) summary.textContent = `${start} - ${end} de ${ictTotalRows}`;
+  if (pageInput) {
+    pageInput.value = String(ictCurrentPage);
+    pageInput.max = String(ictTotalPages);
+  }
+  if (pageTotal) pageTotal.textContent = String(ictTotalPages);
+
+  const atFirst = ictCurrentPage <= 1;
+  const atLast  = ictCurrentPage >= ictTotalPages;
+  if (btnFirst) btnFirst.disabled = atFirst;
+  if (btnPrev)  btnPrev.disabled  = atFirst;
+  if (btnNext)  btnNext.disabled  = atLast;
+  if (btnLast)  btnLast.disabled  = atLast;
+}
+
+function gotoIctPage(page) {
+  const p = Math.max(1, Math.min(ictTotalPages, parseInt(page, 10) || 1));
+  if (p === ictCurrentPage) return;
+  ictCurrentPage = p;
+  loadIctData({ resetPage: false });
 }
 
 /**
@@ -653,6 +732,7 @@ async function exportIctToExcel() {
   const fechaHasta = document.getElementById("filter-fecha-hasta")?.value || "";
   const noParte    = document.getElementById("filter-no-parte")?.value || "";
   const linea = document.getElementById("filter-linea")?.value || "";
+  const ict   = document.getElementById("filter-ict")?.value || "";
   const resultado = document.getElementById("filter-resultado")?.value || "";
   const barcode_like = document.getElementById("filter-barcode")?.value || "";
 
@@ -661,6 +741,7 @@ async function exportIctToExcel() {
   if (fechaHasta) qs.set("fecha_hasta", fechaHasta);
   if (noParte.trim()) qs.set("no_parte", noParte.trim());
   if (linea) qs.set("linea", linea);
+  if (ict) qs.set("ict", ict);
   if (resultado) qs.set("resultado", resultado);
   if (barcode_like) qs.set("barcode_like", barcode_like);
   const url = `/api/ict/export?${qs.toString()}`;
@@ -696,6 +777,28 @@ function initializeIctEventListeners() {
     if (target.id === "btn-consultar" || target.closest("#btn-consultar")) {
       e.preventDefault();
       loadIctData();
+      return;
+    }
+
+    // Paginacion
+    if (target.id === "ict-page-first" || target.closest("#ict-page-first")) {
+      e.preventDefault();
+      gotoIctPage(1);
+      return;
+    }
+    if (target.id === "ict-page-prev" || target.closest("#ict-page-prev")) {
+      e.preventDefault();
+      gotoIctPage(ictCurrentPage - 1);
+      return;
+    }
+    if (target.id === "ict-page-next" || target.closest("#ict-page-next")) {
+      e.preventDefault();
+      gotoIctPage(ictCurrentPage + 1);
+      return;
+    }
+    if (target.id === "ict-page-last" || target.closest("#ict-page-last")) {
+      e.preventDefault();
+      gotoIctPage(ictTotalPages);
       return;
     }
 
@@ -798,6 +901,17 @@ function initializeIctEventListeners() {
       toggleSelectAllCompare(e.target.checked);
       return;
     }
+
+    // Cambio del select "Por pagina"
+    if (e.target.id === "ict-per-page") {
+      const v = parseInt(e.target.value, 10);
+      if (!isNaN(v) && v > 0) {
+        ictPerPage = v;
+        ictCurrentPage = 1;
+        loadIctData({ resetPage: false });
+      }
+      return;
+    }
   });
 
   // Event delegation para input (búsqueda con debounce)
@@ -822,12 +936,19 @@ function initializeIctEventListeners() {
     "filter-fecha-hasta",
     "filter-no-parte",
     "filter-linea",
+    "filter-ict",
     "filter-resultado",
   ]);
   document.body.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && filterInputIds.has(e.target.id)) {
+    if (e.key !== "Enter") return;
+    if (filterInputIds.has(e.target.id)) {
       e.preventDefault();
       loadIctData();
+      return;
+    }
+    if (e.target.id === "ict-page-input") {
+      e.preventDefault();
+      gotoIctPage(e.target.value);
     }
   });
 

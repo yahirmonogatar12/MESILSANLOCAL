@@ -70,6 +70,20 @@
       <div class="filter-group">
         <label>
           <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+          ICT
+        </label>
+        <select id="filter-ict">
+          <option value="">Todas</option>
+          <option value="1">ICT 1</option>
+          <option value="2">ICT 2</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           Resultado
@@ -145,6 +159,30 @@
         </thead>
         <tbody id="ict-body"></tbody>
       </table>
+    </div>
+    <div id="ict-pagination" class="ict-pagination" style="display:none;">
+      <div class="ict-pagination-info">
+        <span id="ict-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage">
+          Por pagina
+          <select id="ict-per-page">
+            <option value="100">100</option>
+            <option value="200" selected>200</option>
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+          </select>
+        </label>
+        <button id="ict-page-first" type="button" class="btn-page" title="Primera">«</button>
+        <button id="ict-page-prev"  type="button" class="btn-page" title="Anterior">‹</button>
+        <span class="ict-pagination-current">
+          <input type="number" id="ict-page-input" min="1" value="1" step="1">
+          <span> / <span id="ict-page-total">1</span></span>
+        </span>
+        <button id="ict-page-next"  type="button" class="btn-page" title="Siguiente">›</button>
+        <button id="ict-page-last"  type="button" class="btn-page" title="Ultima">»</button>
+      </div>
     </div>
   </div>
 

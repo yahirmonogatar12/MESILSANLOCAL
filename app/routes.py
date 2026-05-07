@@ -25292,10 +25292,14 @@ def ict_front_full_defects2():
 @app.route("/api/ict/data")
 @login_requerido
 def ict_data_api():
-    """Obtener registros recientes del historial ICT con filtros opcionales.
+    """Obtener registros del historial ICT con filtros y paginacion.
 
     Soporta `fecha` (igualdad, retro-compatible) o `fecha_desde`/`fecha_hasta`
     (rango). Si se envian ambos, prevalece el rango.
+
+    Paginacion: `page` (1-based) y `per_page` (default 200, max 1000).
+    Cuando se envia `page`, la respuesta es un objeto con metadata; si no se
+    envia, se devuelve el array plano (retro-compatible) con LIMIT 500.
     """
     try:
         fecha = request.args.get("fecha", "").strip()
@@ -25303,43 +25307,91 @@ def ict_data_api():
         fecha_hasta = request.args.get("fecha_hasta", "").strip()
         no_parte = request.args.get("no_parte", "").strip()
         linea = request.args.get("linea", "").strip()
+        ict_filter = request.args.get("ict", "").strip()
         resultado = request.args.get("resultado", "").strip()
         barcode_like = request.args.get("barcode_like", "").strip()
+        page_raw = request.args.get("page", "").strip()
+        per_page_raw = request.args.get("per_page", "").strip()
+        paginated = bool(page_raw)
         if barcode_like and len(barcode_like) < 6:
+            if paginated:
+                return jsonify({"rows": [], "total": 0, "page": 1, "per_page": 0, "total_pages": 0})
             return jsonify([])
 
-        sql = (
-            "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
-            "ts, fuente_archivo, defect_code, defect_valor "
-            "FROM history_ict WHERE 1=1"
-        )
+        where_sql = "WHERE 1=1"
         params = []
+
+        def _add(clause, *vals):
+            nonlocal where_sql
+            where_sql += " " + clause
+            params.extend(vals)
 
         if fecha_desde or fecha_hasta:
             if fecha_desde:
-                sql += " AND fecha>=%s"
-                params.append(fecha_desde)
+                _add("AND fecha>=%s", fecha_desde)
             if fecha_hasta:
-                sql += " AND fecha<=%s"
-                params.append(fecha_hasta)
+                _add("AND fecha<=%s", fecha_hasta)
         elif fecha:
-            sql += " AND fecha=%s"
-            params.append(fecha)
+            _add("AND fecha=%s", fecha)
         if no_parte:
-            sql += " AND no_parte LIKE %s"
-            params.append(f"{no_parte}%")
+            _add("AND no_parte LIKE %s", f"{no_parte}%")
         if linea:
-            sql += " AND linea=%s"
-            params.append(linea)
+            _add("AND linea=%s", linea)
+        if ict_filter:
+            try:
+                _add("AND ict=%s", int(ict_filter))
+            except ValueError:
+                return jsonify({"error": "ict debe ser numerico"}), 400
         if resultado:
-            sql += " AND resultado=%s"
-            params.append(resultado)
+            _add("AND resultado=%s", resultado)
         if barcode_like:
-            sql = _append_indexable_text_filter(sql, params, "barcode", barcode_like)
+            # Reaplicar la misma logica de _append_indexable_text_filter pero
+            # sobre el WHERE acumulado (no sobre el SELECT completo).
+            value = barcode_like.strip()
+            if len(value) >= 12:
+                where_sql += " AND barcode=%s"
+                params.append(value)
+            else:
+                where_sql += " AND barcode LIKE %s"
+                params.append(f"{value}%")
 
-        sql += " ORDER BY ts DESC LIMIT 500"
-        rows = execute_query(sql, tuple(params), fetch="all") or []
+        select_cols = (
+            "SELECT fecha, TIME(ts) AS hora, linea, ict, resultado, no_parte, barcode, "
+            "ts, fuente_archivo, defect_code, defect_valor "
+            "FROM history_ict "
+        )
 
+        if paginated:
+            try:
+                page = max(1, int(page_raw))
+            except ValueError:
+                page = 1
+            try:
+                per_page = int(per_page_raw) if per_page_raw else 200
+            except ValueError:
+                per_page = 200
+            per_page = max(1, min(per_page, 1000))
+
+            count_sql = "SELECT COUNT(*) AS n FROM history_ict " + where_sql
+            count_row = execute_query(count_sql, tuple(params), fetch="one") or {}
+            total = int(count_row.get("n", 0))
+
+            offset = (page - 1) * per_page
+            data_sql = select_cols + where_sql + " ORDER BY ts DESC LIMIT %s OFFSET %s"
+            rows = execute_query(data_sql, tuple(params) + (per_page, offset), fetch="all") or []
+
+            total_pages = (total + per_page - 1) // per_page if per_page else 0
+            return jsonify({
+                "rows": [_ict_format_row(row) for row in rows],
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+            })
+
+        # Modo legacy sin paginacion (retro-compatible)
+        data_sql = select_cols + where_sql + " ORDER BY ts DESC LIMIT 500"
+        rows = execute_query(data_sql, tuple(params), fetch="all") or []
         return jsonify([_ict_format_row(row) for row in rows])
     except Exception as e:
         import traceback
@@ -25381,6 +25433,7 @@ def export_ict_excel():
         fecha_hasta = request.args.get("fecha_hasta", "").strip()
         no_parte = request.args.get("no_parte", "").strip()
         linea = request.args.get("linea", "").strip()
+        ict_filter = request.args.get("ict", "").strip()
         resultado = request.args.get("resultado", "").strip()
         barcode_like = request.args.get("barcode_like", "").strip()
         if barcode_like and len(barcode_like) < 6:
@@ -25409,6 +25462,12 @@ def export_ict_excel():
         if linea:
             sql += " AND linea=%s"
             params.append(linea)
+        if ict_filter:
+            try:
+                sql += " AND ict=%s"
+                params.append(int(ict_filter))
+            except ValueError:
+                return jsonify({"error": "ict debe ser numerico"}), 400
         if resultado:
             sql += " AND resultado=%s"
             params.append(resultado)
