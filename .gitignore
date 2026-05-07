@@ -37,6 +37,7 @@ LPT9.txt
 .history
 .playwright-cli
 
+
 # Python
 __pycache__/
 *.pyc
@@ -70,3 +71,6 @@ logs/
 
 # Dev
 run_dev.py
+
+# Uploads
+app/static/uploads/
