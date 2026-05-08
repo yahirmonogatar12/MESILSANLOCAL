@@ -131,7 +131,7 @@ window.mostrarAlmacenEmbarquesSalidas = function() {
 window.mostrarAlmacenEmbarquesRetorno = function() {
     mostrarModuloControlProceso(
         'almacen-embarques-retorno-unique-container',
-        '/almacen-embarques-retorno-ajax?v=20260506c',
+        '/almacen-embarques-retorno-ajax?v=20260507a',
         'inicializarAlmacenEmbarquesRetornoAjax'
     );
 };
@@ -158,7 +158,7 @@ window.mostrarAlmacenEmbarquesInventarioGeneral = function() {
 window.mostrarAlmacenEmbarquesCatalogo = function() {
     mostrarModuloControlProceso(
         'almacen-embarques-catalogo-unique-container',
-        '/almacen-embarques-catalogo-ajax?v=20260505c',
+        '/almacen-embarques-catalogo-ajax?v=20260507a',
         'inicializarAlmacenEmbarquesCatalogoAjax'
     );
 };
@@ -255,6 +255,9 @@ function mostrarModuloControlProceso(containerId, ajaxUrl, initFunction) {
             'almacen-embarques-entradas-unique-container',
             'almacen-embarques-salidas-unique-container',
             'almacen-embarques-retorno-unique-container',
+            'almacen-embarques-movimientos-unique-container',
+            'almacen-embarques-inventario-general-unique-container',
+            'almacen-embarques-catalogo-unique-container',
             'registro-movimiento-identificacion-unique-container',
             'control-otras-identificaciones-unique-container',
             'control-movimiento-ns-producto-unique-container',

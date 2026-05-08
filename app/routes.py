@@ -11922,6 +11922,400 @@ def _exportar_historial_embarques_excel(sheet_name, filename, headers, rows):
     )
 
 
+def _texto_pdf_embarques(value, fallback="-"):
+    """Normalizar texto para documentos PDF de embarques."""
+    text = str(value if value is not None else "").strip()
+    return text or fallback
+
+
+def _cantidad_pdf_salidas_retorno(row):
+    """Obtener la cantidad imprimible de una salida de retorno."""
+    for key in ("movement_quantity", "loss_quantity", "quantity", "cantidad"):
+        value = row.get(key)
+        if value not in (None, ""):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return 0
+    return 0
+
+
+def _formatear_numero_pdf_embarques(value):
+    try:
+        numeric_value = float(value)
+    except (TypeError, ValueError):
+        return "0"
+    if numeric_value.is_integer():
+        return f"{int(numeric_value):,}"
+    return f"{numeric_value:,.2f}".rstrip("0").rstrip(".")
+
+
+def _tipo_retorno_pdf_embarques(reason):
+    text = _texto_pdf_embarques(reason, "Retorno")
+    return text.split("/")[0].strip() or "Retorno"
+
+
+def _normalizar_filas_pdf_salidas_retorno(rows):
+    normalized_rows = []
+    for raw_row in rows[:1000]:
+        if not isinstance(raw_row, dict):
+            continue
+        quantity = _cantidad_pdf_salidas_retorno(raw_row)
+        if quantity <= 0:
+            continue
+        normalized_rows.append(
+            {
+                "fecha": _texto_pdf_embarques(raw_row.get("fecha")),
+                "hora": _texto_pdf_embarques(raw_row.get("hora")),
+                "folio": _texto_pdf_embarques(raw_row.get("folio")),
+                "part_number": _texto_pdf_embarques(raw_row.get("part_number")),
+                "quantity": quantity,
+                "product_model": _texto_pdf_embarques(raw_row.get("product_model")),
+                "reason": _tipo_retorno_pdf_embarques(raw_row.get("reason")),
+                "registered_by": _texto_pdf_embarques(raw_row.get("registered_by")),
+            }
+        )
+
+    return sorted(
+        normalized_rows,
+        key=lambda row: (
+            row["part_number"].lower(),
+            row["folio"].lower(),
+            row["fecha"],
+            row["hora"],
+        ),
+    )
+
+
+def _pdf_escape_text_embarques(value):
+    """Escapar texto para una cadena PDF WinAnsi sin dependencias externas."""
+    encoded = _texto_pdf_embarques(value).encode("cp1252", "replace")
+    escaped = bytearray()
+    for byte in encoded:
+        if byte in (40, 41, 92):  # (, ), \
+            escaped.append(92)
+            escaped.append(byte)
+        elif byte in (10, 13, 9):
+            escaped.append(32)
+        else:
+            escaped.append(byte)
+    return escaped.decode("latin-1")
+
+
+def _pdf_color_embarques(hex_color):
+    color = hex_color.strip().lstrip("#")
+    if len(color) != 6:
+        return (0, 0, 0)
+    return tuple(int(color[index : index + 2], 16) / 255 for index in (0, 2, 4))
+
+
+def _pdf_cmd_color_embarques(hex_color, stroke=False):
+    r, g, b = _pdf_color_embarques(hex_color)
+    operator = "RG" if stroke else "rg"
+    return f"{r:.3f} {g:.3f} {b:.3f} {operator}"
+
+
+def _pdf_text_width_embarques(text, font_size, bold=False):
+    factor = 0.56 if bold else 0.50
+    return len(str(text)) * font_size * factor
+
+
+def _pdf_fit_text_embarques(text, font_size, max_width, bold=False):
+    text = _texto_pdf_embarques(text)
+    if _pdf_text_width_embarques(text, font_size, bold) <= max_width:
+        return text
+
+    ellipsis = "..."
+    available = max_width - _pdf_text_width_embarques(ellipsis, font_size, bold)
+    if available <= 0:
+        return ""
+
+    fitted = text
+    while fitted and _pdf_text_width_embarques(fitted, font_size, bold) > available:
+        fitted = fitted[:-1]
+    return f"{fitted}{ellipsis}" if fitted else ellipsis
+
+
+def _pdf_rect_embarques(x, y, width, height, page_height, fill="#ffffff", stroke="#cfd6e4", line_width=0.5):
+    pdf_y = page_height - y - height
+    commands = [
+        f"q {_pdf_cmd_color_embarques(fill)} {x:.2f} {pdf_y:.2f} {width:.2f} {height:.2f} re f Q",
+    ]
+    if stroke:
+        commands.append(
+            f"q {_pdf_cmd_color_embarques(stroke, stroke=True)} {line_width:.2f} w "
+            f"{x:.2f} {pdf_y:.2f} {width:.2f} {height:.2f} re S Q"
+        )
+    return "\n".join(commands)
+
+
+def _pdf_line_embarques(x1, y1, x2, y2, page_height, stroke="#11213c", line_width=1):
+    return (
+        f"q {_pdf_cmd_color_embarques(stroke, stroke=True)} {line_width:.2f} w "
+        f"{x1:.2f} {page_height - y1:.2f} m {x2:.2f} {page_height - y2:.2f} l S Q"
+    )
+
+
+def _pdf_text_embarques(
+    x,
+    y,
+    text,
+    page_height,
+    font_size=8,
+    font="F1",
+    fill="#162033",
+    max_width=None,
+    align="left",
+    bold=False,
+):
+    safe_text = _texto_pdf_embarques(text)
+    if max_width is not None:
+        safe_text = _pdf_fit_text_embarques(safe_text, font_size, max_width, bold)
+    text_width = _pdf_text_width_embarques(safe_text, font_size, bold)
+    if align == "right" and max_width is not None:
+        text_x = x + max(max_width - text_width, 0)
+    elif align == "center" and max_width is not None:
+        text_x = x + max((max_width - text_width) / 2, 0)
+    else:
+        text_x = x
+    pdf_y = page_height - y
+    escaped_text = _pdf_escape_text_embarques(safe_text)
+    return (
+        f"q {_pdf_cmd_color_embarques(fill)} BT /{font} {font_size:.2f} Tf "
+        f"1 0 0 1 {text_x:.2f} {pdf_y:.2f} Tm ({escaped_text}) Tj ET Q"
+    )
+
+
+def _pdf_cell_text_embarques(x, y, width, height, text, page_height, font_size=7, font="F1", fill="#162033", align="left", bold=False):
+    text_x = x + 4
+    text_y = y + (height / 2) + (font_size / 2) - 1.5
+    return _pdf_text_embarques(
+        text_x,
+        text_y,
+        text,
+        page_height,
+        font_size=font_size,
+        font=font,
+        fill=fill,
+        max_width=max(width - 8, 5),
+        align=align,
+        bold=bold,
+    )
+
+
+def _crear_pdf_embarques(page_streams, page_width=792, page_height=612):
+    """Crear un PDF mínimo con fuentes Helvetica estándar."""
+    objects = [
+        None,
+        None,
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+    ]
+    pages_id = 2
+    font_regular_id = 3
+    font_bold_id = 4
+    page_ids = []
+
+    def add_object(payload):
+        objects.append(payload)
+        return len(objects)
+
+    for stream in page_streams:
+        stream_bytes = stream.encode("latin-1", "replace")
+        content_id = add_object(
+            b"<< /Length "
+            + str(len(stream_bytes)).encode("ascii")
+            + b" >>\nstream\n"
+            + stream_bytes
+            + b"\nendstream"
+        )
+        page_id = add_object(
+            (
+                f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 {page_width} {page_height}] "
+                f"/Resources << /Font << /F1 {font_regular_id} 0 R /F2 {font_bold_id} 0 R >> >> "
+                f"/Contents {content_id} 0 R >>"
+            ).encode("ascii")
+        )
+        page_ids.append(page_id)
+
+    objects[0] = f"<< /Type /Catalog /Pages {pages_id} 0 R >>".encode("ascii")
+    kids = " ".join(f"{page_id} 0 R" for page_id in page_ids)
+    objects[1] = f"<< /Type /Pages /Kids [{kids}] /Count {len(page_ids)} >>".encode("ascii")
+
+    output = io.BytesIO()
+    output.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for index, payload in enumerate(objects, 1):
+        offsets.append(output.tell())
+        output.write(f"{index} 0 obj\n".encode("ascii"))
+        output.write(payload)
+        output.write(b"\nendobj\n")
+
+    xref_offset = output.tell()
+    output.write(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    output.write(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        output.write(f"{offset:010d} 00000 n \n".encode("ascii"))
+    output.write(
+        (
+            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref_offset}\n%%EOF\n"
+        ).encode("ascii")
+    )
+    output.seek(0)
+    return output
+
+
+def _generar_pdf_salidas_retorno_embarques(rows):
+    """Generar PDF carta horizontal para el formato de salidas de retorno sin dependencias externas."""
+    normalized_rows = _normalizar_filas_pdf_salidas_retorno(rows)
+    if not normalized_rows:
+        raise ValueError("No hay salidas de retorno válidas para generar el PDF.")
+
+    page_width = 792
+    page_height = 612
+    margin_x = 30
+    margin_y = 52
+    table_top = margin_y + 122
+    row_height = 14
+    table_header_height = 17
+    footer_reserved = 56
+    table_bottom = page_height - margin_y - footer_reserved
+    navy = "#11213c"
+    gray = "#63708a"
+    border = "#cfd6e4"
+    row_alt = "#f4f7fb"
+    white = "#ffffff"
+    black = "#162033"
+
+    columns = [
+        ("Fecha", "fecha", 58, "left"),
+        ("Hora", "hora", 44, "left"),
+        ("Folio", "folio", 162, "left"),
+        ("No. parte", "part_number", 95, "left"),
+        ("Cantidad", "quantity", 50, "right"),
+        ("Modelo", "product_model", 168, "left"),
+        ("Tipo", "reason", 60, "left"),
+        ("Usuario", "registered_by", 95, "left"),
+    ]
+    available_width = page_width - (margin_x * 2)
+    total_width = sum(column[2] for column in columns)
+    if total_width < available_width:
+        extra_width = available_width - total_width
+        columns[5] = (columns[5][0], columns[5][1], columns[5][2] + extra_width, columns[5][3])
+
+    rows_per_page = max(1, int((table_bottom - table_top - table_header_height) / row_height))
+    total_pages = max(1, (len(normalized_rows) + rows_per_page - 1) // rows_per_page)
+    total_quantity = sum(row["quantity"] for row in normalized_rows)
+    generated_at = obtener_fecha_hora_mexico().strftime("%d/%m/%Y, %I:%M %p").replace("AM", "a.m.").replace("PM", "p.m.")
+
+    page_streams = []
+    for page_index in range(total_pages):
+        page_rows = normalized_rows[
+            page_index * rows_per_page : (page_index + 1) * rows_per_page
+        ]
+        commands = []
+
+        commands.append(_pdf_text_embarques(margin_x, margin_y, "ALMACÉN DE EMBARQUES", page_height, 8, "F2", gray, bold=True))
+        commands.append(_pdf_text_embarques(margin_x, margin_y + 22, "SALIDA DE RETORNO", page_height, 20, "F2", navy, bold=True))
+        commands.append(_pdf_text_embarques(page_width - margin_x - 58, margin_y, "GENERADO", page_height, 7, "F2", gray, bold=True))
+        commands.append(_pdf_text_embarques(page_width - margin_x - 112, margin_y + 18, generated_at, page_height, 8, "F2", black, bold=True))
+        commands.append(
+            _pdf_text_embarques(
+                page_width - margin_x - 42,
+                margin_y + 34,
+                f"Pág. {page_index + 1}/{total_pages}",
+                page_height,
+                7,
+                "F2",
+                gray,
+                bold=True,
+            )
+        )
+        commands.append(_pdf_line_embarques(margin_x, margin_y + 50, page_width - margin_x, margin_y + 50, page_height, navy, 1.5))
+
+        summary_top = margin_y + 64
+        summary_width = (available_width - 8) / 2
+        for offset, label, value in (
+            (0, "REGISTROS", _formatear_numero_pdf_embarques(len(normalized_rows))),
+            (summary_width + 8, "CANTIDAD TOTAL", _formatear_numero_pdf_embarques(total_quantity)),
+        ):
+            x = margin_x + offset
+            commands.append(_pdf_rect_embarques(x, summary_top, summary_width, 36, page_height, white, border, 0.6))
+            commands.append(_pdf_text_embarques(x + 8, summary_top + 12, label, page_height, 6.5, "F2", gray, bold=True))
+            commands.append(_pdf_text_embarques(x + 8, summary_top + 28, value, page_height, 12, "F2", navy, bold=True))
+
+        x = margin_x
+        y = table_top
+        for label, _key, width, align in columns:
+            commands.append(_pdf_rect_embarques(x, y, width, table_header_height, page_height, navy, navy, 0.4))
+            commands.append(
+                _pdf_cell_text_embarques(
+                    x,
+                    y,
+                    width,
+                    table_header_height,
+                    label,
+                    page_height,
+                    6.2,
+                    "F2",
+                    white,
+                    align,
+                    True,
+                )
+            )
+            x += width
+
+        y += table_header_height
+        for row_index, row in enumerate(page_rows):
+            x = margin_x
+            row_fill = row_alt if row_index % 2 else white
+            for _label, key, width, align in columns:
+                commands.append(_pdf_rect_embarques(x, y, width, row_height, page_height, row_fill, border, 0.35))
+                value = _formatear_numero_pdf_embarques(row[key]) if key == "quantity" else row[key]
+                is_bold = key == "part_number"
+                commands.append(
+                    _pdf_cell_text_embarques(
+                        x,
+                        y,
+                        width,
+                        row_height,
+                        value,
+                        page_height,
+                        5.8,
+                        "F2" if is_bold else "F1",
+                        black,
+                        align,
+                        is_bold,
+                    )
+                )
+                x += width
+            y += row_height
+
+        footer_y = page_height - margin_y - 30
+        signature_width = (available_width - 60) / 3
+        for index, label in enumerate(("Entrega", "Recibe", "Validación")):
+            x = margin_x + index * (signature_width + 30)
+            commands.append(_pdf_line_embarques(x, footer_y, x + signature_width, footer_y, page_height, navy, 0.7))
+            commands.append(
+                _pdf_text_embarques(
+                    x,
+                    footer_y + 12,
+                    label,
+                    page_height,
+                    7,
+                    "F1",
+                    gray,
+                    max_width=signature_width,
+                    align="center",
+                )
+            )
+
+        page_streams.append("\n".join(commands))
+
+    return _crear_pdf_embarques(page_streams, page_width=page_width, page_height=page_height)
+
+
 @app.route("/almacen-embarques-entradas-ajax")
 @login_requerido
 def almacen_embarques_entradas_ajax():
@@ -12446,6 +12840,33 @@ def export_almacen_embarques_retorno():
             f"Error exportando retorno almacén embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/retorno/print-pdf", methods=["POST"])
+@login_requerido
+def export_almacen_embarques_retorno_print_pdf():
+    """Generar PDF imprimible de salidas de retorno seleccionadas."""
+    try:
+        data = request.get_json(silent=True) or {}
+        rows = data.get("rows") or []
+        if not isinstance(rows, list):
+            return jsonify({"success": False, "error": "Formato de registros inválido."}), 400
+
+        pdf_output = _generar_pdf_salidas_retorno_embarques(rows)
+        filename = f"formato_salidas_retorno_{obtener_fecha_hora_mexico().strftime('%Y%m%d%H%M')}.pdf"
+        return send_file(
+            pdf_output,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        print(
+            f"Error generando PDF salidas retorno almacén embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/almacen-embarques/movimientos")

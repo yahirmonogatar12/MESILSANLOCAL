@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260505c";
+  const ASSET_VERSION = "20260507a";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
@@ -85,6 +85,31 @@
         });
   }
 
+  function getNumericValue(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  }
+
+  function sumQuantity(rows, accessor) {
+    return rows.reduce((sum, row) => sum + getNumericValue(accessor(row)), 0);
+  }
+
+  function getQuantityTotalLabel(total) {
+    const normalizedTotal = getNumericValue(total);
+    const suffix = Math.abs(normalizedTotal) === 1 ? "pieza" : "piezas";
+    return `${formatNumber(normalizedTotal)} ${suffix}`;
+  }
+
+  function getModuleQuantityTotal(config, rows) {
+    const accessor = config.quantityTotalAccessor || ((row) => row.quantity ?? row.cantidad ?? 0);
+    return sumQuantity(rows, accessor);
+  }
+
+  function getRecordCountLabel(rows) {
+    const suffix = rows.length === 1 ? "registro" : "registros";
+    return `${rows.length} ${suffix}`;
+  }
+
   function buildBadge(text, variant) {
     return `<span class="history-badge history-badge--${variant}">${escapeHtml(text)}</span>`;
   }
@@ -165,7 +190,8 @@
       return;
     }
     if (countLabel) {
-      countLabel.textContent = "0 registros";
+      countLabel.textContent =
+        prefix === "almacen-embarques-catalog" ? "0 registros" : "0 piezas";
     }
     tableBody.innerHTML = `<tr><td colspan="${colspan}" class="ae-empty-cell">${escapeHtml(
       message,
@@ -1471,8 +1497,10 @@
 
       elements.tableBody.innerHTML = renderer(rows, payload);
       if (elements.countLabel) {
-        const suffix = rows.length === 1 ? "registro" : "registros";
-        elements.countLabel.textContent = `${rows.length} ${suffix}`;
+        elements.countLabel.textContent =
+          config.countMode === "records"
+            ? getRecordCountLabel(rows)
+            : getQuantityTotalLabel(getModuleQuantityTotal(config, rows));
       }
 
       if (typeof config.onAfterLoad === "function") {
@@ -2549,6 +2577,7 @@
       colspan: 12,
       emptyMessage: "No hay movimientos disponibles para los filtros actuales.",
       renderer: renderMovementsRows,
+      quantityTotalAccessor: getMovementQuantity,
     });
   };
 
@@ -2560,6 +2589,7 @@
       colspan: 9,
       emptyMessage: "No hay registros de inventario para los filtros actuales.",
       renderer: renderInventoryRows,
+      quantityTotalAccessor: (row) => row.current_quantity,
       onAfterLoad() {
         const currentSearch =
           getElements("almacen-embarques-inventory").searchInput?.value.trim() || "";
@@ -2590,6 +2620,7 @@
       colspan: 9,
       emptyMessage: "No hay números de parte para los filtros actuales.",
       renderer: renderCatalogRows,
+      countMode: "records",
       onAfterLoad() {
         const elements = getElements("almacen-embarques-catalog");
         const activeFilters = [

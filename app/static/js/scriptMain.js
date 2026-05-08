@@ -213,6 +213,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "almacen-embarques-retorno-unique-container",
       "almacen-embarques-movimientos-unique-container",
       "almacen-embarques-inventario-general-unique-container",
+      "almacen-embarques-catalogo-unique-container",
       "registro-movimiento-identificacion-unique-container",
       "control-otras-identificaciones-unique-container",
       "control-movimiento-ns-producto-unique-container",
@@ -2256,7 +2257,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesRetorno = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-retorno-unique-container",
-      "/almacen-embarques-retorno-ajax?v=20260506c",
+      "/almacen-embarques-retorno-ajax?v=20260507a",
       "inicializarAlmacenEmbarquesRetornoAjax",
     );
   };
@@ -2283,7 +2284,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesCatalogo = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-catalogo-unique-container",
-      "/almacen-embarques-catalogo-ajax?v=20260505c",
+      "/almacen-embarques-catalogo-ajax?v=20260507a",
       "inicializarAlmacenEmbarquesCatalogoAjax",
     );
   };

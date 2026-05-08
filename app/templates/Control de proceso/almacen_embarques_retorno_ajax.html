@@ -48,22 +48,19 @@
             <button id="almacen-embarques-returns-submit-btn" class="ae-btn-success ae-register-form__action">
                 Registrar
             </button>
-        </div>
-        <div class="ae-return-date-filters">
-            <div class="ae-filter-group">
-                <label for="almacen-embarques-returns-date-from">Fecha desde</label>
-                <input type="date" id="almacen-embarques-returns-date-from">
+            <div class="ae-return-date-filters">
+                <div class="ae-filter-group">
+                    <label for="almacen-embarques-returns-date-from">Fecha desde</label>
+                    <input type="date" id="almacen-embarques-returns-date-from">
+                </div>
+                <div class="ae-filter-group">
+                    <label for="almacen-embarques-returns-date-to">Fecha hasta</label>
+                    <input type="date" id="almacen-embarques-returns-date-to">
+                </div>
+                <button id="almacen-embarques-returns-filter-btn" class="ae-btn-primary" type="button">
+                    Consultar
+                </button>
             </div>
-            <div class="ae-filter-group">
-                <label for="almacen-embarques-returns-date-to">Fecha hasta</label>
-                <input type="date" id="almacen-embarques-returns-date-to">
-            </div>
-            <button id="almacen-embarques-returns-filter-btn" class="ae-btn-primary" type="button">
-                Consultar
-            </button>
-            <button id="almacen-embarques-returns-today-btn" class="ae-btn-secondary" type="button">
-                Hoy
-            </button>
         </div>
     </div>
 
@@ -71,7 +68,7 @@
         <div class="ae-results-card">
             <div class="ae-card-header">
                 <h3>Entradas de retorno</h3>
-                <span id="almacen-embarques-return-in-count" class="ae-record-count">0 registros</span>
+                <span id="almacen-embarques-return-in-count" class="ae-record-count">0 piezas</span>
                 <span id="almacen-embarques-return-in-status" class="ae-status-text"></span>
                 <button id="almacen-embarques-return-in-export-btn" class="ae-btn-export">
                     Exportar Excel
@@ -129,7 +126,7 @@
         <div class="ae-results-card">
             <div class="ae-card-header">
                 <h3>Salidas de retorno</h3>
-                <span id="almacen-embarques-return-out-count" class="ae-record-count">0 registros</span>
+                <span id="almacen-embarques-return-out-count" class="ae-record-count">0 piezas</span>
                 <span id="almacen-embarques-return-out-status" class="ae-status-text"></span>
                 <button id="almacen-embarques-return-out-print-btn" class="ae-btn-secondary ae-btn-print" type="button" disabled>
                     Imprimir
@@ -189,4 +186,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260506c') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260507b') }}"></script>

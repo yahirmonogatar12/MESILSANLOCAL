@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260506c";
+  const ASSET_VERSION = "20260507b";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
   const adjustmentState = {};
   const returnPrintState = {
@@ -50,6 +50,26 @@
           minimumFractionDigits: 0,
           maximumFractionDigits: 2,
         });
+  }
+
+  function getNumericValue(value) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  }
+
+  function sumQuantity(rows, accessor) {
+    return rows.reduce((sum, row) => sum + getNumericValue(accessor(row)), 0);
+  }
+
+  function getQuantityTotalLabel(total) {
+    const normalizedTotal = getNumericValue(total);
+    const suffix = Math.abs(normalizedTotal) === 1 ? "pieza" : "piezas";
+    return `${formatNumber(normalizedTotal)} ${suffix}`;
+  }
+
+  function getModuleQuantityTotal(config, rows) {
+    const accessor = config.quantityTotalAccessor || ((row) => row.cantidad ?? row.quantity ?? 0);
+    return sumQuantity(rows, accessor);
   }
 
   function buildBadge(text, variant) {
@@ -1097,7 +1117,6 @@
       dateFrom: document.getElementById("almacen-embarques-returns-date-from"),
       dateTo: document.getElementById("almacen-embarques-returns-date-to"),
       dateFilterBtn: document.getElementById("almacen-embarques-returns-filter-btn"),
-      dateTodayBtn: document.getElementById("almacen-embarques-returns-today-btn"),
       entryExportBtn: document.getElementById("almacen-embarques-return-in-export-btn"),
       entryBody: document.getElementById("almacen-embarques-return-in-tbody"),
       entryCount: document.getElementById("almacen-embarques-return-in-count"),
@@ -1566,7 +1585,7 @@
     }
 
     if (countLabel) {
-      countLabel.textContent = "0 registros";
+      countLabel.textContent = "0 piezas";
     }
 
     tableBody.innerHTML = `<tr><td colspan="${colspan}" class="history-empty-cell">${escapeHtml(
@@ -1701,21 +1720,28 @@
     formStatus.style.color = isError ? "#ff8f8f" : "#8fb8ff";
   }
 
-  function renderReturnHistoryTable(targetBody, targetCount, rows, emptyMessage, renderer) {
+  function renderReturnHistoryTable(
+    targetBody,
+    targetCount,
+    rows,
+    emptyMessage,
+    renderer,
+    quantityAccessor,
+  ) {
     if (!targetBody || !targetCount) {
       return;
     }
 
     if (!rows.length) {
-      targetCount.textContent = "0 registros";
+      targetCount.textContent = "0 piezas";
       targetBody.innerHTML = `<tr><td colspan="8" class="ae-empty-cell">${escapeHtml(
         emptyMessage,
       )}</td></tr>`;
       return;
     }
 
-    const suffix = rows.length === 1 ? "registro" : "registros";
-    targetCount.textContent = `${rows.length} ${suffix}`;
+    const accessor = quantityAccessor || ((row) => row.movement_quantity ?? row.return_quantity ?? 0);
+    targetCount.textContent = getQuantityTotalLabel(sumQuantity(rows, accessor));
     targetBody.innerHTML = renderer(rows);
   }
 
@@ -1834,7 +1860,7 @@
         setReturnPrintDatesToToday();
         loadReturnPrintRows();
       } else if (action === "download-return-print") {
-        downloadReturnPrintPreview();
+        downloadReturnPrintPreview(actionElement);
       } else if (action === "print-return-print") {
         printReturnPrintPreview();
       }
@@ -2052,6 +2078,30 @@
     );
   }
 
+  function sortReturnPrintRows(rows) {
+    return [...rows].sort((left, right) => {
+      const partComparison = String(left.part_number || "").localeCompare(
+        String(right.part_number || ""),
+        "es-MX",
+        { numeric: true, sensitivity: "base" },
+      );
+      if (partComparison !== 0) {
+        return partComparison;
+      }
+
+      const folioComparison = String(left.folio || "").localeCompare(
+        String(right.folio || ""),
+        "es-MX",
+        { numeric: true, sensitivity: "base" },
+      );
+      if (folioComparison !== 0) {
+        return folioComparison;
+      }
+
+      return String(left.hora || "").localeCompare(String(right.hora || ""));
+    });
+  }
+
   function buildReturnPrintDocumentBody(rows) {
     const generatedAt = new Date().toLocaleString("es-MX", {
       year: "numeric",
@@ -2248,7 +2298,7 @@
   }
 
   function renderReturnPrintPreview() {
-    const rows = getSelectedReturnPrintRows();
+    const rows = sortReturnPrintRows(getSelectedReturnPrintRows());
     if (!rows.length) {
       setReturnPrintError("Selecciona al menos un registro para generar el formato.");
       return;
@@ -2292,24 +2342,55 @@
     setReturnPrintError("");
   }
 
-  function downloadReturnPrintPreview() {
+  async function downloadReturnPrintPreview(button) {
     const rows = returnPrintState.previewRows;
     if (!rows.length) {
       renderReturnPrintPreview();
       return;
     }
 
-    const html = buildReturnPrintHtml(rows);
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `formato_salidas_retorno_${timestamp}.html`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    const originalText = button?.textContent;
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Generando PDF...";
+    }
+
+    try {
+      const response = await fetch("/api/almacen-embarques/retorno/print-pdf", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/pdf",
+        },
+        body: JSON.stringify({ rows: sortReturnPrintRows(rows) }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `formato_salidas_retorno_${timestamp}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setReturnPrintError("");
+    } catch (error) {
+      console.error("Error generando PDF de salidas de retorno:", error);
+      setReturnPrintError(error.message || "No fue posible generar el PDF.");
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText || "Guardar";
+      }
+    }
   }
 
   function printReturnPrintPreview() {
@@ -2390,6 +2471,7 @@
         entryRows,
         "No hay entradas de retorno registradas.",
         renderReturnEntryRows,
+        (row) => Math.max(0, Number(row.return_quantity || 0) - Number(row.loss_quantity || 0)),
       );
       renderReturnHistoryTable(
         elements.exitBody,
@@ -2397,6 +2479,7 @@
         exitRows,
         "No hay salidas de retorno registradas.",
         renderReturnExitRows,
+        (row) => row.movement_quantity ?? row.loss_quantity ?? 0,
       );
 
       const updatedAt = new Date().toLocaleTimeString("es-MX", {
@@ -2576,8 +2659,9 @@
 
       elements.tableBody.innerHTML = renderer(rows);
       if (elements.countLabel) {
-        const suffix = rows.length === 1 ? "registro" : "registros";
-        elements.countLabel.textContent = `${rows.length} ${suffix}`;
+        elements.countLabel.textContent = getQuantityTotalLabel(
+          getModuleQuantityTotal(config, rows),
+        );
       }
 
       const updatedAt = new Date().toLocaleTimeString("es-MX", {
@@ -2776,14 +2860,6 @@
       elements.dateFilterBtn.dataset.bound = "true";
     }
 
-    if (elements.dateTodayBtn && elements.dateTodayBtn.dataset.bound !== "true") {
-      elements.dateTodayBtn.addEventListener("click", () => {
-        setReturnDateInputsToToday(elements);
-        loadReturnsModule();
-      });
-      elements.dateTodayBtn.dataset.bound = "true";
-    }
-
     [elements.dateFrom, elements.dateTo].forEach((input) => {
       if (!input || input.dataset.bound === "true") {
         return;
@@ -2960,6 +3036,7 @@
       colspan: 10,
       emptyMessage: "No hay entradas registradas para los filtros actuales.",
       renderer: renderEntriesRows,
+      quantityTotalAccessor: (row) => row.cantidad,
     });
   };
 
@@ -2973,6 +3050,7 @@
       colspan: 9,
       emptyMessage: "No hay salidas registradas para los filtros actuales.",
       renderer: renderExitsRows,
+      quantityTotalAccessor: (row) => row.cantidad,
     });
   };
 
