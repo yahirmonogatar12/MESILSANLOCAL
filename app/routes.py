@@ -3562,6 +3562,515 @@ def api_plan_list():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/plan/input-main/scan-lots", methods=["GET"])
+@login_requerido
+def api_plan_input_main_scan_lots():
+    """Listar lotes provisionales SCAN de input_main pendientes de asignar."""
+    try:
+        today = obtener_fecha_hora_mexico().date()
+        default_from = today - timedelta(days=7)
+        date_from = request.args.get("date_from") or str(default_from)
+        date_to = request.args.get("date_to") or str(today)
+        line = (request.args.get("line") or "").strip()
+        part_no = (request.args.get("part_no") or "").strip()
+        try:
+            limit = int(request.args.get("limit") or 200)
+        except Exception:
+            limit = 200
+        limit = max(1, min(limit, 500))
+
+        where = [
+            "i.lot_no LIKE 'SCAN-%%'",
+            "COALESCE(i.result, 'OK') = 'OK'",
+        ]
+        params = []
+        if date_from:
+            where.append("DATE(i.ts) >= %s")
+            params.append(date_from)
+        if date_to:
+            where.append("DATE(i.ts) <= %s")
+            params.append(date_to)
+        if line:
+            where.append("i.linea = %s")
+            params.append(line)
+        if part_no:
+            where.append("(i.nparte LIKE %s OR i.modelo LIKE %s)")
+            params.extend([f"%{part_no}%", f"%{part_no}%"])
+
+        scan_sql = f"""
+            SELECT
+                i.linea,
+                i.nparte,
+                GROUP_CONCAT(DISTINCT NULLIF(i.modelo, '') ORDER BY i.modelo SEPARATOR ', ') AS modelos,
+                COUNT(DISTINCT i.lot_no) AS lotes_scan,
+                COUNT(*) AS registros,
+                SUM(COALESCE(i.cantidad, 1)) AS cantidad_total,
+                MIN(i.ts) AS primero,
+                MAX(i.ts) AS ultimo
+            FROM input_main i
+            WHERE {' AND '.join(where)}
+            GROUP BY i.linea, i.nparte
+            ORDER BY ultimo DESC
+            LIMIT %s
+        """
+        rows = execute_query(scan_sql, tuple(params + [limit]), fetch="all") or []
+
+        scan_items = []
+        lines = set()
+        parts = set()
+        for r in rows:
+            item = {
+                "linea": r.get("linea") or "",
+                "nparte": r.get("nparte") or "",
+                "modelo": r.get("modelos") or "",
+                "lotes_scan": int(r.get("lotes_scan") or 0),
+                "registros": int(r.get("registros") or 0),
+                "cantidad_total": int(r.get("cantidad_total") or r.get("registros") or 0),
+                "primero": str(r.get("primero") or ""),
+                "ultimo": str(r.get("ultimo") or ""),
+            }
+            scan_items.append(item)
+            if item["linea"]:
+                lines.add(item["linea"])
+            if item["nparte"]:
+                parts.add(item["nparte"])
+
+        plan_options = []
+        if lines and parts:
+            plan_where = [
+                "COALESCE(p.status, '') <> 'CANCELADO'",
+                "p.line IN (" + ",".join(["%s"] * len(lines)) + ")",
+                "p.part_no IN (" + ",".join(["%s"] * len(parts)) + ")",
+            ]
+            plan_params = list(lines) + list(parts)
+            if date_from:
+                plan_where.append("DATE(p.working_date) >= DATE_SUB(%s, INTERVAL 1 DAY)")
+                plan_params.append(date_from)
+            if date_to:
+                plan_where.append("DATE(p.working_date) <= DATE_ADD(%s, INTERVAL 1 DAY)")
+                plan_params.append(date_to)
+
+            plan_sql = f"""
+                SELECT
+                    p.lot_no,
+                    p.working_date,
+                    p.line,
+                    p.part_no,
+                    p.model_code,
+                    p.status,
+                    COALESCE(p.plan_count, 0) AS plan_count,
+                    COALESCE(p.produced_count, 0) AS produced_count
+                FROM plan_main p
+                WHERE {' AND '.join(plan_where)}
+                ORDER BY p.working_date DESC, p.line, p.sequence, p.lot_no
+            """
+            plan_rows = execute_query(plan_sql, tuple(plan_params), fetch="all") or []
+            for p in plan_rows:
+                plan_options.append(
+                    {
+                        "lot_no": p.get("lot_no") or "",
+                        "working_date": str(p.get("working_date") or "")[:10],
+                        "line": p.get("line") or "",
+                        "part_no": p.get("part_no") or "",
+                        "model_code": p.get("model_code") or "",
+                        "status": p.get("status") or "",
+                        "plan_count": int(p.get("plan_count") or 0),
+                        "produced_count": int(p.get("produced_count") or 0),
+                    }
+                )
+
+        return jsonify(
+            {
+                "success": True,
+                "scan_lots": scan_items,
+                "plan_options": plan_options,
+                "filters": {
+                    "date_from": date_from,
+                    "date_to": date_to,
+                    "line": line,
+                    "part_no": part_no,
+                    "limit": limit,
+                },
+            }
+        )
+    except Exception as e:
+        print(f"Error en api_plan_input_main_scan_lots: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/plan/input-main/assign-lot", methods=["POST"])
+@login_requerido
+def api_plan_input_main_assign_lot():
+    """Asignar un lote provisional SCAN a un lote real de plan_main."""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        scan_lot_no = (data.get("scan_lot_no") or "").strip()
+        target_lot_no = (data.get("target_lot_no") or "").strip()
+        group_line = (data.get("linea") or data.get("line") or "").strip()
+        group_part_no = (data.get("nparte") or data.get("part_no") or "").strip()
+        date_from = (data.get("date_from") or "").strip()
+        date_to = (data.get("date_to") or "").strip()
+
+        if scan_lot_no and not scan_lot_no.startswith("SCAN-"):
+            return jsonify({"success": False, "error": "scan_lot_no inválido"}), 400
+        if not scan_lot_no and not (group_line and group_part_no and date_from and date_to):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Para asignar por grupo se requieren linea, nparte, date_from y date_to",
+                    }
+                ),
+                400,
+            )
+        if not target_lot_no:
+            return jsonify({"success": False, "error": "target_lot_no requerido"}), 400
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexión MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+
+        cursor.execute(
+            """
+            SELECT lot_no, line, part_no, status,
+                   COALESCE(plan_count, 0) AS plan_count,
+                   COALESCE(produced_count, 0) AS produced_count
+            FROM plan_main
+            WHERE lot_no = %s
+            FOR UPDATE
+            """,
+            (target_lot_no,),
+        )
+        plan = cursor.fetchone()
+        if not plan:
+            conn.rollback()
+            return jsonify({"success": False, "error": "El Lot No destino no existe en plan_main"}), 404
+        if (plan.get("status") or "").upper() == "CANCELADO":
+            conn.rollback()
+            return jsonify({"success": False, "error": "No se puede asignar a un plan CANCELADO"}), 400
+        allow_extend = bool(data.get("allow_extend"))
+
+        scan_where = [
+            "lot_no LIKE 'SCAN-%%'",
+            "COALESCE(result, 'OK') = 'OK'",
+        ]
+        scan_params = []
+        if scan_lot_no:
+            scan_where.append("lot_no = %s")
+            scan_params.append(scan_lot_no)
+        else:
+            scan_where.extend(["linea = %s", "nparte = %s", "DATE(ts) >= %s", "DATE(ts) <= %s"])
+            scan_params.extend([group_line, group_part_no, date_from, date_to])
+        scan_where_sql = " AND ".join(scan_where)
+
+        cursor.execute(
+            f"""
+            SELECT
+                COUNT(*) AS registros,
+                SUM(COALESCE(cantidad, 1)) AS cantidad_total,
+                COUNT(DISTINCT lot_no) AS lotes_scan,
+                MIN(linea) AS linea,
+                MAX(linea) AS linea_max,
+                MIN(nparte) AS nparte,
+                MAX(nparte) AS nparte_max
+            FROM input_main
+            WHERE {scan_where_sql}
+            """,
+            tuple(scan_params),
+        )
+        scan = cursor.fetchone() or {}
+        registros = int(scan.get("registros") or 0)
+        cantidad_total = int(scan.get("cantidad_total") or registros)
+        if registros <= 0:
+            conn.rollback()
+            return jsonify({"success": False, "error": "No hay registros OK para este lote SCAN"}), 404
+
+        scan_line = (scan.get("linea") or "").strip()
+        scan_line_max = (scan.get("linea_max") or "").strip()
+        scan_part = (scan.get("nparte") or "").strip()
+        scan_part_max = (scan.get("nparte_max") or "").strip()
+        target_line = (plan.get("line") or "").strip()
+        target_part = (plan.get("part_no") or "").strip()
+
+        if scan_line != scan_line_max or scan_part != scan_part_max:
+            conn.rollback()
+            return jsonify({"success": False, "error": "El lote SCAN contiene más de una línea o número de parte"}), 400
+        if scan_line != target_line or scan_part != target_part:
+            conn.rollback()
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "El lote SCAN no coincide con la línea y número de parte del plan destino",
+                        "scan": {"linea": scan_line, "nparte": scan_part},
+                        "target": {"linea": target_line, "nparte": target_part},
+                    }
+                ),
+                400,
+            )
+
+        plan_count = int(plan.get("plan_count") or 0)
+        produced_count = int(plan.get("produced_count") or 0)
+        pending_count = plan_count - produced_count
+        if pending_count <= 0:
+            conn.rollback()
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "El plan destino ya está completo. Cree un plan nuevo para estos escaneos.",
+                        "plan_count": plan_count,
+                        "produced_count": produced_count,
+                    }
+                ),
+                400,
+            )
+        if cantidad_total > pending_count and not allow_extend:
+            conn.rollback()
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "La cantidad SCAN excede el pendiente del plan. Use Extender + asignar.",
+                        "can_extend": True,
+                        "cantidad_total": cantidad_total,
+                        "pending_count": pending_count,
+                    }
+                ),
+                409,
+            )
+
+        cursor.execute(
+            f"""
+            UPDATE input_main
+            SET lot_no = %s
+            WHERE {scan_where_sql}
+            """,
+            tuple([target_lot_no] + scan_params),
+        )
+        updated_rows = cursor.rowcount
+        if updated_rows <= 0:
+            conn.rollback()
+            return jsonify({"success": False, "error": "No se actualizó ningún registro"}), 409
+
+        if cantidad_total > pending_count and allow_extend:
+            cursor.execute(
+                """
+                UPDATE plan_main
+                SET plan_count = %s,
+                    produced_count = COALESCE(produced_count, 0) + %s,
+                    updated_at = NOW()
+                WHERE lot_no = %s
+                """,
+                (produced_count + cantidad_total, cantidad_total, target_lot_no),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE plan_main
+                SET produced_count = COALESCE(produced_count, 0) + %s,
+                    updated_at = NOW()
+                WHERE lot_no = %s
+                """,
+                (cantidad_total, target_lot_no),
+            )
+
+        conn.commit()
+        assigned_scan_lots = int(scan.get("lotes_scan") or 0)
+        return jsonify(
+            {
+                "success": True,
+                "scan_lot_no": scan_lot_no,
+                "target_lot_no": target_lot_no,
+                "updated_rows": updated_rows,
+                "lotes_scan": assigned_scan_lots,
+                "cantidad_total": cantidad_total,
+                "extended": cantidad_total > pending_count and allow_extend,
+                "message": f"{assigned_scan_lots} lote(s) SCAN / {updated_rows} registro(s) asignado(s) a {target_lot_no}",
+            }
+        )
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        print(f"Error en api_plan_input_main_assign_lot: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.autocommit(True)
+            except Exception:
+                pass
+            conn.close()
+
+
+@app.route("/api/plan/input-main/create-plan", methods=["POST"])
+@login_requerido
+def api_plan_input_main_create_plan():
+    """Crear un plan ASSY para un grupo SCAN y asignar sus escaneos al nuevo lote."""
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(silent=True) or {}
+        group_line = (data.get("linea") or data.get("line") or "").strip()
+        group_part_no = (data.get("nparte") or data.get("part_no") or "").strip()
+        date_from = (data.get("date_from") or "").strip()
+        date_to = (data.get("date_to") or "").strip()
+        working_date_raw = (data.get("working_date") or date_to or date_from).strip()
+
+        if not (group_line and group_part_no and date_from and date_to):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Se requieren linea, nparte, date_from y date_to",
+                    }
+                ),
+                400,
+            )
+
+        working_date = _fp_safe_date(working_date_raw) or obtener_fecha_hora_mexico().date()
+        lot_no = _fp_generate_lot_no(datetime.combine(working_date, datetime.min.time()))
+
+        conn = get_pooled_connection()
+        if conn is None:
+            raise RuntimeError("No fue posible obtener conexión MySQL.")
+        cursor = get_dict_cursor(conn)
+        conn.autocommit(False)
+
+        scan_where_sql = (
+            "lot_no LIKE 'SCAN-%%' "
+            "AND COALESCE(result, 'OK') = 'OK' "
+            "AND linea = %s "
+            "AND nparte = %s "
+            "AND DATE(ts) >= %s "
+            "AND DATE(ts) <= %s"
+        )
+        scan_params = (group_line, group_part_no, date_from, date_to)
+        cursor.execute(
+            f"""
+            SELECT
+                COUNT(*) AS registros,
+                SUM(COALESCE(cantidad, 1)) AS cantidad_total,
+                COUNT(DISTINCT lot_no) AS lotes_scan,
+                MIN(ts) AS primero,
+                MAX(ts) AS ultimo
+            FROM input_main
+            WHERE {scan_where_sql}
+            """,
+            scan_params,
+        )
+        scan = cursor.fetchone() or {}
+        registros = int(scan.get("registros") or 0)
+        cantidad_total = int(scan.get("cantidad_total") or registros)
+        if registros <= 0:
+            conn.rollback()
+            return jsonify({"success": False, "error": "No hay registros SCAN OK para crear plan"}), 404
+
+        cursor.execute(
+            """
+            SELECT part_no, model, project, c_t as ct, uph
+            FROM raw
+            WHERE TRIM(part_no) = %s OR TRIM(model) = %s OR TRIM(part_no) LIKE %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (group_part_no, group_part_no, f"%{group_part_no}%"),
+        )
+        raw_data = cursor.fetchone() or {}
+        model_code = raw_data.get("model") or group_part_no
+        project = raw_data.get("project") or ""
+        try:
+            ct = int(float(raw_data.get("ct") or 0))
+        except Exception:
+            ct = 0
+        try:
+            uph = int(float(raw_data.get("uph") or 0))
+        except Exception:
+            uph = 0
+
+        cursor.execute(
+            """
+            INSERT INTO plan_main
+              (lot_no, wo_code, po_code, working_date, line, model_code, part_no,
+               project, process, plan_count, produced_count, ct, uph, routing, status, created_at)
+            VALUES
+              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            """,
+            (
+                lot_no,
+                "SIN-WO",
+                "SIN-PO",
+                working_date,
+                group_line,
+                model_code,
+                group_part_no,
+                project,
+                "MAIN",
+                cantidad_total,
+                cantidad_total,
+                ct,
+                uph,
+                1,
+                "TERMINADO",
+            ),
+        )
+        cursor.execute(
+            f"""
+            UPDATE input_main
+            SET lot_no = %s
+            WHERE {scan_where_sql}
+            """,
+            tuple([lot_no] + list(scan_params)),
+        )
+        updated_rows = cursor.rowcount
+        if updated_rows <= 0:
+            conn.rollback()
+            return jsonify({"success": False, "error": "No se actualizó ningún registro SCAN"}), 409
+
+        conn.commit()
+        return jsonify(
+            {
+                "success": True,
+                "lot_no": lot_no,
+                "updated_rows": updated_rows,
+                "cantidad_total": cantidad_total,
+                "message": f"Plan {lot_no} creado con {cantidad_total} pieza(s) y {updated_rows} escaneo(s) asignado(s)",
+            }
+        )
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        print(f"Error en api_plan_input_main_create_plan: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.autocommit(True)
+            except Exception:
+                pass
+            conn.close()
+
+
 @app.route("/api/plan", methods=["POST"])
 @login_requerido
 def api_plan_create():

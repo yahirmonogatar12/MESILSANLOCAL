@@ -55,6 +55,9 @@ let visualGroups = {
   planAssignments: new Map() // lot_no -> groupIndex
 };
 
+let scanLotsData = [];
+let scanLotPlanOptions = [];
+
 // ====== Funciones de Carga y Loading ======
 
 // Crear spinner de carga
@@ -430,6 +433,15 @@ function turnoToRouting(turno) {
   if (turno === "TIEMPO EXTRA") return 2;
   if (turno === "NOCHE") return 3;
   return 1; // Default DIA
+}
+
+function escapePlanHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Cargar planes
@@ -925,7 +937,8 @@ async function handleEditPlanSubmit(form) {
     showSuccessModal(`Plan ${data.lot_no} actualizado exitosamente`);
 
     document.getElementById("plan-editModal").style.display = "none";
-    loadPlans();
+    await loadPlans();
+    await saveGroupSequences({ silent: true });
   } catch (error) {
     console.error('Error en handleEditPlanSubmit:', error);
     alert("Error actualizando plan: " + (error.response?.data?.error || error.message));
@@ -986,7 +999,8 @@ async function handleCancelPlan() {
     showSuccessModal(successMsg);
 
     document.getElementById("plan-editModal").style.display = "none";
-    loadPlans();
+    await loadPlans();
+    await saveGroupSequences({ silent: true });
   } catch (error) {
     alert(`Error ${esCancelar ? 'cancelando' : 'reactivando'} plan: ` + (error.response?.data?.error || error.message));
   } finally {
@@ -1172,6 +1186,7 @@ async function handleNewPlanSubmit(form) {
     
     // Recargar planes - ahora el plan ya viene con su grupo asignado desde la BD
     await loadPlans();
+    await saveGroupSequences({ silent: true });
     
     // Ya no necesitamos mover manualmente porque el plan ya tiene group_no en la BD
     // El renderTableWithVisualGroups() respetará el group_no del backend
@@ -1616,7 +1631,8 @@ async function importSingleWO(woId, button) {
         // Ocultar loading con transición suave
         hideTableLoading('plan-main-table');
         alert(` WO importado exitosamente como Plan: ${plan.lot_no}`);
-        loadPlans(); // Recargar tabla principal
+        await loadPlans(); // Recargar tabla principal
+        await saveGroupSequences({ silent: true });
         loadWorkOrders(); // Recargar WOs
       } else if (errors.length > 0) {
         hideTableLoading('plan-main-table');
@@ -1728,7 +1744,8 @@ async function importAllSelectedWOs() {
         alert(message);
       }
       
-      loadPlans(); // Recargar tabla principal
+      await loadPlans(); // Recargar tabla principal
+      await saveGroupSequences({ silent: true });
       loadWorkOrders(); // Recargar WOs
 
       // Desmarcar "Seleccionar todos"
@@ -1753,6 +1770,233 @@ function updateWOStatus(message) {
   const statusElement = document.getElementById("wo-status");
   if (statusElement) {
     statusElement.textContent = message;
+  }
+}
+
+function updateScanLotsStatus(message) {
+  const statusElement = document.getElementById("scan-lots-status");
+  if (statusElement) {
+    statusElement.textContent = message;
+  }
+}
+
+function setDefaultScanLotsDates() {
+  const dateFrom = document.getElementById("scan-lots-date-from");
+  const dateTo = document.getElementById("scan-lots-date-to");
+  if (dateFrom && !dateFrom.value) {
+    dateFrom.value = getDateInNuevoLeon(-7);
+  }
+  if (dateTo && !dateTo.value) {
+    dateTo.value = getTodayInNuevoLeon();
+  }
+}
+
+async function loadScanLots() {
+  const tbody = document.getElementById("scan-lots-tableBody");
+  if (!tbody) return;
+
+  try {
+    showTableBodyLoading("scan-lots-tableBody", "Cargando lotes SCAN...", 6);
+    updateScanLotsStatus("Cargando lotes SCAN...");
+
+    const dateFrom = document.getElementById("scan-lots-date-from")?.value || "";
+    const dateTo = document.getElementById("scan-lots-date-to")?.value || "";
+    const line = document.getElementById("scan-lots-line")?.value?.trim() || "";
+    const partNo = document.getElementById("scan-lots-part-no")?.value?.trim() || "";
+
+    const params = [];
+    if (dateFrom) params.push(`date_from=${encodeURIComponent(dateFrom)}`);
+    if (dateTo) params.push(`date_to=${encodeURIComponent(dateTo)}`);
+    if (line) params.push(`line=${encodeURIComponent(line)}`);
+    if (partNo) params.push(`part_no=${encodeURIComponent(partNo)}`);
+    params.push("limit=200");
+
+    const response = await axios.get(`/api/plan/input-main/scan-lots?${params.join("&")}`);
+    scanLotsData = response.data.scan_lots || [];
+    scanLotPlanOptions = response.data.plan_options || [];
+    renderScanLotsTable();
+    updateScanLotsStatus(`${scanLotsData.length} grupo(s) por numero de parte pendiente(s)`);
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#e74c3c;">Error al cargar lotes SCAN</td></tr>`;
+    updateScanLotsStatus("Error al cargar lotes SCAN");
+    alert("Error al cargar lotes SCAN: " + (error.response?.data?.error || error.message));
+  }
+}
+
+function getCompatiblePlanOptions(scanLot) {
+  const line = String(scanLot.linea || '').trim();
+  const partNo = String(scanLot.nparte || '').trim();
+  return scanLotPlanOptions.filter(plan =>
+    String(plan.line || '').trim() === line &&
+    String(plan.part_no || '').trim() === partNo &&
+    ((parseInt(plan.plan_count) || 0) - (parseInt(plan.produced_count) || 0)) > 0
+  );
+}
+
+function renderScanLotsTable() {
+  const tbody = document.getElementById("scan-lots-tableBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (!scanLotsData.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:#95a5a6;">No hay lotes SCAN pendientes en el rango seleccionado</td></tr>`;
+    return;
+  }
+
+  scanLotsData.forEach(scanLot => {
+    const options = getCompatiblePlanOptions(scanLot);
+    const hasOptions = options.length > 0;
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid #555";
+    tr.dataset.scanIndex = String(scanLotsData.indexOf(scanLot));
+
+    const optionsHtml = hasOptions
+      ? options.map(plan => {
+        const pending = Math.max((parseInt(plan.plan_count) || 0) - (parseInt(plan.produced_count) || 0), 0);
+        const label = `${plan.lot_no} | ${plan.part_no} | ${plan.working_date} | ${plan.status} | Pend: ${pending}`;
+        return `<option value="${escapePlanHtml(plan.lot_no)}">${escapePlanHtml(label)}</option>`;
+      }).join("")
+      : `<option value="">Sin lote compatible</option>`;
+
+    tr.innerHTML = `
+      <td style="padding:6px; text-align:center;">${escapePlanHtml(scanLot.linea)}</td>
+      <td style="padding:6px; font-size:11px;">${escapePlanHtml(scanLot.nparte)}</td>
+      <td style="padding:6px; text-align:right;">${scanLot.cantidad_total || 0}</td>
+      <td style="padding:6px; font-size:11px;">${escapePlanHtml(scanLot.primero)}<br>${escapePlanHtml(scanLot.ultimo)}</td>
+      <td style="padding:6px; min-width:280px;">
+        <select class="plan-input scan-target-lot-select" ${hasOptions ? "" : "disabled"} style="width:100%; background:#1a1b26; color:lightgray; border:1px solid #20688C; padding:6px; border-radius:4px;">
+          ${optionsHtml}
+        </select>
+      </td>
+      <td style="padding:6px; text-align:center;">
+        <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+          <button class="plan-btn scan-assign-btn" ${hasOptions ? "" : "disabled"} style="padding:5px 10px; font-size:11px; background:#27ae60;">Asignar</button>
+          <button class="plan-btn scan-extend-assign-btn" ${hasOptions ? "" : "disabled"} style="padding:5px 10px; font-size:11px; background:#8e44ad;">Extender + asignar</button>
+          <button class="plan-btn scan-create-plan-btn" style="padding:5px 10px; font-size:11px; background:#2980b9;">Crear plan</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function getSelectedScanTargetPlan(row) {
+  const targetLotNo = row?.querySelector(".scan-target-lot-select")?.value || "";
+  return scanLotPlanOptions.find(plan => plan.lot_no === targetLotNo) || null;
+}
+
+async function assignScanLot(button, allowExtend = false) {
+  const row = button.closest("tr");
+  const scanLot = scanLotsData[parseInt(row?.dataset?.scanIndex || "-1", 10)];
+  const targetLotNo = row?.querySelector(".scan-target-lot-select")?.value || "";
+  const targetPlan = getSelectedScanTargetPlan(row);
+  const dateFrom = document.getElementById("scan-lots-date-from")?.value || "";
+  const dateTo = document.getElementById("scan-lots-date-to")?.value || "";
+
+  if (!scanLot || !targetLotNo) {
+    alert("Selecciona un grupo SCAN y un Lot No destino");
+    return;
+  }
+
+  const pending = targetPlan
+    ? ((parseInt(targetPlan.plan_count) || 0) - (parseInt(targetPlan.produced_count) || 0))
+    : 0;
+  const scanQty = parseInt(scanLot.cantidad_total) || 0;
+
+  if (pending <= 0) {
+    alert("Ese plan ya está completo. Crea un plan nuevo para estos escaneos.");
+    return;
+  }
+  if (scanQty > pending && !allowExtend) {
+    alert(`La cantidad SCAN (${scanQty}) excede el pendiente del plan (${pending}). Usa "Extender + asignar".`);
+    return;
+  }
+
+  const actionText = allowExtend && scanQty > pending ? "Extender y asignar" : "Asignar";
+  if (!confirm(`${actionText} ${scanQty} pieza(s) de ${scanLot.nparte} (${scanLot.linea}) al lote ${targetLotNo}?`)) {
+    return;
+  }
+
+  const originalText = button.textContent;
+  try {
+    button.textContent = "Asignando...";
+    button.disabled = true;
+    updateScanLotsStatus(`Asignando grupo ${scanLot.nparte}...`);
+
+    const response = await axios.post("/api/plan/input-main/assign-lot", {
+      linea: scanLot.linea,
+      nparte: scanLot.nparte,
+      date_from: dateFrom,
+      date_to: dateTo,
+      target_lot_no: targetLotNo,
+      allow_extend: allowExtend
+    });
+
+    if (response.data.success) {
+      showSuccessModal(response.data.message || "Lote SCAN asignado correctamente");
+      await loadScanLots();
+      if (typeof loadPlans === "function") {
+        await loadPlans();
+        await saveGroupSequences({ silent: true });
+      }
+    } else {
+      alert(response.data.error || "No se pudo asignar el lote SCAN");
+    }
+  } catch (error) {
+    alert("Error asignando lote SCAN: " + (error.response?.data?.error || error.message));
+  } finally {
+    button.textContent = originalText;
+    button.disabled = false;
+    updateScanLotsStatus("Listo");
+  }
+}
+
+async function createPlanForScanLot(button) {
+  const row = button.closest("tr");
+  const scanLot = scanLotsData[parseInt(row?.dataset?.scanIndex || "-1", 10)];
+  const dateFrom = document.getElementById("scan-lots-date-from")?.value || "";
+  const dateTo = document.getElementById("scan-lots-date-to")?.value || "";
+
+  if (!scanLot) {
+    alert("Selecciona un grupo SCAN");
+    return;
+  }
+
+  const scanQty = parseInt(scanLot.cantidad_total) || 0;
+  if (!confirm(`Crear un plan nuevo para ${scanQty} pieza(s) de ${scanLot.nparte} (${scanLot.linea})?`)) {
+    return;
+  }
+
+  const originalText = button.textContent;
+  try {
+    button.textContent = "Creando...";
+    button.disabled = true;
+    updateScanLotsStatus(`Creando plan para ${scanLot.nparte}...`);
+
+    const response = await axios.post("/api/plan/input-main/create-plan", {
+      linea: scanLot.linea,
+      nparte: scanLot.nparte,
+      date_from: dateFrom,
+      date_to: dateTo,
+      working_date: dateTo
+    });
+
+    if (response.data.success) {
+      showSuccessModal(response.data.message || "Plan creado correctamente");
+      await loadScanLots();
+      if (typeof loadPlans === "function") {
+        await loadPlans();
+        await saveGroupSequences({ silent: true });
+      }
+    } else {
+      alert(response.data.error || "No se pudo crear el plan");
+    }
+  } catch (error) {
+    alert("Error creando plan: " + (error.response?.data?.error || error.message));
+  } finally {
+    button.textContent = originalText;
+    button.disabled = false;
+    updateScanLotsStatus("Listo");
   }
 }
 
@@ -3852,6 +4096,71 @@ function createModalsInBody() {
     document.body.appendChild(rescheduleModal);
   }
 
+  if (!document.getElementById('scan-lots-modal')) {
+    console.log('?? Creando modal scan-lots-modal');
+    const scanLotsModal = document.createElement('div');
+    scanLotsModal.id = 'scan-lots-modal';
+    scanLotsModal.className = 'modal-overlay';
+    scanLotsModal.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    scanLotsModal.innerHTML = `
+      <div class="modal-content" id="scan-lots-modal-content" style="background:#34334E; border-radius:8px; width:94%; max-width:1350px; max-height:90%; padding:20px; color:lightgray; overflow:auto;">
+        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3 style="margin:0; color:#f39c12;">Lotes SCAN sin asignar</h3>
+          <button id="scan-lots-closeModalBtn" class="plan-btn modal-close-btn" style="background:#666; border:none; color:white; font-size:24px; cursor:pointer; width:30px; height:30px; border-radius:4px; display:flex; align-items:center; justify-content:center; padding:0; line-height:1;">×</button>
+        </div>
+
+        <div class="modal-filters" style="display:flex; gap:10px; align-items:center; margin-bottom:20px; flex-wrap:wrap;">
+          <label style="font-size:11px; color:#ecf0f1;">Fecha Desde:</label>
+          <input type="date" id="scan-lots-date-from" class="plan-input" style="background:#2B2D3E; color:lightgray; border:1px solid #20688C; padding:6px 8px; border-radius:4px; font-size:12px; width:140px;">
+
+          <label style="font-size:11px; color:#ecf0f1;">Fecha Hasta:</label>
+          <input type="date" id="scan-lots-date-to" class="plan-input" style="background:#2B2D3E; color:lightgray; border:1px solid #20688C; padding:6px 8px; border-radius:4px; font-size:12px; width:140px;">
+
+          <label style="font-size:11px; color:#ecf0f1;">Linea:</label>
+          <input type="text" id="scan-lots-line" class="plan-input" placeholder="M2" style="background:#2B2D3E; color:lightgray; border:1px solid #20688C; padding:6px 8px; border-radius:4px; font-size:12px; width:80px;">
+
+          <label style="font-size:11px; color:#ecf0f1;">Part No:</label>
+          <input type="text" id="scan-lots-part-no" class="plan-input" placeholder="EBR..." style="background:#2B2D3E; color:lightgray; border:1px solid #20688C; padding:6px 8px; border-radius:4px; font-size:12px; width:160px;">
+
+          <button id="scan-lots-search-btn" class="plan-btn" style="background-color:#d35400; color:white; border:none; padding:7px 14px; border-radius:4px; cursor:pointer; font-size:12px;">Buscar</button>
+        </div>
+
+        <div class="modal-table-container" style="overflow-x:auto; margin-bottom:20px;">
+          <table class="modal-table" style="width:100%; border-collapse:collapse; background:#2B2D3E;">
+            <thead>
+              <tr style="background:#1e1e2e;">
+                <th style="padding:10px; text-align:left; border-bottom:2px solid #20688C; color:#ecf0f1;">Linea</th>
+                <th style="padding:10px; text-align:left; border-bottom:2px solid #20688C; color:#ecf0f1;">Part No</th>
+                <th style="padding:10px; text-align:right; border-bottom:2px solid #20688C; color:#ecf0f1;">Cantidad</th>
+                <th style="padding:10px; text-align:left; border-bottom:2px solid #20688C; color:#ecf0f1;">Rango</th>
+                <th style="padding:10px; text-align:left; border-bottom:2px solid #20688C; color:#ecf0f1;">Lot No destino</th>
+                <th style="padding:10px; text-align:center; border-bottom:2px solid #20688C; color:#ecf0f1;">Accion</th>
+              </tr>
+            </thead>
+            <tbody id="scan-lots-tableBody" style="color:lightgray;"></tbody>
+          </table>
+        </div>
+
+        <div class="modal-status" style="padding:10px; text-align:center; color:#95a5a6; font-size:12px;">
+          <span id="scan-lots-status">Busque grupos SCAN por numero de parte para asignarlos a un plan compatible</span>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(scanLotsModal);
+  }
+
   console.log('? Modales creados dinomicamente en el body');
 }
 
@@ -3969,6 +4278,70 @@ function initializePlanEventListeners() {
       } else {
         console.error('? Modal wo-modal no encontrado despuos de crearlo');
       }
+      return;
+    }
+
+    if (target.id === 'scan-lots-openModalBtn' || target.closest('#scan-lots-openModalBtn')) {
+      e.preventDefault();
+      console.log('?? Click en scan-lots-openModalBtn detectado');
+
+      if (!document.getElementById('scan-lots-modal')) {
+        createModalsInBody();
+      }
+
+      setDefaultScanLotsDates();
+      const modal = document.getElementById('scan-lots-modal');
+      if (modal) {
+        modal.style.cssText = `
+          display: flex !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: rgba(0,0,0,0.6) !important;
+          justify-content: center !important;
+          align-items: center !important;
+          z-index: 10000 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+        `;
+        loadScanLots();
+      }
+      return;
+    }
+
+    if (target.id === 'scan-lots-closeModalBtn' || target.closest('#scan-lots-closeModalBtn')) {
+      e.preventDefault();
+      const modal = document.getElementById('scan-lots-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+      }
+      return;
+    }
+
+    if (target.id === 'scan-lots-search-btn' || target.closest('#scan-lots-search-btn')) {
+      e.preventDefault();
+      loadScanLots();
+      return;
+    }
+
+    if (target.classList.contains('scan-assign-btn') || target.closest('.scan-assign-btn')) {
+      e.preventDefault();
+      assignScanLot(target.closest('.scan-assign-btn'), false);
+      return;
+    }
+
+    if (target.classList.contains('scan-extend-assign-btn') || target.closest('.scan-extend-assign-btn')) {
+      e.preventDefault();
+      assignScanLot(target.closest('.scan-extend-assign-btn'), true);
+      return;
+    }
+
+    if (target.classList.contains('scan-create-plan-btn') || target.closest('.scan-create-plan-btn')) {
+      e.preventDefault();
+      createPlanForScanLot(target.closest('.scan-create-plan-btn'));
       return;
     }
 
@@ -4467,13 +4840,16 @@ window.debugGroups = function () {
 }
 
 // Funcion para guardar el orden actual de los grupos
-async function saveGroupSequences() {
+async function saveGroupSequences(options = {}) {
+  const silent = options === true || options.silent === true;
   const saveBtn = document.getElementById('save-sequences-btn');
-  if (!saveBtn) return;
+  if (!saveBtn && !silent) return;
 
   // Mostrar loading
-  saveBtn.textContent = 'Guardando...';
-  saveBtn.disabled = true;
+  if (!silent && saveBtn) {
+    saveBtn.textContent = 'Guardando...';
+    saveBtn.disabled = true;
+  }
 
   try {
     const sequenceData = [];
@@ -4499,26 +4875,26 @@ async function saveGroupSequences() {
           // En su lugar, construir el string directamente en zona horaria local (Nuevo León)
           let plannedStart = null;
           if (startTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon (YYYY-MM-DD)
+            const planDateStr = plan.working_date || getTodayInNuevoLeon(); // Fecha del plan
             const [hours, minutes] = startTime.split(':');
             // Formato directo: YYYY-MM-DD HH:MM:SS sin conversión a UTC
-            plannedStart = `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+            plannedStart = `${planDateStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
           }
 
           // Convertir endTime (HH:MM) a DATETIME para planned_end
           // IMPORTANTE: NO usar toISOString() porque convierte a UTC sumando horas
           let plannedEnd = null;
           if (endTime !== '--') {
-            const todayStr = getTodayInNuevoLeon(); // Fecha en Nuevo Leon (YYYY-MM-DD)
+            const planDateStr = plan.working_date || getTodayInNuevoLeon(); // Fecha del plan
             const [hours, minutes] = endTime.split(':');
             // Formato directo: YYYY-MM-DD HH:MM:SS sin conversión a UTC
-            plannedEnd = `${todayStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+            plannedEnd = `${planDateStr} ${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
           }
 
           // Tambion enviar solo la fecha para plan_start_date
           let planStartDate = null;
           if (startTime !== '--') {
-            planStartDate = getTodayInNuevoLeon(); // Formato: YYYY-MM-DD en Nuevo Leon
+            planStartDate = plan.working_date || getTodayInNuevoLeon(); // Formato: YYYY-MM-DD
           }
 
           // Calcular effective_minutes (tiempo productivo sin breaks)
@@ -4577,12 +4953,16 @@ async function saveGroupSequences() {
 
     if (response.ok) {
       const result = await response.json();
-      saveBtn.textContent = '? Guardado';
-      saveBtn.style.backgroundColor = '#27ae60';
+      if (!silent && saveBtn) {
+        saveBtn.textContent = '? Guardado';
+        saveBtn.style.backgroundColor = '#27ae60';
+      }
 
       // Mostrar mensaje de confirmacion
       const message = result.message || 'Secuencias guardadas correctamente';
-      showNotification(message, 'success');
+      if (!silent) {
+        showNotification(message, 'success');
+      }
 
       // Actualizar localStorage para mantener consistencia
       const currentOrder = [];
@@ -4603,11 +4983,14 @@ async function saveGroupSequences() {
       localStorage.setItem(key, JSON.stringify(currentOrder));
       // LocalStorage actualizado con el orden guardado
 
-      setTimeout(() => {
-        saveBtn.textContent = 'Guardar Orden';
-        saveBtn.style.backgroundColor = '#3498db';
-        saveBtn.disabled = false;
-      }, 2000);
+      if (!silent && saveBtn) {
+        setTimeout(() => {
+          saveBtn.textContent = 'Guardar Orden';
+          saveBtn.style.backgroundColor = '#3498db';
+          saveBtn.disabled = false;
+        }, 2000);
+      }
+      return true;
     } else {
       const errorData = await response.json();
       // Error response:
@@ -4616,6 +4999,11 @@ async function saveGroupSequences() {
   } catch (error) {
     // Error completo al guardar secuencias
     // Stack trace:
+    if (silent) {
+      console.warn('Auto guardado de orden falló:', error);
+      return false;
+    }
+
     saveBtn.textContent = '? Error';
     saveBtn.style.backgroundColor = '#e74c3c';
 
