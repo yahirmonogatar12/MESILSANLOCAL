@@ -28,11 +28,35 @@
             <line x1="8" y1="2" x2="8" y2="6"></line>
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
-          Fecha
+          Fecha desde
         </label>
-        <input type="date" id="filter-fecha">
+        <input type="date" id="filter-fecha-desde">
       </div>
-      
+
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Fecha hasta
+        </label>
+        <input type="date" id="filter-fecha-hasta">
+      </div>
+
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          No Parte
+        </label>
+        <input type="text" id="filter-no-parte" placeholder="Ej. EBR30299369">
+      </div>
+
       <div class="filter-group">
         <label>
           <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -42,7 +66,21 @@
         </label>
         <input type="text" id="filter-linea" placeholder="M1, M2...">
       </div>
-      
+
+      <div class="filter-group">
+        <label>
+          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+          ICT
+        </label>
+        <select id="filter-ict">
+          <option value="">Todas</option>
+          <option value="1">ICT 1</option>
+          <option value="2">ICT 2</option>
+        </select>
+      </div>
+
       <div class="filter-group">
         <label>
           <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -56,7 +94,7 @@
           <option value="NG">NG</option>
         </select>
       </div>
-      
+
       <div class="filter-group">
         <label>
           <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -66,7 +104,7 @@
         </label>
         <input type="text" id="filter-barcode" placeholder="Buscar por código...">
       </div>
-      
+
       <button id="btn-consultar" class="btn-primary">
         <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -121,6 +159,30 @@
         </thead>
         <tbody id="ict-body"></tbody>
       </table>
+    </div>
+    <div id="ict-pagination" class="ict-pagination" style="display:none;">
+      <div class="ict-pagination-info">
+        <span id="ict-pagination-summary">0 - 0 de 0</span>
+      </div>
+      <div class="ict-pagination-controls">
+        <label class="ict-pagination-perpage">
+          Por pagina
+          <select id="ict-per-page">
+            <option value="100">100</option>
+            <option value="200" selected>200</option>
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+          </select>
+        </label>
+        <button id="ict-page-first" type="button" class="btn-page" title="Primera">«</button>
+        <button id="ict-page-prev"  type="button" class="btn-page" title="Anterior">‹</button>
+        <span class="ict-pagination-current">
+          <input type="number" id="ict-page-input" min="1" value="1" step="1">
+          <span> / <span id="ict-page-total">1</span></span>
+        </span>
+        <button id="ict-page-next"  type="button" class="btn-page" title="Siguiente">›</button>
+        <button id="ict-page-last"  type="button" class="btn-page" title="Ultima">»</button>
+      </div>
     </div>
   </div>
 
