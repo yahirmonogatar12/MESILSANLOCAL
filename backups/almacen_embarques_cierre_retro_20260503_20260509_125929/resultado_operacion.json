@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "batch_id": 6,
+  "closure_label": "Cierre Mayo 2026",
+  "closure_month": "2026-05",
+  "period_start": "2026-05-04 00:00:00",
+  "csv_hash": "677f49378d43fe28b3a7447e049df748258039615d5b40650b33df335173ed3a",
+  "rows_hash": "424bac3b0a9d37d96d3f67a6240ef3b25f4022887fe4a67e0f057475c4f8af41",
+  "accuracy_pct": 56.57,
+  "total_rows": 997,
+  "differing_rows": 433,
+  "totals": {
+    "initial_qty": 1013676,
+    "current_before": -134037,
+    "system_at_closure": -41204,
+    "entries": 38821,
+    "exits": 137343,
+    "return_entries": 6093,
+    "return_losses": 404,
+    "current_after": 920843
+  },
+  "backup_dir": "C:\\Users\\jesus\\OneDrive\\Documents\\Desarrollo\\MESILSANLOCAL\\backups\\almacen_embarques_cierre_retro_20260503_20260509_125929"
+}

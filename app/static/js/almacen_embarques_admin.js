@@ -1067,17 +1067,27 @@
             <td>${escapeHtml(row.confirmed_at || row.closed_at || "-")}</td>
             <td>${escapeHtml(row.confirmed_by || row.created_by || "-")}</td>
             <td>${formatNumber(row.accuracy_pct)}%</td>
-            <td class="ae-closure-history-hash">${escapeHtml((row.rows_hash || "-").slice(0, 12))}</td>
             <td>${buildBadge(row.status || "-", statusVariant)}</td>
             <td>
-              <button
-                type="button"
-                class="ae-btn-inline ae-btn-inline-edit"
-                data-action="view-closure-history"
-                data-batch-id="${escapeHtml(row.id)}"
-              >
-                ${row.status === "draft" ? "Retomar" : "Ver"}
-              </button>
+              <div class="ae-inline-actions">
+                <button
+                  type="button"
+                  class="ae-btn-inline ae-btn-inline-edit"
+                  data-action="view-closure-history"
+                  data-batch-id="${escapeHtml(row.id)}"
+                >
+                  ${row.status === "draft" ? "Retomar" : "Ver"}
+                </button>
+                <button
+                  type="button"
+                  class="ae-btn-inline ae-btn-inline-save"
+                  data-action="download-closure-report"
+                  data-batch-id="${escapeHtml(row.id)}"
+                  ${row.status !== "confirmed" ? "disabled" : ""}
+                >
+                  Excel
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -1444,6 +1454,15 @@
     elements.confirmBtn?.addEventListener("click", confirmInventoryClosure);
 
     elements.historyTbody?.addEventListener("click", (event) => {
+      const reportButton = event.target.closest("[data-action='download-closure-report']");
+      if (reportButton) {
+        window.open(
+          `/api/almacen-embarques/inventario-general/cierre/history/${encodeURIComponent(reportButton.dataset.batchId)}/export`,
+          "_blank",
+        );
+        return;
+      }
+
       const button = event.target.closest("[data-action='view-closure-history']");
       if (!button) {
         return;

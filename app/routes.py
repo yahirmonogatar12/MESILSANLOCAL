@@ -9544,6 +9544,15 @@ def _aplicar_filtros_historial_embarques(sql, params, search_columns):
     fecha_desde = request.args.get("fecha_desde", "").strip()
     fecha_hasta = request.args.get("fecha_hasta", "").strip()
 
+    # Los historiales operativos sólo deben mostrar el periodo vigente.
+    # Los movimientos anteriores quedan trazados en el historial de cierres.
+    sql += f"""
+        AND COALESCE(movement_at, created_at) >= COALESCE(
+            (SELECT MAX(closed_at) FROM `{SHIPPING_TABLES['inventory_closures']}`),
+            '1000-01-01'
+        )
+    """
+
     if fecha_desde:
         sql += " AND DATE(COALESCE(movement_at, created_at)) >= %s"
         params.append(fecha_desde)
@@ -14008,6 +14017,524 @@ def api_almacen_embarques_inventario_cierre_history_detail(batch_id):
     except Exception as e:
         print(
             f"Error consultando detalle de cierre inventario embarques: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/almacen-embarques/inventario-general/cierre/history/<int:batch_id>/export")
+@login_requerido
+def export_almacen_embarques_inventario_cierre_report(batch_id):
+    """Exportar reporte completo del cierre de inventario en Excel."""
+    try:
+        from io import BytesIO
+
+        from flask import Response
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.utils import get_column_letter
+
+        batch = execute_query(
+            f"""
+            SELECT *
+            FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (batch_id,),
+            fetch="one",
+        )
+        if not batch:
+            return jsonify({"success": False, "error": "No se encontró el cierre solicitado."}), 404
+        if (batch.get("status") or "").lower() != "confirmed":
+            return jsonify({"success": False, "error": "Sólo se pueden exportar cierres confirmados."}), 409
+
+        period_end = batch.get("closed_at")
+        previous_batch = execute_query(
+            f"""
+            SELECT id, closed_at
+            FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+            WHERE status = 'confirmed'
+              AND closed_at < %s
+            ORDER BY closed_at DESC, id DESC
+            LIMIT 1
+            """,
+            (period_end,),
+            fetch="one",
+        )
+        period_start = (previous_batch or {}).get("closed_at")
+        previous_batch_id = (previous_batch or {}).get("id")
+
+        def period_filter(column_expr):
+            clauses = []
+            params = []
+            if period_start:
+                clauses.append(f"{column_expr} >= %s")
+                params.append(period_start)
+            if period_end:
+                clauses.append(f"{column_expr} < %s")
+                params.append(period_end)
+            return " AND ".join(clauses) if clauses else "1 = 1", params
+
+        def normalize_excel_value(value):
+            if isinstance(value, Decimal):
+                try:
+                    as_int = int(value)
+                    return as_int if value == as_int else float(value)
+                except Exception:
+                    return float(value)
+            if isinstance(value, datetime):
+                return value.strftime("%Y-%m-%d %H:%M:%S")
+            if isinstance(value, date):
+                return value.strftime("%Y-%m-%d")
+            return value
+
+        def parse_json_summary(raw_value):
+            if not raw_value:
+                return ""
+            try:
+                parsed = json.loads(raw_value)
+            except Exception:
+                return str(raw_value)
+            if isinstance(parsed, dict):
+                return " | ".join(
+                    f"{key}: {normalize_excel_value(value)}"
+                    for key, value in parsed.items()
+                )
+            if isinstance(parsed, list):
+                return ", ".join(str(item) for item in parsed)
+            return str(parsed)
+
+        def index_quantity(rows, part_key, quantity_key):
+            indexed = {}
+            for item in rows:
+                part_number = _normalizar_texto_embarques_historial(item.get(part_key))
+                indexed[part_number] = _normalizar_numero_embarques_historial(
+                    item.get(quantity_key)
+                ) or 0
+            return indexed
+
+        closures = execute_query(
+            f"""
+            SELECT
+              part_number,
+              initial_quantity,
+              system_quantity,
+              difference_quantity,
+              raw_current_quantity
+            FROM `{SHIPPING_TABLES['inventory_closures']}`
+            WHERE closure_batch_id = %s
+            ORDER BY part_number ASC
+            """,
+            (batch_id,),
+            fetch="all",
+        ) or []
+
+        previous_closures = []
+        if previous_batch_id:
+            previous_closures = execute_query(
+                f"""
+                SELECT part_number, initial_quantity
+                FROM `{SHIPPING_TABLES['inventory_closures']}`
+                WHERE closure_batch_id = %s
+                """,
+                (previous_batch_id,),
+                fetch="all",
+            ) or []
+
+        movement_clause, movement_params = period_filter("COALESCE(movement_at, created_at)")
+        entries_agg = execute_query(
+            f"""
+            SELECT part_number, COALESCE(SUM(quantity), 0) AS quantity
+            FROM `{SHIPPING_TABLES['entries']}`
+            WHERE {movement_clause}
+              AND COALESCE(is_fifo_layer_only, 0) = 0
+            GROUP BY part_number
+            """,
+            tuple(movement_params),
+            fetch="all",
+        ) or []
+        exits_agg = execute_query(
+            f"""
+            SELECT part_number, COALESCE(SUM(quantity), 0) AS quantity
+            FROM `{SHIPPING_TABLES['exits']}`
+            WHERE {movement_clause}
+            GROUP BY part_number
+            """,
+            tuple(movement_params),
+            fetch="all",
+        ) or []
+        returns_agg = execute_query(
+            f"""
+            SELECT
+              part_number,
+              COALESCE(SUM(return_quantity), 0) AS return_quantity,
+              COALESCE(SUM(loss_quantity), 0) AS loss_quantity
+            FROM `{SHIPPING_TABLES['returns']}`
+            WHERE {movement_clause}
+            GROUP BY part_number
+            """,
+            tuple(movement_params),
+            fetch="all",
+        ) or []
+
+        entries_by_part = index_quantity(entries_agg, "part_number", "quantity")
+        exits_by_part = index_quantity(exits_agg, "part_number", "quantity")
+        return_entries_by_part = index_quantity(returns_agg, "part_number", "return_quantity")
+        return_losses_by_part = index_quantity(returns_agg, "part_number", "loss_quantity")
+        previous_initial_by_part = index_quantity(previous_closures, "part_number", "initial_quantity")
+
+        cierre_rows = []
+        for row in closures:
+            part_number = _normalizar_texto_embarques_historial(row.get("part_number"))
+            entries_quantity = entries_by_part.get(part_number, 0)
+            exits_quantity = exits_by_part.get(part_number, 0)
+            return_entries_quantity = return_entries_by_part.get(part_number, 0)
+            return_losses_quantity = return_losses_by_part.get(part_number, 0)
+            if previous_batch_id:
+                initial_quantity = previous_initial_by_part.get(part_number, 0)
+            else:
+                # Primer cierre: no hay cierre anterior que defina base.
+                # Se infiere la base inicial usando el snapshot del sistema al cierre.
+                system_quantity = _normalizar_numero_embarques_historial(row.get("system_quantity"))
+                if system_quantity is None:
+                    system_quantity = 0
+                initial_quantity = (
+                    system_quantity
+                    - entries_quantity
+                    + exits_quantity
+                    - return_entries_quantity
+                    + return_losses_quantity
+                )
+            cierre_rows.append(
+                {
+                    "part_number": part_number,
+                    "initial_quantity": initial_quantity,
+                    "entries": entries_quantity,
+                    "exits": exits_quantity,
+                    "return_entries": return_entries_quantity,
+                    "return_losses": return_losses_quantity,
+                    "physical_quantity": _normalizar_numero_embarques_historial(row.get("raw_current_quantity")),
+                    "difference_quantity": _normalizar_numero_embarques_historial(row.get("difference_quantity")),
+                }
+            )
+
+        entries_rows = execute_query(
+            f"""
+            SELECT
+              COALESCE(movement_at, created_at) AS movement_at,
+              'Entrada' AS movement_type,
+              entry_folio AS folio,
+              part_number,
+              quantity,
+              '' AS departure_code,
+              product_model,
+              customer,
+              registered_by
+            FROM `{SHIPPING_TABLES['entries']}`
+            WHERE {movement_clause}
+              AND COALESCE(is_fifo_layer_only, 0) = 0
+            """,
+            tuple(movement_params),
+            fetch="all",
+        ) or []
+        exits_rows = execute_query(
+            f"""
+            SELECT
+              COALESCE(movement_at, created_at) AS movement_at,
+              'Salida' AS movement_type,
+              exit_folio AS folio,
+              part_number,
+              quantity,
+              departure_code,
+              product_model,
+              customer,
+              registered_by
+            FROM `{SHIPPING_TABLES['exits']}`
+            WHERE {movement_clause}
+            """,
+            tuple(movement_params),
+            fetch="all",
+        ) or []
+
+        entradas_salidas_rows = []
+        for item in entries_rows + exits_rows:
+            movement_at = item.get("movement_at")
+            entradas_salidas_rows.append(
+                {
+                    "fecha": movement_at.strftime("%Y-%m-%d") if isinstance(movement_at, datetime) else "",
+                    "hora": movement_at.strftime("%H:%M:%S") if isinstance(movement_at, datetime) else "",
+                    "tipo": item.get("movement_type"),
+                    "folio": item.get("folio"),
+                    "part_number": item.get("part_number"),
+                    "quantity": _normalizar_numero_embarques_historial(item.get("quantity")),
+                    "departure_code": item.get("departure_code") or "",
+                    "product_model": item.get("product_model") or "",
+                    "customer": item.get("customer") or "",
+                    "registered_by": item.get("registered_by") or "",
+                }
+            )
+        entradas_salidas_rows.sort(
+            key=lambda item: (item.get("fecha") or "", item.get("hora") or "", item.get("folio") or "")
+        )
+
+        returns_rows_raw = execute_query(
+            f"""
+            SELECT
+              COALESCE(movement_at, created_at) AS movement_at,
+              return_folio,
+              part_number,
+              return_quantity,
+              loss_quantity,
+              product_model,
+              customer,
+              reason,
+              registered_by
+            FROM `{SHIPPING_TABLES['returns']}`
+            WHERE {movement_clause}
+            ORDER BY COALESCE(movement_at, created_at) ASC, id ASC
+            """,
+            tuple(movement_params),
+            fetch="all",
+        ) or []
+        retorno_rows = []
+        for item in returns_rows_raw:
+            movement_at = item.get("movement_at")
+            base = {
+                "fecha": movement_at.strftime("%Y-%m-%d") if isinstance(movement_at, datetime) else "",
+                "hora": movement_at.strftime("%H:%M:%S") if isinstance(movement_at, datetime) else "",
+                "folio": item.get("return_folio"),
+                "part_number": item.get("part_number"),
+                "product_model": item.get("product_model") or "",
+                "customer": item.get("customer") or "",
+                "return_type": item.get("reason") or "",
+                "registered_by": item.get("registered_by") or "",
+            }
+            return_quantity = _normalizar_numero_embarques_historial(item.get("return_quantity")) or 0
+            loss_quantity = _normalizar_numero_embarques_historial(item.get("loss_quantity")) or 0
+            if return_quantity:
+                retorno_rows.append({**base, "movement_type": "Entrada retorno", "quantity": return_quantity})
+            if loss_quantity:
+                retorno_rows.append({**base, "movement_type": "Salida retorno", "quantity": loss_quantity})
+
+        adjustment_clause, adjustment_params = period_filter("adjusted_at")
+        adjustment_rows_raw = execute_query(
+            f"""
+            SELECT
+              adjusted_at,
+              'Movimiento' AS adjustment_type,
+              movement_type,
+              adjustment_action,
+              folio,
+              part_number,
+              changed_fields_json,
+              previous_values_json,
+              new_values_json,
+              notes,
+              adjusted_by
+            FROM `{SHIPPING_TABLES['movement_adjustments']}`
+            WHERE {adjustment_clause}
+            ORDER BY adjusted_at ASC, id ASC
+            """,
+            tuple(adjustment_params),
+            fetch="all",
+        ) or []
+        departure_clause, departure_params = period_filter("assigned_at")
+        departure_rows_raw = execute_query(
+            f"""
+            SELECT
+              assigned_at,
+              'Departure' AS adjustment_type,
+              'exit' AS movement_type,
+              assignment_action AS adjustment_action,
+              exit_folio AS folio,
+              part_number,
+              previous_departure_code,
+              departure_code,
+              notes,
+              assigned_by
+            FROM `{SHIPPING_TABLES['departure_history']}`
+            WHERE {departure_clause}
+            ORDER BY assigned_at ASC, id ASC
+            """,
+            tuple(departure_params),
+            fetch="all",
+        ) or []
+
+        modificaciones_rows = []
+        for item in adjustment_rows_raw:
+            adjusted_at = item.get("adjusted_at")
+            modificaciones_rows.append(
+                {
+                    "fecha": adjusted_at.strftime("%Y-%m-%d") if isinstance(adjusted_at, datetime) else "",
+                    "hora": adjusted_at.strftime("%H:%M:%S") if isinstance(adjusted_at, datetime) else "",
+                    "adjustment_type": item.get("adjustment_type"),
+                    "movement_type": item.get("movement_type"),
+                    "folio": item.get("folio"),
+                    "part_number": item.get("part_number"),
+                    "action": item.get("adjustment_action"),
+                    "changed_fields": parse_json_summary(item.get("changed_fields_json")),
+                    "before": parse_json_summary(item.get("previous_values_json")),
+                    "after": parse_json_summary(item.get("new_values_json")),
+                    "notes": item.get("notes") or "",
+                    "user": item.get("adjusted_by") or "",
+                }
+            )
+        for item in departure_rows_raw:
+            adjusted_at = item.get("assigned_at")
+            modificaciones_rows.append(
+                {
+                    "fecha": adjusted_at.strftime("%Y-%m-%d") if isinstance(adjusted_at, datetime) else "",
+                    "hora": adjusted_at.strftime("%H:%M:%S") if isinstance(adjusted_at, datetime) else "",
+                    "adjustment_type": item.get("adjustment_type"),
+                    "movement_type": "Salida",
+                    "folio": item.get("folio"),
+                    "part_number": item.get("part_number"),
+                    "action": item.get("adjustment_action"),
+                    "changed_fields": "departure_code",
+                    "before": item.get("previous_departure_code") or "",
+                    "after": item.get("departure_code") or "",
+                    "notes": item.get("notes") or "",
+                    "user": item.get("assigned_by") or "",
+                }
+            )
+        modificaciones_rows.sort(
+            key=lambda item: (item.get("fecha") or "", item.get("hora") or "", item.get("folio") or "")
+        )
+
+        wb = Workbook()
+        header_fill = PatternFill(start_color="10243F", end_color="10243F", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+        title_font = Font(color="10243F", bold=True, size=14)
+
+        def write_sheet(ws, title, headers, rows):
+            ws.cell(row=1, column=1, value=title)
+            ws.cell(row=1, column=1).font = title_font
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+            if period_start:
+                period_text = f"Periodo: {normalize_excel_value(period_start)} a {normalize_excel_value(period_end)}"
+            else:
+                period_text = f"Periodo: inicio de operación a {normalize_excel_value(period_end)}"
+            ws.cell(row=2, column=1, value=period_text)
+            ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+
+            header_row = 4
+            for col_idx, (label, _key) in enumerate(headers, 1):
+                cell = ws.cell(row=header_row, column=col_idx, value=label)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
+            if rows:
+                for row_idx, row in enumerate(rows, header_row + 1):
+                    for col_idx, (_label, key) in enumerate(headers, 1):
+                        cell = ws.cell(row=row_idx, column=col_idx, value=normalize_excel_value(row.get(key, "")))
+                        cell.alignment = Alignment(vertical="top", wrap_text=True)
+            else:
+                ws.cell(row=header_row + 1, column=1, value="Sin registros para el periodo.")
+                ws.merge_cells(start_row=header_row + 1, start_column=1, end_row=header_row + 1, end_column=len(headers))
+
+            ws.freeze_panes = "A5"
+            ws.auto_filter.ref = f"A4:{ws.cell(row=max(header_row + 1, len(rows) + header_row), column=len(headers)).coordinate}"
+
+            for column_idx in range(1, ws.max_column + 1):
+                column_letter = get_column_letter(column_idx)
+                max_length = 0
+                for cell in ws[column_letter]:
+                    value_length = len(str(cell.value or ""))
+                    max_length = max(max_length, value_length)
+                ws.column_dimensions[column_letter].width = min(max(max_length + 2, 12), 36)
+
+        ws = wb.active
+        ws.title = "Cierre"
+        write_sheet(
+            ws,
+            f"Reporte de cierre - {batch.get('closure_label') or batch_id}",
+            [
+                ("No. parte", "part_number"),
+                ("Inventario inicial", "initial_quantity"),
+                ("Entradas", "entries"),
+                ("Salidas", "exits"),
+                ("Entradas de retorno", "return_entries"),
+                ("Salidas de retorno", "return_losses"),
+                ("Inventario físico", "physical_quantity"),
+                ("Diferencia", "difference_quantity"),
+            ],
+            cierre_rows,
+        )
+
+        ws = wb.create_sheet("Entradas y Salidas")
+        write_sheet(
+            ws,
+            "Historial de entradas y salidas",
+            [
+                ("Fecha", "fecha"),
+                ("Hora", "hora"),
+                ("Movimiento", "tipo"),
+                ("Folio", "folio"),
+                ("No. parte", "part_number"),
+                ("Cantidad", "quantity"),
+                ("Departure", "departure_code"),
+                ("Modelo", "product_model"),
+                ("Cliente", "customer"),
+                ("Usuario", "registered_by"),
+            ],
+            entradas_salidas_rows,
+        )
+
+        ws = wb.create_sheet("Retornos")
+        write_sheet(
+            ws,
+            "Historial de entradas y salidas de retorno",
+            [
+                ("Fecha", "fecha"),
+                ("Hora", "hora"),
+                ("Movimiento", "movement_type"),
+                ("Folio", "folio"),
+                ("No. parte", "part_number"),
+                ("Cantidad", "quantity"),
+                ("Modelo", "product_model"),
+                ("Cliente", "customer"),
+                ("Tipo", "return_type"),
+                ("Usuario", "registered_by"),
+            ],
+            retorno_rows,
+        )
+
+        ws = wb.create_sheet("Modificaciones")
+        write_sheet(
+            ws,
+            "Historial de modificaciones",
+            [
+                ("Fecha", "fecha"),
+                ("Hora", "hora"),
+                ("Tipo ajuste", "adjustment_type"),
+                ("Movimiento", "movement_type"),
+                ("Folio", "folio"),
+                ("No. parte", "part_number"),
+                ("Acción", "action"),
+                ("Campos", "changed_fields"),
+                ("Antes", "before"),
+                ("Después", "after"),
+                ("Motivo / nota", "notes"),
+                ("Usuario", "user"),
+            ],
+            modificaciones_rows,
+        )
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        filename_label = re.sub(r"[^A-Za-z0-9_-]+", "_", str(batch.get("closure_label") or f"cierre_{batch_id}")).strip("_")
+        filename = f"reporte_{filename_label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        print(
+            f"Error exportando reporte de cierre inventario embarques: {e}\n{traceback.format_exc()}"
         )
         return jsonify({"success": False, "error": str(e)}), 500
 
