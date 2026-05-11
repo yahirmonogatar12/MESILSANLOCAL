@@ -728,6 +728,50 @@
     return row.fecha || "";
   }
 
+  function normalizeMovementTimeValue(value) {
+    const rawValue = String(value || "").trim();
+    const match = rawValue.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (!match) {
+      return "";
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3] || "0");
+    if (
+      !Number.isInteger(hours) ||
+      !Number.isInteger(minutes) ||
+      !Number.isInteger(seconds) ||
+      hours < 0 ||
+      hours > 23 ||
+      minutes < 0 ||
+      minutes > 59 ||
+      seconds < 0 ||
+      seconds > 59
+    ) {
+      return "";
+    }
+
+    return [
+      String(hours).padStart(2, "0"),
+      String(minutes).padStart(2, "0"),
+      String(seconds).padStart(2, "0"),
+    ].join(":");
+  }
+
+  function getMovementTimeValue(row) {
+    return normalizeMovementTimeValue(row.hora);
+  }
+
+  function buildMovementDateTimeValue(row) {
+    const dateValue = getMovementDateValue(row);
+    const timeValue = getMovementTimeValue(row);
+    if (!dateValue || !timeValue) {
+      return "";
+    }
+    return `${dateValue} ${timeValue}`;
+  }
+
   function getMovementLocationValue(row) {
     return row.location_value || "";
   }
@@ -739,6 +783,12 @@
         label: "Fecha",
         type: "date",
         previous: getMovementDateValue(row),
+      },
+      {
+        name: "hora",
+        label: "Hora",
+        type: "time",
+        previous: getMovementTimeValue(row),
       },
       {
         name: "cantidad",
@@ -776,6 +826,8 @@
     switch (fieldName) {
       case "fecha":
         return getMovementDateValue(row);
+      case "hora":
+        return getMovementTimeValue(row);
       case "cantidad":
         return String(getMovementQuantity(row) ?? "");
       case "zona":
@@ -794,6 +846,10 @@
 
     if (fieldName === "fecha") {
       return `<input type="date" class="ae-inline-input" data-field-name="${fieldName}" value="${value}">`;
+    }
+
+    if (fieldName === "hora") {
+      return `<input type="time" class="ae-inline-input" data-field-name="${fieldName}" step="1" value="${value}">`;
     }
 
     if (fieldName === "cantidad") {
@@ -849,7 +905,7 @@
     return `
       <tr class="ae-row-editing" data-record-key="${escapeHtml(getMovementRecordKey(row))}">
         <td class="ae-edit-cell">${getEditableInputMarkup("fecha", row)}</td>
-        <td>${escapeHtml(row.hora)}</td>
+        <td class="ae-edit-cell">${getEditableInputMarkup("hora", row)}</td>
         <td>${escapeHtml(row.movement_label || row.movement_type || "-")}</td>
         <td>${escapeHtml(row.folio)}</td>
         <td><strong>${escapeHtml(row.part_number)}</strong></td>
@@ -1972,6 +2028,9 @@
       case "fecha":
         movementModuleState.draftRow.fecha = nextValue;
         break;
+      case "hora":
+        movementModuleState.draftRow.hora = normalizeMovementTimeValue(nextValue) || nextValue;
+        break;
       case "cantidad":
         if (movementModuleState.draftRow.movement_type === "return") {
           movementModuleState.draftRow.return_quantity = nextValue === "" ? "" : Number(nextValue);
@@ -2010,8 +2069,8 @@
       beforeRows.push({ label: field.label, value: originalValue || "-" });
       afterRows.push({ label: field.label, value: draftValue || "-" });
 
-      if (field.name === "fecha") {
-        changes.movement_at = draftValue;
+      if (field.name === "fecha" || field.name === "hora") {
+        changes.movement_at = buildMovementDateTimeValue(draftRow);
       } else if (field.name === "cantidad") {
         if (draftRow.movement_type === "return") {
           changes.return_quantity = draftValue;
@@ -2133,6 +2192,11 @@
 
     if (!Object.keys(changes).length) {
       setStatus(config.prefix, "No se detectaron cambios para guardar", true);
+      return;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(changes, "movement_at") && !changes.movement_at) {
+      setStatus(config.prefix, "La fecha y la hora del movimiento son obligatorias", true);
       return;
     }
 

@@ -4,56 +4,74 @@
     data-module-type="returns"
     data-registered-by="{{ session.get('nombre_completo', session.get('usuario', 'Sistema')) }}"
 >
-    <div class="ae-filters-card ae-register-card">
-        <div class="ae-card-header">
-            <h3>Registro de retorno</h3>
-            <span id="almacen-embarques-returns-form-status" class="ae-status-text"></span>
+    <div class="ae-return-toolbar-grid">
+        <div class="ae-filters-card ae-register-card">
+            <div class="ae-card-header">
+                <h3>Registro de retorno</h3>
+                <span id="almacen-embarques-returns-form-status" class="ae-status-text"></span>
+            </div>
+            <div class="ae-register-form">
+                <div class="ae-register-field ae-register-field--compact ae-register-field--movement">
+                    <label for="almacen-embarques-returns-movement-type">Tipo de movimiento</label>
+                    <select id="almacen-embarques-returns-movement-type">
+                        <option value="entry">Entrada de retorno</option>
+                        <option value="exit">Salida de retorno</option>
+                    </select>
+                </div>
+                <div class="ae-register-field ae-register-field--compact ae-register-field--reason">
+                    <label for="almacen-embarques-returns-reason">Tipo</label>
+                    <select id="almacen-embarques-returns-reason">
+                        <option value="Exceso">Exceso</option>
+                        <option value="OS&D">OS&amp;D</option>
+                    </select>
+                </div>
+                <div class="ae-register-field ae-register-field--wide ae-register-field--part-number">
+                    <label for="almacen-embarques-returns-part-number">No. parte</label>
+                    <input
+                        type="text"
+                        id="almacen-embarques-returns-part-number"
+                        placeholder="Ingresa el número de parte"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                </div>
+                <div class="ae-register-field ae-register-field--compact ae-register-field--quantity">
+                    <label for="almacen-embarques-returns-quantity">Cantidad</label>
+                    <input
+                        type="text"
+                        id="almacen-embarques-returns-quantity"
+                        inputmode="numeric"
+                        placeholder="0"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                </div>
+                <button id="almacen-embarques-returns-submit-btn" class="ae-btn-success ae-register-form__action">
+                    Registrar
+                </button>
+            </div>
         </div>
-        <div class="ae-register-form">
-            <div class="ae-register-field ae-register-field--compact ae-register-field--movement">
-                <label for="almacen-embarques-returns-movement-type">Tipo de movimiento</label>
-                <select id="almacen-embarques-returns-movement-type">
-                    <option value="entry">Entrada de retorno</option>
-                    <option value="exit">Salida de retorno</option>
-                </select>
+
+        <div class="ae-filters-card ae-return-query-card">
+            <div class="ae-card-header">
+                <h3>Consulta de retorno</h3>
             </div>
-            <div class="ae-register-field ae-register-field--compact ae-register-field--reason">
-                <label for="almacen-embarques-returns-reason">Tipo</label>
-                <select id="almacen-embarques-returns-reason">
-                    <option value="Exceso">Exceso</option>
-                    <option value="OS&D">OS&amp;D</option>
-                </select>
-            </div>
-            <div class="ae-register-field ae-register-field--wide ae-register-field--part-number">
-                <label for="almacen-embarques-returns-part-number">No. parte</label>
-                <input
-                    type="text"
-                    id="almacen-embarques-returns-part-number"
-                    placeholder="Ingresa el número de parte"
-                    autocomplete="off"
-                    spellcheck="false"
-                >
-            </div>
-            <div class="ae-register-field ae-register-field--compact ae-register-field--quantity">
-                <label for="almacen-embarques-returns-quantity">Cantidad</label>
-                <input
-                    type="text"
-                    id="almacen-embarques-returns-quantity"
-                    inputmode="numeric"
-                    placeholder="0"
-                    autocomplete="off"
-                    spellcheck="false"
-                >
-            </div>
-            <button id="almacen-embarques-returns-submit-btn" class="ae-btn-success ae-register-form__action">
-                Registrar
-            </button>
-            <div class="ae-return-date-filters">
-                <div class="ae-filter-group">
+            <div class="ae-return-query-form">
+                <div class="ae-filter-group ae-return-query-field--part">
+                    <label for="almacen-embarques-returns-search">No. parte</label>
+                    <input
+                        type="text"
+                        id="almacen-embarques-returns-search"
+                        placeholder="Ingresa el número de parte"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                </div>
+                <div class="ae-filter-group ae-return-query-field--date">
                     <label for="almacen-embarques-returns-date-from">Fecha desde</label>
                     <input type="date" id="almacen-embarques-returns-date-from">
                 </div>
-                <div class="ae-filter-group">
+                <div class="ae-filter-group ae-return-query-field--date">
                     <label for="almacen-embarques-returns-date-to">Fecha hasta</label>
                     <input type="date" id="almacen-embarques-returns-date-to">
                 </div>
@@ -186,4 +204,4 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260507b') }}"></script>
+<script src="{{ url_for('static', filename='js/almacen_embarques_history.js', v='20260511a') }}"></script>

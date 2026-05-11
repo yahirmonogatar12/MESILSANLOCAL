@@ -2257,7 +2257,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesRetorno = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-retorno-unique-container",
-      "/almacen-embarques-retorno-ajax?v=20260507a",
+      "/almacen-embarques-retorno-ajax?v=20260511a",
       "inicializarAlmacenEmbarquesRetornoAjax",
     );
   };
@@ -2266,7 +2266,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesMovimientos = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-movimientos-unique-container",
-      "/almacen-embarques-movimientos-ajax",
+      "/almacen-embarques-movimientos-ajax?v=20260511a",
       "inicializarAlmacenEmbarquesMovimientosAjax",
     );
   };

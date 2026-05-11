@@ -261,22 +261,48 @@
     flex: 0 0 96px;
 }
 
-.ae-return-date-filters {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-    margin-left: 42px;
-    padding: 0;
-    flex-wrap: nowrap;
+.ae-return-toolbar-grid {
+    display: grid;
+    grid-template-columns: minmax(520px, 1fr) minmax(520px, 1fr);
+    gap: 18px;
+    align-items: stretch;
 }
 
-.ae-return-date-filters .ae-filter-group input {
+.ae-return-toolbar-grid .ae-filters-card {
+    margin-bottom: 0;
+}
+
+.ae-return-query-card .ae-card-header {
+    align-items: center;
+}
+
+.ae-return-query-form {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: end;
+    gap: 12px;
+    padding: 12px 16px 16px;
+}
+
+.ae-return-query-form .ae-filter-group {
+    flex: 0 0 auto;
+}
+
+.ae-return-query-form .ae-filter-group input {
+    width: 180px;
+    min-height: 34px;
+}
+
+.ae-return-query-form .ae-return-query-field--date input {
     width: 150px;
 }
 
-.ae-return-date-filters .ae-btn-primary,
-.ae-return-date-filters .ae-btn-secondary {
-    min-height: 34px;
+.ae-return-query-form .ae-btn-primary {
+    min-height: 36px;
+    min-width: 116px;
+    width: 116px;
+    flex: 0 0 116px;
 }
 
 .ae-split-results {
@@ -2116,12 +2142,14 @@ body.ae-column-resizing * {
         min-width: 220px;
     }
 
+    .ae-return-toolbar-grid,
     .ae-register-form,
     .ae-split-results--two {
         grid-template-columns: 1fr;
     }
 
-    .ae-register-form {
+    .ae-register-form,
+    .ae-return-query-form {
         display: grid;
         grid-template-columns: 1fr;
         gap: 10px;
@@ -2133,7 +2161,11 @@ body.ae-column-resizing * {
     .ae-register-field--movement,
     .ae-register-field--reason,
     .ae-register-field--quantity,
-    .ae-register-form__action {
+    .ae-register-form__action,
+    .ae-return-query-form .ae-filter-group,
+    .ae-return-query-form .ae-filter-group input,
+    .ae-return-query-form .ae-return-query-field--date input,
+    .ae-return-query-form .ae-btn-primary {
         width: 100%;
         max-width: none;
         flex: initial;

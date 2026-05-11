@@ -1114,6 +1114,7 @@
       remarks: document.getElementById("almacen-embarques-returns-remarks"),
       submitBtn: document.getElementById("almacen-embarques-returns-submit-btn"),
       formStatus: document.getElementById("almacen-embarques-returns-form-status"),
+      searchInput: document.getElementById("almacen-embarques-returns-search"),
       dateFrom: document.getElementById("almacen-embarques-returns-date-from"),
       dateTo: document.getElementById("almacen-embarques-returns-date-to"),
       dateFilterBtn: document.getElementById("almacen-embarques-returns-filter-btn"),
@@ -1189,7 +1190,12 @@
   function buildReturnHistoryParams() {
     const elements = getReturnModuleElements();
     ensureReturnDefaultDates(elements);
-    return buildDateParams(elements.dateFrom?.value || "", elements.dateTo?.value || "");
+    const params = buildDateParams(elements.dateFrom?.value || "", elements.dateTo?.value || "");
+    const search = elements.searchInput?.value?.trim();
+    if (search) {
+      params.set("search", search);
+    }
+    return params;
   }
 
   function setStatus(prefix, message, isError = false) {
@@ -2860,7 +2866,7 @@
       elements.dateFilterBtn.dataset.bound = "true";
     }
 
-    [elements.dateFrom, elements.dateTo].forEach((input) => {
+    [elements.searchInput, elements.dateFrom, elements.dateTo].forEach((input) => {
       if (!input || input.dataset.bound === "true") {
         return;
       }

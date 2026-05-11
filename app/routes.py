@@ -11224,29 +11224,156 @@ def _validar_password_usuario_actual(raw_password):
             conn.close()
 
 
+MESES_CIERRE_EMBARQUES = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+]
+
+
+def _parse_datetime_cierre_embarques(value):
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None)
+    if isinstance(value, date):
+        return datetime.combine(value, dt_time.min)
+
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return None
+
+    for parser in (
+        lambda raw: datetime.fromisoformat(raw.replace("Z", "+00:00")),
+        lambda raw: datetime.strptime(raw, "%Y-%m-%d %H:%M:%S"),
+        lambda raw: datetime.strptime(raw, "%Y-%m-%d"),
+    ):
+        try:
+            return parser(raw_value).replace(tzinfo=None)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_month_key_cierre_embarques(value):
+    match = re.match(r"^(\d{4})-(\d{2})$", str(value or "").strip())
+    if not match:
+        return None
+    year = int(match.group(1))
+    month = int(match.group(2))
+    if month < 1 or month > 12:
+        return None
+    return year, month
+
+
+def _sumar_meses_cierre_embarques(year, month, delta):
+    month_index = (year * 12) + (month - 1) + delta
+    return month_index // 12, (month_index % 12) + 1
+
+
+def _month_key_cierre_embarques(year, month):
+    return f"{year:04d}-{month:02d}"
+
+
+def _month_label_cierre_embarques(year, month):
+    return f"{MESES_CIERRE_EMBARQUES[month - 1]} {year}"
+
+
+def _resolver_periodo_cierre_embarques(batch=None, previous_closed_at=None, reference_at=None):
+    """
+    El campo closed_at marca el arranque del siguiente periodo operativo.
+    El nombre del cierre debe corresponder al periodo cerrado, no al mes de closed_at.
+    """
+    batch = batch or {}
+    closed_at = _parse_datetime_cierre_embarques(batch.get("closed_at")) or _parse_datetime_cierre_embarques(reference_at)
+    if closed_at is None:
+        closed_at = obtener_fecha_hora_mexico()
+
+    previous_dt = _parse_datetime_cierre_embarques(previous_closed_at)
+    raw_month = _parse_month_key_cierre_embarques(batch.get("closure_month"))
+
+    if previous_dt:
+        period_year, period_month = previous_dt.year, previous_dt.month
+        period_start = previous_dt
+    elif raw_month:
+        period_year, period_month = raw_month
+        if (
+            closed_at
+            and period_year == closed_at.year
+            and period_month == closed_at.month
+            and closed_at.day <= 7
+        ):
+            period_year, period_month = _sumar_meses_cierre_embarques(
+                closed_at.year,
+                closed_at.month,
+                -1,
+            )
+        period_start = datetime(period_year, period_month, 1)
+    else:
+        period_year, period_month = closed_at.year, closed_at.month
+        if closed_at.day <= 7:
+            period_year, period_month = _sumar_meses_cierre_embarques(
+                closed_at.year,
+                closed_at.month,
+                -1,
+            )
+        period_start = datetime(period_year, period_month, 1)
+
+    period_end_inclusive = closed_at - timedelta(seconds=1) if closed_at else None
+    month_label = _month_label_cierre_embarques(period_year, period_month)
+    return {
+        "closure_month": _month_key_cierre_embarques(period_year, period_month),
+        "closure_month_label": month_label,
+        "closure_label": f"Cierre {month_label}",
+        "period_start": period_start,
+        "period_end_exclusive": closed_at,
+        "period_end_inclusive": period_end_inclusive,
+    }
+
+
+def _aplicar_metadata_periodo_cierre_embarques(payload, period_info):
+    payload = payload or {}
+    metadata = payload.setdefault("metadata", {})
+    metadata["closureMonth"] = period_info["closure_month"]
+    metadata["closureMonthLabel"] = period_info["closure_month_label"]
+    metadata["closureLabel"] = period_info["closure_label"]
+    return payload
+
+
 def _obtener_contexto_cierre_inventario_embarques():
     fecha_actual = obtener_fecha_hora_mexico()
-    meses = [
-        "Enero",
-        "Febrero",
-        "Marzo",
-        "Abril",
-        "Mayo",
-        "Junio",
-        "Julio",
-        "Agosto",
-        "Septiembre",
-        "Octubre",
-        "Noviembre",
-        "Diciembre",
-    ]
-    mes_label = f"{meses[fecha_actual.month - 1]} {fecha_actual.year}"
+    latest_closure = None
+    try:
+        latest_closure = execute_query(
+            f"""
+            SELECT closed_at
+            FROM `{SHIPPING_TABLES['inventory_closure_batches']}`
+            WHERE status = 'confirmed'
+            ORDER BY closed_at DESC, id DESC
+            LIMIT 1
+            """,
+            fetch="one",
+        )
+    except Exception:
+        latest_closure = None
+
+    period_info = _resolver_periodo_cierre_embarques(
+        {"closed_at": fecha_actual},
+        previous_closed_at=(latest_closure or {}).get("closed_at"),
+    )
     return {
         "closureDate": fecha_actual.strftime("%Y-%m-%d"),
         "closureDateTime": fecha_actual.strftime("%Y-%m-%d %H:%M:%S"),
-        "closureMonth": fecha_actual.strftime("%Y-%m"),
-        "closureMonthLabel": mes_label,
-        "closureLabel": f"Cierre {mes_label}",
+        "closureMonth": period_info["closure_month"],
+        "closureMonthLabel": period_info["closure_month_label"],
+        "closureLabel": period_info["closure_label"],
         "closureUser": _obtener_usuario_display_actual(),
     }
 
@@ -12404,11 +12531,12 @@ def _obtener_historial_cierres_inventario_embarques(limit=20, include_last_draft
 
     history_rows = []
     for row in rows:
+        period_info = _resolver_periodo_cierre_embarques(row)
         history_rows.append(
             {
                 "id": row.get("id"),
-                "closure_label": _normalizar_texto_embarques_historial(row.get("closure_label")),
-                "closure_month": _normalizar_texto_embarques_historial(row.get("closure_month")),
+                "closure_label": period_info["closure_label"],
+                "closure_month": period_info["closure_month"],
                 "status": _normalizar_texto_embarques_historial(row.get("status")),
                 "created_by": _normalizar_texto_embarques_historial(row.get("created_by")),
                 "confirmed_by": _normalizar_texto_embarques_historial(row.get("confirmed_by")),
@@ -14027,22 +14155,24 @@ def api_almacen_embarques_inventario_cierre_history_detail(batch_id):
             return jsonify({"success": False, "error": "No se encontró el cierre solicitado."}), 404
 
         payload = json.loads(row.get("payload_json") or "{}")
+        period_info = _resolver_periodo_cierre_embarques(row)
+        payload = _aplicar_metadata_periodo_cierre_embarques(payload, period_info)
         return jsonify(
             {
                 "success": True,
                 "batch": {
                     "id": row.get("id"),
-                    "closure_label": row.get("closure_label"),
-                    "closure_month": row.get("closure_month"),
-                "status": row.get("status"),
-                "created_by": row.get("created_by"),
-                "confirmed_by": row.get("confirmed_by"),
-                "closed_at": _normalizar_texto_embarques_historial(row.get("closed_at")),
-                "confirmed_at": _normalizar_texto_embarques_historial(row.get("confirmed_at")),
-                "accuracy_pct": row.get("accuracy_pct"),
-                "csv_hash": row.get("csv_hash"),
-                "rows_hash": row.get("rows_hash"),
-            },
+                    "closure_label": period_info["closure_label"],
+                    "closure_month": period_info["closure_month"],
+                    "status": row.get("status"),
+                    "created_by": row.get("created_by"),
+                    "confirmed_by": row.get("confirmed_by"),
+                    "closed_at": _normalizar_texto_embarques_historial(row.get("closed_at")),
+                    "confirmed_at": _normalizar_texto_embarques_historial(row.get("confirmed_at")),
+                    "accuracy_pct": row.get("accuracy_pct"),
+                    "csv_hash": row.get("csv_hash"),
+                    "rows_hash": row.get("rows_hash"),
+                },
                 "payload": payload,
             }
         )
@@ -14080,7 +14210,7 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
         if (batch.get("status") or "").lower() != "confirmed":
             return jsonify({"success": False, "error": "Sólo se pueden exportar cierres confirmados."}), 409
 
-        period_end = batch.get("closed_at")
+        raw_period_end = batch.get("closed_at")
         previous_batch = execute_query(
             f"""
             SELECT id, closed_at
@@ -14090,10 +14220,16 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
             ORDER BY closed_at DESC, id DESC
             LIMIT 1
             """,
-            (period_end,),
+            (raw_period_end,),
             fetch="one",
         )
-        period_start = (previous_batch or {}).get("closed_at")
+        period_info = _resolver_periodo_cierre_embarques(
+            batch,
+            previous_closed_at=(previous_batch or {}).get("closed_at"),
+        )
+        period_start = (previous_batch or {}).get("closed_at") or period_info["period_start"]
+        period_end = period_info["period_end_exclusive"] or raw_period_end
+        period_end_inclusive = period_info["period_end_inclusive"]
         previous_batch_id = (previous_batch or {}).get("id")
 
         def period_filter(column_expr):
@@ -14442,8 +14578,11 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
             ws.cell(row=1, column=1, value=title)
             ws.cell(row=1, column=1).font = title_font
             ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
-            if period_start:
-                period_text = f"Periodo: {normalize_excel_value(period_start)} a {normalize_excel_value(period_end)}"
+            if period_start and period_end_inclusive:
+                period_text = (
+                    f"Periodo: {normalize_excel_value(period_start)} "
+                    f"a {normalize_excel_value(period_end_inclusive)}"
+                )
             else:
                 period_text = f"Periodo: inicio de operación a {normalize_excel_value(period_end)}"
             ws.cell(row=2, column=1, value=period_text)
@@ -14480,7 +14619,7 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
         ws.title = "Cierre"
         write_sheet(
             ws,
-            f"Reporte de cierre - {batch.get('closure_label') or batch_id}",
+            f"Reporte de cierre - {period_info['closure_label']}",
             [
                 ("No. parte", "part_number"),
                 ("Inventario inicial", "initial_quantity"),
@@ -14557,7 +14696,11 @@ def export_almacen_embarques_inventario_cierre_report(batch_id):
         wb.save(output)
         output.seek(0)
 
-        filename_label = re.sub(r"[^A-Za-z0-9_-]+", "_", str(batch.get("closure_label") or f"cierre_{batch_id}")).strip("_")
+        filename_label = re.sub(
+            r"[^A-Za-z0-9_-]+",
+            "_",
+            str(period_info["closure_label"] or f"cierre_{batch_id}"),
+        ).strip("_")
         filename = f"reporte_{filename_label}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         return Response(
             output.getvalue(),
