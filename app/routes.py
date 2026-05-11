@@ -450,6 +450,33 @@ def _request_expects_json():
     )
 
 
+def _is_public_api_route():
+    """APIs que no dependen de la sesión web del portal."""
+    path = request.path.rstrip("/")
+    exact_paths = {
+        "/api/shipping/auth/login",
+        "/api/shipping/auth/logout",
+        "/api/shipping/permissions/available",
+        "/api/shipping/departments",
+        "/api/shipping/cargos",
+        "/api/shipping/entries",
+        "/api/shipping/stats/today",
+        "/api/shipping/stats/summary",
+        "/api/shipping/material/entries",
+        "/api/shipping/material/exits",
+        "/api/shipping/material/returns",
+        "/api/shipping/material/inventory",
+        "/api/shipping/material/stats/today",
+    }
+    public_prefixes = (
+        "/api/shipping/auth/verify/",
+        "/api/shipping/users/",
+        "/api/shipping/quality/",
+        "/api/shipping/entries/",
+    )
+    return path in exact_paths or any(path.startswith(prefix) for prefix in public_prefixes)
+
+
 @app.before_request
 def require_login_by_default():
     """Protect routes by default and keep a short explicit public allowlist."""
@@ -461,6 +488,11 @@ def require_login_by_default():
 
     # Static assets and a small set of public endpoints remain accessible.
     if endpoint in PUBLIC_ROUTE_ENDPOINTS or endpoint.endswith(".static"):
+        return None
+
+    # Las apps PDA autentican contra /api/shipping/auth/login y luego consumen
+    # endpoints del mismo blueprint sin sesión web del portal corporativo.
+    if _is_public_api_route():
         return None
 
     if "usuario" in session:
