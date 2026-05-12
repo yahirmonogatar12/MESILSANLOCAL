@@ -10307,6 +10307,14 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
             initial_quantity = _normalizar_numero_embarques_historial(closure_initial_quantity)
             has_closure = True
 
+        calculated_current_quantity = (
+            initial_quantity
+            + entries_qty
+            - exits_qty
+            + return_entries_qty
+            - return_exits_qty
+        )
+
         if period_start and (latest_period_start is None or period_start > latest_period_start):
             latest_period_start = period_start
 
@@ -10320,7 +10328,7 @@ def _obtener_inventario_general_almacen_embarques(limit=5000):
                 "exits_qty": exits_qty,
                 "return_entries_qty": return_entries_qty,
                 "return_exits_qty": return_exits_qty,
-                "current_quantity": current_quantity,
+                "current_quantity": calculated_current_quantity,
                 "period_start": period_start,
                 "closure_label": closure_label,
             }
