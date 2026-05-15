@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -39,7 +39,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
-    <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260511a') }}">
+    <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260513b') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -267,7 +267,7 @@
     <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js"></script>
-    <script src="/static/js/scriptMain.js?v=20260511a"></script>
+    <script src="/static/js/scriptMain.js?v=20260513b"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -492,6 +492,9 @@
                 <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
         <div id="bom-management-process-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+        <div id="control-salida-lineas-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
@@ -2214,6 +2217,8 @@ function hideAllMaterialContainers() {
     if (inventarioImdTerminadoContainer) inventarioImdTerminadoContainer.style.display = 'none';
     const controlCuchillasCorteContainer = document.getElementById('control-cuchillas-corte-unique-container');
     if (controlCuchillasCorteContainer) controlCuchillasCorteContainer.style.display = 'none';
+    const controlSalidaLineasContainer = document.getElementById('control-salida-lineas-unique-container');
+    if (controlSalidaLineasContainer) controlSalidaLineasContainer.style.display = 'none';
 }
 
 
@@ -2467,7 +2472,8 @@ function hideAllMaterialContainers() {
                     'Control de produccion SMT-unique-container',
                     'crear-plan-micom-unique-container',
                     'line-material-status-unique-container',
-                    'bom-management-process-unique-container'
+                    'bom-management-process-unique-container',
+                    'control-salida-lineas-unique-container'
                 ];
 
                 controlProcesoContainers.forEach(containerId => {

@@ -444,6 +444,7 @@ class AuthSystem:
             # LISTA CONTROL DE PROCESO - Control de produccion
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Historial de operacion por proceso', 'Acceso al historial de operación por proceso'),
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'BOM Management By Process', 'Acceso a BOM Management por proceso'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de salida de lineas', 'Acceso a Control de salida de lineas'),
             
             # LISTA CONTROL DE PROCESO - Reporte diario de inspeccion
             ('LISTA_CONTROL_DE_PROCESO', 'Reporte diario de inspeccion', 'Reporte diario de inspeccion', 'Acceso a reporte diario de inspección'),

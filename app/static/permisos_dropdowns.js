@@ -141,6 +141,11 @@ const allDropdowns = [
     },
     {
         "pagina": "LISTA_CONTROL_DE_PROCESO",
+        "seccion": "Control de produccion",
+        "boton": "Control de salida de lineas"
+    },
+    {
+        "pagina": "LISTA_CONTROL_DE_PROCESO",
         "seccion": "Reporte diario de inspeccion",
         "boton": "Reporte diario de inspeccion de SMT"
     },

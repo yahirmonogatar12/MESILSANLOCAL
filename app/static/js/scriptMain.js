@@ -199,6 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "control-registro-identificacion-smt-unique-container",
       "historial-operacion-proceso-unique-container",
       "bom-management-process-unique-container",
+      "control-salida-lineas-unique-container",
       "bom-unique-container",
       "reporte-diario-inspeccion-smt-unique-container",
       "control-diario-inspeccion-smt-unique-container",
@@ -2257,7 +2258,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesRetorno = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-retorno-unique-container",
-      "/almacen-embarques-retorno-ajax?v=20260511a",
+      "/almacen-embarques-retorno-ajax?v=20260513b",
       "inicializarAlmacenEmbarquesRetornoAjax",
     );
   };
@@ -2266,7 +2267,7 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesMovimientos = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-movimientos-unique-container",
-      "/almacen-embarques-movimientos-ajax?v=20260511a",
+      "/almacen-embarques-movimientos-ajax?v=20260513b",
       "inicializarAlmacenEmbarquesMovimientosAjax",
     );
   };
@@ -2284,8 +2285,17 @@ document.addEventListener("DOMContentLoaded", function () {
   window.mostrarAlmacenEmbarquesCatalogo = function () {
     mostrarModuloAlmacenEmbarques(
       "almacen-embarques-catalogo-unique-container",
-      "/almacen-embarques-catalogo-ajax?v=20260507a",
+      "/almacen-embarques-catalogo-ajax?v=20260513b",
       "inicializarAlmacenEmbarquesCatalogoAjax",
+    );
+  };
+
+  // Control de salida de lineas
+  window.mostrarControlSalidaLineas = function () {
+    mostrarModuloAlmacenEmbarques(
+      "control-salida-lineas-unique-container",
+      "/control-salida-lineas-ajax?v=20260513b",
+      "inicializarControlSalidaLineasAjax",
     );
   };
 
@@ -5010,6 +5020,7 @@ window.mostrarPlanSmdDiario = function () {
       "control-cuchillas-corte-unique-container",
       "bom-unique-container",
       "bom-management-process-unique-container",
+      "control-salida-lineas-unique-container",
     ];
 
     controlProcesoContainers.forEach((containerId) => {

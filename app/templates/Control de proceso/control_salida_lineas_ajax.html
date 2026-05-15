@@ -1,0 +1,121 @@
+<div 
+    id="control-salida-lineas-module" 
+    class="almacen-embarques-history-module control-salida-lineas-module" 
+    data-module-type="line-output"
+>
+
+    <div 
+        class="ae-filters-card"
+    >
+        <div class="ae-card-header">
+            <h3>Filtros de busqueda</h3>
+            <span id="control-salida-lineas-status" class="ae-status-text"></span>
+        </div>
+        <div class="ae-filters">
+            <div class="ae-filter-group ae-filter-group--wide">
+                <label for="control-salida-lineas-part-number">No. parte</label>
+                <input
+                    type="text"
+                    id="control-salida-lineas-part-number"
+                    placeholder="Buscar por numero de parte"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+            </div>
+            <div class="ae-filter-group">
+                <label for="control-salida-lineas-date-from">Fecha desde</label>
+                <input type="date" id="control-salida-lineas-date-from">
+            </div>
+            <div class="ae-filter-group">
+                <label for="control-salida-lineas-date-to">Fecha hasta</label>
+                <input type="date" id="control-salida-lineas-date-to">
+            </div>
+            <button id="control-salida-lineas-search-btn" class="ae-btn-primary" type="button">
+                Consultar
+            </button>
+            <button id="control-salida-lineas-clear-btn" class="ae-btn-secondary" type="button">
+                Limpiar
+            </button>
+            <button id="control-salida-lineas-export-btn" class="ae-btn-export" type="button">
+                Exportar Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="ae-results-card">
+        <div class="ae-card-header">
+            <h3>Control de salida de lineas</h3>
+            <span id="control-salida-lineas-count" class="ae-record-count">0 registros</span>
+        </div>
+
+        <div class="csl-summary-grid" aria-live="polite">
+            <div class="csl-summary-card">
+                <span>Produccion</span>
+                <strong id="control-salida-lineas-total-production">0</strong>
+            </div>
+            <div class="csl-summary-card">
+                <span>Liberacion OQC</span>
+                <strong id="control-salida-lineas-total-oqc">0</strong>
+            </div>
+            <div class="csl-summary-card">
+                <span>Pendiente OQC</span>
+                <strong id="control-salida-lineas-total-pending-oqc">0</strong>
+            </div>
+            <div class="csl-summary-card">
+                <span>Entradas Almacen</span>
+                <strong id="control-salida-lineas-total-warehouse">0</strong>
+            </div>
+            <div class="csl-summary-card">
+                <span>Pendientes Almacen</span>
+                <strong id="control-salida-lineas-total-pending-warehouse">0</strong>
+            </div>
+        </div>
+
+        <div class="ae-table-shell">
+            <div class="ae-table-head">
+                <table class="ae-history-table ae-history-table--head">
+                    <colgroup>
+                        <col style="width: 13%;">
+                        <col style="width: 23%;">
+                        <col style="width: 13%;">
+                        <col style="width: 14%;">
+                        <col style="width: 13%;">
+                        <col style="width: 13%;">
+                        <col style="width: 11%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Periodo</th>
+                            <th>No. parte</th>
+                            <th>Produccion</th>
+                            <th>Liberacion OQC</th>
+                            <th>Pendiente OQC</th>
+                            <th>Entradas Almacen</th>
+                            <th>Pendientes Almacen</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="ae-table-body-wrap">
+                <table class="ae-history-table ae-history-table--body">
+                    <colgroup>
+                        <col style="width: 13%;">
+                        <col style="width: 23%;">
+                        <col style="width: 13%;">
+                        <col style="width: 14%;">
+                        <col style="width: 13%;">
+                        <col style="width: 13%;">
+                        <col style="width: 11%;">
+                    </colgroup>
+                    <tbody id="control-salida-lineas-tbody">
+                        <tr>
+                            <td colspan="7" class="ae-empty-cell">Cargando datos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/control_salida_lineas.js', v='20260513b') }}"></script>
