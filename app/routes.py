@@ -2469,7 +2469,6 @@ def crear_trigger_cuchillas_corte_plan_main():
 if STARTUP_INIT_ENABLED:
     _startup_log("Iniciando bootstrap de cuchillas de corte")
     crear_tablas_cuchillas_corte()
-    crear_trigger_cuchillas_corte_plan_main()
     _startup_log("Bootstrap de cuchillas de corte completado")
     iniciar_cuchillas_hourly_sync_worker()
 else:
