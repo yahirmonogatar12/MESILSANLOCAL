@@ -127,6 +127,10 @@ def init_db():
         # MIGRAR TABLA BOM (agregar columna posicion_assy)
         print(" Migrando tabla bom...")
         migrar_tabla_bom()
+
+        # Crear tablas/vista para ICOS de cambios de ingenieria.
+        print(" Inicializando tablas de ICOS...")
+        crear_tablas_icos()
         
         print(" Base de datos MySQL inicializada correctamente")
         return True
@@ -483,6 +487,2163 @@ def get_connection():
 
 # Alias para compatibilidad
 get_db_connection = get_connection
+
+
+# === FUNCIONES DE ICOS / CAMBIOS DE INGENIERIA ===
+
+def crear_tablas_icos():
+    """Crear tablas y vista canonica para ICOS aprobados."""
+    try:
+        execute_query("""
+            CREATE TABLE IF NOT EXISTS engineering_changes (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                ico_no VARCHAR(64) NOT NULL,
+                part_no VARCHAR(100) NOT NULL,
+                bom_revision VARCHAR(64) NOT NULL,
+                effective_at DATETIME NOT NULL,
+                status ENUM('DRAFT','APPROVED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
+                notes TEXT NULL,
+                created_by VARCHAR(100) NULL,
+                approved_by VARCHAR(100) NULL,
+                created_at DATETIME DEFAULT NOW(),
+                approved_at DATETIME NULL,
+                updated_at DATETIME DEFAULT NOW(),
+                UNIQUE KEY uk_engineering_change (ico_no, part_no, bom_revision),
+                INDEX idx_eng_part_status_effective (part_no, status, effective_at),
+                INDEX idx_eng_status_effective (status, effective_at),
+                INDEX idx_eng_ico_no (ico_no)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """)
+
+        execute_query("""
+            CREATE TABLE IF NOT EXISTS engineering_change_bom_items (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                engineering_change_id BIGINT NOT NULL,
+                tipo_material VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+                posicion_assy VARCHAR(64) NOT NULL,
+                location_text TEXT NULL,
+                material_code VARCHAR(128) NOT NULL,
+                numero_parte VARCHAR(128) NOT NULL,
+                qty DECIMAL(10,4) NOT NULL DEFAULT 1,
+                ubicacion VARCHAR(255) NULL,
+                proveedor VARCHAR(255) NULL,
+                side VARCHAR(50) NULL,
+                classification VARCHAR(100) NULL,
+                spec TEXT NULL,
+                created_at DATETIME DEFAULT NOW(),
+                INDEX idx_ec_items_change (engineering_change_id),
+                INDEX idx_ec_items_material (material_code),
+                INDEX idx_ec_items_position (posicion_assy)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """)
+
+        extra_columns = [
+            ('location_text', 'location_text TEXT NULL AFTER posicion_assy'),
+            ('bom_level', 'bom_level VARCHAR(32) NULL'),
+            ('item_seq', 'item_seq VARCHAR(64) NULL'),
+            ('item_name', 'item_name VARCHAR(255) NULL'),
+            ('item_name_en', 'item_name_en VARCHAR(255) NULL'),
+            ('unit', 'unit VARCHAR(32) NULL'),
+            ('maker', 'maker VARCHAR(255) NULL'),
+            ('process_name', 'process_name VARCHAR(100) NULL'),
+            ('item_process', 'item_process VARCHAR(100) NULL'),
+            ('item_class', 'item_class VARCHAR(100) NULL'),
+            ('valid_from', 'valid_from DATE NULL'),
+            ('valid_to', 'valid_to DATE NULL'),
+            ('status_name', "status_name VARCHAR(32) NULL DEFAULT '사용'"),
+            ('is_alternate', 'is_alternate TINYINT(1) NOT NULL DEFAULT 0'),
+            ('alt_item_no', 'alt_item_no VARCHAR(128) NULL'),
+            ('alt_item_name', 'alt_item_name VARCHAR(255) NULL'),
+            ('alt_spec', 'alt_spec TEXT NULL'),
+            ('alt_maker', 'alt_maker VARCHAR(255) NULL'),
+            ('child_bom_part_no', 'child_bom_part_no VARCHAR(128) NULL'),
+            ('is_sub_bom', 'is_sub_bom TINYINT(1) NOT NULL DEFAULT 0'),
+        ]
+        for column_name, column_definition in extra_columns:
+            _ico_add_column_if_missing('engineering_change_bom_items', column_name, column_definition)
+
+        ico_bridge_columns = [
+            ('ks_family_prefix', 'ks_family_prefix VARCHAR(128) NULL'),
+            ('ks_hist_seq', 'ks_hist_seq BIGINT NULL'),
+            ('item_name', 'item_name VARCHAR(255) NULL'),
+        ]
+        for column_name, column_definition in ico_bridge_columns:
+            _ico_add_column_if_missing('engineering_changes', column_name, column_definition)
+
+        execute_query("""
+            CREATE TABLE IF NOT EXISTS engineering_change_diff (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                engineering_change_id BIGINT NOT NULL,
+                action ENUM('ADD','REMOVE','MODIFY') NOT NULL,
+                item_no VARCHAR(128) NULL,
+                bom_level VARCHAR(64) NULL,
+                ks_row_id BIGINT NULL,
+                field_changed VARCHAR(64) NULL,
+                old_value TEXT NULL,
+                new_value TEXT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_ecd_change (engineering_change_id),
+                INDEX idx_ecd_action (engineering_change_id, action),
+                INDEX idx_ecd_item (engineering_change_id, item_no)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """)
+        _ico_add_column_if_missing(
+            'engineering_change_diff', 'part_no',
+            'part_no VARCHAR(128) NULL AFTER engineering_change_id'
+        )
+        _ico_add_index_if_missing(
+            'engineering_change_diff', 'idx_ecd_part',
+            '(engineering_change_id, part_no)'
+        )
+
+        execute_query("""
+            CREATE TABLE IF NOT EXISTS engineering_change_scope (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                engineering_change_id BIGINT NOT NULL,
+                part_no VARCHAR(128) NOT NULL,
+                family_prefix VARCHAR(128) NULL,
+                bom_revision VARCHAR(64) NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_ecs_change_part (engineering_change_id, part_no),
+                INDEX idx_ecs_change (engineering_change_id),
+                INDEX idx_ecs_family (family_prefix)
+            ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+        """)
+
+        _ico_add_column_if_missing(
+            'engineering_changes', 'scope_kind',
+            "scope_kind ENUM('SINGLE','FAMILY') NOT NULL DEFAULT 'SINGLE'"
+        )
+        _ico_add_column_if_missing(
+            'engineering_changes', 'family_prefix',
+            'family_prefix VARCHAR(128) NULL'
+        )
+        _ico_add_index_if_missing(
+            'engineering_changes',
+            'idx_eng_ks_ecn',
+            '(ks_family_prefix, ks_hist_seq)'
+        )
+
+        execute_query("""
+            CREATE OR REPLACE VIEW v_mes_ico_bom_items AS
+            SELECT
+                ec.id AS engineering_change_id,
+                ec.ico_no,
+                ec.part_no,
+                ec.bom_revision,
+                ec.effective_at,
+                ec.status,
+                ec.updated_at AS source_updated_at,
+                i.id AS item_id,
+                UPPER(COALESCE(NULLIF(i.tipo_material, ''), 'MAIN')) AS tipo_material,
+                i.posicion_assy,
+                COALESCE(NULLIF(i.location_text, ''), i.ubicacion, i.posicion_assy) AS location_text,
+                COALESCE(NULLIF(i.material_code, ''), i.numero_parte) AS material_code,
+                COALESCE(NULLIF(i.numero_parte, ''), i.material_code) AS numero_parte,
+                i.qty,
+                i.ubicacion,
+                i.proveedor,
+                i.side,
+                i.classification,
+                i.spec,
+                i.bom_level,
+                i.item_seq,
+                i.item_name,
+                i.item_name_en,
+                i.unit,
+                i.maker,
+                i.process_name,
+                i.item_process,
+                i.item_class,
+                i.valid_from,
+                i.valid_to,
+                i.status_name,
+                i.is_alternate,
+                i.alt_item_no,
+                i.alt_item_name,
+                i.alt_spec,
+                i.alt_maker,
+                i.child_bom_part_no,
+                i.is_sub_bom
+            FROM engineering_changes ec
+            INNER JOIN engineering_change_bom_items i
+                ON i.engineering_change_id = ec.id
+            WHERE ec.status = 'APPROVED'
+        """)
+
+        execute_query("""
+            CREATE OR REPLACE VIEW v_icos_with_ks_ecn AS
+            SELECT
+                ec.id              AS ico_id,
+                ec.ico_no,
+                ec.part_no,
+                ec.bom_revision,
+                ec.effective_at,
+                ec.status,
+                ec.created_by,
+                ec.approved_by,
+                ec.approved_at,
+                ec.ks_family_prefix,
+                ec.ks_hist_seq,
+                ke.family_prefix   AS ecn_family_prefix,
+                ke.hist_seq        AS ecn_hist_seq,
+                ke.item_no         AS ecn_item_no,
+                ke.item_seq        AS ecn_item_seq,
+                ke.sb_date         AS ecn_sb_date,
+                ke.work_no         AS ecn_work_no,
+                ke.chg_remark      AS ecn_chg_remark,
+                ke.cause           AS ecn_cause,
+                ke.step_result     AS ecn_step_result,
+                ke.bom_emp_name    AS ecn_bom_emp_name,
+                ke.dev_emp_name    AS ecn_dev_emp_name,
+                ke.synced_at       AS ecn_synced_at
+            FROM engineering_changes ec
+            LEFT JOIN ks_engineering_changes ke
+                ON ke.family_prefix = ec.ks_family_prefix COLLATE utf8mb4_0900_ai_ci
+               AND ke.hist_seq      = ec.ks_hist_seq
+        """)
+
+        execute_query("""
+            CREATE OR REPLACE VIEW v_icos_historial_unificado AS
+            SELECT
+                CAST(ec.id AS CHAR) COLLATE utf8mb4_0900_ai_ci AS id,
+                ec.ico_no               COLLATE utf8mb4_0900_ai_ci AS ico_no,
+                ec.part_no              COLLATE utf8mb4_0900_ai_ci AS part_no,
+                ec.bom_revision         COLLATE utf8mb4_0900_ai_ci AS bom_revision,
+                ec.effective_at         AS effective_at,
+                ec.status               COLLATE utf8mb4_0900_ai_ci AS status,
+                ec.created_by           COLLATE utf8mb4_0900_ai_ci AS created_by,
+                ec.approved_by          COLLATE utf8mb4_0900_ai_ci AS approved_by,
+                ec.approved_at          AS approved_at,
+                ec.created_at           AS created_at,
+                ec.updated_at           AS updated_at,
+                'MES'                   COLLATE utf8mb4_0900_ai_ci AS origen,
+                CAST(NULL AS UNSIGNED)  AS ks_hist_seq,
+                CAST(NULL AS CHAR)      COLLATE utf8mb4_0900_ai_ci AS ks_family_prefix
+            FROM engineering_changes ec
+
+            UNION ALL
+
+            SELECT
+                CONCAT('ks-', ke.hist_seq) COLLATE utf8mb4_0900_ai_ci AS id,
+                CONCAT('KS#', ke.hist_seq) COLLATE utf8mb4_0900_ai_ci AS ico_no,
+                COALESCE(ke.item_no, ke.family_prefix) COLLATE utf8mb4_0900_ai_ci AS part_no,
+                '-'                     COLLATE utf8mb4_0900_ai_ci AS bom_revision,
+                ke.sb_date              AS effective_at,
+                'APPROVED'              COLLATE utf8mb4_0900_ai_ci AS status,
+                ke.dev_emp_name         COLLATE utf8mb4_0900_ai_ci AS created_by,
+                ke.bom_emp_name         COLLATE utf8mb4_0900_ai_ci AS approved_by,
+                ke.synced_at            AS approved_at,
+                ke.synced_at            AS created_at,
+                ke.synced_at            AS updated_at,
+                'KS'                    COLLATE utf8mb4_0900_ai_ci AS origen,
+                ke.hist_seq             AS ks_hist_seq,
+                ke.family_prefix        COLLATE utf8mb4_0900_ai_ci AS ks_family_prefix
+            FROM ks_engineering_changes ke
+        """)
+
+        print(" Tablas/vista de ICOS listas")
+        return True
+    except Exception as e:
+        print(f" Error creando tablas/vista de ICOS: {e}")
+        return False
+
+
+def _ico_normalize_text(value, default=''):
+    text = str(value if value is not None else default).strip()
+    return text
+
+
+def _ico_legacy_position(value):
+    return _ico_normalize_text(value)[:64]
+
+
+def _ico_normalize_upper(value, default=''):
+    return _ico_normalize_text(value, default).upper()
+
+
+def _ico_normalize_datetime(value):
+    text = _ico_normalize_text(value)
+    if not text:
+        return ''
+    text = text.replace('T', ' ')
+    if len(text) == 16:
+        text += ':00'
+    return text
+
+
+def _ico_normalize_date(value, default=''):
+    if value is None or value == '':
+        return default
+    if hasattr(value, 'strftime'):
+        return value.strftime('%Y-%m-%d')
+    text = _ico_normalize_text(value)
+    if not text:
+        return default
+    text = text.replace('T', ' ')
+    return text.split(' ')[0]
+
+
+def _ico_plant_date():
+    try:
+        return (datetime.utcnow() - timedelta(hours=6)).strftime('%Y-%m-%d')
+    except Exception:
+        return datetime.now().strftime('%Y-%m-%d')
+
+
+def _ico_parse_qty(value, default=1.0):
+    try:
+        if value is None or str(value).strip() == '':
+            return default
+        qty = float(value)
+        return qty if qty > 0 else default
+    except Exception:
+        return default
+
+
+def _ico_parse_bool(value):
+    text = _ico_normalize_text(value).lower()
+    return 1 if text in ('1', 'true', 'yes', 'si', 'sí', 'y', 'x') else 0
+
+
+def _ico_position_is_valid(posicion):
+    text = _ico_normalize_text(posicion).upper()
+    if not text:
+        return False
+    if re.fullmatch(r"\d+", text):
+        return True
+    return re.search(r"POSICION\s*\d+", text) is not None
+
+
+def _ico_add_column_if_missing(table_name, column_name, column_definition):
+    try:
+        existing = execute_query(
+            f"SHOW COLUMNS FROM {table_name} LIKE %s",
+            (column_name,),
+            fetch='one'
+        )
+        if not existing:
+            execute_query(f"ALTER TABLE {table_name} ADD COLUMN {column_definition}")
+    except Exception as e:
+        print(f"Error asegurando columna {table_name}.{column_name}: {e}")
+
+
+def _ico_add_index_if_missing(table_name, index_name, index_definition):
+    try:
+        existing = execute_query(
+            f"SHOW INDEX FROM {table_name} WHERE Key_name = %s",
+            (index_name,),
+            fetch='one'
+        )
+        if not existing:
+            execute_query(f"ALTER TABLE {table_name} ADD KEY {index_name} {index_definition}")
+    except Exception as e:
+        print(f"Error asegurando indice {table_name}.{index_name}: {e}")
+
+
+def _ks_family_prefix(part_no):
+    text = _ico_normalize_upper(part_no)
+    return text[:-2] if len(text) > 2 else text
+
+
+def _ks_part_catalog_lookup(part_no):
+    """Buscar metadatos KS para un part_no en ks_part_catalog.
+
+    Devuelve dict con item_name, family_prefix, root_part_no, bom_kind,
+    spec, unit, bom_suffix; o None si no existe.
+    """
+    text = _ico_normalize_upper(part_no)
+    if not text:
+        return None
+    try:
+        row = execute_query(
+            """
+            SELECT item_name, family_prefix, root_part_no, bom_kind,
+                   spec, unit, bom_suffix
+            FROM ks_part_catalog
+            WHERE part_no = %s
+            LIMIT 1
+            """,
+            (text,),
+            fetch='one'
+        )
+        return row or None
+    except Exception as e:
+        print(f"Error consultando ks_part_catalog para {part_no}: {e}")
+        return None
+
+
+def _ks_parse_suffixes(suffixes):
+    """Normaliza una lista o string de sufijos. Acepta 'a,b,c' o ['a','b']."""
+    if suffixes is None:
+        return []
+    if isinstance(suffixes, str):
+        parts = re.split(r'[,;\s]+', suffixes)
+    else:
+        parts = list(suffixes)
+    out = []
+    seen = set()
+    for p in parts:
+        text = _ico_normalize_upper(p)
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        out.append(text)
+    return out
+
+
+def resolver_familia(family_prefix, suffixes):
+    """Resolver una familia + sufijos a una lista de part_no existentes en ks_part_catalog.
+
+    Devuelve: {family, suffixes, parts:[{part_no, item_name, family_prefix, bom_kind}], missing:[suffix...]}
+    """
+    family = _ico_normalize_upper(family_prefix)
+    suf_list = _ks_parse_suffixes(suffixes)
+    if not family:
+        return {"family": "", "suffixes": suf_list, "parts": [], "missing": suf_list}
+    if not suf_list:
+        return {"family": family, "suffixes": [], "parts": [], "missing": []}
+
+    found_parts = []
+    found_suffixes = set()
+    try:
+        candidates = [f"{family}{s}" for s in suf_list]
+        placeholders = ','.join(['%s'] * len(candidates))
+        rows = execute_query(
+            f"""
+            SELECT part_no, item_name, family_prefix, root_part_no, bom_kind
+            FROM ks_part_catalog
+            WHERE part_no IN ({placeholders})
+            """,
+            tuple(candidates),
+            fetch='all'
+        ) or []
+        for row in rows:
+            pn = _ico_normalize_upper(row.get('part_no'))
+            found_parts.append({
+                'part_no': pn,
+                'item_name': row.get('item_name'),
+                'family_prefix': row.get('family_prefix'),
+                'root_part_no': row.get('root_part_no'),
+                'bom_kind': row.get('bom_kind'),
+            })
+            if pn.startswith(family):
+                found_suffixes.add(pn[len(family):])
+    except Exception as e:
+        print(f"Error resolviendo familia {family}: {e}")
+
+    missing = [s for s in suf_list if s not in found_suffixes]
+    return {
+        "family": family,
+        "suffixes": suf_list,
+        "parts": found_parts,
+        "missing": missing,
+    }
+
+
+def _ks_fetch_bom_items_multi(part_numbers, bom_revision=None):
+    """Obtener items de BOM vigente para varios part_no.
+    Retorna dict: {part_no: [rows]}.
+    """
+    result = {}
+    for pn in part_numbers:
+        rows = _ks_fetch_current_bom_items(pn, bom_revision) or []
+        if not rows and bom_revision:
+            rows = _ks_fetch_current_bom_items(pn) or []
+        result[_ico_normalize_upper(pn)] = rows
+    return result
+
+
+def _ks_process_value(*values):
+    for value in values:
+        text = _ico_normalize_upper(value)
+        if text:
+            return text
+    return 'MAIN'
+
+
+def _ks_bom_kind_from_items(items):
+    processes = {_ks_process_value(i.get('item_process'), i.get('process_name'), i.get('tipo_material')) for i in items}
+    if processes == {'SMD'}:
+        return 'SMD'
+    if processes == {'IMD'}:
+        return 'IMD'
+    return 'MASTER'
+
+
+def _ks_fetch_current_bom_items(part_no, bom_revision=None):
+    plant_date = _ico_plant_date()
+    if not bom_revision:
+        latest = execute_query(
+            """
+            SELECT bom_rev
+            FROM v_icos_bom_current
+            WHERE UPPER(bom_part_no) = UPPER(%s)
+              AND (status_name IS NULL OR status_name = '' OR status_name = '사용')
+              AND (valid_from IS NULL OR valid_from <= %s)
+              AND (valid_to IS NULL OR valid_to >= %s)
+            GROUP BY bom_rev
+            ORDER BY MAX(header_synced_at) DESC, bom_rev DESC
+            LIMIT 1
+            """,
+            (part_no, plant_date, plant_date),
+            fetch='one'
+        )
+        bom_revision = latest.get('bom_rev') if latest else None
+        if not bom_revision:
+            return []
+
+    params = [part_no, plant_date, plant_date]
+    where = """
+        UPPER(bom_part_no) = UPPER(%s)
+        AND (status_name IS NULL OR status_name = '' OR status_name = '사용')
+        AND (valid_from IS NULL OR valid_from <= %s)
+        AND (valid_to IS NULL OR valid_to >= %s)
+    """
+    where += " AND UPPER(bom_rev) = UPPER(%s)"
+    params.append(bom_revision)
+    try:
+        return execute_query(
+            f"""
+            SELECT *
+            FROM v_icos_bom_current
+            WHERE {where}
+            ORDER BY header_synced_at DESC, bom_rev DESC, item_seq
+            """,
+            tuple(params),
+            fetch='all'
+        ) or []
+    except Exception as e:
+        print(f"Error leyendo v_icos_bom_current para {part_no}: {e}")
+        return []
+
+
+def _ico_get_by_id(ico_id):
+    return execute_query(
+        "SELECT * FROM engineering_changes WHERE id = %s",
+        (ico_id,),
+        fetch='one'
+    )
+
+
+def _ico_list_filters(status=None, part_no=None, origen=None, ico_no=None, date_from=None, date_to=None):
+    where = ["1=1"]
+    params = []
+    if status:
+        where.append("h.status = %s")
+        params.append(_ico_normalize_upper(status))
+    if part_no:
+        part_filter = _ico_normalize_upper(part_no)
+        where.append("""
+            (
+                UPPER(h.part_no) = %s
+                OR UPPER(h.ks_family_prefix) = %s
+                OR EXISTS (
+                    SELECT 1
+                    FROM engineering_change_scope es
+                    WHERE h.origen = 'MES'
+                      AND CAST(es.engineering_change_id AS CHAR) = h.id
+                      AND UPPER(es.part_no) = %s
+                )
+            )
+        """)
+        params.extend([part_filter, part_filter, part_filter])
+    if origen:
+        where.append("h.origen = %s")
+        params.append(_ico_normalize_upper(origen))
+    if ico_no:
+        ico_filter = _ico_normalize_upper(ico_no)
+        clean_filter = ico_filter.replace('KS#', '').replace('KS-', '')
+        like_filter = f"%{ico_filter}%"
+        where.append("""
+            (
+                UPPER(h.ico_no) LIKE %s
+                OR UPPER(h.id) LIKE %s
+                OR REPLACE(UPPER(h.ico_no), 'KS#', '') = %s
+                OR REPLACE(UPPER(h.id), 'KS-', '') = %s
+            )
+        """)
+        params.extend([like_filter, like_filter, clean_filter, clean_filter])
+    if date_from:
+        where.append("DATE(h.effective_at) >= %s")
+        params.append(_ico_normalize_date(date_from))
+    if date_to:
+        where.append("DATE(h.effective_at) <= %s")
+        params.append(_ico_normalize_date(date_to))
+    return where, params
+
+
+def contar_icos(status=None, part_no=None, origen=None, ico_no=None, date_from=None, date_to=None):
+    """Contar ICOS para paginacion."""
+    try:
+        crear_tablas_icos()
+        where, params = _ico_list_filters(status, part_no, origen, ico_no, date_from, date_to)
+        row = execute_query(
+            f"""
+            SELECT COUNT(*) AS total
+            FROM v_icos_historial_unificado h
+            WHERE {' AND '.join(where)}
+            """,
+            tuple(params),
+            fetch='one'
+        ) or {}
+        return int(row.get('total') or 0)
+    except Exception as e:
+        print(f"Error contando ICOS: {e}")
+        return 0
+
+
+def listar_icos(status=None, part_no=None, limit=100, origen=None, ico_no=None, date_from=None, date_to=None, offset=0):
+    """Listar historial unificado de ICOs (MES) + ECN (K-system).
+
+    origen: 'MES' | 'KS' | None (todos)
+    """
+    try:
+        crear_tablas_icos()
+        where, params = _ico_list_filters(status, part_no, origen, ico_no, date_from, date_to)
+        limit_clause = ""
+        if limit is not None:
+            safe_limit = max(1, min(int(limit or 100), 500))
+            safe_offset = max(0, int(offset or 0))
+            limit_clause = f"LIMIT {safe_limit} OFFSET {safe_offset}"
+        query = f"""
+            SELECT h.*,
+                   COALESCE(c.item_count, 0) AS item_count,
+                   COALESCE(s.scope_count, CASE WHEN h.origen = 'MES' THEN 1 ELSE 0 END) AS scope_count,
+                   s.scope_parts
+            FROM v_icos_historial_unificado h
+            LEFT JOIN (
+                SELECT engineering_change_id, COUNT(*) AS item_count
+                FROM engineering_change_bom_items
+                GROUP BY engineering_change_id
+            ) c ON h.origen = 'MES' AND CAST(c.engineering_change_id AS CHAR) = h.id
+            LEFT JOIN (
+                SELECT engineering_change_id,
+                       COUNT(*) AS scope_count,
+                       GROUP_CONCAT(part_no ORDER BY part_no SEPARATOR ', ') AS scope_parts
+                FROM engineering_change_scope
+                GROUP BY engineering_change_id
+            ) s ON h.origen = 'MES' AND CAST(s.engineering_change_id AS CHAR) = h.id
+            WHERE {' AND '.join(where)}
+            ORDER BY COALESCE(h.effective_at, h.updated_at) DESC, h.updated_at DESC
+            {limit_clause}
+        """
+        return execute_query(query, tuple(params), fetch='all') or []
+    except Exception as e:
+        print(f"Error listando ICOS: {e}")
+        return []
+
+
+def obtener_ico_detalle(ico_id):
+    """Obtener ICO con sus items."""
+    try:
+        crear_tablas_icos()
+        ico = _ico_get_by_id(ico_id)
+        if not ico:
+            return None
+        items = execute_query(
+            """
+            SELECT * FROM engineering_change_bom_items
+            WHERE engineering_change_id = %s
+            ORDER BY COALESCE(NULLIF(location_text, ''), posicion_assy), material_code
+            """,
+            (ico_id,),
+            fetch='all'
+        ) or []
+        ico['items'] = items
+        return ico
+    except Exception as e:
+        print(f"Error obteniendo ICO: {e}")
+        return None
+
+
+def obtener_ecn_ks(hist_seq):
+    """Obtener detalle de un ECN sincronizado desde K-system."""
+    try:
+        row = execute_query(
+            """
+            SELECT
+                family_prefix, hist_seq, item_no, item_seq, sb_date,
+                ord1, decide1, ord2, decide2,
+                chg_remark, change_context, cause, step_result,
+                bom_emp_seq, bom_emp_name, dev_emp_seq, dev_emp_name,
+                remark, seongcheolsa, work_no, synced_at
+            FROM ks_engineering_changes
+            WHERE hist_seq = %s
+            LIMIT 1
+            """,
+            (int(hist_seq),),
+            fetch='one'
+        )
+        return row
+    except Exception as e:
+        print(f"Error obteniendo ECN KS {hist_seq}: {e}")
+        return None
+
+
+def crear_ico(data, created_by='desconocido'):
+    """Crear ICO en borrador y opcionalmente copiar el BOM actual del modelo."""
+    crear_tablas_icos()
+    ico_no = _ico_normalize_upper(data.get('ico_no'))
+    part_no = _ico_normalize_upper(data.get('part_no'))
+    bom_revision = _ico_normalize_upper(data.get('bom_revision'))
+    effective_at = _ico_normalize_datetime(data.get('effective_at'))
+    notes = _ico_normalize_text(data.get('notes'))
+    item_name_input = _ico_normalize_text(data.get('item_name'))
+    copy_current_bom = data.get('copy_current_bom', True)
+
+    if not ico_no or not part_no or not bom_revision or not effective_at:
+        raise ValueError("ico_no, part_no, bom_revision y effective_at son requeridos")
+
+    if not item_name_input:
+        catalog = _ks_part_catalog_lookup(part_no) or {}
+        item_name_input = _ico_normalize_text(catalog.get('item_name'))
+
+    conn = get_connection()
+    if conn is None:
+        raise RuntimeError("No hay conexion MySQL disponible")
+
+    cursor = conn.cursor()
+    try:
+        try:
+            conn.autocommit(False)
+        except Exception:
+            pass
+        cursor.execute(
+            """
+            INSERT INTO engineering_changes
+                (ico_no, part_no, bom_revision, effective_at, status, notes, created_by, item_name)
+            VALUES (%s, %s, %s, %s, 'DRAFT', %s, %s, %s)
+            """,
+            (ico_no, part_no, bom_revision, effective_at, notes, created_by, item_name_input or None)
+        )
+        ico_id = cursor.lastrowid
+
+        if copy_current_bom:
+            current_items = _ks_fetch_current_bom_items(part_no, bom_revision)
+            if not current_items:
+                current_items = _ks_fetch_current_bom_items(part_no)
+            values = []
+            for item in current_items:
+                material = _ico_normalize_upper(item.get('item_no'))
+                numero_parte = material
+                location_text = _ico_normalize_text(item.get('location_text'))
+                process_value = _ks_process_value(item.get('item_process'), item.get('process_name'))
+                values.append((
+                    ico_id,
+                    process_value,
+                    _ico_legacy_position(location_text),
+                    location_text,
+                    material,
+                    numero_parte,
+                    _ico_parse_qty(item.get('qty')),
+                    location_text,
+                    _ico_normalize_text(item.get('supplier') or item.get('maker')),
+                    '',
+                    _ico_normalize_text(item.get('item_class')),
+                    _ico_normalize_text(item.get('spec')),
+                    _ico_normalize_text(item.get('bom_level')),
+                    _ico_normalize_text(item.get('item_seq')),
+                    _ico_normalize_text(item.get('item_name')),
+                    _ico_normalize_text(item.get('item_name_en')),
+                    _ico_normalize_text(item.get('unit')),
+                    _ico_normalize_text(item.get('maker')),
+                    _ico_normalize_text(item.get('process_name')),
+                    process_value,
+                    _ico_normalize_text(item.get('item_class')),
+                    _ico_normalize_date(item.get('valid_from'), _ico_normalize_date(effective_at)),
+                    _ico_normalize_date(item.get('valid_to')) or None,
+                    _ico_normalize_text(item.get('status_name'), '사용') or '사용',
+                    _ico_parse_bool(item.get('is_alternate')),
+                    _ico_normalize_upper(item.get('alt_item_no')),
+                    _ico_normalize_text(item.get('alt_item_name')),
+                    _ico_normalize_text(item.get('alt_spec')),
+                    _ico_normalize_text(item.get('alt_maker')),
+                    _ico_normalize_upper(item.get('child_bom_part_no')),
+                    _ico_parse_bool(item.get('is_sub_bom')),
+                ))
+            if values:
+                cursor.executemany(
+                    """
+                    INSERT INTO engineering_change_bom_items
+                        (engineering_change_id, tipo_material, posicion_assy, location_text, material_code,
+                         numero_parte, qty, ubicacion, proveedor, side, classification, spec,
+                         bom_level, item_seq, item_name, item_name_en, unit, maker,
+                         process_name, item_process, item_class, valid_from, valid_to,
+                         status_name, is_alternate, alt_item_no, alt_item_name, alt_spec,
+                         alt_maker, child_bom_part_no, is_sub_bom)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    values
+                )
+
+        conn.commit()
+        return obtener_ico_detalle(ico_id)
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+_ICO_DIFF_CRITICAL_FIELDS = (
+    'item_no', 'qty', 'location_text', 'supplier', 'item_class',
+    'alt_item_no', 'valid_from', 'valid_to', 'is_alternate',
+)
+
+
+def _ico_diff_normalize(value):
+    """Normalizar valor para comparar campos del diff (None/str/numero)."""
+    if value is None:
+        return ''
+    if hasattr(value, 'strftime'):
+        try:
+            return value.strftime('%Y-%m-%d')
+        except Exception:
+            return str(value)
+    text = str(value).strip()
+    if text.lower() in ('nan', 'none', 'null'):
+        return ''
+    return text
+
+
+def _ico_diff_normalize_qty(value):
+    try:
+        if value is None or str(value).strip() == '':
+            return ''
+        return f"{float(value):g}"
+    except (TypeError, ValueError):
+        return _ico_diff_normalize(value)
+
+
+def _ico_diff_normalize_bool(value):
+    if value is None or str(value).strip() == '':
+        return '0'
+    return '1' if _ico_parse_bool(value) else '0'
+
+
+def _ico_diff_field_value(item, field):
+    if field == 'qty':
+        return _ico_diff_normalize_qty(item.get('qty'))
+    if field == 'is_alternate':
+        return _ico_diff_normalize_bool(item.get('is_alternate'))
+    if field in ('valid_from', 'valid_to'):
+        return _ico_diff_normalize(item.get(field))
+    return _ico_diff_normalize(item.get(field))
+
+
+def crear_ico_desde_excel(metadata, excel_rows, created_by='desconocido'):
+    """Crear ICO DRAFT desde un Excel modificado de BOM.
+
+    metadata: dict con ico_no, part_no, bom_revision, effective_at, item_name?, notes?
+    excel_rows: lista de dicts con keys segun BOM_EXCEL_COLUMNS (sin '__row_id' es addición; con id existente es modificacion).
+
+    Retorna: {success, ico_id, diff:{added,removed,modified}, errors}
+    """
+    crear_tablas_icos()
+    ico_no = _ico_normalize_upper(metadata.get('ico_no'))
+    part_no = _ico_normalize_upper(metadata.get('part_no'))
+    bom_revision = _ico_normalize_upper(metadata.get('bom_revision'))
+    effective_at = _ico_normalize_datetime(metadata.get('effective_at'))
+    notes = _ico_normalize_text(metadata.get('notes'))
+    item_name_input = _ico_normalize_text(metadata.get('item_name'))
+
+    errors = []
+    if not ico_no: errors.append("ico_no requerido")
+    if not part_no: errors.append("part_no requerido")
+    if not bom_revision: errors.append("bom_revision requerido")
+    if not effective_at: errors.append("effective_at requerido")
+    if not excel_rows: errors.append("El Excel no tiene filas")
+    if errors:
+        return {"success": False, "errors": errors}
+
+    if not item_name_input:
+        catalog = _ks_part_catalog_lookup(part_no) or {}
+        item_name_input = _ico_normalize_text(catalog.get('item_name'))
+
+    current_items = _ks_fetch_current_bom_items(part_no, bom_revision) or []
+    if not current_items:
+        current_items = _ks_fetch_current_bom_items(part_no) or []
+    current_by_id = {}
+    for row in current_items:
+        rid = row.get('id')
+        if rid is not None:
+            current_by_id[int(rid)] = row
+
+    seen_levels = set()
+    seen_ids = set()
+    parsed_rows = []
+    for idx, raw in enumerate(excel_rows, start=1):
+        row_id_raw = raw.get('__row_id')
+        try:
+            row_id = int(row_id_raw) if row_id_raw not in (None, '', 'nan', 'None') else None
+        except (TypeError, ValueError):
+            row_id = None
+
+        item_no = _ico_normalize_upper(raw.get('item_no'))
+        if not item_no:
+            errors.append(f"Fila {idx}: item_no vacio")
+            continue
+
+        qty_raw = raw.get('qty')
+        try:
+            qty = float(qty_raw) if qty_raw not in (None, '') else 0
+        except (TypeError, ValueError):
+            errors.append(f"Fila {idx} ({item_no}): qty no es numero ('{qty_raw}')")
+            continue
+        if qty <= 0:
+            errors.append(f"Fila {idx} ({item_no}): qty debe ser > 0")
+            continue
+
+        bom_level = _ico_normalize_text(raw.get('bom_level')) or f"01-{idx:02d}"
+        if bom_level in seen_levels:
+            errors.append(f"Fila {idx} ({item_no}): bom_level '{bom_level}' duplicado")
+        seen_levels.add(bom_level)
+
+        if row_id is not None:
+            if row_id in seen_ids:
+                errors.append(f"Fila {idx} ({item_no}): __row_id {row_id} duplicado")
+            seen_ids.add(row_id)
+            if row_id not in current_by_id:
+                errors.append(f"Fila {idx} ({item_no}): __row_id {row_id} no existe en BOM actual")
+
+        parsed_rows.append({
+            '__row_id': row_id,
+            'item_no': item_no,
+            'item_name': _ico_normalize_text(raw.get('item_name')),
+            'spec': _ico_normalize_text(raw.get('spec')),
+            'qty': qty,
+            'unit': _ico_normalize_text(raw.get('unit')) or 'EA',
+            'location_text': _ico_normalize_text(raw.get('location_text')),
+            'maker': _ico_normalize_text(raw.get('maker')),
+            'supplier': _ico_normalize_text(raw.get('supplier')),
+            'item_class': _ico_normalize_text(raw.get('item_class')),
+            'item_process': _ico_normalize_text(raw.get('item_process')),
+            'process_name': _ico_normalize_text(raw.get('process_name')),
+            'valid_from': _ico_normalize_date(raw.get('valid_from')) or None,
+            'valid_to': _ico_normalize_date(raw.get('valid_to')) or None,
+            'is_alternate': _ico_parse_bool(raw.get('is_alternate')),
+            'alt_item_no': _ico_normalize_upper(raw.get('alt_item_no')),
+            'alt_item_name': _ico_normalize_text(raw.get('alt_item_name')),
+            'alt_spec': _ico_normalize_text(raw.get('alt_spec')),
+            'alt_maker': _ico_normalize_text(raw.get('alt_maker')),
+            'remark': _ico_normalize_text(raw.get('remark')),
+            'bom_level': bom_level,
+            'item_seq': _ico_normalize_text(raw.get('item_seq')) or str(idx),
+        })
+
+    if errors:
+        return {"success": False, "errors": errors}
+
+    diff_added = []
+    diff_removed = []
+    diff_modified = []
+
+    for row in parsed_rows:
+        if row['__row_id'] is None:
+            diff_added.append(row)
+        else:
+            original = current_by_id.get(row['__row_id'])
+            if original is None:
+                continue
+            field_diffs = []
+            for field in _ICO_DIFF_CRITICAL_FIELDS:
+                old_val = _ico_diff_field_value(original, field)
+                new_val = _ico_diff_field_value(row, field)
+                if old_val != new_val:
+                    field_diffs.append({
+                        'field': field,
+                        'old': old_val,
+                        'new': new_val,
+                    })
+            if field_diffs:
+                diff_modified.append({
+                    'row_id': row['__row_id'],
+                    'item_no': row['item_no'],
+                    'bom_level': row['bom_level'],
+                    'changes': field_diffs,
+                })
+
+    excel_ids = {row['__row_id'] for row in parsed_rows if row['__row_id'] is not None}
+    for rid, original in current_by_id.items():
+        if rid not in excel_ids:
+            diff_removed.append({
+                'row_id': rid,
+                'item_no': _ico_diff_normalize(original.get('item_no')),
+                'bom_level': _ico_diff_normalize(original.get('bom_level')),
+            })
+
+    if not (diff_added or diff_removed or diff_modified):
+        return {"success": False, "errors": ["El Excel no contiene cambios respecto al BOM actual"]}
+
+    conn = get_connection()
+    if conn is None:
+        return {"success": False, "errors": ["No hay conexion MySQL disponible"]}
+
+    cursor = conn.cursor()
+    try:
+        try:
+            conn.autocommit(False)
+        except Exception:
+            pass
+
+        cursor.execute(
+            """
+            INSERT INTO engineering_changes
+                (ico_no, part_no, bom_revision, effective_at, status, notes, created_by, item_name)
+            VALUES (%s, %s, %s, %s, 'DRAFT', %s, %s, %s)
+            """,
+            (ico_no, part_no, bom_revision, effective_at, notes, created_by, item_name_input or None)
+        )
+        ico_id = cursor.lastrowid
+
+        item_values = []
+        for row in parsed_rows:
+            item_values.append((
+                ico_id,
+                _ks_process_value(row.get('item_process'), 'MAIN'),
+                _ico_legacy_position(row['location_text']),
+                row['location_text'],
+                row['item_no'],
+                row['item_no'],
+                row['qty'],
+                row['location_text'],
+                row['supplier'] or row['maker'],
+                '',
+                row['item_class'],
+                row['spec'],
+                row['bom_level'],
+                row['item_seq'],
+                row['item_name'] or row['item_no'],
+                '',
+                row['unit'],
+                row['maker'],
+                row['process_name'] or row['item_process'],
+                row['item_process'],
+                row['item_class'],
+                row['valid_from'],
+                row['valid_to'],
+                '사용',
+                row['is_alternate'],
+                row['alt_item_no'],
+                row['alt_item_name'],
+                row['alt_spec'],
+                row['alt_maker'],
+                '',
+                0,
+            ))
+        if item_values:
+            cursor.executemany(
+                """
+                INSERT INTO engineering_change_bom_items
+                    (engineering_change_id, tipo_material, posicion_assy, location_text, material_code,
+                     numero_parte, qty, ubicacion, proveedor, side, classification, spec,
+                     bom_level, item_seq, item_name, item_name_en, unit, maker,
+                     process_name, item_process, item_class, valid_from, valid_to,
+                     status_name, is_alternate, alt_item_no, alt_item_name, alt_spec,
+                     alt_maker, child_bom_part_no, is_sub_bom)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                item_values
+            )
+
+        diff_rows = []
+        for r in diff_added:
+            diff_rows.append((ico_id, 'ADD', r['item_no'], r['bom_level'], None, None, None, None))
+        for r in diff_removed:
+            diff_rows.append((ico_id, 'REMOVE', r['item_no'], r['bom_level'], r['row_id'], None, None, None))
+        for r in diff_modified:
+            for change in r['changes']:
+                diff_rows.append((
+                    ico_id, 'MODIFY', r['item_no'], r['bom_level'], r['row_id'],
+                    change['field'], change['old'] or None, change['new'] or None,
+                ))
+        if diff_rows:
+            cursor.executemany(
+                """
+                INSERT INTO engineering_change_diff
+                    (engineering_change_id, action, item_no, bom_level, ks_row_id,
+                     field_changed, old_value, new_value)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                diff_rows
+            )
+
+        conn.commit()
+        return {
+            "success": True,
+            "ico_id": ico_id,
+            "diff": {
+                "added": len(diff_added),
+                "removed": len(diff_removed),
+                "modified": len(diff_modified),
+                "modified_fields": sum(len(r['changes']) for r in diff_modified),
+            },
+            "errors": [],
+        }
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"Error creando ICO desde Excel: {e}")
+        return {"success": False, "errors": [str(e)]}
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def obtener_diff_ico(ico_id):
+    """Obtener el diff persistido de un ICO."""
+    try:
+        rows = execute_query(
+            """
+            SELECT id, part_no, action, item_no, bom_level, ks_row_id,
+                   field_changed, old_value, new_value, created_at
+            FROM engineering_change_diff
+            WHERE engineering_change_id = %s
+            ORDER BY FIELD(action, 'ADD', 'MODIFY', 'REMOVE'), part_no, bom_level, item_no, field_changed
+            """,
+            (int(ico_id),),
+            fetch='all'
+        ) or []
+        return rows
+    except Exception as e:
+        print(f"Error obteniendo diff ICO {ico_id}: {e}")
+        return []
+
+
+def obtener_scope_ico(ico_id):
+    """Obtener la lista de part_no afectados por un ICO de familia."""
+    try:
+        rows = execute_query(
+            """
+            SELECT part_no, family_prefix, bom_revision
+            FROM engineering_change_scope
+            WHERE engineering_change_id = %s
+            ORDER BY part_no
+            """,
+            (int(ico_id),),
+            fetch='all'
+        ) or []
+        return rows
+    except Exception as e:
+        print(f"Error obteniendo scope ICO {ico_id}: {e}")
+        return []
+
+
+def crear_ico_familia_desde_excel(metadata, excel_rows, scope_parts, created_by='desconocido'):
+    """Crear ICO de familia desde Excel multi-modelo.
+
+    metadata: ico_no, family_prefix, bom_revision, effective_at, item_name?, notes?
+    excel_rows: lista de dicts con __row_key, modelos_afectados, item_no, bom_level y demas campos.
+    scope_parts: lista de part_no del scope (resuelta antes).
+
+    Retorna: {success, ico_id, diff, errors}
+    """
+    crear_tablas_icos()
+    ico_no = _ico_normalize_upper(metadata.get('ico_no'))
+    family_prefix = _ico_normalize_upper(metadata.get('family_prefix'))
+    bom_revision = _ico_normalize_upper(metadata.get('bom_revision'))
+    effective_at = _ico_normalize_datetime(metadata.get('effective_at'))
+    notes = _ico_normalize_text(metadata.get('notes'))
+    item_name_input = _ico_normalize_text(metadata.get('item_name'))
+    scope_parts = [_ico_normalize_upper(p) for p in scope_parts if p]
+
+    errors = []
+    if not ico_no: errors.append("ico_no requerido")
+    if not family_prefix: errors.append("family_prefix requerido")
+    if not bom_revision: errors.append("bom_revision requerido")
+    if not effective_at: errors.append("effective_at requerido")
+    if not scope_parts: errors.append("scope_parts vacio")
+    if not excel_rows: errors.append("El Excel no tiene filas")
+    if errors:
+        return {"success": False, "errors": errors}
+
+    # Construir BOM vigente por modelo
+    bom_by_part = _ks_fetch_bom_items_multi(scope_parts, bom_revision)
+    bom_by_part_key = {}  # {part_no: {row_key: row}}
+    for pn, rows in bom_by_part.items():
+        idx = {}
+        for r in rows:
+            key = f"{(r.get('item_no') or '').upper()}|{(r.get('bom_level') or '').strip()}"
+            if key.strip('|'):
+                idx[key] = r
+        bom_by_part_key[pn] = idx
+
+    # Parsear filas del Excel
+    parsed_rows = []
+    seen_keys = set()
+    for idx, raw in enumerate(excel_rows, start=1):
+        row_key = _ico_normalize_text(raw.get('__row_key'))
+        if not row_key or '|' not in row_key:
+            errors.append(f"Fila {idx}: __row_key invalido ('{row_key}')")
+            continue
+        if row_key in seen_keys:
+            errors.append(f"Fila {idx}: __row_key '{row_key}' duplicado")
+            continue
+        seen_keys.add(row_key)
+
+        item_no = _ico_normalize_upper(raw.get('item_no'))
+        if not item_no:
+            errors.append(f"Fila {idx}: item_no vacio")
+            continue
+
+        qty_raw = raw.get('qty')
+        try:
+            qty = float(qty_raw) if qty_raw not in (None, '') else 0
+        except (TypeError, ValueError):
+            errors.append(f"Fila {idx} ({item_no}): qty no es numero ('{qty_raw}')")
+            continue
+        if qty <= 0:
+            errors.append(f"Fila {idx} ({item_no}): qty debe ser > 0")
+            continue
+
+        modelos_raw = _ico_normalize_text(raw.get('modelos_afectados'))
+        modelos = _ks_parse_suffixes(modelos_raw) if modelos_raw else []
+        modelos = [m for m in modelos if m in scope_parts]
+        if not modelos:
+            # Si no especifica, asumir todos los del scope
+            modelos = list(scope_parts)
+
+        bom_level = _ico_normalize_text(raw.get('bom_level')) or row_key.split('|', 1)[1]
+
+        parsed_rows.append({
+            '__row_key': row_key,
+            'item_no': item_no,
+            'item_name': _ico_normalize_text(raw.get('item_name')),
+            'spec': _ico_normalize_text(raw.get('spec')),
+            'qty': qty,
+            'unit': _ico_normalize_text(raw.get('unit')) or 'EA',
+            'location_text': _ico_normalize_text(raw.get('location_text')),
+            'maker': _ico_normalize_text(raw.get('maker')),
+            'supplier': _ico_normalize_text(raw.get('supplier')),
+            'item_class': _ico_normalize_text(raw.get('item_class')),
+            'item_process': _ico_normalize_text(raw.get('item_process')),
+            'process_name': _ico_normalize_text(raw.get('process_name')),
+            'valid_from': _ico_normalize_date(raw.get('valid_from')) or None,
+            'valid_to': _ico_normalize_date(raw.get('valid_to')) or None,
+            'is_alternate': _ico_parse_bool(raw.get('is_alternate')),
+            'alt_item_no': _ico_normalize_upper(raw.get('alt_item_no')),
+            'alt_item_name': _ico_normalize_text(raw.get('alt_item_name')),
+            'alt_spec': _ico_normalize_text(raw.get('alt_spec')),
+            'alt_maker': _ico_normalize_text(raw.get('alt_maker')),
+            'remark': _ico_normalize_text(raw.get('remark')),
+            'bom_level': bom_level,
+            'item_seq': _ico_normalize_text(raw.get('item_seq')) or str(idx),
+            'modelos_afectados': modelos,
+        })
+
+    if errors:
+        return {"success": False, "errors": errors}
+
+    # Calcular diff por modelo
+    diff_added = []  # [{part_no, row, ...}]
+    diff_removed = []
+    diff_modified = []
+
+    excel_keys = {r['__row_key'] for r in parsed_rows}
+
+    for row in parsed_rows:
+        key = row['__row_key']
+        for pn in row['modelos_afectados']:
+            current = bom_by_part_key.get(pn, {}).get(key)
+            if current is None:
+                # El usuario quiere aplicar este item a un modelo donde no existe
+                # ADD: aceptable. Lo importante es que no hagamos MODIFY sobre algo inexistente.
+                diff_added.append({
+                    'part_no': pn,
+                    'row': row,
+                })
+            else:
+                field_diffs = []
+                for field in _ICO_DIFF_CRITICAL_FIELDS:
+                    old_val = _ico_diff_field_value(current, field)
+                    new_val = _ico_diff_field_value(row, field)
+                    if old_val != new_val:
+                        field_diffs.append({
+                            'field': field,
+                            'old': old_val,
+                            'new': new_val,
+                        })
+                if field_diffs:
+                    diff_modified.append({
+                        'part_no': pn,
+                        'row_id': current.get('id'),
+                        'item_no': row['item_no'],
+                        'bom_level': row['bom_level'],
+                        'changes': field_diffs,
+                        'row': row,
+                    })
+
+    # REMOVE: items en BOM vigente que no aparecen en el Excel (por modelo)
+    for pn, idx in bom_by_part_key.items():
+        for key, original in idx.items():
+            if key not in excel_keys:
+                diff_removed.append({
+                    'part_no': pn,
+                    'row_id': original.get('id'),
+                    'item_no': original.get('item_no'),
+                    'bom_level': original.get('bom_level'),
+                })
+
+    if not (diff_added or diff_removed or diff_modified):
+        return {"success": False, "errors": ["El Excel no contiene cambios respecto al BOM actual"]}
+
+    # Bloquear si una fila MODIFY apunta a un modelo donde el item no existe
+    # (Eso se detectaria como ADD; pero si el usuario listo el modelo en modelos_afectados
+    #  con la intencion de modificar, debe existir. Verificamos: si una row con cambios criticos
+    #  termino como ADD en un modelo donde NO existia, lo permitimos solo si TODOS los campos
+    #  son nuevos. Aqui aceptamos ADD libremente; el bloqueo lo dejamos a si el usuario manda
+    #  un modelo no presente en scope_parts -> ya filtrado arriba.)
+
+    # Tomar metadatos del catalog para usar el primer part_no como representante
+    representative_part = scope_parts[0]
+    if not item_name_input:
+        catalog = _ks_part_catalog_lookup(representative_part) or {}
+        item_name_input = _ico_normalize_text(catalog.get('item_name'))
+
+    conn = get_connection()
+    if conn is None:
+        return {"success": False, "errors": ["No hay conexion MySQL disponible"]}
+
+    cursor = conn.cursor()
+    try:
+        try:
+            conn.autocommit(False)
+        except Exception:
+            pass
+
+        cursor.execute(
+            """
+            INSERT INTO engineering_changes
+                (ico_no, part_no, bom_revision, effective_at, status, notes,
+                 created_by, item_name, scope_kind, family_prefix)
+            VALUES (%s, %s, %s, %s, 'DRAFT', %s, %s, %s, 'FAMILY', %s)
+            """,
+            (ico_no, representative_part, bom_revision, effective_at, notes,
+             created_by, item_name_input or None, family_prefix)
+        )
+        ico_id = cursor.lastrowid
+
+        scope_values = [(ico_id, pn, family_prefix, bom_revision) for pn in scope_parts]
+        cursor.executemany(
+            """
+            INSERT INTO engineering_change_scope
+                (engineering_change_id, part_no, family_prefix, bom_revision)
+            VALUES (%s, %s, %s, %s)
+            """,
+            scope_values
+        )
+
+        # Items del ICO: guardamos UN registro por fila del Excel (no replicamos por modelo).
+        # El detalle "a qué modelo aplica cada cambio" vive en engineering_change_diff.
+        item_values = []
+        for row in parsed_rows:
+            item_values.append((
+                ico_id,
+                _ks_process_value(row.get('item_process'), 'MAIN'),
+                _ico_legacy_position(row['location_text']),
+                row['location_text'],
+                row['item_no'],
+                row['item_no'],
+                row['qty'],
+                row['location_text'],
+                row['supplier'] or row['maker'],
+                '',
+                row['item_class'],
+                row['spec'],
+                row['bom_level'],
+                row['item_seq'],
+                row['item_name'] or row['item_no'],
+                '',
+                row['unit'],
+                row['maker'],
+                row['process_name'] or row['item_process'],
+                row['item_process'],
+                row['item_class'],
+                row['valid_from'],
+                row['valid_to'],
+                '사용',
+                row['is_alternate'],
+                row['alt_item_no'],
+                row['alt_item_name'],
+                row['alt_spec'],
+                row['alt_maker'],
+                '',
+                0,
+            ))
+        if item_values:
+            cursor.executemany(
+                """
+                INSERT INTO engineering_change_bom_items
+                    (engineering_change_id, tipo_material, posicion_assy, location_text, material_code,
+                     numero_parte, qty, ubicacion, proveedor, side, classification, spec,
+                     bom_level, item_seq, item_name, item_name_en, unit, maker,
+                     process_name, item_process, item_class, valid_from, valid_to,
+                     status_name, is_alternate, alt_item_no, alt_item_name, alt_spec,
+                     alt_maker, child_bom_part_no, is_sub_bom)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                item_values
+            )
+
+        diff_rows = []
+        for d in diff_added:
+            diff_rows.append((ico_id, d['part_no'], 'ADD', d['row']['item_no'], d['row']['bom_level'], None, None, None, None))
+        for d in diff_removed:
+            diff_rows.append((ico_id, d['part_no'], 'REMOVE', d['item_no'], d['bom_level'], d['row_id'], None, None, None))
+        for d in diff_modified:
+            for change in d['changes']:
+                diff_rows.append((
+                    ico_id, d['part_no'], 'MODIFY', d['item_no'], d['bom_level'], d['row_id'],
+                    change['field'], change['old'] or None, change['new'] or None,
+                ))
+        if diff_rows:
+            cursor.executemany(
+                """
+                INSERT INTO engineering_change_diff
+                    (engineering_change_id, part_no, action, item_no, bom_level,
+                     ks_row_id, field_changed, old_value, new_value)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                diff_rows
+            )
+
+        conn.commit()
+
+        # Resumen por modelo
+        per_part = {}
+        for d in diff_added:
+            per_part.setdefault(d['part_no'], {'added': 0, 'modified': 0, 'removed': 0})['added'] += 1
+        for d in diff_modified:
+            per_part.setdefault(d['part_no'], {'added': 0, 'modified': 0, 'removed': 0})['modified'] += 1
+        for d in diff_removed:
+            per_part.setdefault(d['part_no'], {'added': 0, 'modified': 0, 'removed': 0})['removed'] += 1
+
+        return {
+            "success": True,
+            "ico_id": ico_id,
+            "scope_kind": "FAMILY",
+            "scope_parts": scope_parts,
+            "diff": {
+                "added": len(diff_added),
+                "removed": len(diff_removed),
+                "modified": len(diff_modified),
+                "modified_fields": sum(len(d['changes']) for d in diff_modified),
+                "per_part": per_part,
+            },
+            "errors": [],
+        }
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"Error creando ICO familia: {e}")
+        return {"success": False, "errors": [str(e)]}
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def importar_items_ico_desde_dataframe(ico_id, df):
+    """Reemplazar items de un ICO DRAFT desde Excel."""
+    crear_tablas_icos()
+    ico = _ico_get_by_id(ico_id)
+    if not ico:
+        raise ValueError("ICO no encontrado")
+    if ico.get('status') != 'DRAFT':
+        raise ValueError("Solo se pueden importar items en ICOS DRAFT")
+
+    columnas_disponibles = df.columns.tolist()
+
+    def normalizar_columna(nombre):
+        texto = str(nombre or '')
+        texto = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
+        texto = texto.strip().lower()
+        texto = re.sub(r'[^a-z0-9]+', ' ', texto)
+        return ' '.join(texto.split())
+
+    columnas_normalizadas = {col: normalizar_columna(col) for col in columnas_disponibles}
+
+    def buscar_columna(variaciones_exactas=None, variaciones_contiene=None):
+        variaciones_exactas = variaciones_exactas or []
+        variaciones_contiene = variaciones_contiene or []
+        for var in variaciones_exactas:
+            var_norm = normalizar_columna(var)
+            for col, col_norm in columnas_normalizadas.items():
+                if col_norm == var_norm:
+                    return col
+        for var in variaciones_contiene:
+            var_norm = normalizar_columna(var)
+            for col, col_norm in columnas_normalizadas.items():
+                if var_norm and var_norm in col_norm:
+                    return col
+        return None
+
+    col_numero_parte = buscar_columna(
+        ['numero de parte', 'numero_parte', 'part number', 'material'],
+        ['numero parte', 'part number']
+    )
+    col_material = buscar_columna(
+        ['codigo de material', 'codigo_material', 'material code'],
+        ['codigo material', 'material code']
+    )
+    col_posicion = buscar_columna(
+        ['posicion assy', 'posicion_assy', 'posicion', 'position'],
+        ['posicion', 'position']
+    )
+    col_qty = buscar_columna(['cantidad total', 'cantidad', 'qty'], ['cantidad', 'qty'])
+    col_tipo = buscar_columna(['tipo de material', 'tipo_material', 'material type'], ['tipo de material', 'material type'])
+    col_ubicacion = buscar_columna(['ubicacion', 'location'], ['ubicacion', 'location'])
+    col_proveedor = buscar_columna(['proveedor', 'vendor', 'vender', 'supplier'], ['proveedor', 'vendor', 'supplier'])
+    col_side = buscar_columna(['side', 'lado'], ['side', 'lado'])
+    col_classification = buscar_columna(['classification', 'clasificacion', 'categoria'], ['classification', 'clasificacion', 'categoria'])
+    col_spec = buscar_columna(['especificacion', 'especificacion material', 'description', 'descripcion'], ['especificacion', 'description', 'descripcion'])
+    col_bom_level = buscar_columna(['bom_level', 'bom level', 'nivel bom'], ['bom level', 'nivel'])
+    col_item_seq = buscar_columna(['item_seq', 'item seq', 'secuencia'], ['item seq', 'secuencia'])
+    col_item_name = buscar_columna(['item_name', 'item name', 'nombre item', 'descripcion material'], ['item name', 'nombre item'])
+    col_item_name_en = buscar_columna(['item_name_en', 'item name en', 'nombre ingles'], ['name en', 'ingles'])
+    col_unit = buscar_columna(['unit', 'unidad'], ['unit', 'unidad'])
+    col_maker = buscar_columna(['maker', 'fabricante'], ['maker', 'fabricante'])
+    col_process_name = buscar_columna(['process_name', 'process name', 'proceso'], ['process name', 'proceso'])
+    col_item_process = buscar_columna(['item_process', 'item process', 'tipo proceso'], ['item process', 'tipo proceso'])
+    col_item_class = buscar_columna(['item_class', 'item class', 'classification'], ['item class', 'classification'])
+    col_valid_from = buscar_columna(['valid_from', 'valid from', 'fecha efectiva', 'effective date'], ['valid from', 'fecha efectiva', 'effective'])
+    col_valid_to = buscar_columna(['valid_to', 'valid to', 'fecha fin'], ['valid to', 'fecha fin'])
+    col_status_name = buscar_columna(['status_name', 'status name', 'estado'], ['status name', 'estado'])
+    col_is_alternate = buscar_columna(['is_alternate', 'is alternate', 'alterno'], ['is alternate', 'alterno'])
+    col_alt_item_no = buscar_columna(['alt_item_no', 'alternate item no', 'material alterno', 'material sustituto'], ['alt item', 'alternate', 'sustituto'])
+    col_alt_item_name = buscar_columna(['alt_item_name', 'alternate item name', 'nombre alterno'], ['alt name', 'alterno nombre'])
+    col_alt_spec = buscar_columna(['alt_spec', 'alternate spec', 'spec alterno'], ['alt spec', 'spec alterno'])
+    col_alt_maker = buscar_columna(['alt_maker', 'alternate maker', 'maker alterno'], ['alt maker', 'maker alterno'])
+    col_child_bom_part_no = buscar_columna(['child_bom_part_no', 'child bom part no', 'sub bom'], ['child bom', 'sub bom'])
+    col_is_sub_bom = buscar_columna(['is_sub_bom', 'is sub bom'], ['is sub bom'])
+
+    if not col_numero_parte and not col_material:
+        raise ValueError("El Excel debe incluir Numero de Parte o Codigo de Material")
+
+    values = []
+    omitidos = 0
+    for _, row in df.iterrows():
+        numero_parte = _ico_normalize_upper(row.get(col_numero_parte) if col_numero_parte else '')
+        material = _ico_normalize_upper(row.get(col_material) if col_material else '')
+        if not numero_parte and not material:
+            omitidos += 1
+            continue
+        if not material:
+            material = numero_parte
+        if not numero_parte:
+            numero_parte = material
+        location_text = _ico_normalize_text(row.get(col_posicion) if col_posicion else '')
+        if not location_text:
+            location_text = _ico_normalize_text(row.get(col_ubicacion) if col_ubicacion else '')
+        item_process = _ks_process_value(
+            row.get(col_item_process) if col_item_process else '',
+            row.get(col_tipo) if col_tipo else ''
+        )
+        process_name = _ico_normalize_text(row.get(col_process_name) if col_process_name else item_process)
+        values.append((
+            ico_id,
+            item_process,
+            _ico_legacy_position(location_text),
+            location_text,
+            material,
+            numero_parte,
+            _ico_parse_qty(row.get(col_qty) if col_qty else 1),
+            location_text,
+            _ico_normalize_text(row.get(col_proveedor) if col_proveedor else ''),
+            _ico_normalize_text(row.get(col_side) if col_side else ''),
+            _ico_normalize_text(row.get(col_classification) if col_classification else ''),
+            _ico_normalize_text(row.get(col_spec) if col_spec else ''),
+            _ico_normalize_text(row.get(col_bom_level) if col_bom_level else ''),
+            _ico_normalize_text(row.get(col_item_seq) if col_item_seq else ''),
+            _ico_normalize_text(row.get(col_item_name) if col_item_name else ''),
+            _ico_normalize_text(row.get(col_item_name_en) if col_item_name_en else ''),
+            _ico_normalize_text(row.get(col_unit) if col_unit else 'EA') or 'EA',
+            _ico_normalize_text(row.get(col_maker) if col_maker else ''),
+            process_name,
+            item_process,
+            _ico_normalize_text(row.get(col_item_class) if col_item_class else row.get(col_classification) if col_classification else ''),
+            _ico_normalize_date(row.get(col_valid_from) if col_valid_from else ico.get('effective_at')),
+            _ico_normalize_date(row.get(col_valid_to) if col_valid_to else '') or None,
+            _ico_normalize_text(row.get(col_status_name) if col_status_name else '사용') or '사용',
+            _ico_parse_bool(row.get(col_is_alternate) if col_is_alternate else 0),
+            _ico_normalize_upper(row.get(col_alt_item_no) if col_alt_item_no else ''),
+            _ico_normalize_text(row.get(col_alt_item_name) if col_alt_item_name else ''),
+            _ico_normalize_text(row.get(col_alt_spec) if col_alt_spec else ''),
+            _ico_normalize_text(row.get(col_alt_maker) if col_alt_maker else ''),
+            _ico_normalize_upper(row.get(col_child_bom_part_no) if col_child_bom_part_no else ''),
+            _ico_parse_bool(row.get(col_is_sub_bom) if col_is_sub_bom else 0),
+        ))
+
+    if not values:
+        raise ValueError("No se encontraron filas validas para importar")
+
+    conn = get_connection()
+    if conn is None:
+        raise RuntimeError("No hay conexion MySQL disponible")
+    cursor = conn.cursor()
+    try:
+        try:
+            conn.autocommit(False)
+        except Exception:
+            pass
+        cursor.execute("DELETE FROM engineering_change_bom_items WHERE engineering_change_id = %s", (ico_id,))
+        cursor.executemany(
+            """
+            INSERT INTO engineering_change_bom_items
+                (engineering_change_id, tipo_material, posicion_assy, location_text, material_code,
+                 numero_parte, qty, ubicacion, proveedor, side, classification, spec,
+                 bom_level, item_seq, item_name, item_name_en, unit, maker,
+                 process_name, item_process, item_class, valid_from, valid_to,
+                 status_name, is_alternate, alt_item_no, alt_item_name, alt_spec,
+                 alt_maker, child_bom_part_no, is_sub_bom)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            values
+        )
+        conn.commit()
+        return {"insertados": len(values), "omitidos": omitidos}
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def validar_ico_para_aprobacion(ico_id):
+    """Validar que un ICO DRAFT pueda aprobarse."""
+    ico = obtener_ico_detalle(ico_id)
+    errors = []
+    if not ico:
+        return ["ICO no encontrado"]
+    if ico.get('status') != 'DRAFT':
+        errors.append("Solo se pueden aprobar ICOS DRAFT")
+    for field in ('ico_no', 'part_no', 'bom_revision', 'effective_at'):
+        if not ico.get(field):
+            errors.append(f"Campo requerido faltante: {field}")
+    items = ico.get('items') or []
+    if not items:
+        errors.append("El ICO no tiene items de BOM")
+    for idx, item in enumerate(items, start=1):
+        material = item.get('material_code') or item.get('numero_parte')
+        if not material:
+            errors.append(f"Item {idx}: material_code/numero_parte requerido")
+        if _ico_parse_qty(item.get('qty'), 0) <= 0:
+            errors.append(f"Item {idx}: qty debe ser mayor a 0")
+    return errors
+
+
+def _ico_item_key(item_no, bom_level):
+    return f"{_ico_normalize_upper(item_no)}|{_ico_normalize_text(bom_level)}"
+
+
+def _ico_component_tuple(part_no, bom_rev, item, effective_date, ico, idx):
+    item_no = _ico_normalize_upper(item.get('material_code') or item.get('numero_parte') or item.get('item_no'))
+    item_process = _ks_process_value(item.get('item_process'), item.get('tipo_material'), item.get('process_name'))
+    process_name = _ico_normalize_text(item.get('process_name')) or item_process
+    location_text = _ico_normalize_text(item.get('location_text') or item.get('ubicacion') or item.get('posicion_assy'))
+    return (
+        part_no,
+        bom_rev,
+        _ico_normalize_text(item.get('bom_level')) or f"01-{idx:02d}",
+        _ico_normalize_text(item.get('item_seq')) or str(idx),
+        item_no,
+        _ico_normalize_text(item.get('item_name')) or item_no,
+        _ico_normalize_text(item.get('item_name_en')),
+        _ico_normalize_text(item.get('spec')),
+        _ico_parse_qty(item.get('qty')),
+        _ico_normalize_text(item.get('unit'), 'EA') or 'EA',
+        location_text,
+        _ico_normalize_text(item.get('maker') or item.get('proveedor') or item.get('supplier')),
+        process_name,
+        item_process,
+        _ico_normalize_text(item.get('proveedor') or item.get('supplier')),
+        _ico_normalize_text(item.get('item_class') or item.get('classification')),
+        _ico_normalize_date(item.get('valid_from'), effective_date),
+        _ico_normalize_date(item.get('valid_to')) or None,
+        '사용',
+        _ico_parse_bool(item.get('is_alternate')),
+        _ico_normalize_upper(item.get('alt_item_no')),
+        _ico_normalize_text(item.get('alt_item_name')),
+        _ico_normalize_text(item.get('alt_spec')),
+        _ico_normalize_text(item.get('alt_maker')),
+        _ico_normalize_upper(item.get('child_bom_part_no')),
+        _ico_parse_bool(item.get('is_sub_bom')),
+        f"ICO {ico.get('ico_no')}",
+        _ico_normalize_text(ico.get('notes')),
+    )
+
+
+def _aprobar_ico_familia(ico_id, approved_by, ico):
+    """Aprobar un ICO de familia publicando una revision completa por modelo."""
+    items = ico.get('items') or []
+    effective_date = _ico_normalize_date(ico.get('effective_at'), _ico_plant_date())
+    bom_rev = _ico_normalize_upper(ico.get('bom_revision'))
+    family_prefix = _ico_normalize_upper(ico.get('family_prefix'))
+
+    scope = obtener_scope_ico(ico_id)
+    if not scope:
+        return {"success": False, "errors": ["El ICO de familia no tiene scope definido"]}
+
+    # Indexar items del ICO por __row_key = item_no|bom_level
+    items_by_key = {}
+    for it in items:
+        key = _ico_item_key(it.get('material_code') or it.get('numero_parte') or it.get('item_no'), it.get('bom_level'))
+        if key.strip('|'):
+            items_by_key[key] = it
+
+    # Cargar diff completo agrupado por part_no
+    diff_rows = execute_query(
+        """
+        SELECT part_no, action, item_no, bom_level, ks_row_id,
+               field_changed, old_value, new_value
+        FROM engineering_change_diff
+        WHERE engineering_change_id = %s
+        """,
+        (int(ico_id),),
+        fetch='all'
+    ) or []
+    diff_by_part = {}
+    for r in diff_rows:
+        pn = _ico_normalize_upper(r.get('part_no'))
+        diff_by_part.setdefault(pn, []).append(r)
+
+    conn = get_connection()
+    if conn is None:
+        return {"success": False, "errors": ["No hay conexion MySQL disponible"]}
+    cursor = conn.cursor()
+    try:
+        try:
+            conn.autocommit(False)
+        except Exception:
+            pass
+
+        applied_summary = {}
+        insert_sql = """
+            INSERT INTO ks_bom_components
+                (parent_part_no, bom_rev, bom_level, item_seq, item_no,
+                 item_name, item_name_en, spec, qty, unit, location_text,
+                 maker, process_name, item_process, supplier, item_class,
+                 valid_from, valid_to, status_name, is_alternate,
+                 alt_item_no, alt_item_name, alt_spec, alt_maker,
+                 child_bom_part_no, is_sub_bom, remark, item_remark, synced_at)
+            VALUES
+                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        """
+        current_by_part = _ks_fetch_bom_items_multi([entry.get('part_no') for entry in scope], None)
+
+        for entry in scope:
+            part_no = _ico_normalize_upper(entry.get('part_no'))
+            if not part_no:
+                continue
+
+            catalog = _ks_part_catalog_lookup(part_no) or {}
+            cat_item_name = _ico_normalize_text(catalog.get('item_name')) if catalog else ''
+            cat_spec = _ico_normalize_text(catalog.get('spec')) if catalog else ''
+            cat_unit = _ico_normalize_text(catalog.get('unit')) if catalog else ''
+            cat_family = _ico_normalize_text(catalog.get('family_prefix')) if catalog else ''
+            cat_root = _ico_normalize_text(catalog.get('root_part_no')) if catalog else ''
+            cat_kind = _ico_normalize_upper(catalog.get('bom_kind')) if catalog else ''
+            cat_suffix = _ico_normalize_text(catalog.get('bom_suffix')) if catalog else ''
+
+            target_rows = {}
+            for current in current_by_part.get(part_no, []):
+                key = _ico_item_key(current.get('item_no'), current.get('bom_level'))
+                if key.strip('|'):
+                    target_rows[key] = dict(current)
+
+            part_diffs = diff_by_part.get(part_no, [])
+            adds = [d for d in part_diffs if d.get('action') == 'ADD']
+            removes = [d for d in part_diffs if d.get('action') == 'REMOVE']
+            modifies = [d for d in part_diffs if d.get('action') == 'MODIFY']
+
+            for d in removes:
+                target_rows.pop(_ico_item_key(d.get('item_no'), d.get('bom_level')), None)
+
+            modify_keys = set()
+            for d in modifies:
+                new_key = _ico_item_key(d.get('item_no'), d.get('bom_level'))
+                old_key = new_key
+                if d.get('field_changed') == 'item_no' and d.get('old_value'):
+                    old_key = _ico_item_key(d.get('old_value'), d.get('bom_level'))
+                if old_key != new_key:
+                    target_rows.pop(old_key, None)
+                modify_keys.add(new_key)
+
+            for key in modify_keys:
+                src = items_by_key.get(key)
+                if src:
+                    target_rows[key] = dict(src)
+
+            for d in adds:
+                key = _ico_item_key(d.get('item_no'), d.get('bom_level'))
+                src = items_by_key.get(key)
+                if src:
+                    target_rows[key] = dict(src)
+
+            cursor.execute(
+                "DELETE FROM ks_bom_components WHERE parent_part_no = %s AND bom_rev = %s",
+                (part_no, bom_rev)
+            )
+
+            ordered_items = sorted(
+                target_rows.values(),
+                key=lambda row: (
+                    _ico_normalize_text(row.get('item_seq')).zfill(12),
+                    _ico_normalize_text(row.get('bom_level')),
+                    _ico_normalize_upper(row.get('material_code') or row.get('numero_parte') or row.get('item_no')),
+                )
+            )
+            component_values = [
+                _ico_component_tuple(part_no, bom_rev, item, effective_date, ico, idx)
+                for idx, item in enumerate(ordered_items, start=1)
+            ]
+            if component_values:
+                cursor.executemany(insert_sql, component_values)
+
+            comp_count = len(component_values)
+            cursor.execute(
+                """
+                INSERT INTO ks_bom_headers
+                    (part_no, item_seq, item_name, spec, unit, bom_rev, root_part_no,
+                     family_prefix, bom_suffix, bom_kind, component_count,
+                     source_updated_at, synced_at)
+                VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                ON DUPLICATE KEY UPDATE
+                    item_name = VALUES(item_name),
+                    spec = VALUES(spec),
+                    unit = VALUES(unit),
+                    root_part_no = VALUES(root_part_no),
+                    family_prefix = VALUES(family_prefix),
+                    bom_suffix = VALUES(bom_suffix),
+                    bom_kind = VALUES(bom_kind),
+                    component_count = VALUES(component_count),
+                    source_updated_at = NOW(),
+                    synced_at = NOW()
+                """,
+                (
+                    part_no,
+                    cat_item_name or part_no,
+                    cat_spec or None,
+                    cat_unit or None,
+                    bom_rev,
+                    cat_root or part_no,
+                    cat_family or family_prefix or _ks_family_prefix(part_no),
+                    cat_suffix or None,
+                    cat_kind or _ks_bom_kind_from_items(items),
+                    comp_count,
+                )
+            )
+
+            applied_summary[part_no] = {
+                'added': len(adds),
+                'modified': len(modify_keys),
+                'removed': len(removes),
+                'total_components': comp_count,
+            }
+
+        cursor.execute(
+            """
+            UPDATE engineering_changes
+            SET status = 'APPROVED',
+                approved_by = %s,
+                approved_at = NOW(),
+                updated_at = NOW()
+            WHERE id = %s AND status = 'DRAFT'
+            """,
+            (approved_by, ico_id)
+        )
+
+        conn.commit()
+        return {
+            "success": True,
+            "errors": [],
+            "scope_kind": "FAMILY",
+            "applied": applied_summary,
+        }
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"Error aprobando ICO familia {ico_id}: {e}")
+        return {"success": False, "errors": [str(e)]}
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def aprobar_ico(ico_id, approved_by='desconocido'):
+    """Aprobar un ICO DRAFT y publicar la revision en tablas KS."""
+    errors = validar_ico_para_aprobacion(ico_id)
+    if errors:
+        return {"success": False, "errors": errors}
+    ico = obtener_ico_detalle(ico_id)
+
+    if _ico_normalize_upper(ico.get('scope_kind')) == 'FAMILY':
+        return _aprobar_ico_familia(ico_id, approved_by, ico)
+
+    items = ico.get('items') or []
+    effective_date = _ico_normalize_date(ico.get('effective_at'), _ico_plant_date())
+    part_no = _ico_normalize_upper(ico.get('part_no'))
+    bom_rev = _ico_normalize_upper(ico.get('bom_revision'))
+
+    catalog = _ks_part_catalog_lookup(part_no) or {}
+    catalog_item_name = _ico_normalize_text(catalog.get('item_name')) if catalog else ''
+    catalog_spec = _ico_normalize_text(catalog.get('spec')) if catalog else ''
+    catalog_unit = _ico_normalize_text(catalog.get('unit')) if catalog else ''
+    catalog_family = _ico_normalize_text(catalog.get('family_prefix')) if catalog else ''
+    catalog_root = _ico_normalize_text(catalog.get('root_part_no')) if catalog else ''
+    catalog_kind = _ico_normalize_upper(catalog.get('bom_kind')) if catalog else ''
+    catalog_suffix = _ico_normalize_text(catalog.get('bom_suffix')) if catalog else ''
+
+    header_item_name = (
+        _ico_normalize_text(ico.get('item_name'))
+        or catalog_item_name
+        or part_no
+    )
+    header_spec = catalog_spec or None
+    header_unit = catalog_unit or None
+    header_family = catalog_family or _ks_family_prefix(part_no)
+    header_root = catalog_root or part_no
+    header_suffix = catalog_suffix or None
+    header_bom_kind = catalog_kind or _ks_bom_kind_from_items(items)
+
+    conn = get_connection()
+    if conn is None:
+        return {"success": False, "errors": ["No hay conexion MySQL disponible"]}
+
+    cursor = conn.cursor()
+    try:
+        try:
+            conn.autocommit(False)
+        except Exception:
+            pass
+
+        cursor.execute(
+            """
+            INSERT INTO ks_bom_headers
+                (part_no, item_seq, item_name, spec, unit, bom_rev, root_part_no,
+                 family_prefix, bom_suffix, bom_kind, component_count,
+                 source_updated_at, synced_at)
+            VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                item_name = VALUES(item_name),
+                spec = VALUES(spec),
+                unit = VALUES(unit),
+                root_part_no = VALUES(root_part_no),
+                family_prefix = VALUES(family_prefix),
+                bom_suffix = VALUES(bom_suffix),
+                bom_kind = VALUES(bom_kind),
+                component_count = VALUES(component_count),
+                source_updated_at = NOW(),
+                synced_at = NOW()
+            """,
+            (
+                part_no,
+                header_item_name,
+                header_spec,
+                header_unit,
+                bom_rev,
+                header_root,
+                header_family,
+                header_suffix,
+                header_bom_kind,
+                len(items),
+            )
+        )
+
+        cursor.execute(
+            "DELETE FROM ks_bom_components WHERE parent_part_no = %s AND bom_rev = %s",
+            (part_no, bom_rev)
+        )
+
+        component_values = []
+        for idx, item in enumerate(items, start=1):
+            item_no = _ico_normalize_upper(item.get('material_code') or item.get('numero_parte'))
+            if not item_no:
+                continue
+            item_process = _ks_process_value(item.get('item_process'), item.get('tipo_material'))
+            process_name = _ico_normalize_text(item.get('process_name')) or item_process
+            location_text = _ico_normalize_text(item.get('location_text') or item.get('ubicacion') or item.get('posicion_assy'))
+            component_values.append((
+                part_no,
+                bom_rev,
+                _ico_normalize_text(item.get('bom_level')) or f"01-{idx:02d}",
+                _ico_normalize_text(item.get('item_seq')) or str(idx),
+                item_no,
+                _ico_normalize_text(item.get('item_name')) or item_no,
+                _ico_normalize_text(item.get('item_name_en')),
+                _ico_normalize_text(item.get('spec')),
+                _ico_parse_qty(item.get('qty')),
+                _ico_normalize_text(item.get('unit'), 'EA') or 'EA',
+                location_text,
+                _ico_normalize_text(item.get('maker') or item.get('proveedor')),
+                process_name,
+                item_process,
+                _ico_normalize_text(item.get('proveedor')),
+                _ico_normalize_text(item.get('item_class') or item.get('classification')),
+                _ico_normalize_date(item.get('valid_from'), effective_date),
+                _ico_normalize_date(item.get('valid_to')) or None,
+                '사용',
+                _ico_parse_bool(item.get('is_alternate')),
+                _ico_normalize_upper(item.get('alt_item_no')),
+                _ico_normalize_text(item.get('alt_item_name')),
+                _ico_normalize_text(item.get('alt_spec')),
+                _ico_normalize_text(item.get('alt_maker')),
+                _ico_normalize_upper(item.get('child_bom_part_no')),
+                _ico_parse_bool(item.get('is_sub_bom')),
+                f"ICO {ico.get('ico_no')}",
+                _ico_normalize_text(ico.get('notes')),
+            ))
+
+        if component_values:
+            cursor.executemany(
+                """
+                INSERT INTO ks_bom_components
+                    (parent_part_no, bom_rev, bom_level, item_seq, item_no,
+                     item_name, item_name_en, spec, qty, unit, location_text,
+                     maker, process_name, item_process, supplier, item_class,
+                     valid_from, valid_to, status_name, is_alternate,
+                     alt_item_no, alt_item_name, alt_spec, alt_maker,
+                     child_bom_part_no, is_sub_bom, remark, item_remark, synced_at)
+                VALUES
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                """,
+                component_values
+            )
+
+        ks_family_prefix = _ks_family_prefix(part_no) or None
+        ks_hist_seq = ico.get('ks_hist_seq')
+        try:
+            ks_hist_seq = int(ks_hist_seq) if ks_hist_seq not in (None, '', 0) else None
+        except (TypeError, ValueError):
+            ks_hist_seq = None
+
+        if ks_hist_seq is None and ks_family_prefix:
+            item_numbers = [
+                _ico_normalize_upper(item.get('material_code') or item.get('numero_parte'))
+                for item in items
+            ]
+            item_numbers = [x for x in item_numbers if x]
+            if item_numbers:
+                placeholders = ','.join(['%s'] * len(item_numbers))
+                cursor.execute(
+                    f"""
+                    SELECT hist_seq
+                    FROM ks_engineering_changes
+                    WHERE family_prefix = %s COLLATE utf8mb4_0900_ai_ci
+                      AND UPPER(item_no) IN ({placeholders}) COLLATE utf8mb4_0900_ai_ci
+                    ORDER BY sb_date DESC, hist_seq DESC
+                    LIMIT 2
+                    """,
+                    (ks_family_prefix, *item_numbers)
+                )
+                rows = cursor.fetchall() or []
+                if len(rows) == 1:
+                    ks_hist_seq = rows[0][0] if isinstance(rows[0], (list, tuple)) else rows[0].get('hist_seq')
+
+        cursor.execute(
+            """
+            UPDATE engineering_changes
+            SET status = 'APPROVED',
+                approved_by = %s,
+                approved_at = NOW(),
+                ks_family_prefix = %s,
+                ks_hist_seq = %s,
+                updated_at = NOW()
+            WHERE id = %s AND status = 'DRAFT'
+            """,
+            (approved_by, ks_family_prefix, ks_hist_seq, ico_id)
+        )
+
+        conn.commit()
+        return {"success": True, "errors": [], "published_items": len(component_values)}
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return {"success": False, "errors": [str(e)]}
+    finally:
+        try:
+            conn.autocommit(True)
+        except Exception:
+            pass
+        cursor.close()
+        conn.close()
+
+
+def cancelar_ico(ico_id, cancelled_by='desconocido'):
+    """Cancelar un ICO DRAFT. Los ICOS aprobados son inmutables."""
+    ico = _ico_get_by_id(ico_id)
+    if not ico:
+        return {"success": False, "error": "ICO no encontrado"}
+    if ico.get('status') == 'APPROVED':
+        return {"success": False, "error": "Un ICO aprobado es inmutable"}
+    result = execute_query(
+        """
+        UPDATE engineering_changes
+        SET status = 'CANCELLED',
+            notes = CONCAT(COALESCE(notes, ''), %s),
+            updated_at = NOW()
+        WHERE id = %s AND status = 'DRAFT'
+        """,
+        (f"\nCancelado por {cancelled_by}", ico_id)
+    )
+    return {"success": bool(result)}
+
+
+def eliminar_ico(ico_id):
+    """Eliminar fisicamente un ICO que no este aprobado."""
+    ico = _ico_get_by_id(ico_id)
+    if not ico:
+        return {"success": False, "error": "ICO no encontrado"}
+    if ico.get('status') == 'APPROVED':
+        return {"success": False, "error": "Un ICO aprobado es inmutable; no se puede borrar"}
+
+    execute_query(
+        "DELETE FROM engineering_change_bom_items WHERE engineering_change_id = %s",
+        (ico_id,)
+    )
+    result = execute_query(
+        "DELETE FROM engineering_changes WHERE id = %s AND status <> 'APPROVED'",
+        (ico_id,)
+    )
+    return {"success": bool(result)}
 
 # === FUNCIONES DE USUARIOS ===
 
@@ -950,138 +3111,116 @@ def obtener_movimientos_inventario(numero_parte=None, limit=100):
 # === FUNCIONES DE BOM ===
 
 def obtener_bom_por_modelo(modelo):
-    """Obtener BOM por modelo desde MySQL"""
-    try:
-        query = "SELECT * FROM bom WHERE modelo = %s ORDER BY numero_parte"
-        return execute_query(query, (modelo,), fetch='all') or []
-    except Exception as e:
-        print(f"Error obteniendo BOM: {e}")
-        return []
+    """Obtener BOM por modelo desde la vista canonica KS/ICOS."""
+    return listar_bom_por_modelo(modelo)
 
 def guardar_bom_item(data):
-    """Guardar item de BOM en MySQL"""
-    try:
-        cols = _get_bom_columns()
-
-        campos = ['modelo', 'numero_parte']
-        valores = [data.get('modelo'), data.get('numero_parte')]
-        updates = []
-
-        # Agregar todas las columnas disponibles
-        campos_adicionales = {
-            'codigo_material': data.get('codigo_material', ''),
-            'side': data.get('side', ''),
-            'tipo_material': data.get('tipo_material', ''),
-            'ubicacion': data.get('ubicacion', ''),
-            'classification': data.get('categoria', ''),  # categoria -> classification
-            'vender': data.get('proveedor', ''),          # proveedor -> vender
-            'material_original': data.get('material_original', ''),
-            'material_sustituto': data.get('material_sustituto', ''),
-            'cantidad_total': data.get('cantidad_total', 1),
-            'cantidad_original': data.get('cantidad_original', 1)
-        }
-        
-        # Usar especificacion_material en lugar de descripcion
-        if 'especificacion_material' in cols:
-            campos_adicionales['especificacion_material'] = data.get('descripcion', '')
-
-        # Agregar solo las columnas que existen en la tabla
-        for campo, valor in campos_adicionales.items():
-            if campo in cols:
-                campos.append(campo)
-                valores.append(valor)
-                updates.append(f'{campo} = VALUES({campo})')
-
-        placeholders = ', '.join(['%s'] * len(campos))
-        query = f"""
-            INSERT INTO bom ({', '.join(campos)})
-            VALUES ({placeholders})
-            ON DUPLICATE KEY UPDATE {', '.join(updates)}
-        """
-
-        result = execute_query(query, tuple(valores))
-        
-        # Interpretar resultado correctamente
-        if result is not None and result >= 0:
-            return True
-        else:
-            return False
-            
-    except Exception as e:
-        print(f"DEBUG:  ERROR en guardar_bom_item: {e}")
-        return False
+    """La edicion directa de bom quedo deshabilitada; usar Crear ICO."""
+    print("guardar_bom_item bloqueado: use Crear ICO para publicar en KS")
+    return False
 
 def obtener_modelos_bom():
     """Obtener lista de modelos en BOM"""
     try:
-        query = "SELECT DISTINCT modelo FROM bom ORDER BY modelo"
-        result = execute_query(query, fetch='all') or []
-        # Devolver objetos con propiedad 'modelo' para compatibilidad con template
+        plant_date = _ico_plant_date()
+        query = """
+            SELECT DISTINCT bom_part_no AS modelo
+            FROM v_icos_bom_current
+            WHERE (status_name IS NULL OR status_name = '' OR status_name = '사용')
+              AND (valid_from IS NULL OR valid_from <= %s)
+              AND (valid_to IS NULL OR valid_to >= %s)
+            ORDER BY bom_part_no
+        """
+        result = execute_query(query, (plant_date, plant_date), fetch='all') or []
         return [{'modelo': row['modelo']} for row in result]
     except Exception as e:
-        print(f"Error obteniendo modelos BOM: {e}")
+        print(f"Error obteniendo modelos BOM desde v_icos_bom_current: {e}")
         return []
 
+
+def _map_ks_bom_row(row):
+    process_value = _ks_process_value(row.get('item_process'), row.get('process_name'))
+    supplier = row.get('supplier') or row.get('maker')
+    return {
+        'id': row.get('id') or row.get('item_seq'),
+        'modelo': row.get('bom_part_no'),
+        'codigoMaterial': row.get('item_no'),
+        'numeroParte': row.get('item_no'),
+        'side': '',
+        'tipoMaterial': process_value,
+        'classification': row.get('item_class'),
+        'especificacionMaterial': row.get('spec'),
+        'vender': supplier,
+        'cantidadTotal': row.get('qty'),
+        'cantidadOriginal': row.get('qty'),
+        'ubicacion': row.get('location_text'),
+        'posicionAssy': row.get('location_text'),
+        'materialSustituto': row.get('alt_item_no'),
+        'materialOriginal': None,
+        'registrador': 'KS',
+        'fechaRegistro': row.get('component_synced_at') or row.get('header_synced_at'),
+        'bomRevision': row.get('bom_rev'),
+    }
+
+
 def listar_bom_por_modelo(modelo, classification=None):
-    """Listar BOM por modelo específico o todos, con filtro opcional de classification"""
+    """Listar BOM desde v_icos_bom_current con shape legacy para la pantalla."""
     try:
-        # Construir query base
-        query_parts = []
-        params = []
-        
-        if modelo == 'todos':
-            query = "SELECT * FROM bom"
-        else:
-            query = "SELECT * FROM bom WHERE modelo = %s"
+        plant_date = _ico_plant_date()
+        where = [
+            "(status_name IS NULL OR status_name = '' OR status_name = '사용')",
+            "(valid_from IS NULL OR valid_from <= %s)",
+            "(valid_to IS NULL OR valid_to >= %s)",
+        ]
+        params = [plant_date, plant_date]
+
+        if modelo and modelo != 'todos':
+            where.append("UPPER(bom_part_no) = UPPER(%s)")
             params.append(modelo)
-        
-        # Agregar filtro de classification si se proporciona
+            latest = execute_query(
+                """
+                SELECT bom_rev
+                FROM v_icos_bom_current
+                WHERE UPPER(bom_part_no) = UPPER(%s)
+                  AND (status_name IS NULL OR status_name = '' OR status_name = '사용')
+                  AND (valid_from IS NULL OR valid_from <= %s)
+                  AND (valid_to IS NULL OR valid_to >= %s)
+                GROUP BY bom_rev
+                ORDER BY MAX(header_synced_at) DESC, bom_rev DESC
+                LIMIT 1
+                """,
+                (modelo, plant_date, plant_date),
+                fetch='one'
+            )
+            if latest and latest.get('bom_rev'):
+                where.append("UPPER(bom_rev) = UPPER(%s)")
+                params.append(latest.get('bom_rev'))
+
         if classification and classification != 'TODOS':
-            if modelo == 'todos':
-                query += " WHERE classification = %s"
-            else:
-                query += " AND classification = %s"
-            params.append(classification)
-        
-        query += " ORDER BY modelo, numero_parte"
-        
-        # Ejecutar query
-        resultados = execute_query(query, tuple(params) if params else (), fetch='all') or []
-        
-        print(f" Query BOM: modelo={modelo}, classification={classification}, resultados={len(resultados)}")
-        
-        # Mapear nombres de columnas de la BD a nombres esperados por el frontend
-        datos_mapeados = []
-        for row in resultados:
-            item_mapeado = {
-                'id': row.get('id'),
-                'modelo': row.get('modelo'),
-                'codigoMaterial': row.get('codigo_material'),
-                'numeroParte': row.get('numero_parte'),
-                'side': row.get('side'),
-                'tipoMaterial': row.get('tipo_material'),
-                'classification': row.get('classification'),
-                'especificacionMaterial': row.get('especificacion_material'),
-                'vender': row.get('vender'),
-                'cantidadTotal': row.get('cantidad_total'),
-                'cantidadOriginal': row.get('cantidad_original'),
-                'ubicacion': row.get('ubicacion'),
-                'posicionAssy': row.get('posicion_assy'),
-                'materialSustituto': row.get('material_sustituto'),
-                'materialOriginal': row.get('material_original'),
-                'registrador': row.get('registrador'),
-                'fechaRegistro': row.get('fecha_registro')
-            }
-            datos_mapeados.append(item_mapeado)
-        
-        return datos_mapeados
-        
+            where.append("""
+                (
+                    UPPER(COALESCE(NULLIF(item_process, ''), NULLIF(process_name, ''), 'MAIN')) = UPPER(%s)
+                    OR UPPER(COALESCE(item_class, '')) = UPPER(%s)
+                )
+            """)
+            params.extend([classification, classification])
+
+        query = f"""
+            SELECT *
+            FROM v_icos_bom_current
+            WHERE {' AND '.join(where)}
+            ORDER BY bom_part_no, header_synced_at DESC, bom_rev DESC, item_seq, item_no
+        """
+        result = execute_query(query, tuple(params), fetch='all') or []
+        print(f" Query BOM KS: modelo={modelo}, classification={classification}, resultados={len(result)}")
+        return [_map_ks_bom_row(row) for row in result]
     except Exception as e:
         print(f"Error listando BOM por modelo: {e}")
         return []
 
 def insertar_bom_desde_dataframe(df, registrador):
-    """Insertar datos de BOM desde un DataFrame de pandas con CARGA MASIVA OPTIMIZADA"""
+    """La importacion directa a bom esta deshabilitada; usar importacion dentro de un ICO."""
+    raise ValueError("La tabla legacy bom esta obsoleta. Use Control BOM -> Crear ICO -> Importar Excel y aprobar.")
     import time
     start_time = time.time()
     

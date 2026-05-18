@@ -4,7 +4,7 @@ Sistema completo de gestión de usuarios, roles y permisos
 """
 
 from flask import Blueprint, request, jsonify, render_template, session, send_file, redirect, url_for, flash
-from .auth_system import AuthSystem
+from .auth_system import AuthSystem, ICO_CREATE_PERMISSION
 from .db_mysql import get_db_connection
 from .shipping_api import (
     AVAILABLE_CARGOS,
@@ -52,6 +52,46 @@ DEFAULT_USER_CARGOS = [
     'Operador',
     'Administrador',
 ]
+
+EXTRA_DROPDOWN_PERMISSIONS = [
+    ICO_CREATE_PERMISSION,
+]
+
+
+def _ensure_extra_dropdown_permissions(cursor):
+    """Mantener permisos de acción que no salen de archivos LISTAS."""
+    for permiso in EXTRA_DROPDOWN_PERMISSIONS:
+        cursor.execute('''
+            INSERT INTO permisos_botones (pagina, seccion, boton, descripcion, activo)
+            VALUES (%s, %s, %s, %s, 1)
+            ON DUPLICATE KEY UPDATE descripcion = VALUES(descripcion), activo = 1
+        ''', (
+            permiso['pagina'],
+            permiso['seccion'],
+            permiso['boton'],
+            permiso['descripcion'],
+        ))
+
+        cursor.execute('''
+            SELECT id FROM permisos_botones
+            WHERE pagina = %s AND seccion = %s AND boton = %s
+            LIMIT 1
+        ''', (permiso['pagina'], permiso['seccion'], permiso['boton']))
+        permiso_row = cursor.fetchone()
+        permiso_id = permiso_row['id'] if isinstance(permiso_row, dict) else (permiso_row[0] if permiso_row else None)
+        if not permiso_id:
+            continue
+
+        cursor.execute('SELECT id FROM roles WHERE nombre = %s AND activo = 1', ('superadmin',))
+        superadmin_row = cursor.fetchone()
+        superadmin_id = superadmin_row['id'] if isinstance(superadmin_row, dict) else (superadmin_row[0] if superadmin_row else None)
+        if not superadmin_id:
+            continue
+
+        cursor.execute('''
+            INSERT IGNORE INTO rol_permisos_botones (rol_id, permiso_boton_id)
+            VALUES (%s, %s)
+        ''', (superadmin_id, permiso_id))
 
 
 def _merge_catalog_values(*groups):
@@ -688,6 +728,9 @@ def listar_permisos_dropdowns():
     try:
         conn = get_db_connection()
         cursor = get_dict_cursor(conn)
+
+        _ensure_extra_dropdown_permissions(cursor)
+        conn.commit()
         
         cursor.execute('''
             SELECT pb.id, pb.pagina, pb.seccion, pb.boton, pb.descripcion, pb.activo
@@ -867,7 +910,7 @@ def sincronizar_permisos_dropdowns():
                 continue
         
         # Agregar permisos del módulo móvil de embarques para que superadmin los administre aquí.
-        for permiso in get_shipping_permission_dropdown_catalog():
+        for permiso in get_shipping_permission_dropdown_catalog() + EXTRA_DROPDOWN_PERMISSIONS:
             if not any(
                 p['pagina'] == permiso['pagina']
                 and p['seccion'] == permiso['seccion']
@@ -884,6 +927,8 @@ def sincronizar_permisos_dropdowns():
         # Sincronizar con la base de datos
         conn = get_db_connection()
         cursor = get_dict_cursor(conn)
+
+        _ensure_extra_dropdown_permissions(cursor)
         
         # Obtener permisos actuales
         cursor.execute('SELECT id, pagina, seccion, boton FROM permisos_botones WHERE activo = 1')
@@ -2003,5 +2048,3 @@ def init_admin_routes(app):
     """Inicializar las rutas de administración en la app"""
     app.register_blueprint(user_admin_bp)
     print(" Rutas de administración de usuarios registradas")
-
-

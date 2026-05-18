@@ -62,7 +62,7 @@ from .api_po_wo import registrar_rutas_po_wo
 from .api_raw_modelos import api_raw
 
 # Importar sistema de autenticación mejorado
-from .auth_system import AuthSystem
+from .auth_system import AuthSystem, ICO_CREATE_PERMISSION
 from .db import (
     agregar_control_material_almacen,
     agregar_entrada_aereo,
@@ -76,16 +76,33 @@ from .db import (
 from .db_mysql import (
     actualizar_inventario,
     actualizar_material_completo,
+    aprobar_ico,
     cargar_configuracion,
+    cancelar_ico,
+    contar_icos,
+    crear_ico,
+    eliminar_ico,
     execute_query,
     guardar_bom_item,
     guardar_configuracion,
     guardar_material,
+    importar_items_ico_desde_dataframe,
     insertar_bom_desde_dataframe,
     listar_bom_por_modelo,
+    listar_icos,
     obtener_bom_por_modelo,
+    obtener_diff_ico,
+    obtener_ecn_ks,
+    obtener_ico_detalle,
     obtener_inventario,
     obtener_materiales,
+)
+from .db_mysql import (
+    crear_ico_desde_excel,
+    crear_ico_familia_desde_excel,
+    obtener_scope_ico,
+    resolver_familia,
+    _ks_fetch_bom_items_multi,
 )
 from .db_mysql import obtener_modelos_bom as obtener_modelos_bom_db
 from .config_mysql import get_pooled_connection
@@ -387,6 +404,46 @@ def permisos_botones_pagina(usuario, pagina):
     if not usuario:
         return {}
     return auth_system.obtener_permisos_botones_usuario(usuario, pagina)
+
+
+def _usuario_puede_crear_ico(username=None):
+    """Permiso específico para crear/modificar ICOS desde Control BOM."""
+    try:
+        username = username or session.get("usuario")
+        if not username:
+            return False
+
+        if auth_system.obtener_rol_principal_usuario(username) == "superadmin":
+            return True
+
+        return auth_system.verificar_permiso_boton(
+            username,
+            ICO_CREATE_PERMISSION["pagina"],
+            ICO_CREATE_PERMISSION["seccion"],
+            ICO_CREATE_PERMISSION["boton"],
+        )
+    except Exception as e:
+        print(f"Error verificando permiso Crear ICO: {e}")
+        return False
+
+
+def requiere_permiso_crear_ico(f):
+    """Bloquear APIs de creación/aprobación de ICOS si el rol no tiene permiso."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not _usuario_puede_crear_ico():
+            return jsonify({
+                "success": False,
+                "error": "No tienes permiso para crear o modificar ICOS.",
+                "permiso_requerido": (
+                    f"{ICO_CREATE_PERMISSION['pagina']} > "
+                    f"{ICO_CREATE_PERMISSION['seccion']} > "
+                    f"{ICO_CREATE_PERMISSION['boton']}"
+                ),
+            }), 403
+        return f(*args, **kwargs)
+
+    return decorated_function
 
 
 # DEPRECADO: Función antigua para compatibilidad temporal
@@ -6764,7 +6821,7 @@ def consultar_bom():
                 bom_data = [
                     item
                     for item in bom_data
-                    if numero_parte.lower() in str(item.get("numero_parte", "")).lower()
+                    if numero_parte.lower() in str(item.get("numeroParte", "")).lower()
                 ]
 
         return jsonify(bom_data)
@@ -6772,6 +6829,725 @@ def consultar_bom():
     except Exception as e:
         print(f"Error al consultar BOM: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+def _json_safe_datetime(value):
+    if value is None:
+        return None
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    return value
+
+
+def _serialize_ico_row(row):
+    if not row:
+        return row
+    data = dict(row)
+    for key in (
+        "effective_at", "created_at", "approved_at", "updated_at",
+        "source_updated_at", "synced_at", "sb_date",
+    ):
+        if key in data:
+            data[key] = _json_safe_datetime(data[key])
+    return data
+
+
+@app.route("/api/icos", methods=["GET"])
+@login_requerido
+def api_icos_list():
+    """Listar ICOS/cambios de ingenieria (historial unificado MES + KS)."""
+    try:
+        status = request.args.get("status")
+        part_no = request.args.get("part_no")
+        origen = request.args.get("origen")
+        ico_no = request.args.get("ico_no")
+        date_from = request.args.get("date_from")
+        date_to = request.args.get("date_to")
+        filters_active = any([status, part_no, origen, ico_no, date_from, date_to])
+        page = max(1, int(request.args.get("page", 1) or 1))
+        page_size = max(1, min(int(request.args.get("page_size", 500) or 500), 500))
+        if filters_active:
+            limit = page_size
+            offset = (page - 1) * page_size
+        else:
+            page = 1
+            page_size = 200
+            limit = 200
+            offset = 0
+        rows = listar_icos(
+            status=status,
+            part_no=part_no,
+            limit=limit,
+            origen=origen,
+            ico_no=ico_no,
+            date_from=date_from,
+            date_to=date_to,
+            offset=offset,
+        )
+        total = contar_icos(
+            status=status,
+            part_no=part_no,
+            origen=origen,
+            ico_no=ico_no,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        return jsonify({
+            "success": True,
+            "data": [_serialize_ico_row(r) for r in rows],
+            "meta": {
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "filters_active": filters_active,
+                "default_latest_limit": 200,
+                "has_more": (offset + len(rows)) < total,
+            },
+        })
+    except Exception as e:
+        print(f"Error listando ICOS: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/export", methods=["GET"])
+@login_requerido
+def api_icos_export():
+    """Exportar a Excel los ICOS filtrados."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+
+        status = request.args.get("status")
+        part_no = request.args.get("part_no")
+        origen = request.args.get("origen")
+        ico_no = request.args.get("ico_no")
+        date_from = request.args.get("date_from")
+        date_to = request.args.get("date_to")
+        filters_active = any([status, part_no, origen, ico_no, date_from, date_to])
+        rows = listar_icos(
+            status=status,
+            part_no=part_no,
+            limit=None if filters_active else 200,
+            origen=origen,
+            ico_no=ico_no,
+            date_from=date_from,
+            date_to=date_to,
+        )
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "ICOS"
+        headers = [
+            "Origen", "ICO", "ID", "Modelo representante", "Familia/Scope",
+            "Revision", "Fecha efectiva", "Estatus", "Items",
+            "Creado por", "Aprobado por", "Creado", "Aprobado", "Actualizado",
+        ]
+        ws.append(headers)
+        header_fill = PatternFill(start_color="2C3E50", end_color="2C3E50", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        for cell in ws[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center")
+
+        for row in rows:
+            ws.append([
+                row.get("origen"),
+                row.get("ico_no"),
+                row.get("id"),
+                row.get("part_no"),
+                row.get("scope_parts") or row.get("ks_family_prefix") or "",
+                row.get("bom_revision"),
+                row.get("effective_at"),
+                row.get("status"),
+                row.get("item_count"),
+                row.get("created_by"),
+                row.get("approved_by"),
+                row.get("created_at"),
+                row.get("approved_at"),
+                row.get("updated_at"),
+            ])
+
+        ws.freeze_panes = "A2"
+        widths = [12, 18, 18, 24, 38, 12, 22, 14, 10, 18, 18, 22, 22, 22]
+        for idx, width in enumerate(widths, start=1):
+            ws.column_dimensions[ws.cell(row=1, column=idx).column_letter].width = width
+
+        meta = wb.create_sheet("_filtros")
+        meta.append(["Filtro", "Valor"])
+        meta.append(["tipo", origen or "TODOS"])
+        meta.append(["estatus", status or "TODOS"])
+        meta.append(["modelo", part_no or ""])
+        meta.append(["ico_id", ico_no or ""])
+        meta.append(["desde", date_from or ""])
+        meta.append(["hasta", date_to or ""])
+        meta.append(["total_exportado", len(rows)])
+        meta.append(["nota", "Sin filtros exporta los ultimos 200; con filtros exporta todo el resultado filtrado."])
+
+        bio = io.BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        return send_file(
+            bio,
+            as_attachment=True,
+            download_name=f"ICOS_FILTRADOS_{ts}.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except Exception as e:
+        print(f"Error exportando ICOS: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/<int:ico_id>", methods=["GET"])
+@login_requerido
+def api_icos_detail(ico_id):
+    """Obtener ICO con items."""
+    try:
+        ico = obtener_ico_detalle(ico_id)
+        if not ico:
+            return jsonify({"success": False, "error": "ICO no encontrado"}), 404
+        ico = _serialize_ico_row(ico)
+        ico["items"] = [_serialize_ico_row(i) for i in ico.get("items", [])]
+        return jsonify({"success": True, "data": ico})
+    except Exception as e:
+        print(f"Error obteniendo ICO: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/ecn-ks/<int:hist_seq>", methods=["GET"])
+@login_requerido
+def api_ecn_ks_detail(hist_seq):
+    """Obtener detalle de un ECN sincronizado desde K-system."""
+    try:
+        ecn = obtener_ecn_ks(hist_seq)
+        if not ecn:
+            return jsonify({"success": False, "error": "ECN no encontrado"}), 404
+        ecn = _serialize_ico_row(ecn)
+        return jsonify({"success": True, "data": ecn})
+    except Exception as e:
+        print(f"Error obteniendo ECN KS {hist_seq}: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos", methods=["POST"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_icos_create():
+    """Crear ICO DRAFT y copiar el BOM actual del modelo si se solicita."""
+    try:
+        data = request.get_json() or {}
+        usuario = session.get("usuario", "desconocido")
+        ico = crear_ico(data, usuario)
+        if not ico:
+            return jsonify({"success": False, "error": "No se pudo crear el ICO"}), 500
+        ico = _serialize_ico_row(ico)
+        ico["items"] = [_serialize_ico_row(i) for i in ico.get("items", [])]
+        return jsonify({"success": True, "data": ico}), 201
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        print(f"Error creando ICO: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+BOM_EXCEL_COLUMNS = [
+    ("__row_id", "id"),
+    ("item_no", "item_no"),
+    ("item_name", "item_name"),
+    ("spec", "spec"),
+    ("qty", "qty"),
+    ("unit", "unit"),
+    ("location_text", "location_text"),
+    ("maker", "maker"),
+    ("supplier", "supplier"),
+    ("item_class", "item_class"),
+    ("item_process", "item_process"),
+    ("process_name", "process_name"),
+    ("valid_from", "valid_from"),
+    ("valid_to", "valid_to"),
+    ("is_alternate", "is_alternate"),
+    ("alt_item_no", "alt_item_no"),
+    ("alt_item_name", "alt_item_name"),
+    ("alt_spec", "alt_spec"),
+    ("alt_maker", "alt_maker"),
+    ("remark", "remark"),
+    ("bom_level", "bom_level"),
+    ("item_seq", "item_seq"),
+]
+
+
+@app.route("/api/bom/download-excel", methods=["GET"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_bom_download_excel():
+    """Descargar BOM actual de un modelo en formato Excel editable."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    part_no = (request.args.get("part_no") or "").strip().upper()
+    bom_rev = (request.args.get("bom_rev") or "").strip().upper() or None
+    if not part_no:
+        return jsonify({"success": False, "error": "part_no requerido"}), 400
+
+    try:
+        from .db_mysql import _ks_fetch_current_bom_items
+        rows = _ks_fetch_current_bom_items(part_no, bom_rev) or []
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "BOM"
+
+        headers = [label for label, _key in BOM_EXCEL_COLUMNS]
+        ws.append(headers)
+        header_fill = PatternFill(start_color="34495E", end_color="34495E", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        for col_idx, _ in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center")
+
+        for row in rows:
+            ws.append([row.get(key) for _label, key in BOM_EXCEL_COLUMNS])
+
+        ws.freeze_panes = "B2"
+        ws.column_dimensions["A"].hidden = True
+        for col_idx in range(2, len(headers) + 1):
+            ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 18
+
+        ws_meta = wb.create_sheet("_meta")
+        ws_meta.append(["part_no", part_no])
+        ws_meta.append(["bom_rev", rows[0].get("bom_rev") if rows else (bom_rev or "")])
+        ws_meta.append(["exported_at", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")])
+        ws_meta.sheet_state = "hidden"
+
+        bio = io.BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        return send_file(
+            bio,
+            as_attachment=True,
+            download_name=f"BOM_{part_no}_{ts}.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except Exception as e:
+        print(f"Error descargando BOM Excel: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/bom/resolve-family", methods=["GET"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_bom_resolve_family():
+    """Resolver una familia + sufijos a part_no existentes en ks_part_catalog."""
+    family = (request.args.get("family") or "").strip()
+    suffixes = request.args.get("suffixes") or ""
+    if not family:
+        return jsonify({"success": False, "error": "family requerido"}), 400
+    try:
+        result = resolver_familia(family, suffixes)
+        return jsonify({"success": True, "data": result})
+    except Exception as e:
+        print(f"Error resolviendo familia: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _build_family_excel(part_numbers, bom_revision=None):
+    """Construir Workbook con union de items de los part_no del scope.
+
+    Cada fila lleva __row_key = item_no|bom_level y modelos_afectados = lista de part_no.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    bom_by_part = _ks_fetch_bom_items_multi(part_numbers, bom_revision)
+
+    # Indexar por (item_no, bom_level)
+    union = {}  # key -> {row_canonica, modelos_afectados:set, by_part:{pn:row}}
+    for pn, rows in bom_by_part.items():
+        for r in rows:
+            key = f"{(r.get('item_no') or '').upper()}|{(r.get('bom_level') or '').strip()}"
+            if not key.strip('|'):
+                continue
+            if key not in union:
+                union[key] = {"row": dict(r), "modelos": set(), "by_part": {}}
+            union[key]["modelos"].add(pn)
+            union[key]["by_part"][pn] = r
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "BOM_FAMILIA"
+
+    columns = [
+        ("__row_key", "row_key"),
+        ("modelos_afectados", "modelos"),
+        ("item_no", "item_no"),
+        ("item_name", "item_name"),
+        ("spec", "spec"),
+        ("qty", "qty"),
+        ("unit", "unit"),
+        ("location_text", "location_text"),
+        ("maker", "maker"),
+        ("supplier", "supplier"),
+        ("item_class", "item_class"),
+        ("item_process", "item_process"),
+        ("process_name", "process_name"),
+        ("valid_from", "valid_from"),
+        ("valid_to", "valid_to"),
+        ("is_alternate", "is_alternate"),
+        ("alt_item_no", "alt_item_no"),
+        ("alt_item_name", "alt_item_name"),
+        ("alt_spec", "alt_spec"),
+        ("alt_maker", "alt_maker"),
+        ("remark", "remark"),
+        ("bom_level", "bom_level"),
+        ("item_seq", "item_seq"),
+    ]
+    headers = [label for label, _ in columns]
+    ws.append(headers)
+    header_fill = PatternFill(start_color="34495E", end_color="34495E", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    sorted_keys = sorted(union.keys(), key=lambda k: (union[k]["row"].get("bom_level") or "", k))
+    for key in sorted_keys:
+        entry = union[key]
+        row = entry["row"]
+        modelos = ",".join(sorted(entry["modelos"]))
+        excel_row = []
+        for label, source_key in columns:
+            if source_key == "row_key":
+                excel_row.append(key)
+            elif source_key == "modelos":
+                excel_row.append(modelos)
+            else:
+                excel_row.append(row.get(source_key))
+        ws.append(excel_row)
+
+    ws.freeze_panes = "C2"
+    ws.column_dimensions["A"].hidden = True
+    ws.column_dimensions["B"].width = 40
+    for col_idx in range(3, len(headers) + 1):
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 18
+
+    ws_meta = wb.create_sheet("_meta")
+    ws_meta.append(["scope_kind", "FAMILY"])
+    ws_meta.append(["part_numbers", ",".join(part_numbers)])
+    ws_meta.append(["bom_rev", bom_revision or ""])
+    ws_meta.append(["exported_at", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")])
+    ws_meta.sheet_state = "hidden"
+
+    return wb
+
+
+@app.route("/api/bom/download-excel-family", methods=["GET"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_bom_download_excel_family():
+    """Descargar Excel multi-modelo: union de items de los modelos del scope."""
+    family = (request.args.get("family") or "").strip().upper()
+    suffixes = request.args.get("suffixes") or ""
+    bom_rev = (request.args.get("bom_rev") or "").strip().upper() or None
+    if not family:
+        return jsonify({"success": False, "error": "family requerido"}), 400
+    try:
+        resolved = resolver_familia(family, suffixes)
+        parts = [p["part_no"] for p in resolved.get("parts", [])]
+        if not parts:
+            return jsonify({"success": False, "error": "Ningun part_no resuelto", "data": resolved}), 400
+
+        wb = _build_family_excel(parts, bom_rev)
+        bio = io.BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        return send_file(
+            bio,
+            as_attachment=True,
+            download_name=f"BOM_FAMILIA_{family}_{ts}.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except Exception as e:
+        print(f"Error descargando BOM familia: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/from-excel", methods=["POST"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_icos_from_excel():
+    """Crear ICO DRAFT desde Excel modificado: valida, calcula diff y persiste."""
+    from openpyxl import load_workbook
+
+    if "file" not in request.files:
+        return jsonify({"success": False, "errors": ["No se encontro el archivo"]}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"success": False, "errors": ["No se selecciono ningun archivo"]}), 400
+
+    metadata = {
+        "ico_no": request.form.get("ico_no"),
+        "part_no": request.form.get("part_no"),
+        "bom_revision": request.form.get("bom_revision"),
+        "effective_at": request.form.get("effective_at"),
+        "item_name": request.form.get("item_name"),
+        "notes": request.form.get("notes"),
+    }
+
+    try:
+        wb = load_workbook(file, data_only=True)
+        if "BOM" in wb.sheetnames:
+            ws = wb["BOM"]
+        else:
+            ws = wb.active
+
+        header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+        if not header_row:
+            return jsonify({"success": False, "errors": ["El Excel no tiene encabezados"]}), 400
+        headers = [str(h).strip() if h is not None else "" for h in header_row]
+        expected = [label for label, _ in BOM_EXCEL_COLUMNS]
+        missing = [col for col in expected if col not in headers]
+        if missing:
+            return jsonify({
+                "success": False,
+                "errors": [f"Faltan columnas en el Excel: {', '.join(missing)}"],
+            }), 400
+
+        idx_map = {col: headers.index(col) for col in expected}
+        excel_rows = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row is None or all(v in (None, "") for v in row):
+                continue
+            obj = {}
+            for col in expected:
+                i = idx_map[col]
+                obj[col] = row[i] if i < len(row) else None
+            excel_rows.append(obj)
+
+        usuario = session.get("usuario", "desconocido")
+        result = crear_ico_desde_excel(metadata, excel_rows, usuario)
+        status_code = 201 if result.get("success") else 400
+        return jsonify(result), status_code
+    except Exception as e:
+        print(f"Error creando ICO desde Excel: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "errors": [str(e)]}), 500
+
+
+FAMILY_EXCEL_COLUMNS = [
+    "__row_key", "modelos_afectados", "item_no", "item_name", "spec", "qty",
+    "unit", "location_text", "maker", "supplier", "item_class", "item_process",
+    "process_name", "valid_from", "valid_to", "is_alternate", "alt_item_no",
+    "alt_item_name", "alt_spec", "alt_maker", "remark", "bom_level", "item_seq",
+]
+
+
+@app.route("/api/icos/from-excel-family", methods=["POST"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_icos_from_excel_family():
+    """Crear ICO de familia DRAFT desde Excel multi-modelo."""
+    from openpyxl import load_workbook
+
+    if "file" not in request.files:
+        return jsonify({"success": False, "errors": ["No se encontro el archivo"]}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"success": False, "errors": ["No se selecciono ningun archivo"]}), 400
+
+    metadata = {
+        "ico_no": request.form.get("ico_no"),
+        "family_prefix": request.form.get("family_prefix"),
+        "bom_revision": request.form.get("bom_revision"),
+        "effective_at": request.form.get("effective_at"),
+        "item_name": request.form.get("item_name"),
+        "notes": request.form.get("notes"),
+    }
+    scope_parts_raw = request.form.get("scope_parts") or ""
+    scope_parts = [p.strip().upper() for p in scope_parts_raw.split(",") if p.strip()]
+    if not scope_parts:
+        return jsonify({"success": False, "errors": ["scope_parts requerido"]}), 400
+
+    try:
+        wb = load_workbook(file, data_only=True)
+        ws = wb["BOM_FAMILIA"] if "BOM_FAMILIA" in wb.sheetnames else wb.active
+
+        header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+        if not header_row:
+            return jsonify({"success": False, "errors": ["El Excel no tiene encabezados"]}), 400
+        headers = [str(h).strip() if h is not None else "" for h in header_row]
+        missing = [col for col in FAMILY_EXCEL_COLUMNS if col not in headers]
+        if missing:
+            return jsonify({
+                "success": False,
+                "errors": [f"Faltan columnas en el Excel: {', '.join(missing)}"],
+            }), 400
+
+        idx_map = {col: headers.index(col) for col in FAMILY_EXCEL_COLUMNS}
+        excel_rows = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if row is None or all(v in (None, "") for v in row):
+                continue
+            obj = {}
+            for col in FAMILY_EXCEL_COLUMNS:
+                i = idx_map[col]
+                obj[col] = row[i] if i < len(row) else None
+            excel_rows.append(obj)
+
+        usuario = session.get("usuario", "desconocido")
+        result = crear_ico_familia_desde_excel(metadata, excel_rows, scope_parts, usuario)
+        status_code = 201 if result.get("success") else 400
+        return jsonify(result), status_code
+    except Exception as e:
+        print(f"Error creando ICO familia desde Excel: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "errors": [str(e)]}), 500
+
+
+@app.route("/api/icos/<int:ico_id>/scope", methods=["GET"])
+@login_requerido
+def api_icos_scope(ico_id):
+    """Listar scope (part_no afectados) de un ICO."""
+    try:
+        rows = obtener_scope_ico(ico_id)
+        return jsonify({"success": True, "data": rows})
+    except Exception as e:
+        print(f"Error obteniendo scope ICO {ico_id}: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/<int:ico_id>/diff", methods=["GET"])
+@login_requerido
+def api_icos_diff(ico_id):
+    """Obtener diff persistido de un ICO."""
+    try:
+        rows = obtener_diff_ico(ico_id)
+        rows = [_serialize_ico_row(r) for r in rows]
+        added = [r for r in rows if r.get("action") == "ADD"]
+        modified = [r for r in rows if r.get("action") == "MODIFY"]
+        removed = [r for r in rows if r.get("action") == "REMOVE"]
+
+        per_part = {}
+        for r in rows:
+            pn = r.get("part_no") or ""
+            entry = per_part.setdefault(pn, {"added": 0, "modified": 0, "removed": 0})
+            action = r.get("action")
+            if action == "ADD":
+                entry["added"] += 1
+            elif action == "MODIFY":
+                entry["modified"] += 1
+            elif action == "REMOVE":
+                entry["removed"] += 1
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "added": added,
+                "modified": modified,
+                "removed": removed,
+                "counts": {
+                    "added": len(added),
+                    "modified": len(modified),
+                    "removed": len(removed),
+                },
+                "per_part": per_part,
+            },
+        })
+    except Exception as e:
+        print(f"Error obteniendo diff ICO {ico_id}: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/<int:ico_id>/items/import", methods=["POST"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_icos_import_items(ico_id):
+    """Reemplazar items del ICO con un Excel completo de BOM."""
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "No se encontro el archivo"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"success": False, "error": "No se selecciono ningun archivo"}), 400
+
+    try:
+        df = pd.read_excel(file)
+        result = importar_items_ico_desde_dataframe(ico_id, df)
+        return jsonify({"success": True, "data": result})
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        print(f"Error importando items ICO: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/<int:ico_id>/approve", methods=["POST"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_icos_approve(ico_id):
+    """Aprobar ICO DRAFT. Desde este punto queda inmutable."""
+    try:
+        usuario = session.get("usuario", "desconocido")
+        result = aprobar_ico(ico_id, usuario)
+        if not result.get("success"):
+            return jsonify({"success": False, "errors": result.get("errors", [])}), 400
+        ico = obtener_ico_detalle(ico_id)
+        ico = _serialize_ico_row(ico)
+        ico["items"] = [_serialize_ico_row(i) for i in ico.get("items", [])]
+        return jsonify({"success": True, "data": ico})
+    except Exception as e:
+        print(f"Error aprobando ICO: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/<int:ico_id>/cancel", methods=["POST"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_icos_cancel(ico_id):
+    """Cancelar ICO DRAFT; los aprobados no se modifican."""
+    try:
+        usuario = session.get("usuario", "desconocido")
+        result = cancelar_ico(ico_id, usuario)
+        if not result.get("success"):
+            return jsonify({"success": False, "error": result.get("error", "No se pudo cancelar")}), 400
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error cancelando ICO: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/icos/<int:ico_id>", methods=["DELETE"])
+@login_requerido
+@requiere_permiso_crear_ico
+def api_icos_delete(ico_id):
+    """Eliminar fisicamente un ICO no aprobado."""
+    try:
+        result = eliminar_ico(ico_id)
+        if not result.get("success"):
+            return jsonify({"success": False, "error": result.get("error", "No se pudo borrar")}), 400
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error borrando ICO: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/buscar_material_por_numero_parte", methods=["GET"])
@@ -6849,33 +7625,7 @@ def exportar_bom_a_excel(modelo=None, classification=None):
         import os
         import tempfile
 
-        # Construir la consulta SQL con filtros
-        base_query = """
-            SELECT modelo, numero_parte, side, tipo_material,
-                   classification, especificacion_material, vender, cantidad_total,
-                   ubicacion, posicion_assy, material_sustituto, material_original,
-                   registrador, fecha_registro
-            FROM bom
-        """
-
-        where_clauses = []
-        params = []
-
-        if modelo:
-            where_clauses.append("modelo = %s")
-            params.append(modelo)
-
-        if classification and classification != "TODOS":
-            where_clauses.append("classification = %s")
-            params.append(classification)
-
-        if where_clauses:
-            base_query += " WHERE " + " AND ".join(where_clauses)
-
-        base_query += " ORDER BY modelo, codigo_material"
-
-        # Ejecutar la consulta
-        result = execute_query(base_query, tuple(params) if params else (), fetch="all")
+        result = listar_bom_por_modelo(modelo or "todos", classification)
 
         if not result:
             print(
@@ -6885,23 +7635,24 @@ def exportar_bom_a_excel(modelo=None, classification=None):
 
         # Crear DataFrame
         df = pd.DataFrame(result)
+        df = df.drop(columns=["posicionAssy"], errors="ignore")
 
         # Renombrar columnas para mejor legibilidad
         column_mapping = {
             "modelo": "Modelo",
-            "numero_parte": "Número de Parte",
+            "numeroParte": "Número de Parte",
             "side": "Side",
-            "tipo_material": "Tipo de Material",
+            "tipoMaterial": "Tipo de Material",
             "classification": "Classification",
-            "especificacion_material": "Especificación de Material",
+            "especificacionMaterial": "Especificación de Material",
             "vender": "Vendor",
-            "cantidad_total": "Cantidad Total",
+            "cantidadTotal": "Cantidad Total",
             "ubicacion": "Ubicación",
-            "posicion_assy": "Posición ASSY",
-            "material_sustituto": "Material Sustituto",
-            "material_original": "Material Original",
+            "materialSustituto": "Material Sustituto",
+            "materialOriginal": "Material Original",
             "registrador": "Registrador",
-            "fecha_registro": "Fecha de Registro",
+            "fechaRegistro": "Fecha de Registro",
+            "bomRevision": "BOM Rev",
         }
 
         df = df.rename(columns=column_mapping)
@@ -6994,6 +7745,10 @@ def api_bom_update():
     """
     Actualiza un registro de BOM existente
     """
+    return jsonify({
+        "success": False,
+        "error": "La edicion directa de bom esta deshabilitada. Use Crear ICO para modificar/publicar el BOM KS."
+    }), 409
     try:
         data = request.get_json()
 
@@ -7076,6 +7831,10 @@ def api_bom_update():
 @app.route("/api/bom/update-posiciones-assy", methods=["POST"])
 def api_bom_update_posiciones_assy():
     """Actualiza múltiples posiciones ASSY en el BOM de forma optimizada"""
+    return jsonify({
+        "success": False,
+        "error": "La edicion directa de posiciones en bom esta deshabilitada. Use Crear ICO."
+    }), 409
     try:
         data = request.get_json()
         print(f"🔄 Actualizando posiciones ASSY masivamente")
@@ -8726,7 +9485,9 @@ def control_de_bom_ajax():
         # Obtener modelos para pasarlos al template
         modelos = obtener_modelos_bom_db()
         return render_template(
-            "INFORMACION BASICA/CONTROL_DE_BOM.html", modelos=modelos
+            "INFORMACION BASICA/CONTROL_DE_BOM.html",
+            modelos=modelos,
+            puede_crear_ico=_usuario_puede_crear_ico(),
         )
     except Exception as e:
         print(f"Error al cargar template Control de BOM: {e}")
@@ -9355,7 +10116,9 @@ def control_bom_ajax():
         cursor.close()
 
         return render_template(
-            "INFORMACION BASICA/CONTROL_DE_BOM.html", modelos=modelos
+            "INFORMACION BASICA/CONTROL_DE_BOM.html",
+            modelos=modelos,
+            puede_crear_ico=_usuario_puede_crear_ico(),
         )
     except Exception as e:
         print(f"Error al cargar template Control BOM AJAX: {e}")

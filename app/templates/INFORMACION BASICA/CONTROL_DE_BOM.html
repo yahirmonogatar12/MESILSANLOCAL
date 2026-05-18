@@ -41,63 +41,18 @@
         <button class="bom-btn consultar" id="btnConsultarBOM">
             Consultar
         </button>
-        <button class="bom-btn registrar" id="btnRegistrarBOM">
-            Registrar
+        {% if puede_crear_ico|default(false) %}
+        <button class="bom-btn registrar" id="btnCrearICO">
+            Crear ICO
         </button>
-        <button class="bom-btn eliminar" id="btnEliminarBOM">
-            Eliminar
-        </button>
-        <button class="bom-btn sustituir" id="btnRegistroPosicion">
-            Registro de Posición
+        {% endif %}
+        <button class="bom-btn consultar" id="btnVerICOS">
+            Ver ICOS
         </button>
         <button class="bom-btn exportar" id="btnExportarExcelBOM">
             Exportar al excel
         </button>
-        <input type="file" id="importarExcelBOM" style="display:none" accept=".xlsx,.xls" />
-        <button class="bom-btn importar" id="btnImportarExcelBOM">
-            Importar al excel
-        </button>
-        <button id="btnHelpImportBOM" title="Formato de Excel para importar" style="
-            width: 28px; height: 28px; border-radius: 50%; border: 2px solid #3498db;
-            background: transparent; color: #3498db; font-weight: bold; font-size: 14px;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            margin-left: 4px; transition: all 0.2s;
-        ">?</button>
     </div>
-
-<!-- Modal de ayuda para formato de importacion -->
-<div id="bomImportHelpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10001; align-items:center; justify-content:center;">
-    <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; padding:24px; max-width:650px; width:90%; max-height:80vh; overflow-y:auto; color:#ecf0f1;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #444; padding-bottom:10px;">
-            <h3 style="margin:0; color:#3498db; font-size:16px;">Formato de Excel para importar BOM</h3>
-            <button id="btnCloseHelpBOM" style="background:none; border:none; color:#888; font-size:22px; cursor:pointer;">&times;</button>
-        </div>
-        <p style="color:#ccc; font-size:13px; margin-bottom:12px;">El archivo debe ser <b>.xlsx</b> o <b>.xls</b>. La primera fila debe contener los nombres de las columnas.</p>
-        <table style="width:100%; border-collapse:collapse; font-size:12px;">
-            <thead>
-                <tr style="background:#2c3e50;">
-                    <th style="padding:6px 8px; border:1px solid #444; text-align:left; color:#3498db;">Columna</th>
-                    <th style="padding:6px 8px; border:1px solid #444; text-align:center; color:#3498db; width:70px;">Requerida</th>
-                    <th style="padding:6px 8px; border:1px solid #444; text-align:left; color:#3498db;">Nombres aceptados</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td style="padding:5px 8px; border:1px solid #333; color:#e74c3c; font-weight:bold;">Modelo</td><td style="padding:5px 8px; border:1px solid #333; text-align:center; color:#e74c3c;">Si</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Modelo</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333; color:#e74c3c; font-weight:bold;">Numero de Parte</td><td style="padding:5px 8px; border:1px solid #333; text-align:center; color:#e74c3c;">Si</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Numero de Parte, Part Number</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Side</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Side, Lado</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Tipo de Material</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Tipo de Material, Material Type</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Classification</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Classification, Categoria, Tipo</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Especificacion de material</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Descripcion, Description, Especificacion</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Proveedor</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Proveedor, Vendor, Supplier</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Cantidad Total</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Cantidad Total, Total Quantity, Cantidad, Qty</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Ubicacion</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Ubicacion, Location</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Material Sustituto</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Material Sustituto, Substitute Material (texto libre)</td></tr>
-                <tr><td style="padding:5px 8px; border:1px solid #333;">Material Original</td><td style="padding:5px 8px; border:1px solid #333; text-align:center;">No</td><td style="padding:5px 8px; border:1px solid #333; color:#aaa;">Material Original</td></tr>
-            </tbody>
-        </table>
-        <p style="color:#888; font-size:11px; margin-top:12px;">Las columnas marcadas en rojo son obligatorias. Las filas sin Modelo o Numero de Parte seran omitidas.</p>
-    </div>
-</div>
 
     <!-- Tabla de BOM -->
     <div class="bom-table-container">
@@ -106,14 +61,12 @@
                 <tr>
                     <th title="Selector de fila para acciones múltiples">Selector</th>
                     <th class="col-numero-parte" title="Número de parte del componente">Número de parte</th>
-                    <th class="col-side" title="Lado o posición del componente">Side</th>
                     <th class="col-tipo" title="Tipo o categoría del material">Tipo de material</th>
                     <th class="col-clasificacion" title="Clasificación del componente">Classification</th>
                     <th class="col-especificacion" title="Especificación técnica del material">Especificación de material</th>
                     <th class="col-vender" title="Información del vendedor o proveedor">Vendor</th>
                     <th class="col-cantidad-total" title="Cantidad total requerida">Cantidad total</th>
                     <th class="col-ubicacion" title="Ubicación física del material">Ubicación</th>
-                    <th class="col-posicion-assy" title="Posición en el ensamble ASSY">Posición ASSY</th>
                     <th class="col-material-sustituto" title="Material sustituto">Material sustituto</th>
                     <th class="col-material-original" title="Estado de material original (solo lectura)">Material original</th>
                     <th class="col-registrador" title="Usuario que registró el elemento">Registrador</th>
@@ -151,6 +104,202 @@
     </div>
 </div>
 
+<!-- Modal para crear/importar/aprobar ICOS -->
+<div id="icoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10002; align-items:center; justify-content:center;">
+    <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; width:min(900px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
+            <h3 style="margin:0; color:#3498db; font-size:16px;">Crear ICO / Cambio de ingenieria</h3>
+            <button id="btnCerrarIcoModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+
+        <!-- Indicador de pasos -->
+        <div style="display:flex; gap:8px; padding:12px 18px; border-bottom:1px solid #2c3e50;">
+            <div id="icoStepIndicator1" class="ico-step active" style="flex:1; padding:8px 10px; border-radius:5px; background:#27ae60; color:#fff; font-size:12px; font-weight:700;">1. Descargar BOM</div>
+            <div id="icoStepIndicator2" class="ico-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">2. Subir Excel modificado</div>
+            <div id="icoStepIndicator3" class="ico-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">3. Revisar y aprobar</div>
+        </div>
+
+        <!-- Paso 1: metadatos + descargar -->
+        <div id="icoStep1" style="padding:18px;">
+            <!-- Toggle alcance -->
+            <div style="display:flex; gap:10px; margin-bottom:14px;">
+                <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
+                    <input type="radio" name="icoScopeKind" value="SINGLE" id="icoScopeSingle" checked>
+                    <span><b>ICO individual</b><br><span style="color:#8b98a8; font-size:11px;">Un solo modelo</span></span>
+                </label>
+                <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
+                    <input type="radio" name="icoScopeKind" value="FAMILY" id="icoScopeFamily">
+                    <span><b>ICO de familia</b><br><span style="color:#8b98a8; font-size:11px;">Aplicar a varios modelos de una familia</span></span>
+                </label>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;">
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ICO
+                    <input id="icoNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                </label>
+                <label id="icoPartNoLabel" style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Numero de parte / modelo
+                    <input id="icoPartNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Revision BOM nueva
+                    <input id="icoRevisionInput" type="text" value="R1" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Fecha efectiva
+                    <input id="icoEffectiveAtInput" type="datetime-local" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                </label>
+            </div>
+
+            <!-- Campos solo para FAMILY -->
+            <div id="icoFamilyFields" style="display:none; margin-top:12px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:end;">
+                    <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Familia (prefijo)
+                        <input id="icoFamilyInput" type="text" placeholder="Ej: EBR239662" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                    </label>
+                    <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Sufijos
+                        <input id="icoSuffixesInput" type="text" placeholder="Ej: 01,05,14" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                    </label>
+                    <button id="btnResolverFamilia" class="bom-btn consultar" type="button" style="padding:9px 14px;">Resolver</button>
+                </div>
+                <div id="icoFamilyResolveBox" style="margin-top:10px; padding:10px; border:1px solid #34495e; background:#0f1117; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
+            </div>
+
+            <label style="display:flex; flex-direction:column; gap:5px; font-size:12px; margin-top:12px;">Nombre del modelo (item_name)
+                <input id="icoItemNameInput" type="text" placeholder="Opcional: si esta vacio se autocompleta desde KS catalog" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:5px; font-size:12px; margin-top:12px;">Notas
+                <textarea id="icoNotesInput" rows="3" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; resize:vertical;"></textarea>
+            </label>
+            <div id="icoStatusBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9;">
+                Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2. No edite la columna oculta __row_id.
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap;">
+                <button id="btnDescargarBomExcel" class="bom-btn exportar" type="button">Descargar BOM como Excel</button>
+                <button id="btnIrPaso2" class="bom-btn consultar" type="button">Siguiente: subir Excel &rarr;</button>
+            </div>
+        </div>
+
+        <!-- Paso 2: upload + validacion -->
+        <div id="icoStep2" style="display:none; padding:18px;">
+            <div style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
+                Suba el Excel modificado. El sistema validara y mostrara los cambios detectados (anadidos, eliminados, modificados).
+            </div>
+            <input type="file" id="icoExcelInput" accept=".xlsx,.xls" style="display:block; padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; width:100%;">
+            <div id="icoValidationBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
+            <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;">
+                <button id="btnVolverPaso1" class="bom-btn" type="button" style="background:#34495e;">&larr; Volver</button>
+                <button id="btnValidarExcel" class="bom-btn registrar" type="button">Validar y crear borrador</button>
+            </div>
+        </div>
+
+        <!-- Paso 3: preview diff + aprobar -->
+        <div id="icoStep3" style="display:none; padding:18px;">
+            <div id="icoDiffSummary" style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
+                Resumen de cambios
+            </div>
+            <div id="icoDiffDetails" style="max-height:380px; overflow:auto; border:1px solid #34495e; border-radius:6px;"></div>
+            <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;">
+                <button id="btnCancelarIcoDraft" class="bom-btn eliminar" type="button">Cancelar borrador</button>
+                <button id="btnAprobarIco" class="bom-btn consultar" type="button">Aprobar ICO y aplicar cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para consultar ICOS creados -->
+<div id="icoListModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10003; align-items:center; justify-content:center;">
+    <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; width:min(1080px, 96vw); max-height:88vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
+            <h3 style="margin:0; color:#3498db; font-size:16px;">ICOS / Cambios de ingenieria</h3>
+            <button id="btnCerrarIcoListModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <div style="padding:16px 18px;">
+            <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Tipo
+                    <select id="icoListOrigenFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:110px;">
+                        <option value="">TODOS</option>
+                        <option value="MES">MES</option>
+                        <option value="KS">KS</option>
+                    </select>
+                </label>
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Estatus
+                    <select id="icoListStatusFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
+                        <option value="">TODOS</option>
+                        <option value="DRAFT">DRAFT</option>
+                        <option value="APPROVED">APPROVED</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                </label>
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Modelo
+                    <input id="icoListPartFilter" type="text" placeholder="Opcional" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:180px;">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ICO / ID
+                    <input id="icoListIcoFilter" type="text" placeholder="02 o KS#28695" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Desde
+                    <input id="icoListDateFromFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Hasta
+                    <input id="icoListDateToFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
+                </label>
+                <button id="btnRefrescarIcoList" class="bom-btn consultar" type="button">Refrescar</button>
+                <button id="btnExportarIcoList" class="bom-btn exportar" type="button">Exportar Excel</button>
+            </div>
+            <div id="icoListStatusBox" style="padding:9px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:12px;">
+                Cargando ICOS...
+            </div>
+            <div style="overflow:auto; border:1px solid #34495e; border-radius:6px;">
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="background:#2c3e50;">
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">ICO</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Modelo(s)</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Revision</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Fecha efectiva</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Estatus</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:right;">Items</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Aprobado por</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:center;">Accion</th>
+                        </tr>
+                    </thead>
+                    <tbody id="icoListTableBody">
+                        <tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">Sin datos</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="icoListPaginationBox" style="display:none; margin-top:10px; align-items:center; justify-content:flex-end; gap:8px; font-size:12px; color:#b8c7d9;">
+                <button id="btnIcoListPrevPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Anterior</button>
+                <span id="icoListPageInfo"></span>
+                <button id="btnIcoListNextPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Siguiente</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal detalle ICO MES -->
+<div id="icoDetailBox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10004; align-items:center; justify-content:center;">
+    <div style="background:#1a1b26; border:1px solid #5dade2; border-radius:8px; width:min(980px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
+            <h3 id="icoDetailTitle" style="margin:0; color:#5dade2; font-size:16px;">Detalle ICO</h3>
+            <button id="btnCerrarIcoDetailModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <div id="icoDetailContent" style="padding:16px 18px; font-size:13px; line-height:1.55;">
+            Cargando...
+        </div>
+    </div>
+</div>
+
+<!-- Modal detalle ECN K-system -->
+<div id="ecnKsDetailModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10004; align-items:center; justify-content:center;">
+    <div style="background:#1a1b26; border:1px solid #5dade2; border-radius:8px; width:min(900px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
+            <h3 id="ecnKsDetailTitle" style="margin:0; color:#5dade2; font-size:16px;">Detalle ECN K-system</h3>
+            <button id="btnCerrarEcnKsModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        <div id="ecnKsDetailContent" style="padding:16px 18px; font-size:13px; line-height:1.55;">
+            Cargando...
+        </div>
+    </div>
+</div>
+
 <!-- Los modales se crean dinámicamente en JavaScript -->
 
 <script>
@@ -172,24 +321,18 @@
                     return;
                 }
                 
-                // Botón Registrar
-                if (target.id === 'btnRegistrarBOM' || target.closest('#btnRegistrarBOM')) {
+                // Boton Crear ICO
+                if (target.id === 'btnCrearICO' || target.closest('#btnCrearICO')) {
                     e.preventDefault();
-                    mostrarFormularioBOM();
+                    if (!requierePermisoCrearIco()) return;
+                    abrirModalICO();
                     return;
                 }
-                
-                // Botón Eliminar
-                if (target.id === 'btnEliminarBOM' || target.closest('#btnEliminarBOM')) {
+
+                // Boton Ver ICOS
+                if (target.id === 'btnVerICOS' || target.closest('#btnVerICOS')) {
                     e.preventDefault();
-                    eliminarBOM();
-                    return;
-                }
-                
-                // Botón Registro de Posición
-                if (target.id === 'btnRegistroPosicion' || target.closest('#btnRegistroPosicion')) {
-                    e.preventDefault();
-                    abrirModalRegistroPosicion();
+                    abrirModalIcoList();
                     return;
                 }
                 
@@ -200,27 +343,6 @@
                     return;
                 }
                 
-                // Botón Importar Excel
-                if (target.id === 'btnImportarExcelBOM' || target.closest('#btnImportarExcelBOM')) {
-                    e.preventDefault();
-                    const fileInput = document.getElementById('importarExcelBOM');
-                    if (fileInput) fileInput.click();
-                    return;
-                }
-
-                // Boton ayuda importar
-                if (target.id === 'btnHelpImportBOM' || target.closest('#btnHelpImportBOM')) {
-                    e.preventDefault();
-                    document.getElementById('bomImportHelpModal').style.display = 'flex';
-                    return;
-                }
-                // Cerrar modal ayuda
-                if (target.id === 'btnCloseHelpBOM' || target.closest('#btnCloseHelpBOM')) {
-                    e.preventDefault();
-                    document.getElementById('bomImportHelpModal').style.display = 'none';
-                    return;
-                }
-                
                 // Dropdown items
                 if (target.classList.contains('bom-dropdown-item')) {
                     const modelo = target.dataset.value;
@@ -228,45 +350,120 @@
                     return;
                 }
                 
-                // Cerrar panel de edición
-                if (target.id === 'closeBOMEditPanel' || target.id === 'bomEditPanelOverlay') {
-                    closeBOMEditPanel();
-                    return;
-                }
-                
-                // Guardar cambios del panel
-                if (target.id === 'saveBOMChanges') {
+                if (target.id === 'btnCerrarIcoModal') {
                     e.preventDefault();
-                    saveBOMEdit();
+                    cerrarModalICO();
                     return;
                 }
-                
-                // Cerrar modal de posición
-                if (target.id === 'btnCerrarModalPosicion' || target.id === 'btnCancelarModalPosicion') {
-                    e.preventDefault();
-                    cerrarModalRegistroPosicion();
-                    return;
-                }
-                
-                // Guardar posiciones ASSY
-                if (target.id === 'btnGuardarPosicionesAssy') {
-                    e.preventDefault();
-                    guardarPosicionesAssy();
-                    return;
-                }
-            });
-            
-            // Cerrar modal ayuda al hacer click fuera
-            document.getElementById('bomImportHelpModal').addEventListener('click', function(e) {
-                if (e.target === this) this.style.display = 'none';
-            });
 
-            // Event delegation para doble click en filas de la tabla
-            document.body.addEventListener('dblclick', function(e) {
-                const row = e.target.closest('tr[data-bom-id]');
-                if (row) {
-                    const bomData = JSON.parse(row.dataset.bomData || '{}');
-                    openBOMEditPanel(bomData);
+                if (target.id === 'btnDescargarBomExcel') {
+                    e.preventDefault();
+                    descargarBomExcel();
+                    return;
+                }
+
+                if (target.id === 'btnResolverFamilia') {
+                    e.preventDefault();
+                    resolverFamilia();
+                    return;
+                }
+
+                if (target.name === 'icoScopeKind') {
+                    onIcoScopeChange();
+                    return;
+                }
+
+                if (target.id === 'btnIrPaso2') {
+                    e.preventDefault();
+                    irPasoIco(2);
+                    return;
+                }
+
+                if (target.id === 'btnVolverPaso1') {
+                    e.preventDefault();
+                    irPasoIco(1);
+                    return;
+                }
+
+                if (target.id === 'btnValidarExcel') {
+                    e.preventDefault();
+                    validarExcelIco();
+                    return;
+                }
+
+                if (target.id === 'btnCancelarIcoDraft') {
+                    e.preventDefault();
+                    cancelarBorradorIco();
+                    return;
+                }
+
+                if (target.id === 'btnAprobarIco') {
+                    e.preventDefault();
+                    aprobarIcoActual();
+                    return;
+                }
+
+                if (target.id === 'btnCerrarIcoListModal') {
+                    e.preventDefault();
+                    cerrarModalIcoList();
+                    return;
+                }
+
+                if (target.id === 'btnRefrescarIcoList') {
+                    e.preventDefault();
+                    cargarIcoList(1);
+                    return;
+                }
+
+                if (target.id === 'btnExportarIcoList') {
+                    e.preventDefault();
+                    exportarIcoList();
+                    return;
+                }
+
+                if (target.id === 'btnIcoListPrevPage') {
+                    e.preventDefault();
+                    cargarIcoList(Math.max(1, icoListPage - 1));
+                    return;
+                }
+
+                if (target.id === 'btnIcoListNextPage') {
+                    e.preventDefault();
+                    cargarIcoList(icoListPage + 1);
+                    return;
+                }
+
+                const detailButton = target.closest('[data-ico-detail-id]');
+                if (detailButton) {
+                    e.preventDefault();
+                    cargarDetalleIco(detailButton.dataset.icoDetailId);
+                    return;
+                }
+
+                if (target.id === 'btnCerrarIcoDetailModal' || target.closest('#btnCerrarIcoDetailModal')) {
+                    e.preventDefault();
+                    cerrarModalIcoDetalle();
+                    return;
+                }
+
+                const ecnKsButton = target.closest('[data-ecn-ks-id]');
+                if (ecnKsButton) {
+                    e.preventDefault();
+                    verEcnKs(ecnKsButton.dataset.ecnKsId);
+                    return;
+                }
+
+                if (target.id === 'btnCerrarEcnKsModal' || target.closest('#btnCerrarEcnKsModal')) {
+                    e.preventDefault();
+                    cerrarModalEcnKs();
+                    return;
+                }
+
+                const deleteButton = target.closest('[data-ico-delete-id]');
+                if (deleteButton) {
+                    e.preventDefault();
+                    borrarIco(deleteButton.dataset.icoDeleteId, deleteButton.dataset.icoNo || '');
+                    return;
                 }
             });
             
@@ -286,8 +483,19 @@
             
             // Event delegation para change en file input
             document.body.addEventListener('change', function(e) {
-                if (e.target.id === 'importarExcelBOM') {
-                    importarExcelBOM();
+                if (e.target.id === 'icoExcelInput') {
+                    importarExcelIcoActual();
+                }
+
+                if ([
+                    'icoListOrigenFilter',
+                    'icoListStatusFilter',
+                    'icoListPartFilter',
+                    'icoListIcoFilter',
+                    'icoListDateFromFilter',
+                    'icoListDateToFilter'
+                ].includes(e.target.id)) {
+                    cargarIcoList(1);
                 }
                 
                 // Filtro por classification
@@ -307,7 +515,842 @@
     window.initializeControlBOMEventListeners = initializeControlBOMEventListeners;
 
     // Cache para datos de BOM
+    const puedeCrearIco = {{ puede_crear_ico|default(false)|tojson }};
     let bomDataCache = [];
+    let icoActualId = null;
+    let icoScopeKind = 'SINGLE'; // 'SINGLE' o 'FAMILY'
+    let icoScopeParts = []; // part_no resueltos cuando FAMILY
+    let icoListPage = 1;
+    let icoListMeta = { total: 0, page: 1, page_size: 500, filters_active: false };
+
+    function icoAlert(message) {
+        if (typeof showCustomAlert === 'function') {
+            showCustomAlert(message);
+        } else {
+            alert(String(message).replace(/<br\s*\/?>/gi, '\n'));
+        }
+    }
+
+    function setIcoStatus(message) {
+        const box = document.getElementById('icoStatusBox');
+        if (box) box.innerHTML = message;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, function(char) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char];
+        });
+    }
+
+    function setIcoListStatus(message) {
+        const box = document.getElementById('icoListStatusBox');
+        if (box) box.innerHTML = message;
+    }
+
+    function statusBadge(status) {
+        const value = String(status || '').toUpperCase();
+        const color = value === 'APPROVED' ? '#27ae60' : value === 'DRAFT' ? '#f39c12' : '#95a5a6';
+        return `<span style="display:inline-block; padding:3px 7px; border-radius:999px; color:#fff; background:${color}; font-weight:700; font-size:11px;">${escapeHtml(value || '-')}</span>`;
+    }
+
+    function formatFechaEfectiva(value) {
+        if (!value) return '-';
+        const text = String(value);
+        const match = text.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}(?::\d{2})?))?/);
+        if (!match) return text;
+        const fecha = match[1];
+        const hora = match[2];
+        if (!hora || hora.startsWith('00:00')) return fecha;
+        return `${fecha} ${hora.slice(0, 5)}`;
+    }
+
+    function abrirModalICO() {
+        if (!requierePermisoCrearIco()) return;
+        const modal = document.getElementById('icoModal');
+        const selectedModel = (document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        const defaultEffective = now.toISOString().slice(0, 16);
+
+        icoActualId = null;
+        icoScopeKind = 'SINGLE';
+        icoScopeParts = [];
+        document.getElementById('icoScopeSingle').checked = true;
+        document.getElementById('icoScopeFamily').checked = false;
+        document.getElementById('icoFamilyFields').style.display = 'none';
+        document.getElementById('icoFamilyResolveBox').style.display = 'none';
+        document.getElementById('icoFamilyInput').value = '';
+        document.getElementById('icoSuffixesInput').value = '';
+        document.getElementById('icoPartNoLabel').style.display = '';
+
+        document.getElementById('icoNoInput').value = '';
+        document.getElementById('icoPartNoInput').value = selectedModel;
+        document.getElementById('icoRevisionInput').value = 'R1';
+        document.getElementById('icoEffectiveAtInput').value = defaultEffective;
+        document.getElementById('icoItemNameInput').value = '';
+        document.getElementById('icoNotesInput').value = '';
+        const excelInput = document.getElementById('icoExcelInput');
+        if (excelInput) excelInput.value = '';
+        document.getElementById('icoValidationBox').style.display = 'none';
+        document.getElementById('icoValidationBox').innerHTML = '';
+        setIcoStatus('Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2.');
+        irPasoIco(1);
+
+        if (modal) {
+            if (modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
+            }
+            modal.style.cssText = `
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0,0,0,0.72) !important;
+                justify-content: center !important;
+                align-items: center !important;
+                z-index: 10002 !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
+        }
+    }
+
+    function irPasoIco(paso) {
+        for (let i = 1; i <= 3; i++) {
+            const step = document.getElementById('icoStep' + i);
+            const indicator = document.getElementById('icoStepIndicator' + i);
+            if (step) step.style.display = (i === paso) ? 'block' : 'none';
+            if (indicator) {
+                if (i === paso) {
+                    indicator.style.background = '#27ae60';
+                    indicator.style.color = '#fff';
+                } else if (i < paso) {
+                    indicator.style.background = '#2c3e50';
+                    indicator.style.color = '#5dade2';
+                } else {
+                    indicator.style.background = '#34495e';
+                    indicator.style.color = '#aaa';
+                }
+            }
+        }
+    }
+
+    function onIcoScopeChange() {
+        icoScopeKind = document.querySelector('input[name="icoScopeKind"]:checked')?.value || 'SINGLE';
+        const isFamily = icoScopeKind === 'FAMILY';
+        document.getElementById('icoFamilyFields').style.display = isFamily ? 'block' : 'none';
+        document.getElementById('icoPartNoLabel').style.display = isFamily ? 'none' : '';
+        // En FAMILY el part_no representa la familia, no se llena manualmente.
+        if (isFamily) icoScopeParts = [];
+    }
+
+    async function resolverFamilia() {
+        if (!requierePermisoCrearIco()) return;
+        const family = (document.getElementById('icoFamilyInput')?.value || '').trim().toUpperCase();
+        const suffixes = (document.getElementById('icoSuffixesInput')?.value || '').trim();
+        const box = document.getElementById('icoFamilyResolveBox');
+        box.style.display = 'block';
+        if (!family || !suffixes) {
+            box.innerHTML = `<span style="color:#e74c3c;">Familia y sufijos son requeridos.</span>`;
+            icoScopeParts = [];
+            return;
+        }
+        box.innerHTML = `<span style="color:#b8c7d9;">Resolviendo...</span>`;
+        try {
+            const params = new URLSearchParams({ family, suffixes });
+            const response = await fetch(`/api/bom/resolve-family?${params.toString()}`);
+            const data = await response.json();
+            if (!data.success) {
+                box.innerHTML = `<span style="color:#e74c3c;">${escapeHtml(data.error || 'Error')}</span>`;
+                icoScopeParts = [];
+                return;
+            }
+            const d = data.data || {};
+            const parts = d.parts || [];
+            const missing = d.missing || [];
+            icoScopeParts = parts.map(p => p.part_no);
+            const partsList = parts.map(p => `<li><b>${escapeHtml(p.part_no)}</b> ${p.item_name ? '— ' + escapeHtml(p.item_name) : ''}</li>`).join('');
+            const missingNote = missing.length ? `<div style="color:#e74c3c; margin-top:6px;">Sufijos no encontrados en KS: ${missing.map(escapeHtml).join(', ')}</div>` : '';
+            box.innerHTML = `
+                <div style="color:#27ae60; font-weight:700; margin-bottom:6px;">${parts.length} modelo(s) resuelto(s):</div>
+                <ul style="margin:0; padding-left:20px;">${partsList}</ul>
+                ${missingNote}
+            `;
+        } catch (err) {
+            box.innerHTML = `<span style="color:#e74c3c;">Error: ${escapeHtml(err.message || String(err))}</span>`;
+            icoScopeParts = [];
+        }
+    }
+
+    function descargarBomExcel() {
+        if (!requierePermisoCrearIco()) return;
+        if (icoScopeKind === 'FAMILY') {
+            const family = (document.getElementById('icoFamilyInput')?.value || '').trim().toUpperCase();
+            const suffixes = (document.getElementById('icoSuffixesInput')?.value || '').trim();
+            if (!family || !suffixes) {
+                icoAlert('Capture familia y sufijos, y haga click en Resolver antes de descargar.');
+                return;
+            }
+            if (!icoScopeParts.length) {
+                icoAlert('Primero resuelva la familia (boton Resolver).');
+                return;
+            }
+            const params = new URLSearchParams({ family, suffixes });
+            const link = document.createElement('a');
+            link.href = `/api/bom/download-excel-family?${params.toString()}`;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setIcoStatus(`Descargando BOM multi-modelo de familia ${family} (${icoScopeParts.length} modelos). Modifique y avance al paso 2.`);
+            return;
+        }
+
+        const partNo = (document.getElementById('icoPartNoInput')?.value || '').trim().toUpperCase();
+        if (!partNo) {
+            icoAlert('Capture el numero de parte / modelo antes de descargar.');
+            return;
+        }
+        const params = new URLSearchParams({ part_no: partNo });
+        const link = document.createElement('a');
+        link.href = `/api/bom/download-excel?${params.toString()}`;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setIcoStatus(`Descargando BOM de ${partNo}. Modifique el Excel y avance al paso 2.`);
+    }
+
+    async function validarExcelIco() {
+        if (!requierePermisoCrearIco()) return;
+        const icoNo = (document.getElementById('icoNoInput')?.value || '').trim().toUpperCase();
+        const bomRevision = (document.getElementById('icoRevisionInput')?.value || '').trim().toUpperCase();
+        const effectiveAt = (document.getElementById('icoEffectiveAtInput')?.value || '').trim();
+        const itemName = (document.getElementById('icoItemNameInput')?.value || '').trim();
+        const notes = (document.getElementById('icoNotesInput')?.value || '').trim();
+        const fileInput = document.getElementById('icoExcelInput');
+        const file = fileInput?.files?.[0];
+
+        const box = document.getElementById('icoValidationBox');
+        box.style.display = 'block';
+
+        if (!icoNo || !bomRevision || !effectiveAt) {
+            box.innerHTML = `<span style="color:#e74c3c;">Faltan campos requeridos (paso 1): ICO, Revision BOM, Fecha efectiva.</span>`;
+            return;
+        }
+        if (!file) {
+            box.innerHTML = `<span style="color:#e74c3c;">Seleccione el archivo Excel modificado.</span>`;
+            return;
+        }
+
+        box.innerHTML = `<span style="color:#b8c7d9;">Validando Excel...</span>`;
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('ico_no', icoNo);
+        fd.append('bom_revision', bomRevision);
+        fd.append('effective_at', effectiveAt);
+        fd.append('item_name', itemName);
+        fd.append('notes', notes);
+
+        let endpoint;
+        if (icoScopeKind === 'FAMILY') {
+            const family = (document.getElementById('icoFamilyInput')?.value || '').trim().toUpperCase();
+            if (!family) {
+                box.innerHTML = `<span style="color:#e74c3c;">Familia requerida.</span>`;
+                return;
+            }
+            if (!icoScopeParts.length) {
+                box.innerHTML = `<span style="color:#e74c3c;">No hay modelos resueltos. Vuelva al paso 1 y resuelva la familia.</span>`;
+                return;
+            }
+            fd.append('family_prefix', family);
+            fd.append('scope_parts', icoScopeParts.join(','));
+            endpoint = '/api/icos/from-excel-family';
+        } else {
+            const partNo = (document.getElementById('icoPartNoInput')?.value || '').trim().toUpperCase();
+            if (!partNo) {
+                box.innerHTML = `<span style="color:#e74c3c;">Numero de parte requerido.</span>`;
+                return;
+            }
+            fd.append('part_no', partNo);
+            endpoint = '/api/icos/from-excel';
+        }
+
+        try {
+            const response = await fetch(endpoint, { method: 'POST', body: fd });
+            const data = await response.json();
+            if (!data.success) {
+                const errors = data.errors || [data.error || 'Error desconocido'];
+                box.innerHTML = `<div style="color:#e74c3c; font-weight:700; margin-bottom:6px;">Validacion fallida:</div><ul style="margin:0; padding-left:20px; color:#e74c3c;">${errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`;
+                return;
+            }
+            icoActualId = data.ico_id;
+            box.innerHTML = `<span style="color:#27ae60; font-weight:700;">Borrador creado (ICO ${escapeHtml(icoNo)}). Avanzando al paso 3...</span>`;
+            await cargarPreviewDiff(data.ico_id);
+            irPasoIco(3);
+        } catch (err) {
+            box.innerHTML = `<span style="color:#e74c3c;">Error de red: ${escapeHtml(err.message || String(err))}</span>`;
+        }
+    }
+
+    async function cargarPreviewDiff(icoId) {
+        const summary = document.getElementById('icoDiffSummary');
+        const details = document.getElementById('icoDiffDetails');
+        summary.innerHTML = 'Cargando diff...';
+        details.innerHTML = '';
+        try {
+            const response = await fetch(`/api/icos/${icoId}/diff`);
+            const data = await response.json();
+            if (!data.success) {
+                summary.innerHTML = `<span style="color:#e74c3c;">${escapeHtml(data.error || 'Error cargando diff')}</span>`;
+                return;
+            }
+            const d = data.data || {};
+            const counts = d.counts || {};
+            const perPart = d.per_part || {};
+            const perPartKeys = Object.keys(perPart).filter(k => k);
+            const perPartHtml = perPartKeys.length > 1
+                ? `<div style="margin-top:10px; padding-top:10px; border-top:1px solid #34495e; font-size:11px; color:#8b98a8;">
+                    <div style="margin-bottom:4px;"><b>Cambios por modelo:</b></div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        ${perPartKeys.sort().map(pn => {
+                            const c = perPart[pn];
+                            return `<span style="background:#2c3e50; padding:4px 8px; border-radius:3px;"><b>${escapeHtml(pn)}</b>: +${c.added} ~${c.modified} -${c.removed}</span>`;
+                        }).join('')}
+                    </div>
+                </div>`
+                : '';
+            summary.innerHTML = `
+                <div style="display:flex; gap:14px; flex-wrap:wrap;">
+                    <span style="background:#1e3a2f; color:#52be80; padding:6px 12px; border-radius:5px; font-weight:700;">+ ${counts.added || 0} anadidos</span>
+                    <span style="background:#3a2c1e; color:#f5b041; padding:6px 12px; border-radius:5px; font-weight:700;">~ ${counts.modified || 0} modificados</span>
+                    <span style="background:#3a1e1e; color:#e74c3c; padding:6px 12px; border-radius:5px; font-weight:700;">- ${counts.removed || 0} eliminados</span>
+                </div>
+                ${perPartHtml}
+            `;
+            const showPart = perPartKeys.length > 1;
+            const renderSection = (title, rows, color, accion) => {
+                if (!rows || !rows.length) return '';
+                return `
+                    <div style="padding:10px 14px; background:#2c3e50; color:${color}; font-weight:700; font-size:12px; border-top:1px solid #1a1b26;">${escapeHtml(title)} (${rows.length})</div>
+                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                        <tbody>
+                            ${rows.map(r => {
+                                const partCell = showPart
+                                    ? `<td style="padding:6px 10px; border-bottom:1px solid #283747; color:#5dade2; font-weight:700;">${escapeHtml(r.part_no || '-')}</td>`
+                                    : '';
+                                if (accion === 'MODIFY') {
+                                    return `<tr>
+                                        ${partCell}
+                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#8b98a8;">${escapeHtml(r.bom_level || '-')}</td>
+                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(r.item_no || '-')}</td>
+                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#f5b041;">${escapeHtml(r.field_changed || '')}</td>
+                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#e74c3c; text-decoration:line-through;">${escapeHtml(r.old_value || '')}</td>
+                                        <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#52be80;">${escapeHtml(r.new_value || '')}</td>
+                                    </tr>`;
+                                }
+                                return `<tr>
+                                    ${partCell}
+                                    <td style="padding:6px 10px; border-bottom:1px solid #283747; color:#8b98a8;">${escapeHtml(r.bom_level || '-')}</td>
+                                    <td style="padding:6px 10px; border-bottom:1px solid #283747; font-weight:700;" colspan="${showPart ? 4 : 4}">${escapeHtml(r.item_no || '-')}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            };
+            details.innerHTML =
+                renderSection('Añadidos', d.added, '#52be80', 'ADD') +
+                renderSection('Modificados', d.modified, '#f5b041', 'MODIFY') +
+                renderSection('Eliminados', d.removed, '#e74c3c', 'REMOVE');
+        } catch (err) {
+            summary.innerHTML = `<span style="color:#e74c3c;">Error: ${escapeHtml(err.message || String(err))}</span>`;
+        }
+    }
+
+    async function cancelarBorradorIco() {
+        if (!requierePermisoCrearIco()) return;
+        if (!icoActualId) {
+            cerrarModalICO();
+            return;
+        }
+        if (!confirm('Cancelar y eliminar este borrador?')) return;
+        try {
+            await fetch(`/api/icos/${icoActualId}`, { method: 'DELETE' });
+        } catch (err) {
+            console.warn('Error eliminando borrador:', err);
+        }
+        icoActualId = null;
+        cerrarModalICO();
+    }
+
+    function cerrarModalICO() {
+        const modal = document.getElementById('icoModal');
+        if (modal) modal.style.cssText = 'display: none !important;';
+    }
+
+    function abrirModalIcoList() {
+        const modal = document.getElementById('icoListModal');
+        const selectedModel = (document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
+        const partFilter = document.getElementById('icoListPartFilter');
+        if (partFilter && selectedModel) partFilter.value = selectedModel;
+        cerrarModalIcoDetalle();
+        if (modal) {
+            if (modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
+            }
+            modal.style.cssText = `
+                display: flex !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: rgba(0,0,0,0.72) !important;
+                justify-content: center !important;
+                align-items: center !important;
+                z-index: 10003 !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            `;
+        }
+        cargarIcoList(1);
+    }
+
+    function cerrarModalIcoList() {
+        cerrarModalIcoDetalle();
+        const modal = document.getElementById('icoListModal');
+        if (modal) modal.style.cssText = 'display: none !important;';
+    }
+
+    function abrirModalIcoDetalle() {
+        const modal = document.getElementById('icoDetailBox');
+        if (!modal) return;
+        if (modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.style.cssText = `
+            display: flex !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0,0,0,0.72) !important;
+            justify-content: center !important;
+            align-items: center !important;
+            z-index: 10005 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        `;
+    }
+
+    function cerrarModalIcoDetalle() {
+        const modal = document.getElementById('icoDetailBox');
+        if (modal) modal.style.cssText = 'display: none !important;';
+    }
+
+    function abrirModalEcnKs() {
+        const modal = document.getElementById('ecnKsDetailModal');
+        if (!modal) return;
+        if (modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.style.cssText = `
+            display: flex !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0,0,0,0.72) !important;
+            justify-content: center !important;
+            align-items: center !important;
+            z-index: 10004 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        `;
+    }
+
+    function cerrarModalEcnKs() {
+        const modal = document.getElementById('ecnKsDetailModal');
+        if (modal) modal.style.cssText = 'display: none !important;';
+    }
+
+    function renderEcnKsField(label, value, opts) {
+        opts = opts || {};
+        const v = (value === null || value === undefined || value === '') ? '-' : String(value);
+        const pre = opts.pre
+            ? `<pre style="margin:4px 0 0; padding:10px; background:#0f1117; border:1px solid #2c3e50; border-radius:4px; white-space:pre-wrap; word-break:break-word; max-height:240px; overflow:auto; font-family:Consolas, monospace; font-size:12px; color:#dce4ec;">${escapeHtml(v)}</pre>`
+            : `<div style="color:#dce4ec; word-break:break-word;">${escapeHtml(v)}</div>`;
+        return `
+            <div style="margin-bottom:10px;">
+                <div style="color:#8b98a8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">${escapeHtml(label)}</div>
+                ${pre}
+            </div>
+        `;
+    }
+
+    async function verEcnKs(histSeq) {
+        abrirModalEcnKs();
+        const content = document.getElementById('ecnKsDetailContent');
+        const title = document.getElementById('ecnKsDetailTitle');
+        title.textContent = `ECN KS#${histSeq}`;
+        content.innerHTML = '<div style="color:#aaa;">Cargando...</div>';
+        try {
+            const response = await fetch(`/api/ecn-ks/${encodeURIComponent(histSeq)}`);
+            const data = await response.json();
+            if (!data.success) {
+                content.innerHTML = `<div style="color:#e74c3c;">Error: ${escapeHtml(data.error || 'No se pudo cargar')}</div>`;
+                return;
+            }
+            const e = data.data || {};
+            title.textContent = `ECN KS#${e.hist_seq} - ${e.family_prefix || ''}`;
+            content.innerHTML = `
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px 18px; margin-bottom:14px;">
+                    ${renderEcnKsField('Family prefix', e.family_prefix)}
+                    ${renderEcnKsField('Hist seq', e.hist_seq)}
+                    ${renderEcnKsField('Item no', e.item_no)}
+                    ${renderEcnKsField('Item seq', e.item_seq)}
+                    ${renderEcnKsField('SB date', e.sb_date)}
+                    ${renderEcnKsField('Work no', e.work_no)}
+                    ${renderEcnKsField('Ord 1', e.ord1)}
+                    ${renderEcnKsField('Decide 1', e.decide1)}
+                    ${renderEcnKsField('Ord 2', e.ord2)}
+                    ${renderEcnKsField('Decide 2', e.decide2)}
+                    ${renderEcnKsField('BOM emp', e.bom_emp_name ? `${e.bom_emp_name} (${e.bom_emp_seq || '-'})` : '-')}
+                    ${renderEcnKsField('Dev emp', e.dev_emp_name ? `${e.dev_emp_name} (${e.dev_emp_seq || '-'})` : '-')}
+                    ${renderEcnKsField('Seongcheolsa', e.seongcheolsa)}
+                    ${renderEcnKsField('Sincronizado', e.synced_at)}
+                </div>
+                ${renderEcnKsField('Remark del cambio (chg_remark)', e.chg_remark, { pre: true })}
+                ${renderEcnKsField('Causa', e.cause, { pre: true })}
+                ${renderEcnKsField('Resultado del paso (step_result)', e.step_result, { pre: true })}
+                ${renderEcnKsField('Contexto del cambio (change_context)', e.change_context, { pre: true })}
+                ${renderEcnKsField('Remark', e.remark, { pre: true })}
+            `;
+        } catch (err) {
+            console.error('Error cargando ECN KS:', err);
+            content.innerHTML = `<div style="color:#e74c3c;">Error de red: ${escapeHtml(err.message || String(err))}</div>`;
+        }
+    }
+
+    function buildIcoListParams(includePage) {
+        const status = (document.getElementById('icoListStatusFilter')?.value || '').trim();
+        const partNo = (document.getElementById('icoListPartFilter')?.value || '').trim().toUpperCase();
+        const origen = (document.getElementById('icoListOrigenFilter')?.value || '').trim().toUpperCase();
+        const icoNo = (document.getElementById('icoListIcoFilter')?.value || '').trim().toUpperCase();
+        const dateFrom = (document.getElementById('icoListDateFromFilter')?.value || '').trim();
+        const dateTo = (document.getElementById('icoListDateToFilter')?.value || '').trim();
+        const params = new URLSearchParams();
+        if (origen) params.set('origen', origen);
+        if (status) params.set('status', status);
+        if (partNo) params.set('part_no', partNo);
+        if (icoNo) params.set('ico_no', icoNo);
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
+        if (includePage) {
+            params.set('page', String(icoListPage));
+            params.set('page_size', '500');
+        }
+        return params;
+    }
+
+    function updateIcoListPagination(meta) {
+        const box = document.getElementById('icoListPaginationBox');
+        const info = document.getElementById('icoListPageInfo');
+        const prev = document.getElementById('btnIcoListPrevPage');
+        const next = document.getElementById('btnIcoListNextPage');
+        if (!box || !info || !prev || !next) return;
+        const total = Number(meta.total || 0);
+        const pageSize = Number(meta.page_size || 500);
+        const page = Number(meta.page || 1);
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (!meta.filters_active || total <= pageSize) {
+            box.style.display = 'none';
+            return;
+        }
+        box.style.display = 'flex';
+        info.textContent = `Pagina ${page} de ${totalPages} · ${total} ICOS`;
+        prev.disabled = page <= 1;
+        next.disabled = page >= totalPages;
+        prev.style.opacity = prev.disabled ? '0.45' : '1';
+        next.style.opacity = next.disabled ? '0.45' : '1';
+    }
+
+    function exportarIcoList() {
+        const params = buildIcoListParams(false);
+        window.location.href = `/api/icos/export?${params.toString()}`;
+    }
+
+    async function cargarIcoList(page) {
+        const tbody = document.getElementById('icoListTableBody');
+        icoListPage = Math.max(1, Number(page || icoListPage || 1));
+
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">Cargando...</td></tr>';
+        setIcoListStatus('Consultando ICOS...');
+
+        try {
+            const params = buildIcoListParams(true);
+
+            const response = await fetch(`/api/icos?${params.toString()}`);
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'No se pudieron cargar los ICOS');
+            }
+
+            const rows = data.data || [];
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">No hay ICOS con esos filtros.</td></tr>';
+                icoListMeta = data.meta || icoListMeta;
+                updateIcoListPagination(icoListMeta);
+                setIcoListStatus('Sin ICOS para mostrar.');
+                return;
+            }
+
+            tbody.innerHTML = rows.map(function(row) {
+                const isKs = String(row.origen || '').toUpperCase() === 'KS';
+                const canDelete = !isKs && String(row.status || '').toUpperCase() !== 'APPROVED';
+                const deleteControl = canDelete
+                    ? `<button type="button" class="bom-btn eliminar" data-ico-delete-id="${escapeHtml(row.id)}" data-ico-no="${escapeHtml(row.ico_no)}" style="padding:4px 8px; font-size:11px;">Borrar</button>`
+                    : `<span style="color:#8b98a8; font-size:11px;">${isKs ? 'KS sync' : 'Inmutable'}</span>`;
+                const viewControl = isKs
+                    ? `<button type="button" class="bom-btn consultar" data-ecn-ks-id="${escapeHtml(String(row.id).replace(/^ks-/, ''))}" style="padding:4px 8px; font-size:11px;">Ver</button>`
+                    : `<button type="button" class="bom-btn consultar" data-ico-detail-id="${escapeHtml(row.id)}" style="padding:4px 8px; font-size:11px;">Ver</button>`;
+                const origenBadge = isKs
+                    ? `<span style="background:#2c3e50; color:#5dade2; padding:2px 6px; border-radius:3px; font-size:10px; margin-left:6px;">KS</span>`
+                    : `<span style="background:#1e3a2f; color:#52be80; padding:2px 6px; border-radius:3px; font-size:10px; margin-left:6px;">MES</span>`;
+                const scopeCount = Number(row.scope_count || 0);
+                const scopeParts = String(row.scope_parts || '').trim();
+                const scopePartList = scopeParts.split(',').map(function(part) {
+                    return part.trim();
+                }).filter(Boolean);
+                const isFamilyIco = !isKs && scopeCount > 1 && scopeParts;
+                let familyLabel = scopePartList[0] || row.part_no || '-';
+                if (scopePartList.length > 1) {
+                    familyLabel = scopePartList.reduce(function(prefix, part) {
+                        let i = 0;
+                        while (i < prefix.length && i < part.length && prefix[i] === part[i]) i++;
+                        return prefix.slice(0, i);
+                    }, familyLabel);
+                }
+                const jobSuffixes = scopePartList.map(function(part) {
+                    return familyLabel && part.indexOf(familyLabel) === 0 ? part.slice(familyLabel.length) : part;
+                }).filter(Boolean).join(', ');
+                const modeloCell = isFamilyIco
+                    ? `<div title="${escapeHtml(scopeParts)}">
+                           <div style="font-weight:700;">${escapeHtml(familyLabel || scopeParts)}</div>
+                           <div style="margin-top:3px; color:#8b98a8; font-size:11px;">Trabajo: ${escapeHtml(jobSuffixes || scopeParts)}</div>
+                       </div>`
+                    : escapeHtml(row.part_no || '-');
+                return `
+                    <tr>
+                        <td style="padding:8px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(row.ico_no)}${origenBadge}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747;">${modeloCell}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.bom_revision)}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(formatFechaEfectiva(row.effective_at))}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747;">${statusBadge(row.status)}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747; text-align:right;">${escapeHtml(row.item_count || 0)}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.approved_by || '-')}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747; text-align:center;">
+                            ${viewControl}
+                            ${deleteControl}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            icoListMeta = data.meta || {};
+            updateIcoListPagination(icoListMeta);
+            const total = Number(icoListMeta.total || rows.length);
+            if (icoListMeta.filters_active) {
+                const from = ((Number(icoListMeta.page || 1) - 1) * Number(icoListMeta.page_size || 500)) + 1;
+                const to = from + rows.length - 1;
+                setIcoListStatus(`${rows.length} ICO(s) en esta pagina. Mostrando ${from}-${to} de ${total}.`);
+            } else {
+                const suffix = total > rows.length ? ` de ${total} totales` : '';
+                setIcoListStatus(`Ultimos ${rows.length} ICO(s)${suffix}. Usa filtros para buscar sin limite fijo.`);
+            }
+        } catch (error) {
+            console.error('Error cargando ICOS:', error);
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#e74c3c; text-align:center;">Error cargando ICOS.</td></tr>';
+            updateIcoListPagination({ filters_active: false });
+            setIcoListStatus(`Error: ${escapeHtml(error.message)}`);
+        }
+    }
+
+    function requierePermisoCrearIco() {
+        if (puedeCrearIco) return true;
+        icoAlert('No tienes permiso para crear o modificar ICOS.');
+        return false;
+    }
+
+    async function borrarIco(icoId, icoNo) {
+        const label = icoNo ? ` ${icoNo}` : '';
+        if (!confirm(`Borrar definitivamente el ICO${label}? Solo se permite si no esta APPROVED.`)) {
+            return;
+        }
+
+        setIcoListStatus('Borrando ICO...');
+        try {
+            const response = await fetch(`/api/icos/${encodeURIComponent(icoId)}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'No se pudo borrar el ICO');
+            }
+            cerrarModalIcoDetalle();
+            await cargarIcoList();
+            setIcoListStatus(`ICO${label} borrado.`);
+        } catch (error) {
+            console.error('Error borrando ICO:', error);
+            setIcoListStatus(`Error: ${escapeHtml(error.message)}`);
+            icoAlert(`Error borrando ICO:<br>${error.message}`);
+        }
+    }
+
+    async function cargarDetalleIco(icoId) {
+        const title = document.getElementById('icoDetailTitle');
+        const content = document.getElementById('icoDetailContent');
+        abrirModalIcoDetalle();
+        title.textContent = 'Cargando detalle...';
+        content.innerHTML = '<div style="color:#aaa;">Cargando...</div>';
+
+        try {
+            const [detailResponse, diffResponse] = await Promise.all([
+                fetch(`/api/icos/${encodeURIComponent(icoId)}`),
+                fetch(`/api/icos/${encodeURIComponent(icoId)}/diff`)
+            ]);
+            const data = await detailResponse.json();
+            const diffData = await diffResponse.json();
+            if (!detailResponse.ok || !data.success) {
+                throw new Error(data.error || 'No se pudo cargar el detalle');
+            }
+            if (!diffResponse.ok || !diffData.success) {
+                throw new Error(diffData.error || 'No se pudo cargar el diff');
+            }
+
+            const ico = data.data;
+            const diff = diffData.data || {};
+            const cambios = []
+                .concat((diff.added || []).map(row => Object.assign({}, row, { action: 'ADD' })))
+                .concat((diff.modified || []).map(row => Object.assign({}, row, { action: 'MODIFY' })))
+                .concat((diff.removed || []).map(row => Object.assign({}, row, { action: 'REMOVE' })));
+            const counts = diff.counts || { added: 0, modified: 0, removed: 0 };
+            const totalCambios = cambios.length;
+            title.innerHTML = `ICO ${escapeHtml(ico.ico_no)} - ${escapeHtml(ico.part_no)} - ${statusBadge(ico.status)} - ${totalCambios} cambios`;
+
+            const actionBadge = function(action) {
+                const value = String(action || '').toUpperCase();
+                const styles = {
+                    ADD: 'background:#123d2a;color:#58d68d;border:1px solid #1f7a4c;',
+                    MODIFY: 'background:#3d3212;color:#f5c542;border:1px solid #9a7d0a;',
+                    REMOVE: 'background:#4a1717;color:#ff7675;border:1px solid #943126;'
+                };
+                return `<span style="${styles[value] || 'background:#2c3e50;color:#bdc3c7;border:1px solid #34495e;'} padding:2px 7px; border-radius:10px; font-size:10px; font-weight:700;">${escapeHtml(value || '-')}</span>`;
+            };
+
+            const renderDiffRows = function(rows) {
+                if (!rows.length) {
+                    return `
+                        <tr>
+                            <td colspan="7" style="padding:14px; text-align:center; color:#8b98a8; border-bottom:1px solid #283747;">
+                                Este ICO no tiene cambios registrados en el diff.
+                            </td>
+                        </tr>
+                    `;
+                }
+                return rows.map(function(row) {
+                    return `
+                        <tr>
+                            <td style="padding:7px; border-bottom:1px solid #283747;">${actionBadge(row.action)}</td>
+                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.part_no || ico.part_no || '-')}</td>
+                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.bom_level || '-')}</td>
+                            <td style="padding:7px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(row.item_no || '-')}</td>
+                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.field_changed || '-')}</td>
+                            <td style="padding:7px; border-bottom:1px solid #283747; color:#ffb4b4;">${escapeHtml(row.old_value || '-')}</td>
+                            <td style="padding:7px; border-bottom:1px solid #283747; color:#b7f7c8;">${escapeHtml(row.new_value || '-')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            };
+
+            content.innerHTML = `
+                <div style="padding:10px; color:#b8c7d9; font-size:12px;">
+                    Revision: <b>${escapeHtml(ico.bom_revision)}</b> &nbsp; | &nbsp;
+                    Fecha efectiva: <b>${escapeHtml(ico.effective_at || '-')}</b> &nbsp; | &nbsp;
+                    Aprobado por: <b>${escapeHtml(ico.approved_by || '-')}</b>
+                    <div style="margin-top:7px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <span style="background:#123d2a; color:#58d68d; padding:3px 8px; border-radius:10px;">ADD: ${escapeHtml(counts.added || 0)}</span>
+                        <span style="background:#3d3212; color:#f5c542; padding:3px 8px; border-radius:10px;">MODIFY: ${escapeHtml(counts.modified || 0)}</span>
+                        <span style="background:#4a1717; color:#ff7675; padding:3px 8px; border-radius:10px;">REMOVE: ${escapeHtml(counts.removed || 0)}</span>
+                    </div>
+                    ${ico.notes ? `<div style="margin-top:6px;">Notas: ${escapeHtml(ico.notes)}</div>` : ''}
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="background:#111827;">
+                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Accion</th>
+                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Modelo</th>
+                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">BOM level</th>
+                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Material</th>
+                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Campo</th>
+                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Antes</th>
+                            <th style="padding:7px; border-top:1px solid #34495e; border-bottom:1px solid #34495e; text-align:left;">Despues</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${renderDiffRows(cambios)}
+                    </tbody>
+                </table>
+            `;
+        } catch (error) {
+            console.error('Error detalle ICO:', error);
+            title.textContent = 'Error cargando detalle';
+            content.innerHTML = `<div style="padding:12px; color:#e74c3c;">${escapeHtml(error.message)}</div>`;
+        }
+    }
+
+    async function aprobarIcoActual() {
+        if (!requierePermisoCrearIco()) return;
+        if (!icoActualId) {
+            icoAlert('No hay ICO activo para aprobar.');
+            return;
+        }
+        if (!confirm('Aprobar este ICO? Una vez aprobado quedara inmutable y los cambios se aplicaran al BOM vigente.')) {
+            return;
+        }
+        const btn = document.getElementById('btnAprobarIco');
+        if (btn) btn.disabled = true;
+        try {
+            const response = await fetch(`/api/icos/${icoActualId}/approve`, { method: 'POST' });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                const errors = (data.errors || []).join('<br>');
+                throw new Error(errors || data.error || 'No se pudo aprobar el ICO');
+            }
+            icoAlert('ICO aprobado correctamente. Los cambios fueron aplicados al BOM.');
+            icoActualId = null;
+            cerrarModalICO();
+            if (typeof consultarBOMOriginal === 'function') {
+                try { consultarBOMOriginal(); } catch (_) {}
+            }
+        } catch (error) {
+            console.error('Error aprobando ICO:', error);
+            icoAlert(`Error aprobando ICO:<br>${error.message}`);
+            if (btn) btn.disabled = false;
+        }
+    }
 
     function cargarDatosBOMEnTabla(datos) {
         // Si se pasa un string (modelo), cargar desde servidor
@@ -318,7 +1361,7 @@
             if (modelo === 'todos' || !modelo || modelo.trim() === '') {
                 showCustomAlert(' Debe seleccionar un modelo específico.<br><br>Utilice el buscador para seleccionar un modelo (ej: EBR30299301, EBR30299302, etc.)');
                 const tbody = document.querySelector('#bomTableBody');
-                tbody.innerHTML = '<tr><td colspan="14" class="no-data">Seleccione un modelo específico para visualizar los datos de BOM.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="no-data">Seleccione un modelo específico para visualizar los datos de BOM.</td></tr>';
                 return;
             }
             
@@ -391,7 +1434,7 @@
         tbody.innerHTML = '';
         
         if (!datos || datos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="14" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
             return;
         }
         
@@ -450,14 +1493,12 @@
             row.innerHTML = `
                 <td>${selectorCheckbox}</td>
                 ${crearCelda(item.numeroParte)}
-                ${crearCelda(item.side)}
                 ${crearCelda(item.tipoMaterial)}
                 ${crearCelda(item.classification)}
                 ${crearCelda(item.especificacionMaterial)}
                 ${crearCelda(item.vender)}
                 ${crearCelda(limpiarNumero(item.cantidadTotal || '0'))}
                 ${crearCelda(item.ubicacion)}
-                ${crearCelda(item.posicionAssy || '')}
                 ${crearCelda(item.materialSustituto)}
                 ${crearCeldaCheckbox(item.materialOriginal, index, 'materialOriginal')}
                 ${crearCelda(item.registrador)}
@@ -937,7 +1978,7 @@
         
         // Mostrar indicador de carga
         const tbody = document.querySelector('#bomTableBody');
-        tbody.innerHTML = '<tr><td colspan="15" class="bom-loading"><div>Cargando datos de BOM para modelo: ' + modeloSeleccionado + '...</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="bom-loading"><div>Cargando datos de BOM para modelo: ' + modeloSeleccionado + '...</div></td></tr>';
         
         
         // Cargar datos desde el servidor
@@ -1108,8 +2149,10 @@
         const dropdown = document.getElementById('bomDropdownList');
         if (dropdown) dropdown.style.display = 'none';
         
-        // Cerrar panel de edición si está abierto
-        closeBOMEditPanel();
+        // Quitar restos de modales legacy si quedaron abiertos antes de recargar el módulo.
+        document.getElementById('bomEditPanel')?.remove();
+        document.getElementById('bomEditPanelOverlay')?.remove();
+        document.getElementById('modalRegistroPosicion')?.remove();
         
         // Resetear flag de listeners para permitir reinicialización
         if (document.body.dataset.controlBOMListenersAttached) {
@@ -1121,6 +2164,8 @@
 
     // ========== PANEL DESLIZANTE DE EDICIÓN ==========
     function openBOMEditPanel(bomData) {
+        console.warn('Edicion directa de BOM deshabilitada. Use Crear ICO.');
+        return;
         console.log('📝 Abriendo panel de edición BOM', bomData);
         
         // Remover panel existente si hay uno
@@ -1261,14 +2306,12 @@
         
         // Agregar campos al formulario
         form.appendChild(createFormField('Número de Parte', 'numeroParte', bomData.numeroParte));
-        form.appendChild(createFormField('Side', 'side', bomData.side));
         form.appendChild(createFormField('Tipo de Material', 'tipoMaterial', bomData.tipoMaterial));
         form.appendChild(createFormField('Classification', 'classification', bomData.classification));
         form.appendChild(createFormField('Especificación de Material', 'especificacionMaterial', bomData.especificacionMaterial));
         form.appendChild(createFormField('Vendor', 'vender', bomData.vender));
         form.appendChild(createFormField('Cantidad Total', 'cantidadTotal', bomData.cantidadTotal, 'number'));
         form.appendChild(createFormField('Ubicación', 'ubicacion', bomData.ubicacion));
-        form.appendChild(createFormField('Posición ASSY', 'posicionAssy', bomData.posicionAssy));
         form.appendChild(createFormField('Material Sustituto', 'materialSustituto', bomData.materialSustituto));
         
         // Botones del formulario
@@ -1404,6 +2447,8 @@
     }
 
     function saveBOMEdit() {
+        showCustomAlert('La edicion directa del BOM esta deshabilitada. Usa Crear ICO.');
+        return;
         const panel = document.getElementById('bomEditPanel');
         const form = document.getElementById('bomEditForm');
         
@@ -1415,14 +2460,12 @@
             modelo: panel.dataset.modelo,
             codigoMaterial: panel.dataset.codigoMaterial,
             numeroParte: formData.get('numeroParte'),
-            side: formData.get('side'),
             tipoMaterial: formData.get('tipoMaterial'),
             classification: formData.get('classification'),
             especificacionMaterial: formData.get('especificacionMaterial'),
             vender: formData.get('vender'),
             cantidadTotal: formData.get('cantidadTotal'),
             ubicacion: formData.get('ubicacion'),
-            posicionAssy: formData.get('posicionAssy'),
             materialSustituto: formData.get('materialSustituto')
         };
         
@@ -1594,6 +2637,8 @@
     }
     
     function abrirModalRegistroPosicion() {
+        showCustomAlert('La edicion directa de posiciones esta deshabilitada. Usa Crear ICO.');
+        return;
         console.log('📍 Abriendo modal de registro de posición');
         
         // Crear el modal si no existe
@@ -1678,6 +2723,8 @@
     }
     
     function guardarPosicionesAssy() {
+        showCustomAlert('La edicion directa de posiciones esta deshabilitada. Usa Crear ICO.');
+        return;
         console.log(' Guardando posiciones ASSY');
         
         // Recopilar todos los inputs
@@ -1770,18 +2817,10 @@
     window.eliminarBOM = eliminarBOM;
     window.mostrarSustitutoBOM = mostrarSustitutoBOM;
     window.exportarExcelBOM = exportarExcelBOM;
-    window.importarExcelBOM = importarExcelBOM;
     window.filtrarModelos = filtrarModelos;
     window.mostrarDropdown = mostrarDropdown;
     window.seleccionarModelo = seleccionarModelo;
-    window.openBOMEditPanel = openBOMEditPanel;
-    window.closeBOMEditPanel = closeBOMEditPanel;
-    window.saveBOMEdit = saveBOMEdit;
     window.aplicarFiltroClassification = aplicarFiltroClassification;
-    window.createModalRegistroPosicion = createModalRegistroPosicion;
-    window.abrirModalRegistroPosicion = abrirModalRegistroPosicion;
-    window.cerrarModalRegistroPosicion = cerrarModalRegistroPosicion;
-    window.guardarPosicionesAssy = guardarPosicionesAssy;
 
 </script>
 

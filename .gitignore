@@ -36,7 +36,8 @@ LPT9.txt
 ./history/
 .history
 .playwright-cli
-
+/graphify-out
+/backups
 
 # Python
 __pycache__/

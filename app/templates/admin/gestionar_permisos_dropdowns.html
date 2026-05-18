@@ -1343,11 +1343,18 @@
                         <div class="permission-path">
                             <i class="fas fa-folder me-1"></i>
                             <span class="permission-badge">${permission.pagina.replace('LISTA_', '')}</span>
+                            ${permission.boton === 'Crear ICO' ? '<span class="permission-badge">Acción ICO</span>' : ''}
                         </div>
                         <div class="permission-path">
                             <i class="fas fa-layer-group me-1"></i>
                             <span>${permission.seccion}</span>
                         </div>
+                        ${permission.descripcion ? `
+                            <div class="permission-path">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <span>${permission.descripcion}</span>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 
