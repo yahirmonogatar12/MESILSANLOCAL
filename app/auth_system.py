@@ -30,11 +30,11 @@ _BUTTON_PERMISSIONS_CACHE = {}
 _BUTTON_PERMISSIONS_CACHE_LOCK = threading.Lock()
 _BUTTON_PERMISSIONS_CACHE_TTL = max(60, int(os.getenv('PERMISSIONS_CACHE_TTL_SECONDS', '300')))
 
-ICO_CREATE_PERMISSION = {
+ECO_CREATE_PERMISSION = {
     'pagina': 'LISTA_INFORMACIONBASICA',
     'seccion': 'Control de produccion',
-    'boton': 'Crear ICO',
-    'descripcion': 'Permite crear, importar, aprobar, cancelar y borrar ICOS desde Control de BOM',
+    'boton': 'Crear ECO',
+    'descripcion': 'Permite crear, importar, aprobar, cancelar y borrar ECOs desde Control de BOM',
 }
 
 class AuthSystem:
@@ -435,10 +435,10 @@ class AuthSystem:
 
             # LISTA INFORMACIÓN BÁSICA - Control de produccion
             (
-                ICO_CREATE_PERMISSION['pagina'],
-                ICO_CREATE_PERMISSION['seccion'],
-                ICO_CREATE_PERMISSION['boton'],
-                ICO_CREATE_PERMISSION['descripcion'],
+                ECO_CREATE_PERMISSION['pagina'],
+                ECO_CREATE_PERMISSION['seccion'],
+                ECO_CREATE_PERMISSION['boton'],
+                ECO_CREATE_PERMISSION['descripcion'],
             ),
             
             # LISTA CONTROL DE PRODUCCIÓN - Información básica

@@ -62,7 +62,7 @@ from .api_po_wo import registrar_rutas_po_wo
 from .api_raw_modelos import api_raw
 
 # Importar sistema de autenticación mejorado
-from .auth_system import AuthSystem, ICO_CREATE_PERMISSION
+from .auth_system import AuthSystem, ECO_CREATE_PERMISSION
 from .db import (
     agregar_control_material_almacen,
     agregar_entrada_aereo,
@@ -76,31 +76,31 @@ from .db import (
 from .db_mysql import (
     actualizar_inventario,
     actualizar_material_completo,
-    aprobar_ico,
+    aprobar_eco,
     cargar_configuracion,
-    cancelar_ico,
-    contar_icos,
-    crear_ico,
-    eliminar_ico,
+    cancelar_eco,
+    contar_ecos,
+    crear_eco,
+    eliminar_eco,
     execute_query,
     guardar_bom_item,
     guardar_configuracion,
     guardar_material,
-    importar_items_ico_desde_dataframe,
+    importar_items_eco_desde_dataframe,
     insertar_bom_desde_dataframe,
     listar_bom_por_modelo,
-    listar_icos,
+    listar_ecos,
     obtener_bom_por_modelo,
-    obtener_diff_ico,
+    obtener_diff_eco,
     obtener_ecn_ks,
-    obtener_ico_detalle,
+    obtener_eco_detalle,
     obtener_inventario,
     obtener_materiales,
 )
 from .db_mysql import (
-    crear_ico_desde_excel,
-    crear_ico_familia_desde_excel,
-    obtener_scope_ico,
+    crear_eco_desde_excel,
+    crear_eco_familia_desde_excel,
+    obtener_scope_eco,
     resolver_familia,
     _ks_fetch_bom_items_multi,
 )
@@ -406,8 +406,8 @@ def permisos_botones_pagina(usuario, pagina):
     return auth_system.obtener_permisos_botones_usuario(usuario, pagina)
 
 
-def _usuario_puede_crear_ico(username=None):
-    """Permiso específico para crear/modificar ICOS desde Control BOM."""
+def _usuario_puede_crear_eco(username=None):
+    """Permiso específico para crear/modificar ECOs desde Control BOM."""
     try:
         username = username or session.get("usuario")
         if not username:
@@ -416,29 +416,31 @@ def _usuario_puede_crear_ico(username=None):
         if auth_system.obtener_rol_principal_usuario(username) == "superadmin":
             return True
 
-        return auth_system.verificar_permiso_boton(
+        if auth_system.verificar_permiso_boton(
             username,
-            ICO_CREATE_PERMISSION["pagina"],
-            ICO_CREATE_PERMISSION["seccion"],
-            ICO_CREATE_PERMISSION["boton"],
-        )
+            ECO_CREATE_PERMISSION["pagina"],
+            ECO_CREATE_PERMISSION["seccion"],
+            ECO_CREATE_PERMISSION["boton"],
+        ):
+            return True
+        return False
     except Exception as e:
-        print(f"Error verificando permiso Crear ICO: {e}")
+        print(f"Error verificando permiso Crear ECO: {e}")
         return False
 
 
-def requiere_permiso_crear_ico(f):
-    """Bloquear APIs de creación/aprobación de ICOS si el rol no tiene permiso."""
+def requiere_permiso_crear_eco(f):
+    """Bloquear APIs de creación/aprobación de ECOs si el rol no tiene permiso."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not _usuario_puede_crear_ico():
+        if not _usuario_puede_crear_eco():
             return jsonify({
                 "success": False,
-                "error": "No tienes permiso para crear o modificar ICOS.",
+                "error": "No tienes permiso para crear o modificar ECOs.",
                 "permiso_requerido": (
-                    f"{ICO_CREATE_PERMISSION['pagina']} > "
-                    f"{ICO_CREATE_PERMISSION['seccion']} > "
-                    f"{ICO_CREATE_PERMISSION['boton']}"
+                    f"{ECO_CREATE_PERMISSION['pagina']} > "
+                    f"{ECO_CREATE_PERMISSION['seccion']} > "
+                    f"{ECO_CREATE_PERMISSION['boton']}"
                 ),
             }), 403
         return f(*args, **kwargs)
@@ -1065,7 +1067,7 @@ def defect_management():
     )
 
 
-@app.route("/favicon.ico")
+@app.route("/favicon.eco")
 def favicon():
     """Servir favicon usando un icono existente"""
     return send_from_directory(
@@ -4375,7 +4377,7 @@ def api_raw_search():
         """
         params = (part_no, part_no, f"%{part_no}%", part_no)
 
-        # CRÍTICO: Usar fetch='all' para obtener los datos, no el rowcount
+        # CRÍTECO: Usar fetch='all' para obtener los datos, no el rowcount
         result = execute_query(sql, params, fetch="all")
 
         # Verificar que result sea una lista/tupla antes de usar len()
@@ -6839,7 +6841,7 @@ def _json_safe_datetime(value):
     return value
 
 
-def _serialize_ico_row(row):
+def _serialize_eco_row(row):
     if not row:
         return row
     data = dict(row)
@@ -6852,18 +6854,18 @@ def _serialize_ico_row(row):
     return data
 
 
-@app.route("/api/icos", methods=["GET"])
+@app.route("/api/ecos", methods=["GET"])
 @login_requerido
-def api_icos_list():
-    """Listar ICOS/cambios de ingenieria (historial unificado MES + KS)."""
+def api_ecos_list():
+    """Listar ECOs/cambios de ingenieria (historial unificado MES + KS)."""
     try:
         status = request.args.get("status")
         part_no = request.args.get("part_no")
         origen = request.args.get("origen")
-        ico_no = request.args.get("ico_no")
+        eco_no = request.args.get("eco_no")
         date_from = request.args.get("date_from")
         date_to = request.args.get("date_to")
-        filters_active = any([status, part_no, origen, ico_no, date_from, date_to])
+        filters_active = any([status, part_no, origen, eco_no, date_from, date_to])
         page = max(1, int(request.args.get("page", 1) or 1))
         page_size = max(1, min(int(request.args.get("page_size", 500) or 500), 500))
         if filters_active:
@@ -6874,27 +6876,27 @@ def api_icos_list():
             page_size = 200
             limit = 200
             offset = 0
-        rows = listar_icos(
+        rows = listar_ecos(
             status=status,
             part_no=part_no,
             limit=limit,
             origen=origen,
-            ico_no=ico_no,
+            eco_no=eco_no,
             date_from=date_from,
             date_to=date_to,
             offset=offset,
         )
-        total = contar_icos(
+        total = contar_ecos(
             status=status,
             part_no=part_no,
             origen=origen,
-            ico_no=ico_no,
+            eco_no=eco_no,
             date_from=date_from,
             date_to=date_to,
         )
         return jsonify({
             "success": True,
-            "data": [_serialize_ico_row(r) for r in rows],
+            "data": [_serialize_eco_row(r) for r in rows],
             "meta": {
                 "total": total,
                 "page": page,
@@ -6905,15 +6907,15 @@ def api_icos_list():
             },
         })
     except Exception as e:
-        print(f"Error listando ICOS: {e}")
+        print(f"Error listando ECOs: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/export", methods=["GET"])
+@app.route("/api/ecos/export", methods=["GET"])
 @login_requerido
-def api_icos_export():
-    """Exportar a Excel los ICOS filtrados."""
+def api_ecos_export():
+    """Exportar a Excel los ECOs filtrados."""
     try:
         from openpyxl import Workbook
         from openpyxl.styles import Alignment, Font, PatternFill
@@ -6921,25 +6923,25 @@ def api_icos_export():
         status = request.args.get("status")
         part_no = request.args.get("part_no")
         origen = request.args.get("origen")
-        ico_no = request.args.get("ico_no")
+        eco_no = request.args.get("eco_no")
         date_from = request.args.get("date_from")
         date_to = request.args.get("date_to")
-        filters_active = any([status, part_no, origen, ico_no, date_from, date_to])
-        rows = listar_icos(
+        filters_active = any([status, part_no, origen, eco_no, date_from, date_to])
+        rows = listar_ecos(
             status=status,
             part_no=part_no,
             limit=None if filters_active else 200,
             origen=origen,
-            ico_no=ico_no,
+            eco_no=eco_no,
             date_from=date_from,
             date_to=date_to,
         )
 
         wb = Workbook()
         ws = wb.active
-        ws.title = "ICOS"
+        ws.title = "ECOs"
         headers = [
-            "Origen", "ICO", "ID", "Modelo representante", "Familia/Scope",
+            "Origen", "ECO", "ID", "Modelo representante", "Familia/Scope",
             "Revision", "Fecha efectiva", "Estatus", "Items",
             "Creado por", "Aprobado por", "Creado", "Aprobado", "Actualizado",
         ]
@@ -6954,7 +6956,7 @@ def api_icos_export():
         for row in rows:
             ws.append([
                 row.get("origen"),
-                row.get("ico_no"),
+                row.get("eco_no"),
                 row.get("id"),
                 row.get("part_no"),
                 row.get("scope_parts") or row.get("ks_family_prefix") or "",
@@ -6979,7 +6981,7 @@ def api_icos_export():
         meta.append(["tipo", origen or "TODOS"])
         meta.append(["estatus", status or "TODOS"])
         meta.append(["modelo", part_no or ""])
-        meta.append(["ico_id", ico_no or ""])
+        meta.append(["eco_id", eco_no or ""])
         meta.append(["desde", date_from or ""])
         meta.append(["hasta", date_to or ""])
         meta.append(["total_exportado", len(rows)])
@@ -6992,28 +6994,28 @@ def api_icos_export():
         return send_file(
             bio,
             as_attachment=True,
-            download_name=f"ICOS_FILTRADOS_{ts}.xlsx",
+            download_name=f"ECOS_FILTRADOS_{ts}.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     except Exception as e:
-        print(f"Error exportando ICOS: {e}")
+        print(f"Error exportando ECOs: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/<int:ico_id>", methods=["GET"])
+@app.route("/api/ecos/<int:eco_id>", methods=["GET"])
 @login_requerido
-def api_icos_detail(ico_id):
-    """Obtener ICO con items."""
+def api_ecos_detail(eco_id):
+    """Obtener ECO con items."""
     try:
-        ico = obtener_ico_detalle(ico_id)
-        if not ico:
-            return jsonify({"success": False, "error": "ICO no encontrado"}), 404
-        ico = _serialize_ico_row(ico)
-        ico["items"] = [_serialize_ico_row(i) for i in ico.get("items", [])]
-        return jsonify({"success": True, "data": ico})
+        eco = obtener_eco_detalle(eco_id)
+        if not eco:
+            return jsonify({"success": False, "error": "ECO no encontrado"}), 404
+        eco = _serialize_eco_row(eco)
+        eco["items"] = [_serialize_eco_row(i) for i in eco.get("items", [])]
+        return jsonify({"success": True, "data": eco})
     except Exception as e:
-        print(f"Error obteniendo ICO: {e}")
+        print(f"Error obteniendo ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -7026,7 +7028,7 @@ def api_ecn_ks_detail(hist_seq):
         ecn = obtener_ecn_ks(hist_seq)
         if not ecn:
             return jsonify({"success": False, "error": "ECN no encontrado"}), 404
-        ecn = _serialize_ico_row(ecn)
+        ecn = _serialize_eco_row(ecn)
         return jsonify({"success": True, "data": ecn})
     except Exception as e:
         print(f"Error obteniendo ECN KS {hist_seq}: {e}")
@@ -7034,24 +7036,24 @@ def api_ecn_ks_detail(hist_seq):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos", methods=["POST"])
+@app.route("/api/ecos", methods=["POST"])
 @login_requerido
-@requiere_permiso_crear_ico
-def api_icos_create():
-    """Crear ICO DRAFT y copiar el BOM actual del modelo si se solicita."""
+@requiere_permiso_crear_eco
+def api_ecos_create():
+    """Crear ECO DRAFT y copiar el BOM actual del modelo si se solicita."""
     try:
         data = request.get_json() or {}
         usuario = session.get("usuario", "desconocido")
-        ico = crear_ico(data, usuario)
-        if not ico:
-            return jsonify({"success": False, "error": "No se pudo crear el ICO"}), 500
-        ico = _serialize_ico_row(ico)
-        ico["items"] = [_serialize_ico_row(i) for i in ico.get("items", [])]
-        return jsonify({"success": True, "data": ico}), 201
+        eco = crear_eco(data, usuario)
+        if not eco:
+            return jsonify({"success": False, "error": "No se pudo crear el ECO"}), 500
+        eco = _serialize_eco_row(eco)
+        eco["items"] = [_serialize_eco_row(i) for i in eco.get("items", [])]
+        return jsonify({"success": True, "data": eco}), 201
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        print(f"Error creando ICO: {e}")
+        print(f"Error creando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -7084,7 +7086,7 @@ BOM_EXCEL_COLUMNS = [
 
 @app.route("/api/bom/download-excel", methods=["GET"])
 @login_requerido
-@requiere_permiso_crear_ico
+@requiere_permiso_crear_eco
 def api_bom_download_excel():
     """Descargar BOM actual de un modelo en formato Excel editable."""
     from openpyxl import Workbook
@@ -7096,7 +7098,7 @@ def api_bom_download_excel():
         return jsonify({"success": False, "error": "part_no requerido"}), 400
 
     try:
-        from .db_mysql import _ks_fetch_current_bom_items
+        from .db_mysql import _eco_excel_row_ref, _ks_fetch_current_bom_items
         rows = _ks_fetch_current_bom_items(part_no, bom_rev) or []
 
         wb = Workbook()
@@ -7114,7 +7116,10 @@ def api_bom_download_excel():
             cell.alignment = Alignment(horizontal="center")
 
         for row in rows:
-            ws.append([row.get(key) for _label, key in BOM_EXCEL_COLUMNS])
+            ws.append([
+                _eco_excel_row_ref(row) if label == "__row_id" else row.get(key)
+                for label, key in BOM_EXCEL_COLUMNS
+            ])
 
         ws.freeze_panes = "B2"
         ws.column_dimensions["A"].hidden = True
@@ -7145,7 +7150,7 @@ def api_bom_download_excel():
 
 @app.route("/api/bom/resolve-family", methods=["GET"])
 @login_requerido
-@requiere_permiso_crear_ico
+@requiere_permiso_crear_eco
 def api_bom_resolve_family():
     """Resolver una familia + sufijos a part_no existentes en ks_part_catalog."""
     family = (request.args.get("family") or "").strip()
@@ -7223,6 +7228,7 @@ def _build_family_excel(part_numbers, bom_revision=None):
         cell.alignment = Alignment(horizontal="center")
 
     sorted_keys = sorted(union.keys(), key=lambda k: (union[k]["row"].get("bom_level") or "", k))
+    origin_rows = []
     for key in sorted_keys:
         entry = union[key]
         row = entry["row"]
@@ -7236,6 +7242,7 @@ def _build_family_excel(part_numbers, bom_revision=None):
             else:
                 excel_row.append(row.get(source_key))
         ws.append(excel_row)
+        origin_rows.append([key] + [row.get(field) for field in FAMILY_EXCEL_ORIGIN_FIELDS])
 
     ws.freeze_panes = "C2"
     ws.column_dimensions["A"].hidden = True
@@ -7250,12 +7257,18 @@ def _build_family_excel(part_numbers, bom_revision=None):
     ws_meta.append(["exported_at", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")])
     ws_meta.sheet_state = "hidden"
 
+    ws_origin = wb.create_sheet("_family_origin")
+    ws_origin.append(["__row_key"] + FAMILY_EXCEL_ORIGIN_FIELDS)
+    for origin_row in origin_rows:
+        ws_origin.append(origin_row)
+    ws_origin.sheet_state = "hidden"
+
     return wb
 
 
 @app.route("/api/bom/download-excel-family", methods=["GET"])
 @login_requerido
-@requiere_permiso_crear_ico
+@requiere_permiso_crear_eco
 def api_bom_download_excel_family():
     """Descargar Excel multi-modelo: union de items de los modelos del scope."""
     family = (request.args.get("family") or "").strip().upper()
@@ -7286,11 +7299,11 @@ def api_bom_download_excel_family():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/from-excel", methods=["POST"])
+@app.route("/api/ecos/from-excel", methods=["POST"])
 @login_requerido
-@requiere_permiso_crear_ico
-def api_icos_from_excel():
-    """Crear ICO DRAFT desde Excel modificado: valida, calcula diff y persiste."""
+@requiere_permiso_crear_eco
+def api_ecos_from_excel():
+    """Crear ECO DRAFT desde Excel modificado: valida, calcula diff y persiste."""
     from openpyxl import load_workbook
 
     if "file" not in request.files:
@@ -7300,7 +7313,7 @@ def api_icos_from_excel():
         return jsonify({"success": False, "errors": ["No se selecciono ningun archivo"]}), 400
 
     metadata = {
-        "ico_no": request.form.get("ico_no"),
+        "eco_no": request.form.get("eco_no"),
         "part_no": request.form.get("part_no"),
         "bom_revision": request.form.get("bom_revision"),
         "effective_at": request.form.get("effective_at"),
@@ -7339,13 +7352,21 @@ def api_icos_from_excel():
             excel_rows.append(obj)
 
         usuario = session.get("usuario", "desconocido")
-        result = crear_ico_desde_excel(metadata, excel_rows, usuario)
+        result = crear_eco_desde_excel(metadata, excel_rows, usuario)
         status_code = 201 if result.get("success") else 400
         return jsonify(result), status_code
     except Exception as e:
-        print(f"Error creando ICO desde Excel: {e}")
+        print(f"Error creando ECO desde Excel: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "errors": [str(e)]}), 500
+
+
+FAMILY_EXCEL_ORIGIN_FIELDS = [
+    "item_no", "item_name", "spec", "qty", "unit", "location_text",
+    "maker", "supplier", "item_class", "item_process", "process_name",
+    "valid_from", "valid_to", "is_alternate", "alt_item_no",
+    "alt_item_name", "alt_spec", "alt_maker", "remark",
+]
 
 
 FAMILY_EXCEL_COLUMNS = [
@@ -7356,11 +7377,11 @@ FAMILY_EXCEL_COLUMNS = [
 ]
 
 
-@app.route("/api/icos/from-excel-family", methods=["POST"])
+@app.route("/api/ecos/from-excel-family", methods=["POST"])
 @login_requerido
-@requiere_permiso_crear_ico
-def api_icos_from_excel_family():
-    """Crear ICO de familia DRAFT desde Excel multi-modelo."""
+@requiere_permiso_crear_eco
+def api_ecos_from_excel_family():
+    """Crear ECO de familia DRAFT desde Excel multi-modelo."""
     from openpyxl import load_workbook
 
     if "file" not in request.files:
@@ -7370,7 +7391,7 @@ def api_icos_from_excel_family():
         return jsonify({"success": False, "errors": ["No se selecciono ningun archivo"]}), 400
 
     metadata = {
-        "ico_no": request.form.get("ico_no"),
+        "eco_no": request.form.get("eco_no"),
         "family_prefix": request.form.get("family_prefix"),
         "bom_revision": request.form.get("bom_revision"),
         "effective_at": request.form.get("effective_at"),
@@ -7385,6 +7406,13 @@ def api_icos_from_excel_family():
     try:
         wb = load_workbook(file, data_only=True)
         ws = wb["BOM_FAMILIA"] if "BOM_FAMILIA" in wb.sheetnames else wb.active
+        if "_family_origin" not in wb.sheetnames:
+            return jsonify({
+                "success": False,
+                "errors": [
+                    "Este Excel de familia no tiene hoja de control _family_origin. Descargue de nuevo el BOM de familia y vuelva a aplicar sus cambios para detectar el diff completo."
+                ],
+            }), 400
 
         header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
         if not header_row:
@@ -7398,6 +7426,44 @@ def api_icos_from_excel_family():
             }), 400
 
         idx_map = {col: headers.index(col) for col in FAMILY_EXCEL_COLUMNS}
+        origin_by_key = {}
+        ws_origin = wb["_family_origin"]
+        origin_header = next(ws_origin.iter_rows(min_row=1, max_row=1, values_only=True), None)
+        if origin_header:
+            origin_headers = [str(h).strip() if h is not None else "" for h in origin_header]
+            origin_idx = {col: origin_headers.index(col) for col in origin_headers if col}
+            missing_origin = [
+                col for col in (["__row_key"] + FAMILY_EXCEL_ORIGIN_FIELDS)
+                if col not in origin_idx
+            ]
+            if missing_origin:
+                return jsonify({
+                    "success": False,
+                    "errors": [
+                        "Este Excel de familia tiene formato de origen anterior. Descargue de nuevo el BOM de familia para detectar todos los campos editables."
+                    ],
+                }), 400
+            if "__row_key" in origin_idx:
+                for origin_row in ws_origin.iter_rows(min_row=2, values_only=True):
+                    row_key_idx = origin_idx["__row_key"]
+                    row_key = origin_row[row_key_idx] if row_key_idx < len(origin_row) else None
+                    row_key = str(row_key or "").strip()
+                    if not row_key:
+                        continue
+                    origin_by_key[row_key] = {}
+                    for field in FAMILY_EXCEL_ORIGIN_FIELDS:
+                        if field not in origin_idx:
+                            continue
+                        field_idx = origin_idx[field]
+                        origin_by_key[row_key][field] = origin_row[field_idx] if field_idx < len(origin_row) else None
+        if not origin_by_key:
+            return jsonify({
+                "success": False,
+                "errors": [
+                    "La hoja _family_origin esta vacia. Descargue de nuevo el BOM de familia antes de crear el ECO."
+                ],
+            }), 400
+
         excel_rows = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             if row is None or all(v in (None, "") for v in row):
@@ -7406,38 +7472,41 @@ def api_icos_from_excel_family():
             for col in FAMILY_EXCEL_COLUMNS:
                 i = idx_map[col]
                 obj[col] = row[i] if i < len(row) else None
+            row_key = str(obj.get("__row_key") or "").strip()
+            if row_key in origin_by_key:
+                obj["__origin_values"] = origin_by_key[row_key]
             excel_rows.append(obj)
 
         usuario = session.get("usuario", "desconocido")
-        result = crear_ico_familia_desde_excel(metadata, excel_rows, scope_parts, usuario)
+        result = crear_eco_familia_desde_excel(metadata, excel_rows, scope_parts, usuario)
         status_code = 201 if result.get("success") else 400
         return jsonify(result), status_code
     except Exception as e:
-        print(f"Error creando ICO familia desde Excel: {e}")
+        print(f"Error creando ECO familia desde Excel: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "errors": [str(e)]}), 500
 
 
-@app.route("/api/icos/<int:ico_id>/scope", methods=["GET"])
+@app.route("/api/ecos/<int:eco_id>/scope", methods=["GET"])
 @login_requerido
-def api_icos_scope(ico_id):
-    """Listar scope (part_no afectados) de un ICO."""
+def api_ecos_scope(eco_id):
+    """Listar scope (part_no afectados) de un ECO."""
     try:
-        rows = obtener_scope_ico(ico_id)
+        rows = obtener_scope_eco(eco_id)
         return jsonify({"success": True, "data": rows})
     except Exception as e:
-        print(f"Error obteniendo scope ICO {ico_id}: {e}")
+        print(f"Error obteniendo scope ECO {eco_id}: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/<int:ico_id>/diff", methods=["GET"])
+@app.route("/api/ecos/<int:eco_id>/diff", methods=["GET"])
 @login_requerido
-def api_icos_diff(ico_id):
-    """Obtener diff persistido de un ICO."""
+def api_ecos_diff(eco_id):
+    """Obtener diff persistido de un ECO."""
     try:
-        rows = obtener_diff_ico(ico_id)
-        rows = [_serialize_ico_row(r) for r in rows]
+        rows = obtener_diff_eco(eco_id)
+        rows = [_serialize_eco_row(r) for r in rows]
         added = [r for r in rows if r.get("action") == "ADD"]
         modified = [r for r in rows if r.get("action") == "MODIFY"]
         removed = [r for r in rows if r.get("action") == "REMOVE"]
@@ -7469,16 +7538,16 @@ def api_icos_diff(ico_id):
             },
         })
     except Exception as e:
-        print(f"Error obteniendo diff ICO {ico_id}: {e}")
+        print(f"Error obteniendo diff ECO {eco_id}: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/<int:ico_id>/items/import", methods=["POST"])
+@app.route("/api/ecos/<int:eco_id>/items/import", methods=["POST"])
 @login_requerido
-@requiere_permiso_crear_ico
-def api_icos_import_items(ico_id):
-    """Reemplazar items del ICO con un Excel completo de BOM."""
+@requiere_permiso_crear_eco
+def api_ecos_import_items(eco_id):
+    """Reemplazar items del ECO con un Excel completo de BOM."""
     if "file" not in request.files:
         return jsonify({"success": False, "error": "No se encontro el archivo"}), 400
     file = request.files["file"]
@@ -7487,65 +7556,65 @@ def api_icos_import_items(ico_id):
 
     try:
         df = pd.read_excel(file)
-        result = importar_items_ico_desde_dataframe(ico_id, df)
+        result = importar_items_eco_desde_dataframe(eco_id, df)
         return jsonify({"success": True, "data": result})
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
-        print(f"Error importando items ICO: {e}")
+        print(f"Error importando items ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/<int:ico_id>/approve", methods=["POST"])
+@app.route("/api/ecos/<int:eco_id>/approve", methods=["POST"])
 @login_requerido
-@requiere_permiso_crear_ico
-def api_icos_approve(ico_id):
-    """Aprobar ICO DRAFT. Desde este punto queda inmutable."""
+@requiere_permiso_crear_eco
+def api_ecos_approve(eco_id):
+    """Aprobar ECO DRAFT. Desde este punto queda inmutable."""
     try:
         usuario = session.get("usuario", "desconocido")
-        result = aprobar_ico(ico_id, usuario)
+        result = aprobar_eco(eco_id, usuario)
         if not result.get("success"):
             return jsonify({"success": False, "errors": result.get("errors", [])}), 400
-        ico = obtener_ico_detalle(ico_id)
-        ico = _serialize_ico_row(ico)
-        ico["items"] = [_serialize_ico_row(i) for i in ico.get("items", [])]
-        return jsonify({"success": True, "data": ico})
+        eco = obtener_eco_detalle(eco_id)
+        eco = _serialize_eco_row(eco)
+        eco["items"] = [_serialize_eco_row(i) for i in eco.get("items", [])]
+        return jsonify({"success": True, "data": eco})
     except Exception as e:
-        print(f"Error aprobando ICO: {e}")
+        print(f"Error aprobando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/<int:ico_id>/cancel", methods=["POST"])
+@app.route("/api/ecos/<int:eco_id>/cancel", methods=["POST"])
 @login_requerido
-@requiere_permiso_crear_ico
-def api_icos_cancel(ico_id):
-    """Cancelar ICO DRAFT; los aprobados no se modifican."""
+@requiere_permiso_crear_eco
+def api_ecos_cancel(eco_id):
+    """Cancelar ECO DRAFT; los aprobados no se modifican."""
     try:
         usuario = session.get("usuario", "desconocido")
-        result = cancelar_ico(ico_id, usuario)
+        result = cancelar_eco(eco_id, usuario)
         if not result.get("success"):
             return jsonify({"success": False, "error": result.get("error", "No se pudo cancelar")}), 400
         return jsonify({"success": True})
     except Exception as e:
-        print(f"Error cancelando ICO: {e}")
+        print(f"Error cancelando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/icos/<int:ico_id>", methods=["DELETE"])
+@app.route("/api/ecos/<int:eco_id>", methods=["DELETE"])
 @login_requerido
-@requiere_permiso_crear_ico
-def api_icos_delete(ico_id):
-    """Eliminar fisicamente un ICO no aprobado."""
+@requiere_permiso_crear_eco
+def api_ecos_delete(eco_id):
+    """Eliminar fisicamente un ECO no aprobado."""
     try:
-        result = eliminar_ico(ico_id)
+        result = eliminar_eco(eco_id)
         if not result.get("success"):
             return jsonify({"success": False, "error": result.get("error", "No se pudo borrar")}), 400
         return jsonify({"success": True})
     except Exception as e:
-        print(f"Error borrando ICO: {e}")
+        print(f"Error borrando ECO: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -7747,7 +7816,7 @@ def api_bom_update():
     """
     return jsonify({
         "success": False,
-        "error": "La edicion directa de bom esta deshabilitada. Use Crear ICO para modificar/publicar el BOM KS."
+        "error": "La edicion directa de bom esta deshabilitada. Use Crear ECO para modificar/publicar el BOM KS."
     }), 409
     try:
         data = request.get_json()
@@ -7833,7 +7902,7 @@ def api_bom_update_posiciones_assy():
     """Actualiza múltiples posiciones ASSY en el BOM de forma optimizada"""
     return jsonify({
         "success": False,
-        "error": "La edicion directa de posiciones en bom esta deshabilitada. Use Crear ICO."
+        "error": "La edicion directa de posiciones en bom esta deshabilitada. Use Crear ECO."
     }), 409
     try:
         data = request.get_json()
@@ -9487,7 +9556,7 @@ def control_de_bom_ajax():
         return render_template(
             "INFORMACION BASICA/CONTROL_DE_BOM.html",
             modelos=modelos,
-            puede_crear_ico=_usuario_puede_crear_ico(),
+            puede_crear_eco=_usuario_puede_crear_eco(),
         )
     except Exception as e:
         print(f"Error al cargar template Control de BOM: {e}")
@@ -10118,7 +10187,7 @@ def control_bom_ajax():
         return render_template(
             "INFORMACION BASICA/CONTROL_DE_BOM.html",
             modelos=modelos,
-            puede_crear_ico=_usuario_puede_crear_ico(),
+            puede_crear_eco=_usuario_puede_crear_eco(),
         )
     except Exception as e:
         print(f"Error al cargar template Control BOM AJAX: {e}")
@@ -22659,7 +22728,7 @@ def api_inventario():
 @app.route("/api/plan-micom/generar", methods=["POST"])
 @login_requerido
 def api_plan_micom_generar():
-    """API para generar plan MICOM desde selección de modelos"""
+    """API para generar plan MECOM desde selección de modelos"""
     try:
         data = request.get_json()
         if not data or not isinstance(data, list):
@@ -22693,7 +22762,7 @@ def api_plan_micom_generar():
                 fisico = float(modelo_data["fisico"])
                 dif = float(modelo_data["dif"])
                 comentarios = str(
-                    modelo_data.get("comentarios", "MICOM auto-plan")
+                    modelo_data.get("comentarios", "MECOM auto-plan")
                 ).strip()
 
                 # Validaciones
@@ -22714,12 +22783,12 @@ def api_plan_micom_generar():
                 "success": True,
                 "modelos_procesados": modelos_procesados,
                 "errores": errores,
-                "message": f"Plan MICOM generado: {modelos_procesados} modelos procesados",
+                "message": f"Plan MECOM generado: {modelos_procesados} modelos procesados",
             }
         )
 
     except Exception as e:
-        print(f" Error generando plan MICOM: {e}")
+        print(f" Error generando plan MECOM: {e}")
         return jsonify({"error": str(e)}), 500
 
 

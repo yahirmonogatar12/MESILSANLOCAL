@@ -1329,10 +1329,14 @@
             permissions.forEach(permission => {
                 const permissionElement = document.createElement('div');
                 permissionElement.className = `permission-item ${permission.activo ? 'enabled' : 'disabled'}`;
+                const displayBoton = permission.boton === 'Crear ECO' ? 'Crear ECO' : permission.boton;
+                const displayDescripcion = permission.boton === 'Crear ECO'
+                    ? 'Permite crear, importar, aprobar, cancelar y borrar ECOs desde Control de BOM'
+                    : (permission.descripcion || '');
                 
                 permissionElement.innerHTML = `
                     <div class="permission-header">
-                        <div class="permission-title">${permission.boton}</div>
+                        <div class="permission-title">${displayBoton}</div>
                         <label class="permission-toggle">
                             <input type="checkbox" ${permission.activo ? 'checked' : ''} 
                                 onchange="togglePermission('${permission.pagina}', '${permission.seccion}', '${permission.boton}', this.checked)">
@@ -1343,16 +1347,16 @@
                         <div class="permission-path">
                             <i class="fas fa-folder me-1"></i>
                             <span class="permission-badge">${permission.pagina.replace('LISTA_', '')}</span>
-                            ${permission.boton === 'Crear ICO' ? '<span class="permission-badge">Acción ICO</span>' : ''}
+                            ${permission.boton === 'Crear ECO' ? '<span class="permission-badge">Acción ECO</span>' : ''}
                         </div>
                         <div class="permission-path">
                             <i class="fas fa-layer-group me-1"></i>
                             <span>${permission.seccion}</span>
                         </div>
-                        ${permission.descripcion ? `
+                        ${displayDescripcion ? `
                             <div class="permission-path">
                                 <i class="fas fa-info-circle me-1"></i>
-                                <span>${permission.descripcion}</span>
+                                <span>${displayDescripcion}</span>
                             </div>
                         ` : ''}
                     </div>

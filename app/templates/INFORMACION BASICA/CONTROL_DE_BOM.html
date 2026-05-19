@@ -41,13 +41,13 @@
         <button class="bom-btn consultar" id="btnConsultarBOM">
             Consultar
         </button>
-        {% if puede_crear_ico|default(false) %}
-        <button class="bom-btn registrar" id="btnCrearICO">
-            Crear ICO
+        {% if puede_crear_eco|default(false) %}
+        <button class="bom-btn registrar" id="btnCrearECO">
+            Crear ECO
         </button>
         {% endif %}
-        <button class="bom-btn consultar" id="btnVerICOS">
-            Ver ICOS
+        <button class="bom-btn consultar" id="btnVerECOS">
+            Ver ECOs
         </button>
         <button class="bom-btn exportar" id="btnExportarExcelBOM">
             Exportar al excel
@@ -104,71 +104,71 @@
     </div>
 </div>
 
-<!-- Modal para crear/importar/aprobar ICOS -->
-<div id="icoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10002; align-items:center; justify-content:center;">
+<!-- Modal para crear/importar/aprobar ECOs -->
+<div id="ecoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10002; align-items:center; justify-content:center;">
     <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; width:min(900px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
         <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
-            <h3 style="margin:0; color:#3498db; font-size:16px;">Crear ICO / Cambio de ingenieria</h3>
-            <button id="btnCerrarIcoModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+            <h3 style="margin:0; color:#3498db; font-size:16px;">Crear ECO / Cambio de ingenieria</h3>
+            <button id="btnCerrarEcoModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
         </div>
 
         <!-- Indicador de pasos -->
         <div style="display:flex; gap:8px; padding:12px 18px; border-bottom:1px solid #2c3e50;">
-            <div id="icoStepIndicator1" class="ico-step active" style="flex:1; padding:8px 10px; border-radius:5px; background:#27ae60; color:#fff; font-size:12px; font-weight:700;">1. Descargar BOM</div>
-            <div id="icoStepIndicator2" class="ico-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">2. Subir Excel modificado</div>
-            <div id="icoStepIndicator3" class="ico-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">3. Revisar y aprobar</div>
+            <div id="ecoStepIndicator1" class="eco-step active" style="flex:1; padding:8px 10px; border-radius:5px; background:#27ae60; color:#fff; font-size:12px; font-weight:700;">1. Descargar BOM</div>
+            <div id="ecoStepIndicator2" class="eco-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">2. Subir Excel modificado</div>
+            <div id="ecoStepIndicator3" class="eco-step" style="flex:1; padding:8px 10px; border-radius:5px; background:#34495e; color:#aaa; font-size:12px; font-weight:700;">3. Revisar y aprobar</div>
         </div>
 
         <!-- Paso 1: metadatos + descargar -->
-        <div id="icoStep1" style="padding:18px;">
+        <div id="ecoStep1" style="padding:18px;">
             <!-- Toggle alcance -->
             <div style="display:flex; gap:10px; margin-bottom:14px;">
                 <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
-                    <input type="radio" name="icoScopeKind" value="SINGLE" id="icoScopeSingle" checked>
-                    <span><b>ICO individual</b><br><span style="color:#8b98a8; font-size:11px;">Un solo modelo</span></span>
+                    <input type="radio" name="ecoScopeKind" value="SINGLE" id="ecoScopeSingle" checked>
+                    <span><b>ECO individual</b><br><span style="color:#8b98a8; font-size:11px;">Un solo modelo</span></span>
                 </label>
                 <label style="flex:1; padding:10px; border:1px solid #34495e; border-radius:5px; background:#111827; cursor:pointer; font-size:12px; display:flex; align-items:center; gap:8px;">
-                    <input type="radio" name="icoScopeKind" value="FAMILY" id="icoScopeFamily">
-                    <span><b>ICO de familia</b><br><span style="color:#8b98a8; font-size:11px;">Aplicar a varios modelos de una familia</span></span>
+                    <input type="radio" name="ecoScopeKind" value="FAMILY" id="ecoScopeFamily">
+                    <span><b>ECO de familia</b><br><span style="color:#8b98a8; font-size:11px;">Aplicar a varios modelos de una familia</span></span>
                 </label>
             </div>
 
             <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px;">
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ICO
-                    <input id="icoNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ECO
+                    <input id="ecoNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
                 </label>
-                <label id="icoPartNoLabel" style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Numero de parte / modelo
-                    <input id="icoPartNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                <label id="ecoPartNoLabel" style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Numero de parte / modelo
+                    <input id="ecoPartNoInput" type="text" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
                 </label>
                 <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Revision BOM nueva
-                    <input id="icoRevisionInput" type="text" value="R1" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                    <input id="ecoRevisionInput" type="text" value="R1" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
                 </label>
                 <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Fecha efectiva
-                    <input id="icoEffectiveAtInput" type="datetime-local" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                    <input id="ecoEffectiveAtInput" type="datetime-local" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
                 </label>
             </div>
 
             <!-- Campos solo para FAMILY -->
-            <div id="icoFamilyFields" style="display:none; margin-top:12px;">
+            <div id="ecoFamilyFields" style="display:none; margin-top:12px;">
                 <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:end;">
                     <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Familia (prefijo)
-                        <input id="icoFamilyInput" type="text" placeholder="Ej: EBR239662" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                        <input id="ecoFamilyInput" type="text" placeholder="Ej: EBR239662" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
                     </label>
                     <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Sufijos
-                        <input id="icoSuffixesInput" type="text" placeholder="Ej: 01,05,14" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                        <input id="ecoSuffixesInput" type="text" placeholder="Ej: 01,05,14" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
                     </label>
                     <button id="btnResolverFamilia" class="bom-btn consultar" type="button" style="padding:9px 14px;">Resolver</button>
                 </div>
-                <div id="icoFamilyResolveBox" style="margin-top:10px; padding:10px; border:1px solid #34495e; background:#0f1117; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
+                <div id="ecoFamilyResolveBox" style="margin-top:10px; padding:10px; border:1px solid #34495e; background:#0f1117; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
             </div>
 
             <label style="display:flex; flex-direction:column; gap:5px; font-size:12px; margin-top:12px;">Nombre del modelo (item_name)
-                <input id="icoItemNameInput" type="text" placeholder="Opcional: si esta vacio se autocompleta desde KS catalog" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
+                <input id="ecoItemNameInput" type="text" placeholder="Opcional: si esta vacio se autocompleta desde KS catalog" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff;">
             </label>
             <label style="display:flex; flex-direction:column; gap:5px; font-size:12px; margin-top:12px;">Notas
-                <textarea id="icoNotesInput" rows="3" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; resize:vertical;"></textarea>
+                <textarea id="ecoNotesInput" rows="3" style="padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; resize:vertical;"></textarea>
             </label>
-            <div id="icoStatusBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9;">
+            <div id="ecoStatusBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9;">
                 Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2. No edite la columna oculta __row_id.
             </div>
             <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap;">
@@ -178,12 +178,12 @@
         </div>
 
         <!-- Paso 2: upload + validacion -->
-        <div id="icoStep2" style="display:none; padding:18px;">
+        <div id="ecoStep2" style="display:none; padding:18px;">
             <div style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
                 Suba el Excel modificado. El sistema validara y mostrara los cambios detectados (anadidos, eliminados, modificados).
             </div>
-            <input type="file" id="icoExcelInput" accept=".xlsx,.xls" style="display:block; padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; width:100%;">
-            <div id="icoValidationBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
+            <input type="file" id="ecoExcelInput" accept=".xlsx,.xls" style="display:block; padding:9px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; width:100%;">
+            <div id="ecoValidationBox" style="margin-top:12px; padding:10px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; display:none;"></div>
             <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;">
                 <button id="btnVolverPaso1" class="bom-btn" type="button" style="background:#34495e;">&larr; Volver</button>
                 <button id="btnValidarExcel" class="bom-btn registrar" type="button">Validar y crear borrador</button>
@@ -191,37 +191,37 @@
         </div>
 
         <!-- Paso 3: preview diff + aprobar -->
-        <div id="icoStep3" style="display:none; padding:18px;">
-            <div id="icoDiffSummary" style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
+        <div id="ecoStep3" style="display:none; padding:18px;">
+            <div id="ecoDiffSummary" style="padding:12px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:14px;">
                 Resumen de cambios
             </div>
-            <div id="icoDiffDetails" style="max-height:380px; overflow:auto; border:1px solid #34495e; border-radius:6px;"></div>
+            <div id="ecoDiffDetails" style="max-height:380px; overflow:auto; border:1px solid #34495e; border-radius:6px;"></div>
             <div style="display:flex; gap:10px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;">
-                <button id="btnCancelarIcoDraft" class="bom-btn eliminar" type="button">Cancelar borrador</button>
-                <button id="btnAprobarIco" class="bom-btn consultar" type="button">Aprobar ICO y aplicar cambios</button>
+                <button id="btnCancelarEcoDraft" class="bom-btn eliminar" type="button">Cancelar borrador</button>
+                <button id="btnAprobarEco" class="bom-btn consultar" type="button">Aprobar ECO y aplicar cambios</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal para consultar ICOS creados -->
-<div id="icoListModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10003; align-items:center; justify-content:center;">
+<!-- Modal para consultar ECOs creados -->
+<div id="ecoListModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10003; align-items:center; justify-content:center;">
     <div style="background:#1a1b26; border:1px solid #3498db; border-radius:8px; width:min(1080px, 96vw); max-height:88vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
         <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
-            <h3 style="margin:0; color:#3498db; font-size:16px;">ICOS / Cambios de ingenieria</h3>
-            <button id="btnCerrarIcoListModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+            <h3 style="margin:0; color:#3498db; font-size:16px;">ECOs / Cambios de ingenieria</h3>
+            <button id="btnCerrarEcoListModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
         </div>
         <div style="padding:16px 18px;">
             <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
                 <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Tipo
-                    <select id="icoListOrigenFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:110px;">
+                    <select id="ecoListOrigenFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:110px;">
                         <option value="">TODOS</option>
                         <option value="MES">MES</option>
                         <option value="KS">KS</option>
                     </select>
                 </label>
                 <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Estatus
-                    <select id="icoListStatusFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
+                    <select id="ecoListStatusFilter" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
                         <option value="">TODOS</option>
                         <option value="DRAFT">DRAFT</option>
                         <option value="APPROVED">APPROVED</option>
@@ -229,28 +229,28 @@
                     </select>
                 </label>
                 <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Modelo
-                    <input id="icoListPartFilter" type="text" placeholder="Opcional" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:180px;">
+                    <input id="ecoListPartFilter" type="text" placeholder="Opcional" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:180px;">
                 </label>
-                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ICO / ID
-                    <input id="icoListIcoFilter" type="text" placeholder="02 o KS#28695" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
+                <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">ECO / ID
+                    <input id="ecoListEcoFilter" type="text" placeholder="02 o KS#28695" style="padding:8px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:150px;">
                 </label>
                 <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Desde
-                    <input id="icoListDateFromFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
+                    <input id="ecoListDateFromFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
                 </label>
                 <label style="display:flex; flex-direction:column; gap:5px; font-size:12px;">Hasta
-                    <input id="icoListDateToFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
+                    <input id="ecoListDateToFilter" type="date" style="padding:7px; border-radius:5px; border:1px solid #34495e; background:#111827; color:#fff; min-width:140px;">
                 </label>
-                <button id="btnRefrescarIcoList" class="bom-btn consultar" type="button">Refrescar</button>
-                <button id="btnExportarIcoList" class="bom-btn exportar" type="button">Exportar Excel</button>
+                <button id="btnRefrescarEcoList" class="bom-btn consultar" type="button">Refrescar</button>
+                <button id="btnExportarEcoList" class="bom-btn exportar" type="button">Exportar Excel</button>
             </div>
-            <div id="icoListStatusBox" style="padding:9px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:12px;">
-                Cargando ICOS...
+            <div id="ecoListStatusBox" style="padding:9px; border:1px solid #34495e; background:#111827; border-radius:6px; font-size:12px; color:#b8c7d9; margin-bottom:12px;">
+                Cargando ECOs...
             </div>
             <div style="overflow:auto; border:1px solid #34495e; border-radius:6px;">
                 <table style="width:100%; border-collapse:collapse; font-size:12px;">
                     <thead>
                         <tr style="background:#2c3e50;">
-                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">ICO</th>
+                            <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">ECO</th>
                             <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Modelo(s)</th>
                             <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Revision</th>
                             <th style="padding:8px; border-bottom:1px solid #34495e; text-align:left;">Fecha efectiva</th>
@@ -260,28 +260,28 @@
                             <th style="padding:8px; border-bottom:1px solid #34495e; text-align:center;">Accion</th>
                         </tr>
                     </thead>
-                    <tbody id="icoListTableBody">
+                    <tbody id="ecoListTableBody">
                         <tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">Sin datos</td></tr>
                     </tbody>
                 </table>
             </div>
-            <div id="icoListPaginationBox" style="display:none; margin-top:10px; align-items:center; justify-content:flex-end; gap:8px; font-size:12px; color:#b8c7d9;">
-                <button id="btnIcoListPrevPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Anterior</button>
-                <span id="icoListPageInfo"></span>
-                <button id="btnIcoListNextPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Siguiente</button>
+            <div id="ecoListPaginationBox" style="display:none; margin-top:10px; align-items:center; justify-content:flex-end; gap:8px; font-size:12px; color:#b8c7d9;">
+                <button id="btnEcoListPrevPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Anterior</button>
+                <span id="ecoListPageInfo"></span>
+                <button id="btnEcoListNextPage" class="bom-btn" type="button" style="padding:5px 10px; background:#34495e;">Siguiente</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal detalle ICO MES -->
-<div id="icoDetailBox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10004; align-items:center; justify-content:center;">
+<!-- Modal detalle ECO MES -->
+<div id="ecoDetailBox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:10004; align-items:center; justify-content:center;">
     <div style="background:#1a1b26; border:1px solid #5dade2; border-radius:8px; width:min(980px, 96vw); max-height:90vh; overflow:auto; color:#ecf0f1; box-shadow:0 18px 45px rgba(0,0,0,.45);">
         <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #2c3e50;">
-            <h3 id="icoDetailTitle" style="margin:0; color:#5dade2; font-size:16px;">Detalle ICO</h3>
-            <button id="btnCerrarIcoDetailModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
+            <h3 id="ecoDetailTitle" style="margin:0; color:#5dade2; font-size:16px;">Detalle ECO</h3>
+            <button id="btnCerrarEcoDetailModal" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;">&times;</button>
         </div>
-        <div id="icoDetailContent" style="padding:16px 18px; font-size:13px; line-height:1.55;">
+        <div id="ecoDetailContent" style="padding:16px 18px; font-size:13px; line-height:1.55;">
             Cargando...
         </div>
     </div>
@@ -321,18 +321,18 @@
                     return;
                 }
                 
-                // Boton Crear ICO
-                if (target.id === 'btnCrearICO' || target.closest('#btnCrearICO')) {
+                // Boton Crear ECO
+                if (target.id === 'btnCrearECO' || target.closest('#btnCrearECO')) {
                     e.preventDefault();
-                    if (!requierePermisoCrearIco()) return;
-                    abrirModalICO();
+                    if (!requierePermisoCrearEco()) return;
+                    abrirModalECO();
                     return;
                 }
 
-                // Boton Ver ICOS
-                if (target.id === 'btnVerICOS' || target.closest('#btnVerICOS')) {
+                // Boton Ver ECOs
+                if (target.id === 'btnVerECOS' || target.closest('#btnVerECOS')) {
                     e.preventDefault();
-                    abrirModalIcoList();
+                    abrirModalEcoList();
                     return;
                 }
                 
@@ -350,9 +350,9 @@
                     return;
                 }
                 
-                if (target.id === 'btnCerrarIcoModal') {
+                if (target.id === 'btnCerrarEcoModal') {
                     e.preventDefault();
-                    cerrarModalICO();
+                    cerrarModalECO();
                     return;
                 }
 
@@ -368,81 +368,81 @@
                     return;
                 }
 
-                if (target.name === 'icoScopeKind') {
-                    onIcoScopeChange();
+                if (target.name === 'ecoScopeKind') {
+                    onEcoScopeChange();
                     return;
                 }
 
                 if (target.id === 'btnIrPaso2') {
                     e.preventDefault();
-                    irPasoIco(2);
+                    irPasoEco(2);
                     return;
                 }
 
                 if (target.id === 'btnVolverPaso1') {
                     e.preventDefault();
-                    irPasoIco(1);
+                    irPasoEco(1);
                     return;
                 }
 
                 if (target.id === 'btnValidarExcel') {
                     e.preventDefault();
-                    validarExcelIco();
+                    validarExcelEco();
                     return;
                 }
 
-                if (target.id === 'btnCancelarIcoDraft') {
+                if (target.id === 'btnCancelarEcoDraft') {
                     e.preventDefault();
-                    cancelarBorradorIco();
+                    cancelarBorradorEco();
                     return;
                 }
 
-                if (target.id === 'btnAprobarIco') {
+                if (target.id === 'btnAprobarEco') {
                     e.preventDefault();
-                    aprobarIcoActual();
+                    aprobarEcoActual();
                     return;
                 }
 
-                if (target.id === 'btnCerrarIcoListModal') {
+                if (target.id === 'btnCerrarEcoListModal') {
                     e.preventDefault();
-                    cerrarModalIcoList();
+                    cerrarModalEcoList();
                     return;
                 }
 
-                if (target.id === 'btnRefrescarIcoList') {
+                if (target.id === 'btnRefrescarEcoList') {
                     e.preventDefault();
-                    cargarIcoList(1);
+                    cargarEcoList(1);
                     return;
                 }
 
-                if (target.id === 'btnExportarIcoList') {
+                if (target.id === 'btnExportarEcoList') {
                     e.preventDefault();
-                    exportarIcoList();
+                    exportarEcoList();
                     return;
                 }
 
-                if (target.id === 'btnIcoListPrevPage') {
+                if (target.id === 'btnEcoListPrevPage') {
                     e.preventDefault();
-                    cargarIcoList(Math.max(1, icoListPage - 1));
+                    cargarEcoList(Math.max(1, ecoListPage - 1));
                     return;
                 }
 
-                if (target.id === 'btnIcoListNextPage') {
+                if (target.id === 'btnEcoListNextPage') {
                     e.preventDefault();
-                    cargarIcoList(icoListPage + 1);
+                    cargarEcoList(ecoListPage + 1);
                     return;
                 }
 
-                const detailButton = target.closest('[data-ico-detail-id]');
+                const detailButton = target.closest('[data-eco-detail-id]');
                 if (detailButton) {
                     e.preventDefault();
-                    cargarDetalleIco(detailButton.dataset.icoDetailId);
+                    cargarDetalleEco(detailButton.dataset.ecoDetailId);
                     return;
                 }
 
-                if (target.id === 'btnCerrarIcoDetailModal' || target.closest('#btnCerrarIcoDetailModal')) {
+                if (target.id === 'btnCerrarEcoDetailModal' || target.closest('#btnCerrarEcoDetailModal')) {
                     e.preventDefault();
-                    cerrarModalIcoDetalle();
+                    cerrarModalEcoDetalle();
                     return;
                 }
 
@@ -459,10 +459,10 @@
                     return;
                 }
 
-                const deleteButton = target.closest('[data-ico-delete-id]');
+                const deleteButton = target.closest('[data-eco-delete-id]');
                 if (deleteButton) {
                     e.preventDefault();
-                    borrarIco(deleteButton.dataset.icoDeleteId, deleteButton.dataset.icoNo || '');
+                    borrarEco(deleteButton.dataset.ecoDeleteId, deleteButton.dataset.ecoNo || '');
                     return;
                 }
             });
@@ -483,19 +483,19 @@
             
             // Event delegation para change en file input
             document.body.addEventListener('change', function(e) {
-                if (e.target.id === 'icoExcelInput') {
-                    importarExcelIcoActual();
+                if (e.target.id === 'ecoExcelInput') {
+                    importarExcelEcoActual();
                 }
 
                 if ([
-                    'icoListOrigenFilter',
-                    'icoListStatusFilter',
-                    'icoListPartFilter',
-                    'icoListIcoFilter',
-                    'icoListDateFromFilter',
-                    'icoListDateToFilter'
+                    'ecoListOrigenFilter',
+                    'ecoListStatusFilter',
+                    'ecoListPartFilter',
+                    'ecoListEcoFilter',
+                    'ecoListDateFromFilter',
+                    'ecoListDateToFilter'
                 ].includes(e.target.id)) {
-                    cargarIcoList(1);
+                    cargarEcoList(1);
                 }
                 
                 // Filtro por classification
@@ -515,15 +515,15 @@
     window.initializeControlBOMEventListeners = initializeControlBOMEventListeners;
 
     // Cache para datos de BOM
-    const puedeCrearIco = {{ puede_crear_ico|default(false)|tojson }};
+    const puedeCrearEco = {{ puede_crear_eco|default(false)|tojson }};
     let bomDataCache = [];
-    let icoActualId = null;
-    let icoScopeKind = 'SINGLE'; // 'SINGLE' o 'FAMILY'
-    let icoScopeParts = []; // part_no resueltos cuando FAMILY
-    let icoListPage = 1;
-    let icoListMeta = { total: 0, page: 1, page_size: 500, filters_active: false };
+    let ecoActualId = null;
+    let ecoScopeKind = 'SINGLE'; // 'SINGLE' o 'FAMILY'
+    let ecoScopeParts = []; // part_no resueltos cuando FAMILY
+    let ecoListPage = 1;
+    let ecoListMeta = { total: 0, page: 1, page_size: 500, filters_active: false };
 
-    function icoAlert(message) {
+    function ecoAlert(message) {
         if (typeof showCustomAlert === 'function') {
             showCustomAlert(message);
         } else {
@@ -531,8 +531,8 @@
         }
     }
 
-    function setIcoStatus(message) {
-        const box = document.getElementById('icoStatusBox');
+    function setEcoStatus(message) {
+        const box = document.getElementById('ecoStatusBox');
         if (box) box.innerHTML = message;
     }
 
@@ -548,8 +548,8 @@
         });
     }
 
-    function setIcoListStatus(message) {
-        const box = document.getElementById('icoListStatusBox');
+    function setEcoListStatus(message) {
+        const box = document.getElementById('ecoListStatusBox');
         if (box) box.innerHTML = message;
     }
 
@@ -570,37 +570,37 @@
         return `${fecha} ${hora.slice(0, 5)}`;
     }
 
-    function abrirModalICO() {
-        if (!requierePermisoCrearIco()) return;
-        const modal = document.getElementById('icoModal');
+    function abrirModalECO() {
+        if (!requierePermisoCrearEco()) return;
+        const modal = document.getElementById('ecoModal');
         const selectedModel = (document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         const defaultEffective = now.toISOString().slice(0, 16);
 
-        icoActualId = null;
-        icoScopeKind = 'SINGLE';
-        icoScopeParts = [];
-        document.getElementById('icoScopeSingle').checked = true;
-        document.getElementById('icoScopeFamily').checked = false;
-        document.getElementById('icoFamilyFields').style.display = 'none';
-        document.getElementById('icoFamilyResolveBox').style.display = 'none';
-        document.getElementById('icoFamilyInput').value = '';
-        document.getElementById('icoSuffixesInput').value = '';
-        document.getElementById('icoPartNoLabel').style.display = '';
+        ecoActualId = null;
+        ecoScopeKind = 'SINGLE';
+        ecoScopeParts = [];
+        document.getElementById('ecoScopeSingle').checked = true;
+        document.getElementById('ecoScopeFamily').checked = false;
+        document.getElementById('ecoFamilyFields').style.display = 'none';
+        document.getElementById('ecoFamilyResolveBox').style.display = 'none';
+        document.getElementById('ecoFamilyInput').value = '';
+        document.getElementById('ecoSuffixesInput').value = '';
+        document.getElementById('ecoPartNoLabel').style.display = '';
 
-        document.getElementById('icoNoInput').value = '';
-        document.getElementById('icoPartNoInput').value = selectedModel;
-        document.getElementById('icoRevisionInput').value = 'R1';
-        document.getElementById('icoEffectiveAtInput').value = defaultEffective;
-        document.getElementById('icoItemNameInput').value = '';
-        document.getElementById('icoNotesInput').value = '';
-        const excelInput = document.getElementById('icoExcelInput');
+        document.getElementById('ecoNoInput').value = '';
+        document.getElementById('ecoPartNoInput').value = selectedModel;
+        document.getElementById('ecoRevisionInput').value = 'R1';
+        document.getElementById('ecoEffectiveAtInput').value = defaultEffective;
+        document.getElementById('ecoItemNameInput').value = '';
+        document.getElementById('ecoNotesInput').value = '';
+        const excelInput = document.getElementById('ecoExcelInput');
         if (excelInput) excelInput.value = '';
-        document.getElementById('icoValidationBox').style.display = 'none';
-        document.getElementById('icoValidationBox').innerHTML = '';
-        setIcoStatus('Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2.');
-        irPasoIco(1);
+        document.getElementById('ecoValidationBox').style.display = 'none';
+        document.getElementById('ecoValidationBox').innerHTML = '';
+        setEcoStatus('Llene los datos y descargue el BOM actual. Modifique el Excel y suba el archivo en el paso 2.');
+        irPasoEco(1);
 
         if (modal) {
             if (modal.parentNode !== document.body) {
@@ -623,10 +623,10 @@
         }
     }
 
-    function irPasoIco(paso) {
+    function irPasoEco(paso) {
         for (let i = 1; i <= 3; i++) {
-            const step = document.getElementById('icoStep' + i);
-            const indicator = document.getElementById('icoStepIndicator' + i);
+            const step = document.getElementById('ecoStep' + i);
+            const indicator = document.getElementById('ecoStepIndicator' + i);
             if (step) step.style.display = (i === paso) ? 'block' : 'none';
             if (indicator) {
                 if (i === paso) {
@@ -643,24 +643,24 @@
         }
     }
 
-    function onIcoScopeChange() {
-        icoScopeKind = document.querySelector('input[name="icoScopeKind"]:checked')?.value || 'SINGLE';
-        const isFamily = icoScopeKind === 'FAMILY';
-        document.getElementById('icoFamilyFields').style.display = isFamily ? 'block' : 'none';
-        document.getElementById('icoPartNoLabel').style.display = isFamily ? 'none' : '';
+    function onEcoScopeChange() {
+        ecoScopeKind = document.querySelector('input[name="ecoScopeKind"]:checked')?.value || 'SINGLE';
+        const isFamily = ecoScopeKind === 'FAMILY';
+        document.getElementById('ecoFamilyFields').style.display = isFamily ? 'block' : 'none';
+        document.getElementById('ecoPartNoLabel').style.display = isFamily ? 'none' : '';
         // En FAMILY el part_no representa la familia, no se llena manualmente.
-        if (isFamily) icoScopeParts = [];
+        if (isFamily) ecoScopeParts = [];
     }
 
     async function resolverFamilia() {
-        if (!requierePermisoCrearIco()) return;
-        const family = (document.getElementById('icoFamilyInput')?.value || '').trim().toUpperCase();
-        const suffixes = (document.getElementById('icoSuffixesInput')?.value || '').trim();
-        const box = document.getElementById('icoFamilyResolveBox');
+        if (!requierePermisoCrearEco()) return;
+        const family = (document.getElementById('ecoFamilyInput')?.value || '').trim().toUpperCase();
+        const suffixes = (document.getElementById('ecoSuffixesInput')?.value || '').trim();
+        const box = document.getElementById('ecoFamilyResolveBox');
         box.style.display = 'block';
         if (!family || !suffixes) {
             box.innerHTML = `<span style="color:#e74c3c;">Familia y sufijos son requeridos.</span>`;
-            icoScopeParts = [];
+            ecoScopeParts = [];
             return;
         }
         box.innerHTML = `<span style="color:#b8c7d9;">Resolviendo...</span>`;
@@ -670,13 +670,13 @@
             const data = await response.json();
             if (!data.success) {
                 box.innerHTML = `<span style="color:#e74c3c;">${escapeHtml(data.error || 'Error')}</span>`;
-                icoScopeParts = [];
+                ecoScopeParts = [];
                 return;
             }
             const d = data.data || {};
             const parts = d.parts || [];
             const missing = d.missing || [];
-            icoScopeParts = parts.map(p => p.part_no);
+            ecoScopeParts = parts.map(p => p.part_no);
             const partsList = parts.map(p => `<li><b>${escapeHtml(p.part_no)}</b> ${p.item_name ? '— ' + escapeHtml(p.item_name) : ''}</li>`).join('');
             const missingNote = missing.length ? `<div style="color:#e74c3c; margin-top:6px;">Sufijos no encontrados en KS: ${missing.map(escapeHtml).join(', ')}</div>` : '';
             box.innerHTML = `
@@ -686,21 +686,21 @@
             `;
         } catch (err) {
             box.innerHTML = `<span style="color:#e74c3c;">Error: ${escapeHtml(err.message || String(err))}</span>`;
-            icoScopeParts = [];
+            ecoScopeParts = [];
         }
     }
 
     function descargarBomExcel() {
-        if (!requierePermisoCrearIco()) return;
-        if (icoScopeKind === 'FAMILY') {
-            const family = (document.getElementById('icoFamilyInput')?.value || '').trim().toUpperCase();
-            const suffixes = (document.getElementById('icoSuffixesInput')?.value || '').trim();
+        if (!requierePermisoCrearEco()) return;
+        if (ecoScopeKind === 'FAMILY') {
+            const family = (document.getElementById('ecoFamilyInput')?.value || '').trim().toUpperCase();
+            const suffixes = (document.getElementById('ecoSuffixesInput')?.value || '').trim();
             if (!family || !suffixes) {
-                icoAlert('Capture familia y sufijos, y haga click en Resolver antes de descargar.');
+                ecoAlert('Capture familia y sufijos, y haga click en Resolver antes de descargar.');
                 return;
             }
-            if (!icoScopeParts.length) {
-                icoAlert('Primero resuelva la familia (boton Resolver).');
+            if (!ecoScopeParts.length) {
+                ecoAlert('Primero resuelva la familia (boton Resolver).');
                 return;
             }
             const params = new URLSearchParams({ family, suffixes });
@@ -711,13 +711,13 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            setIcoStatus(`Descargando BOM multi-modelo de familia ${family} (${icoScopeParts.length} modelos). Modifique y avance al paso 2.`);
+            setEcoStatus(`Descargando BOM multi-modelo de familia ${family} (${ecoScopeParts.length} modelos). Modifique y avance al paso 2.`);
             return;
         }
 
-        const partNo = (document.getElementById('icoPartNoInput')?.value || '').trim().toUpperCase();
+        const partNo = (document.getElementById('ecoPartNoInput')?.value || '').trim().toUpperCase();
         if (!partNo) {
-            icoAlert('Capture el numero de parte / modelo antes de descargar.');
+            ecoAlert('Capture el numero de parte / modelo antes de descargar.');
             return;
         }
         const params = new URLSearchParams({ part_no: partNo });
@@ -728,24 +728,24 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        setIcoStatus(`Descargando BOM de ${partNo}. Modifique el Excel y avance al paso 2.`);
+        setEcoStatus(`Descargando BOM de ${partNo}. Modifique el Excel y avance al paso 2.`);
     }
 
-    async function validarExcelIco() {
-        if (!requierePermisoCrearIco()) return;
-        const icoNo = (document.getElementById('icoNoInput')?.value || '').trim().toUpperCase();
-        const bomRevision = (document.getElementById('icoRevisionInput')?.value || '').trim().toUpperCase();
-        const effectiveAt = (document.getElementById('icoEffectiveAtInput')?.value || '').trim();
-        const itemName = (document.getElementById('icoItemNameInput')?.value || '').trim();
-        const notes = (document.getElementById('icoNotesInput')?.value || '').trim();
-        const fileInput = document.getElementById('icoExcelInput');
+    async function validarExcelEco() {
+        if (!requierePermisoCrearEco()) return;
+        const ecoNo = (document.getElementById('ecoNoInput')?.value || '').trim().toUpperCase();
+        const bomRevision = (document.getElementById('ecoRevisionInput')?.value || '').trim().toUpperCase();
+        const effectiveAt = (document.getElementById('ecoEffectiveAtInput')?.value || '').trim();
+        const itemName = (document.getElementById('ecoItemNameInput')?.value || '').trim();
+        const notes = (document.getElementById('ecoNotesInput')?.value || '').trim();
+        const fileInput = document.getElementById('ecoExcelInput');
         const file = fileInput?.files?.[0];
 
-        const box = document.getElementById('icoValidationBox');
+        const box = document.getElementById('ecoValidationBox');
         box.style.display = 'block';
 
-        if (!icoNo || !bomRevision || !effectiveAt) {
-            box.innerHTML = `<span style="color:#e74c3c;">Faltan campos requeridos (paso 1): ICO, Revision BOM, Fecha efectiva.</span>`;
+        if (!ecoNo || !bomRevision || !effectiveAt) {
+            box.innerHTML = `<span style="color:#e74c3c;">Faltan campos requeridos (paso 1): ECO, Revision BOM, Fecha efectiva.</span>`;
             return;
         }
         if (!file) {
@@ -756,34 +756,34 @@
         box.innerHTML = `<span style="color:#b8c7d9;">Validando Excel...</span>`;
         const fd = new FormData();
         fd.append('file', file);
-        fd.append('ico_no', icoNo);
+        fd.append('eco_no', ecoNo);
         fd.append('bom_revision', bomRevision);
         fd.append('effective_at', effectiveAt);
         fd.append('item_name', itemName);
         fd.append('notes', notes);
 
         let endpoint;
-        if (icoScopeKind === 'FAMILY') {
-            const family = (document.getElementById('icoFamilyInput')?.value || '').trim().toUpperCase();
+        if (ecoScopeKind === 'FAMILY') {
+            const family = (document.getElementById('ecoFamilyInput')?.value || '').trim().toUpperCase();
             if (!family) {
                 box.innerHTML = `<span style="color:#e74c3c;">Familia requerida.</span>`;
                 return;
             }
-            if (!icoScopeParts.length) {
+            if (!ecoScopeParts.length) {
                 box.innerHTML = `<span style="color:#e74c3c;">No hay modelos resueltos. Vuelva al paso 1 y resuelva la familia.</span>`;
                 return;
             }
             fd.append('family_prefix', family);
-            fd.append('scope_parts', icoScopeParts.join(','));
-            endpoint = '/api/icos/from-excel-family';
+            fd.append('scope_parts', ecoScopeParts.join(','));
+            endpoint = '/api/ecos/from-excel-family';
         } else {
-            const partNo = (document.getElementById('icoPartNoInput')?.value || '').trim().toUpperCase();
+            const partNo = (document.getElementById('ecoPartNoInput')?.value || '').trim().toUpperCase();
             if (!partNo) {
                 box.innerHTML = `<span style="color:#e74c3c;">Numero de parte requerido.</span>`;
                 return;
             }
             fd.append('part_no', partNo);
-            endpoint = '/api/icos/from-excel';
+            endpoint = '/api/ecos/from-excel';
         }
 
         try {
@@ -794,22 +794,22 @@
                 box.innerHTML = `<div style="color:#e74c3c; font-weight:700; margin-bottom:6px;">Validacion fallida:</div><ul style="margin:0; padding-left:20px; color:#e74c3c;">${errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`;
                 return;
             }
-            icoActualId = data.ico_id;
-            box.innerHTML = `<span style="color:#27ae60; font-weight:700;">Borrador creado (ICO ${escapeHtml(icoNo)}). Avanzando al paso 3...</span>`;
-            await cargarPreviewDiff(data.ico_id);
-            irPasoIco(3);
+            ecoActualId = data.eco_id;
+            box.innerHTML = `<span style="color:#27ae60; font-weight:700;">Borrador creado (ECO ${escapeHtml(ecoNo)}). Avanzando al paso 3...</span>`;
+            await cargarPreviewDiff(data.eco_id);
+            irPasoEco(3);
         } catch (err) {
             box.innerHTML = `<span style="color:#e74c3c;">Error de red: ${escapeHtml(err.message || String(err))}</span>`;
         }
     }
 
-    async function cargarPreviewDiff(icoId) {
-        const summary = document.getElementById('icoDiffSummary');
-        const details = document.getElementById('icoDiffDetails');
+    async function cargarPreviewDiff(ecoId) {
+        const summary = document.getElementById('ecoDiffSummary');
+        const details = document.getElementById('ecoDiffDetails');
         summary.innerHTML = 'Cargando diff...';
         details.innerHTML = '';
         try {
-            const response = await fetch(`/api/icos/${icoId}/diff`);
+            const response = await fetch(`/api/ecos/${ecoId}/diff`);
             const data = await response.json();
             if (!data.success) {
                 summary.innerHTML = `<span style="color:#e74c3c;">${escapeHtml(data.error || 'Error cargando diff')}</span>`;
@@ -878,33 +878,33 @@
         }
     }
 
-    async function cancelarBorradorIco() {
-        if (!requierePermisoCrearIco()) return;
-        if (!icoActualId) {
-            cerrarModalICO();
+    async function cancelarBorradorEco() {
+        if (!requierePermisoCrearEco()) return;
+        if (!ecoActualId) {
+            cerrarModalECO();
             return;
         }
         if (!confirm('Cancelar y eliminar este borrador?')) return;
         try {
-            await fetch(`/api/icos/${icoActualId}`, { method: 'DELETE' });
+            await fetch(`/api/ecos/${ecoActualId}`, { method: 'DELETE' });
         } catch (err) {
             console.warn('Error eliminando borrador:', err);
         }
-        icoActualId = null;
-        cerrarModalICO();
+        ecoActualId = null;
+        cerrarModalECO();
     }
 
-    function cerrarModalICO() {
-        const modal = document.getElementById('icoModal');
+    function cerrarModalECO() {
+        const modal = document.getElementById('ecoModal');
         if (modal) modal.style.cssText = 'display: none !important;';
     }
 
-    function abrirModalIcoList() {
-        const modal = document.getElementById('icoListModal');
+    function abrirModalEcoList() {
+        const modal = document.getElementById('ecoListModal');
         const selectedModel = (document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
-        const partFilter = document.getElementById('icoListPartFilter');
+        const partFilter = document.getElementById('ecoListPartFilter');
         if (partFilter && selectedModel) partFilter.value = selectedModel;
-        cerrarModalIcoDetalle();
+        cerrarModalEcoDetalle();
         if (modal) {
             if (modal.parentNode !== document.body) {
                 document.body.appendChild(modal);
@@ -924,17 +924,17 @@
                 visibility: visible !important;
             `;
         }
-        cargarIcoList(1);
+        cargarEcoList(1);
     }
 
-    function cerrarModalIcoList() {
-        cerrarModalIcoDetalle();
-        const modal = document.getElementById('icoListModal');
+    function cerrarModalEcoList() {
+        cerrarModalEcoDetalle();
+        const modal = document.getElementById('ecoListModal');
         if (modal) modal.style.cssText = 'display: none !important;';
     }
 
-    function abrirModalIcoDetalle() {
-        const modal = document.getElementById('icoDetailBox');
+    function abrirModalEcoDetalle() {
+        const modal = document.getElementById('ecoDetailBox');
         if (!modal) return;
         if (modal.parentNode !== document.body) {
             document.body.appendChild(modal);
@@ -955,8 +955,8 @@
         `;
     }
 
-    function cerrarModalIcoDetalle() {
-        const modal = document.getElementById('icoDetailBox');
+    function cerrarModalEcoDetalle() {
+        const modal = document.getElementById('ecoDetailBox');
         if (modal) modal.style.cssText = 'display: none !important;';
     }
 
@@ -1045,32 +1045,32 @@
         }
     }
 
-    function buildIcoListParams(includePage) {
-        const status = (document.getElementById('icoListStatusFilter')?.value || '').trim();
-        const partNo = (document.getElementById('icoListPartFilter')?.value || '').trim().toUpperCase();
-        const origen = (document.getElementById('icoListOrigenFilter')?.value || '').trim().toUpperCase();
-        const icoNo = (document.getElementById('icoListIcoFilter')?.value || '').trim().toUpperCase();
-        const dateFrom = (document.getElementById('icoListDateFromFilter')?.value || '').trim();
-        const dateTo = (document.getElementById('icoListDateToFilter')?.value || '').trim();
+    function buildEcoListParams(includePage) {
+        const status = (document.getElementById('ecoListStatusFilter')?.value || '').trim();
+        const partNo = (document.getElementById('ecoListPartFilter')?.value || '').trim().toUpperCase();
+        const origen = (document.getElementById('ecoListOrigenFilter')?.value || '').trim().toUpperCase();
+        const ecoNo = (document.getElementById('ecoListEcoFilter')?.value || '').trim().toUpperCase();
+        const dateFrom = (document.getElementById('ecoListDateFromFilter')?.value || '').trim();
+        const dateTo = (document.getElementById('ecoListDateToFilter')?.value || '').trim();
         const params = new URLSearchParams();
         if (origen) params.set('origen', origen);
         if (status) params.set('status', status);
         if (partNo) params.set('part_no', partNo);
-        if (icoNo) params.set('ico_no', icoNo);
+        if (ecoNo) params.set('eco_no', ecoNo);
         if (dateFrom) params.set('date_from', dateFrom);
         if (dateTo) params.set('date_to', dateTo);
         if (includePage) {
-            params.set('page', String(icoListPage));
+            params.set('page', String(ecoListPage));
             params.set('page_size', '500');
         }
         return params;
     }
 
-    function updateIcoListPagination(meta) {
-        const box = document.getElementById('icoListPaginationBox');
-        const info = document.getElementById('icoListPageInfo');
-        const prev = document.getElementById('btnIcoListPrevPage');
-        const next = document.getElementById('btnIcoListNextPage');
+    function updateEcoListPagination(meta) {
+        const box = document.getElementById('ecoListPaginationBox');
+        const info = document.getElementById('ecoListPageInfo');
+        const prev = document.getElementById('btnEcoListPrevPage');
+        const next = document.getElementById('btnEcoListNextPage');
         if (!box || !info || !prev || !next) return;
         const total = Number(meta.total || 0);
         const pageSize = Number(meta.page_size || 500);
@@ -1081,40 +1081,40 @@
             return;
         }
         box.style.display = 'flex';
-        info.textContent = `Pagina ${page} de ${totalPages} · ${total} ICOS`;
+        info.textContent = `Pagina ${page} de ${totalPages} · ${total} ECOs`;
         prev.disabled = page <= 1;
         next.disabled = page >= totalPages;
         prev.style.opacity = prev.disabled ? '0.45' : '1';
         next.style.opacity = next.disabled ? '0.45' : '1';
     }
 
-    function exportarIcoList() {
-        const params = buildIcoListParams(false);
-        window.location.href = `/api/icos/export?${params.toString()}`;
+    function exportarEcoList() {
+        const params = buildEcoListParams(false);
+        window.location.href = `/api/ecos/export?${params.toString()}`;
     }
 
-    async function cargarIcoList(page) {
-        const tbody = document.getElementById('icoListTableBody');
-        icoListPage = Math.max(1, Number(page || icoListPage || 1));
+    async function cargarEcoList(page) {
+        const tbody = document.getElementById('ecoListTableBody');
+        ecoListPage = Math.max(1, Number(page || ecoListPage || 1));
 
         tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">Cargando...</td></tr>';
-        setIcoListStatus('Consultando ICOS...');
+        setEcoListStatus('Consultando ECOs...');
 
         try {
-            const params = buildIcoListParams(true);
+            const params = buildEcoListParams(true);
 
-            const response = await fetch(`/api/icos?${params.toString()}`);
+            const response = await fetch(`/api/ecos?${params.toString()}`);
             const data = await response.json();
             if (!response.ok || !data.success) {
-                throw new Error(data.error || 'No se pudieron cargar los ICOS');
+                throw new Error(data.error || 'No se pudieron cargar los ECOs');
             }
 
             const rows = data.data || [];
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">No hay ICOS con esos filtros.</td></tr>';
-                icoListMeta = data.meta || icoListMeta;
-                updateIcoListPagination(icoListMeta);
-                setIcoListStatus('Sin ICOS para mostrar.');
+                tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#aaa; text-align:center;">No hay ECOs con esos filtros.</td></tr>';
+                ecoListMeta = data.meta || ecoListMeta;
+                updateEcoListPagination(ecoListMeta);
+                setEcoListStatus('Sin ECOs para mostrar.');
                 return;
             }
 
@@ -1122,11 +1122,11 @@
                 const isKs = String(row.origen || '').toUpperCase() === 'KS';
                 const canDelete = !isKs && String(row.status || '').toUpperCase() !== 'APPROVED';
                 const deleteControl = canDelete
-                    ? `<button type="button" class="bom-btn eliminar" data-ico-delete-id="${escapeHtml(row.id)}" data-ico-no="${escapeHtml(row.ico_no)}" style="padding:4px 8px; font-size:11px;">Borrar</button>`
+                    ? `<button type="button" class="bom-btn eliminar" data-eco-delete-id="${escapeHtml(row.id)}" data-eco-no="${escapeHtml(row.eco_no)}" style="padding:4px 8px; font-size:11px;">Borrar</button>`
                     : `<span style="color:#8b98a8; font-size:11px;">${isKs ? 'KS sync' : 'Inmutable'}</span>`;
                 const viewControl = isKs
                     ? `<button type="button" class="bom-btn consultar" data-ecn-ks-id="${escapeHtml(String(row.id).replace(/^ks-/, ''))}" style="padding:4px 8px; font-size:11px;">Ver</button>`
-                    : `<button type="button" class="bom-btn consultar" data-ico-detail-id="${escapeHtml(row.id)}" style="padding:4px 8px; font-size:11px;">Ver</button>`;
+                    : `<button type="button" class="bom-btn consultar" data-eco-detail-id="${escapeHtml(row.id)}" style="padding:4px 8px; font-size:11px;">Ver</button>`;
                 const origenBadge = isKs
                     ? `<span style="background:#2c3e50; color:#5dade2; padding:2px 6px; border-radius:3px; font-size:10px; margin-left:6px;">KS</span>`
                     : `<span style="background:#1e3a2f; color:#52be80; padding:2px 6px; border-radius:3px; font-size:10px; margin-left:6px;">MES</span>`;
@@ -1135,7 +1135,7 @@
                 const scopePartList = scopeParts.split(',').map(function(part) {
                     return part.trim();
                 }).filter(Boolean);
-                const isFamilyIco = !isKs && scopeCount > 1 && scopeParts;
+                const isFamilyEco = !isKs && scopeCount > 1 && scopeParts;
                 let familyLabel = scopePartList[0] || row.part_no || '-';
                 if (scopePartList.length > 1) {
                     familyLabel = scopePartList.reduce(function(prefix, part) {
@@ -1147,7 +1147,7 @@
                 const jobSuffixes = scopePartList.map(function(part) {
                     return familyLabel && part.indexOf(familyLabel) === 0 ? part.slice(familyLabel.length) : part;
                 }).filter(Boolean).join(', ');
-                const modeloCell = isFamilyIco
+                const modeloCell = isFamilyEco
                     ? `<div title="${escapeHtml(scopeParts)}">
                            <div style="font-weight:700;">${escapeHtml(familyLabel || scopeParts)}</div>
                            <div style="margin-top:3px; color:#8b98a8; font-size:11px;">Trabajo: ${escapeHtml(jobSuffixes || scopeParts)}</div>
@@ -1155,7 +1155,7 @@
                     : escapeHtml(row.part_no || '-');
                 return `
                     <tr>
-                        <td style="padding:8px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(row.ico_no)}${origenBadge}</td>
+                        <td style="padding:8px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(row.eco_no)}${origenBadge}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747;">${modeloCell}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(row.bom_revision)}</td>
                         <td style="padding:8px; border-bottom:1px solid #283747;">${escapeHtml(formatFechaEfectiva(row.effective_at))}</td>
@@ -1169,67 +1169,67 @@
                     </tr>
                 `;
             }).join('');
-            icoListMeta = data.meta || {};
-            updateIcoListPagination(icoListMeta);
-            const total = Number(icoListMeta.total || rows.length);
-            if (icoListMeta.filters_active) {
-                const from = ((Number(icoListMeta.page || 1) - 1) * Number(icoListMeta.page_size || 500)) + 1;
+            ecoListMeta = data.meta || {};
+            updateEcoListPagination(ecoListMeta);
+            const total = Number(ecoListMeta.total || rows.length);
+            if (ecoListMeta.filters_active) {
+                const from = ((Number(ecoListMeta.page || 1) - 1) * Number(ecoListMeta.page_size || 500)) + 1;
                 const to = from + rows.length - 1;
-                setIcoListStatus(`${rows.length} ICO(s) en esta pagina. Mostrando ${from}-${to} de ${total}.`);
+                setEcoListStatus(`${rows.length} ECO(s) en esta pagina. Mostrando ${from}-${to} de ${total}.`);
             } else {
                 const suffix = total > rows.length ? ` de ${total} totales` : '';
-                setIcoListStatus(`Ultimos ${rows.length} ICO(s)${suffix}. Usa filtros para buscar sin limite fijo.`);
+                setEcoListStatus(`Ultimos ${rows.length} ECO(s)${suffix}. Usa filtros para buscar sin limite fijo.`);
             }
         } catch (error) {
-            console.error('Error cargando ICOS:', error);
-            tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#e74c3c; text-align:center;">Error cargando ICOS.</td></tr>';
-            updateIcoListPagination({ filters_active: false });
-            setIcoListStatus(`Error: ${escapeHtml(error.message)}`);
+            console.error('Error cargando ECOs:', error);
+            tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#e74c3c; text-align:center;">Error cargando ECOs.</td></tr>';
+            updateEcoListPagination({ filters_active: false });
+            setEcoListStatus(`Error: ${escapeHtml(error.message)}`);
         }
     }
 
-    function requierePermisoCrearIco() {
-        if (puedeCrearIco) return true;
-        icoAlert('No tienes permiso para crear o modificar ICOS.');
+    function requierePermisoCrearEco() {
+        if (puedeCrearEco) return true;
+        ecoAlert('No tienes permiso para crear o modificar ECOs.');
         return false;
     }
 
-    async function borrarIco(icoId, icoNo) {
-        const label = icoNo ? ` ${icoNo}` : '';
-        if (!confirm(`Borrar definitivamente el ICO${label}? Solo se permite si no esta APPROVED.`)) {
+    async function borrarEco(ecoId, ecoNo) {
+        const label = ecoNo ? ` ${ecoNo}` : '';
+        if (!confirm(`Borrar definitivamente el ECO${label}? Solo se permite si no esta APPROVED.`)) {
             return;
         }
 
-        setIcoListStatus('Borrando ICO...');
+        setEcoListStatus('Borrando ECO...');
         try {
-            const response = await fetch(`/api/icos/${encodeURIComponent(icoId)}`, {
+            const response = await fetch(`/api/ecos/${encodeURIComponent(ecoId)}`, {
                 method: 'DELETE'
             });
             const data = await response.json();
             if (!response.ok || !data.success) {
-                throw new Error(data.error || 'No se pudo borrar el ICO');
+                throw new Error(data.error || 'No se pudo borrar el ECO');
             }
-            cerrarModalIcoDetalle();
-            await cargarIcoList();
-            setIcoListStatus(`ICO${label} borrado.`);
+            cerrarModalEcoDetalle();
+            await cargarEcoList();
+            setEcoListStatus(`ECO${label} borrado.`);
         } catch (error) {
-            console.error('Error borrando ICO:', error);
-            setIcoListStatus(`Error: ${escapeHtml(error.message)}`);
-            icoAlert(`Error borrando ICO:<br>${error.message}`);
+            console.error('Error borrando ECO:', error);
+            setEcoListStatus(`Error: ${escapeHtml(error.message)}`);
+            ecoAlert(`Error borrando ECO:<br>${error.message}`);
         }
     }
 
-    async function cargarDetalleIco(icoId) {
-        const title = document.getElementById('icoDetailTitle');
-        const content = document.getElementById('icoDetailContent');
-        abrirModalIcoDetalle();
+    async function cargarDetalleEco(ecoId) {
+        const title = document.getElementById('ecoDetailTitle');
+        const content = document.getElementById('ecoDetailContent');
+        abrirModalEcoDetalle();
         title.textContent = 'Cargando detalle...';
         content.innerHTML = '<div style="color:#aaa;">Cargando...</div>';
 
         try {
             const [detailResponse, diffResponse] = await Promise.all([
-                fetch(`/api/icos/${encodeURIComponent(icoId)}`),
-                fetch(`/api/icos/${encodeURIComponent(icoId)}/diff`)
+                fetch(`/api/ecos/${encodeURIComponent(ecoId)}`),
+                fetch(`/api/ecos/${encodeURIComponent(ecoId)}/diff`)
             ]);
             const data = await detailResponse.json();
             const diffData = await diffResponse.json();
@@ -1240,7 +1240,7 @@
                 throw new Error(diffData.error || 'No se pudo cargar el diff');
             }
 
-            const ico = data.data;
+            const eco = data.data;
             const diff = diffData.data || {};
             const cambios = []
                 .concat((diff.added || []).map(row => Object.assign({}, row, { action: 'ADD' })))
@@ -1248,7 +1248,7 @@
                 .concat((diff.removed || []).map(row => Object.assign({}, row, { action: 'REMOVE' })));
             const counts = diff.counts || { added: 0, modified: 0, removed: 0 };
             const totalCambios = cambios.length;
-            title.innerHTML = `ICO ${escapeHtml(ico.ico_no)} - ${escapeHtml(ico.part_no)} - ${statusBadge(ico.status)} - ${totalCambios} cambios`;
+            title.innerHTML = `ECO ${escapeHtml(eco.eco_no)} - ${escapeHtml(eco.part_no)} - ${statusBadge(eco.status)} - ${totalCambios} cambios`;
 
             const actionBadge = function(action) {
                 const value = String(action || '').toUpperCase();
@@ -1265,7 +1265,7 @@
                     return `
                         <tr>
                             <td colspan="7" style="padding:14px; text-align:center; color:#8b98a8; border-bottom:1px solid #283747;">
-                                Este ICO no tiene cambios registrados en el diff.
+                                Este ECO no tiene cambios registrados en el diff.
                             </td>
                         </tr>
                     `;
@@ -1274,7 +1274,7 @@
                     return `
                         <tr>
                             <td style="padding:7px; border-bottom:1px solid #283747;">${actionBadge(row.action)}</td>
-                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.part_no || ico.part_no || '-')}</td>
+                            <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.part_no || eco.part_no || '-')}</td>
                             <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.bom_level || '-')}</td>
                             <td style="padding:7px; border-bottom:1px solid #283747; font-weight:700;">${escapeHtml(row.item_no || '-')}</td>
                             <td style="padding:7px; border-bottom:1px solid #283747;">${escapeHtml(row.field_changed || '-')}</td>
@@ -1287,15 +1287,15 @@
 
             content.innerHTML = `
                 <div style="padding:10px; color:#b8c7d9; font-size:12px;">
-                    Revision: <b>${escapeHtml(ico.bom_revision)}</b> &nbsp; | &nbsp;
-                    Fecha efectiva: <b>${escapeHtml(ico.effective_at || '-')}</b> &nbsp; | &nbsp;
-                    Aprobado por: <b>${escapeHtml(ico.approved_by || '-')}</b>
+                    Revision: <b>${escapeHtml(eco.bom_revision)}</b> &nbsp; | &nbsp;
+                    Fecha efectiva: <b>${escapeHtml(eco.effective_at || '-')}</b> &nbsp; | &nbsp;
+                    Aprobado por: <b>${escapeHtml(eco.approved_by || '-')}</b>
                     <div style="margin-top:7px; display:flex; gap:8px; flex-wrap:wrap;">
                         <span style="background:#123d2a; color:#58d68d; padding:3px 8px; border-radius:10px;">ADD: ${escapeHtml(counts.added || 0)}</span>
                         <span style="background:#3d3212; color:#f5c542; padding:3px 8px; border-radius:10px;">MODIFY: ${escapeHtml(counts.modified || 0)}</span>
                         <span style="background:#4a1717; color:#ff7675; padding:3px 8px; border-radius:10px;">REMOVE: ${escapeHtml(counts.removed || 0)}</span>
                     </div>
-                    ${ico.notes ? `<div style="margin-top:6px;">Notas: ${escapeHtml(ico.notes)}</div>` : ''}
+                    ${eco.notes ? `<div style="margin-top:6px;">Notas: ${escapeHtml(eco.notes)}</div>` : ''}
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:12px;">
                     <thead>
@@ -1315,39 +1315,39 @@
                 </table>
             `;
         } catch (error) {
-            console.error('Error detalle ICO:', error);
+            console.error('Error detalle ECO:', error);
             title.textContent = 'Error cargando detalle';
             content.innerHTML = `<div style="padding:12px; color:#e74c3c;">${escapeHtml(error.message)}</div>`;
         }
     }
 
-    async function aprobarIcoActual() {
-        if (!requierePermisoCrearIco()) return;
-        if (!icoActualId) {
-            icoAlert('No hay ICO activo para aprobar.');
+    async function aprobarEcoActual() {
+        if (!requierePermisoCrearEco()) return;
+        if (!ecoActualId) {
+            ecoAlert('No hay ECO activo para aprobar.');
             return;
         }
-        if (!confirm('Aprobar este ICO? Una vez aprobado quedara inmutable y los cambios se aplicaran al BOM vigente.')) {
+        if (!confirm('Aprobar este ECO? Una vez aprobado quedara inmutable y los cambios se aplicaran al BOM vigente.')) {
             return;
         }
-        const btn = document.getElementById('btnAprobarIco');
+        const btn = document.getElementById('btnAprobarEco');
         if (btn) btn.disabled = true;
         try {
-            const response = await fetch(`/api/icos/${icoActualId}/approve`, { method: 'POST' });
+            const response = await fetch(`/api/ecos/${ecoActualId}/approve`, { method: 'POST' });
             const data = await response.json();
             if (!response.ok || !data.success) {
                 const errors = (data.errors || []).join('<br>');
-                throw new Error(errors || data.error || 'No se pudo aprobar el ICO');
+                throw new Error(errors || data.error || 'No se pudo aprobar el ECO');
             }
-            icoAlert('ICO aprobado correctamente. Los cambios fueron aplicados al BOM.');
-            icoActualId = null;
-            cerrarModalICO();
+            ecoAlert('ECO aprobado correctamente. Los cambios fueron aplicados al BOM.');
+            ecoActualId = null;
+            cerrarModalECO();
             if (typeof consultarBOMOriginal === 'function') {
                 try { consultarBOMOriginal(); } catch (_) {}
             }
         } catch (error) {
-            console.error('Error aprobando ICO:', error);
-            icoAlert(`Error aprobando ICO:<br>${error.message}`);
+            console.error('Error aprobando ECO:', error);
+            ecoAlert(`Error aprobando ECO:<br>${error.message}`);
             if (btn) btn.disabled = false;
         }
     }
@@ -2164,7 +2164,7 @@
 
     // ========== PANEL DESLIZANTE DE EDICIÓN ==========
     function openBOMEditPanel(bomData) {
-        console.warn('Edicion directa de BOM deshabilitada. Use Crear ICO.');
+        console.warn('Edicion directa de BOM deshabilitada. Use Crear ECO.');
         return;
         console.log('📝 Abriendo panel de edición BOM', bomData);
         
@@ -2447,7 +2447,7 @@
     }
 
     function saveBOMEdit() {
-        showCustomAlert('La edicion directa del BOM esta deshabilitada. Usa Crear ICO.');
+        showCustomAlert('La edicion directa del BOM esta deshabilitada. Usa Crear ECO.');
         return;
         const panel = document.getElementById('bomEditPanel');
         const form = document.getElementById('bomEditForm');
@@ -2637,7 +2637,7 @@
     }
     
     function abrirModalRegistroPosicion() {
-        showCustomAlert('La edicion directa de posiciones esta deshabilitada. Usa Crear ICO.');
+        showCustomAlert('La edicion directa de posiciones esta deshabilitada. Usa Crear ECO.');
         return;
         console.log('📍 Abriendo modal de registro de posición');
         
@@ -2723,7 +2723,7 @@
     }
     
     function guardarPosicionesAssy() {
-        showCustomAlert('La edicion directa de posiciones esta deshabilitada. Usa Crear ICO.');
+        showCustomAlert('La edicion directa de posiciones esta deshabilitada. Usa Crear ECO.');
         return;
         console.log(' Guardando posiciones ASSY');
         

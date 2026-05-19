@@ -4,7 +4,7 @@ Sistema completo de gestión de usuarios, roles y permisos
 """
 
 from flask import Blueprint, request, jsonify, render_template, session, send_file, redirect, url_for, flash
-from .auth_system import AuthSystem, ICO_CREATE_PERMISSION
+from .auth_system import AuthSystem, ECO_CREATE_PERMISSION
 from .db_mysql import get_db_connection
 from .shipping_api import (
     AVAILABLE_CARGOS,
@@ -54,7 +54,7 @@ DEFAULT_USER_CARGOS = [
 ]
 
 EXTRA_DROPDOWN_PERMISSIONS = [
-    ICO_CREATE_PERMISSION,
+    ECO_CREATE_PERMISSION,
 ]
 
 
