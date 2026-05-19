@@ -30,6 +30,13 @@ _BUTTON_PERMISSIONS_CACHE = {}
 _BUTTON_PERMISSIONS_CACHE_LOCK = threading.Lock()
 _BUTTON_PERMISSIONS_CACHE_TTL = max(60, int(os.getenv('PERMISSIONS_CACHE_TTL_SECONDS', '300')))
 
+ECO_CREATE_PERMISSION = {
+    'pagina': 'LISTA_INFORMACIONBASICA',
+    'seccion': 'Control de produccion',
+    'boton': 'Crear ECO',
+    'descripcion': 'Permite crear, importar, aprobar, cancelar y borrar ECOs desde Control de BOM',
+}
+
 class AuthSystem:
     def __init__(self, app=None):
         self.app = app
@@ -425,6 +432,14 @@ class AuthSystem:
             # LISTA INFORMACIÓN BÁSICA - Control de Proceso
             ('LISTA_INFORMACIONBASICA', 'Control de Proceso', 'Control de departamento', 'Acceso al control de departamento'),
             ('LISTA_INFORMACIONBASICA', 'Control de Proceso', 'Control de proceso', 'Acceso al control de proceso'),
+
+            # LISTA INFORMACIÓN BÁSICA - Control de produccion
+            (
+                ECO_CREATE_PERMISSION['pagina'],
+                ECO_CREATE_PERMISSION['seccion'],
+                ECO_CREATE_PERMISSION['boton'],
+                ECO_CREATE_PERMISSION['descripcion'],
+            ),
             
             # LISTA CONTROL DE PRODUCCIÓN - Información básica
             ('LISTA_CONTROLDEPRODUCCION', 'Información básica', 'Información básica', 'Acceso a información básica de producción'),
