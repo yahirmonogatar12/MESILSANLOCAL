@@ -1,0 +1,438 @@
+#mat-admin-inventory-unique-container,
+#mat-admin-history-unique-container {
+    background: #32323e;
+    color: #f3f6fb;
+    min-height: calc(100vh - 110px);
+    padding: 12px;
+    width: 100%;
+}
+
+.mat-admin-page * {
+    box-sizing: border-box;
+}
+
+.mat-admin-header {
+    align-items: center;
+    background: #263947;
+    border: 1px solid #20688c;
+    display: none !important;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    min-height: 42px;
+    padding: 8px 10px;
+}
+
+.mat-admin-header h2 {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.mat-admin-header span {
+    color: #b8c3cf;
+    display: block;
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+.mat-admin-tabs {
+    align-items: center;
+    border: 1px solid #20688c;
+    display: flex;
+    margin-bottom: 8px;
+    width: max-content;
+}
+
+.mat-admin-tab {
+    background: #3c3940;
+    border: 0;
+    color: #d8e1ea;
+    cursor: pointer;
+    font-size: 12px;
+    height: 30px;
+    min-width: 88px;
+    padding: 0 12px;
+}
+
+.mat-admin-tab.active {
+    background: #2f80d8;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.mat-admin-toolbar {
+    align-items: end;
+    background: #2d3741;
+    border: 1px solid #20688c;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 10px;
+}
+
+.mat-admin-toolbar label {
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    font-weight: 700;
+    gap: 4px;
+    min-width: 150px;
+}
+
+.mat-admin-toolbar input,
+.mat-admin-toolbar select {
+    background: #f8fafc;
+    border: 1px solid #8fa1b2;
+    color: #1f2933;
+    font-size: 12px;
+    height: 30px;
+    padding: 4px 8px;
+}
+
+.mat-admin-toolbar .mat-admin-check {
+    align-items: center;
+    flex-direction: row;
+    gap: 6px;
+    height: 30px;
+    min-width: auto;
+}
+
+.mat-admin-check input {
+    height: 14px;
+    width: 14px;
+}
+
+.mat-admin-actions {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.mat-admin-btn {
+    background: #516c91;
+    border: 1px solid #6f8ab2;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    height: 30px;
+    min-width: 78px;
+    padding: 0 12px;
+}
+
+.mat-admin-btn:hover {
+    background: #6180aa;
+}
+
+.mat-admin-btn.primary {
+    background: #4f78aa;
+}
+
+.mat-admin-btn.success {
+    background: #00a862;
+    border-color: #00bd71;
+}
+
+.mat-admin-btn.small {
+    font-size: 11px;
+    height: 26px;
+    min-width: 70px;
+    padding: 0 8px;
+}
+
+.mat-admin-loading {
+    background: #1f2933;
+    border: 1px solid #20688c;
+    color: #9cc8ff;
+    display: none;
+    font-size: 12px;
+    margin-bottom: 8px;
+    padding: 8px;
+    text-align: center;
+}
+
+.mat-admin-loading.active {
+    display: block;
+}
+
+.mat-admin-message {
+    background: #402f3a;
+    border: 1px solid #9c5870;
+    color: #ffd9e2;
+    font-size: 12px;
+    margin-bottom: 8px;
+    padding: 8px;
+}
+
+.mat-admin-grid-wrap {
+    border: 1px solid #20688c;
+    max-height: calc(100vh - 280px);
+    min-height: 360px;
+    overflow: auto;
+}
+
+.mat-admin-table {
+    border-collapse: collapse;
+    font-size: 11px;
+    min-width: 100%;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.mat-admin-table thead th {
+    background: #294257;
+    border-bottom: 1px solid #3f5f78;
+    color: #ffffff;
+    font-weight: 700;
+    height: 28px;
+    padding: 6px 8px;
+    position: sticky;
+    text-align: left;
+    top: 0;
+    white-space: nowrap;
+    z-index: 2;
+}
+
+.mat-admin-table thead th {
+    overflow: visible;
+    padding-right: 14px;
+}
+
+.mat-admin-th-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mat-admin-filterable {
+    overflow: visible !important;
+    position: sticky;
+}
+
+.mat-admin-row-number-head,
+.mat-admin-row-number {
+    text-align: center !important;
+}
+
+.mat-admin-row-number {
+    color: #c7d3df !important;
+    font-weight: 700;
+}
+
+.mat-admin-header-cell {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    min-height: 18px;
+}
+
+.mat-admin-filter-btn {
+    align-items: center;
+    background: #203241;
+    border: 1px solid #55708a;
+    color: #9cc8ff;
+    cursor: pointer;
+    display: flex;
+    flex: 0 0 auto;
+    font-size: 10px;
+    height: 20px;
+    justify-content: center;
+    margin-left: auto;
+    padding: 0;
+    width: 20px;
+}
+
+.mat-admin-filter-btn:hover,
+.mat-admin-filter-btn.open {
+    background: #20688c;
+    color: #ffffff;
+}
+
+.mat-admin-filter-btn.active {
+    background: #2f80d8;
+    border-color: #71b9ff;
+    color: #ffffff;
+}
+
+.mat-admin-header-filter {
+    background: #2c3e50;
+    border: 1px solid #20688c;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+    display: none;
+    left: 6px;
+    min-width: 165px;
+    padding: 6px;
+    position: absolute;
+    right: 6px;
+    top: 29px;
+    z-index: 20;
+}
+
+.mat-admin-header-filter.open {
+    display: block;
+}
+
+.mat-admin-filter-input {
+    background: #34495e;
+    border: 1px solid #20688c;
+    color: #f3f6fb;
+    font-size: 11px;
+    height: 24px;
+    padding: 4px 6px;
+    width: 100%;
+}
+
+.mat-admin-filter-input:focus {
+    border-color: #71b9ff;
+    box-shadow: 0 0 0 2px rgba(113, 185, 255, 0.18);
+    outline: 0;
+}
+
+.mat-admin-filter-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.mat-admin-filter-actions button {
+    background: #3c5066;
+    border: 1px solid #5f7e9d;
+    color: #ffffff;
+    cursor: pointer;
+    flex: 1;
+    font-size: 10px;
+    height: 22px;
+}
+
+.mat-admin-filter-actions button:hover {
+    background: #4f78aa;
+}
+
+.mat-admin-col-resizer {
+    bottom: 0;
+    cursor: col-resize;
+    position: absolute;
+    right: -3px;
+    top: 0;
+    width: 7px;
+    z-index: 4;
+}
+
+.mat-admin-col-resizer::after {
+    background: rgba(156, 200, 255, 0.45);
+    bottom: 5px;
+    content: "";
+    position: absolute;
+    right: 3px;
+    top: 5px;
+    width: 1px;
+}
+
+.mat-admin-col-resizer:hover::after,
+.mat-admin-resizing .mat-admin-col-resizer::after {
+    background: #71b9ff;
+    width: 2px;
+}
+
+.mat-admin-resizing {
+    cursor: col-resize !important;
+    user-select: none;
+}
+
+.mat-admin-table tbody td {
+    border-bottom: 1px solid #3f4856;
+    color: #eaf0f5;
+    height: 26px;
+    overflow: hidden;
+    padding: 5px 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mat-admin-table tbody tr:nth-child(even) td {
+    background: #384051;
+}
+
+.mat-admin-table tbody tr:nth-child(odd) td {
+    background: #343847;
+}
+
+.mat-admin-table tbody tr:hover td {
+    background: #46566a;
+}
+
+.mat-admin-drilldown-cell {
+    color: #d9ecff;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.mat-admin-drilldown-cell:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+.mat-admin-empty {
+    color: #b8c3cf;
+    padding: 18px;
+    text-align: center;
+}
+
+.mat-admin-footer {
+    align-items: center;
+    background: #3a3e4e;
+    border: 1px solid #3f4856;
+    border-top: 0;
+    display: flex;
+    justify-content: space-between;
+    min-height: 38px;
+    padding: 7px 10px;
+}
+
+.mat-admin-footer span {
+    color: #ffffff;
+    font-size: 13px;
+}
+
+.mat-admin-pagination {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.mat-admin-pagination select {
+    background: #f8fafc;
+    border: 1px solid #8fa1b2;
+    color: #1f2933;
+    font-size: 11px;
+    height: 26px;
+}
+
+@media (max-width: 900px) {
+    .mat-admin-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mat-admin-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .mat-admin-btn {
+        flex: 1;
+    }
+
+    .mat-admin-toolbar label {
+        min-width: 100%;
+    }
+
+    .mat-admin-toolbar .mat-admin-check {
+        min-width: 45%;
+    }
+}

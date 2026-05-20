@@ -622,10 +622,36 @@ document.addEventListener("DOMContentLoaded", function () {
     reciboPagoContainer.style.display = "block";
   };
 
-  window.mostrarHistorialMaterial = function () {
+  function mostrarVistaHistorialMaterialAdmin(tipo) {
     hideAllMaterialContainers();
     materialContentArea.style.display = "block";
     historialMaterialContainer.style.display = "block";
+
+    cargarContenidoDinamico(
+      "historial-material-container",
+      `/material/historial_admin/${tipo}`,
+      () => {
+        if (typeof window.initMaterialAdminHistory === "function") {
+          window.initMaterialAdminHistory(tipo);
+        }
+      },
+    );
+  }
+
+  window.mostrarHistorialEntradas = function () {
+    mostrarVistaHistorialMaterialAdmin("entradas");
+  };
+
+  window.mostrarHistorialSalidas = function () {
+    mostrarVistaHistorialMaterialAdmin("salidas");
+  };
+
+  window.mostrarHistorialRetornos = function () {
+    mostrarVistaHistorialMaterialAdmin("retornos");
+  };
+
+  window.mostrarHistorialMaterial = function () {
+    window.mostrarHistorialEntradas();
   };
 
   window.mostrarEstatusMaterial = function () {
@@ -658,10 +684,24 @@ document.addEventListener("DOMContentLoaded", function () {
     consultarPepsContainer.style.display = "block";
   };
 
-  window.mostrarLongtermInventory = function () {
+  window.mostrarInventarioActual = function () {
     hideAllMaterialContainers();
     materialContentArea.style.display = "block";
     longtermInventoryContainer.style.display = "block";
+
+    cargarContenidoDinamico(
+      "longterm-inventory-container",
+      "/material/inventario_actual",
+      () => {
+        if (typeof window.initMaterialCurrentInventory === "function") {
+          window.initMaterialCurrentInventory();
+        }
+      },
+    );
+  };
+
+  window.mostrarLongtermInventory = function () {
+    window.mostrarInventarioActual();
   };
 
   window.mostrarRegistroMaterial = function () {

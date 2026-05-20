@@ -1,0 +1,73 @@
+<div id="mat-admin-inventory-unique-container" class="mat-admin-page">
+    <div class="mat-admin-tabs" role="tablist">
+        <button id="mat-admin-inv-tab-summary" class="mat-admin-tab active" type="button" data-view="summary">Resumen</button>
+        <button id="mat-admin-inv-tab-detail" class="mat-admin-tab" type="button" data-view="detail">Detalle</button>
+    </div>
+
+    <div class="mat-admin-toolbar">
+        <label>
+            Numero de parte
+            <input id="mat-admin-inv-part" type="text" autocomplete="off" placeholder="Buscar parte">
+        </label>
+        <label id="mat-admin-inv-label-wrap">
+            Codigo recibido
+            <input id="mat-admin-inv-label" type="text" autocomplete="off" placeholder="Etiqueta">
+        </label>
+        <label>
+            Ubicacion
+            <input id="mat-admin-inv-location" type="text" autocomplete="off" placeholder="Rack / ubicacion">
+        </label>
+        <label class="mat-admin-check">
+            <input id="mat-admin-inv-include-zero" type="checkbox">
+            Incluir salidas
+        </label>
+        <label id="mat-admin-inv-only-na-wrap" class="mat-admin-check">
+            <input id="mat-admin-inv-only-na" type="checkbox">
+            Solo lotes N/A
+        </label>
+        <label class="mat-admin-check">
+            <input id="mat-admin-inv-use-date" type="checkbox">
+            Rango fechas
+        </label>
+        <label id="mat-admin-inv-start-wrap" class="mat-admin-date-filter">
+            Desde
+            <input id="mat-admin-inv-start" type="date">
+        </label>
+        <label id="mat-admin-inv-end-wrap" class="mat-admin-date-filter">
+            Hasta
+            <input id="mat-admin-inv-end" type="date">
+        </label>
+        <div class="mat-admin-actions">
+            <button id="mat-admin-inv-btn-search" class="mat-admin-btn primary" type="button">Consultar</button>
+            <button id="mat-admin-inv-btn-clear" class="mat-admin-btn" type="button">Limpiar</button>
+            <button id="mat-admin-inv-btn-export" class="mat-admin-btn success" type="button">Exportar Excel</button>
+        </div>
+    </div>
+
+    <div id="mat-admin-inv-loading" class="mat-admin-loading">Cargando...</div>
+    <div id="mat-admin-inv-message" class="mat-admin-message" hidden></div>
+
+    <div class="mat-admin-grid-wrap">
+        <table class="mat-admin-table">
+            <thead id="mat-admin-inv-head"></thead>
+            <tbody id="mat-admin-inv-body"></tbody>
+        </table>
+    </div>
+
+    <div class="mat-admin-footer">
+        <span id="mat-admin-inv-count">Total Rows: 0</span>
+        <div id="mat-admin-inv-pagination" class="mat-admin-pagination">
+            <button id="mat-admin-inv-prev" class="mat-admin-btn small" type="button">Anterior</button>
+            <span id="mat-admin-inv-page">Pagina 1</span>
+            <button id="mat-admin-inv-next" class="mat-admin-btn small" type="button">Siguiente</button>
+            <select id="mat-admin-inv-page-size">
+                <option value="100">100</option>
+                <option value="500" selected>500</option>
+                <option value="1000">1000</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
+<script src="{{ url_for('static', filename='js/material_admin_inventory.js', v='20260520j') }}"></script>

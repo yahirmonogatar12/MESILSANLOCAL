@@ -357,62 +357,22 @@ const allDropdowns = [
     {
         "pagina": "LISTA_DE_MATERIALES",
         "seccion": "Control de material",
-        "boton": "Control de material de almacén"
+        "boton": "Historial de entradas"
     },
     {
         "pagina": "LISTA_DE_MATERIALES",
         "seccion": "Control de material",
-        "boton": "Control de salida"
+        "boton": "Historial de salidas"
     },
     {
         "pagina": "LISTA_DE_MATERIALES",
         "seccion": "Control de material",
-        "boton": "Control de material retorno"
+        "boton": "Historial de retornos"
     },
     {
         "pagina": "LISTA_DE_MATERIALES",
         "seccion": "Control de material",
-        "boton": "Recibo y pago del material"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Historial de material"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Estatus de material"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Material sustituto"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Consultar PEPS"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Control de Long-Term Inventory"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Registro de material real"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Historial de inventario real"
-    },
-    {
-        "pagina": "LISTA_DE_MATERIALES",
-        "seccion": "Control de material",
-        "boton": "Ajuste de número de parte"
+        "boton": "Inventario actual"
     },
     {
         "pagina": "LISTA_DE_MATERIALES",

@@ -396,19 +396,10 @@ class AuthSystem:
         """Crear permisos específicos de botones para las páginas LISTAS"""
         permisos_botones = [
             # LISTA DE MATERIALES - Control de material
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de material de almacén', 'Acceso al control de material de almacén'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de salida', 'Acceso al control de salida de material'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de material retorno', 'Acceso al control de retorno de material'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Recibo y pago del material', 'Acceso a recibo y pago del material'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de material', 'Acceso al historial de material'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Estatus de material', 'Acceso al estatus de material'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Material sustituto', 'Acceso a material sustituto'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Consultar PEPS', 'Acceso a consulta PEPS'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Control de Long-Term Inventory', 'Acceso a control de inventario de largo plazo'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Registro de material real', 'Acceso a registro de material real'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de inventario real', 'Acceso al historial de inventario real'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Inventario de rollos SMD', 'Acceso al inventario de rollos SMD'),
-            ('LISTA_DE_MATERIALES', 'Control de material', 'Ajuste de número de parte', 'Acceso a ajuste de número de parte'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de entradas', 'Acceso al historial de entradas de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de salidas', 'Acceso al historial de salidas de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Historial de retornos', 'Acceso al historial de retornos de material'),
+            ('LISTA_DE_MATERIALES', 'Control de material', 'Inventario actual', 'Acceso al inventario actual de material'),
             
             # LISTA DE MATERIALES - Control de material MSL
             ('LISTA_DE_MATERIALES', 'Control de material MSL', 'Control total de material', 'Acceso al control total de material MSL'),

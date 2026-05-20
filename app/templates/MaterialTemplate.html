@@ -40,6 +40,7 @@
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
     <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260513b') }}">
+    <link id="material-admin-inventory-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -1936,6 +1937,13 @@
                         console.warn('Error en limpiarHistorialICTPassFail:', e);
                     }
                 }
+                if (typeof window.limpiarMaterialAdminInventory === 'function') {
+                    try {
+                        window.limpiarMaterialAdminInventory();
+                    } catch(e) {
+                        console.warn('Error en limpiarMaterialAdminInventory:', e);
+                    }
+                }
                 // Agregar más funciones de limpieza aquí para otros módulos si es necesario
 
                 // 1. CERRAR TODOS LOS DROPDOWNS ANTES DE LIMPIAR
@@ -3015,19 +3023,32 @@ function hideAllMaterialContainers() {
                 });
             };
 
-            window.mostrarHistorialMaterial = function() {
+            function mostrarVistaHistorialMaterialAdmin(tipo) {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 historialMaterialContainer.style.display = 'block';
 
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('historial-material-container', '/material/historial_material', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initHistorialMaterial === 'function') {
-                        initHistorialMaterial();
+                cargarContenidoDinamico('historial-material-container', `/material/historial_admin/${tipo}`, () => {
+                    if (typeof window.initMaterialAdminHistory === 'function') {
+                        window.initMaterialAdminHistory(tipo);
                     }
                 });
+            }
+
+            window.mostrarHistorialEntradas = function() {
+                mostrarVistaHistorialMaterialAdmin('entradas');
+            };
+
+            window.mostrarHistorialSalidas = function() {
+                mostrarVistaHistorialMaterialAdmin('salidas');
+            };
+
+            window.mostrarHistorialRetornos = function() {
+                mostrarVistaHistorialMaterialAdmin('retornos');
+            };
+
+            window.mostrarHistorialMaterial = function() {
+                window.mostrarHistorialEntradas();
             };
 
             window.mostrarEstatusMaterial = function() {
@@ -3075,19 +3096,20 @@ function hideAllMaterialContainers() {
                 });
             };
 
-            window.mostrarLongtermInventory = function() {
+            window.mostrarInventarioActual = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
                 longtermInventoryContainer.style.display = 'block';
 
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('longterm-inventory-container', '/material/longterm_inventory', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initLongtermInventory === 'function') {
-                        initLongtermInventory();
+                cargarContenidoDinamico('longterm-inventory-container', '/material/inventario_actual', () => {
+                    if (typeof window.initMaterialCurrentInventory === 'function') {
+                        window.initMaterialCurrentInventory();
                     }
                 });
+            };
+
+            window.mostrarLongtermInventory = function() {
+                window.mostrarInventarioActual();
             };
 
             window.mostrarRegistroMaterial = function() {
