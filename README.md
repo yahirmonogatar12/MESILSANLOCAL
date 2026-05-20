@@ -2,15 +2,24 @@
 
 Sistema MES basado en Flask para gestión de materiales, BOM, inventarios, planeación de producción y módulos SMT, con soporte de impresión local Zebra.
 
-## Documentacion tecnica actualizada
+## Documentación Técnica y Manual Maestro
 
-- Indice tecnico v2: [Documentacion/README_TECNICO_MES.md](Documentacion/README_TECNICO_MES.md)
+Para ver la documentación completa y detallada del sistema, consulta el **[Manual Técnico Completo](Documentacion/MANUAL_TECNICO_COMPLETO.md)**, el cual incluye:
+- Arquitectura general del sistema.
+- Flujos de procesos visuales (diagramas Mermaid) para autenticación, control de almacenes, ingeniería BOM/ECO, líneas SMT/SMD y terminales móviles PDA Zebra.
+- Detalle de la estructura del repositorio con enlaces clickables.
+- Catálogo de APIs y comportamiento de seguridad.
+- Esquema de base de datos relacional y catálogo de tablas.
+
+Otros documentos de referencia:
+- Índice técnico v2: [README_TECNICO_MES.md](Documentacion/README_TECNICO_MES.md)
+- Guía de Desarrollo de Módulos: [GUIA_DESARROLLO_MODULOS_MES.md](Documentacion/GUIA_DESARROLLO_MODULOS_MES.md)
+- Hallazgos y Riesgos de Seguridad: [HALLAZGOS_TECNICOS_Y_RIESGOS.md](Documentacion/HALLAZGOS_TECNICOS_Y_RIESGOS.md)
 
 ## Requisitos
 
 - Python 3.11 (ver `runtime.txt`)
 - MySQL 8.x (acceso a instancia con base y usuario)
-- Windows (opcional) para el servicio local de impresión Zebra
 
 ## Variables de entorno
 
@@ -50,28 +59,6 @@ La app por defecto inicia en `http://127.0.0.1:5000/` (o 0.0.0.0:5000):
 - `/login` — página de inicio de sesión.
 - `/inicio` — hub/landing page (después de autenticar) con todas las aplicaciones disponibles.
 - `/ILSAN-ELECTRONICS` — módulo MES principal (material, inventarios, BOM, producción).
-
-## Servicio de Impresión Zebra (opcional)
-
-Carpeta: `ZebraPrintService/`.
-
-Hay dos enfoques:
-
-- Servicio integrado (Windows Service que levanta Flask): `zebra_flask_integrado.py`
-  - Expone:
-    - `GET /` (status)
-    - `POST /print` (ZPL en JSON: `{ "zpl_content": "^XA...^XZ" }`)
-    - `GET /printers` (lista impresoras)
-  - Puerto por defecto: 5003.
-
-- Servicio Windows que gestiona un proceso Flask externo: `print_service_windows.py`
-  - Controla `print_service.py` y mantiene el servicio en ejecución.
-
-Scripts .bat para instalar/desinstalar el servicio:
-- `instalar_servicio.bat`, `desinstalar_servicio.bat`, `start_service_auto.bat`, etc.
-
-Asegúrate de tener instalados los paquetes necesarios en Windows:
-- `flask`, `flask-cors`, `pywin32`
 
 ## Hub de aplicaciones (Landing Page)
 
@@ -173,7 +160,6 @@ Los endpoints clave viven principalmente en `app/routes.py` y blueprints adicion
 
 - Si no conecta a MySQL, verifica variables de entorno con `GET /debug/env` (solo en `api/index.py`).
 - Errores de importación de Excel: asegúrate de tener `pandas`, `openpyxl`, `xlrd` instalados.
-- Impresión Zebra: valida que Windows detecte la impresora y que el servicio exponga `GET /printers` con el nombre correcto.
 
 ## Licencia
 

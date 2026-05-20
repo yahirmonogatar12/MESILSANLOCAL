@@ -261,14 +261,6 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 ---
 
-### 🖨️ IMPRESIÓN ZEBRA
-
-| Ruta | Método | Descripción | Autenticación |
-|------|--------|-------------|---------------|
-| `/imprimir_zebra` | POST | Imprimir etiqueta Zebra |  |
-| `/imprimir_etiqueta_qr` | POST | Imprimir etiqueta QR |  |
-
----
 
 ### 🎭 METAL MASK API
 
