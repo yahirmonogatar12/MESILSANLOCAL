@@ -66,17 +66,18 @@
             }
         }
 
-        /* PREVENIR ANIMACIONES CONFLICTIVAS */
-        .collapse.collapsing {
+        /* PREVENIR ANIMACIONES CONFLICTIVAS (excepto sidebar) */
+        .collapse.collapsing:not(.sidebar-dropdown-list) {
             transition: none !important;
         }
 
-        /* ASEGURAR QUE LOS DROPDOWNS CERRADOS PERMANEZCAN CERRADOS */
-        .collapse:not(.show) {
+        /* ASEGURAR QUE LOS DROPDOWNS CERRADOS PERMANEZCAN CERRADOS
+           (excluye sidebar-dropdown-list para permitir animación max-height) */
+        .collapse:not(.show):not(.sidebar-dropdown-list) {
             display: none !important;
         }
 
-        .collapse.show {
+        .collapse.show:not(.sidebar-dropdown-list) {
             display: block !important;
         }
 
@@ -856,7 +857,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- ANIMACIONES PARA DROPDOWNS EN DESKTOP -->
-    <link rel="stylesheet" href="../static/css/desktop-dropdown-animations.css">
+    <link rel="stylesheet" href="../static/css/desktop-dropdown-animations.css?v=20260520d">
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js"></script>
@@ -2089,6 +2090,14 @@
                     .then(html => {
                         container.innerHTML = html;
                         container.style.display = 'block';
+
+                        // Reinicializar dropdowns del sidebar recién inyectado
+                        // (sin esto, Bootstrap pierde las instancias Collapse y
+                        // los botones dejan de toggle al navegar entre pestañas)
+                        if (typeof window.setupUnifiedDropdowns === 'function') {
+                            try { window.setupUnifiedDropdowns(); }
+                            catch (e) { console.warn('Error reinicializando dropdowns:', e); }
+                        }
 
                         if (window.PermisosDropdowns) {
                             const permisosReady = typeof window.PermisosDropdowns.init === 'function'

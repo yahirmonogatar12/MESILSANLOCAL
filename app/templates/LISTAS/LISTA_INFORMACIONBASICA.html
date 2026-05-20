@@ -2,12 +2,12 @@
         <aside class="app-sidebar">
         <ul class="sidebar-menu">
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial" aria-expanded="false">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial" aria-expanded="true">
                     <span class="sidebar-icon"></span>
                     Administración de usuario
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMaterial">
                     <li class="sidebar-link" tabindex="0" onclick="window.mostrarAdminUsuarioInfo()" 
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Administración de usuario" 
@@ -35,12 +35,12 @@
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL" aria-expanded="false">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMSL" aria-expanded="true">
                     <span class="sidebar-icon"></span>
                     Control de Proceso
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMSL">
                     <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlDepartamentoInfo()" 
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de Proceso" 
@@ -72,12 +72,12 @@
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarProduccion" aria-expanded="false">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarProduccion" aria-expanded="true">
                     <span class="sidebar-icon"></span>
                     Control de produccion
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarProduccion">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarProduccion">
                     <li class="sidebar-link" tabindex="0" 
                         onclick="window.parent.mostrarControlModelosSMT ? window.parent.mostrarControlModelosSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-modelos-smt-unique-container', '/control-modelos-smt-ajax') : window.location.href='/control-modelos-smt-ajax')"
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
@@ -113,12 +113,12 @@
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial2" aria-expanded="false">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarMaterial2" aria-expanded="true">
                     <span class="sidebar-icon"></span>
                     Control de material
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarMaterial2">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarMaterial2">
                     <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlMaterialInfo()" 
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de material" 
@@ -130,12 +130,12 @@
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarCliente" aria-expanded="false">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarCliente" aria-expanded="true">
                     <span class="sidebar-icon"></span>
                     Control de cliente
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarCliente">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarCliente">
                     <li class="sidebar-link" tabindex="0" onclick="window.mostrarControlClienteInfo()" 
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Control de cliente" 
@@ -147,12 +147,12 @@
                 </ul>
             </li>
             <li class="sidebar-section">
-                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarOtros" aria-expanded="false">
+                <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarOtros" aria-expanded="true">
                     <span class="sidebar-icon"></span>
                     Otros
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
-                <ul class="collapse sidebar-dropdown-list" id="sidebarOtros">
+                <ul class="collapse show sidebar-dropdown-list" id="sidebarOtros">
                     <li class="sidebar-link" tabindex="0" onclick="window.mostrarReiniciarSeccionInfo()" 
                         data-permiso-pagina="LISTA_INFORMACIONBASICA" 
                         data-permiso-seccion="Otros" 

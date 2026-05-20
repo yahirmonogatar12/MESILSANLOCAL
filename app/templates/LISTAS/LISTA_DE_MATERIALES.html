@@ -2,12 +2,12 @@
         <aside class="app-sidebar">
         <ul class="sidebar-menu">
             <li class="sidebar-section">
-                    <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarControlMaterial" aria-expanded="false">
+                    <button class="sidebar-dropdown-btn" data-bs-toggle="collapse" data-bs-target="#sidebarControlMaterial" aria-expanded="true">
                         <span class="sidebar-icon"></span>
                         Control de material
                         <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                     </button>
-                    <ul class="collapse sidebar-dropdown-list" id="sidebarControlMaterial">
+                    <ul class="collapse show sidebar-dropdown-list" id="sidebarControlMaterial">
                         <li class="sidebar-link" tabindex="0" onclick="window.parent.mostrarHistorialEntradas ? window.parent.mostrarHistorialEntradas() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-material-container', '/material/historial_admin/entradas') : window.location.href='/material/historial_admin/entradas')"
                             data-permiso-pagina="LISTA_DE_MATERIALES"
                             data-permiso-seccion="Control de material"

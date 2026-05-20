@@ -4,18 +4,26 @@
 
 /* Solo para dispositivos desktop */
 @media (min-width: 769px) {
-  
-  /* DROPDOWNS DESPLEGADOS POR DEFECTO EN PC - SIN FORZAR */
-  .sidebar-dropdown-list.collapse:not(.collapsed-by-user) {
-    display: block;
-    height: auto;
-    max-height: none;
-    opacity: 1;
+
+  /* Animación nativa de Bootstrap Collapse (height) + fade en opacidad.
+     Bootstrap añade .collapsing durante la transición (height inline)
+     y luego deja .collapse sin .show al terminar de cerrar. */
+  .sidebar-dropdown-list.collapsing {
+    transition: height 0.35s ease, opacity 0.25s ease !important;
+    opacity: 0.4;
+    overflow: hidden;
+    display: block !important;
   }
-  
-  /* Permitir que se cierren cuando el usuario lo desee */
-  .sidebar-dropdown-list.collapse.collapsed-by-user {
-    display: none;
+
+  .sidebar-dropdown-list.collapse.show {
+    opacity: 1;
+    transition: opacity 0.25s ease;
+    display: block !important;
+  }
+
+  /* Cerrado y sin animar: ocultar por completo (sin hueco) */
+  .sidebar-dropdown-list.collapse:not(.show):not(.collapsing) {
+    display: none !important;
   }
   
   /* Buscar flechas en diferentes elementos comunes */
