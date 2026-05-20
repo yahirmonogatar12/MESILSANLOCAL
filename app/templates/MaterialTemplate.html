@@ -2584,38 +2584,6 @@ function hideAllMaterialContainers() {
                     .catch(error => console.error('Error cargando info material:', error));
             };
 
-            // Función global para mostrar el contenido de almacén
-            window.mostrarControlAlmacen = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                controlAlmacenContainer.style.display = 'block';
-
-                // IMPORTANTE: Ocultar contenedor de producción
-                produccionContentArea.style.display = 'none';
-
-                // Cargar contenido dinámicamente con callback de inicialización
-                cargarContenidoDinamico('control-almacen-container', '/material/control_almacen', () => {
-
-
-                    // Intentar inicializar funciones de control de almacén (sin mensajes de advertencia)
-                    if (typeof window.inicializarControlAlmacenModule === 'function') {
-                        window.inicializarControlAlmacenModule();
-                    } else if (typeof window.inicializarControlAlmacen === 'function') {
-                        window.inicializarControlAlmacen();
-                    } else {
-                        // Intentar métodos individuales sin mensajes de error
-                        if (typeof cargarCodigosMaterial === 'function') cargarCodigosMaterial();
-                        if (typeof cargarClienteSeleccionado === 'function') cargarClienteSeleccionado();
-                        if (typeof cargarSiguienteSecuencial === 'function') cargarSiguienteSecuencial();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error cargando control de almacén:', error);
-                });
-
-
-            };
-
             // Función global para mostrar Control de Embarque
             window.mostrarControlEmbarque = function() {
                 hideAllMaterialContainers();
@@ -2925,89 +2893,6 @@ function hideAllMaterialContainers() {
                 }
             };
 
-            // Funciones para mostrar otros contenidos
-            window.mostrarControlSalida = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                controlSalidaContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente usando la versión AJAX
-                cargarContenidoDinamico('control-salida-container', '/control-salida-ajax', () => {
-                    // 🚀 INICIALIZACIÓN PRINCIPAL DE CONTROL DE SALIDA
-                    if (typeof window.inicializarControlSalidaModule === 'function') {
-                        // // // // // // console.log('🔧 Ejecutando inicializarControlSalidaModule...');
-                        window.inicializarControlSalidaModule();
-                    } else if (typeof inicializarControlSalida === 'function') {
-                        // // // // // // console.log('🔧 Ejecutando inicializarControlSalida...');
-                        inicializarControlSalida();
-                    } else {
-                        console.warn(' Funciones de inicialización de Control de Salida no disponibles');
-                    }
-
-                    // 🔧 RECONEXIÓN DE EVENT LISTENERS (MANTENER COMPATIBILIDAD)
-                    setTimeout(() => {
-                        // // // // // // console.log('🔧 Reconectando event listeners adicionales...');
-
-                        // Reconectar evento de escaneo (respaldo)
-                        const codigoInput = document.getElementById('salida_codigo_material_recibido');
-                        if (codigoInput && typeof procesarEscaneoRapido === 'function') {
-                            // Solo agregar si no tiene el listener ya
-                            if (!codigoInput.dataset.listenerAdded) {
-                                codigoInput.addEventListener('keydown', procesarEscaneoRapido);
-                                codigoInput.dataset.listenerAdded = 'true';
-                                // // // // // // // console.log(' Event listener de escaneo reconectado (respaldo)');
-                            }
-                        }
-
-                        // Reconectar evento de verificación (respaldo)
-                        const verificacionInput = document.getElementById('salida_verificacion_codigo');
-                        if (verificacionInput && typeof procesarVerificacion === 'function') {
-                            // Solo agregar si no tiene el listener ya
-                            if (!verificacionInput.dataset.listenerAdded) {
-                                verificacionInput.addEventListener('keydown', procesarVerificacion);
-                                verificacionInput.dataset.listenerAdded = 'true';
-                                // // // // // // // console.log(' Event listener de verificación reconectado (respaldo)');
-                            }
-                        }
-
-                        // Reconectar botón de guardar salida (respaldo)
-                        const btnGuardar = document.getElementById('salida_btnGuardarSalida');
-                        if (btnGuardar && typeof procesarSalidaManual === 'function') {
-                            // Solo agregar si no tiene el listener ya
-                            if (!btnGuardar.dataset.listenerAdded) {
-                                btnGuardar.addEventListener('click', procesarSalidaManual);
-                                btnGuardar.dataset.listenerAdded = 'true';
-                                // // // // // // // console.log(' Event listener de botón guardar reconectado (respaldo)');
-                            }
-                        }
-                    }, 500);
-                })
-                .catch(error => {
-                    console.error('Error cargando control de salida:', error);
-                });
-            };
-
-            window.mostrarControlRetorno = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                controlRetornoContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente con callback de inicialización
-                cargarContenidoDinamico('control-retorno-container', '/material/control_retorno', () => {
-
-                    // Intentar inicializar funciones de control de retorno
-                    if (typeof window.initControlRetorno === 'function') {
-                        window.initControlRetorno();
-                    } else if (typeof initControlRetorno === 'function') {
-                        initControlRetorno();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error cargando control de retorno:', error);
-                });
-
-            };
-
             window.mostrarReciboPago = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
@@ -3219,7 +3104,7 @@ function hideAllMaterialContainers() {
                 cargarContenidoDinamico('control-material-content', '/listas/control_material')
                     .then(() => {
                         // IMPORTANTE: NO ocultar material-content-area aquí
-                        // Las funciones específicas (mostrarInfoMaterial, mostrarControlAlmacen) lo manejarán
+                        // Las funciones específicas de cada módulo lo manejarán
                         hideAllInformacionBasicaContainers();
                         informacionBasicaContentArea.style.display = 'none';
                     })

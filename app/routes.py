@@ -1170,24 +1170,6 @@ def dashboard():
     )
 
 
-@app.route("/Prueba")
-@login_requerido
-def produccion():
-    usuario = session.get("usuario", "Invitado")
-    return render_template(
-        "Control de material/Control de salida.html", usuario=usuario
-    )
-
-
-@app.route("/DESARROLLO")
-@login_requerido
-def desarrollo():
-    usuario = session.get("usuario", "Invitado")
-    return render_template(
-        "Control de material/Control de salida.html", usuario=usuario
-    )
-
-
 @app.route("/logout")
 def logout():
     usuario = session.get("usuario", "unknown")
@@ -8850,51 +8832,6 @@ def obtener_codigos_material():
                 conn.close()
         except:
             pass
-
-
-@app.route("/control_almacen")
-@login_requerido
-def control_almacen():
-    return render_template("Control de material/Control de material de almacen.html")
-
-
-@app.route("/control_salida")
-@login_requerido
-def control_salida():
-    """
-    🚀 Ruta principal para Control de Salida de Material
-
-    Características:
-    - Autenticación requerida
-    - Información del usuario para personalización
-    - Configuración inicial del módulo
-    - Datos de contexto para mejor experiencia
-    """
-    try:
-        usuario = session.get("usuario", "Usuario")
-
-        # Obtener información adicional del usuario si está disponible
-        user_info = {
-            "username": usuario,
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "module": "Control de Salida",
-        }
-
-        print(f" Control de Salida cargado para usuario: {usuario}")
-
-        return render_template(
-            "Control de material/Control de salida.html",
-            usuario=usuario,
-            user_info=user_info,
-        )
-
-    except Exception as e:
-        print(f" Error al cargar Control de Salida: {e}")
-        return render_template(
-            "Control de material/Control de salida.html",
-            usuario="Usuario",
-            error="Error al cargar el módulo",
-        )
 
 
 @app.route("/control_calidad")
@@ -17309,30 +17246,6 @@ def material_info():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/material/control_almacen")
-@login_requerido
-def material_control_almacen():
-    """Cargar dinámicamente el control de almacén"""
-    try:
-        return render_template(
-            "Control de material/Control de material de almacen.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar Control de material de almacen: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/material/control_salida")
-@login_requerido
-def material_control_salida():
-    """Cargar dinámicamente el control de salida"""
-    try:
-        return render_template("Control de material/Control de salida.html")
-    except Exception as e:
-        print(f"Error al cargar Control de salida: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
 @app.route("/consultar_especificacion_por_numero_parte")
 @login_requerido
 def consultar_especificacion_por_numero_parte():
@@ -17512,19 +17425,6 @@ def material_registro_material():
         return render_template("Control de material/Registro de material real.html")
     except Exception as e:
         print(f"Error al cargar Registro de material real: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/material/control_retorno")
-@login_requerido
-def material_control_retorno():
-    """Cargar dinámicamente el control de material de retorno"""
-    try:
-        return render_template(
-            "Control de material/Control de material de retorno.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar Control de material de retorno: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
@@ -21621,17 +21521,6 @@ def material_recibo_pago():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/material/historial_material")
-@login_requerido
-def material_historial_material():
-    """Cargar dinámicamente el historial de material"""
-    try:
-        return render_template("Control de material/Historial de material.html")
-    except Exception as e:
-        print(f"Error al cargar Historial de material: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
 @app.route("/material/material_sustituto")
 @login_requerido
 def material_material_sustituto():
@@ -23929,13 +23818,6 @@ def consultar_peps_ajax():
     return render_template("Control de material/consultar_peps_ajax.html")
 
 
-@app.route("/control-almacen-ajax")
-@login_requerido
-def control_almacen_ajax():
-    """Template para Control de almacén"""
-    return render_template("Control de material/control_almacen_ajax.html")
-
-
 @app.route("/control-entrada-salida-material-ajax")
 @login_requerido
 def control_entrada_salida_material_ajax():
@@ -23950,20 +23832,6 @@ def control_entrada_salida_material_ajax():
 def control_recibo_refacciones_ajax():
     """Template para Control de recibo de refacciones"""
     return render_template("Control de material/control_recibo_refacciones_ajax.html")
-
-
-@app.route("/control-retorno-ajax")
-@login_requerido
-def control_retorno_ajax():
-    """Template para Control de retorno"""
-    return render_template("Control de material/control_retorno_ajax.html")
-
-
-@app.route("/control-salida-ajax")
-@login_requerido
-def control_salida_ajax():
-    """Template para Control de salida"""
-    return render_template("Control de material/control_salida_ajax.html")
 
 
 @app.route("/control-salida-refacciones-ajax")
@@ -24015,13 +23883,6 @@ def estatus_material_msl_ajax():
 def historial_inventario_real_ajax():
     """Template para Historial de inventario real"""
     return render_template("Control de material/historial_inventario_real_ajax.html")
-
-
-@app.route("/historial-material-ajax")
-@login_requerido
-def historial_material_ajax():
-    """Template para Historial de material"""
-    return render_template("Control de material/historial_material_ajax.html")
 
 
 @app.route("/inventario-rollos-smd-ajax")
