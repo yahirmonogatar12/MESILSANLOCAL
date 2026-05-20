@@ -28,7 +28,11 @@ SHIPPING_TABLES = {
     "inventory_closures": "embarques_inventario_cierres",
     "inventory_closure_batches": "embarques_inventario_cierre_lotes",
     "catalog_adjustments": "embarques_catalogo_ajustes_historial",
+    "movement_boxes": "embarques_movimiento_cajas",
 }
+
+OQC_RELEASE_BOXES_TABLE = "oqc_release_boxes"
+OQC_RELEASE_BOX_ACTIVE_STATUSES = {"released", "received_shipping", "exception"}
 
 shipping_material_api = Blueprint(
     "shipping_material_api",
@@ -61,6 +65,10 @@ def normalize_search(raw_value):
 
 
 def normalize_part_number(raw_value):
+    return normalize_search(raw_value).upper()
+
+
+def normalize_box_code(raw_value):
     return normalize_search(raw_value).upper()
 
 
@@ -300,6 +308,344 @@ def remove_deprecated_location_defaults(cursor):
     )
 
 
+def extract_box_codes_from_payload(data):
+    raw_boxes = (
+        data.get("boxes")
+        or data.get("boxCodes")
+        or data.get("box_codes")
+        or data.get("boxCode")
+        or data.get("box_code")
+    )
+    box_codes = []
+
+    if isinstance(raw_boxes, list):
+        for item in raw_boxes:
+            if isinstance(item, dict):
+                box_code = normalize_box_code(
+                    item.get("boxCode") or item.get("box_code") or item.get("code")
+                )
+            else:
+                box_code = normalize_box_code(item)
+
+            if box_code:
+                box_codes.append(box_code)
+    else:
+        box_code = normalize_box_code(raw_boxes)
+        if box_code:
+            box_codes.append(box_code)
+
+    seen = set()
+    duplicated = set()
+    unique_box_codes = []
+    for box_code in box_codes:
+        if box_code in seen:
+            duplicated.add(box_code)
+            continue
+        seen.add(box_code)
+        unique_box_codes.append(box_code)
+
+    return unique_box_codes, sorted(duplicated)
+
+
+def fetch_oqc_release_boxes(cursor, box_codes):
+    if not box_codes:
+        return {}
+
+    placeholders = ", ".join(["%s"] * len(box_codes))
+    cursor.execute(
+        f"""
+        SELECT
+          id,
+          oqc_folio,
+          box_code,
+          part_number_id,
+          part_number,
+          quantity,
+          destination,
+          qc_passed,
+          status,
+          source,
+          released_by,
+          employee_id,
+          released_at,
+          created_at
+        FROM `{OQC_RELEASE_BOXES_TABLE}`
+        WHERE box_code IN ({placeholders})
+        ORDER BY released_at DESC, id DESC
+        """,
+        tuple(box_codes),
+    )
+
+    boxes = {}
+    for row in cursor.fetchall():
+        normalized_code = normalize_box_code(row.get("box_code"))
+        if normalized_code and normalized_code not in boxes:
+            boxes[normalized_code] = row
+    return boxes
+
+
+def fetch_shipping_box_movements(cursor, box_codes):
+    if not box_codes:
+        return {}
+
+    placeholders = ", ".join(["%s"] * len(box_codes))
+    cursor.execute(
+        f"""
+        SELECT
+          movement_type,
+          movement_id,
+          movement_folio,
+          box_code,
+          part_number,
+          quantity,
+          registered_by,
+          movement_at
+        FROM `{SHIPPING_TABLES['movement_boxes']}`
+        WHERE box_code IN ({placeholders})
+        ORDER BY movement_at DESC, id DESC
+        """,
+        tuple(box_codes),
+    )
+
+    movements = {}
+    for row in cursor.fetchall():
+        box_code = normalize_box_code(row.get("box_code"))
+        movement_type = normalize_search(row.get("movement_type"))
+        if not box_code or not movement_type:
+            continue
+
+        movements.setdefault(box_code, {})
+        if movement_type not in movements[box_code]:
+            movements[box_code][movement_type] = row
+    return movements
+
+
+def build_box_status_payload(oqc_box, movements=None):
+    movements = movements or {}
+    entry_movement = movements.get("entry")
+    exit_movement = movements.get("exit")
+
+    return {
+        "oqcReleaseBoxId": oqc_box.get("id") if oqc_box else None,
+        "oqcFolio": oqc_box.get("oqc_folio") if oqc_box else None,
+        "boxCode": normalize_box_code((oqc_box or {}).get("box_code")),
+        "partNumber": normalize_part_number((oqc_box or {}).get("part_number")),
+        "quantity": normalize_integer((oqc_box or {}).get("quantity")) or 0,
+        "oqcStatus": (oqc_box or {}).get("status"),
+        "oqcReleasedAt": serialize_datetime((oqc_box or {}).get("released_at")),
+        "entered": bool(entry_movement),
+        "entryFolio": (entry_movement or {}).get("movement_folio"),
+        "entryAt": serialize_datetime((entry_movement or {}).get("movement_at")),
+        "exited": bool(exit_movement),
+        "exitFolio": (exit_movement or {}).get("movement_folio"),
+        "exitAt": serialize_datetime((exit_movement or {}).get("movement_at")),
+    }
+
+
+def validate_oqc_box_batch(cursor, box_codes, movement_type):
+    if not box_codes:
+        return {
+            "success": False,
+            "status": 400,
+            "error": "Se requiere al menos una caja OQC",
+        }
+
+    oqc_boxes = fetch_oqc_release_boxes(cursor, box_codes)
+    movements = fetch_shipping_box_movements(cursor, box_codes)
+    missing = [box_code for box_code in box_codes if box_code not in oqc_boxes]
+
+    if missing:
+        return {
+            "success": False,
+            "status": 404,
+            "error": "Una o mas cajas no existen en liberaciones OQC",
+            "missingBoxes": missing,
+        }
+
+    invalid_status = []
+    duplicated_in_movement = []
+    missing_shipping_entry = []
+    part_numbers = set()
+    total_quantity = 0
+    boxes = []
+
+    for box_code in box_codes:
+        oqc_box = oqc_boxes[box_code]
+        oqc_status = normalize_search(oqc_box.get("status")).lower()
+        if oqc_status not in OQC_RELEASE_BOX_ACTIVE_STATUSES:
+            invalid_status.append(
+                {
+                    "boxCode": box_code,
+                    "status": oqc_box.get("status"),
+                }
+            )
+
+        box_movements = movements.get(box_code, {})
+        if movement_type in box_movements:
+            duplicated_in_movement.append(
+                {
+                    "boxCode": box_code,
+                    "folio": box_movements[movement_type].get("movement_folio"),
+                }
+            )
+
+        if movement_type == "exit" and "entry" not in box_movements:
+            missing_shipping_entry.append(box_code)
+
+        part_number = normalize_part_number(oqc_box.get("part_number"))
+        quantity = normalize_integer(oqc_box.get("quantity")) or 0
+        if not part_number:
+            return {
+                "success": False,
+                "status": 422,
+                "error": f"La caja {box_code} no tiene numero de parte OQC",
+            }
+        if quantity <= 0:
+            return {
+                "success": False,
+                "status": 422,
+                "error": f"La caja {box_code} no tiene cantidad valida OQC",
+            }
+
+        part_numbers.add(part_number)
+        total_quantity += quantity
+        boxes.append(
+            {
+                "oqcReleaseBoxId": oqc_box.get("id"),
+                "oqcFolio": oqc_box.get("oqc_folio"),
+                "boxCode": box_code,
+                "partNumber": part_number,
+                "quantity": quantity,
+                "oqcStatus": oqc_box.get("status"),
+                "oqcReleasedAt": oqc_box.get("released_at"),
+            }
+        )
+
+    if invalid_status:
+        return {
+            "success": False,
+            "status": 409,
+            "error": "Una o mas cajas no estan liberadas por OQC",
+            "boxes": invalid_status,
+        }
+
+    if duplicated_in_movement:
+        action = "entrada" if movement_type == "entry" else "salida"
+        return {
+            "success": False,
+            "status": 409,
+            "error": f"Una o mas cajas ya tienen {action} registrada en embarques",
+            "boxes": duplicated_in_movement,
+        }
+
+    if missing_shipping_entry:
+        return {
+            "success": False,
+            "status": 409,
+            "error": "Una o mas cajas no tienen entrada registrada en embarques",
+            "boxes": missing_shipping_entry,
+        }
+
+    if len(part_numbers) > 1:
+        return {
+            "success": False,
+            "status": 409,
+            "error": "Todas las cajas del folio deben ser del mismo numero de parte",
+            "partNumbers": sorted(part_numbers),
+        }
+
+    return {
+        "success": True,
+        "partNumber": next(iter(part_numbers)),
+        "quantity": total_quantity,
+        "boxes": boxes,
+    }
+
+
+def insert_shipping_box_movements(
+    cursor,
+    movement_type,
+    movement_id,
+    movement_folio,
+    boxes,
+    registered_by,
+    movement_at,
+):
+    if not boxes:
+        return
+
+    values = []
+    for box in boxes:
+        values.append(
+            (
+                movement_type,
+                movement_id,
+                movement_folio,
+                box.get("oqcReleaseBoxId"),
+                box.get("oqcFolio"),
+                box.get("boxCode"),
+                box.get("partNumber"),
+                box.get("quantity"),
+                box.get("oqcStatus"),
+                serialize_datetime(box.get("oqcReleasedAt")),
+                registered_by,
+                movement_at,
+            )
+        )
+
+    placeholders = ", ".join(["(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"] * len(values))
+    cursor.execute(
+        f"""
+        INSERT INTO `{SHIPPING_TABLES['movement_boxes']}` (
+          movement_type,
+          movement_id,
+          movement_folio,
+          oqc_release_box_id,
+          oqc_folio,
+          box_code,
+          part_number,
+          quantity,
+          oqc_release_status,
+          oqc_released_at,
+          registered_by,
+          movement_at
+        ) VALUES {placeholders}
+        """,
+        tuple(item for row in values for item in row),
+    )
+
+
+def mark_oqc_boxes_received(cursor, boxes):
+    ids = [box.get("oqcReleaseBoxId") for box in boxes if box.get("oqcReleaseBoxId")]
+    if not ids:
+        return
+
+    placeholders = ", ".join(["%s"] * len(ids))
+    cursor.execute(
+        f"""
+        UPDATE `{OQC_RELEASE_BOXES_TABLE}`
+        SET status = CASE
+          WHEN status = 'released' THEN 'received_shipping'
+          ELSE status
+        END
+        WHERE id IN ({placeholders})
+        """,
+        tuple(ids),
+    )
+
+
+def serialize_oqc_box_batch(boxes):
+    serialized_boxes = []
+    for box in boxes:
+        serialized_boxes.append(
+            {
+                **box,
+                "oqcReleasedAt": serialize_datetime(box.get("oqcReleasedAt")),
+            }
+        )
+    return serialized_boxes
+
+
 def init_shipping_material_tables():
     if not MYSQL_AVAILABLE:
         print("MySQL no disponible, no se pueden crear tablas compartidas de embarques")
@@ -484,6 +830,35 @@ def init_shipping_material_tables():
                 FOREIGN KEY (exit_id) REFERENCES `{SHIPPING_TABLES['exits']}` (id)
                 ON UPDATE CASCADE
                 ON DELETE RESTRICT
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS `{SHIPPING_TABLES['movement_boxes']}` (
+              id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+              movement_type ENUM('entry', 'exit') NOT NULL,
+              movement_id BIGINT UNSIGNED NOT NULL,
+              movement_folio VARCHAR(40) NOT NULL,
+              oqc_release_box_id BIGINT UNSIGNED NULL,
+              oqc_folio VARCHAR(40) NULL,
+              box_code VARCHAR(100) NOT NULL,
+              part_number VARCHAR(64) NOT NULL,
+              quantity INT NOT NULL DEFAULT 0,
+              oqc_release_status VARCHAR(40) NULL,
+              oqc_released_at DATETIME NULL,
+              registered_by VARCHAR(120) NULL,
+              movement_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (id),
+              UNIQUE KEY uq_movement_box_type_code (movement_type, box_code),
+              KEY idx_movement_boxes_folio (movement_folio),
+              KEY idx_movement_boxes_box_code (box_code),
+              KEY idx_movement_boxes_part_number (part_number),
+              KEY idx_movement_boxes_movement (movement_type, movement_id),
+              KEY idx_movement_boxes_oqc_release (oqc_release_box_id),
+              KEY idx_movement_boxes_movement_at (movement_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
         )
@@ -2640,6 +3015,198 @@ def import_catalog():
             conn.close()
 
 
+@shipping_material_api.route("/boxes/<path:box_code>", methods=["GET"])
+@manejo_errores
+def get_oqc_box_status(box_code):
+    normalized_box_code = normalize_box_code(box_code)
+    if not normalized_box_code:
+        return jsonify({"success": False, "error": "Se requiere codigo de caja"}), 400
+
+    conn = get_db_connection()
+    cursor = get_dict_cursor(conn)
+
+    try:
+        oqc_boxes = fetch_oqc_release_boxes(cursor, [normalized_box_code])
+        oqc_box = oqc_boxes.get(normalized_box_code)
+        if not oqc_box:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Caja no encontrada en liberaciones OQC",
+                    }
+                ),
+                404,
+            )
+
+        movements = fetch_shipping_box_movements(cursor, [normalized_box_code])
+        return jsonify(
+            {
+                "success": True,
+                "box": build_box_status_payload(
+                    oqc_box,
+                    movements.get(normalized_box_code),
+                ),
+            }
+        )
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@shipping_material_api.route("/entries/boxes", methods=["POST"])
+@manejo_errores
+def create_entry_from_oqc_boxes():
+    data = request.get_json(silent=True) or {}
+    box_codes, duplicated = extract_box_codes_from_payload(data)
+
+    if duplicated:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Hay cajas repetidas en el mismo folio",
+                    "boxes": duplicated,
+                }
+            ),
+            400,
+        )
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_transaction_connection()
+        cursor = get_dict_cursor(conn)
+
+        validation = validate_oqc_box_batch(cursor, box_codes, "entry")
+        if not validation.get("success"):
+            conn.rollback()
+            return jsonify(validation), validation.get("status", 400)
+
+        part_number = validation["partNumber"]
+        quantity = validation["quantity"]
+        boxes = validation["boxes"]
+        inventory = ensure_inventory_record(cursor, part_number)
+        if not inventory:
+            conn.rollback()
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "El numero de parte no existe en el catalogo de embarques",
+                }
+            ), 404
+
+        previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
+        new_quantity = previous_quantity + quantity
+        available_quantity = resolve_available_layer_quantity(previous_quantity, quantity)
+        movement_at = to_sql_datetime(data.get("receivedAt") or data.get("scanned_at"))
+        registered_by = (
+            normalize_search(data.get("registeredBy"))
+            or normalize_search(data.get("scanned_by"))
+            or "Usuario local"
+        )
+        entry_folio = generate_movement_folio("EMB-ENT")
+        oqc_folios = sorted({box.get("oqcFolio") for box in boxes if box.get("oqcFolio")})
+        box_notes = ", ".join(
+            f"{box['boxCode']}:{box['quantity']}" for box in boxes
+        )
+
+        update_inventory_snapshot(
+            cursor,
+            inventory["id"],
+            {
+                "current_quantity": new_quantity,
+                "zone_code": inventory.get("zone_code")
+                or inventory.get("catalog_zone_code"),
+                "last_entry_at": movement_at,
+            },
+        )
+
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['entries']}` (
+              entry_folio,
+              inventory_id,
+              catalog_id,
+              part_number,
+              quantity,
+              available_quantity,
+              is_fifo_layer_only,
+              previous_quantity,
+              new_quantity,
+              product_model,
+              description,
+              customer,
+              zone_code,
+              location_code,
+              reference_code,
+              batch_no,
+              notes,
+              registered_by,
+              movement_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, 0, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                entry_folio,
+                inventory["id"],
+                inventory.get("catalog_id") or inventory.get("catalog_ref_id"),
+                inventory["part_number"],
+                quantity,
+                available_quantity,
+                previous_quantity,
+                new_quantity,
+                inventory.get("product_model") or inventory.get("catalog_model"),
+                inventory.get("description") or inventory.get("catalog_description"),
+                inventory.get("customer") or inventory.get("catalog_customer"),
+                inventory.get("zone_code") or inventory.get("catalog_zone_code"),
+                normalize_search(data.get("location")) or None,
+                ",".join(oqc_folios)[:80] if oqc_folios else None,
+                normalize_search(data.get("batchNo")) or None,
+                normalize_search(data.get("notes"))
+                or f"Cajas OQC: {box_notes}",
+                registered_by,
+                movement_at,
+            ),
+        )
+
+        record_id = cursor.lastrowid
+        insert_shipping_box_movements(
+            cursor,
+            "entry",
+            record_id,
+            entry_folio,
+            boxes,
+            registered_by,
+            movement_at,
+        )
+        mark_oqc_boxes_received(cursor, boxes)
+
+        conn.commit()
+        return jsonify(
+            {
+                "success": True,
+                "id": record_id,
+                "folio": entry_folio,
+                "partNumber": part_number,
+                "quantity": quantity,
+                "boxCount": len(boxes),
+                "boxes": serialize_oqc_box_batch(boxes),
+                "currentQuantity": new_quantity,
+                "message": "Entrada por cajas OQC registrada",
+            }
+        ), 201
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
 @shipping_material_api.route("/entries", methods=["GET"])
 @manejo_errores
 def list_entries():
@@ -2826,6 +3393,214 @@ def create_entry():
                 "folio": entry_folio,
                 "currentQuantity": new_quantity,
                 "message": "Entrada registrada",
+            }
+        ), 201
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@shipping_material_api.route("/exits/boxes", methods=["POST"])
+@manejo_errores
+def create_exit_from_oqc_boxes():
+    data = request.get_json(silent=True) or {}
+    box_codes, duplicated = extract_box_codes_from_payload(data)
+
+    if duplicated:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Hay cajas repetidas en el mismo folio",
+                    "boxes": duplicated,
+                }
+            ),
+            400,
+        )
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_transaction_connection()
+        cursor = get_dict_cursor(conn)
+
+        validation = validate_oqc_box_batch(cursor, box_codes, "exit")
+        if not validation.get("success"):
+            conn.rollback()
+            return jsonify(validation), validation.get("status", 400)
+
+        part_number = validation["partNumber"]
+        quantity = validation["quantity"]
+        boxes = validation["boxes"]
+        inventory = ensure_inventory_record(cursor, part_number)
+        if not inventory:
+            conn.rollback()
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "El numero de parte no existe en el catalogo de embarques",
+                    }
+                ),
+                404,
+            )
+
+        previous_quantity = normalize_integer(inventory.get("current_quantity")) or 0
+        fifo_layers = load_fifo_layers(cursor, inventory["part_number"])
+        fifo_plan = build_fifo_allocations(fifo_layers, quantity)
+        departure_code = normalize_departure_code(
+            data.get("departureCode") or data.get("departure")
+        )
+        new_quantity = previous_quantity - quantity
+        movement_at = to_sql_datetime(data.get("exitedAt") or data.get("scanned_at"))
+        exit_folio = generate_movement_folio("EMB-SAL")
+        first_allocation = fifo_plan["allocations"][0] if fifo_plan["allocations"] else {}
+        registered_by = (
+            normalize_search(data.get("registeredBy"))
+            or normalize_search(data.get("userName"))
+            or normalize_search(data.get("scanned_by"))
+            or "Usuario local"
+        )
+        destination_area = (
+            normalize_search(data.get("destinationArea"))
+            or normalize_search(data.get("department"))
+            or "Embarques"
+        )
+        reason = (
+            normalize_search(data.get("reason"))
+            or normalize_search(data.get("process"))
+            or "Salida de producto terminado"
+        )
+        box_notes = ", ".join(
+            f"{box['boxCode']}:{box['quantity']}" for box in boxes
+        )
+
+        update_inventory_snapshot(
+            cursor,
+            inventory["id"],
+            {
+                "current_quantity": new_quantity,
+                "last_exit_at": movement_at,
+            },
+        )
+        apply_fifo_allocations(cursor, fifo_plan["allocations"])
+
+        cursor.execute(
+            f"""
+            INSERT INTO `{SHIPPING_TABLES['exits']}` (
+              exit_folio,
+              inventory_id,
+              catalog_id,
+              part_number,
+              quantity,
+              previous_quantity,
+              new_quantity,
+              product_model,
+              description,
+              customer,
+              zone_code,
+              location_code,
+              fifo_allocation_json,
+              destination_area,
+              departure_code,
+              departure_assigned_at,
+              departure_assigned_by,
+              reason,
+              requested_by,
+              remarks,
+              registered_by,
+              movement_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                exit_folio,
+                inventory["id"],
+                inventory.get("catalog_id") or inventory.get("catalog_ref_id"),
+                inventory["part_number"],
+                quantity,
+                previous_quantity,
+                new_quantity,
+                inventory.get("product_model") or inventory.get("catalog_model"),
+                inventory.get("description") or inventory.get("catalog_description"),
+                inventory.get("customer") or inventory.get("catalog_customer"),
+                first_allocation.get("zoneCode")
+                or inventory.get("zone_code")
+                or inventory.get("catalog_zone_code"),
+                first_allocation.get("locationCode"),
+                json.dumps(fifo_plan["allocations"]),
+                destination_area,
+                departure_code or None,
+                movement_at if departure_code else None,
+                registered_by if departure_code else None,
+                reason,
+                normalize_search(data.get("requestedBy"))
+                or normalize_search(data.get("model"))
+                or None,
+                normalize_search(data.get("remarks"))
+                or f"Cajas OQC: {box_notes}",
+                registered_by,
+                movement_at,
+            ),
+        )
+
+        record_id = cursor.lastrowid
+        insert_shipping_box_movements(
+            cursor,
+            "exit",
+            record_id,
+            exit_folio,
+            boxes,
+            registered_by,
+            movement_at,
+        )
+
+        if departure_code:
+            insert_departure_history_record(
+                cursor,
+                {
+                    "id": record_id,
+                    "exit_folio": exit_folio,
+                    "inventory_id": inventory["id"],
+                    "catalog_id": inventory.get("catalog_id")
+                    or inventory.get("catalog_ref_id"),
+                    "part_number": inventory["part_number"],
+                    "quantity": quantity,
+                    "product_model": inventory.get("product_model")
+                    or inventory.get("catalog_model"),
+                    "customer": inventory.get("customer")
+                    or inventory.get("catalog_customer"),
+                    "destination_area": destination_area,
+                    "departure_code": None,
+                    "reason": reason,
+                },
+                departure_code,
+                registered_by,
+                movement_at,
+                notes=normalize_search(data.get("remarks")) or None,
+            )
+
+        conn.commit()
+        return jsonify(
+            {
+                "success": True,
+                "id": record_id,
+                "folio": exit_folio,
+                "departureCode": departure_code or None,
+                "partNumber": part_number,
+                "quantity": quantity,
+                "boxCount": len(boxes),
+                "boxes": serialize_oqc_box_batch(boxes),
+                "currentQuantity": new_quantity,
+                "fifoRemaining": fifo_plan["remaining"],
+                "fifoAvailable": fifo_plan["totalAvailable"],
+                "message": "Salida por cajas OQC registrada",
             }
         ), 201
     except Exception:

@@ -522,7 +522,9 @@ def _is_public_api_route():
         "/api/shipping/stats/today",
         "/api/shipping/stats/summary",
         "/api/shipping/material/entries",
+        "/api/shipping/material/entries/boxes",
         "/api/shipping/material/exits",
+        "/api/shipping/material/exits/boxes",
         "/api/shipping/material/returns",
         "/api/shipping/material/inventory",
         "/api/shipping/material/stats/today",
@@ -532,6 +534,7 @@ def _is_public_api_route():
         "/api/shipping/users/",
         "/api/shipping/quality/",
         "/api/shipping/entries/",
+        "/api/shipping/material/boxes/",
     )
     return path in exact_paths or any(path.startswith(prefix) for prefix in public_prefixes)
 
