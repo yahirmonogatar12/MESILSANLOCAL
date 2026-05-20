@@ -36,7 +36,8 @@ def create_app():
     from app.aoi_api import aoi_api
     from app.py.control_modelos_smt import control_modelos_bp
     from app.api_raw_modelos import api_raw
-    from app.shipping_api import register_shipping_routes, init_shipping_tables
+    from app.shipping_api import register_shipping_routes
+    from app.startup_init import run_startup_init
 
     if not getattr(app, "_mes_factory_initialized", False):
         register_smt_routes(app)
@@ -52,8 +53,9 @@ def create_app():
             app.register_blueprint(api_raw)
 
         register_shipping_routes(app)
-        if should_run_startup_init():
-            init_shipping_tables()
+
+        # Inicializaciones de BD + arranque de workers (respeta MES_SKIP_STARTUP_INIT)
+        run_startup_init()
 
         if "health" not in app.view_functions:
             @app.get("/")

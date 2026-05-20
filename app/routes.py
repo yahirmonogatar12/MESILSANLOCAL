@@ -207,31 +207,10 @@ try:
 except Exception as e:
     print(f"Error registrando API RAW en app.routes: {e}")
 
-# Inicializar base de datos original
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando init_db()")
-    init_db()  # Esto crea la tabla si no existe
-    _startup_log("init_db() completado")
-else:
-    _startup_log("Saltando init_db() por configuración/reloader")
-
-# Inicializar sistema de autenticación
+# Las inicializaciones (init_db, auth_system.init_database, shipping)
+# se movieron a app/startup_init.py. Solo se instancia auth_system aqui
+# porque otros decoradores en este archivo lo usan a nivel de modulo.
 auth_system = AuthSystem()
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando auth_system.init_database()")
-    auth_system.init_database()
-    _startup_log("auth_system.init_database() completado")
-
-    # Inicializar tablas de Shipping (app móvil embarques)
-    _startup_log("Iniciando init_shipping_tables()")
-    init_shipping_tables()
-    _startup_log("init_shipping_tables() completado")
-
-    _startup_log("Iniciando init_shipping_material_tables()")
-    init_shipping_material_tables()
-    _startup_log("init_shipping_material_tables() completado")
-else:
-    _startup_log("Saltando auth_system.init_database() por configuración/reloader")
 
 # Registrar Blueprints de administración
 
@@ -2528,13 +2507,7 @@ def crear_trigger_cuchillas_corte_plan_main():
         print(f"Error creando trigger de cuchillas de corte: {e}")
 
 
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando bootstrap de cuchillas de corte")
-    crear_tablas_cuchillas_corte()
-    _startup_log("Bootstrap de cuchillas de corte completado")
-    iniciar_cuchillas_hourly_sync_worker()
-else:
-    _startup_log("Saltando bootstrap de cuchillas de corte por configuración/reloader")
+# Bootstrap de cuchillas movido a app/startup_init.py
 
 
 # ===============================
@@ -2683,13 +2656,7 @@ def iniciar_snapshot_inv_worker():
         print("[snapshot-inv] Worker iniciado (target 07:30 America/Monterrey)")
 
 
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando bootstrap de snapshot inventario")
-    crear_tablas_snapshot_inventario()
-    _startup_log("Bootstrap de snapshot inventario completado")
-    iniciar_snapshot_inv_worker()
-else:
-    _startup_log("Saltando bootstrap de snapshot inventario por configuracion/reloader")
+# Bootstrap de snapshot inventario movido a app/startup_init.py
 
 
 @app.route("/control-cuchillas-corte-ajax")
@@ -5763,10 +5730,7 @@ def crear_tabla_plan_smt_v2():
         print(f"Error creando tabla plan_smt: {e}")
 
 
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando crear_tabla_plan_smt_v2()")
-    crear_tabla_plan_smt_v2()
-    _startup_log("crear_tabla_plan_smt_v2() completado")
+# crear_tabla_plan_smt_v2 movido a app/startup_init.py
 
 
 @app.route("/api/plan-smt", methods=["GET"])
@@ -9673,7 +9637,7 @@ def crear_tabla_plan_smd():
             fisico INT NOT NULL DEFAULT 0,
             falta INT NOT NULL DEFAULT 0,
             pct INT NOT NULL DEFAULT 0,
-            comentarios TEXT DEFAULT '',
+            comentarios TEXT NULL,
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
             usuario_creacion VARCHAR(64) DEFAULT 'sistema',
             INDEX idx_lote (lote),
@@ -9687,11 +9651,7 @@ def crear_tabla_plan_smd():
         print(f" Error creando tabla plan_smd: {e}")
 
 
-# Crear tabla al inicializar
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando crear_tabla_plan_smd()")
-    crear_tabla_plan_smd()
-    _startup_log("crear_tabla_plan_smd() completado")
+# crear_tabla_plan_smd movido a app/startup_init.py
 
 
 @app.route("/api/work-orders", methods=["GET"])
@@ -16533,11 +16493,7 @@ def crear_indice_history_ict_ts_nopart():
         print(f"(info) idx_history_ict_ts_nopart no se pudo crear: {e}")
 
 
-if STARTUP_INIT_ENABLED:
-    _startup_log("Asegurando indice idx_history_ict_audit")
-    crear_indice_history_ict_audit()
-    _startup_log("Asegurando indice idx_history_ict_ts_nopart")
-    crear_indice_history_ict_ts_nopart()
+# Indices history_ict movidos a app/startup_init.py
 
 
 _ICT_PARAM_JORNADA_START = dt_time(7, 30)
@@ -25987,10 +25943,7 @@ def crear_tabla_plan_smd_runs():
         print(f"⚠️  Error creando tabla plan_smd_runs (continuando): {str(e)[:100]}")
 
 
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando crear_tabla_plan_smd_runs()")
-    crear_tabla_plan_smd_runs()
-    _startup_log("crear_tabla_plan_smd_runs() completado")
+# crear_tabla_plan_smd_runs movido a app/startup_init.py
 
 
 @app.route("/api/plan-smd/list", methods=["GET"])
@@ -26670,10 +26623,7 @@ def crear_tabla_trazabilidad():
         print(f" Error creando tabla trazabilidad: {e}")
 
 
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando crear_tabla_trazabilidad()")
-    crear_tabla_trazabilidad()
-    _startup_log("crear_tabla_trazabilidad() completado")
+# crear_tabla_trazabilidad movido a app/startup_init.py
 
 
 ###############################################
@@ -26745,11 +26695,7 @@ def init_metal_mask_tables():
         print(f"Error creando/verificando tablas Metal Mask: {e}")
 
 
-# Inicializar tablas de Metal Mask
-if STARTUP_INIT_ENABLED:
-    _startup_log("Iniciando init_metal_mask_tables()")
-    init_metal_mask_tables()
-    _startup_log("init_metal_mask_tables() completado")
+# init_metal_mask_tables movido a app/startup_init.py
 
 
 # Poginas nuevas (HTML integrados)

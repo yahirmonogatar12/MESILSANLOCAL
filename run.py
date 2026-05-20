@@ -3,6 +3,10 @@ from waitress import serve
 from app_factory import create_app
 
 os.environ.setdefault("MES_USE_RELOADER", "0")
+# Saltar inicializaciones de BD por defecto: las tablas ya existen.
+# Para forzar una corrida (despues de cambios de schema):
+#   set MES_SKIP_STARTUP_INIT=0 & set MES_FORCE_STARTUP_INIT=1
+os.environ.setdefault("MES_SKIP_STARTUP_INIT", "1")
 app = create_app()
 
 if __name__ == '__main__':
