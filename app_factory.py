@@ -36,6 +36,7 @@ def create_app():
     from app.aoi_api import aoi_api
     from app.py.control_modelos_smt import control_modelos_bp
     from app.api_raw_modelos import api_raw
+    from app.Almacen_api import material_admin_bp
     from app.shipping_api import register_shipping_routes
     from app.startup_init import run_startup_init
 
@@ -51,6 +52,9 @@ def create_app():
 
         if "api_raw" not in app.blueprints:
             app.register_blueprint(api_raw)
+
+        if "material_admin" not in app.blueprints:
+            app.register_blueprint(material_admin_bp)
 
         register_shipping_routes(app)
 

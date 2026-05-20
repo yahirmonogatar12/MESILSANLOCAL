@@ -936,6 +936,9 @@ class AuthSystem:
     def verificar_permiso_boton(self, username, pagina, seccion, boton):
         """Verificar si un usuario tiene permiso para un botón específico."""
         try:
+            if self.obtener_rol_principal_usuario(username) == "superadmin":
+                return True
+
             permisos_pagina = self.obtener_permisos_botones_usuario(username, pagina)
             botones = permisos_pagina.get(pagina, {}).get(seccion, [])
             for item in botones:
