@@ -1,7 +1,7 @@
 // Service Worker para ISEMM MES
 // Funcionalidad PWA y cache offline
 
-const CACHE_NAME = 'isemm-mes-v1.0.0';
+const CACHE_NAME = 'isemm-mes-v20260520b';
 const urlsToCache = [
     '/',
     '/static/style.css',
@@ -72,6 +72,18 @@ self.addEventListener('fetch', function(event) {
     if (event.request.method !== 'GET') {
         return;
     }
+
+    const acceptHeader = event.request.headers.get('accept') || '';
+    if (event.request.mode === 'navigate' || acceptHeader.includes('text/html')) {
+        event.respondWith(
+            fetch(event.request).catch(function() {
+                return caches.match(event.request).then(function(response) {
+                    return response || caches.match('/offline.html');
+                });
+            })
+        );
+        return;
+    }
     
     // Ignorar peticiones a extensiones del navegador y otras URLs no relevantes
     if (event.request.url.startsWith('chrome-extension://') || 
@@ -136,12 +148,8 @@ function shouldCache(url) {
     // Cachear recursos estáticos
     const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2'];
     const isStatic = staticExtensions.some(ext => url.includes(ext));
-    
-    // Cachear páginas importantes
-    const importantPages = ['/listas/', '/material/', '/informacion_basica/'];
-    const isImportantPage = importantPages.some(page => url.includes(page));
-    
-    return isStatic || isImportantPage;
+
+    return isStatic;
 }
 
 // Manejar mensajes del cliente

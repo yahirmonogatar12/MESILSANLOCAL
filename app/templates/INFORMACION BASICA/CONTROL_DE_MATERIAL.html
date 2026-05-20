@@ -742,11 +742,8 @@ function simularProgreso() {
 
 // ========== FUNCIONES DE FILTRADO DE TABLA ==========
 
-// Variable global para almacenar los datos originales
-let datosOriginales = [];
-
 // Mapeo de columnas para el filtrado
-const columnMapping = {
+window.controlMaterialInfoColumnMapping = window.controlMaterialInfoColumnMapping || {
     'codigo': 0,
     'nparte': 1,
     'propiedad': 2,
@@ -791,7 +788,7 @@ function aplicarFiltroTexto(columna, valor) {
     const tabla = document.getElementById('tablaMateriales');
     const tbody = tabla.querySelector('tbody');
     const filas = Array.from(tbody.querySelectorAll('tr'));
-    const colIndex = columnMapping[columna];
+    const colIndex = window.controlMaterialInfoColumnMapping[columna];
     
     if (colIndex === undefined) return;
     
@@ -828,7 +825,7 @@ function aplicarTodosFiltros() {
     
     // Recopilar todos los filtros activos
     const filtrosActivos = {};
-    Object.keys(columnMapping).forEach(columna => {
+    Object.keys(window.controlMaterialInfoColumnMapping).forEach(columna => {
         const input = document.querySelector(`#filtro-${columna} .filter-input`);
         if (input && input.value.trim() !== '') {
             filtrosActivos[columna] = input.value.toLowerCase().trim();
@@ -854,7 +851,7 @@ function aplicarTodosFiltros() {
         
         // Verificar cada filtro activo
         Object.entries(filtrosActivos).forEach(([columna, valor]) => {
-            const colIndex = columnMapping[columna];
+            const colIndex = window.controlMaterialInfoColumnMapping[columna];
             const celda = fila.cells[colIndex];
             
             if (celda) {
@@ -1111,4 +1108,4 @@ if (document.readyState === 'loading') {
 <script src="{{ url_for('static', filename='js/material-edit-drawer.js') }}"></script>
 
 </body>
-</html> 
+</html>

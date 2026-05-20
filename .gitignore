@@ -38,7 +38,7 @@ LPT9.txt
 .playwright-cli
 /graphify-out
 /backups
-
+./backups
 # Python
 __pycache__/
 *.pyc

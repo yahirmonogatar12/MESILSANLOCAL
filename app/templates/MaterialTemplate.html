@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/control_material.css', v='20260520a') }}">
     <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260513b') }}">
     <link id="material-admin-inventory-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
 
@@ -267,8 +268,8 @@
     <!-- Utilidades globales -->
     <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
-    <script src="/static/js/permisos-dropdowns.js"></script>
-    <script src="/static/js/scriptMain.js?v=20260513b"></script>
+    <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
+    <script src="/static/js/scriptMain.js?v=20260520c"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -1545,9 +1546,6 @@
                             const buttonActions = {
                                 'Información Básica': () => {
                                     window.mostrarInformacionBasica();
-                                    setTimeout(() => {
-                                        cargarContenidoDinamico('informacion-basica-content', '/listas/informacion_basica');
-                                    }, 100);
                                 },
                                 'Control de material': () => {
                                     window.mostrarControlMaterial();
@@ -2066,6 +2064,54 @@
                     });
             };
 
+            window.cargarSidebarDinamico = function(containerId, templatePath) {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    return Promise.reject(new Error(`Container ${containerId} no encontrado`));
+                }
+
+                container.style.display = 'block';
+                container.innerHTML = '<div class="loading-indicator">Cargando...</div>';
+
+                return fetch(templatePath, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Error al cargar sidebar: ' + response.status);
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        container.innerHTML = html;
+                        container.style.display = 'block';
+
+                        if (window.PermisosDropdowns) {
+                            const permisosReady = typeof window.PermisosDropdowns.init === 'function'
+                                ? window.PermisosDropdowns.init()
+                                : Promise.resolve();
+
+                            return Promise.resolve(permisosReady).then(() => {
+                                if (typeof window.PermisosDropdowns.aplicarPermisosExistentes === 'function') {
+                                    window.PermisosDropdowns.aplicarPermisosExistentes();
+                                }
+                                return html;
+                            });
+                        }
+
+                        return html;
+                    })
+                    .catch(error => {
+                        console.error('Error cargando sidebar dinámico:', error);
+                        container.innerHTML = '<div class="error-message">Error al cargar el menú lateral.</div>';
+                        throw error;
+                    });
+            };
+
             // ===============================================
             // AHORA INICIALIZAR VARIABLES Y ELEMENTOS
             // ===============================================
@@ -2130,27 +2176,6 @@
                 const controlProduccionSidebar = document.getElementById('control-produccion-content');
                 if (controlMaterialSidebar) controlMaterialSidebar.style.display = 'none';
                 if (controlProduccionSidebar) controlProduccionSidebar.style.display = 'none';
-
-                // Limpiar contenido de los contenedores principales para evitar superposición
-                const containersToClean = [
-                    'informacion-basica-content',
-                    'control-material-content',
-                    'control-produccion-content',
-                    'control-proceso-content',
-                    'control-calidad-content',
-                    'control-resultados-content',
-                    'control-reporte-content',
-                    'configuracion-programa-content'
-                ];
-
-                containersToClean.forEach(containerId => {
-                    const container = document.getElementById(containerId);
-                    if (container && container.innerHTML.trim() !== '') {
-                        // Solo limpiar si tiene contenido, mantener un placeholder
-                        container.innerHTML = '<!-- El contenido se cargará dinámicamente con JavaScript -->';
-                        // console.log(`🧹 Contenido limpiado de: ${containerId}`);
-                    }
-                });
 
                 // Limpiar solo el contenido dinámico del área de material, no los contenedores base
                 const materialArea = document.getElementById('material-content-area');
@@ -2270,11 +2295,12 @@ function hideAllMaterialContainers() {
                     }
                 });
 
-                // 🧹 LIMPIAR estilos inline del área de Información Básica
+                // El area padre no se oculta aqui; cada boton de navegacion decide
+                // que seccion principal queda visible.
                 const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
                 if (informacionBasicaArea) {
-                    informacionBasicaArea.style.cssText = '';
-                    informacionBasicaArea.style.display = 'none';
+                    informacionBasicaArea.style.width = '100%';
+                    informacionBasicaArea.style.maxWidth = 'none';
                 }
             }
 
@@ -2421,14 +2447,80 @@ function hideAllMaterialContainers() {
 
             // NUEVA FUNCIÓN: Control de material para Información Básica
             window.mostrarControlMaterialInfo = function() {
+                const materialContainer = document.getElementById('material-container');
+                const informacionBasicaContent = document.getElementById('informacion-basica-content');
+                const controlMaterialContent = document.getElementById('control-material-content');
+                const controlProduccionContent = document.getElementById('control-produccion-content');
+                const controlProcesoContent = document.getElementById('control-proceso-content');
+                const controlCalidadContent = document.getElementById('control-calidad-content');
+                const controlResultadosContent = document.getElementById('control-resultados-content');
+                const controlReporteContent = document.getElementById('control-reporte-content');
+                const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
+                const panelAdministracionContent = document.getElementById('panel-administracion-content');
+
+                [
+                    controlMaterialContent,
+                    controlProduccionContent,
+                    controlProcesoContent,
+                    controlCalidadContent,
+                    controlResultadosContent,
+                    controlReporteContent,
+                    configuracionProgramaContent,
+                    panelAdministracionContent
+                ].forEach(section => {
+                    if (section) {
+                        section.style.display = 'none';
+                    }
+                });
+
+                if (materialContainer) {
+                    materialContainer.style.display = 'block';
+                }
+                if (informacionBasicaContent) {
+                    informacionBasicaContent.style.display = 'block';
+                }
+
                 hideAllInformacionBasicaContainers();
+
+                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
+                if (informacionBasicaArea) {
+                    informacionBasicaArea.style.display = 'block';
+                    informacionBasicaArea.style.width = '100%';
+                    informacionBasicaArea.style.maxWidth = 'none';
+                    informacionBasicaArea.style.margin = '0';
+                    informacionBasicaArea.style.padding = '0';
+                }
+
                 const container = document.getElementById('control-material-info-container');
                 if (container) {
+                    container.classList.add('visible');
                     container.style.display = 'block';
+                    container.style.visibility = 'visible';
+                    container.style.opacity = '1';
+                    container.style.width = '100%';
+                    container.style.maxWidth = 'none';
+                    container.style.margin = '0';
+                    container.style.padding = '0';
 
                     // Cargar el contenido dinámicamente del endpoint específico
-                    cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material')
+                    cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material?v=20260520c')
                         .then(() => {
+                            if (materialContainer) {
+                                materialContainer.style.display = 'block';
+                            }
+                            if (informacionBasicaContent) {
+                                informacionBasicaContent.style.display = 'block';
+                            }
+                            if (informacionBasicaArea) {
+                                informacionBasicaArea.style.display = 'block';
+                            }
+                            container.classList.add('visible');
+                            container.style.display = 'block';
+                            container.style.visibility = 'visible';
+                            container.style.opacity = '1';
+                            if (typeof window.initializeControlMaterialEventListeners === 'function') {
+                                window.initializeControlMaterialEventListeners();
+                            }
                         })
                         .catch(error => {
                             console.error(' Error cargando Control de Material de Información Básica:', error);
@@ -3243,6 +3335,34 @@ function hideAllMaterialContainers() {
                 hideAllMaterialContainers();
             };
 
+            window.mostrarInformacionBasica = function() {
+                hideAllContent();
+                materialContainer.style.display = 'block';
+                informacionBasicaContent.style.display = 'block';
+                informacionBasicaContentArea.style.display = 'block';
+
+                return cargarSidebarDinamico('informacion-basica-content', '/listas/informacion_basica?v=20260520d')
+                    .then(() => {
+                        informacionBasicaContent.style.display = 'block';
+                        informacionBasicaContentArea.style.display = 'block';
+                        hideAllInformacionBasicaContainers();
+                        const defaultContainer = document.getElementById('info-basica-default-container');
+                        if (defaultContainer) {
+                            defaultContainer.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error cargando Información Básica:', error);
+                        informacionBasicaContent.style.display = 'block';
+                        informacionBasicaContentArea.style.display = 'block';
+                        hideAllInformacionBasicaContainers();
+                        const defaultContainer = document.getElementById('info-basica-default-container');
+                        if (defaultContainer) {
+                            defaultContainer.style.display = 'block';
+                        }
+                    });
+            };
+
             navButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     // Remover la clase 'active' de todos los botones
@@ -3254,31 +3374,7 @@ function hideAllMaterialContainers() {
                     hideAllContent();
 
                     if (this.id === 'Información Basica') {
-                        materialContainer.style.display = 'block';
-                        informacionBasicaContent.style.display = 'block';
-                        informacionBasicaContentArea.style.display = 'block';
-
-                        // Cargar contenido dinámicamente y mostrar contenedor por defecto
-                        cargarContenidoDinamico('informacion-basica-content', '/listas/informacion_basica')
-                            .then(() => {
-                                // Asegurar que el área de contenido esté visible
-                                informacionBasicaContentArea.style.display = 'block';
-                                hideAllInformacionBasicaContainers();
-                                const defaultContainer = document.getElementById('info-basica-default-container');
-                                if (defaultContainer) {
-                                    defaultContainer.style.display = 'block';
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error cargando Información Básica:', error);
-                                // Fallback: mostrar contenedor por defecto aunque falle la carga
-                                informacionBasicaContentArea.style.display = 'block';
-                                hideAllInformacionBasicaContainers();
-                                const defaultContainer = document.getElementById('info-basica-default-container');
-                                if (defaultContainer) {
-                                    defaultContainer.style.display = 'block';
-                                }
-                            });
+                        window.mostrarInformacionBasica();
 
                     } else if (this.id === 'Control de material') {
                         // Usar la función global para mostrar Control de Material
@@ -3370,6 +3466,11 @@ function hideAllMaterialContainers() {
                 if (infoBasicaButton) {
                     infoBasicaButton.classList.add('active');
                 }
+            }
+
+            const selectedButton = document.querySelector('.nav-button.active');
+            if (selectedButton && selectedButton.id === 'Información Basica') {
+                window.mostrarInformacionBasica();
             }
         });
 
@@ -3710,7 +3811,7 @@ function hideAllMaterialContainers() {
     // ===== FIN FUNCIONES PARA CONTROL DE MODELOS =====
 
 
-})();</script>
+</script>
 
 </body>
 </html>

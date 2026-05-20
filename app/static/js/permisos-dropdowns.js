@@ -55,14 +55,28 @@
          */
         async cargarPermisosUsuario() {
             try {
-                // Intento 1: endpoint bajo /admin
-                let response = await fetch('/admin/obtener_permisos_usuario_actual', {
-                    method: 'GET',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Error HTTP: ' + response.status);
-                let data = await response.json();
+                let data = null;
+
+                try {
+                    const response = await fetch('/admin/obtener_permisos_usuario_actual', {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        data = await response.json();
+                    }
+                } catch (e) { /* fallback below */ }
+
+                if (!data) {
+                    const response = await fetch('/obtener_permisos_usuario_actual', {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (!response.ok) throw new Error('Error HTTP: ' + response.status);
+                    data = await response.json();
+                }
 
                 // Fallback: completar rol/permisos desde el endpoint global si falta
                 if (!data || (!data.rol && !data.role && !data.rol_nombre)) {
@@ -83,7 +97,7 @@
 
                 permisosUsuario = (data && data.permisos) ? data.permisos : {};
                 usuarioActual = data && data.usuario ? data.usuario : null;
-                rolUsuario = ((data && (data.rol || data.role || data.rol_nombre)) || '').toString().toLowerCase();
+                rolUsuario = ((data && (data.rol || data.role || data.rol_nombre)) || '').toString().toLowerCase().replace(/[\s_-]+/g, '');
 
                 // Cachear
                 localStorage.setItem('permisos_dropdowns', JSON.stringify({
@@ -102,7 +116,7 @@
                     if (Date.now() - data.timestamp < CONFIG.CACHE_DURATION) {
                         permisosUsuario = data.permisos;
                         usuarioActual = data.usuario;
-                        rolUsuario = (data.rol || '').toString().toLowerCase();
+                        rolUsuario = (data.rol || '').toString().toLowerCase().replace(/[\s_-]+/g, '');
                     }
                 }
             }
@@ -138,6 +152,9 @@
         aplicarPermisosExistentes() {
             // Permitir a superadmin ver todo
             if (rolUsuario === 'superadmin') {
+                document.querySelectorAll('[data-permiso-pagina]').forEach((elemento) => {
+                    this.mostrarElemento(elemento);
+                });
                 return;
             }
             
@@ -209,6 +226,10 @@
             elemento.style.display = '';
             elemento.removeAttribute('data-sin-permiso');
             elemento.title = '';
+            elemento.classList.remove('sin-permisos');
+            elemento.style.pointerEvents = '';
+            elemento.style.opacity = '';
+            elemento.style.cursor = '';
         },
         
         /**
