@@ -709,6 +709,12 @@ document.addEventListener("DOMContentLoaded", function () {
       // Persistir cual pestaña dejo el usuario abierta
       guardarPestanaActivaSM(this.id);
 
+      // Restaurar tabs de la nueva seccion (despues de que cargue el sidebar)
+      const navTabId = this.id;
+      if (typeof window.restaurarTabsDeSeccion === 'function') {
+        setTimeout(() => window.restaurarTabsDeSeccion(navTabId), 600);
+      }
+
       // Ocultar todo el contenido primero
       hideAllContent();
 
@@ -802,9 +808,10 @@ document.addEventListener("DOMContentLoaded", function () {
     let boton = pestanaGuardada ? document.getElementById(pestanaGuardada) : null;
     if (!boton) boton = document.getElementById("Información Basica");
     if (boton) {
+      // Solo dispara el click. La restauracion de tabs ya esta en
+      // el listener del nav-button (no la dispares aqui tambien o
+      // habra DOS corridas en paralelo que se cancelan entre si).
       boton.click();
-      // Despues de cargar el sidebar, restaurar el item seleccionado
-      restaurarItemSidebar(boton.id);
     }
   }, 200);
 

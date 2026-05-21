@@ -1,0 +1,150 @@
+/* ============================================
+   SISTEMA DE TABS PARA PANELES DE SECCION
+   ============================================
+   Cada *-content-area recibe arriba una barra de
+   tabs que lista los modulos abiertos. Permite
+   navegar entre varios sin perder estado.
+*/
+
+.section-tabs-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background-color: #2b2d3e;
+    border-bottom: 1px solid #20688C;
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    scrollbar-width: thin;
+    scrollbar-color: #3498db #2b2d3e;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    flex-basis: 24px !important;
+    align-items: stretch;
+    box-sizing: border-box;
+}
+
+.section-tabs-bar::-webkit-scrollbar {
+    height: 4px;
+}
+.section-tabs-bar::-webkit-scrollbar-track { background: #2b2d3e; }
+.section-tabs-bar::-webkit-scrollbar-thumb { background: #3498db; border-radius: 2px; }
+
+.section-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 8px;
+    background-color: #3c3940;
+    border: none;
+    border-right: 1px solid #20688C;
+    color: lightgray;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s;
+    width: 160px;
+    max-width: 160px;
+    min-width: 160px;
+    height: 24px !important;
+    max-height: 24px !important;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+.section-tab:hover {
+    background-color: #485563;
+}
+
+.section-tab.active {
+    background-color: #4A90E2;
+    color: white;
+    font-weight: 500;
+}
+
+.section-tab .section-tab-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.section-tab .section-tab-close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0 2px;
+    border-radius: 2px;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.section-tab .section-tab-close:hover {
+    background-color: rgba(255,255,255,0.2);
+    opacity: 1;
+}
+
+/* Contenedor que envuelve todos los tabs-content del area */
+.section-tabs-content {
+    flex: 1 1 auto;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Cada panel de tab es un *-unique-container existente.
+   Los inactivos se ocultan via JS con display:none. */
+
+/* ============================================
+   FIX de espacio: cuando hay barra de tabs en
+   un area, los hijos siguientes (containers de
+   modulos) no deben estirarse para llenar TODO
+   el espacio. Que respeten su altura natural.
+*/
+[id$="-content-area"]:has(> .section-tabs-bar) {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    padding-top: 0 !important;
+}
+
+[id$="-content-area"]:has(> .section-tabs-bar) > [id$="-unique-container"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0 !important;
+}
+
+/* Cuando un container tiene tab activo dentro de un area con tabs,
+   asegurar que su contenido empieza desde arriba (no centrado/flex). */
+[id$="-content-area"]:has(> .section-tabs-bar) > [id$="-unique-container"] > * {
+    margin-top: 0 !important;
+}
+
+/* Ocultar SOLO el placeholder por defecto cuando hay tabs activos.
+   Los demas *-info-container son modulos reales (ej. Informacion
+   Basica) y se gestionan como tabs igual que los unique-container. */
+[id$="-content-area"]:has(> .section-tabs-bar) > #info-basica-default-container,
+[id$="-content-area"]:has(> .section-tabs-bar) > #material-info-container,
+[id$="-content-area"]:has(> .section-tabs-bar) > #produccion-info-container,
+[id$="-content-area"]:has(> .section-tabs-bar) > #control-proceso-info-container,
+[id$="-content-area"]:has(> .section-tabs-bar) > #control-resultados-info-container {
+    display: none !important;
+}
+
+/* ============================================
+   FIX: ocultar content-areas inactivos con maxima
+   especificidad para que ningun :has() de modulos
+   internos pueda sobreescribirlo y re-mostrarlos.
+*/
+[id$="-content-area"].mes-area-hidden,
+[id$="-content-area"].mes-area-hidden:has(> *) {
+    display: none !important;
+    visibility: hidden !important;
+}

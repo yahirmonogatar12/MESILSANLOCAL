@@ -443,6 +443,11 @@
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
 
+        <!-- Crear Plan de Produccion (contenedor unico para sistema de tabs) -->
+        <div id="crear-plan-produccion-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
+
     </div>
 
     <!-- Contenedor específico para el contenido de Control de Proceso (LADO DERECHO) -->
@@ -858,9 +863,11 @@
 
     <!-- ANIMACIONES PARA DROPDOWNS EN DESKTOP -->
     <link rel="stylesheet" href="../static/css/desktop-dropdown-animations.css?v=20260520d">
+    <link rel="stylesheet" href="../static/css/sidebar-tabs.css?v=20260521h">
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js"></script>
+    <script src="../static/js/sidebar-tabs.js?v=20260521l"></script>
 
     <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>
@@ -2304,10 +2311,18 @@ function hideAllMaterialContainers() {
                     }
                 });
 
-                // El area padre no se oculta aqui; cada boton de navegacion decide
-                // que seccion principal queda visible.
+                // FIX: ocultar TAMBIEN cualquier otro hijo directo del
+                // area que sea un container (catch-all). Cubre el caso
+                // donde un modulo nuevo agrego un container pero no se
+                // lo agrego a la lista de arriba.
                 const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
                 if (informacionBasicaArea) {
+                    informacionBasicaArea.querySelectorAll(':scope > [id]').forEach(el => {
+                        if (el.classList.contains('section-tabs-bar')) return;
+                        if (el.id.endsWith('-container')) {
+                            el.style.display = 'none';
+                        }
+                    });
                     informacionBasicaArea.style.width = '100%';
                     informacionBasicaArea.style.maxWidth = 'none';
                 }
@@ -2350,11 +2365,16 @@ function hideAllMaterialContainers() {
             // de la seccion activa indicada. Pasar null para ocultar todos.
             function ocultarOtrasSecciones(seccionActiva) {
                 Object.entries(SECCIONES_AREAS).forEach(([key, id]) => {
-                    if (key === seccionActiva) return;
                     const el = document.getElementById(id);
-                    if (el) {
+                    if (!el) return;
+                    if (key === seccionActiva) {
+                        el.classList.remove('mes-area-hidden');
+                    } else {
                         el.style.cssText = '';
                         el.style.display = 'none';
+                        // Clase con !important para que ningun :has()
+                        // de modulos internos pueda re-mostrar el area.
+                        el.classList.add('mes-area-hidden');
                     }
                 });
                 Object.entries(SECCIONES_SIDEBARS).forEach(([key, id]) => {
@@ -2378,6 +2398,7 @@ function hideAllMaterialContainers() {
                 if (sidebar) sidebar.style.display = 'block';
                 const area = document.getElementById(SECCIONES_AREAS[seccion]);
                 if (area) {
+                    area.classList.remove('mes-area-hidden');
                     area.style.display = 'block';
                     area.style.width = '100%';
                 }
@@ -2528,91 +2549,39 @@ function hideAllMaterialContainers() {
                 const container = document.getElementById('control-modelos-info-container');
                 if (container) {
                     container.style.display = 'block';
+                    // Registrar como tab manualmente (este modulo NO usa
+                    // cargarContenidoDinamico, su HTML viene pre-renderizado
+                    // por el servidor, por eso el interceptor no se dispara).
+                    if (window.sidebarTabs && typeof window.sidebarTabs.openTab === 'function') {
+                        const label = window.__ultimoSidebarLinkLabel || 'Control de modelos';
+                        const onclick = window.__ultimoSidebarLinkOnclick || null;
+                        window.sidebarTabs.openTab('control-modelos-info-container', label, null, onclick);
+                        window.sidebarTabs.switchTab('control-modelos-info-container');
+                    }
                     // Cargar modelos cuando se muestra el contenedor
                     cargarModelosControl();
                 }
             };
 
+            // Refactor WF_002: usar helper prepararPanelInformacionBasica
+            // (mismo patron que los otros mostrarXxxInfo). El sistema de
+            // tabs se encarga de ocultar otros containers del area.
             window.mostrarControlBOMInfo = function() {
-                // PASO 1: Ocultar TODOS los contenedores de Información Básica
-                hideAllInformacionBasicaContainers();
+                prepararPanelInformacionBasica();
 
-                // PASO 2: Ocultar también otros contenedores de otras secciones (CRÍTICO)
-                if (typeof window.hideAllMaterialContainers === 'function') {
-                    window.hideAllMaterialContainers();
-                }
-
-                // PASO 3: Ocultar ESPECÍFICAMENTE el contenedor bom-unique-container de Control de Proceso
-                const bomProcesoContainer = document.getElementById('bom-unique-container');
-                if (bomProcesoContainer) {
-                    bomProcesoContainer.style.display = 'none';
-                }
-
-                // PASO 4: OCULTAR control-proceso-content-area (CRÍTICO para evitar doble visualización)
-                const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
-                if (controlProcesoContentArea) {
-                    controlProcesoContentArea.style.cssText = '';
-                    controlProcesoContentArea.style.display = 'none';
-                }
-
-                // PASO 5: Ocultar todos los contenedores de Control de Proceso
-                const controlProcesoContainers = [
-                    'control-proceso-info-container',
-                    'control-produccion-smt-container',
-                    'operacion-linea-smt-unique-container',
-                    'inventario-imd-terminado-unique-container',
-                    'control-cuchillas-corte-unique-container',
-                    'Control de produccion SMT-unique-container',
-                    'crear-plan-micom-unique-container',
-                    'line-material-status-unique-container',
-                    'bom-management-process-unique-container',
-                    'control-salida-lineas-unique-container'
-                ];
-
-                controlProcesoContainers.forEach(containerId => {
-                    const container = document.getElementById(containerId);
-                    if (container) container.style.display = 'none';
-                });
-
-                // PASO 6: Limpiar cualquier contenido visible en el área de Información Básica
-                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
-                if (informacionBasicaArea) {
-                    // Ocultar todos los divs hijos que puedan tener contenido visible
-                    const allChildDivs = informacionBasicaArea.querySelectorAll('div[id$="-container"]');
-                    allChildDivs.forEach(div => {
-                        if (div.id !== 'control-bom-info-container') {
-                            div.style.display = 'none';
-                        }
-                    });
-                    // Aplicar estilos de ancho completo al área
-                    informacionBasicaArea.style.display = 'block';
-                    informacionBasicaArea.style.width = '100%';
-                    informacionBasicaArea.style.maxWidth = 'none';
-                    informacionBasicaArea.style.margin = '0';
-                    informacionBasicaArea.style.padding = '0';
-                }
-
-                // PASO 7: Mostrar el contenedor de Control de BOM de Información Básica
                 const container = document.getElementById('control-bom-info-container');
                 if (container) {
                     container.style.display = 'block';
                     container.style.width = '100%';
-                    container.style.maxWidth = 'none';
-                    container.style.margin = '0';
-                    container.style.padding = '0';
 
-                    // PASO 8: Cargar el contenido dinámicamente (esto también ejecuta cleanup)
-                    cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom')
-                        .then(() => {
-                            // Inicializar event listeners si existen
-                            if (typeof window.initializeControlBOMEventListeners === 'function') {
-                                window.initializeControlBOMEventListeners();
-                            }
-                        })
-                        .catch(error => {
-                            console.error(' Error cargando Control de BOM de Información Básica:', error);
-                            // El error ya se muestra en cargarContenidoDinamico, no hacer nada más aquí
-                        });
+                    cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom', () => {
+                        if (typeof window.initializeControlBOMEventListeners === 'function') {
+                            window.initializeControlBOMEventListeners();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error cargando Control de BOM de Información Básica:', error);
+                    });
                 }
             };
 
@@ -2695,29 +2664,18 @@ function hideAllMaterialContainers() {
             };
 
             // Función global para mostrar Crear Plan de Producción
+            // Refactor WF_002: usar helper prepararPanelSeccion + contenedor unique
             window.mostrarCrearPlanProduccion = function() {
-                hideAllMaterialContainers();
-                produccionContentArea.style.display = 'block';
-                produccionInfoContainer.style.display = 'block';
+                prepararPanelSeccion('produccion');
 
-                // IMPORTANTE: Ocultar contenedor de material
-                materialContentArea.style.display = 'none';
+                const container = document.getElementById('crear-plan-produccion-unique-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
 
-                // Cargar contenido dinámicamente de Crear Plan de Producción en el contenedor de producción
-                cargarContenidoDinamico('produccion-info-container', '/control_produccion/crear_plan', () => {
-                    // Después de cargar, asegurar que el contenedor esté visible
-                    const planContainer = document.querySelector('#plan-produccion-main-container-unique');
-                    if (planContainer) {
-                        planContainer.style.display = 'block';
-                        planContainer.style.visibility = 'visible';
-                        planContainer.style.opacity = '1';
-                        // // // // // // console.log('Crear Plan de Producción cargado y mostrado correctamente');
-                    }
-
-                    // Inicializar el módulo de Crear Plan de Producción
+                cargarContenidoDinamico('crear-plan-produccion-unique-container', '/control_produccion/crear_plan', () => {
                     if (typeof window.initCrearPlanProduccion === 'function') {
                         window.initCrearPlanProduccion();
-                        // // // // // // console.log('Módulo Crear Plan de Producción inicializado');
                     } else {
                         console.warn('Función initCrearPlanProduccion no encontrada');
                     }
