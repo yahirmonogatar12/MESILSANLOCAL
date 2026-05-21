@@ -648,56 +648,18 @@ document.addEventListener("DOMContentLoaded", function () {
     try { localStorage.setItem(STORAGE_KEY_NAV_SM, id); } catch (e) {}
   }
 
-  // Persistencia del item del sidebar seleccionado (por pestaña).
-  // Estructura: { "Control de proceso": "IMD-SMD TERMINADO", ... }
-  const STORAGE_KEY_SIDEBAR_ITEM = "mes_sidebar_item_v1";
-  function leerItemsSidebar() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_SIDEBAR_ITEM)) || {}; }
-    catch (e) { return {}; }
-  }
-  function guardarItemSidebar(pestana, textoItem) {
-    if (!pestana || !textoItem) return;
-    try {
-      const items = leerItemsSidebar();
-      items[pestana] = textoItem;
-      localStorage.setItem(STORAGE_KEY_SIDEBAR_ITEM, JSON.stringify(items));
-    } catch (e) {}
-  }
-
-  // Event delegation: guardar cada vez que el usuario click en un
-  // .sidebar-link (estos se inyectan via AJAX, por eso delegation).
-  document.body.addEventListener("click", function (e) {
-    const link = e.target.closest(".sidebar-link");
-    if (!link) return;
-    const pestanaActiva = document.querySelector(".nav-button.active");
-    if (!pestanaActiva) return;
-    const texto = link.textContent.trim();
-    guardarItemSidebar(pestanaActiva.id, texto);
-  });
-
-  // Restaura el item del sidebar despues de que cargue el sidebar AJAX.
-  // El sidebar tarda un momento en inyectarse, asi que reintentamos.
-  function restaurarItemSidebar(pestana) {
-    const items = leerItemsSidebar();
-    const textoBuscado = items[pestana];
-    if (!textoBuscado) return;
-
-    let intentos = 0;
-    const maxIntentos = 30;
-    const tick = setInterval(() => {
-      intentos++;
-      const links = document.querySelectorAll(".sidebar-link");
-      for (const link of links) {
-        if (link.textContent.trim() === textoBuscado) {
-          clearInterval(tick);
-          link.click();
-          return;
-        }
-      }
-      if (intentos >= maxIntentos) clearInterval(tick);
-    }, 100);
-  }
+  // OBSOLETO 2026-05-22: el sistema de 'ultimo item por seccion'
+  // se eliminó porque causaba parpadeo al cambiar de pestaña navbar
+  // via switchTab desde un tab de otra seccion (se mostraba primero el
+  // ultimo item de esa seccion y luego el tab pedido).
+  // El sistema de tabs (sidebar-tabs.js + mes_tabs_v1) ya gestiona
+  // qué container activar al cambiar de seccion via switchTab/restaurarTabsDeSeccion.
+  function restaurarItemSidebar() { /* no-op, mantenido por compatibilidad */ }
   window.restaurarItemSidebar = restaurarItemSidebar;
+  // Limpiar localStorage huerfano del sistema viejo
+  try { localStorage.removeItem("mes_sidebar_item_v1"); } catch (e) {}
+
+  let restaurarTabsTimer = null;
 
   navButtons.forEach((btn) => {
     btn.addEventListener("click", function () {
@@ -712,7 +674,14 @@ document.addEventListener("DOMContentLoaded", function () {
       // Restaurar tabs de la nueva seccion (despues de que cargue el sidebar)
       const navTabId = this.id;
       if (typeof window.restaurarTabsDeSeccion === 'function') {
-        setTimeout(() => window.restaurarTabsDeSeccion(navTabId), 600);
+        if (restaurarTabsTimer) {
+          clearTimeout(restaurarTabsTimer);
+        }
+        restaurarTabsTimer = setTimeout(() => {
+          const navActivo = document.querySelector(".nav-button.active");
+          if (!navActivo || navActivo.id !== navTabId) return;
+          window.restaurarTabsDeSeccion(navTabId);
+        }, 600);
       }
 
       // Ocultar todo el contenido primero
@@ -2077,36 +2046,44 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
+  function prepararModuloControlProceso() {
+    const controlProcesoButton = document.getElementById("Control de proceso");
+    if (controlProcesoButton) {
+      controlProcesoButton.classList.add("active");
+      document.querySelectorAll(".nav-button").forEach((btn) => {
+        if (btn.id !== "Control de proceso") {
+          btn.classList.remove("active");
+        }
+      });
+    }
+
+    if (typeof window.prepararPanelSeccion === "function") {
+      window.prepararPanelSeccion("proceso");
+      return;
+    }
+
+    if (typeof window.hideAllMaterialContainers === "function") {
+      window.hideAllMaterialContainers();
+    }
+
+    const materialContainer = document.getElementById("material-container");
+    const controlProcesoContent = document.getElementById(
+      "control-proceso-content",
+    );
+    const controlProcesoContentArea = document.getElementById(
+      "control-proceso-content-area",
+    );
+
+    if (materialContainer) materialContainer.style.display = "block";
+    if (controlProcesoContent) controlProcesoContent.style.display = "block";
+    if (controlProcesoContentArea)
+      controlProcesoContentArea.style.display = "block";
+  }
+
   // Shipping Register Management
   window.mostrarShippingRegisterManagement = function () {
     try {
-      const controlProcesoButton =
-        document.getElementById("Control de proceso");
-      if (controlProcesoButton) {
-        controlProcesoButton.classList.add("active");
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de proceso") {
-            btn.classList.remove("active");
-          }
-        });
-      }
-
-      if (typeof window.hideAllMaterialContainers === "function") {
-        window.hideAllMaterialContainers();
-      }
-
-      const materialContainer = document.getElementById("material-container");
-      const controlProcesoContent = document.getElementById(
-        "control-proceso-content",
-      );
-      const controlProcesoContentArea = document.getElementById(
-        "control-proceso-content-area",
-      );
-
-      if (materialContainer) materialContainer.style.display = "block";
-      if (controlProcesoContent) controlProcesoContent.style.display = "block";
-      if (controlProcesoContentArea)
-        controlProcesoContentArea.style.display = "block";
+      prepararModuloControlProceso();
 
       const container = document.getElementById(
         "shipping-register-management-unique-container",
@@ -2141,33 +2118,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Search Shipping History
   window.mostrarSearchShippingHistory = function () {
     try {
-      const controlProcesoButton =
-        document.getElementById("Control de proceso");
-      if (controlProcesoButton) {
-        controlProcesoButton.classList.add("active");
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de proceso") {
-            btn.classList.remove("active");
-          }
-        });
-      }
-
-      if (typeof window.hideAllMaterialContainers === "function") {
-        window.hideAllMaterialContainers();
-      }
-
-      const materialContainer = document.getElementById("material-container");
-      const controlProcesoContent = document.getElementById(
-        "control-proceso-content",
-      );
-      const controlProcesoContentArea = document.getElementById(
-        "control-proceso-content-area",
-      );
-
-      if (materialContainer) materialContainer.style.display = "block";
-      if (controlProcesoContent) controlProcesoContent.style.display = "block";
-      if (controlProcesoContentArea)
-        controlProcesoContentArea.style.display = "block";
+      prepararModuloControlProceso();
 
       const container = document.getElementById(
         "search-shipping-history-unique-container",
@@ -2204,33 +2155,7 @@ document.addEventListener("DOMContentLoaded", function () {
     initFunctionName,
   ) {
     try {
-      const controlProcesoButton =
-        document.getElementById("Control de proceso");
-      if (controlProcesoButton) {
-        controlProcesoButton.classList.add("active");
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de proceso") {
-            btn.classList.remove("active");
-          }
-        });
-      }
-
-      if (typeof window.hideAllMaterialContainers === "function") {
-        window.hideAllMaterialContainers();
-      }
-
-      const materialContainer = document.getElementById("material-container");
-      const controlProcesoContent = document.getElementById(
-        "control-proceso-content",
-      );
-      const controlProcesoContentArea = document.getElementById(
-        "control-proceso-content-area",
-      );
-
-      if (materialContainer) materialContainer.style.display = "block";
-      if (controlProcesoContent) controlProcesoContent.style.display = "block";
-      if (controlProcesoContentArea)
-        controlProcesoContentArea.style.display = "block";
+      prepararModuloControlProceso();
 
       const container = document.getElementById(containerId);
       if (!container) {

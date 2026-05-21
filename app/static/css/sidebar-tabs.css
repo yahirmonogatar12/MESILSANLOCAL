@@ -1,11 +1,53 @@
 /* ============================================
-   SISTEMA DE TABS PARA PANELES DE SECCION
+   SISTEMA DE TABS GLOBAL
    ============================================
-   Cada *-content-area recibe arriba una barra de
-   tabs que lista los modulos abiertos. Permite
-   navegar entre varios sin perder estado.
+   Una sola barra de tabs visible debajo del navbar,
+   lista TODOS los modulos abiertos sin importar a
+   que pestaña navbar pertenezcan. Click en tab cambia
+   automaticamente de pestaña navbar si hace falta.
 */
 
+#global-tabs-bar {
+    position: fixed;
+    top: var(--header-height, 100px);
+    /* Empieza despues del sidebar izquierdo (no encima de el) */
+    left: var(--sidebar-width, 250px);
+    right: 0;
+    z-index: 500;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background-color: #2b2d3e;
+    border-bottom: 1px solid #20688C;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    scrollbar-width: thin;
+    scrollbar-color: #3498db #2b2d3e;
+    align-items: stretch;
+    box-sizing: border-box;
+}
+
+#global-tabs-bar:empty {
+    display: none;
+}
+
+/* Cuando hay tabs globales, empujar SOLO el panel derecho hacia abajo
+   (no el sidebar). La barra esta a la derecha del sidebar, asi que
+   solo afecta al content-area. */
+body:has(#global-tabs-bar:not(:empty)) [id$="-content-area"] {
+    margin-top: 26px !important;
+}
+
+/* En movil (sin sidebar visible) la barra ocupa todo el ancho */
+@media (max-width: 768px) {
+    #global-tabs-bar {
+        left: 0;
+    }
+}
+
+/* Mantener compatibilidad con la barra vieja por seccion */
 .section-tabs-bar {
     display: flex;
     flex-wrap: nowrap;
@@ -24,6 +66,12 @@
     align-items: stretch;
     box-sizing: border-box;
 }
+
+#global-tabs-bar::-webkit-scrollbar {
+    height: 4px;
+}
+#global-tabs-bar::-webkit-scrollbar-track { background: #2b2d3e; }
+#global-tabs-bar::-webkit-scrollbar-thumb { background: #3498db; border-radius: 2px; }
 
 .section-tabs-bar::-webkit-scrollbar {
     height: 4px;
@@ -127,14 +175,15 @@
     margin-top: 0 !important;
 }
 
-/* Ocultar SOLO el placeholder por defecto cuando hay tabs activos.
-   Los demas *-info-container son modulos reales (ej. Informacion
-   Basica) y se gestionan como tabs igual que los unique-container. */
-[id$="-content-area"]:has(> .section-tabs-bar) > #info-basica-default-container,
-[id$="-content-area"]:has(> .section-tabs-bar) > #material-info-container,
-[id$="-content-area"]:has(> .section-tabs-bar) > #produccion-info-container,
-[id$="-content-area"]:has(> .section-tabs-bar) > #control-proceso-info-container,
-[id$="-content-area"]:has(> .section-tabs-bar) > #control-resultados-info-container {
+/* Ocultar SOLO los placeholders "default info" cuando hay tabs
+   activos. Antes la regla buscaba .section-tabs-bar dentro del area,
+   pero ahora la barra es GLOBAL. Detectamos tabs activos por la
+   presencia de #global-tabs-bar con hijos. */
+body:has(#global-tabs-bar:not(:empty)) #info-basica-default-container,
+body:has(#global-tabs-bar:not(:empty)) #material-info-container,
+body:has(#global-tabs-bar:not(:empty)) #produccion-info-container,
+body:has(#global-tabs-bar:not(:empty)) #control-proceso-info-container,
+body:has(#global-tabs-bar:not(:empty)) #control-resultados-info-container {
     display: none !important;
 }
 

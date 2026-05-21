@@ -42,6 +42,18 @@
         return btn ? btn.id : null;
     }
 
+    function containerTieneContenido(container) {
+        return !!container &&
+            container.innerHTML.trim().length > 100 &&
+            !container.innerHTML.includes('loading-indicator');
+    }
+
+    function buscarTabPersistido(navTabId, containerId) {
+        const seccion = readState()[navTabId];
+        if (!seccion || !Array.isArray(seccion.tabs)) return null;
+        return seccion.tabs.find(tab => tab.container === containerId) || null;
+    }
+
     // ====================================================
     // Localizar el *-content-area dueño de un container
     // ====================================================
@@ -52,17 +64,23 @@
     }
 
     // ====================================================
-    // Crear la barra de tabs si no existe
+    // Barra de tabs GLOBAL (una sola para toda la app).
+    // Se inserta fija debajo del navbar (via CSS position:fixed).
     // ====================================================
-    function ensureTabsBar(area) {
-        if (!area) return null;
-        let bar = area.querySelector(':scope > .section-tabs-bar');
+    function ensureGlobalTabsBar() {
+        let bar = document.getElementById('global-tabs-bar');
         if (bar) return bar;
         bar = document.createElement('div');
-        bar.className = 'section-tabs-bar';
-        // Insertar al principio del area
-        area.insertBefore(bar, area.firstChild);
+        bar.id = 'global-tabs-bar';
+        document.body.appendChild(bar);
         return bar;
+    }
+
+    // Mantener compat: la API vieja sigue existiendo pero devuelve
+    // la barra global. Asi todo el codigo que usaba bar local sigue
+    // funcionando sin cambiar.
+    function ensureTabsBar(/* area ignorado */) {
+        return ensureGlobalTabsBar();
     }
 
     // ====================================================
@@ -78,9 +96,6 @@
                 <span class="section-tab-title"></span>
                 <button type="button" class="section-tab-close" title="Cerrar">×</button>
             `;
-            chip.querySelector('.section-tab-title').addEventListener('click', () => {
-                switchTab(tabInfo.container);
-            });
             chip.addEventListener('click', (e) => {
                 if (e.target.closest('.section-tab-close')) return;
                 switchTab(tabInfo.container);
@@ -92,8 +107,16 @@
             bar.appendChild(chip);
         }
         chip.querySelector('.section-tab-title').textContent = tabInfo.label;
-        // Tooltip nativo con el texto completo (aparece al hover si se trunca)
-        chip.setAttribute('title', tabInfo.label);
+        // Guardar el navTab al que pertenece, para que switchTab pueda
+        // saltar de pestaña navbar automaticamente si es necesario.
+        if (tabInfo.navTab) {
+            chip.setAttribute('data-tab-navtab', tabInfo.navTab);
+        }
+        // Tooltip nativo con el texto completo + indicador de seccion
+        const tooltip = tabInfo.navTab
+            ? `${tabInfo.label}  [${tabInfo.navTab}]`
+            : tabInfo.label;
+        chip.setAttribute('title', tooltip);
         return chip;
     }
 
@@ -102,11 +125,14 @@
     // ====================================================
     function markActive(area, containerActivo) {
         if (!area) return;
-        // Tabs visuales
-        area.querySelectorAll(':scope > .section-tabs-bar > .section-tab').forEach(chip => {
-            const isActive = chip.getAttribute('data-tab-container') === containerActivo;
-            chip.classList.toggle('active', isActive);
-        });
+        // Tabs visuales: ahora viven en la barra GLOBAL.
+        const bar = document.getElementById('global-tabs-bar');
+        if (bar) {
+            bar.querySelectorAll('.section-tab').forEach(chip => {
+                const isActive = chip.getAttribute('data-tab-container') === containerActivo;
+                chip.classList.toggle('active', isActive);
+            });
+        }
         // IDs de "placeholders default" que NUNCA son tabs y nunca se
         // tocan aqui (se gestionan via CSS con :has).
         const PLACEHOLDERS = new Set([
@@ -144,17 +170,184 @@
     // API: cambiar al tab del container dado
     // ====================================================
     function switchTab(containerId) {
+        const navTabDestino = containerToNavTab.get(containerId);
+        const navTabActual = getNavTabActiva();
+
+        // Cambio cross-section
+        if (navTabDestino && navTabDestino !== navTabActual) {
+            const btnNav = document.getElementById(navTabDestino);
+            const contDestino = document.getElementById(containerId);
+            const yaCargado = containerTieneContenido(contDestino);
+            const areaDestino = contDestino ? findAreaFor(containerId) : null;
+            const sidebarDestino = document.getElementById(SECCIONES_SIDEBARS_MAP[navTabDestino]);
+            const sidebarYaCacheado = sidebarDestino && sidebarDestino.dataset.sidebarCargado === '1';
+
+            // FAST PATH: si el container destino YA esta cargado Y el
+            // area/sidebar destino ya estan montados, hacer cambio
+            // cosmetico directo sin disparar btnNav.click() (que llamaria
+            // hideAllContent, prepararPanelSeccion, etc.).
+            if (yaCargado && areaDestino && sidebarYaCacheado && btnNav) {
+                fastSwitchCrossSection(containerId, navTabDestino, btnNav, areaDestino);
+                return;
+            }
+
+            // SLOW PATH: primera vez en esta seccion, necesita montaje completo
+            if (btnNav) {
+                window.__pendingSwitchToContainer = containerId;
+                const PLACEHOLDERS = [
+                    'info-basica-default-container',
+                    'material-info-container',
+                    'produccion-info-container',
+                    'control-proceso-info-container',
+                    'control-resultados-info-container'
+                ];
+                PLACEHOLDERS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+                if (yaCargado) contDestino.style.display = 'block';
+                btnNav.click();
+                return;
+            }
+        }
+
         const area = findAreaFor(containerId);
         if (!area) return;
         markActive(area, containerId);
 
-        // Persistir como activo en su seccion navbar
         const navTab = containerToNavTab.get(containerId) || getNavTabActiva();
         if (navTab) {
             const state = readState();
             if (!state[navTab]) state[navTab] = { tabs: [], active: null };
             state[navTab].active = containerId;
             writeState(state);
+
+            // Los chips globales se pintan desde localStorage antes de
+            // que todos los tabs hayan recargado su HTML. Si el usuario
+            // activa uno vacio en la seccion ya visible, cargarlo aqui.
+            cargarTabPersistidoSiHaceFalta(navTab, containerId);
+        }
+    }
+
+    // Mapa local: nombre de seccion -> id del sidebar (espejo del
+    // SECCIONES_SIDEBARS de MaterialTemplate.html). Necesario para
+    // el fast-path porque no podemos importarlo.
+    const SECCIONES_SIDEBARS_MAP = {
+        'Información Basica': 'informacion-basica-content',
+        'Control de material': 'control-material-content',
+        'Control de producción': 'control-produccion-content',
+        'Control de proceso': 'control-proceso-content',
+        'Control de calidad': 'control-calidad-content',
+        'Control de resultados': 'control-resultados-content',
+        'Control de reporte': 'control-reporte-content',
+        'Configuración de programa': 'configuracion-programa-content'
+    };
+
+    // IDs de los content-areas por seccion (espejo de SECCIONES_AREAS)
+    const SECCIONES_AREAS_MAP = {
+        'Información Basica': 'informacion-basica-content-area',
+        'Control de material': 'material-content-area',
+        'Control de producción': 'produccion-content-area',
+        'Control de proceso': 'control-proceso-content-area',
+        'Control de calidad': 'calidad-content-area',
+        'Control de resultados': 'control-resultados-content-area'
+    };
+
+    // Cambio rapido entre tabs de secciones distintas SIN disparar
+    // el handler navbar completo. Solo cambia visibilidad y marca
+    // la pestaña navbar como activa visualmente.
+    function fastSwitchCrossSection(containerId, navTabDestino, btnNav, areaDestino) {
+        window.__pendingSwitchToContainer = null;
+
+        // 1. Actualizar visualmente la pestaña navbar
+        document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+        btnNav.classList.add('active');
+
+        // 2. Ocultar todos los content-areas y sidebars excepto los destino
+        Object.entries(SECCIONES_AREAS_MAP).forEach(([nav, areaId]) => {
+            const el = document.getElementById(areaId);
+            if (!el) return;
+            if (nav === navTabDestino) {
+                el.classList.remove('mes-area-hidden');
+                el.style.display = 'block';
+                el.style.width = '100%';
+            } else {
+                el.style.cssText = '';
+                el.style.display = 'none';
+                el.classList.add('mes-area-hidden');
+            }
+        });
+        Object.entries(SECCIONES_SIDEBARS_MAP).forEach(([nav, sbId]) => {
+            const el = document.getElementById(sbId);
+            if (!el) return;
+            if (nav === navTabDestino) {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        });
+
+        // 3. Asegurar que material-container este visible
+        const matCont = document.getElementById('material-container');
+        if (matCont) matCont.style.display = 'block';
+
+        // 4. Activar el tab pedido (oculta los demas de su seccion)
+        areaDestino.classList.remove('mes-area-hidden');
+        areaDestino.style.display = 'block';
+        areaDestino.style.width = '100%';
+        markActive(areaDestino, containerId);
+
+        // 5. Persistir pestaña navbar activa
+        try { localStorage.setItem('mes_nav_active_v1', navTabDestino); } catch (e) {}
+
+        // 6. Persistir tab activo en su seccion
+        const state = readState();
+        if (!state[navTabDestino]) state[navTabDestino] = { tabs: [], active: null };
+        state[navTabDestino].active = containerId;
+        writeState(state);
+    }
+
+    const cargasTabsPersistidos = new Set();
+
+    async function esperarCargaDeContainer(containerId) {
+        let intentos = 0;
+        while (intentos < 50) {
+            const container = document.getElementById(containerId);
+            if (!container || !container.innerHTML.includes('loading-indicator')) return;
+            await new Promise(resolve => setTimeout(resolve, 100));
+            intentos++;
+        }
+    }
+
+    async function cargarTabPersistidoSiHaceFalta(navTabId, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container || containerTieneContenido(container) || cargasTabsPersistidos.has(containerId)) {
+            return;
+        }
+
+        const tab = buscarTabPersistido(navTabId, containerId);
+        if (!tab || (!tab.onclick && !tab.path) || typeof window.cargarContenidoDinamico !== 'function') {
+            return;
+        }
+
+        cargasTabsPersistidos.add(containerId);
+        window.__ultimoSidebarLinkLabel = tab.label || containerId;
+        window.__ultimoSidebarLinkOnclick = tab.onclick || null;
+
+        try {
+            if (tab.onclick) {
+                const result = new Function(tab.onclick).call(document.body);
+                if (result && typeof result.then === 'function') {
+                    await result;
+                }
+                await esperarCargaDeContainer(containerId);
+            } else {
+                await window.cargarContenidoDinamico(containerId, tab.path);
+            }
+        } catch (error) {
+            console.warn('[TABS] Error recargando tab persistido', containerId, error);
+        } finally {
+            cargasTabsPersistidos.delete(containerId);
         }
     }
 
@@ -169,9 +362,11 @@
             cont.style.display = 'none';
         }
 
-        // Quitar chip
-        if (area) {
-            const chip = area.querySelector(`.section-tab[data-tab-container="${CSS.escape(containerId)}"]`);
+        // Quitar chip de la barra GLOBAL (antes estaba dentro del area,
+        // ahora vive en #global-tabs-bar).
+        const bar = document.getElementById('global-tabs-bar');
+        if (bar) {
+            const chip = bar.querySelector(`.section-tab[data-tab-container="${CSS.escape(containerId)}"]`);
             if (chip) chip.remove();
         }
 
@@ -213,7 +408,7 @@
         if (navTab) containerToNavTab.set(containerId, navTab);
 
         const bar = ensureTabsBar(area);
-        renderTabChip(bar, { container: containerId, label, path });
+        renderTabChip(bar, { container: containerId, label, path, navTab });
 
         // Persistir
         if (navTab) {
@@ -312,22 +507,61 @@
     // solo el ultimo terminaria y los demas se quedan en "Cargando...".
     // Guardia: solo permitir UNA restauracion en curso a la vez.
     let restauracionEnCurso = null;
+    let restauracionVersion = 0;
 
     async function restaurarTabsDeSeccion(navTabId) {
-        if (restauracionEnCurso) {
-            console.log('[TABS-RESTORE] omitiendo: ya hay restauracion en curso para', restauracionEnCurso);
+        if (!navTabId || getNavTabActiva() !== navTabId) {
             return;
         }
+
+        const version = ++restauracionVersion;
         restauracionEnCurso = navTabId;
 
         try {
-            await _restaurarTabsDeSeccionInterna(navTabId);
+            // Primero pintar chips de TODAS las secciones (no solo
+            // la activa) para que la barra global tenga todos los
+            // tabs visibles desde el primer momento.
+            renderChipsGlobales();
+            await _restaurarTabsDeSeccionInterna(navTabId, () => {
+                return version === restauracionVersion && getNavTabActiva() === navTabId;
+            });
+            // _restaurarTabsDeSeccionInterna ya activa el container
+            // correcto al final (pending o seccion.active). No duplicar.
+            if (version === restauracionVersion && window.__pendingSwitchToContainer) {
+                window.__pendingSwitchToContainer = null;
+            }
         } finally {
-            restauracionEnCurso = null;
+            if (version === restauracionVersion) {
+                restauracionEnCurso = null;
+            }
         }
     }
 
-    async function _restaurarTabsDeSeccionInterna(navTabId) {
+    // Pinta TODOS los chips de TODAS las secciones en la barra global,
+    // sin cargar el contenido (eso lo hace restaurarTabsDeSeccion
+    // solo para la seccion activa, los demas tabs cargan lazy al click).
+    function renderChipsGlobales() {
+        const bar = ensureGlobalTabsBar();
+        bar.innerHTML = '';
+        const state = readState();
+        Object.entries(state).forEach(([navTab, seccion]) => {
+            if (!seccion || !seccion.tabs) return;
+            seccion.tabs.forEach(tab => {
+                containerToNavTab.set(tab.container, navTab);
+                renderTabChip(bar, {
+                    container: tab.container,
+                    label: tab.label,
+                    path: tab.path,
+                    navTab: navTab
+                });
+            });
+        });
+    }
+    window.renderChipsGlobales = renderChipsGlobales;
+
+    async function _restaurarTabsDeSeccionInterna(navTabId, sigueVigente) {
+        if (!sigueVigente()) return;
+
         const state = readState();
         const seccion = state[navTabId];
         if (!seccion || !seccion.tabs || !seccion.tabs.length) return;
@@ -335,6 +569,7 @@
         // Esperar a que al menos un container exista en DOM
         let intentos = 0;
         while (intentos < 30) {
+            if (!sigueVigente()) return;
             const algoDisponible = seccion.tabs.some(t => document.getElementById(t.container));
             if (algoDisponible) break;
             await new Promise(r => setTimeout(r, 100));
@@ -343,22 +578,27 @@
 
         if (typeof window.cargarContenidoDinamico !== 'function') return;
 
-        // Cargar tabs uno por uno (secuencial por el AbortController).
-        // Replayeamos el onclick original del sidebar-link para que se
-        // ejecute la funcion mostrar*() correspondiente CON su
-        // initCallback (que inicializa listeners del modulo). Sin esto
-        // solo se carga el HTML pero los botones no responden.
-        console.log('[TABS-RESTORE] iniciando, total tabs:', seccion.tabs.length);
-        for (const tab of seccion.tabs) {
+        // Si hay un switchTab pendiente (venimos de otra seccion para
+        // activar UN tab especifico), solo cargar ESE tab — los demas
+        // se cargaran lazy cuando el usuario haga click en su chip.
+        // Esto evita el parpadeo "ultimo active de la seccion -> tab pedido".
+        let tabsACargar = seccion.tabs;
+        if (window.__pendingSwitchToContainer) {
+            const objetivo = window.__pendingSwitchToContainer;
+            tabsACargar = seccion.tabs.filter(t => t.container === objetivo);
+            console.log('[TABS-RESTORE] switchTab pendiente, solo cargando:', objetivo);
+        }
+
+        console.log('[TABS-RESTORE] iniciando, total tabs:', tabsACargar.length);
+        for (const tab of tabsACargar) {
+            if (!sigueVigente()) return;
             containerToNavTab.set(tab.container, navTabId);
 
             // Si el container ya tiene contenido cargado (no esta vacio
             // ni con "Cargando..."), no recargar. Solo registrar la
             // tab visualmente y restaurar visibilidad.
             const cont = document.getElementById(tab.container);
-            const yaCargado = cont &&
-                cont.innerHTML.trim().length > 100 &&
-                !cont.innerHTML.includes('loading-indicator');
+            const yaCargado = containerTieneContenido(cont);
 
             if (yaCargado) {
                 console.log('[TABS-RESTORE] ya cargado, solo registrando chip:', tab.container);
@@ -393,10 +633,15 @@
                 console.warn('[TABS-RESTORE] Error cargando tab', tab.container, e);
             }
         }
+        if (!sigueVigente()) return;
         console.log('[TABS-RESTORE] terminado');
 
-        // Activar el guardado como activo (oculta los demas y muestra el activo)
-        if (seccion.active) {
+        // Si hay switchTab pendiente, activar ese (no el ultimo active
+        // de la seccion). Sin esto se ve parpadear el ultimo active
+        // antes del tab realmente pedido.
+        if (window.__pendingSwitchToContainer) {
+            switchTab(window.__pendingSwitchToContainer);
+        } else if (seccion.active) {
             switchTab(seccion.active);
         }
     }
