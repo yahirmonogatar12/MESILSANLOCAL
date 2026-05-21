@@ -1,5 +1,7 @@
 # INSTRUCCIONES PARA IMPLEMENTAR MÓDULOS AJAX
 
+> **⚠️ Actualizado 2026-05-21:** Las funciones `mostrar*()` ya NO copian el bloque manual de "ocultar otras secciones". Usan el helper `prepararPanelSeccion()` definido en `MaterialTemplate.html`. Ver [PASO 2.5](#paso-25-usar-el-helper-de-preparación-de-panel) y la guía completa en [WF_002 §7c](./WF_002_Crear_Template_Completo.md#7c--helpers-de-preparación-de-panel).
+
 ## PASO 1: PREPARACIÓN DE LA LISTA (YA COMPLETADO)
 - Los botones en `LISTA_CONTROL_DE_PROCESO.html` ya están preparados con el patrón AJAX
 - Los contenedores ya están agregados en `MaterialTemplate.html`
@@ -9,6 +11,82 @@
 1. Abrir `app/static/js/scriptMain.js`
 2. Copiar las funciones del archivo `control-proceso-ajax-functions-template.js`
 3. Pegarlas al final del archivo (antes del cierre del DOMContentLoaded)
+
+## PASO 2.5: USAR EL HELPER DE PREPARACIÓN DE PANEL
+
+Toda función `mostrarXxx()` debe llamar al helper correspondiente al INICIO, antes de mostrar su contenedor. Esto garantiza que ningún panel viejo quede superpuesto al cambiar de pestaña.
+
+### Plantilla actual:
+
+```javascript
+window.mostrarMiModulo = function() {
+    // 1. Preparar panel de la seccion (oculta otras + muestra padres propios)
+    window.prepararPanelSeccion('proceso');  // ← AJUSTAR a tu seccion
+
+    // 2. Mostrar mi contenedor especifico
+    const container = document.getElementById('mi-modulo-unique-container');
+    if (container) {
+        container.style.display = 'block';
+    }
+
+    // 3. Cargar contenido dinamico
+    cargarContenidoDinamico('mi-modulo-unique-container', '/mi-modulo-ajax', () => {
+        if (typeof window.initializeMiModuloEventListeners === 'function') {
+            window.initializeMiModuloEventListeners();
+        }
+    });
+};
+```
+
+### Secciones válidas para `prepararPanelSeccion()`:
+
+| Sección | Cuando usar |
+|---|---|
+| `'informacion-basica'` | Módulos del menú Información Básica |
+| `'material'` | Módulos del menú Control de material |
+| `'produccion'` | Módulos del menú Control de producción |
+| `'proceso'` | Módulos del menú Control de proceso *(la mayoría aquí)* |
+| `'calidad'` | Módulos del menú Control de calidad |
+| `'resultados'` | Módulos del menú Control de resultados |
+| `'reporte'` | Módulos del menú Control de reporte |
+| `'configuracion'` | Módulos del menú Configuración de programa |
+
+### Caso especial — Información Básica:
+
+Para módulos del menú Información Básica usa el helper específico (limpia además los muchos contenedores hijos):
+
+```javascript
+window.mostrarMiNuevoInfo = function() {
+    window.prepararPanelInformacionBasica();
+    const container = document.getElementById('mi-nuevo-info-container');
+    if (container) container.style.display = 'block';
+};
+```
+
+### ❌ NO HACER:
+
+Antes el patrón era copiar 20-30 líneas en cada `mostrar*()`:
+
+```javascript
+// ❌ NO copies este bloque (obsoleto)
+window.mostrarMiModulo = function() {
+    materialContainer.style.display = 'block';
+    controlProcesoContent.style.display = 'block';
+    controlProcesoContentArea.style.display = 'block';
+    materialContentArea.style.display = 'none';
+    produccionContentArea.style.display = 'none';
+    informacionBasicaContentArea.style.display = 'none';
+    const controlMaterialSidebar = document.getElementById('control-material-content');
+    if (controlMaterialSidebar) controlMaterialSidebar.style.display = 'none';
+    const controlProduccionSidebar = document.getElementById('control-produccion-content');
+    if (controlProduccionSidebar) controlProduccionSidebar.style.display = 'none';
+    // ... y así sucesivamente
+    hideAllMaterialContainers();
+    // ahora sí mostrar mi contenedor
+};
+```
+
+**Por qué:** cada copia tenía variaciones sutiles → bugs de paneles superpuestos al navegar entre pestañas. Si agregas una nueva sección al sistema, tendrías que editar las 25+ funciones manualmente. Con el helper, solo añades una línea a los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` en `MaterialTemplate.html` y todas las funciones la respetan automáticamente.
 
 ## PASO 3: AGREGAR RUTAS EN FLASK
 1. Abrir `app/routes.py`
@@ -54,6 +132,7 @@ Para cada módulo, crear un archivo HTML en `app/templates/Control de proceso/`:
 2. Navegar a Control de Proceso
 3. Hacer clic en cada botón para verificar que carga correctamente
 4. Verificar en la consola del navegador que no hay errores
+5. **Navegar a otra pestaña (Control de material, Información Básica, etc.) y volver al módulo.** El panel anterior NO debe quedar visible superpuesto. Si pasa, revisa que `mostrar*()` esté llamando `prepararPanelSeccion()` con el nombre correcto de sección.
 
 ## MAPEO DE NOMBRES
 
@@ -85,3 +164,12 @@ Para cada módulo, crear un archivo HTML en `app/templates/Control de proceso/`:
 - Las funciones JavaScript deben estar en el scope global (window.)
 - Siempre incluir la auto-inicialización en el template
 - Mantener la estructura de carpetas consistente
+- **Toda función `mostrar*()` debe iniciar con `prepararPanelSeccion()` o `prepararPanelInformacionBasica()`** — no copies el bloque manual de ocultar/mostrar contenedores padres.
+- Si tu módulo no usa el helper y al navegar entre pestañas notas paneles superpuestos, ese es el síntoma. La solución es ese helper.
+
+## CHANGELOG
+
+### 2026-05-21
+- Añadido PASO 2.5 documentando el uso obligatorio de `prepararPanelSeccion()` y `prepararPanelInformacionBasica()`.
+- Actualizado PASO 5 para incluir prueba de navegación entre pestañas (verifica que no haya superposición de paneles).
+- Ver detalle completo del refactor en `WF_002_Crear_Template_Completo.md` §7c.

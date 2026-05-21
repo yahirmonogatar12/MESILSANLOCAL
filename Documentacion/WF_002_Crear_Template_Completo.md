@@ -167,7 +167,9 @@ def mi_modulo():
 
 ## Paso 7 — Crear la Función mostrar*() en scriptMain.js
 
-**Archivo:** `app/static/js/scriptMain.js`
+**Archivo:** `app/static/js/scriptMain.js` (o `MaterialTemplate.html` para módulos de Información Básica)
+
+> **⚠️ ACTUALIZACIÓN 2026-05-21:** El bloque manual de "ocultar otras secciones + mostrar padres" se reemplazó por **helpers reutilizables** definidos en `MaterialTemplate.html`. Ya NO copies ese bloque en cada `mostrar*()`. Usa el helper correspondiente. Ver sección [7c — Helpers de preparación de panel](#7c--helpers-de-preparación-de-panel).
 
 ### 7a. Agregar el contenedor a la lista de "ocultar" del grupo
 
@@ -185,14 +187,14 @@ const controlResultadosContainers = [
 
 > Hay **DOS** lugares donde aparece esta lista: una en la definición principal (~línea 245) y otra dentro de la función `mostrar*()` (~línea 4482). **Agregar en ambas.**
 
-### 7b. Crear la función `mostrar*()`
+### 7b. Crear la función `mostrar*()` (patrón actual)
 
-Copiar el patrón de una función existente del mismo grupo y adaptar:
+Con los helpers de panel disponibles, la función queda mucho más corta:
 
 ```javascript
 window.mostrarMiModulo = function () {
   try {
-    // 1. Activar botón de nav
+    // 1. Activar botón de nav (opcional, si el modulo se invoca desde sidebar)
     const navButton = document.getElementById("Control de resultados");
     if (navButton) {
       navButton.classList.add("active");
@@ -201,26 +203,22 @@ window.mostrarMiModulo = function () {
       });
     }
 
-    // 2. Ocultar otros contenedores
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
+    // 2. Preparar el panel de la sección (oculta otras secciones,
+    //    muestra el sidebar y content-area propios, limpia contenedores).
+    //    Esto reemplaza ~30 líneas de código repetitivo.
+    window.prepararPanelSeccion("resultados");
+
+    // 3. Ocultar contenedores hermanos de mi sección
     controlResultadosContainers.forEach((id) => {
       const c = document.getElementById(id);
       if (c) c.style.display = "none";
     });
 
-    // 3. Mostrar contenedores padres
-    const materialContainer = document.getElementById("material-container");
-    if (materialContainer) materialContainer.style.display = "block";
-    // ... (control-resultados-content, control-resultados-content-area)
-
-    // 4. Mostrar mi contenedor
+    // 4. Mostrar mi contenedor específico
     const miContainer = document.getElementById("mi-modulo-unique-container");
     if (miContainer) {
       miContainer.style.display = "block";
       miContainer.style.width = "100%";
-      // ... más estilos
     }
 
     // 5. Cargar contenido dinámico
@@ -243,6 +241,81 @@ window.mostrarMiModulo = function () {
   }
 };
 ```
+
+### 7c — Helpers de preparación de panel
+
+**Ubicación:** `MaterialTemplate.html` (línea ~2316 aprox.)
+
+El sistema expone tres helpers globales que encapsulan toda la lógica de "ocultar otras secciones / mostrar la mía":
+
+#### `window.prepararPanelSeccion(seccion)`
+
+Helper genérico. Recibe el nombre corto de la sección. Realiza:
+
+1. Oculta los **content-areas** de TODAS las demás secciones (limpia `style.cssText` antes para borrar inline styles agresivos).
+2. Oculta los **sidebars** de TODAS las demás secciones.
+3. Llama a `hideAllMaterialContainers()` (limpia módulos específicos como BOM, almacén, etc.).
+4. Muestra el `#material-container` padre.
+5. Muestra el sidebar (`*-content`) de la sección activa.
+6. Muestra el content-area (`*-content-area`) de la sección activa con `width: 100%`.
+
+**Secciones válidas** (definidas en los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS`):
+
+| Sección | Sidebar (`*-content`) | Content-area (`*-content-area`) |
+|---|---|---|
+| `informacion-basica` | `informacion-basica-content` | `informacion-basica-content-area` |
+| `material` | `control-material-content` | `material-content-area` |
+| `produccion` | `control-produccion-content` | `produccion-content-area` |
+| `proceso` | `control-proceso-content` | `control-proceso-content-area` |
+| `calidad` | `control-calidad-content` | `calidad-content-area` |
+| `resultados` | `control-resultados-content` | `control-resultados-content-area` |
+| `reporte` | `control-reporte-content` | *(no aplica, usa material-content-area)* |
+| `configuracion` | `configuracion-programa-content` | *(no aplica)* |
+
+#### `window.prepararPanelInformacionBasica()`
+
+Especialización para Información Básica. Equivale a `prepararPanelSeccion('informacion-basica')` + `hideAllInformacionBasicaContainers()` para limpiar los muchos contenedores hijos de esta sección.
+
+**Usar al inicio de cada `mostrarXxxInfo()` de Información Básica:**
+
+```javascript
+window.mostrarMiNuevoModuloInfo = function() {
+    prepararPanelInformacionBasica();
+    const container = document.getElementById('mi-nuevo-info-container');
+    if (container) container.style.display = 'block';
+};
+```
+
+#### `window.ocultarOtrasSecciones(seccion)`
+
+Helper de bajo nivel. Solo oculta otras secciones SIN mostrar la activa. Útil si necesitas control fino del orden de operaciones (por ejemplo, `mostrarControlBOMInfo` lo usa combinado con limpiezas específicas adicionales).
+
+#### Por qué importa
+
+Antes del refactor, cada `mostrar*()` repetía ~20-30 líneas para ocultar las demás secciones. Esto provocaba:
+
+- **Bug observado:** un `mostrarXxxInfo` olvidaba ocultar `material-content-area` → al navegar de Control de Material a Información Básica, el panel viejo quedaba superpuesto.
+- **Bug observado:** cada función ocultaba un subconjunto distinto de sidebars → comportamientos inconsistentes entre secciones.
+- **Bug futuro:** al agregar una nueva sección (ej. "Control de mantenimiento"), había que editar las 20+ funciones para que también la ocultaran.
+
+Con los helpers:
+
+- Una sola fuente de verdad: `SECCIONES_AREAS` y `SECCIONES_SIDEBARS`.
+- Agregar una nueva sección = añadir UNA línea a cada mapa.
+- Imposible olvidarse de ocultar un area.
+
+#### Cómo agregar una nueva sección al sistema
+
+1. Añadir entrada en `SECCIONES_AREAS`:
+   ```javascript
+   'mi-seccion': 'mi-seccion-content-area'
+   ```
+2. Añadir entrada en `SECCIONES_SIDEBARS`:
+   ```javascript
+   'mi-seccion': 'mi-seccion-content'
+   ```
+3. Tus `mostrar*()` ya pueden llamar `prepararPanelSeccion('mi-seccion')`.
+4. Las demás secciones automáticamente la ocultarán al activarse.
 
 ---
 
@@ -303,6 +376,7 @@ Luego, asignar el permiso del nuevo botón a los roles correspondientes.
 [ ] Contenedor div agregado en MaterialTemplate.html
 [ ] Ruta Flask agregada en routes.py
 [ ] Función mostrar*() en scriptMain.js
+[ ] mostrar*() usa prepararPanelSeccion() (NO copia bloque manual de ocultar)
 [ ] Contenedor agregado en AMBAS listas de ocultar en scriptMain.js
 [ ] Botón <li> agregado en LISTA_*.html con data-permiso-*
 [ ] Permiso registrado en permisos_dropdowns.js
@@ -311,6 +385,7 @@ Luego, asignar el permiso del nuevo botón a los roles correspondientes.
 [ ] Probado: el template carga correctamente
 [ ] Probado: JS funciona (filtros, tablas, modales)
 [ ] Probado: no hay colisión de IDs con otros módulos
+[ ] Probado: navegar a otra sección y volver NO deja paneles superpuestos
 ```
 
 ---
@@ -320,7 +395,20 @@ Luego, asignar el permiso del nuevo botón a los roles correspondientes.
 ```
 MaterialTemplate.html
   │
+  ├── HELPERS GLOBALES (definidos 1 sola vez)
+  │     ├── prepararPanelSeccion(seccion)         ← úsalo en mostrar*()
+  │     ├── prepararPanelInformacionBasica()      ← úsalo en mostrarXxxInfo()
+  │     ├── ocultarOtrasSecciones(seccion)        ← bajo nivel
+  │     ├── hideAllMaterialContainers()
+  │     └── hideAllInformacionBasicaContainers()
+  │
+  ├── MAPAS DE SECCIONES (fuente de verdad)
+  │     ├── SECCIONES_AREAS    { seccion → id del *-content-area }
+  │     └── SECCIONES_SIDEBARS { seccion → id del *-content }
+  │
   ├── scriptMain.js ──── mostrarMiModulo()
+  │     │                    │
+  │     │                    ├──▶ prepararPanelSeccion('mi-grupo')   ◀── 1 línea
   │     │                    │
   │     │                    ▼
   │     │              cargarContenidoDinamico()
@@ -344,3 +432,18 @@ MaterialTemplate.html
   └── permisos_dropdowns.js
         └── { pagina, seccion, boton }
 ```
+
+---
+
+## Changelog
+
+### 2026-05-21 — Refactor de helpers de panel
+- Eliminado el bloque manual repetido de "ocultar otras secciones + mostrar padres" que aparecía en ~25 funciones `mostrar*()`.
+- Introducidos los helpers globales `prepararPanelSeccion(seccion)`, `prepararPanelInformacionBasica()` y `ocultarOtrasSecciones(seccion)` en `MaterialTemplate.html`.
+- Introducidos los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` como fuente única de verdad sobre qué IDs pertenecen a cada sección.
+- Refactorizadas:
+  - `mostrarControlMaterial`, `mostrarControlProduccion`, `mostrarControlProceso`, `mostrarControlResultados`, `mostrarInformacionBasica` (funciones padre de navbar).
+  - Los 23 handlers `mostrarXxxInfo` de Información Básica.
+  - Los handlers inline de navbar para Calidad, Reporte y Configuración de programa.
+- Bug previo resuelto: al navegar entre pestañas y volver, panes viejos quedaban superpuestos porque cada función ocultaba un subconjunto distinto de areas/sidebars. Ahora todas pasan por la misma lógica.
+- Ver Paso 7c para uso detallado.

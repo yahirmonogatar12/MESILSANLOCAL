@@ -43,6 +43,7 @@ cargarContenidoDinamico() (Función de carga AJAX)
 - [ ] Usar contenedores únicos con ID específico
 - [ ] Implementar manejo de errores robusto
 - [ ] Agregar estados de loading/feedback visual
+- [ ] **`mostrar*()` debe usar `prepararPanelSeccion()`** (NO copiar el bloque manual de ocultar contenedores — ver § 5b)
 
 ---
 
@@ -388,13 +389,15 @@ def api_tu_modulo_accion1():
 
 **Archivo:** `app/static/js/scriptMain.js`
 
+> **Patrón actual (2026-05-21):** usa el helper global `prepararPanelSeccion()` definido en `MaterialTemplate.html`. Encapsula toda la lógica de "ocultar otras secciones, mostrar padres propios". Ver [§ 5b](#5b-helper-prepararpanelseccion) para el detalle de qué hace y por qué.
+
 ```javascript
 // Agregar función para mostrar tu módulo
 window.mostrarTuModulo = function () {
   try {
-    console.log("📦 Cargando Tu Módulo...");
+    console.log("Cargando Tu Módulo...");
 
-    // Activar botón de navegación
+    // 1. Activar botón de navegación
     const navButton = document.getElementById("tu-categoria");
     if (navButton) {
       navButton.classList.add("active");
@@ -403,55 +406,80 @@ window.mostrarTuModulo = function () {
       });
     }
 
-    // Ocultar otros contenedores
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
+    // 2. Preparar el panel de la sección: oculta otras secciones,
+    //    muestra el sidebar + content-area propios, limpia restos.
+    //    Reemplaza ~25 líneas del patrón antiguo (ver § 5b).
+    window.prepararPanelSeccion("proceso"); // ← AJUSTAR a tu sección
 
-    // Mostrar contenedores necesarios
-    const materialContainer = document.getElementById("material-container");
-    const tuCategoriaContent = document.getElementById("tu-categoria-content");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (tuCategoriaContent) tuCategoriaContent.style.display = "block";
-
-    // Obtener contenedor único
+    // 3. Mostrar tu contenedor específico
     const containerId = "tu-modulo-unique-container";
     const container = document.getElementById(containerId);
-
     if (!container) {
-      console.error(" Contenedor no existe:", containerId);
+      console.error("Contenedor no existe:", containerId);
       return;
     }
-
     container.style.display = "block";
     container.style.opacity = "1";
 
-    // Cargar contenido dinámico
+    // 4. Cargar contenido dinámico
     if (typeof window.cargarContenidoDinamico === "function") {
       window.cargarContenidoDinamico(containerId, "/tu-modulo-ajax", () => {
-        // Inicializar event listeners después de cargar
-        console.log(
-          "📦 Contenido de Tu Módulo cargado, inicializando listeners..."
-        );
+        console.log("Contenido cargado, inicializando listeners...");
 
         if (typeof window.initializeTuModuloEventListeners === "function") {
           window.initializeTuModuloEventListeners();
         } else {
-          console.warn("⚠️ initializeTuModuloEventListeners no disponible");
+          console.warn("initializeTuModuloEventListeners no disponible");
         }
 
-        // Cargar datos iniciales
         if (typeof window.loadTuModuloData === "function") {
           window.loadTuModuloData();
         }
       });
     }
   } catch (e) {
-    console.error(" Error en mostrarTuModulo:", e);
+    console.error("Error en mostrarTuModulo:", e);
   }
 };
 ```
+
+### 5b. Helper `prepararPanelSeccion()`
+
+**Definido en:** `MaterialTemplate.html` (línea ~2316).
+
+Una sola función que ejecuta el flujo correcto para activar cualquier sección del navbar:
+
+1. Oculta los **content-areas** de TODAS las demás secciones (limpia `style.cssText` primero para borrar inline styles agresivos).
+2. Oculta los **sidebars** de TODAS las demás secciones.
+3. Llama `hideAllMaterialContainers()` para limpiar módulos específicos como BOM, almacén, etc.
+4. Muestra `#material-container` padre.
+5. Muestra el sidebar (`*-content`) de la sección activa.
+6. Muestra el content-area (`*-content-area`) de la sección activa con `width: 100%`.
+
+**Secciones válidas:**
+
+| `seccion` | Cuando usar |
+|---|---|
+| `'informacion-basica'` | Módulos del menú Información Básica |
+| `'material'` | Módulos del menú Control de material |
+| `'produccion'` | Módulos del menú Control de producción |
+| `'proceso'` | Módulos del menú Control de proceso |
+| `'calidad'` | Módulos del menú Control de calidad |
+| `'resultados'` | Módulos del menú Control de resultados |
+| `'reporte'` | Módulos del menú Control de reporte |
+| `'configuracion'` | Módulos del menú Configuración de programa |
+
+**Helpers relacionados:**
+
+- `window.prepararPanelInformacionBasica()` — especialización para Información Básica. Equivale a `prepararPanelSeccion('informacion-basica')` + `hideAllInformacionBasicaContainers()`. Úsalo en cada `mostrarXxxInfo()`.
+- `window.ocultarOtrasSecciones(seccion)` — variante de bajo nivel que solo oculta SIN mostrar la activa. Para casos donde necesitas control fino del orden de operaciones (ej. `mostrarControlBOMInfo`).
+
+**Por qué importa:**
+
+- **Bug evitado:** al navegar entre pestañas y volver, antes los paneles viejos quedaban superpuestos porque cada `mostrar*()` ocultaba un subconjunto distinto de areas/sidebars.
+- **Mantenibilidad:** agregar una sección nueva (ej. "Control de mantenimiento") solo requiere añadir una línea a los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` en `MaterialTemplate.html`. Todos los handlers `mostrar*()` la respetan automáticamente. Sin el helper, había que editar 25+ funciones.
+
+**Detalle completo:** ver [WF_002 §7c](./WF_002_Crear_Template_Completo.md#7c--helpers-de-preparación-de-panel).
 
 ---
 
@@ -762,6 +790,9 @@ Este archivo contiene un ejemplo completo de:
 - `window.cargarContenidoDinamico(containerId, templatePath, callback)` - Carga contenido vía AJAX
 - `window.hideAllMaterialContainers()` - Oculta todos los contenedores
 - `window.hideAllInformacionBasicaContainers()` - Oculta contenedores de info básica
+- `window.prepararPanelSeccion(seccion)` - Prepara el panel de una sección (oculta otras + muestra propios). Ver § 5b.
+- `window.prepararPanelInformacionBasica()` - Especialización para Información Básica.
+- `window.ocultarOtrasSecciones(seccion)` - Bajo nivel: solo oculta, sin mostrar la activa.
 
 ---
 
@@ -775,10 +806,12 @@ Este archivo contiene un ejemplo completo de:
 - [ ]  Script inline de inicialización en el HTML
 - [ ]  Endpoint AJAX creado en routes.py
 - [ ]  Función de navegación agregada en scriptMain.js
+- [ ]  `mostrar*()` usa `prepararPanelSeccion()` (no copia el bloque manual)
 - [ ]  Contenedor único creado en MaterialTemplate.html
 - [ ]  Manejo de errores implementado
 - [ ]  Feedback visual al usuario implementado
 - [ ]  Testing manual completado en consola del navegador
+- [ ]  Navegar a otra pestaña y volver NO deja paneles superpuestos
 
 ---
 
@@ -808,9 +841,14 @@ Este archivo contiene un ejemplo completo de:
 
 ---
 
-**Última actualización:** Octubre 2025  
-**Versión del documento:** 1.1  
+**Última actualización:** 2026-05-21
+**Versión del documento:** 1.2
 **Basado en:** Sistema MES ILSAN LOCAL - Plan Main Module
+
+### Changelog
+
+- **1.2 (2026-05-21)** — Añadido patrón `prepararPanelSeccion()` en § 5b. Reemplaza ~25 líneas de código duplicado en cada `mostrar*()`. Actualizado el ejemplo de integración (paso 5), checklist de requisitos obligatorios y checklist final. Ver detalle completo en `WF_002_Crear_Template_Completo.md` §7c y `INSTRUCCIONES-IMPLEMENTACION-AJAX.md` PASO 2.5.
+- **1.1 (Octubre 2025)** — Versión base con event delegation, modales dinámicos, idempotencia de listeners.
 
 ---
 
