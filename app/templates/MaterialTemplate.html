@@ -2316,217 +2316,182 @@ function hideAllMaterialContainers() {
             // Hacer la función disponible globalmente
             window.hideAllInformacionBasicaContainers = hideAllInformacionBasicaContainers;
 
-            // Funciones globales para mostrar cada contenedor de Información Básica
-            window.mostrarAdminUsuarioInfo = function() {
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('admin-usuario-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
+            // ========================================================
+            // HELPERS WF_002 — preparar cada panel de seccion
+            // ========================================================
+            // Patron generalizado: cada seccion tiene su propio
+            // content-area + sidebar. Para activar una seccion sin que
+            // queden restos de otras visibles, ocultamos los content-areas
+            // y sidebars de TODAS las demas secciones, luego mostramos
+            // los propios. Sin esto, navegar entre pestañas deja paneles
+            // superpuestos (bug observado en Informacion Basica).
+
+            const SECCIONES_AREAS = {
+                'informacion-basica': 'informacion-basica-content-area',
+                'material':           'material-content-area',
+                'produccion':         'produccion-content-area',
+                'proceso':            'control-proceso-content-area',
+                'calidad':            'calidad-content-area',
+                'resultados':         'control-resultados-content-area'
             };
 
-            window.mostrarAdminMenuInfo = function() {
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('admin-menu-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
+            const SECCIONES_SIDEBARS = {
+                'informacion-basica': 'informacion-basica-content',
+                'material':           'control-material-content',
+                'produccion':         'control-produccion-content',
+                'proceso':            'control-proceso-content',
+                'calidad':            'control-calidad-content',
+                'resultados':         'control-resultados-content',
+                'reporte':            'control-reporte-content',
+                'configuracion':      'configuracion-programa-content'
             };
 
-            window.mostrarAdminAutoridadInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('admin-autoridad-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlCodigoInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-codigo-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarAdminItinerarioInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('admin-itinerario-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarConsultarLicenciasInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('consultar-licencias-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlDepartamentoInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-departamento-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlProcesoInfo = function() {
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-proceso-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlOrdenProcesoInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-orden-proceso-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlOrdenProceso2Info = function() {
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-orden-proceso2-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlDefectoInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-defecto-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlInterfacesInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-interfaces-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlInterlockInfo = function() {
-
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-interlock-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarConfiguracionMSLInfo = function() {
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('configuracion-msl-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlClienteInfo = function() {
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-cliente-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            window.mostrarControlProveedorInfo = function() {
-                hideAllInformacionBasicaContainers();
-                const container = document.getElementById('control-proveedor-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
-            };
-
-            // NUEVA FUNCIÓN: Control de material para Información Básica
-            // Sigue el patrón WF_002 Paso 7: ocultar TODOS los contenedores
-            // de las demás secciones antes de mostrar el propio, para
-            // evitar superposiciones cuando se llega desde otra pestaña.
-            window.mostrarControlMaterialInfo = function() {
-                const materialContainer = document.getElementById('material-container');
-                const informacionBasicaContent = document.getElementById('informacion-basica-content');
-                const controlMaterialContent = document.getElementById('control-material-content');
-                const controlProduccionContent = document.getElementById('control-produccion-content');
-                const controlProcesoContent = document.getElementById('control-proceso-content');
-                const controlCalidadContent = document.getElementById('control-calidad-content');
-                const controlResultadosContent = document.getElementById('control-resultados-content');
-                const controlReporteContent = document.getElementById('control-reporte-content');
-                const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
-                const panelAdministracionContent = document.getElementById('panel-administracion-content');
-
-                // 1. Ocultar SIDEBARS de las otras secciones
-                [
-                    controlMaterialContent,
-                    controlProduccionContent,
-                    controlProcesoContent,
-                    controlCalidadContent,
-                    controlResultadosContent,
-                    controlReporteContent,
-                    configuracionProgramaContent,
-                    panelAdministracionContent
-                ].forEach(section => {
-                    if (section) {
-                        section.style.display = 'none';
+            // Oculta TODOS los content-areas y sidebars EXCEPTO los
+            // de la seccion activa indicada. Pasar null para ocultar todos.
+            function ocultarOtrasSecciones(seccionActiva) {
+                Object.entries(SECCIONES_AREAS).forEach(([key, id]) => {
+                    if (key === seccionActiva) return;
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.cssText = '';
+                        el.style.display = 'none';
                     }
                 });
-
-                // 2. Ocultar CONTENT-AREAS (paneles derechos) de las otras
-                // secciones. Sin esto, si el usuario venia de Control de
-                // material/produccion/proceso/etc., el panel viejo se queda
-                // visible superpuesto al de Informacion Basica.
-                const otherContentAreas = [
-                    'material-content-area',
-                    'produccion-content-area',
-                    'control-proceso-content-area',
-                    'control-resultados-content-area',
-                    'calidad-content-area'
-                ];
-                otherContentAreas.forEach(id => {
-                    const area = document.getElementById(id);
-                    if (area) {
-                        area.style.cssText = '';
-                        area.style.display = 'none';
-                    }
+                Object.entries(SECCIONES_SIDEBARS).forEach(([key, id]) => {
+                    if (key === seccionActiva) return;
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
                 });
+            }
+            window.ocultarOtrasSecciones = ocultarOtrasSecciones;
 
-                // 3. Limpieza de modulos especificos (BOM, almacen, etc.)
+            // Helper generico: prepara cualquier seccion.
+            // Oculta las demas, muestra padres y limpia contenedores hijos.
+            function prepararPanelSeccion(seccion) {
+                ocultarOtrasSecciones(seccion);
                 if (typeof window.hideAllMaterialContainers === 'function') {
                     window.hideAllMaterialContainers();
                 }
-
-                if (materialContainer) {
-                    materialContainer.style.display = 'block';
+                const matCont = document.getElementById('material-container');
+                if (matCont) matCont.style.display = 'block';
+                const sidebar = document.getElementById(SECCIONES_SIDEBARS[seccion]);
+                if (sidebar) sidebar.style.display = 'block';
+                const area = document.getElementById(SECCIONES_AREAS[seccion]);
+                if (area) {
+                    area.style.display = 'block';
+                    area.style.width = '100%';
                 }
-                if (informacionBasicaContent) {
-                    informacionBasicaContent.style.display = 'block';
-                }
+            }
+            window.prepararPanelSeccion = prepararPanelSeccion;
 
+            // Helper especifico de Informacion Basica: delega en el
+            // generico y limpia ademas los contenedores hijos propios.
+            function prepararPanelInformacionBasica() {
+                prepararPanelSeccion('informacion-basica');
                 hideAllInformacionBasicaContainers();
+            }
+            window.prepararPanelInformacionBasica = prepararPanelInformacionBasica;
 
-                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
-                if (informacionBasicaArea) {
-                    informacionBasicaArea.style.display = 'block';
-                    informacionBasicaArea.style.width = '100%';
-                    informacionBasicaArea.style.maxWidth = 'none';
-                    informacionBasicaArea.style.margin = '0';
-                    informacionBasicaArea.style.padding = '0';
-                }
+            // Funciones globales para mostrar cada contenedor de Información Básica
+            window.mostrarAdminUsuarioInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('admin-usuario-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarAdminMenuInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('admin-menu-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarAdminAutoridadInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('admin-autoridad-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlCodigoInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-codigo-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarAdminItinerarioInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('admin-itinerario-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarConsultarLicenciasInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('consultar-licencias-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlDepartamentoInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-departamento-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlProcesoInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-proceso-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlOrdenProcesoInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-orden-proceso-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlOrdenProceso2Info = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-orden-proceso2-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlDefectoInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-defecto-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlInterfacesInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-interfaces-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlInterlockInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-interlock-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarConfiguracionMSLInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('configuracion-msl-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlClienteInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-cliente-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            window.mostrarControlProveedorInfo = function() {
+                prepararPanelInformacionBasica();
+                const container = document.getElementById('control-proveedor-info-container');
+                if (container) container.style.display = 'block';
+            };
+
+            // Control de material para Informacion Basica (cumple WF_002)
+            window.mostrarControlMaterialInfo = function() {
+                prepararPanelInformacionBasica();
 
                 const container = document.getElementById('control-material-info-container');
                 if (container) {
@@ -2542,15 +2507,6 @@ function hideAllMaterialContainers() {
                     // Cargar el contenido dinámicamente del endpoint específico
                     cargarContenidoDinamico('control-material-info-container', '/informacion_basica/control_de_material?v=20260520c')
                         .then(() => {
-                            if (materialContainer) {
-                                materialContainer.style.display = 'block';
-                            }
-                            if (informacionBasicaContent) {
-                                informacionBasicaContent.style.display = 'block';
-                            }
-                            if (informacionBasicaArea) {
-                                informacionBasicaArea.style.display = 'block';
-                            }
                             container.classList.add('visible');
                             container.style.display = 'block';
                             container.style.visibility = 'visible';
@@ -2568,7 +2524,7 @@ function hideAllMaterialContainers() {
 
             // Funciones adicionales para el sidebar de Información Básica
             window.mostrarControlModelosInfo = function() {
-                hideAllInformacionBasicaContainers();
+                prepararPanelInformacionBasica();
                 const container = document.getElementById('control-modelos-info-container');
                 if (container) {
                     container.style.display = 'block';
@@ -2661,35 +2617,27 @@ function hideAllMaterialContainers() {
             };
 
             window.mostrarControlBOMSMTInfo = function() {
-                hideAllInformacionBasicaContainers();
+                prepararPanelInformacionBasica();
                 const container = document.getElementById('control-bom-smt-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
+                if (container) container.style.display = 'block';
             };
 
             window.Controlmaquinainf = function() {
-                hideAllInformacionBasicaContainers();
+                prepararPanelInformacionBasica();
                 const container = document.getElementById('control-maquina-inf-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
+                if (container) container.style.display = 'block';
             };
 
             window.mostrarControlMaquinaInfo = function() {
-                hideAllInformacionBasicaContainers();
+                prepararPanelInformacionBasica();
                 const container = document.getElementById('control-maquina-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
+                if (container) container.style.display = 'block';
             };
 
             window.mostrarControlMaquinaLineaInfo = function() {
-                hideAllInformacionBasicaContainers();
+                prepararPanelInformacionBasica();
                 const container = document.getElementById('control-maquina-linea-info-container');
-                if (container) {
-                    container.style.display = 'block';
-                }
+                if (container) container.style.display = 'block';
             };
 
             // Función para abrir el Visor MySQL en nueva ventana
@@ -3215,154 +3163,50 @@ function hideAllMaterialContainers() {
             };
 
             // Función global para mostrar Control de Material
+            // ========================================================
+            // Funciones padre de navbar (cumplen WF_002 via helper)
+            // ========================================================
             window.mostrarControlMaterial = function() {
                 hideAllContent();
-                materialContainer.style.display = 'block';
-                controlMaterialContent.style.display = 'block';
-
-                // IMPORTANTE: Asegurar que produccion-content-area esté oculto
-                 produccionContentArea.style.display = 'none';
-
-                 // IMPORTANTE: Ocultar también el sidebar de Control de Producción
-                 const controlProduccionSidebar = document.getElementById('control-produccion-content');
-                 if (controlProduccionSidebar) {
-                     controlProduccionSidebar.style.display = 'none';
-                 }
-
-                // Cargar contenido dinámicamente del sidebar de materiales
+                prepararPanelSeccion('material');
+                hideAllInformacionBasicaContainers();
                 cargarContenidoDinamico('control-material-content', '/listas/control_material')
-                    .then(() => {
-                        // IMPORTANTE: NO ocultar material-content-area aquí
-                        // Las funciones específicas de cada módulo lo manejarán
-                        hideAllInformacionBasicaContainers();
-                        informacionBasicaContentArea.style.display = 'none';
-                    })
-                    .catch(error => {
-                        console.error('Error cargando Control de Material:', error);
-                        // IMPORTANTE: NO ocultar material-content-area en el error
-                        hideAllInformacionBasicaContainers();
-                        informacionBasicaContentArea.style.display = 'none';
-                    });
+                    .catch(error => console.error('Error cargando Control de Material:', error));
             };
 
-            // Función global para mostrar Control de Producción
             window.mostrarControlProduccion = function() {
                 hideAllContent();
-                materialContainer.style.display = 'block';
-                controlProduccionContent.style.display = 'block';
-                produccionContentArea.style.display = 'block';
-                produccionInfoContainer.style.display = 'block';
-
-                // IMPORTANTE: Asegurar que material-content-area esté oculto
-                materialContentArea.style.display = 'none';
-                hideAllMaterialContainers();
-
-                // IMPORTANTE: Ocultar también el sidebar de Control de Material
-                const controlMaterialSidebar = document.getElementById('control-material-content');
-                if (controlMaterialSidebar) {
-                    controlMaterialSidebar.style.display = 'none';
-                }
-
-                // Cargar contenido dinámicamente
+                prepararPanelSeccion('produccion');
+                const produccionInfo = document.getElementById('produccion-info-container');
+                if (produccionInfo) produccionInfo.style.display = 'block';
                 cargarContenidoDinamico('produccion-info-container', '/produccion/info')
                     .catch(error => console.error('Error cargando info producción:', error));
             };
 
-            // Función global para mostrar Control de Proceso
             window.mostrarControlProceso = function() {
                 hideAllContent();
-                materialContainer.style.display = 'block';
-                controlProcesoContent.style.display = 'block';
-                controlProcesoContentArea.style.display = 'block';
-
-                // Mostrar contenedor por defecto de control de proceso
-                const controlProcesoInfoContainer = document.getElementById('control-proceso-info-container');
-                if (controlProcesoInfoContainer) {
-                    controlProcesoInfoContainer.style.display = 'block';
-                }
-
-                // IMPORTANTE: Asegurar que otras áreas estén ocultas
-                materialContentArea.style.display = 'none';
-                produccionContentArea.style.display = 'none';
-                informacionBasicaContentArea.style.display = 'none';
-                hideAllMaterialContainers();
-
-                // IMPORTANTE: Ocultar sidebars de otras secciones
-                const controlMaterialSidebar = document.getElementById('control-material-content');
-                const controlProduccionSidebar = document.getElementById('control-produccion-content');
-                if (controlMaterialSidebar) {
-                    controlMaterialSidebar.style.display = 'none';
-                }
-                if (controlProduccionSidebar) {
-                    controlProduccionSidebar.style.display = 'none';
-                }
-
-                // Cargar contenido dinámicamente del sidebar de control de proceso
+                prepararPanelSeccion('proceso');
+                const procesoInfo = document.getElementById('control-proceso-info-container');
+                if (procesoInfo) procesoInfo.style.display = 'block';
                 cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso')
-                    .then(() => {
-                        // // // // // // // console.log(' Contenido de Control de Proceso cargado exitosamente');
-                    })
-                    .catch(error => {
-                        console.error('Error cargando Control de Proceso:', error);
-                    });
+                    .catch(error => console.error('Error cargando Control de Proceso:', error));
             };
 
-            // Función global para mostrar Control de Resultados
             window.mostrarControlResultados = function() {
                 hideAllContent();
-                materialContainer.style.display = 'block';
-                controlResultadosContent.style.display = 'block';
-                controlResultadosContentArea.style.display = 'block';
-
-                // Mostrar contenedor por defecto de control de resultados
-                const controlResultadosInfoContainer = document.getElementById('control-resultados-info-container');
-                if (controlResultadosInfoContainer) {
-                    controlResultadosInfoContainer.style.display = 'block';
-                }
-
-                // IMPORTANTE: Asegurar que otras áreas estén ocultas
-                materialContentArea.style.display = 'none';
-                produccionContentArea.style.display = 'none';
-                controlProcesoContentArea.style.display = 'none';
-                informacionBasicaContentArea.style.display = 'none';
-                hideAllMaterialContainers();
-
-                // IMPORTANTE: Ocultar sidebars de otras secciones
-                const controlMaterialSidebar = document.getElementById('control-material-content');
-                const controlProduccionSidebar = document.getElementById('control-produccion-content');
-                const controlProcesoSidebar = document.getElementById('control-proceso-content');
-                if (controlMaterialSidebar) {
-                    controlMaterialSidebar.style.display = 'none';
-                }
-                if (controlProduccionSidebar) {
-                    controlProduccionSidebar.style.display = 'none';
-                }
-                if (controlProcesoSidebar) {
-                    controlProcesoSidebar.style.display = 'none';
-                }
-
-                // Cargar contenido dinámicamente del sidebar de control de resultados
+                prepararPanelSeccion('resultados');
+                const resultadosInfo = document.getElementById('control-resultados-info-container');
+                if (resultadosInfo) resultadosInfo.style.display = 'block';
                 cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
                     .then(() => {
-                        // // // // // // // console.log(' Contenido de Control de Resultados cargado exitosamente');
-
-                        // Asegurar que el área de contenido esté visible
-                        controlResultadosContentArea.style.display = 'block';
-
-                        // Mostrar contenedor por defecto de control de resultados
-                        const controlResultadosInfoContainer = document.getElementById('control-resultados-info-container');
-                        if (controlResultadosInfoContainer) {
-                            controlResultadosInfoContainer.style.display = 'block';
-                        }
+                        // Refuerzo: asegurar visibilidad tras carga AJAX
+                        const area = document.getElementById('control-resultados-content-area');
+                        if (area) area.style.display = 'block';
+                        if (resultadosInfo) resultadosInfo.style.display = 'block';
                     })
                     .catch(error => {
                         console.error('Error cargando Control de Resultados:', error);
-                        // Fallback: mostrar contenedor por defecto aunque falle la carga
-                        controlResultadosContentArea.style.display = 'block';
-                        const controlResultadosInfoContainer = document.getElementById('control-resultados-info-container');
-                        if (controlResultadosInfoContainer) {
-                            controlResultadosInfoContainer.style.display = 'block';
-                        }
+                        if (resultadosInfo) resultadosInfo.style.display = 'block';
                     });
             };
 
@@ -3374,29 +3218,18 @@ function hideAllMaterialContainers() {
 
             window.mostrarInformacionBasica = function() {
                 hideAllContent();
-                materialContainer.style.display = 'block';
-                informacionBasicaContent.style.display = 'block';
-                informacionBasicaContentArea.style.display = 'block';
+                prepararPanelInformacionBasica();
+
+                const mostrarDefault = () => {
+                    const defaultContainer = document.getElementById('info-basica-default-container');
+                    if (defaultContainer) defaultContainer.style.display = 'block';
+                };
 
                 return cargarSidebarDinamico('informacion-basica-content', '/listas/informacion_basica?v=20260520d')
-                    .then(() => {
-                        informacionBasicaContent.style.display = 'block';
-                        informacionBasicaContentArea.style.display = 'block';
-                        hideAllInformacionBasicaContainers();
-                        const defaultContainer = document.getElementById('info-basica-default-container');
-                        if (defaultContainer) {
-                            defaultContainer.style.display = 'block';
-                        }
-                    })
+                    .then(mostrarDefault)
                     .catch(error => {
                         console.error('Error cargando Información Básica:', error);
-                        informacionBasicaContent.style.display = 'block';
-                        informacionBasicaContentArea.style.display = 'block';
-                        hideAllInformacionBasicaContainers();
-                        const defaultContainer = document.getElementById('info-basica-default-container');
-                        if (defaultContainer) {
-                            defaultContainer.style.display = 'block';
-                        }
+                        mostrarDefault();
                     });
             };
 
@@ -3439,11 +3272,7 @@ function hideAllMaterialContainers() {
 
                     } else if (this.id === 'Control de calidad') {
                         hideAllContent();
-                        materialContainer.style.display = 'block';
-                        controlCalidadContent.style.display = 'block';
-                        materialContentArea.style.display = 'none';
-
-                        // Cargar contenido dinámicamente
+                        prepararPanelSeccion('calidad');
                         cargarContenidoDinamico('control-calidad-content', '/listas/control_calidad')
                             .catch(error => console.error('Error cargando Control de Calidad:', error));
 
@@ -3452,32 +3281,21 @@ function hideAllMaterialContainers() {
                         if (typeof window.mostrarControlResultados === 'function') {
                             window.mostrarControlResultados();
                         } else {
-                            // Fallback si la función no está disponible
-                            materialContainer.style.display = 'block';
-                            controlResultadosContent.style.display = 'block';
-                            controlResultadosContentArea.style.display = 'block';
-                            materialContentArea.style.display = 'none';
-
-                            // Cargar contenido dinámicamente
+                            hideAllContent();
+                            prepararPanelSeccion('resultados');
                             cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
                                 .catch(error => console.error('Error cargando Control de Resultados:', error));
                         }
 
                     } else if (this.id === 'Control de reporte') {
-                        materialContainer.style.display = 'block';
-                        if (controlReporteContent) controlReporteContent.style.display = 'block';
-                        materialContentArea.style.display = 'none';
-
-                        // Cargar contenido dinámicamente
+                        hideAllContent();
+                        prepararPanelSeccion('reporte');
                         cargarContenidoDinamico('control-reporte-content', '/listas/control_reporte')
                             .catch(error => console.error('Error cargando Control de Reporte:', error));
 
                     } else if (this.id === 'Configuración de programa') {
-                        materialContainer.style.display = 'block';
-                        configuracionProgramaContent.style.display = 'block';
-                        materialContentArea.style.display = 'none';
-
-                        // Cargar contenido dinámicamente
+                        hideAllContent();
+                        prepararPanelSeccion('configuracion');
                         cargarContenidoDinamico('configuracion-programa-content', '/listas/configuracion_programa')
                             .catch(error => console.error('Error cargando Configuración de Programa:', error));
 
