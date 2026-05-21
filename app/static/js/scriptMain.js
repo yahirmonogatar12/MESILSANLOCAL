@@ -642,12 +642,72 @@ document.addEventListener("DOMContentLoaded", function () {
     hideAllMaterialContainers();
   };
 
+  // Persistencia de pestaña activa (compartida con MaterialTemplate.html)
+  const STORAGE_KEY_NAV_SM = "mes_nav_active_v1";
+  function guardarPestanaActivaSM(id) {
+    try { localStorage.setItem(STORAGE_KEY_NAV_SM, id); } catch (e) {}
+  }
+
+  // Persistencia del item del sidebar seleccionado (por pestaña).
+  // Estructura: { "Control de proceso": "IMD-SMD TERMINADO", ... }
+  const STORAGE_KEY_SIDEBAR_ITEM = "mes_sidebar_item_v1";
+  function leerItemsSidebar() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_SIDEBAR_ITEM)) || {}; }
+    catch (e) { return {}; }
+  }
+  function guardarItemSidebar(pestana, textoItem) {
+    if (!pestana || !textoItem) return;
+    try {
+      const items = leerItemsSidebar();
+      items[pestana] = textoItem;
+      localStorage.setItem(STORAGE_KEY_SIDEBAR_ITEM, JSON.stringify(items));
+    } catch (e) {}
+  }
+
+  // Event delegation: guardar cada vez que el usuario click en un
+  // .sidebar-link (estos se inyectan via AJAX, por eso delegation).
+  document.body.addEventListener("click", function (e) {
+    const link = e.target.closest(".sidebar-link");
+    if (!link) return;
+    const pestanaActiva = document.querySelector(".nav-button.active");
+    if (!pestanaActiva) return;
+    const texto = link.textContent.trim();
+    guardarItemSidebar(pestanaActiva.id, texto);
+  });
+
+  // Restaura el item del sidebar despues de que cargue el sidebar AJAX.
+  // El sidebar tarda un momento en inyectarse, asi que reintentamos.
+  function restaurarItemSidebar(pestana) {
+    const items = leerItemsSidebar();
+    const textoBuscado = items[pestana];
+    if (!textoBuscado) return;
+
+    let intentos = 0;
+    const maxIntentos = 30;
+    const tick = setInterval(() => {
+      intentos++;
+      const links = document.querySelectorAll(".sidebar-link");
+      for (const link of links) {
+        if (link.textContent.trim() === textoBuscado) {
+          clearInterval(tick);
+          link.click();
+          return;
+        }
+      }
+      if (intentos >= maxIntentos) clearInterval(tick);
+    }, 100);
+  }
+  window.restaurarItemSidebar = restaurarItemSidebar;
+
   navButtons.forEach((btn) => {
     btn.addEventListener("click", function () {
       // Remover la clase 'active' de todos los botones
       navButtons.forEach((b) => b.classList.remove("active"));
       // Agregar la clase 'active' al botón clickeado
       this.classList.add("active");
+
+      // Persistir cual pestaña dejo el usuario abierta
+      guardarPestanaActivaSM(this.id);
 
       // Ocultar todo el contenido primero
       hideAllContent();
@@ -731,14 +791,22 @@ document.addEventListener("DOMContentLoaded", function () {
   materialContentArea.style.display = "none";
   hideAllMaterialContainers();
 
-  // Activar por defecto la primera pestaña (Información Básica) si no hay ninguna activa
-  const activeButton = document.querySelector(".nav-button.active");
-  if (!activeButton) {
-    const infoBasicaButton = document.getElementById("Información Basica");
-    if (infoBasicaButton) {
-      infoBasicaButton.click();
+  // Restaurar pestaña activa desde localStorage (o Info Basica por defecto)
+  setTimeout(() => {
+    const activeButton = document.querySelector(".nav-button.active");
+    if (activeButton) return; // alguien ya la activo
+
+    const pestanaGuardada = (() => {
+      try { return localStorage.getItem(STORAGE_KEY_NAV_SM); } catch (e) { return null; }
+    })();
+    let boton = pestanaGuardada ? document.getElementById(pestanaGuardada) : null;
+    if (!boton) boton = document.getElementById("Información Basica");
+    if (boton) {
+      boton.click();
+      // Despues de cargar el sidebar, restaurar el item seleccionado
+      restaurarItemSidebar(boton.id);
     }
-  }
+  }, 200);
 
   // ============== FUNCIONES PARA CONTROL DE CALIDAD ==============
 

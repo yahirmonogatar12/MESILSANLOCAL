@@ -3233,6 +3233,9 @@ function hideAllMaterialContainers() {
                     });
             };
 
+            // Persistencia de pestaña activa: la maneja scriptMain.js
+            // (ver STORAGE_KEY_NAV_SM y guardarPestanaActivaSM alli).
+
             navButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     // Remover la clase 'active' de todos los botones
@@ -3314,19 +3317,8 @@ function hideAllMaterialContainers() {
             materialContentArea.style.display = 'none';
             hideAllMaterialContainers();
 
-            // Activar por defecto la primera pestaña (Información Básica) si no hay ninguna activa
-            const activeButton = document.querySelector('.nav-button.active');
-            if (!activeButton) {
-                const infoBasicaButton = document.getElementById('Información Basica');
-                if (infoBasicaButton) {
-                    infoBasicaButton.classList.add('active');
-                }
-            }
-
-            const selectedButton = document.querySelector('.nav-button.active');
-            if (selectedButton && selectedButton.id === 'Información Basica') {
-                window.mostrarInformacionBasica();
-            }
+            // Restauracion de pestaña activa: la hace scriptMain.js
+            // para evitar conflictos con su listener de navbar.
         });
 
         // Función para confirmar logout
