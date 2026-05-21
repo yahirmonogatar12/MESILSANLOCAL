@@ -2455,6 +2455,9 @@ function hideAllMaterialContainers() {
             };
 
             // NUEVA FUNCIÓN: Control de material para Información Básica
+            // Sigue el patrón WF_002 Paso 7: ocultar TODOS los contenedores
+            // de las demás secciones antes de mostrar el propio, para
+            // evitar superposiciones cuando se llega desde otra pestaña.
             window.mostrarControlMaterialInfo = function() {
                 const materialContainer = document.getElementById('material-container');
                 const informacionBasicaContent = document.getElementById('informacion-basica-content');
@@ -2467,6 +2470,7 @@ function hideAllMaterialContainers() {
                 const configuracionProgramaContent = document.getElementById('configuracion-programa-content');
                 const panelAdministracionContent = document.getElementById('panel-administracion-content');
 
+                // 1. Ocultar SIDEBARS de las otras secciones
                 [
                     controlMaterialContent,
                     controlProduccionContent,
@@ -2481,6 +2485,30 @@ function hideAllMaterialContainers() {
                         section.style.display = 'none';
                     }
                 });
+
+                // 2. Ocultar CONTENT-AREAS (paneles derechos) de las otras
+                // secciones. Sin esto, si el usuario venia de Control de
+                // material/produccion/proceso/etc., el panel viejo se queda
+                // visible superpuesto al de Informacion Basica.
+                const otherContentAreas = [
+                    'material-content-area',
+                    'produccion-content-area',
+                    'control-proceso-content-area',
+                    'control-resultados-content-area',
+                    'calidad-content-area'
+                ];
+                otherContentAreas.forEach(id => {
+                    const area = document.getElementById(id);
+                    if (area) {
+                        area.style.cssText = '';
+                        area.style.display = 'none';
+                    }
+                });
+
+                // 3. Limpieza de modulos especificos (BOM, almacen, etc.)
+                if (typeof window.hideAllMaterialContainers === 'function') {
+                    window.hideAllMaterialContainers();
+                }
 
                 if (materialContainer) {
                     materialContainer.style.display = 'block';
