@@ -125,7 +125,7 @@
     // COLA de pendientes
     // ===============================
     function addToQueue(wo) {
-        console.log('➕ Agregando WO a la cola:', wo);
+        console.log('Agregando WO a la cola:', wo);
         if (queue.find(x => x.id === wo.id)) { 
             alertMsg("Esta WO ya está en la cola."); 
             return; 
@@ -380,7 +380,7 @@ function renderPlan() {
             return; 
         }
         
-        console.log('🚀 Generando plan con', queue.length, 'WO en cola:', queue);
+        console.log('Generando plan con', queue.length, 'WO en cola:', queue);
         showLoading('Generando plan con inventario…');
         
         try {
@@ -393,7 +393,7 @@ function renderPlan() {
                 
                 const inv = await fetchJSON(PLAN_SMD_API.inventarioPorModelo(wo.codigo_modelo||wo.modelo||''));
                 const invRows = Array.isArray(inv) ? inv : (inv.rows||[]);
-                console.log('📦 Inventario encontrado:', invRows.length, 'registros');
+                console.log('Inventario encontrado:', invRows.length, 'registros');
 
                 if (onlyShortage) {
                     const { faltante, totalFisico, planQty } = computeShortage(wo, invRows);
@@ -402,25 +402,25 @@ function renderPlan() {
                     // Si hay faltantes, generar fila por faltante
                     if (faltante > 0) {
                         const row = planRowFromFaltante(wo, planQty, totalFisico);
-                        console.log('➕ Agregando fila por faltante:', row);
+                        console.log('Agregando fila por faltante:', row);
                         rows.push(row);
                     } else {
                         // Si no hay faltantes pero solo faltantes está activado, 
                         // generar fila con cantidad 0 para mostrar que está completo
                         const row = planRowFromFaltante(wo, 0, totalFisico);
-                        console.log('➕ Agregando fila sin faltantes (completo):', row);
+                        console.log('Agregando fila sin faltantes (completo):', row);
                         rows.push(row);
                     }
                 } else {
                     // Generar plan completo (todas las WO)
                     if (!invRows.length) {
                         const row = planRowFrom(wo, { nparte: wo.codigo_modelo || (wo.modelo||'') , stock_total: 0 });
-                        console.log('➕ Agregando fila sin inventario:', row);
+                        console.log('Agregando fila sin inventario:', row);
                         rows.push(row);
                     } else {
                         invRows.forEach(ir => {
                             const row = planRowFrom(wo, ir);
-                            console.log('➕ Agregando fila con inventario:', row);
+                            console.log('Agregando fila con inventario:', row);
                             rows.push(row);
                         });
                     }
@@ -651,7 +651,7 @@ function renderPlan() {
         expect('computeShortage sin faltante', cs2.faltante === 0);
 
         if(results.includes(false)){ 
-            console.warn('⚠️ Algunas pruebas fallaron'); 
+            console.warn('Algunas pruebas fallaron'); 
         } else {
             console.log(' Todos los tests pasaron correctamente');
         }
@@ -663,7 +663,7 @@ function renderPlan() {
     // LIMPIEZA AL DESCARGAR PÃGINA
     // ===============================
     function cleanup() {
-        console.log('🧹 Limpiando Plan SMD Module...');
+        console.log('Limpiando Plan SMD Module...');
         queue = [];
         plan = [];
         // Limpiar cualquier timer o listener que pueda quedar

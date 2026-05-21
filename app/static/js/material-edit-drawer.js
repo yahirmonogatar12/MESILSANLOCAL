@@ -549,7 +549,7 @@ class MaterialEditDrawer {
         document.getElementById('editDrawer').classList.add('open');
         document.getElementById('drawerOverlay').classList.add('active');
 
-        console.log('🔧 Panel de edición abierto para:', this.currentEditingData.codigoMaterial);
+        console.log('Panel de edición abierto para:', this.currentEditingData.codigoMaterial);
     }
 
     llenarFormulario(data) {

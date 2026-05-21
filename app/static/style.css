@@ -420,8 +420,10 @@ html, body {
   overflow-x: hidden;
   padding: 4px !important;
   display: block;
-  /* Ajuste: respetar la altura del header fijo */
-  min-height: calc(100vh - var(--header-height));
+  /* Altura exacta del padre (no min-height, para que no genere
+     scroll de body cuando templates internos forzan min-height:100vh) */
+  height: calc(100vh - var(--header-height));
+  max-height: calc(100vh - var(--header-height));
   margin: 0 !important;
 }
 
@@ -459,6 +461,8 @@ html, body {
     margin-top: 0;
     overflow-y: auto;
     background-color: #32323E;
+    height: calc(100vh - var(--header-height));
+    max-height: calc(100vh - var(--header-height));
 }
 
 /* Área de contenido específica para Control de Producción */
@@ -468,12 +472,11 @@ html, body {
     overflow-y: auto;
     overflow-x: hidden;
     background-color: #32323E;
-    /* CORREGIDO: Usar 100vh ya que body tiene padding-top */
-    min-height: 100vh;
-    max-height: 100vh;
+    /* Altura exacta del area disponible debajo del header */
+    height: calc(100vh - var(--header-height));
+    max-height: calc(100vh - var(--header-height));
 }
 
-/* Área de contenido específica para Control de Proceso */
 /* Área de contenido específica para Control de Proceso */
 .control-proceso-content-area {
     flex: 1;
@@ -481,9 +484,8 @@ html, body {
     overflow-y: auto;
     overflow-x: hidden;
     background-color: #32323E;
-    /* CORREGIDO: Usar 100vh ya que body tiene padding-top */
-    min-height: 100vh;
-    max-height: 100vh;
+    height: calc(100vh - var(--header-height));
+    max-height: calc(100vh - var(--header-height));
 }
 
 /* Área de contenido específica para Control de Calidad */
@@ -494,9 +496,8 @@ html, body {
     overflow-y: auto;
     overflow-x: hidden;
     background-color: #32323E;
-    /* CORREGIDO: Usar 100vh ya que body tiene padding-top */
-    min-height: 100vh;
-    max-height: 100vh;
+    height: calc(100vh - var(--header-height));
+    max-height: calc(100vh - var(--header-height));
 }
 
 /* Contenedores individuales de Información Básica */
@@ -521,8 +522,8 @@ html, body {
     margin-bottom: 0;
     min-height: 300px;
     border: none;
-    overflow-y: auto;
-    max-height: 100%;
+    /* overflow-y eliminado: el scroll lo lleva .produccion-content-area
+       (padre). Si se deja aquí, se generan scrolls anidados. */
 }
 
 /* Estilos específicos para PLAN SMD dentro de MaterialTemplate */
@@ -580,8 +581,7 @@ body:has(.produccion-content-area[style*="display: block"]) {
     margin-bottom: 0;
     min-height: 300px;
     border: none;
-    overflow-y: auto;
-    max-height: 100%;
+    /* overflow-y eliminado: ver nota en .produccion-content-area > div */
 }
 
 /* Contenedores individuales de Control de Calidad */
@@ -595,8 +595,7 @@ body:has(.produccion-content-area[style*="display: block"]) {
     margin-bottom: 0;
     min-height: 300px;
     border: none;
-    overflow-y: auto;
-    max-height: 100%;
+    /* overflow-y eliminado: ver nota en .produccion-content-area > div */
 }
 
 /* Forzar visibilidad del contenedor de control de material en info básica */
@@ -1853,12 +1852,11 @@ body {
 /* ============================================= */
 /* SCROLL PARA CONTENIDO DINÁMICO               */
 /* ============================================= */
-/* Contenedores AJAX con scroll */
+/* Contenedores AJAX (sin scroll propio: el área padre lo provee) */
 [id*="-unique-container"],
 [id*="-UniqueContainer"],
 [class*="-unique-container"],
 [class*="-UniqueContainer"] {
-    max-height: calc(100vh - var(--header-height) - 20px) !important;
     background-color: #2B2D3E !important;
     border-radius: 4px !important;
     margin-top: 5px !important;
@@ -1873,16 +1871,14 @@ body {
     margin: 0 !important;
 }
 
-/* Contenedores específicos de módulos AJAX */
+/* Contenedores específicos de módulos AJAX
+   (sin scroll propio: ver nota en bloque [id*="-unique-container"]) */
 .operacion-linea-smt-unique-container,
 .Control-de-produccion-SMT-unique-container,
 .bom-unique-container,
 .inventario-imd-terminado-unique-container,
 .control-proceso-info-container,
 .historial-aoi-unique-container {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    max-height: calc(100vh - var(--header-height) - 20px) !important;
     padding: 5px !important;
     background-color: #2B2D3E !important;
     border-radius: 4px !important;
@@ -1925,16 +1921,14 @@ body {
     max-width: none !important;
 }
 
-/* Contenedores de módulos específicos */
+/* Contenedores de módulos específicos
+   (sin scroll: el scroll lo provee el área de contenido padre) */
 .material-container,
 .control-proceso-content,
 .produccion-content,
 .informacion-basica-content,
 .control-resultados-content,
 .control-resultados-info-container {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    max-height: calc(100vh - var(--header-height) - 20px) !important;
     padding: 5px !important;
     margin-top: 5px !important;
 }

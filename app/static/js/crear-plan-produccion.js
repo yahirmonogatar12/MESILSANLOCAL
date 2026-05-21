@@ -28,7 +28,7 @@
             if (btnCrearWO) {
                 btnCrearWO.style.display = 'none';
             } else {
-                console.warn('⚠️ Elemento btnCrearWO no encontrado (puede ser normal)');
+                console.warn('Elemento btnCrearWO no encontrado (puede ser normal)');
             }
             
             // Generar código WO con un pequeño delay para asegurar que el DOM esté listo
@@ -59,7 +59,7 @@
 
         // Generar código de WO automáticamente
         async function generarCodigoWO() {
-            console.log('🔧 Generando código WO...');
+            console.log('Generando código WO...');
             const elemento = document.getElementById('woCodigoWO');
             
             if (!elemento) {
@@ -89,7 +89,7 @@
 
         // Función de inicialización explícita para carga dinámica
         function initCrearPlanProduccion() {
-            console.log('🚀 Inicializando Crear Plan de Producción...');
+            console.log('Inicializando Crear Plan de Producción...');
             // cargarModelosBOM(); // Función no utilizada - comentada para evitar error 404
             configurarEventos();
             
@@ -105,7 +105,7 @@
 
         // Mantener compatibilidad con carga directa
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('📥 DOMContentLoaded - Crear Plan de Producción');
+            console.log('DOMContentLoaded - Crear Plan de Producción');
             initCrearPlanProduccion();
         });
 
@@ -247,13 +247,13 @@
             if (woFormContainer) {
                 woFormContainer.style.display = 'none';
             } else {
-                console.warn('⚠️ Elemento woFormContainer no encontrado en ocultarFormularioWO');
+                console.warn('Elemento woFormContainer no encontrado en ocultarFormularioWO');
             }
             
             if (btnCrearWO) {
                 btnCrearWO.style.display = 'inline-block';
             } else {
-                console.warn('⚠️ Elemento btnCrearWO no encontrado en ocultarFormularioWO');
+                console.warn('Elemento btnCrearWO no encontrado en ocultarFormularioWO');
             }
             
             limpiarFormularioWO();
@@ -270,7 +270,7 @@
                 if (elemento) {
                     elemento.value = '';
                 } else {
-                    console.warn(`⚠️ Elemento ${id} no encontrado en limpiarFormularioWO`);
+                    console.warn(`Elemento ${id} no encontrado en limpiarFormularioWO`);
                 }
             });
             
@@ -301,7 +301,7 @@
                     mostrarMensaje('Filtros restablecidos', 'success');
                 }
             } else {
-                console.warn('⚠️ Elemento woFormContainer no encontrado en cancelarOperacion');
+                console.warn('Elemento woFormContainer no encontrado en cancelarOperacion');
                 // Fallback: limpiar filtros y recargar datos
                 establecerFechaActual();
                 cargarWOs();
@@ -311,7 +311,7 @@
 
         // Crear nueva WO
         async function crearNuevaWO() {
-            console.log('🚀 Iniciando creación de nueva WO...');
+            console.log('Iniciando creación de nueva WO...');
             
             const elementoCodigoWO = document.getElementById('woCodigoWO');
             console.log('Elemento woCodigoWO:', elementoCodigoWO);

@@ -569,7 +569,7 @@ let isCreatingPlanIMD = false;
 
 async function createPlanIMD(formData) {
   if (isCreatingPlanIMD) {
-    console.log('⚠️ Ya se está creando un plan, ignorando...');
+    // console.log(' Ya se está creando un plan, ignorando...');
     return;
   }
   isCreatingPlanIMD = true;
@@ -698,11 +698,11 @@ let imdListenersInitialized = false;
 
 function initializePlanIMDEventListeners() {
   if (imdListenersInitialized) {
-    console.log('⚠️ Event listeners IMD ya inicializados, saltando...');
+    // console.log(' Event listeners IMD ya inicializados, saltando...');
     return;
   }
   imdListenersInitialized = true;
-  console.log('🔧 Inicializando event listeners de Plan IMD...');
+  // console.log(' Inicializando event listeners de Plan IMD...');
   
   // Agregar estilos
   if (!document.getElementById('plan-imd-styles')) {
@@ -843,7 +843,7 @@ function initializePlanIMDEventListeners() {
     }
   });
   
-  console.log(' Event listeners de Plan IMD inicializados');
+  // console.log(' Event listeners de Plan IMD inicializados');
 }
 
 // ====== Reprogramar planes ======
@@ -980,7 +980,7 @@ function cleanupPlanIMD() {
     const el = document.getElementById(id);
     if (el) el.remove();
   });
-  console.log('🧹 Modales IMD limpiados');
+  // console.log(' Modales IMD limpiados');
 }
 
 // ====== Exportar funciones globalmente ======
@@ -990,4 +990,4 @@ window.createModalsInBodyIMD = createModalsInBodyIMD;
 window.saveSequencesIMD = saveSequencesIMD;
 window.cleanupPlanIMD = cleanupPlanIMD;
 
-console.log('📝 plan_imd.js cargado correctamente');
+// console.log(' plan_imd.js cargado correctamente');

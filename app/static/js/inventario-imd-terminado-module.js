@@ -76,7 +76,7 @@
             desde_inicio_ms: desdeInicioMs
         };
 
-        console.log(`[IMD][timing] ${etapa}: ${duracionMs}ms (${desdeInicioMs}ms desde inicio)`);
+        // console.log(`[IMD][timing] ${etapa}: ${duracionMs}ms (${desdeInicioMs}ms desde inicio)`);
         return moduloTiming.etapas[etapa];
     }
 
@@ -628,105 +628,110 @@
         }
     };
 
-    // Configuracion de eventos
+    // ============================================================
+    // CONFIGURACION DE EVENTOS - EVENT DELEGATION (norma del proyecto)
+    // ============================================================
+    // Un solo listener en body, idempotente con dataset flag.
+    // Los nuevos nodos creados por re-inyeccion AJAX heredan el handler
+    // automaticamente porque el listener vive en body (que persiste).
     function configurarEventos() {
-        qsa('.tab-imd').forEach(b => {
-            b.addEventListener('click', () => {
-                const panel = b.dataset.panel;
-
-                qsa('.tab-imd').forEach(t => t.classList.remove('active'));
-                qsa('.panel-imd').forEach(p => p.classList.remove('active'));
-                b.classList.add('active');
-                qs('#INVIMDPCBID_panel-' + panel).classList.add('active');
-
-                if (panel === 'movimientos') {
-                    cargarMovimientosSiHaceFalta();
-                }
-            });
-        });
-
-        if (qs('#INVIMDPCBID_u-buscar')) {
-            qs('#INVIMDPCBID_u-buscar').addEventListener('click', U.load);
-        }
-        if (qs('#INVIMDPCBID_u-limpiar')) {
-            qs('#INVIMDPCBID_u-limpiar').addEventListener('click', U.clear);
-        }
-        if (qs('#INVIMDPCBID_u-exportar')) {
-            qs('#INVIMDPCBID_u-exportar').addEventListener('click', () => {
-                const datos = datosOriginalesIMD['u'] || [];
-                const columnas = [
-                    { key: 'fecha', header: 'Fecha' },
-                    { key: 'modelo', header: 'Modelo' },
-                    { key: 'nparte', header: 'N. Parte' },
-                    { key: 'ubicacion', header: 'Ubicacion' },
-                    { key: 'cantidad', header: 'Cantidad' },
-                    { key: 'tipo_inventario', header: 'Tipo Inventario' },
-                    { key: 'comentario', header: 'Comentario' },
-                    { key: 'carro', header: 'Carro' },
-                    { key: 'usuario', header: 'Usuario' }
-                ];
-                exportarExcelIMD(datos, 'ubicaciones_imd', columnas);
-            });
-        }
-
+        // Estado inicial del DOM recien inyectado (cada reinyeccion)
         setDefaultDates(['INVIMDPCBID_m-desde']);
-        if (qs('#INVIMDPCBID_m-status')) {
-            qs('#INVIMDPCBID_m-status').textContent = 'Listo para consultar';
-        }
-        if (qs('#INVIMDPCBID_m-buscar')) {
-            qs('#INVIMDPCBID_m-buscar').addEventListener('click', M.load);
-        }
-        if (qs('#INVIMDPCBID_m-limpiar')) {
-            qs('#INVIMDPCBID_m-limpiar').addEventListener('click', M.clear);
-        }
-        if (qs('#INVIMDPCBID_m-exportar')) {
-            qs('#INVIMDPCBID_m-exportar').addEventListener('click', () => {
-                const datos = datosOriginalesIMD['m'] || [];
-                const columnas = [
-                    { key: 'fecha_hora', header: 'Fecha/Hora' },
-                    { key: 'tipo', header: 'Tipo' },
-                    { key: 'nparte', header: 'N. Parte' },
-                    { key: 'modelo', header: 'Modelo' },
-                    { key: 'cantidad', header: 'Cantidad' },
-                    { key: 'ubicacion', header: 'Ubicacion' },
-                    { key: 'tipo_inventario', header: 'Tipo Inventario' },
-                    { key: 'comentario', header: 'Comentario' },
-                    { key: 'carro', header: 'Carro' }
-                ];
-                exportarExcelIMD(datos, 'movimientos_imd', columnas);
-            });
-        }
+        const mStatus = qs('#INVIMDPCBID_m-status');
+        if (mStatus) mStatus.textContent = 'Listo para consultar';
 
-        if (qs('#INVIMDPCBID_g-buscar')) {
-            qs('#INVIMDPCBID_g-buscar').addEventListener('click', G.load);
-        }
-        if (qs('#INVIMDPCBID_g-limpiar')) {
-            qs('#INVIMDPCBID_g-limpiar').addEventListener('click', G.clear);
-        }
-        if (qs('#INVIMDPCBID_g-exportar')) {
-            qs('#INVIMDPCBID_g-exportar').addEventListener('click', G.exportarExcel);
-        }
+        // Listeners de delegation: solo una vez por sesion
+        if (document.body.dataset.imdListenersAttached) return;
 
-        if (qs('#INVIMDPCBID_snapshot-cargar')) {
-            qs('#INVIMDPCBID_snapshot-cargar').addEventListener('click', S.cargar);
-        }
-        if (qs('#INVIMDPCBID_snapshot-volver')) {
-            qs('#INVIMDPCBID_snapshot-volver').addEventListener('click', S.volverEnVivo);
-        }
+        // ---- Click delegation ----
+        document.body.addEventListener('click', function(e) {
+            const t = e.target;
+            const tab = t.closest('.tab-imd');
+            if (tab && document.body.contains(tab)) {
+                const panel = tab.dataset.panel;
+                qsa('.tab-imd').forEach(x => x.classList.remove('active'));
+                qsa('.panel-imd').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                const panelEl = qs('#INVIMDPCBID_panel-' + panel);
+                if (panelEl) panelEl.classList.add('active');
+                if (panel === 'movimientos') cargarMovimientosSiHaceFalta();
+                return;
+            }
 
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('.filterable-header-imd')) {
-                document.querySelectorAll('.header-filter-imd').forEach(filter => {
-                    filter.style.display = 'none';
-                });
-                document.querySelectorAll('.filter-btn-imd').forEach(btn => {
-                    btn.classList.remove('active');
-                });
+            // Botones por ID
+            const idHandlers = {
+                'INVIMDPCBID_u-buscar': () => U.load(),
+                'INVIMDPCBID_u-limpiar': () => U.clear(),
+                'INVIMDPCBID_u-exportar': () => {
+                    const columnas = [
+                        { key: 'fecha', header: 'Fecha' },
+                        { key: 'modelo', header: 'Modelo' },
+                        { key: 'nparte', header: 'N. Parte' },
+                        { key: 'ubicacion', header: 'Ubicacion' },
+                        { key: 'cantidad', header: 'Cantidad' },
+                        { key: 'tipo_inventario', header: 'Tipo Inventario' },
+                        { key: 'comentario', header: 'Comentario' },
+                        { key: 'carro', header: 'Carro' },
+                        { key: 'usuario', header: 'Usuario' }
+                    ];
+                    exportarExcelIMD(datosOriginalesIMD['u'] || [], 'ubicaciones_imd', columnas);
+                },
+                'INVIMDPCBID_m-buscar': () => M.load(),
+                'INVIMDPCBID_m-limpiar': () => M.clear(),
+                'INVIMDPCBID_m-exportar': () => {
+                    const columnas = [
+                        { key: 'fecha_hora', header: 'Fecha/Hora' },
+                        { key: 'tipo', header: 'Tipo' },
+                        { key: 'nparte', header: 'N. Parte' },
+                        { key: 'modelo', header: 'Modelo' },
+                        { key: 'cantidad', header: 'Cantidad' },
+                        { key: 'ubicacion', header: 'Ubicacion' },
+                        { key: 'tipo_inventario', header: 'Tipo Inventario' },
+                        { key: 'comentario', header: 'Comentario' },
+                        { key: 'carro', header: 'Carro' }
+                    ];
+                    exportarExcelIMD(datosOriginalesIMD['m'] || [], 'movimientos_imd', columnas);
+                },
+                'INVIMDPCBID_g-buscar': () => G.load(),
+                'INVIMDPCBID_g-limpiar': () => G.clear(),
+                'INVIMDPCBID_g-exportar': () => G.exportarExcel(),
+                'INVIMDPCBID_snapshot-cargar': () => S.cargar(),
+                'INVIMDPCBID_snapshot-volver': () => S.volverEnVivo()
+            };
+
+            // El target puede ser el boton mismo o un hijo (icono, span)
+            for (const id in idHandlers) {
+                if (t.id === id || (t.closest && t.closest('#' + id))) {
+                    idHandlers[id]();
+                    return;
+                }
+            }
+
+            // Cerrar filtros si el click fue fuera de un header filtrable
+            if (!t.closest('.filterable-header-imd')) {
+                document.querySelectorAll('.header-filter-imd').forEach(f => f.style.display = 'none');
+                document.querySelectorAll('.filter-btn-imd').forEach(b => b.classList.remove('active'));
             }
         });
+
+        document.body.dataset.imdListenersAttached = '1';
     }
 
     function inicializarInventarioIMD() {
+        // Reset de estado del closure. El IIFE solo se ejecuta una vez en
+        // la sesion, pero esta funcion se invoca cada vez que el HTML se
+        // reinyecta via AJAX. Sin este reset, banderas como
+        // snapshotFechasProgramadas o movimientosCargados quedan en true
+        // y bloquean cargas legitimas en visitas posteriores.
+        datosOriginalesIMD = { g: [], u: [], m: [] };
+        filtrosIMD = { g: {}, u: {}, m: {} };
+        movimientosCargados = false;
+        movimientosEnCarga = null;
+        snapshotFechasProgramadas = false;
+        snapshotMode = false;
+        _snapshotFechasDisponibles = {};
+        moduloTiming.startedAt = nowMs();
+
         function isTestMode() {
             return window.location.search.indexOf('test=1') >= 0;
         }
@@ -767,20 +772,55 @@
         registrarEtapa('render_html', moduloTiming.startedAt);
         configurarEventos();
 
-        G.load();
-        U.load();
-        programarCargaSnapshotFechas();
+        // Esperar a que el DOM del template este realmente listo antes
+        // de disparar la primera carga. Sin esto, en re-navegaciones AJAX
+        // G.load() corre cuando actualizarTablaIMD() aun no encuentra el
+        // tbody (race con el reemplazo de innerHTML del contenedor padre)
+        // y sale silenciosamente -> la tabla queda vacia hasta que el
+        // usuario clickea Consultar.
+        esperarDOM(['#INVIMDPCBID_g-table tbody', '#INVIMDPCBID_u-table tbody'], () => {
+            G.load();
+            U.load();
+            programarCargaSnapshotFechas();
 
-        const globalStatus = qs('#INVIMDPCBID_globalStatus');
-        if (globalStatus) {
-            globalStatus.textContent = 'Inventario IMD Terminado';
-        }
+            const globalStatus = qs('#INVIMDPCBID_globalStatus');
+            if (globalStatus) {
+                globalStatus.textContent = 'Inventario IMD Terminado';
+            }
 
-        console.log('Modulo Inventario IMD Terminado inicializado correctamente');
-        console.table(moduloTiming.etapas);
+            // console.log('Modulo Inventario IMD Terminado inicializado correctamente');
+            // console.table(moduloTiming.etapas);
+        });
     }
 
-    // Auto-inicializacion cuando el DOM este listo
+    // Polling corto para esperar a que selectores criticos esten en el DOM.
+    // Resuelve el race entre cargarContenidoDinamico (que aun esta moviendo
+    // HTML al contenedor) y el script inline (que llama inicializarInventarioIMD).
+    function esperarDOM(selectores, callback, maxIntentos) {
+        maxIntentos = maxIntentos || 30;
+        let intentos = 0;
+        function check() {
+            const todosListos = selectores.every(sel => document.querySelector(sel));
+            if (todosListos) {
+                callback();
+            } else if (intentos < maxIntentos) {
+                intentos++;
+                setTimeout(check, 30);
+            } else {
+                console.warn('[IMD] esperarDOM: timeout, ejecutando callback de todos modos');
+                callback();
+            }
+        }
+        check();
+    }
+
+    // Exponer la inicializacion como global para que el template AJAX
+    // pueda re-ejecutarla cada vez que se reinyecta el HTML (al navegar
+    // entre pestañas y volver, el DOM es nuevo y los listeners directos
+    // del DOM viejo ya no aplican).
+    window.inicializarInventarioIMD = inicializarInventarioIMD;
+
+    // Auto-inicializacion en la primera carga.
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', inicializarInventarioIMD);
     } else {

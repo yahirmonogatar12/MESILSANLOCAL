@@ -1112,7 +1112,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Función AJAX: Plan Main ASSY
   window.mostrarPlanMainASSY = function () {
     try {
-      console.log("📦 Cargando Plan Main ASSY...");
+      // console.log(" Cargando Plan Main ASSY...");
 
       const controlProcesoButton =
         document.getElementById("Control de proceso");
@@ -1148,9 +1148,7 @@ document.addEventListener("DOMContentLoaded", function () {
           containerId,
           "/plan-main-assy-ajax",
           () => {
-            console.log(
-              "📦 Contenido de Plan Main ASSY cargado, inicializando...",
-            );
+            // console.log(" Contenido de Plan Main ASSY cargado, inicializando...");
 
             // Esperar a que los scripts se carguen completamente
             function tryInitialize() {
@@ -1158,16 +1156,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 typeof window.initializePlanEventListeners === "function" &&
                 typeof window.loadPlans === "function"
               ) {
-                console.log(" Inicializando event listeners de Plan Main ASSY");
+                // console.log(" Inicializando event listeners de Plan Main ASSY");
                 window.initializePlanEventListeners();
 
                 // Cargar datos iniciales
-                console.log(" Cargando planes iniciales...");
+                // console.log(" Cargando planes iniciales...");
                 window.loadPlans();
               } else {
-                console.log(
-                  "⏳ Esperando a que plan.js se cargue completamente...",
-                );
+                // console.log("⏳ Esperando a que plan.js se cargue completamente...");
                 setTimeout(tryInitialize, 100);
               }
             }
@@ -1268,7 +1264,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Función AJAX: Plan Main IMD
   window.mostrarPlanMainIMD = function () {
     try {
-      console.log("📦 Cargando Plan Main IMD...");
+      // console.log(" Cargando Plan Main IMD...");
 
       const controlProcesoButton =
         document.getElementById("Control de proceso");
@@ -1304,9 +1300,7 @@ document.addEventListener("DOMContentLoaded", function () {
           containerId,
           "/plan-main-imd-ajax",
           () => {
-            console.log(
-              "📦 Contenido de Plan Main IMD cargado, inicializando...",
-            );
+            // console.log(" Contenido de Plan Main IMD cargado, inicializando...");
 
             // Esperar a que los scripts se carguen completamente
             function tryInitialize() {
@@ -1314,16 +1308,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 typeof window.initializePlanIMDEventListeners === "function" &&
                 typeof window.loadPlansIMD === "function"
               ) {
-                console.log(" Inicializando event listeners de Plan Main IMD");
+                // console.log(" Inicializando event listeners de Plan Main IMD");
                 window.initializePlanIMDEventListeners();
 
                 // Cargar datos iniciales
-                console.log(" Cargando planes IMD iniciales...");
+                // console.log(" Cargando planes IMD iniciales...");
                 window.loadPlansIMD();
               } else {
-                console.log(
-                  "⏳ Esperando a que plan_imd.js se cargue completamente...",
-                );
+                // console.log("⏳ Esperando a que plan_imd.js se cargue completamente...");
                 setTimeout(tryInitialize, 100);
               }
             }

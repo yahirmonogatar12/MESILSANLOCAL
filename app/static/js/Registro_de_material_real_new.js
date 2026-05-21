@@ -140,7 +140,7 @@ function renderizarInventarioTabla() {
 
 // Funciones para historial y lotes
 function verHistorialCompleto(numeroParte) {
-    console.log(`📈 Consultando historial completo para: ${numeroParte}`);
+    console.log(`Consultando historial completo para: ${numeroParte}`);
     
     fetch('/api/inventario/historial', {
         method: 'POST',
@@ -164,7 +164,7 @@ function verHistorialCompleto(numeroParte) {
 }
 
 function verLotesDetallados(numeroParte) {
-    console.log(`📦 Consultando lotes detallados para: ${numeroParte}`);
+    console.log(`Consultando lotes detallados para: ${numeroParte}`);
     
     fetch('/api/inventario/lotes', {
         method: 'POST',

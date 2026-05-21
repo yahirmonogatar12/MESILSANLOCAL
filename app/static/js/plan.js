@@ -1020,7 +1020,7 @@ async function handleCancelPlan() {
  * Retorna null si no hay conflicto, o un objeto con información del conflicto
  */
 function validarConflictoLineaHorario(nuevoPlan) {
-  console.log(' Validando conflictos de línea/horario para:', nuevoPlan);
+  // console.log(' Validando conflictos de línea/horario para:', nuevoPlan);
   
   // *** CORRECCIÓN: Obtener planes desde visualGroups ***
   const todosLosPlanes = [];
@@ -1050,7 +1050,7 @@ function validarConflictoLineaHorario(nuevoPlan) {
     });
   });
   
-  console.log(` Comparando contra ${planesConHorario.length} planes activos`);
+  // console.log(` Comparando contra ${planesConHorario.length} planes activos`);
   
   // Para el nuevo plan, necesitamos calcular su hora de inicio
   // Buscar en qué grupo estaría y calcular su posición
@@ -1064,7 +1064,7 @@ function validarConflictoLineaHorario(nuevoPlan) {
     horaInicioNuevoPlan = currentConfig.shiftStart;
   }
   
-  console.log(`🕐 Hora de inicio del nuevo plan: ${horaInicioNuevoPlan}`);
+ // console.log(` Hora de inicio del nuevo plan: ${horaInicioNuevoPlan}`);
   
   // Buscar conflictos: misma línea Y misma hora de inicio
   for (const planExistente of planesConHorario) {
@@ -1078,24 +1078,7 @@ function validarConflictoLineaHorario(nuevoPlan) {
     const mismoInicio = planExistente.inicio && planExistente.inicio === horaInicioNuevoPlan;
     
     if (mismaLinea && mismaFecha && mismoInicio) {
-      console.log(' Conflicto detectado:', {
-        planExistente: {
-          lot_no: planExistente.lot_no,
-          line: planExistente.line,
-          fecha: planExistente.fecha,
-          inicio: planExistente.inicio,
-          model_code: planExistente.model_code,
-          group_no: planExistente.group_no
-        },
-        nuevoPlan: {
-          lot_no: nuevoPlan.lot_no || 'NUEVO',
-          line: nuevoPlan.line,
-          fecha: nuevoPlan.fecha || nuevoPlan.working_date,
-          inicio: horaInicioNuevoPlan,
-          model_code: nuevoPlan.model_code,
-          group_no: grupoDestino
-        }
-      });
+      // console.log(' Conflicto detectado:', { planExistente, nuevoPlan, grupoDestino, horaInicioNuevoPlan });
       
       return {
         planConflicto: planExistente,
@@ -1112,7 +1095,7 @@ function validarConflictoLineaHorario(nuevoPlan) {
     }
   }
   
-  console.log(' No se detectaron conflictos');
+  // console.log(' No se detectaron conflictos');
   return null;
 }
 
@@ -1141,7 +1124,7 @@ async function handleNewPlanSubmit(form) {
     // *** NUEVA LÓGICA: Si hay conflicto, mover al final del grupo con conflicto ***
     const conflicto = validarConflictoLineaHorario(data);
     if (conflicto) {
-      console.log('⚠️ Conflicto detectado, buscando grupo del plan conflictivo...');
+ // console.log(' Conflicto detectado, buscando grupo del plan conflictivo...');
       
       // Buscar en qué grupo está el plan con conflicto
       const planConflictivo = conflicto.planConflicto;
@@ -1153,7 +1136,7 @@ async function handleNewPlanSubmit(form) {
         const planEnGrupo = group.plans.find(p => p.lot_no === planConflictivo.lot_no);
         if (planEnGrupo) {
           grupoDestino = i + 1; // Los grupos son 1-indexed
-          console.log(` Plan conflictivo ${planConflictivo.lot_no} encontrado en GRUPO ${grupoDestino}`);
+          // console.log(` Plan conflictivo ${planConflictivo.lot_no} encontrado en GRUPO ${grupoDestino}`);
           break;
         }
       }
@@ -1161,12 +1144,12 @@ async function handleNewPlanSubmit(form) {
       if (grupoDestino) {
         // Asignar el nuevo plan al final de ese grupo
         data.group_no = grupoDestino;
-        console.log(`📍 Asignando nuevo plan al GRUPO ${grupoDestino} (al final del grupo con conflicto)`);
+ // console.log(` Asignando nuevo plan al GRUPO ${grupoDestino} (al final del grupo con conflicto)`);
         
         // Mostrar notificación informativa (no bloqueante)
-        console.log(`ℹ️ Plan agregado al final del GRUPO ${grupoDestino} debido a conflicto de horario en línea ${data.line}`);
+ // console.log(`ℹ Plan agregado al final del GRUPO ${grupoDestino} debido a conflicto de horario en línea ${data.line}`);
       } else {
-        console.warn('⚠️ No se encontró el grupo del plan conflictivo, continuando sin asignación automática');
+ console.warn(' No se encontró el grupo del plan conflictivo, continuando sin asignación automática');
       }
     }
     
@@ -1228,7 +1211,7 @@ function createWorkOrdersModal() {
     return;
   }
 
-  console.log('?? Creando modal wo-modal con estilos');
+  // console.log('?? Creando modal wo-modal con estilos');
 
   const woModal = document.createElement('div');
   woModal.id = 'wo-modal';
@@ -2378,7 +2361,7 @@ function renderTableWithVisualGroups(data) {
  * Marca en rojo las filas que tienen la misma línea y horario de inicio
  */
 function resaltarConflictosLineaHorario() {
-  console.log(' Buscando conflictos de línea/horario para resaltar...');
+  // console.log(' Buscando conflictos de línea/horario para resaltar...');
   
   // *** CORRECCIÓN: Obtener planes desde visualGroups en lugar de planningData ***
   const todosLosPlanes = [];
@@ -2386,8 +2369,8 @@ function resaltarConflictosLineaHorario() {
     todosLosPlanes.push(...group.plans);
   });
   
-  console.log(' Total de planes en grupos:', todosLosPlanes.length);
-  console.log(' planningCalculations size:', planningCalculations.size);
+  // console.log(' Total de planes en grupos:', todosLosPlanes.length);
+  // console.log(' planningCalculations size:', planningCalculations.size);
   
   // Crear mapa de planes con su hora de inicio calculada
   const planesConHorario = [];
@@ -2396,7 +2379,7 @@ function resaltarConflictosLineaHorario() {
     // Obtener cálculos del plan
     const calc = planningCalculations.get(plan.lot_no);
     
-    console.log(`Plan ${plan.lot_no}: line=${plan.line}, status=${plan.status}, calc=`, calc);
+    // console.log(`Plan ${plan.lot_no}: line=${plan.line}, status=${plan.status}, calc=`, calc);
     
     // Solo considerar planes activos (no cancelados) y con hora de inicio calculada
     if (plan.status !== 'CANCELADO' && calc && calc.startTime && calc.startTime !== '--') {
@@ -2408,11 +2391,11 @@ function resaltarConflictosLineaHorario() {
         model_code: plan.model_code,
         group_no: calc.groupNumber
       });
-      console.log(`   Agregado: ${plan.lot_no} - ${plan.line} - ${calc.startTime}`);
+      // console.log(`   Agregado: ${plan.lot_no} - ${plan.line} - ${calc.startTime}`);
     }
   });
   
-  console.log(` Analizando ${planesConHorario.length} planes activos con horario calculado`);
+  // console.log(` Analizando ${planesConHorario.length} planes activos con horario calculado`);
   
   // Crear mapa de conflictos: "linea-fecha-hora" -> [lot_no1, lot_no2, ...]
   const conflictosMap = new Map();
@@ -2431,18 +2414,18 @@ function resaltarConflictosLineaHorario() {
     });
   });
   
-  console.log('🗺️ Mapa de conflictos:', Array.from(conflictosMap.entries()));
+ // console.log(' Mapa de conflictos:', Array.from(conflictosMap.entries()));
   
   // Identificar claves con conflictos (más de un plan)
   const clavesConConflicto = Array.from(conflictosMap.entries())
     .filter(([clave, planes]) => planes.length > 1);
   
   if (clavesConConflicto.length === 0) {
-    console.log(' No se encontraron conflictos de línea/horario');
+    // console.log(' No se encontraron conflictos de línea/horario');
     return;
   }
   
-  console.log(`⚠️ Se encontraron ${clavesConConflicto.length} conflictos`);
+ // console.log(` Se encontraron ${clavesConConflicto.length} conflictos`);
   
   // Obtener todos los lot_no que tienen conflicto
   const lotNosConConflicto = new Set();
@@ -2452,13 +2435,13 @@ function resaltarConflictosLineaHorario() {
     
     // Log detallado del conflicto
     const [linea, fecha, hora] = clave.split('-');
-    console.log(`⚠️ Conflicto en Línea: ${linea}, Fecha: ${fecha}, Hora: ${hora}`);
+ // console.log(` Conflicto en Línea: ${linea}, Fecha: ${fecha}, Hora: ${hora}`);
     planes.forEach(p => {
-      console.log(`   - Lot: ${p.lot_no}, Modelo: ${p.model_code}, Grupo: ${p.group_no}`);
+      // console.log(`   - Lot: ${p.lot_no}, Modelo: ${p.model_code}, Grupo: ${p.group_no}`);
     });
   });
   
-  console.log('🎯 Lot numbers con conflicto:', Array.from(lotNosConConflicto));
+ // console.log(' Lot numbers con conflicto:', Array.from(lotNosConConflicto));
   
   // Resaltar filas con conflicto
   const tbody = document.getElementById('plan-tableBody');
@@ -2468,7 +2451,7 @@ function resaltarConflictosLineaHorario() {
   }
   
   const rows = tbody.querySelectorAll('tr.plan-row');
-  console.log(`📋 Filas encontradas en tabla: ${rows.length}`);
+ // console.log(` Filas encontradas en tabla: ${rows.length}`);
   let conflictosResaltados = 0;
   
   rows.forEach(row => {
@@ -2518,7 +2501,7 @@ function resaltarConflictosLineaHorario() {
     }
   });
   
-  console.log(` ${conflictosResaltados} filas resaltadas con conflicto`);
+  // console.log(` ${conflictosResaltados} filas resaltadas con conflicto`);
   
   // Mostrar notificación si hay conflictos
   if (conflictosResaltados > 0) {
@@ -3329,7 +3312,7 @@ function autoArrangePlans() {
     return parseInt(numA) - parseInt(numB);
   });
   
-  console.log('?? Orden de loneas para auto-acomodo:', sortedLines.join(', '));
+  // console.log('?? Orden de loneas para auto-acomodo:', sortedLines.join(', '));
 
   // Asignar cada lonea a un grupo de forma secuencial (round-robin)
   sortedLines.forEach((line, lineIndex) => {
@@ -3340,7 +3323,7 @@ function autoArrangePlans() {
     // Si hay mos loneas que grupos, se hace round-robin (M7 -> Grupo 0, M8 -> Grupo 1, etc.)
     const groupIndex = lineIndex % groupCount;
 
-    console.log(`?? Auto-acomodo: Lonea ${line} ? Grupo ${groupIndex + 1} (${totalLineTime.toFixed(1)} min)`);
+    // console.log(`?? Auto-acomodo: Lonea ${line} ? Grupo ${groupIndex + 1} (${totalLineTime.toFixed(1)} min)`);
 
     // Asignar todos los planes de la lonea al grupo correspondiente
     linePlans.forEach(plan => {
@@ -3819,12 +3802,12 @@ function populateGroupSelector() {
     selectElement.appendChild(option);
   }
   
-  console.log(`Selector de grupos actualizado con ${groupCount} grupos`);
+  // console.log(`Selector de grupos actualizado con ${groupCount} grupos`);
 }
 
 // ====== Función para asignar un plan a un grupo específico ======
 function assignPlanToGroup(lotNo, targetGroupIndex) {
-  console.log(`Asignando plan ${lotNo} al grupo ${targetGroupIndex + 1}`);
+  // console.log(`Asignando plan ${lotNo} al grupo ${targetGroupIndex + 1}`);
   
   // Actualizar visualGroups.planAssignments
   visualGroups.planAssignments.set(lotNo, targetGroupIndex);
@@ -3853,7 +3836,7 @@ function assignPlanToGroup(lotNo, targetGroupIndex) {
   // Agregar el plan al grupo destino
   visualGroups.groups[targetGroupIndex].plans.push(planData);
   
-  console.log(`Plan ${lotNo} asignado al grupo ${targetGroupIndex + 1}`);
+  // console.log(`Plan ${lotNo} asignado al grupo ${targetGroupIndex + 1}`);
   
   // Re-renderizar la tabla
   const allPlans = [];
@@ -3866,7 +3849,7 @@ function assignPlanToGroup(lotNo, targetGroupIndex) {
 
 // Funcion para crear modales dinomicamente en el body
 function createModalsInBody() {
-  console.log('??? Creando modales dinomicamente en el body...');
+  // console.log('??? Creando modales dinomicamente en el body...');
 
   // Verificar que los estilos CSS eston cargados
   const testDiv = document.createElement('div');
@@ -3874,16 +3857,12 @@ function createModalsInBody() {
   testDiv.style.display = 'none';
   document.body.appendChild(testDiv);
   const computedStyle = window.getComputedStyle(testDiv);
-  console.log('?? Estilos CSS de modal-overlay:', {
-    position: computedStyle.position,
-    zIndex: computedStyle.zIndex,
-    display: computedStyle.display
-  });
+  // console.log('?? Estilos CSS de modal-overlay:', { position: computedStyle.position, zIndex: computedStyle.zIndex, display: computedStyle.display });
   document.body.removeChild(testDiv);
 
   // Modal de Nuevo Plan
   if (!document.getElementById('plan-modal')) {
-    console.log('?? Creando modal plan-modal');
+    // console.log('?? Creando modal plan-modal');
     const planModal = document.createElement('div');
     planModal.id = 'plan-modal';
     planModal.className = 'modal-overlay';
@@ -3959,7 +3938,7 @@ function createModalsInBody() {
 
   // Modal de Editar Plan
   if (!document.getElementById('plan-editModal')) {
-    console.log('?? Creando modal plan-editModal');
+    // console.log('?? Creando modal plan-editModal');
     const editModal = document.createElement('div');
     editModal.id = 'plan-editModal';
     editModal.className = 'modal-overlay';
@@ -4029,7 +4008,7 @@ function createModalsInBody() {
 
   // Modal de Reprogramar
   if (!document.getElementById('reschedule-modal')) {
-    console.log('?? Creando modal reschedule-modal');
+    // console.log('?? Creando modal reschedule-modal');
     const rescheduleModal = document.createElement('div');
     rescheduleModal.id = 'reschedule-modal';
     rescheduleModal.className = 'modal-overlay';
@@ -4097,7 +4076,7 @@ function createModalsInBody() {
   }
 
   if (!document.getElementById('scan-lots-modal')) {
-    console.log('?? Creando modal scan-lots-modal');
+    // console.log('?? Creando modal scan-lots-modal');
     const scanLotsModal = document.createElement('div');
     scanLotsModal.id = 'scan-lots-modal';
     scanLotsModal.className = 'modal-overlay';
@@ -4161,12 +4140,12 @@ function createModalsInBody() {
     document.body.appendChild(scanLotsModal);
   }
 
-  console.log('? Modales creados dinomicamente en el body');
+  // console.log('? Modales creados dinomicamente en el body');
 }
 
 // Funcion de inicializacion de event listeners usando event delegation
 function initializePlanEventListeners() {
-  console.log('?? initializePlanEventListeners llamada');
+  // console.log('?? initializePlanEventListeners llamada');
 
   // IMPORTANTE: Siempre crear modales dinomicamente en el body
   // Esto asegura que los modales siempre eston al nivel correcto del DOM
@@ -4175,12 +4154,12 @@ function initializePlanEventListeners() {
   // IMPORTANTE: Usar proteccion para evitar agregar listeners duplicados
   // Solo agregar listeners una vez, ya que eston en document.body
   if (document.body.dataset.planListenersAttached === 'true') {
-    console.log('? Listeners ya eston configurados, saltando re-inicializacion de listeners');
-    console.log('?? Los modales fueron creados/verificados en el body');
+    // console.log('? Listeners ya eston configurados, saltando re-inicializacion de listeners');
+    // console.log('?? Los modales fueron creados/verificados en el body');
     return;
   }
 
-  console.log('?? Configurando event listeners con event delegation...');
+  // console.log('?? Configurando event listeners con event delegation...');
 
   // ========== EVENT LISTENER DE CLICKS (Event Delegation) ==========
   document.body.addEventListener('click', function (e) {
@@ -4191,11 +4170,11 @@ function initializePlanEventListeners() {
     // Abrir modal Nuevo Plan
     if (target.id === 'plan-openModalBtn' || target.closest('#plan-openModalBtn')) {
       e.preventDefault();
-      console.log('🔵 Click en plan-openModalBtn detectado');
+ // console.log(' Click en plan-openModalBtn detectado');
 
       // Asegurar que el modal existe antes de abrirlo
       if (!document.getElementById('plan-modal')) {
-        console.log('🏗️ Modal no existe, creándolo...');
+ // console.log(' Modal no existe, creándolo...');
         createModalsInBody();
       }
 
@@ -4207,7 +4186,7 @@ function initializePlanEventListeners() {
       if (dateInput) {
         const today = getTodayInNuevoLeon(); // Formato YYYY-MM-DD
         dateInput.value = today;
-        console.log(' Fecha del día establecida:', today);
+        // console.log(' Fecha del día establecida:', today);
       }
 
       const modal = document.getElementById('plan-modal');
@@ -4227,7 +4206,7 @@ function initializePlanEventListeners() {
           opacity: 1 !important;
           visibility: visible !important;
         `;
-        console.log(' Modal plan-modal abierto con estilos forzados');
+        // console.log(' Modal plan-modal abierto con estilos forzados');
       } else {
         console.error(' Modal plan-modal no encontrado después de crearlo');
       }
@@ -4248,12 +4227,12 @@ function initializePlanEventListeners() {
     // Abrir modal Work Orders
     if (target.id === 'wo-openModalBtn' || target.closest('#wo-openModalBtn')) {
       e.preventDefault();
-      console.log('?? Click en wo-openModalBtn detectado');
+      // console.log('?? Click en wo-openModalBtn detectado');
 
       // Crear modal WO si no existe
       if (typeof createWorkOrdersModal === 'function') {
         createWorkOrdersModal();
-        console.log('? Modal WO creado/verificado');
+        // console.log('? Modal WO creado/verificado');
       }
 
       const modal = document.getElementById('wo-modal');
@@ -4273,7 +4252,7 @@ function initializePlanEventListeners() {
           opacity: 1 !important;
           visibility: visible !important;
         `;
-        console.log('? Modal wo-modal abierto con estilos forzados');
+        // console.log('? Modal wo-modal abierto con estilos forzados');
         if (typeof loadWorkOrders === 'function') loadWorkOrders();
       } else {
         console.error('? Modal wo-modal no encontrado despuos de crearlo');
@@ -4283,7 +4262,7 @@ function initializePlanEventListeners() {
 
     if (target.id === 'scan-lots-openModalBtn' || target.closest('#scan-lots-openModalBtn')) {
       e.preventDefault();
-      console.log('?? Click en scan-lots-openModalBtn detectado');
+      // console.log('?? Click en scan-lots-openModalBtn detectado');
 
       if (!document.getElementById('scan-lots-modal')) {
         createModalsInBody();
@@ -4348,11 +4327,11 @@ function initializePlanEventListeners() {
     // Abrir modal Reprogramar
     if (target.id === 'reschedule-openModalBtn' || target.closest('#reschedule-openModalBtn')) {
       e.preventDefault();
-      console.log('?? Click en reschedule-openModalBtn detectado');
+      // console.log('?? Click en reschedule-openModalBtn detectado');
 
       // Asegurar que el modal existe antes de abrirlo
       if (!document.getElementById('reschedule-modal')) {
-        console.log('?? Modal no existe, creondolo...');
+        // console.log('?? Modal no existe, creondolo...');
         createModalsInBody();
       }
 
@@ -4374,7 +4353,7 @@ function initializePlanEventListeners() {
           visibility: visible !important;
         `;
 
-        console.log('? Modal reschedule-modal abierto con estilos forzados');
+        // console.log('? Modal reschedule-modal abierto con estilos forzados');
         if (typeof setDefaultRescheduleDates === 'function') setDefaultRescheduleDates();
       } else {
         console.error('? Modal reschedule-modal no encontrado despuos de crearlo');
@@ -4523,33 +4502,33 @@ function initializePlanEventListeners() {
   
   // Crear y almacenar el handler
   document.body.dblclickHandler = function (e) {
-    console.log('🖱️ Doble click detectado en:', e.target);
+ // console.log(' Doble click detectado en:', e.target);
     
     // Verificar si el doble click fue en una fila de la tabla de planes
     const row = e.target.closest('tr.plan-row');
     
     if (!row) {
-      console.log(' No se encontró tr.plan-row');
+      // console.log(' No se encontró tr.plan-row');
       return;
     }
     
     // Verificar que la fila pertenece al contenedor ASSY, no al de IMD
     const assyContainer = row.closest('#plan-main-assy-unique-container');
     if (!assyContainer) {
-      console.log('⚠️ Fila no pertenece a ASSY, ignorando...');
+ // console.log(' Fila no pertenece a ASSY, ignorando...');
       return;
     }
     
-    console.log(' Fila encontrada:', row);
+    // console.log(' Fila encontrada:', row);
 
     const lotNo = row.dataset.lot;
-    console.log('📋 Lot No:', lotNo);
+ // console.log(' Lot No:', lotNo);
     
     if (lotNo && typeof openEditModal === 'function') {
-      console.log(' Abriendo modal de edición para:', lotNo);
+      // console.log(' Abriendo modal de edición para:', lotNo);
       openEditModal(lotNo);
     } else {
-      console.log(' No se puede abrir modal. lotNo:', lotNo, 'openEditModal existe:', typeof openEditModal === 'function');
+      // console.log(' No se puede abrir modal. lotNo:', lotNo, 'openEditModal existe:', typeof openEditModal === 'function');
     }
   };
   
@@ -4558,7 +4537,7 @@ function initializePlanEventListeners() {
 
   // Marcar como inicializado
   document.body.dataset.planListenersAttached = 'true';
-  console.log(' Event listeners configurados correctamente');
+  // console.log(' Event listeners configurados correctamente');
 }
 
 // Event listeners para nuevos controles

@@ -590,7 +590,7 @@ window.hideCsvAlert_smt = function() {
 
 // Función específica para inicializar el módulo SMT en carga AJAX
 window.initHistorialSMTModule = function() {
-    console.log('🚀 Inicializando módulo Historial SMT con IDs únicos');
+    console.log('Inicializando módulo Historial SMT con IDs únicos');
     
     // Verificar que todos los elementos con sufijo -smt existan
     const elements = [

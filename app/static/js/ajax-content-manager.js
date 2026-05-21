@@ -9,7 +9,7 @@
     // Función para esperar a que un CSS esté completamente cargado
     function waitForStylesheet(href) {
         return new Promise((resolve) => {
-            console.log(' Verificando CSS:', href);
+            // console.log(' Verificando CSS:', href);
             
             // Si ya existe el CSS, verificar que esté REALMENTE cargado
             const existingLink = document.querySelector(`link[href="${href}"]`);
@@ -17,18 +17,18 @@
                 // Verificar que tenga reglas CSS cargadas
                 try {
                     if (existingLink.sheet && existingLink.sheet.cssRules && existingLink.sheet.cssRules.length > 0) {
-                        console.log(' CSS ya cargado:', href);
+                        // console.log(' CSS ya cargado:', href);
                         return resolve();
                     }
                 } catch (e) {
                     // Puede fallar por CORS, pero significa que está cargado
-                    console.log(' CSS cargado (CORS):', href);
+                    // console.log(' CSS cargado (CORS):', href);
                     return resolve();
                 }
                 
                 // Si existe pero no está cargado, esperar
                 existingLink.onload = () => {
-                    console.log(' CSS terminó de cargar:', href);
+                    // console.log(' CSS terminó de cargar:', href);
                     setTimeout(resolve, 100); // Pausa extra para aplicación
                 };
                 existingLink.onerror = () => {
@@ -39,23 +39,23 @@
             }
 
             // Crear nuevo link CSS
-            console.log('📥 Cargando nuevo CSS:', href);
+            // console.log(' Cargando nuevo CSS:', href);
             const newLink = document.createElement('link');
             newLink.rel = 'stylesheet';
             newLink.href = href;
             
             // Esperar carga completa con verificación estricta
             newLink.onload = () => {
-                console.log(' Nuevo CSS cargado:', href);
+                // console.log(' Nuevo CSS cargado:', href);
                 // Pausa adicional para asegurar que se aplique
                 setTimeout(() => {
                     // Verificar que realmente se aplicó
                     try {
                         if (newLink.sheet && newLink.sheet.cssRules) {
-                            console.log(' CSS aplicado correctamente:', href);
+                            // console.log(' CSS aplicado correctamente:', href);
                         }
                     } catch (e) {
-                        console.log(' CSS aplicado (CORS):', href);
+                        // console.log(' CSS aplicado (CORS):', href);
                     }
                     resolve();
                 }, 150); // Pausa más larga para asegurar aplicación
@@ -163,11 +163,11 @@
 
     // Función para gestionar scripts después de cargar contenido
     function reinitializeScripts() {
-        console.log(' Reinicializando scripts para contenido dinámico...');
+        // console.log(' Reinicializando scripts para contenido dinámico...');
         
         // 1. Reinicializar dropdowns unificados de forma controlada
         if (window.setupUnifiedDropdowns && typeof window.setupUnifiedDropdowns === 'function') {
-            console.log(' Reinicializando dropdowns unificados...');
+            // console.log(' Reinicializando dropdowns unificados...');
             try {
                 // Llamar directamente sin MutationObserver
                 window.setupUnifiedDropdowns();
@@ -178,7 +178,7 @@
         
         // 2. Reaplicar permisos de forma controlada
         if (window.PermisosManagerSimple && window.PermisosManagerSimple.inicializado) {
-            console.log(' Reaplicando permisos para nuevo contenido...');
+            // console.log(' Reaplicando permisos para nuevo contenido...');
             try {
                 // Solo reaplicar permisos, no reinicializar completamente
                 if (typeof window.PermisosManagerSimple.aplicarPermisos === 'function') {
@@ -290,7 +290,7 @@
         }
 
         try {
-            console.log(' Iniciando carga AJAX:', url);
+            // console.log(' Iniciando carga AJAX:', url);
             
             // Mostrar modal de carga
             if (showLoader) {
@@ -308,12 +308,12 @@
 
             // 2. Extraer TODOS los CSS del documento
             const styleLinks = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
-            console.log(' CSS detectados:', styleLinks.map(l => l.getAttribute('href')));
+            // console.log(' CSS detectados:', styleLinks.map(l => l.getAttribute('href')));
 
             // 3. CRÍTICO: Cargar y verificar TODOS los CSS ANTES de mostrar HTML
             if (styleLinks.length > 0) {
                 updateLoadingText(`Cargando ${styleLinks.length} archivos de estilo...`);
-                console.log('⏳ Esperando carga completa de', styleLinks.length, 'archivos CSS...');
+                // console.log('⏳ Esperando carga completa de', styleLinks.length, 'archivos CSS...');
                 
                 // Cargar todos los CSS en paralelo
                 await Promise.all(styleLinks.map(link => 
@@ -322,7 +322,7 @@
                 
                 // Verificación adicional: esperar que se apliquen
                 await ensureStylesApplied();
-                console.log(' TODOS los CSS cargados y aplicados');
+                // console.log(' TODOS los CSS cargados y aplicados');
                 
                 // Pausa adicional para asegurar renderizado
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -358,7 +358,7 @@
             // Ejecutar scripts incluidos en el HTML cargado
             const newlyLoadedScripts = await executeScriptsIn(target);
             
-            console.log(' HTML insertado con estilos completamente aplicados');
+            // console.log(' HTML insertado con estilos completamente aplicados');
             
             // 9. REINICIALIZAR SCRIPTS para el nuevo contenido
             updateLoadingText('Configurando funcionalidades...');
@@ -381,12 +381,12 @@
                 console.warn('Error inicializando módulo específico:', e);
             }
             
-            console.log('⚙️ Scripts reinicializados para contenido dinámico');
+            // console.log(' Scripts reinicializados para contenido dinámico');
             
             // Ocultar modal de carga
             if (showLoader) showLoadingModal(false);
             
-            console.log(' Carga AJAX completada SIN parpadeos (con delay de 2s y scripts)');
+            // console.log(' Carga AJAX completada SIN parpadeos (con delay de 2s y scripts)');
             
         } catch (error) {
             console.error(' Error cargando contenido vía AJAX:', error);

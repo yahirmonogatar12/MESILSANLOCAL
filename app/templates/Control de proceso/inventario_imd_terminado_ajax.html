@@ -12,7 +12,6 @@
       font-family: 'LG regular', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #32323E;
       color: lightgray;
-      min-height: 100vh;
     }
     
     .inventario-imd-terminado-container .container-imd {
@@ -122,14 +121,13 @@
       font-size: 11px;
     }
 
-    /* Tabla */
+    /* Tabla — sin scroll propio. El scroll lo lleva el area padre
+       (.control-proceso-content-area) para evitar barras anidadas. */
     .inventario-imd-terminado-container .table-container-imd {
-      overflow: auto;
-      max-height: 70vh;
+      overflow-x: auto;
       border-radius: 6px;
       border: 1px solid #5F6375;
       background: #40424F;
-      -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
       scrollbar-color: #20688C #40424F;
     }
@@ -642,5 +640,25 @@
   </div>
 
 <script src="{{ url_for('static', filename='js/inventario-imd-terminado-module.js') }}"></script>
+<script>
+  (function () {
+    let intentos = 0;
+    function tryInit() {
+      if (typeof window.inicializarInventarioIMD === 'function') {
+        window.inicializarInventarioIMD();
+      } else if (intentos < 20) {
+        intentos++;
+        setTimeout(tryInit, 50);
+      } else {
+        console.error('[IMD] inicializarInventarioIMD no disponible tras 20 intentos');
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tryInit);
+    } else {
+      tryInit();
+    }
+  })();
+</script>
 </body>
 </html>

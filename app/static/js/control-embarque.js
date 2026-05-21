@@ -752,7 +752,7 @@ function inicializarDrawerCrearPO() {
         
         console.log(' Drawer crear PO inicializado correctamente');
     } else {
-        console.log('⚠️ Elementos del drawer PO no encontrados en DOM');
+        console.log('Elementos del drawer PO no encontrados en DOM');
     }
 }
 
@@ -1100,7 +1100,7 @@ function exportarDatos() {
 
 // Función de inicialización explícita para carga dinámica
 function initControlEmbarque() {
-    console.log('🚀 Inicializando Control de Embarque...');
+    console.log('Inicializando Control de Embarque...');
     
     // Configurar fechas por defecto
     configurarFechasPorDefecto();
@@ -1122,7 +1122,7 @@ function initControlEmbarque() {
 
 // Mantener compatibilidad con carga directa
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📥 DOMContentLoaded - Control de Embarque');
+    console.log('DOMContentLoaded - Control de Embarque');
     initControlEmbarque();
 });
 
