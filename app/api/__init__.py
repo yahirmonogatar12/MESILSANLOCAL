@@ -34,6 +34,11 @@ Convencion de nuevos modulos:
 # y se espera que exponga un atributo `bp` (Flask Blueprint).
 _MODULOS_REGISTRADOS = [
     "control_material.material_admin",
+    "control_material.smd_inventory",
+    "control_resultados.aoi",
+    "control_produccion.po_wo",
+    "shared.raw_modelos",
+    "portal.tickets",
 ]
 
 

@@ -1,8 +1,8 @@
 # WF_003 — Integración de API Backend + JS Frontend para Nuevos Templates
 
-> **Versión:** 1.0  
-> **Fecha:** 2026-03-24  
-> **Prerequisitos:** [WF_001](./WF_001_Nuevos_Modulos_AJAX_Templates.md), [WF_002](./WF_002_Crear_Template_Completo.md)  
+> **Versión:** 2.0
+> **Fecha:** 2026-05-22 (v2.0 — nueva estructura `app/api/`)
+> **Prerequisitos:** [WF_001](./WF_001_Nuevos_Modulos_AJAX_Templates.md), [WF_002](./WF_002_Crear_Template_Completo.md)
 > **Ejemplo de referencia:** Módulo "Historial ICT % Pass/Fail" con API `/api/ict/pass-fail`
 
 ---
@@ -11,15 +11,79 @@
 
 Este documento cubre el proceso de crear los **endpoints de API en Flask** y la **lógica JS del frontend** que conectan un template HTML a la base de datos. Es el complemento de WF_002, que cubre la estructura visual (HTML/CSS) y el registro en la app.
 
+> **Cambio v2.0 (2026-05-22):** Los endpoints nuevos ya **NO** van a `app/routes.py`. Ahora se organizan en el paquete `app/api/` espejando la estructura de `app/templates/`. Ver sección [Arquitectura del paquete app/api/](#arquitectura-del-paquete-appapi).
+
+---
+
+## Arquitectura del paquete `app/api/`
+
+Cada sección del navbar tiene su propia carpeta dentro de `app/api/`, y cada módulo es un archivo Python con su propio Flask **Blueprint**:
+
+```
+app/api/
+├── __init__.py                 ← registrar_blueprints_api(app) [orquestador]
+├── shared/
+│   └── __init__.py             ← re-exports: execute_query, login_requerido, auth_system
+├── informacion_basica/         ← LISTA_INFORMACIONBASICA
+│   ├── __init__.py
+│   ├── raw_modelos.py
+│   ├── po_wo.py
+│   └── ...
+├── control_material/           ← LISTA_DE_MATERIALES
+│   ├── __init__.py
+│   ├── material_admin.py
+│   └── ...
+├── control_produccion/         ← LISTA_CONTROLDEPRODUCCION
+│   └── ...
+├── control_proceso/            ← LISTA_CONTROL_DE_PROCESO
+│   └── ...
+├── control_calidad/            ← LISTA_CONTROL_DE_CALIDAD
+│   ├── aoi.py
+│   └── ...
+├── control_resultados/         ← LISTA_DE_CONTROL_DE_RESULTADOS
+│   └── ...
+├── control_reporte/            ← LISTA_DE_CONTROL_DE_REPORTE
+│   └── ...
+└── configuracion/              ← LISTA_DE_CONFIGPG
+    └── ...
+```
+
+**Reglas duras:**
+
+1. **Cada archivo expone un atributo `bp`** (Flask Blueprint).
+2. **El nombre del archivo coincide con el módulo** (snake_case del template, no del listing).
+3. **Se importan helpers desde `app.api.shared`**, no desde sus paquetes internos:
+   ```python
+   from app.api.shared import login_requerido, execute_query, auth_system
+   ```
+4. **Para registrar el blueprint**, se agrega su ruta a `_MODULOS_REGISTRADOS` en `app/api/__init__.py`:
+   ```python
+   _MODULOS_REGISTRADOS = [
+       "control_material.material_admin",
+       "control_calidad.aoi",
+       "mi_seccion.mi_modulo",  # ← agregar aqui
+   ]
+   ```
+   `app_factory.py` se encarga de llamar `registrar_blueprints_api(app)` y todo queda registrado.
+
+**Por qué importa:**
+
+- Cualquiera puede encontrar el código de un módulo siguiendo la misma estructura que ya conoce de `app/templates/`.
+- No hay que tocar `routes.py` (28k líneas) para agregar un endpoint nuevo.
+- Cada módulo es un archivo aislado: si se rompe, solo se rompe ese.
+- Blueprints permiten desregistrar y testear módulos individualmente.
+
 ---
 
 ## Archivos que se Crean / Modifican
 
 | Acción | Archivo | Descripción |
 |--------|---------|-------------|
-| ✏️ MODIFICAR | `app/routes.py` | Endpoint(s) API que devuelven JSON / Excel |
+| ✨ CREAR | `app/api/<seccion>/<modulo>.py` | Blueprint con endpoint(s) API (JSON / Excel) |
+| ✏️ MODIFICAR | `app/api/__init__.py` | Agregar `"<seccion>.<modulo>"` a `_MODULOS_REGISTRADOS` |
 | ✏️ MODIFICAR | `app/static/js/<nombre>.js` | Lógica de carga, render y exportación |
-| — REFERENCIA | `app/config_mysql_hybrid.py` | `execute_query()` — función centralizada de queries |
+| — REFERENCIA | `app/api/shared/__init__.py` | Reexporta `execute_query`, `login_requerido`, `auth_system` |
+| — REFERENCIA | `app/config_mysql_hybrid.py` | Implementación de `execute_query()` |
 
 ---
 
@@ -72,25 +136,43 @@ LIMIT 2000
 
 ---
 
-## Paso 2 — Crear el Endpoint API de Datos
+## Paso 2 — Crear el Blueprint con el Endpoint API de Datos
 
-**Archivo:** `app/routes.py`  
-**Patrón de ubicación:** Insertar justo después de la ruta que sirve el template HTML del módulo.
+**Archivo:** `app/api/<seccion>/<modulo>.py`
+
+> **v2.0:** Los endpoints NO van más a `routes.py`. Cada módulo es un Blueprint Flask en su propio archivo dentro de la sección que corresponde.
 
 ### Estructura base:
 
 ```python
-@app.route("/api/<modulo>/<accion>")
+"""Endpoints HTTP del modulo <Nombre>.
+
+Rutas:
+  GET /api/<modulo>/<accion>         -> JSON
+  GET /api/<modulo>/<accion>/export  -> XLSX
+"""
+
+import traceback
+
+from flask import Blueprint, jsonify, request
+
+from app.api.shared import execute_query, login_requerido
+
+
+bp = Blueprint("mi_modulo", __name__)
+
+
+@bp.route("/api/<modulo>/<accion>")
 @login_requerido
 def mi_api():
-    """Descripción del endpoint."""
+    """Descripcion del endpoint."""
     try:
         # 1. Leer filtros desde query params
         fecha    = request.args.get("fecha", "").strip()
         linea    = request.args.get("linea", "").strip()
         no_parte = request.args.get("no_parte", "").strip()
 
-        # 2. Construir query con filtros dinámicos
+        # 2. Construir query con filtros dinamicos
         sql = (
             "SELECT ... "
             "FROM <tabla> WHERE 1=1"
@@ -115,7 +197,6 @@ def mi_api():
         # 4. Formatear resultado como lista de dicts
         result = []
         for row in rows:
-            # Cálculos derivados (porcentajes, etc.)
             total = row.get("total", 0) or 0
             ok = row.get("ok_count", 0) or 0
             pct_ok = round(ok / total * 100, 2) if total > 0 else 0
@@ -123,7 +204,6 @@ def mi_api():
             result.append({
                 "fecha": str(row.get("fecha", "")) if row.get("fecha") else "",
                 "linea": row.get("linea", "") or "",
-                # ... más campos
                 "pct_ok": pct_ok,
                 "total": total,
             })
@@ -131,9 +211,22 @@ def mi_api():
         # 5. Retornar JSON
         return jsonify(result)
     except Exception as e:
-        import traceback
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 ```
+
+### Registrar el blueprint
+
+Despues de crear el archivo, **agregar su ruta** a `app/api/__init__.py`:
+
+```python
+_MODULOS_REGISTRADOS = [
+    "control_material.material_admin",
+    "control_calidad.aoi",
+    "<seccion>.<modulo>",  # ← tu nuevo modulo
+]
+```
+
+`app_factory.py` ya llama `registrar_blueprints_api(app)` al arrancar; el módulo nuevo queda registrado sin tocar nada más.
 
 ### Reglas importantes:
 
@@ -151,12 +244,12 @@ def mi_api():
 
 ## Paso 3 — Crear el Endpoint de Exportación Excel
 
-**Misma ubicación** en `routes.py`, justo después del endpoint de datos.
+**Misma ubicación** que el endpoint de datos: dentro del mismo Blueprint (mismo archivo `app/api/<seccion>/<modulo>.py`), justo después del endpoint JSON.
 
 ### Estructura base:
 
 ```python
-@app.route("/api/<modulo>/<accion>/export")
+@bp.route("/api/<modulo>/<accion>/export")
 @login_requerido
 def mi_api_export():
     """Exportar datos a Excel."""
@@ -443,7 +536,7 @@ const url = `/api/modulo/accion?fecha=${encodeURIComponent(fecha)}&linea=${encod
 
 ## Paso 6 — Reiniciar el Servidor
 
-El servidor usa **waitress** sin auto-reload. Después de modificar `routes.py` **siempre** reiniciar:
+El servidor usa **waitress** sin auto-reload. Después de agregar/modificar cualquier archivo en `app/api/` **siempre** reiniciar:
 
 ```powershell
 # Detener
@@ -524,8 +617,11 @@ Abrir DevTools → Console (F12) y buscar:
 
 ```
 [ ] Query SQL diseñada y probada en MySQL
-[ ] Endpoint de datos creado en routes.py (retorna JSON)
-[ ] Endpoint de exportación creado en routes.py (retorna .xlsx)
+[ ] Blueprint creado en app/api/<seccion>/<modulo>.py
+[ ] Blueprint expone atributo `bp` y usa imports desde app.api.shared
+[ ] Endpoint de datos creado dentro del blueprint (retorna JSON)
+[ ] Endpoint de exportación creado dentro del blueprint (retorna .xlsx)
+[ ] Modulo agregado a _MODULOS_REGISTRADOS en app/api/__init__.py
 [ ] JS implementado con todas las funciones (load, render, export, listeners)
 [ ] IDs del HTML coinciden con los del JS
 [ ] Filtros del HTML mapeados a params de la API
@@ -539,19 +635,52 @@ Abrir DevTools → Console (F12) y buscar:
 
 ---
 
-## Referencia Rápida — Ejemplo Completo
+## Referencia Rápida — Ejemplo Completo (v2.0)
+
+Para un módulo nuevo "Historial ICT % Pass/Fail" en la sección Control de resultados:
 
 | Componente | Archivo | Ruta / ID |
 |------------|---------|-----------|
-| Template | `history_ict_Pass_Fail.html` | — |
-| CSS | `ict-Pass-Fail.css` | — |
-| JS | `ict-Pass-Fail.js` | — |
-| Ruta página | `routes.py` | `/historial-maquina-ict-pass-fail` |
-| API datos | `routes.py` | `GET /api/ict/pass-fail` |
-| API export | `routes.py` | `GET /api/ict/pass-fail/export` |
+| Template | `app/templates/Control de resultados/history_ict_Pass_Fail.html` | — |
+| CSS | `app/static/css/ict-Pass-Fail.css` | — |
+| JS | `app/static/js/ict-Pass-Fail.js` | — |
+| Blueprint | `app/api/control_resultados/ict_pass_fail.py` | `bp = Blueprint("ict_pass_fail", ...)` |
+| Registrado en | `app/api/__init__.py` | `_MODULOS_REGISTRADOS += ["control_resultados.ict_pass_fail"]` |
+| Ruta página | `routes.py` (legacy) o nuevo blueprint | `/historial-maquina-ict-pass-fail` |
+| API datos | `app/api/control_resultados/ict_pass_fail.py` | `GET /api/ict/pass-fail` |
+| API export | `app/api/control_resultados/ict_pass_fail.py` | `GET /api/ict/pass-fail/export` |
 | Tabla HTML | `#pf-ict-table` | tbody: `#pf-ict-body` |
 | Filtro fecha | `#pf-filter-fecha` | param: `fecha` |
 | Filtro línea | `#pf-filter-linea` | param: `linea` |
 | Filtro parte | `#pf-filter-part-number` | param: `no_parte` |
 | Btn consultar | `#pf-btn-consultar` | → `pfLoadData()` |
 | Btn exportar | `#pf-btn-export-excel` | → `pfExportExcel()` |
+
+---
+
+## Módulos legacy
+
+Hasta la migración completa de `routes.py` (~28k líneas) y los archivos `*_api.py` sueltos, conviven dos estilos:
+
+| Estado | Ubicación | Ejemplo |
+|---|---|---|
+| ✅ Nuevo (v2.0) | `app/api/<seccion>/<modulo>.py` | `app/api/control_material/material_admin.py` |
+| ⚠️ Legacy | `app/routes.py`, `app/aoi_api.py`, `app/shipping_api.py`, etc. | endpoints sueltos a migrar |
+
+**Para nuevos módulos: usar siempre v2.0.** Para módulos existentes legacy, migrar oportunisticamente cuando se tocan (no como refactor masivo de un solo PR).
+
+---
+
+## Changelog
+
+### 2026-05-22 — v2.0 (refactor `app/api/`)
+- Nueva regla: los endpoints nuevos van a `app/api/<seccion>/<modulo>.py` como Flask Blueprints.
+- Nuevo paquete `app/api/shared` con re-exports (`execute_query`, `login_requerido`, `auth_system`).
+- `app/api/__init__.py` define `_MODULOS_REGISTRADOS` y `registrar_blueprints_api(app)`.
+- `app_factory.py` invoca el registro automático; ya NO se importan blueprints individualmente.
+- Migración piloto: `app/Almacen_api.py` → `app/api/control_material/material_admin.py` (mismo blueprint name, rutas idénticas, frontend sin cambios).
+- Migración subsecuente: `aoi_api.py`, `api_raw_modelos.py`, `api_po_wo.py` (planeadas).
+- Pendiente: extraer endpoints de `routes.py` por sección.
+
+### 2026-03-24 — v1.0
+- Documento inicial. Convención: endpoints en `routes.py` con `@app.route(...)`.
