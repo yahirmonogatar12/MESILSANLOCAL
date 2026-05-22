@@ -10,13 +10,13 @@
     height: 100%;
 }
 
-#control-proceso-content-area:has(> #almacen-embarques-entradas-unique-container[style*="display: block"]),
-#control-proceso-content-area:has(> #almacen-embarques-salidas-unique-container[style*="display: block"]),
-#control-proceso-content-area:has(> #almacen-embarques-retorno-unique-container[style*="display: block"]),
-#control-proceso-content-area:has(> #almacen-embarques-movimientos-unique-container[style*="display: block"]),
-#control-proceso-content-area:has(> #almacen-embarques-inventario-general-unique-container[style*="display: block"]),
-#control-proceso-content-area:has(> #almacen-embarques-catalogo-unique-container[style*="display: block"]),
-#control-proceso-content-area:has(> #control-salida-lineas-unique-container[style*="display: block"]) {
+#control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-entradas-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-salidas-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-retorno-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-movimientos-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-inventario-general-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #almacen-embarques-catalogo-unique-container[style*="display: block"]),
+#control-proceso-content-area:not(.mes-area-hidden):has(> #control-salida-lineas-unique-container[style*="display: block"]) {
     overflow: hidden !important;
     min-height: 0 !important;
     height: 100% !important;

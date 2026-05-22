@@ -1,6 +1,6 @@
 (function () {
   const STYLESHEET_ID = "almacen-embarques-history-css";
-  const ASSET_VERSION = "20260513b";
+  const ASSET_VERSION = "20260522a";
   const STYLESHEET_HREF = `/static/css/almacen_embarques_history.css?v=${ASSET_VERSION}`;
 
   const movementModuleState = {
@@ -2598,15 +2598,42 @@
 
     bindColumnResizers(moduleRoot);
 
-    if (moduleRoot && moduleRoot.dataset.resizeBound !== "true") {
+    if (moduleRoot) {
       const updateHeight = () => {
         bindColumnResizers(moduleRoot);
         syncScrollableHeight(moduleRoot);
         syncTableWidths(moduleRoot);
       };
-      window.addEventListener("resize", updateHeight);
-      requestAnimationFrame(() => requestAnimationFrame(updateHeight));
-      moduleRoot.dataset.resizeBound = "true";
+
+      // Bug fix: tras F5 con tabs restaurados ocultos, las tablas miden
+      // clientWidth=0 y quedan desplazadas. ResizeObserver detecta la
+      // transicion 0 -> ancho real al hacerse visible y resincroniza.
+      if (typeof ResizeObserver === "function" && !moduleRoot.__aeResizeObserver) {
+        let lastWidth = Math.floor(moduleRoot.getBoundingClientRect().width || 0);
+        const ro = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const width = Math.floor(entry.contentRect?.width || 0);
+            if (width <= 0) continue;
+            if (Math.abs(width - lastWidth) < 1) continue;
+            const transicionDesdeOculto = lastWidth === 0;
+            lastWidth = width;
+            if (transicionDesdeOculto) {
+              moduleRoot.querySelectorAll(".ae-table-shell").forEach((shell) => {
+                delete shell.dataset.columnWidthsReady;
+              });
+            }
+            updateHeight();
+          }
+        });
+        ro.observe(moduleRoot);
+        moduleRoot.__aeResizeObserver = ro;
+      }
+
+      if (moduleRoot.dataset.resizeBound !== "true") {
+        window.addEventListener("resize", updateHeight);
+        requestAnimationFrame(() => requestAnimationFrame(updateHeight));
+        moduleRoot.dataset.resizeBound = "true";
+      }
     }
 
     elements.searchBtn?.addEventListener("click", () => {

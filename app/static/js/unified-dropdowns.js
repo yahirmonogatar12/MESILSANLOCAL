@@ -23,7 +23,51 @@
     
     function log(...args) {
     }
-    
+
+    // ===============================================
+    // ESTADO INTERNO POR DROPDOWN (independiente del DOM)
+    // ===============================================
+    // Bootstrap mantiene clases 'show' y 'collapsing' que cambian
+    // durante animaciones. Si el usuario hace click en medio de una
+    // animacion, leer el classList da resultados erroneos. Mantenemos
+    // nuestro propio estado deseado por ID para que el toggle siempre
+    // sepa cual es el estado "logico" actual.
+    const dropdownDesiredState = new Map(); // id -> boolean (true=abierto)
+
+    // ===============================================
+    // PERSISTENCIA EN LOCALSTORAGE
+    // ===============================================
+    // Guarda el estado abierto/cerrado de cada dropdown del sidebar
+    // por ID. Asi, al recargar la pagina o cambiar de pestaña navbar y
+    // volver, el usuario encuentra el sidebar como lo dejo.
+    const STORAGE_KEY_DROPDOWNS = 'mes_sidebar_dropdowns_v1';
+
+    function readDropdownStates() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY_DROPDOWNS);
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveDropdownState(id, isOpen) {
+        if (!id) return;
+        try {
+            const states = readDropdownStates();
+            states[id] = isOpen ? 1 : 0;
+            localStorage.setItem(STORAGE_KEY_DROPDOWNS, JSON.stringify(states));
+        } catch (e) {
+            // localStorage lleno o bloqueado: ignorar
+        }
+    }
+
+    function getSavedDropdownState(id) {
+        if (!id) return null;
+        const states = readDropdownStates();
+        return id in states ? !!states[id] : null;
+    }
+
     // ===============================================
     // DETECTOR DE DISPOSITIVO
     // ===============================================
@@ -141,37 +185,37 @@
         log(`📱 Configurando dropdown móvil: ${dropdownId}`);
         
         let lastClickTime = 0;
-        
+        const mobileTargetId = targetElement && targetElement.id ? targetElement.id : null;
+
         const clickHandler = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const now = Date.now();
             if (now - lastClickTime < CONFIG.CLICK_DELAY) {
                 return false;
             }
             lastClickTime = now;
-            
+
             // Toggle simple para móvil
             const isOpen = targetElement.classList.contains('show');
-            
+
             if (isOpen) {
                 // Cerrar
                 targetElement.classList.remove('show');
                 targetElement.style.display = 'none';
                 button.setAttribute('aria-expanded', 'false');
+                saveDropdownState(mobileTargetId, false);
                 log(`📱 Cerrado: ${dropdownId}`);
             } else {
-                // Cerrar otros dropdowns primero (pero no todos los elementos interactivos)
-                closeOtherDropdowns(targetElement);
-                
-                // Abrir este
+                // Permitir multiples dropdowns abiertos (igual que desktop)
                 targetElement.classList.add('show');
                 targetElement.style.display = 'block';
                 button.setAttribute('aria-expanded', 'true');
+                saveDropdownState(mobileTargetId, true);
                 log(`📱 Abierto: ${dropdownId}`);
             }
-            
+
             return false;
         };
         
@@ -202,24 +246,33 @@
         
         dropdownInstances.set(dropdownId, collapseInstance);
         
-        // EXPANDIR POR DEFECTO EN PC (solo si no tiene clase collapsed-by-user)
-        if (targetElement && !targetElement.classList.contains('collapsed-by-user')) {
-            setTimeout(() => {
-                if (!targetElement) {
-                    // console.error(`Target element became null for dropdown: ${dropdownId}`);
-                    return;
-                }
-                if (!collapseInstance._element) {
-                    // console.error(`Collapse instance element is null for ${dropdownId}`);
-                    return;
-                }
-                if (!targetElement.classList.contains('show')) {
-                    collapseInstance.show();
-                    button.setAttribute('aria-expanded', 'true');
-                    log(`🖥️ Expandido por defecto: ${dropdownId}`);
-                }
-            }, 100);
-        }
+        // RESTAURAR ESTADO GUARDADO O CERRAR POR DEFECTO
+        // Por defecto todos los dropdowns arrancan cerrados; solo los
+        // que el usuario abrio explicitamente (y se guardaron en
+        // localStorage como 1) se restauran abiertos.
+        const targetId = targetSelector ? targetSelector.replace(/^#/, '') : null;
+        const savedState = getSavedDropdownState(targetId);
+        const shouldOpen = savedState === null ? false : savedState;
+
+        // Inicializar el estado interno con el deseado
+        if (targetId) dropdownDesiredState.set(targetId, shouldOpen);
+
+        setTimeout(() => {
+            if (!targetElement || !collapseInstance._element) return;
+            const isCurrentlyOpen = targetElement.classList.contains('show');
+            if (shouldOpen && !isCurrentlyOpen) {
+                targetElement.classList.remove('collapsed-by-user');
+                collapseInstance.show();
+                button.setAttribute('aria-expanded', 'true');
+            } else if (!shouldOpen && isCurrentlyOpen) {
+                targetElement.classList.add('collapsed-by-user');
+                collapseInstance.hide();
+                button.setAttribute('aria-expanded', 'false');
+            } else if (!shouldOpen) {
+                targetElement.classList.add('collapsed-by-user');
+                button.setAttribute('aria-expanded', 'false');
+            }
+        }, 100);
         
         let lastClickTime = 0;
         let isProcessing = false;
@@ -227,36 +280,61 @@
         const clickHandler = function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             const now = Date.now();
             if (isProcessing || now - lastClickTime < CONFIG.CLICK_DELAY) {
                 return false;
             }
-            
+
             isProcessing = true;
             lastClickTime = now;
-            
-            const isOpen = targetElement.classList.contains('show');
-            
-            log(`🖥️ Toggle: ${dropdownId} (${isOpen ? 'cerrar' : 'abrir'})`);
-            
-            if (isOpen) {
-                // Marcar como cerrado por el usuario para evitar re-apertura automática
-                targetElement.classList.add('collapsed-by-user');
-                collapseInstance.hide();
-                log(`🖥️ Cerrado por usuario: ${dropdownId}`);
-            } else {
-                // Remover marca de cerrado por usuario al abrir manualmente
-                targetElement.classList.remove('collapsed-by-user');
-                // En desktop, cerrar otros dropdowns antes de abrir este
-                closeOtherDropdowns(targetElement);
-                collapseInstance.show();
-                log(`🖥️ Abierto por usuario: ${dropdownId}`);
+
+            // Resolver targetElement FRESCO (por si el sidebar se
+            // recargo via AJAX y el closure tiene un nodo huerfano).
+            const liveTarget = document.querySelector(targetSelector);
+            const liveCollapse = liveTarget ? (bootstrap.Collapse.getInstance(liveTarget) || new bootstrap.Collapse(liveTarget, { toggle: false })) : collapseInstance;
+            const elementoActual = liveTarget || targetElement;
+
+            // Usar nuestro estado interno como fuente de verdad. Asi
+            // somos inmunes a 'collapsing' / clases en transicion.
+            // Si nunca se inicializo, asumir abierto (default).
+            const currentDesired = dropdownDesiredState.has(targetId)
+                ? dropdownDesiredState.get(targetId)
+                : true;
+            const willOpen = !currentDesired;
+
+            log(`🖥️ Toggle: ${dropdownId} (${currentDesired ? 'cerrar' : 'abrir'})`);
+
+            try {
+                if (willOpen) {
+                    elementoActual.classList.remove('collapsed-by-user');
+                    liveCollapse.show();
+                } else {
+                    elementoActual.classList.add('collapsed-by-user');
+                    liveCollapse.hide();
+                }
+            } catch (err) {
+                // Bootstrap puede tirar si esta en medio de transicion
+                // o si la instancia esta huerfana. Caemos a manipular
+                // las clases directamente como fallback.
+                console.warn('[DROPDOWN] Bootstrap fallo, fallback manual:', err.message);
+                if (willOpen) {
+                    elementoActual.classList.add('show');
+                    elementoActual.classList.remove('collapsing');
+                } else {
+                    elementoActual.classList.remove('show');
+                    elementoActual.classList.remove('collapsing');
+                }
             }
-            
+            button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            dropdownDesiredState.set(targetId, willOpen);
+            saveDropdownState(targetId, willOpen);
+            log(`🖥️ ${willOpen ? 'Abierto' : 'Cerrado'} por usuario: ${dropdownId}`);
+
             // Actualizar aria-expanded después de la animación
             setTimeout(() => {
-                const newState = targetElement.classList.contains('show');
+                const t = document.querySelector(targetSelector) || elementoActual;
+                const newState = t.classList.contains('show');
                 button.setAttribute('aria-expanded', newState.toString());
                 isProcessing = false;
             }, CONFIG.ANIMATION_DURATION + 50);

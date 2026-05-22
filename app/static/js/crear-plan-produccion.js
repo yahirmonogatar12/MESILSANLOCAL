@@ -87,20 +87,19 @@
         // Asignaciones globales inmediatas para onclick handlers
         window.mostrarFormularioWO = mostrarFormularioWO;
 
-        // Función de inicialización explícita para carga dinámica
+        // Función de inicialización explícita para carga dinámica.
+        // Idempotente: re-llamarla NO duplica listeners (event delegation
+        // en body con flag dataset.cppListenersAttached).
         function initCrearPlanProduccion() {
-            console.log('Inicializando Crear Plan de Producción...');
-            // cargarModelosBOM(); // Función no utilizada - comentada para evitar error 404
             configurarEventos();
-            
-            // Asegurar que las fechas se configuren después de que los elementos estén disponibles
+
+            // Estado por-instancia: cada montaje resetea fechas e
+            // intenta consultar (los elementos son nuevos cada vez
+            // que se reinyecta el HTML via AJAX).
             setTimeout(() => {
                 establecerFechaActual();
-                // Consultar WOs del día actual después de establecer las fechas
                 setTimeout(consultarWOs, 200);
             }, 50);
-            
-            console.log(' Crear Plan de Producción inicializado correctamente');
         }
 
         // Mantener compatibilidad con carga directa
@@ -112,21 +111,47 @@
         // Hacer la función disponible globalmente para carga dinámica
         window.initCrearPlanProduccion = initCrearPlanProduccion;
 
-        // Configurar eventos de botones
+        // Configurar eventos - EVENT DELEGATION (norma WF_003)
+        // Un solo listener en body, idempotente con dataset flag.
+        // Los IDs son los originales (no prefijados aun). Si en el
+        // futuro se prefijan con 'cpp-', actualizar este mapa.
         function configurarEventos() {
-            console.log('Configurando eventos...');
-            document.getElementById('btnCrearWO').addEventListener('click', mostrarFormularioWO);
-            document.getElementById('btnCancelarWO').addEventListener('click', ocultarFormularioWO);
-            document.getElementById('btnGuardarWO').addEventListener('click', crearNuevaWO);
-            document.getElementById('btnConsultar').addEventListener('click', consultarWOs);
-            document.getElementById('btnRegistrar').addEventListener('click', mostrarFormularioWO); // Mismo que crear WO
-            document.getElementById('btnCancelar').addEventListener('click', cancelarOperacion); // Nueva función inteligente
-            document.getElementById('btnExportar').addEventListener('click', exportarExcel);
-            
-            // Eventos para checkboxes maestros
-            document.getElementById('checkAll1').addEventListener('change', toggleAllCheckboxes);
-            document.getElementById('checkAll2').addEventListener('change', toggleAllCheckboxes);
-            console.log('Eventos configurados exitosamente');
+            // Solo registrar una vez por sesion
+            if (document.body.dataset.cppListenersAttached) return;
+
+            // Mapa de ID -> handler para clicks
+            const clickHandlers = {
+                'btnCrearWO': mostrarFormularioWO,
+                'btnCancelarWO': ocultarFormularioWO,
+                'btnGuardarWO': crearNuevaWO,
+                'btnConsultar': consultarWOs,
+                'btnRegistrar': mostrarFormularioWO,
+                'btnCancelar': cancelarOperacion,
+                'btnExportar': exportarExcel
+            };
+
+            document.body.addEventListener('click', function (e) {
+                for (const id in clickHandlers) {
+                    if (e.target.id === id || (e.target.closest && e.target.closest('#' + id))) {
+                        // Solo disparar si el target esta dentro del modulo
+                        if (e.target.closest('#crear-plan-produccion-unique-container, #bomMainContainer')) {
+                            clickHandlers[id](e);
+                        }
+                        return;
+                    }
+                }
+            });
+
+            // Delegation para change (checkboxes maestros)
+            document.body.addEventListener('change', function (e) {
+                if (e.target.id === 'checkAll1' || e.target.id === 'checkAll2') {
+                    if (e.target.closest('#crear-plan-produccion-unique-container, #bomMainContainer')) {
+                        toggleAllCheckboxes(e);
+                    }
+                }
+            });
+
+            document.body.dataset.cppListenersAttached = '1';
         }
 
         // Establecer fecha actual por defecto

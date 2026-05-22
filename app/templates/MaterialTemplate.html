@@ -270,7 +270,7 @@
     <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
-    <script src="/static/js/scriptMain.js?v=20260520c"></script>
+    <script src="/static/js/scriptMain.js?v=20260522b"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -376,8 +376,9 @@
 
     <!-- Contenedor específico para el contenido de Control de Material (LADO DERECHO) -->
     <div class="material-content-area" id="material-content-area" style="display: none;">
-        <!-- Contenedor por defecto con información general -->
-        <div id="material-info-container" style="display: block;">
+        <!-- Contenedor por defecto con información general (oculto por
+             defecto, se muestra solo si no hay tab activo) -->
+        <div id="material-info-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
 
@@ -427,8 +428,8 @@
 
     <!-- Contenedor específico para el contenido de Control de Producción (LADO DERECHO) -->
     <div class="produccion-content-area" id="produccion-content-area" style="display: none;">
-        <!-- Contenedor por defecto con información general -->
-        <div id="produccion-info-container" style="display: block;">
+        <!-- Placeholder default (oculto si hay tab activo) -->
+        <div id="produccion-info-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
 
@@ -443,12 +444,17 @@
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
 
+        <!-- Crear Plan de Produccion (contenedor unico para sistema de tabs) -->
+        <div id="crear-plan-produccion-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
+
     </div>
 
     <!-- Contenedor específico para el contenido de Control de Proceso (LADO DERECHO) -->
     <div class="control-proceso-content-area" id="control-proceso-content-area" style="display: none;">
-        <!-- Contenedor por defecto con información general -->
-        <div id="control-proceso-info-container" style="display: block;">
+        <!-- Placeholder default (oculto si hay tab activo) -->
+        <div id="control-proceso-info-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <!-- Contenedor específico para Control de producción SMT -->
@@ -589,8 +595,8 @@
 
     <!-- Contenedor específico para el contenido de Control de Resultados (LADO DERECHO) -->
     <div class="control-resultados-content-area" id="control-resultados-content-area" style="display: none;">
-        <!-- Contenedor por defecto con información general -->
-        <div id="control-resultados-info-container" style="display: block;">
+        <!-- Placeholder default (oculto si hay tab activo) -->
+        <div id="control-resultados-info-container" style="display: none;">
         </div>
 
         <!-- Contenedor específico para Historial AOI -->
@@ -858,9 +864,11 @@
 
     <!-- ANIMACIONES PARA DROPDOWNS EN DESKTOP -->
     <link rel="stylesheet" href="../static/css/desktop-dropdown-animations.css?v=20260520d">
+    <link rel="stylesheet" href="../static/css/sidebar-tabs.css?v=20260522c">
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js"></script>
+    <script src="../static/js/sidebar-tabs.js?v=20260522h"></script>
 
     <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>
@@ -1476,13 +1484,19 @@
                 observer.observe(materialContainer, { attributes: true });
             }
 
-            // Observar cambios en las áreas de contenido para detectar cuando se cargan nuevas secciones
+            // Observar cambios en las areas de contenido (solo movil).
+            // En desktop NO sirve y disparaba ~15 fetch /cargar_template
+            // cada vez que cambiaban estilos de los content-areas (por
+            // ej. al ocultar/mostrar areas con prepararPanelSeccion).
+            // En movil sigue util para refrescar el menu hamburger.
             const contentObserver = new MutationObserver(function(mutations) {
+                if (!isMobile()) return;  // skip en desktop
+                let dispararon = false;
                 mutations.forEach(function(mutation) {
+                    if (dispararon) return;
                     if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                        // Verificar si algún contenido se hizo visible
                         if (mutation.target.style.display !== 'none') {
-                            // Pequeño delay para asegurar que el contenido esté completamente cargado
+                            dispararon = true;
                             setTimeout(() => {
                                 loadCurrentSidebarContent();
                             }, 100);
@@ -1491,7 +1505,6 @@
                 });
             });
 
-            // Observar las áreas de contenido principales
             const contentAreas = [
                 'informacion-basica-content-area',
                 'material-container',
@@ -1551,43 +1564,43 @@
                                 'Control de material': () => {
                                     window.mostrarControlMaterial();
                                     setTimeout(() => {
-                                        cargarContenidoDinamico('control-material-content', '/listas/control_material');
+                                        cargarSidebarDinamico('control-material-content', '/listas/control_material');
                                     }, 100);
                                 },
                                 'Control de producción': () => {
                                     window.mostrarControlProduccion();
                                     setTimeout(() => {
-                                        cargarContenidoDinamico('control-produccion-content', '/listas/control_produccion');
+                                        cargarSidebarDinamico('control-produccion-content', '/listas/control_produccion');
                                     }, 100);
                                 },
                                 'Control de proceso': () => {
                                     window.mostrarControlProceso();
                                     setTimeout(() => {
-                                        cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso');
+                                        cargarSidebarDinamico('control-proceso-content', '/listas/control_proceso');
                                     }, 100);
                                 },
                                 'Control de calidad': () => {
                                     window.mostrarControlCalidad();
                                     setTimeout(() => {
-                                        cargarContenidoDinamico('control-calidad-content', '/listas/control_calidad');
+                                        cargarSidebarDinamico('control-calidad-content', '/listas/control_calidad');
                                     }, 100);
                                 },
                                 'Control de resultados': () => {
                                     window.mostrarControlResultados();
                                     setTimeout(() => {
-                                        cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados');
+                                        cargarSidebarDinamico('control-resultados-content', '/listas/control_resultados');
                                     }, 100);
                                 },
                                 'Control de reporte': () => {
                                     window.mostrarControlReporte();
                                     setTimeout(() => {
-                                        cargarContenidoDinamico('control-reporte-content', '/listas/control_reporte');
+                                        cargarSidebarDinamico('control-reporte-content', '/listas/control_reporte');
                                     }, 100);
                                 },
                                 'Configuración de programa': () => {
                                     window.mostrarConfiguracionPrograma();
                                     setTimeout(() => {
-                                        cargarContenidoDinamico('configuracion-programa-content', '/listas/configuracion_programa');
+                                        cargarSidebarDinamico('configuracion-programa-content', '/listas/configuracion_programa');
                                     }, 100);
                                 }
                             };
@@ -2304,10 +2317,18 @@ function hideAllMaterialContainers() {
                     }
                 });
 
-                // El area padre no se oculta aqui; cada boton de navegacion decide
-                // que seccion principal queda visible.
+                // FIX: ocultar TAMBIEN cualquier otro hijo directo del
+                // area que sea un container (catch-all). Cubre el caso
+                // donde un modulo nuevo agrego un container pero no se
+                // lo agrego a la lista de arriba.
                 const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
                 if (informacionBasicaArea) {
+                    informacionBasicaArea.querySelectorAll(':scope > [id]').forEach(el => {
+                        if (el.classList.contains('section-tabs-bar')) return;
+                        if (el.id.endsWith('-container')) {
+                            el.style.display = 'none';
+                        }
+                    });
                     informacionBasicaArea.style.width = '100%';
                     informacionBasicaArea.style.maxWidth = 'none';
                 }
@@ -2350,11 +2371,16 @@ function hideAllMaterialContainers() {
             // de la seccion activa indicada. Pasar null para ocultar todos.
             function ocultarOtrasSecciones(seccionActiva) {
                 Object.entries(SECCIONES_AREAS).forEach(([key, id]) => {
-                    if (key === seccionActiva) return;
                     const el = document.getElementById(id);
-                    if (el) {
+                    if (!el) return;
+                    if (key === seccionActiva) {
+                        el.classList.remove('mes-area-hidden');
+                    } else {
                         el.style.cssText = '';
                         el.style.display = 'none';
+                        // Clase con !important para que ningun :has()
+                        // de modulos internos pueda re-mostrar el area.
+                        el.classList.add('mes-area-hidden');
                     }
                 });
                 Object.entries(SECCIONES_SIDEBARS).forEach(([key, id]) => {
@@ -2378,6 +2404,7 @@ function hideAllMaterialContainers() {
                 if (sidebar) sidebar.style.display = 'block';
                 const area = document.getElementById(SECCIONES_AREAS[seccion]);
                 if (area) {
+                    area.classList.remove('mes-area-hidden');
                     area.style.display = 'block';
                     area.style.width = '100%';
                 }
@@ -2528,91 +2555,39 @@ function hideAllMaterialContainers() {
                 const container = document.getElementById('control-modelos-info-container');
                 if (container) {
                     container.style.display = 'block';
+                    // Registrar como tab manualmente (este modulo NO usa
+                    // cargarContenidoDinamico, su HTML viene pre-renderizado
+                    // por el servidor, por eso el interceptor no se dispara).
+                    if (window.sidebarTabs && typeof window.sidebarTabs.openTab === 'function') {
+                        const label = window.__ultimoSidebarLinkLabel || 'Control de modelos';
+                        const onclick = window.__ultimoSidebarLinkOnclick || null;
+                        window.sidebarTabs.openTab('control-modelos-info-container', label, null, onclick);
+                        window.sidebarTabs.switchTab('control-modelos-info-container');
+                    }
                     // Cargar modelos cuando se muestra el contenedor
                     cargarModelosControl();
                 }
             };
 
+            // Refactor WF_002: usar helper prepararPanelInformacionBasica
+            // (mismo patron que los otros mostrarXxxInfo). El sistema de
+            // tabs se encarga de ocultar otros containers del area.
             window.mostrarControlBOMInfo = function() {
-                // PASO 1: Ocultar TODOS los contenedores de Información Básica
-                hideAllInformacionBasicaContainers();
+                prepararPanelInformacionBasica();
 
-                // PASO 2: Ocultar también otros contenedores de otras secciones (CRÍTICO)
-                if (typeof window.hideAllMaterialContainers === 'function') {
-                    window.hideAllMaterialContainers();
-                }
-
-                // PASO 3: Ocultar ESPECÍFICAMENTE el contenedor bom-unique-container de Control de Proceso
-                const bomProcesoContainer = document.getElementById('bom-unique-container');
-                if (bomProcesoContainer) {
-                    bomProcesoContainer.style.display = 'none';
-                }
-
-                // PASO 4: OCULTAR control-proceso-content-area (CRÍTICO para evitar doble visualización)
-                const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
-                if (controlProcesoContentArea) {
-                    controlProcesoContentArea.style.cssText = '';
-                    controlProcesoContentArea.style.display = 'none';
-                }
-
-                // PASO 5: Ocultar todos los contenedores de Control de Proceso
-                const controlProcesoContainers = [
-                    'control-proceso-info-container',
-                    'control-produccion-smt-container',
-                    'operacion-linea-smt-unique-container',
-                    'inventario-imd-terminado-unique-container',
-                    'control-cuchillas-corte-unique-container',
-                    'Control de produccion SMT-unique-container',
-                    'crear-plan-micom-unique-container',
-                    'line-material-status-unique-container',
-                    'bom-management-process-unique-container',
-                    'control-salida-lineas-unique-container'
-                ];
-
-                controlProcesoContainers.forEach(containerId => {
-                    const container = document.getElementById(containerId);
-                    if (container) container.style.display = 'none';
-                });
-
-                // PASO 6: Limpiar cualquier contenido visible en el área de Información Básica
-                const informacionBasicaArea = document.getElementById('informacion-basica-content-area');
-                if (informacionBasicaArea) {
-                    // Ocultar todos los divs hijos que puedan tener contenido visible
-                    const allChildDivs = informacionBasicaArea.querySelectorAll('div[id$="-container"]');
-                    allChildDivs.forEach(div => {
-                        if (div.id !== 'control-bom-info-container') {
-                            div.style.display = 'none';
-                        }
-                    });
-                    // Aplicar estilos de ancho completo al área
-                    informacionBasicaArea.style.display = 'block';
-                    informacionBasicaArea.style.width = '100%';
-                    informacionBasicaArea.style.maxWidth = 'none';
-                    informacionBasicaArea.style.margin = '0';
-                    informacionBasicaArea.style.padding = '0';
-                }
-
-                // PASO 7: Mostrar el contenedor de Control de BOM de Información Básica
                 const container = document.getElementById('control-bom-info-container');
                 if (container) {
                     container.style.display = 'block';
                     container.style.width = '100%';
-                    container.style.maxWidth = 'none';
-                    container.style.margin = '0';
-                    container.style.padding = '0';
 
-                    // PASO 8: Cargar el contenido dinámicamente (esto también ejecuta cleanup)
-                    cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom')
-                        .then(() => {
-                            // Inicializar event listeners si existen
-                            if (typeof window.initializeControlBOMEventListeners === 'function') {
-                                window.initializeControlBOMEventListeners();
-                            }
-                        })
-                        .catch(error => {
-                            console.error(' Error cargando Control de BOM de Información Básica:', error);
-                            // El error ya se muestra en cargarContenidoDinamico, no hacer nada más aquí
-                        });
+                    cargarContenidoDinamico('control-bom-info-container', '/informacion_basica/control_de_bom', () => {
+                        if (typeof window.initializeControlBOMEventListeners === 'function') {
+                            window.initializeControlBOMEventListeners();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error cargando Control de BOM de Información Básica:', error);
+                    });
                 }
             };
 
@@ -2695,29 +2670,18 @@ function hideAllMaterialContainers() {
             };
 
             // Función global para mostrar Crear Plan de Producción
+            // Refactor WF_002: usar helper prepararPanelSeccion + contenedor unique
             window.mostrarCrearPlanProduccion = function() {
-                hideAllMaterialContainers();
-                produccionContentArea.style.display = 'block';
-                produccionInfoContainer.style.display = 'block';
+                prepararPanelSeccion('produccion');
 
-                // IMPORTANTE: Ocultar contenedor de material
-                materialContentArea.style.display = 'none';
+                const container = document.getElementById('crear-plan-produccion-unique-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
 
-                // Cargar contenido dinámicamente de Crear Plan de Producción en el contenedor de producción
-                cargarContenidoDinamico('produccion-info-container', '/control_produccion/crear_plan', () => {
-                    // Después de cargar, asegurar que el contenedor esté visible
-                    const planContainer = document.querySelector('#plan-produccion-main-container-unique');
-                    if (planContainer) {
-                        planContainer.style.display = 'block';
-                        planContainer.style.visibility = 'visible';
-                        planContainer.style.opacity = '1';
-                        // // // // // // console.log('Crear Plan de Producción cargado y mostrado correctamente');
-                    }
-
-                    // Inicializar el módulo de Crear Plan de Producción
+                cargarContenidoDinamico('crear-plan-produccion-unique-container', '/control_produccion/crear_plan', () => {
                     if (typeof window.initCrearPlanProduccion === 'function') {
                         window.initCrearPlanProduccion();
-                        // // // // // // console.log('Módulo Crear Plan de Producción inicializado');
                     } else {
                         console.warn('Función initCrearPlanProduccion no encontrada');
                     }
@@ -3166,17 +3130,42 @@ function hideAllMaterialContainers() {
             // ========================================================
             // Funciones padre de navbar (cumplen WF_002 via helper)
             // ========================================================
+            // Helper: cuando switchTab esta navegando entre secciones
+            // (__pendingSwitchToContainer seteado), NO cargar el placeholder
+            // default porque ya sabemos a qué tab vamos. Evita el parpadeo
+            // "info default -> tab pedido".
+            function _pendingTabSwitch() {
+                return !!window.__pendingSwitchToContainer;
+            }
+
+            // Helper: cargar el sidebar de una seccion SOLO si no ha
+            // sido cargado antes. Asi al navegar entre tabs cross-section
+            // no se re-fetchea el sidebar cada vez (cero parpadeo).
+            // Usa un marcador dataset.sidebarCargado en el contenedor.
+            function cargarSidebarSiNoExiste(containerId, ruta) {
+                const cont = document.getElementById(containerId);
+                if (cont && cont.dataset.sidebarCargado === '1') {
+                    return Promise.resolve();
+                }
+                return cargarSidebarDinamico(containerId, ruta).then(() => {
+                    if (cont) cont.dataset.sidebarCargado = '1';
+                });
+            }
+
             window.mostrarControlMaterial = function() {
                 hideAllContent();
                 prepararPanelSeccion('material');
                 hideAllInformacionBasicaContainers();
-                cargarContenidoDinamico('control-material-content', '/listas/control_material')
+                cargarSidebarSiNoExiste('control-material-content', '/listas/control_material')
                     .catch(error => console.error('Error cargando Control de Material:', error));
             };
 
             window.mostrarControlProduccion = function() {
                 hideAllContent();
                 prepararPanelSeccion('produccion');
+                cargarSidebarSiNoExiste('control-produccion-content', '/listas/control_produccion')
+                    .catch(error => console.error('Error cargando Control de Producción:', error));
+                if (_pendingTabSwitch()) return;
                 const produccionInfo = document.getElementById('produccion-info-container');
                 if (produccionInfo) produccionInfo.style.display = 'block';
                 cargarContenidoDinamico('produccion-info-container', '/produccion/info')
@@ -3186,28 +3175,21 @@ function hideAllMaterialContainers() {
             window.mostrarControlProceso = function() {
                 hideAllContent();
                 prepararPanelSeccion('proceso');
+                cargarSidebarSiNoExiste('control-proceso-content', '/listas/control_proceso')
+                    .catch(error => console.error('Error cargando Control de Proceso:', error));
+                if (_pendingTabSwitch()) return;
                 const procesoInfo = document.getElementById('control-proceso-info-container');
                 if (procesoInfo) procesoInfo.style.display = 'block';
-                cargarContenidoDinamico('control-proceso-content', '/listas/control_proceso')
-                    .catch(error => console.error('Error cargando Control de Proceso:', error));
             };
 
             window.mostrarControlResultados = function() {
                 hideAllContent();
                 prepararPanelSeccion('resultados');
+                cargarSidebarSiNoExiste('control-resultados-content', '/listas/control_resultados')
+                    .catch(error => console.error('Error cargando Control de Resultados:', error));
+                if (_pendingTabSwitch()) return;
                 const resultadosInfo = document.getElementById('control-resultados-info-container');
                 if (resultadosInfo) resultadosInfo.style.display = 'block';
-                cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
-                    .then(() => {
-                        // Refuerzo: asegurar visibilidad tras carga AJAX
-                        const area = document.getElementById('control-resultados-content-area');
-                        if (area) area.style.display = 'block';
-                        if (resultadosInfo) resultadosInfo.style.display = 'block';
-                    })
-                    .catch(error => {
-                        console.error('Error cargando Control de Resultados:', error);
-                        if (resultadosInfo) resultadosInfo.style.display = 'block';
-                    });
             };
 
             // Función global para ocultar el contenido de almacén
@@ -3221,17 +3203,32 @@ function hideAllMaterialContainers() {
                 prepararPanelInformacionBasica();
 
                 const mostrarDefault = () => {
+                    if (window.__pendingSwitchToContainer) return;
                     const defaultContainer = document.getElementById('info-basica-default-container');
                     if (defaultContainer) defaultContainer.style.display = 'block';
                 };
 
+                // Cache: si ya cargamos antes el sidebar de Info Basica,
+                // no re-fetchear. Solo mostrar el placeholder default.
+                const sb = document.getElementById('informacion-basica-content');
+                if (sb && sb.dataset.sidebarCargado === '1') {
+                    mostrarDefault();
+                    return Promise.resolve();
+                }
+
                 return cargarSidebarDinamico('informacion-basica-content', '/listas/informacion_basica?v=20260520d')
-                    .then(mostrarDefault)
+                    .then(() => {
+                        if (sb) sb.dataset.sidebarCargado = '1';
+                        mostrarDefault();
+                    })
                     .catch(error => {
                         console.error('Error cargando Información Básica:', error);
                         mostrarDefault();
                     });
             };
+
+            // Persistencia de pestaña activa: la maneja scriptMain.js
+            // (ver STORAGE_KEY_NAV_SM y guardarPestanaActivaSM alli).
 
             navButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -3262,10 +3259,6 @@ function hideAllMaterialContainers() {
                         // Usar la función dedicada que maneja correctamente los contenedores
                         window.mostrarControlProduccion();
 
-                        // Cargar contenido dinámicamente en el sidebar
-                        cargarContenidoDinamico('control-produccion-content', '/listas/control_produccion')
-                            .catch(error => console.error('Error cargando Control de Producción:', error));
-
                     } else if (this.id === 'Control de proceso') {
                         // Usar la función global para mostrar Control de Proceso
                         window.mostrarControlProceso();
@@ -3273,7 +3266,7 @@ function hideAllMaterialContainers() {
                     } else if (this.id === 'Control de calidad') {
                         hideAllContent();
                         prepararPanelSeccion('calidad');
-                        cargarContenidoDinamico('control-calidad-content', '/listas/control_calidad')
+                        cargarSidebarSiNoExiste('control-calidad-content', '/listas/control_calidad')
                             .catch(error => console.error('Error cargando Control de Calidad:', error));
 
                     } else if (this.id === 'Control de resultados') {
@@ -3283,20 +3276,20 @@ function hideAllMaterialContainers() {
                         } else {
                             hideAllContent();
                             prepararPanelSeccion('resultados');
-                            cargarContenidoDinamico('control-resultados-content', '/listas/control_resultados')
+                            cargarSidebarSiNoExiste('control-resultados-content', '/listas/control_resultados')
                                 .catch(error => console.error('Error cargando Control de Resultados:', error));
                         }
 
                     } else if (this.id === 'Control de reporte') {
                         hideAllContent();
                         prepararPanelSeccion('reporte');
-                        cargarContenidoDinamico('control-reporte-content', '/listas/control_reporte')
+                        cargarSidebarSiNoExiste('control-reporte-content', '/listas/control_reporte')
                             .catch(error => console.error('Error cargando Control de Reporte:', error));
 
                     } else if (this.id === 'Configuración de programa') {
                         hideAllContent();
                         prepararPanelSeccion('configuracion');
-                        cargarContenidoDinamico('configuracion-programa-content', '/listas/configuracion_programa')
+                        cargarSidebarSiNoExiste('configuracion-programa-content', '/listas/configuracion_programa')
                             .catch(error => console.error('Error cargando Configuración de Programa:', error));
 
                     } else {
@@ -3314,19 +3307,8 @@ function hideAllMaterialContainers() {
             materialContentArea.style.display = 'none';
             hideAllMaterialContainers();
 
-            // Activar por defecto la primera pestaña (Información Básica) si no hay ninguna activa
-            const activeButton = document.querySelector('.nav-button.active');
-            if (!activeButton) {
-                const infoBasicaButton = document.getElementById('Información Basica');
-                if (infoBasicaButton) {
-                    infoBasicaButton.classList.add('active');
-                }
-            }
-
-            const selectedButton = document.querySelector('.nav-button.active');
-            if (selectedButton && selectedButton.id === 'Información Basica') {
-                window.mostrarInformacionBasica();
-            }
+            // Restauracion de pestaña activa: la hace scriptMain.js
+            // para evitar conflictos con su listener de navbar.
         });
 
         // Función para confirmar logout

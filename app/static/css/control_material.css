@@ -1,11 +1,15 @@
 /* Estilos específicos para Control de Material que complementan style.css */
 
-/* Contenedor principal */
-.material-container {
+/* Contenedor principal del modulo Control de Material.
+   Acotado a #control-material-container para no afectar al
+   wrapper #material-container del MaterialTemplate (que ya tiene
+   su propio sizing y NO debe heredar min-height:100vh, eso
+   causa contenidos empujados hacia abajo cuando hay tabs). */
+#control-material-container,
+.material-container#control-material-container {
     font-family: 'LG regular', sans-serif;
     background-color: #32323E;
     color: lightgray;
-    min-height: 100vh;
     padding: 5px;
 }
 
