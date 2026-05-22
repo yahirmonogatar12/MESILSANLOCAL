@@ -444,6 +444,47 @@ function escapePlanHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function partNoWithBomRevision(plan) {
+  const partNo = escapePlanHtml(plan?.part_no || '');
+  const bomRev = String(plan?.assigned_bom_rev || '').trim();
+  if (!bomRev) return partNo;
+  return `${partNo}<div style="font-size:10px; color:#7fb3d5; opacity:.9;">BOM rev ${escapePlanHtml(bomRev)}</div>`;
+}
+
+async function loadPlanBomRevisionOptions(partNo, selectedRev, selectEl) {
+  if (!selectEl) return;
+  selectEl.disabled = true;
+  selectEl.innerHTML = '<option value="">Automatico - revision vigente</option>';
+  if (!partNo) {
+    selectEl.disabled = false;
+    return;
+  }
+  try {
+    const response = await axios.get(`/api/plan/bom-revisions?part_no=${encodeURIComponent(partNo)}`);
+    const revisions = Array.isArray(response.data?.data) ? response.data.data : [];
+    revisions.forEach((row) => {
+      const option = document.createElement('option');
+      option.value = row.bom_rev || '';
+      const labels = [`BOM rev ${row.bom_rev}`];
+      if (row.is_current) labels.push('vigente');
+      if (row.eco_no) labels.push(`ECO ${row.eco_no}${row.eco_effective_at ? ` ${String(row.eco_effective_at).slice(0, 10)}` : ''}`);
+      option.textContent = labels.join(' - ');
+      selectEl.appendChild(option);
+    });
+    selectEl.value = selectedRev || '';
+  } catch (error) {
+    const option = document.createElement('option');
+    option.value = selectedRev || '';
+    option.textContent = selectedRev
+      ? `BOM rev ${selectedRev} - catalogo no disponible`
+      : 'No se pudieron cargar revisiones KS';
+    selectEl.appendChild(option);
+    selectEl.value = selectedRev || '';
+  } finally {
+    selectEl.disabled = false;
+  }
+}
+
 // Cargar planes
 async function loadPlans() {
   try {
@@ -485,7 +526,7 @@ async function loadPlans() {
         <td>${r.line}</td>
         <td>${routingToTurno(r.routing)}</td>
         <td>${r.model_code}</td>
-        <td>${r.part_no}</td>
+        <td>${partNoWithBomRevision(r)}</td>
         <td>${r.project}</td>
         <td>${r.process || ""}</td>
         <td>${r.ct || "0"}</td>
@@ -783,6 +824,11 @@ async function openEditModal(lotNo) {
     form.wo_code.value = plan.wo_code || "";
     form.po_code.value = plan.po_code || "";
     form.line.value = plan.line;
+    await loadPlanBomRevisionOptions(
+      plan.part_no,
+      plan.assigned_bom_rev,
+      document.getElementById('plan-edit-assigned-bom-rev')
+    );
 
     // *** NUEVO: Cambiar botón según estado del plan ***
     const cancelBtn = document.getElementById('plan-cancelBtn');
@@ -2308,7 +2354,7 @@ function renderTableWithVisualGroups(data) {
         <td>${plan.line}</td>
         <td>${routingToTurno(plan.routing)}</td>
         <td>${plan.model_code}</td>
-        <td>${plan.part_no}</td>
+        <td>${partNoWithBomRevision(plan)}</td>
         <td>${plan.project}</td>
         <td>${plan.process || ""}</td>
         <td>${plan.ct || "0"}</td>
@@ -3035,7 +3081,7 @@ function renderCurrentVisualGroups() {
         <td>${plan.line}</td>
         <td>${routingToTurno(plan.routing)}</td>
         <td>${plan.model_code}</td>
-        <td>${plan.part_no}</td>
+        <td>${partNoWithBomRevision(plan)}</td>
         <td>${plan.project}</td>
         <td>${plan.process || ""}</td>
         <td>${plan.ct || "0"}</td>
@@ -3632,7 +3678,7 @@ function renderTableByLines(filterLine) {
         <td>${plan.line || ''}</td>
         <td>${routingToTurno(plan.routing)}</td>
         <td>${plan.model_code || ''}</td>
-        <td>${plan.part_no || ''}</td>
+        <td>${partNoWithBomRevision(plan)}</td>
         <td>${plan.project || ''}</td>
         <td>${plan.process || ''}</td>
         <td>${plan.ct || '0'}</td>
@@ -3992,6 +4038,11 @@ function createModalsInBody() {
 
           <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Line:</label>
           <input type="text" name="line" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
+
+          <label style="color: #ecf0f1; font-size: clamp(11px, 2.5vw, 13px); margin-bottom: -8px;">Revision BOM:</label>
+          <select name="assigned_bom_rev" id="plan-edit-assigned-bom-rev" class="plan-input" style="background: #2B2D3E; color: lightgray; border: 1px solid #20688C; padding: 10px 8px; border-radius: 4px; font-size: clamp(12px, 3vw, 14px); width: 100%; box-sizing: border-box;">
+            <option value="">Automatico - revision vigente</option>
+          </select>
 
           <div class="form-actions-with-gap" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">

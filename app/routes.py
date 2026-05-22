@@ -3535,6 +3535,7 @@ def _fp_generate_lot_no(fecha: datetime):
 @login_requerido
 def api_plan_list():
     try:
+        _ensure_plan_bom_assignment_columns()
         start = request.args.get("start")
         end = request.args.get("end")
         where = []
@@ -3554,7 +3555,8 @@ def api_plan_list():
             "SELECT id, lot_no, wo_code, po_code, working_date, line, routing, model_code, part_no, project, process, "
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS input, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
-            "COALESCE(produced_count,0) AS produced, status, group_no, sequence FROM plan_main"
+            "COALESCE(produced_count,0) AS produced, status, group_no, sequence, "
+            "assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at FROM plan_main"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -3589,9 +3591,188 @@ def api_plan_list():
                     "status": r.get("status") if isinstance(r, dict) else r[18],
                     "group_no": r.get("group_no") if isinstance(r, dict) else r[19],
                     "sequence": r.get("sequence") if isinstance(r, dict) else r[20],
+                    "assigned_bom_rev": r.get("assigned_bom_rev") if isinstance(r, dict) else r[21],
+                    "assigned_bom_rev_by": r.get("assigned_bom_rev_by") if isinstance(r, dict) else r[22],
+                    "assigned_bom_rev_at": str(
+                        (r.get("assigned_bom_rev_at") if isinstance(r, dict) else r[23]) or ""
+                    ),
                 }
             )
         return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+_PLAN_BOM_ASSIGNMENT_COLUMNS_READY = False
+
+
+def _ensure_plan_bom_assignment_columns():
+    """Keep plan schema compatible with explicit KS BOM revision assignment."""
+    global _PLAN_BOM_ASSIGNMENT_COLUMNS_READY
+    if _PLAN_BOM_ASSIGNMENT_COLUMNS_READY:
+        return
+    for table_name in ("plan_main", "plan_imd"):
+        columns = (
+            ("assigned_bom_rev", "assigned_bom_rev VARCHAR(64) NULL"),
+            ("assigned_bom_rev_by", "assigned_bom_rev_by VARCHAR(100) NULL"),
+            ("assigned_bom_rev_at", "assigned_bom_rev_at DATETIME NULL"),
+        )
+        for column_name, definition in columns:
+            existing = execute_query(
+                f"SHOW COLUMNS FROM {table_name} LIKE %s",
+                (column_name,),
+                fetch="one",
+            )
+            if not existing:
+                execute_query(f"ALTER TABLE {table_name} ADD COLUMN {definition}")
+    _PLAN_BOM_ASSIGNMENT_COLUMNS_READY = True
+
+
+def _ks_current_bom_revision(part_no):
+    plant_date = obtener_fecha_hora_mexico().strftime("%Y-%m-%d")
+    row = execute_query(
+        """
+        SELECT bom_rev
+        FROM v_ecos_bom_current
+        WHERE UPPER(bom_part_no) = UPPER(%s)
+          AND status_name = '사용'
+          AND (valid_from IS NULL OR valid_from <= %s)
+          AND (valid_to IS NULL OR valid_to >= %s)
+        GROUP BY bom_rev
+        ORDER BY MAX(header_synced_at) DESC, bom_rev DESC
+        LIMIT 1
+        """,
+        (part_no, plant_date, plant_date),
+        fetch="one",
+    )
+    return (row or {}).get("bom_rev") if isinstance(row, dict) else (row[0] if row else None)
+
+
+def _eco_for_part_revision(part_no, bom_rev):
+    return execute_query(
+        """
+        SELECT ec.eco_no, ec.effective_at, ec.status
+        FROM engineering_changes ec
+        WHERE (
+            UPPER(ec.part_no) = UPPER(%s)
+            AND UPPER(ec.bom_revision) = UPPER(%s)
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM engineering_change_scope ecs
+            WHERE ecs.engineering_change_id = ec.id
+              AND UPPER(ecs.part_no) = UPPER(%s)
+              AND UPPER(COALESCE(NULLIF(ecs.bom_revision, ''), ec.bom_revision)) = UPPER(%s)
+          )
+        ORDER BY ec.effective_at DESC, ec.id DESC
+        LIMIT 1
+        """,
+        (part_no, bom_rev, part_no, bom_rev),
+        fetch="one",
+    )
+
+
+def _plan_bom_revision_catalog(part_no):
+    normalized_part = str(part_no or "").strip().upper()
+    current_rev = _ks_current_bom_revision(normalized_part)
+    rows = execute_query(
+        """
+        SELECT bom_rev, synced_at
+        FROM ks_bom_headers
+        WHERE UPPER(part_no) = UPPER(%s)
+        ORDER BY synced_at DESC, bom_rev DESC
+        """,
+        (normalized_part,),
+        fetch="all",
+    ) or []
+    revisions = []
+    for row in rows:
+        bom_rev = row.get("bom_rev") if isinstance(row, dict) else row[0]
+        eco = _eco_for_part_revision(normalized_part, bom_rev) or {}
+        effective_at = eco.get("effective_at") if isinstance(eco, dict) else None
+        revisions.append(
+            {
+                "bom_rev": bom_rev,
+                "is_current": str(bom_rev or "").upper() == str(current_rev or "").upper(),
+                "eco_no": eco.get("eco_no") if isinstance(eco, dict) else None,
+                "eco_effective_at": str(effective_at or "") if effective_at else None,
+                "eco_status": eco.get("status") if isinstance(eco, dict) else None,
+            }
+        )
+    return revisions
+
+
+def _plan_has_ks_snapshot(plan_id, modo):
+    snapshot_table = execute_query(
+        "SHOW TABLES LIKE 'plan_ks_bom_snapshot'",
+        fetch="one",
+    )
+    if not snapshot_table:
+        return False
+    row = execute_query(
+        """
+        SELECT id
+        FROM plan_ks_bom_snapshot
+        WHERE plan_id = %s AND UPPER(modo) = UPPER(%s)
+        LIMIT 1
+        """,
+        (int(plan_id), modo),
+        fetch="one",
+    )
+    return bool(row)
+
+
+def _validate_plan_bom_assignment(table_name, lot_no, modo, assigned_bom_rev):
+    normalized_rev = str(assigned_bom_rev or "").strip().upper() or None
+    plan = execute_query(
+        f"""
+        SELECT id, part_no, status, started_at, assigned_bom_rev
+        FROM {table_name}
+        WHERE lot_no = %s
+        LIMIT 1
+        """,
+        (lot_no,),
+        fetch="one",
+    )
+    if not plan:
+        return None, "Plan no encontrado"
+
+    current_rev = str(plan.get("assigned_bom_rev") or "").strip().upper() or None
+    if normalized_rev == current_rev:
+        return normalized_rev, None
+
+    status = str(plan.get("status") or "").strip().upper()
+    if plan.get("started_at") or status in ("RUNNING", "EN PROGRESO"):
+        return None, "No se puede cambiar la revision BOM de un plan iniciado"
+    if _plan_has_ks_snapshot(plan.get("id"), modo):
+        return None, "No se puede cambiar la revision BOM: Verificacion ya congelo snapshot del plan"
+
+    if normalized_rev:
+        exists = execute_query(
+            """
+            SELECT part_no
+            FROM ks_bom_headers
+            WHERE UPPER(part_no) = UPPER(%s)
+              AND UPPER(bom_rev) = UPPER(%s)
+            LIMIT 1
+            """,
+            (plan.get("part_no"), normalized_rev),
+            fetch="one",
+        )
+        if not exists:
+            return None, f"Revision BOM {normalized_rev} no existe en KS para {plan.get('part_no')}"
+    return normalized_rev, None
+
+
+@app.route("/api/plan/bom-revisions", methods=["GET"])
+@login_requerido
+def api_plan_bom_revisions():
+    try:
+        _ensure_plan_bom_assignment_columns()
+        part_no = (request.args.get("part_no") or "").strip()
+        if not part_no:
+            return jsonify({"error": "part_no requerido"}), 400
+        return jsonify({"success": True, "data": _plan_bom_revision_catalog(part_no)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -4248,6 +4429,7 @@ def api_plan_create():
 @login_requerido
 def api_plan_update():
     try:
+        _ensure_plan_bom_assignment_columns()
         data = request.get_json() or {}
         lot_no = data.get("lot_no")
         if not lot_no:
@@ -4288,6 +4470,23 @@ def api_plan_update():
         if "model_code" in data:
             fields.append("model_code = %s")
             vals.append(str(data.get("model_code")))
+        if "assigned_bom_rev" in data:
+            assigned_bom_rev, assignment_error = _validate_plan_bom_assignment(
+                "plan_main",
+                lot_no,
+                "MAIN",
+                data.get("assigned_bom_rev"),
+            )
+            if assignment_error:
+                return jsonify({"error": assignment_error}), 409
+            fields.extend(
+                [
+                    "assigned_bom_rev = %s",
+                    "assigned_bom_rev_by = %s",
+                    "assigned_bom_rev_at = NOW()",
+                ]
+            )
+            vals.extend([assigned_bom_rev, session.get("usuario", "desconocido")])
         if not fields:
             return jsonify({"error": "Sin cambios"}), 400
         fields.append("updated_at = NOW()")
@@ -4866,6 +5065,7 @@ def api_plan_export_excel():
 def api_plan_imd_list():
     """Listar planes de la tabla plan_imd"""
     try:
+        _ensure_plan_bom_assignment_columns()
         start = request.args.get("start")
         end = request.args.get("end")
         where = []
@@ -4884,7 +5084,7 @@ def api_plan_imd_list():
             "SELECT id, lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS produced_count, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
-            "status, group_no, sequence, routing FROM plan_imd"
+            "status, group_no, sequence, routing, assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at FROM plan_imd"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -4921,6 +5121,11 @@ def api_plan_imd_list():
                     "group_no": r.get("group_no") if isinstance(r, dict) else r[18],
                     "sequence": r.get("sequence") if isinstance(r, dict) else r[19],
                     "routing": r.get("routing") if isinstance(r, dict) else r[20],
+                    "assigned_bom_rev": r.get("assigned_bom_rev") if isinstance(r, dict) else r[21],
+                    "assigned_bom_rev_by": r.get("assigned_bom_rev_by") if isinstance(r, dict) else r[22],
+                    "assigned_bom_rev_at": str(
+                        (r.get("assigned_bom_rev_at") if isinstance(r, dict) else r[23]) or ""
+                    ),
                 }
             )
         return jsonify(data)
@@ -5055,6 +5260,7 @@ def api_plan_imd_batch_update():
 def api_plan_imd_update():
     """Actualizar un plan IMD"""
     try:
+        _ensure_plan_bom_assignment_columns()
         data = request.get_json() or {}
         lot_no = data.get("lot_no")
         if not lot_no:
@@ -5084,6 +5290,23 @@ def api_plan_imd_update():
             if field in data:
                 sets.append(f"{field} = %s")
                 vals.append(data[field])
+        if "assigned_bom_rev" in data:
+            assigned_bom_rev, assignment_error = _validate_plan_bom_assignment(
+                "plan_imd",
+                lot_no,
+                "IMD",
+                data.get("assigned_bom_rev"),
+            )
+            if assignment_error:
+                return jsonify({"error": assignment_error}), 409
+            sets.extend(
+                [
+                    "assigned_bom_rev = %s",
+                    "assigned_bom_rev_by = %s",
+                    "assigned_bom_rev_at = NOW()",
+                ]
+            )
+            vals.extend([assigned_bom_rev, session.get("usuario", "desconocido")])
 
         if not sets:
             return jsonify({"error": "No hay campos para actualizar"}), 400
@@ -6415,6 +6638,7 @@ def api_plan_smt_import_excel():
 @login_requerido
 def api_plan_main_list():
     try:
+        _ensure_plan_bom_assignment_columns()
         q = request.args.get("q", "").strip()
         linea = request.args.get("linea")
         desde = request.args.get("desde")
@@ -6439,7 +6663,8 @@ def api_plan_main_list():
             where.append("status = 'PLAN'")
         sql = (
             "SELECT id, lot_no, part_no, model_code, line, working_date, COALESCE(plan_count,0) AS qty, COALESCE(produced_count,0) AS producido, "
-            "GREATEST(COALESCE(plan_count,0)-COALESCE(produced_count,0),0) AS falta, COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, status, process "
+            "GREATEST(COALESCE(plan_count,0)-COALESCE(produced_count,0),0) AS falta, COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, status, process, "
+            "assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at "
             "FROM plan_main"
         )
         if where:
@@ -6472,6 +6697,11 @@ def api_plan_main_list():
                     "uph": r["uph"] if isinstance(r, dict) else r[10],
                     "estatus": r["status"] if isinstance(r, dict) else r[11],
                     "process": r["process"] if isinstance(r, dict) else r[12],
+                    "assigned_bom_rev": r["assigned_bom_rev"] if isinstance(r, dict) else r[13],
+                    "assigned_bom_rev_by": r["assigned_bom_rev_by"] if isinstance(r, dict) else r[14],
+                    "assigned_bom_rev_at": str(
+                        (r["assigned_bom_rev_at"] if isinstance(r, dict) else r[15]) or ""
+                    ),
                 }
             )
         return jsonify(out)
@@ -6726,18 +6956,33 @@ def listar_modelos_bom():
 @login_requerido
 def listar_bom():
     """
-    Lista los registros de BOM, opcionalmente filtrados por modelo y classification
+    Lista los registros de BOM, opcionalmente filtrados por modelo, revision y classification
     """
     try:
         data = request.get_json()
         modelo = data.get("modelo", "todos") if data else "todos"
         classification = data.get("classification", None) if data else None
+        bom_revision = data.get("bom_revision", None) if data else None
 
-        bom_data = listar_bom_por_modelo(modelo, classification)
+        bom_data = listar_bom_por_modelo(modelo, classification, bom_revision)
         return jsonify(bom_data)
 
     except Exception as e:
         print(f"Error al listar BOM: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/bom/revisions", methods=["GET"])
+@login_requerido
+def api_bom_revisions():
+    """Catalogo KS de revisiones disponibles para Control BOM."""
+    try:
+        modelo = (request.args.get("modelo") or request.args.get("part_no") or "").strip()
+        if not modelo:
+            return jsonify({"error": "modelo requerido"}), 400
+        return jsonify({"success": True, "data": _plan_bom_revision_catalog(modelo)})
+    except Exception as e:
+        print(f"Error al listar revisiones BOM KS: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -7627,7 +7872,7 @@ def buscar_material_por_numero_parte():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-def exportar_bom_a_excel(modelo=None, classification=None):
+def exportar_bom_a_excel(modelo=None, classification=None, bom_revision=None):
     """
     Función auxiliar para exportar datos de BOM a Excel con filtros opcionales
     """
@@ -7635,11 +7880,12 @@ def exportar_bom_a_excel(modelo=None, classification=None):
         import os
         import tempfile
 
-        result = listar_bom_por_modelo(modelo or "todos", classification)
+        result = listar_bom_por_modelo(modelo or "todos", classification, bom_revision)
 
         if not result:
             print(
-                f"No se encontraron datos de BOM para exportar (modelo={modelo}, classification={classification})"
+                "No se encontraron datos de BOM para exportar "
+                f"(modelo={modelo}, classification={classification}, bom_revision={bom_revision})"
             )
             return None
 
@@ -7706,19 +7952,22 @@ def exportar_bom_a_excel(modelo=None, classification=None):
 @login_requerido
 def exportar_excel_bom():
     """
-    Exporta datos de BOM a un archivo Excel, filtrados por modelo y classification
+    Exporta datos de BOM a un archivo Excel, filtrados por modelo, revision y classification
     """
     try:
         # Obtener parámetros de consulta
         modelo = request.args.get("modelo", None)
         classification = request.args.get("classification", None)
+        bom_revision = request.args.get("bom_revision", None)
 
         if modelo and modelo.strip() and modelo != "todos":
             # Exportar modelo específico con filtro opcional de classification
-            archivo_temp = exportar_bom_a_excel(modelo, classification)
+            archivo_temp = exportar_bom_a_excel(modelo, classification, bom_revision)
 
             # Construir nombre del archivo
             nombre_base = f"bom_export_{modelo}"
+            if bom_revision:
+                nombre_base += f"_{bom_revision}"
             if classification and classification != "TODOS":
                 nombre_base += f"_{classification}"
             download_name = (
@@ -7726,7 +7975,7 @@ def exportar_excel_bom():
             )
         else:
             # Exportar todos con filtro opcional
-            archivo_temp = exportar_bom_a_excel(None, classification)
+            archivo_temp = exportar_bom_a_excel(None, classification, bom_revision)
             nombre_base = "bom_export_todos"
             if classification and classification != "TODOS":
                 nombre_base += f"_{classification}"
