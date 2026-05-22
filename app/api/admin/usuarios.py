@@ -98,7 +98,7 @@ except ImportError as e:
     MySQLdb = None
 
 
-bp = Blueprint("user_admin", __name__)
+bp = Blueprint("user_admin", __name__, url_prefix="/admin")
 
 DEFAULT_USER_DEPARTMENTS = [
     'Almacén',

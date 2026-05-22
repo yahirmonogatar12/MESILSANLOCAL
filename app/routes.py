@@ -57,10 +57,10 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 
-from .admin_api import admin_bp
-# api_po_wo migrado a app/api/control_produccion/po_wo.py
-# api_raw_modelos migrado a app/api/shared/raw_modelos.py
-# Ambos se registran via registrar_blueprints_api() en app_factory.py
+# Migrados a app/api/ y registrados via registrar_blueprints_api() en app_factory.py:
+#   admin_api          -> app/api/admin/permisos.py
+#   api_po_wo          -> app/api/control_produccion/po_wo.py
+#   api_raw_modelos    -> app/api/shared/raw_modelos.py
 
 # Importar sistema de autenticación mejorado
 from .auth_system import AuthSystem, ECO_CREATE_PERMISSION
@@ -153,7 +153,7 @@ from .services.ict_lgd_parser import (
 )
 # tickets_portal migrado a app/api/portal/tickets.py
 # Se registra via registrar_blueprints_api() en app_factory.py
-from .user_admin import user_admin_bp
+# user_admin migrado a app/api/admin/usuarios.py
 
 app = Flask(__name__)
 app.secret_key = os.getenv(
@@ -233,14 +233,9 @@ def api_health():
         }
     )
 
-# SMT Routes Simple
-try:
-    from .smt_routes_date_fixed import smt_bp
-
-    app.register_blueprint(smt_bp)
-    print(" SMT Routes Simple registradas")
-except Exception as e:
-    print(f" Error importando SMT Routes Simple: {e}")
+# smt_routes_date_fixed migrado a app/api/control_calidad/smt_historial_simple.py
+# smt_routes_clean      migrado a app/api/control_calidad/smt_historial.py
+# Ambos se registran via registrar_blueprints_api() en app_factory.py
 
 
 @app.route("/smt-simple")
@@ -249,9 +244,8 @@ def smt_simple():
     return render_template("smt_simple.html")
 
 
-app.register_blueprint(user_admin_bp, url_prefix="/admin")
-app.register_blueprint(admin_bp)
-
+# user_admin (con url_prefix="/admin") y admin_bp ahora se registran
+# desde app/api/__init__.py via registrar_blueprints_api()
 # tickets_portal: registro movido a app/api/__init__.py
 
 

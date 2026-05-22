@@ -8,16 +8,16 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarReparacion">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Control de item de reparacion" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Control de item de reparacion"
                             data-permiso-boton="Control de resultado de reparacion"
-                            onclick="window.parent.mostrarControlResultadoReparacion ? window.parent.mostrarControlResultadoReparacion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-resultado-reparacion-ajax') : window.location.href='/control-resultado-reparacion-ajax')">Control de resultado de reparacion</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Control de item de reparacion" 
+                            onclick="window.parent.mostrarControlResultadoReparacion ? window.parent.mostrarControlResultadoReparacion() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-resultado-reparacion-unique-container', '/control-resultado-reparacion-ajax') : window.location.href='/control-resultado-reparacion-ajax')">Control de resultado de reparacion</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Control de item de reparacion"
                             data-permiso-boton="Control de item reparado"
-                            onclick="window.parent.mostrarControlItemReparado ? window.parent.mostrarControlItemReparado() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-item-reparado-ajax') : window.location.href='/control-item-reparado-ajax')">Control de item reparado</li>
+                            onclick="window.parent.mostrarControlItemReparado ? window.parent.mostrarControlItemReparado() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-item-reparado-unique-container', '/control-item-reparado-ajax') : window.location.href='/control-item-reparado-ajax')">Control de item reparado</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -27,16 +27,16 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarMSL">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Historial de material" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Historial de material"
                             data-permiso-boton="Historial de cambio de material de SMT"
-                            onclick="window.parent.mostrarHistorialSMT ? window.parent.mostrarHistorialSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-cambio-smt-container', '/historial-cambio-material-smt-ajax') : window.location.href='/historial-cambio-material-smt')">Historial de cambio de material de SMT</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Historial de material" 
+                            onclick="window.parent.mostrarHistorialSMT ? window.parent.mostrarHistorialSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-cambio-smt-unique-container', '/historial-cambio-material-smt-ajax') : window.location.href='/historial-cambio-material-smt')">Historial de cambio de material de SMT</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Historial de material"
                             data-permiso-boton="Historial de cambio de material por maquina"
-                            onclick="window.parent.mostrarHistorialCambioMaterialMaquina ? window.parent.mostrarHistorialCambioMaterialMaquina() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-cambio-material-maquina-ajax') : window.location.href='/historial-cambio-material-maquina-ajax')">Historial de cambio de material por maquina</li> 
+                            onclick="window.parent.mostrarHistorialCambioMaterialMaquina ? window.parent.mostrarHistorialCambioMaterialMaquina() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-cambio-material-maquina-unique-container', '/historial-cambio-material-maquina-ajax') : window.location.href='/historial-cambio-material-maquina-ajax')">Historial de cambio de material por maquina</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -46,21 +46,21 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarReporte">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Historial de Sub Material" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Historial de Sub Material"
                             data-permiso-boton="Historial de uso de pegamento de soldadura"
-                            onclick="window.parent.mostrarHistorialUsoPegamentoSoldadura ? window.parent.mostrarHistorialUsoPegamentoSoldadura() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-uso-pegamento-soldadura-ajax') : window.location.href='/historial-uso-pegamento-soldadura-ajax')">Historial de uso de pegamento de soldadura</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Historial de Sub Material" 
+                            onclick="window.parent.mostrarHistorialUsoPegamentoSoldadura ? window.parent.mostrarHistorialUsoPegamentoSoldadura() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-uso-pegamento-soldadura-unique-container', '/historial-uso-pegamento-soldadura-ajax') : window.location.href='/historial-uso-pegamento-soldadura-ajax')">Historial de uso de pegamento de soldadura</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Historial de Sub Material"
                             data-permiso-boton="Historial de uso de mask de metal"
-                            onclick="window.parent.mostrarHistorialUsoMaskMetal ? window.parent.mostrarHistorialUsoMaskMetal() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-uso-mask-metal-ajax') : window.location.href='/historial-uso-mask-metal-ajax')">Historial de uso de mask de metal</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Historial de Sub Material" 
+                            onclick="window.parent.mostrarHistorialUsoMaskMetal ? window.parent.mostrarHistorialUsoMaskMetal() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-uso-mask-metal-unique-container', '/historial-uso-mask-metal-ajax') : window.location.href='/historial-uso-mask-metal-ajax')">Historial de uso de mask de metal</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Historial de Sub Material"
                             data-permiso-boton="Historial de uso de squeegee"
-                            onclick="window.parent.mostrarHistorialUsoSqueegee ? window.parent.mostrarHistorialUsoSqueegee() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-uso-squeegee-ajax') : window.location.href='/historial-uso-squeegee-ajax')">Historial de uso de squeegee</li>
+                            onclick="window.parent.mostrarHistorialUsoSqueegee ? window.parent.mostrarHistorialUsoSqueegee() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-uso-squeegee-unique-container', '/historial-uso-squeegee-ajax') : window.location.href='/historial-uso-squeegee-ajax')">Historial de uso de squeegee</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -70,11 +70,11 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarEmpaque">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Interlock History" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Interlock History"
                             data-permiso-boton="Process interlock History"
-                            onclick="window.parent.mostrarProcessInterlockHistory ? window.parent.mostrarProcessInterlockHistory() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/process-interlock-history-ajax') : window.location.href='/process-interlock-history-ajax')">Process interlock History</li>
+                            onclick="window.parent.mostrarProcessInterlockHistory ? window.parent.mostrarProcessInterlockHistory() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('process-interlock-history-unique-container', '/process-interlock-history-ajax') : window.location.href='/process-interlock-history-ajax')">Process interlock History</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -84,16 +84,16 @@
                     <span class="sidebar-caret"><i class="bi bi-chevron-down"></i></span>
                 </button>
                 <ul class="collapse sidebar-dropdown-list" id="sidebarWarehousing">
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Control de Master Sample de SMT" 
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Control de Master Sample de SMT"
                             data-permiso-boton="Control de Master Sample de SMT"
-                            onclick="window.parent.mostrarControlMasterSampleSMT ? window.parent.mostrarControlMasterSampleSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-master-sample-smt-ajax') : window.location.href='/control-master-sample-smt-ajax')">Control de Master Sample de SMT</li>
-                    <li class="sidebar-link" tabindex="0" 
-                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD" 
-                            data-permiso-seccion="Control de Master Sample de SMT" 
+                            onclick="window.parent.mostrarControlMasterSampleSMT ? window.parent.mostrarControlMasterSampleSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-master-sample-smt-unique-container', '/control-master-sample-smt-ajax') : window.location.href='/control-master-sample-smt-ajax')">Control de Master Sample de SMT</li>
+                    <li class="sidebar-link" tabindex="0"
+                            data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
+                            data-permiso-seccion="Control de Master Sample de SMT"
                             data-permiso-boton="Historial de inspeccion de Master Sample de SMT"
-                            onclick="window.parent.mostrarHistorialInspeccionMasterSampleSMT ? window.parent.mostrarHistorialInspeccionMasterSampleSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-inspeccion-master-sample-smt-ajax') : window.location.href='/historial-inspeccion-master-sample-smt-ajax')">Historial de inspeccion de Master Sample de SMT</li>
+                            onclick="window.parent.mostrarHistorialInspeccionMasterSampleSMT ? window.parent.mostrarHistorialInspeccionMasterSampleSMT() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-inspeccion-master-sample-smt-unique-container', '/historial-inspeccion-master-sample-smt-ajax') : window.location.href='/historial-inspeccion-master-sample-smt-ajax')">Historial de inspeccion de Master Sample de SMT</li>
                 </ul>
             </li>
             <li class="sidebar-section">
@@ -107,12 +107,12 @@
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
                             data-permiso-seccion="Inspeccion de calidad"
                             data-permiso-boton="Control de inspeccion de OQC"
-                            onclick="window.parent.mostrarControlInspeccionOQC ? window.parent.mostrarControlInspeccionOQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/control-inspeccion-oqc-ajax') : window.location.href='/control-inspeccion-oqc-ajax')">Control de inspeccion de OQC</li>
+                            onclick="window.parent.mostrarControlInspeccionOQC ? window.parent.mostrarControlInspeccionOQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('control-inspeccion-oqc-unique-container', '/control-inspeccion-oqc-ajax') : window.location.href='/control-inspeccion-oqc-ajax')">Control de inspeccion de OQC</li>
                     <li class="sidebar-link" tabindex="0"
                             data-permiso-pagina="LISTA_CONTROL_DE_CALIDAD"
                             data-permiso-seccion="Inspeccion de calidad"
                             data-permiso-boton="Historial de liberacion LQC"
-                            onclick="window.parent.mostrarHistorialLiberacionLQC ? window.parent.mostrarHistorialLiberacionLQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('calidad-content-area', '/historial-liberacion-lqc-ajax') : window.location.href='/historial-liberacion-lqc-ajax')">Historial de liberacion LQC</li>
+                            onclick="window.parent.mostrarHistorialLiberacionLQC ? window.parent.mostrarHistorialLiberacionLQC() : (window.parent.cargarContenidoDinamico ? window.parent.cargarContenidoDinamico('historial-liberacion-lqc-unique-container', '/historial-liberacion-lqc-ajax') : window.location.href='/historial-liberacion-lqc-ajax')">Historial de liberacion LQC</li>
                 </ul>
             </li>
         </ul>

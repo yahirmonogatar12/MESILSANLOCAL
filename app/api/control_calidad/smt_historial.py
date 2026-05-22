@@ -1,18 +1,39 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Rutas SMT corregidas - API endpoints para historial de cambio de material SMT
+"""Endpoints HTTP para historial de cambio de material SMT (version optimizada).
+
+Consumido por 'Historial de cambio de material de SMT' en
+LISTA_CONTROL_DE_CALIDAD.
+
+Rutas:
+  GET /smt/historial                  -> render HTML
+  GET /api/historial_smt_data         -> JSON con filtros optimizados
+  GET /api/smt/filtros/opciones       -> lineas y maquinas disponibles
+  GET /api/smt/historial/data         -> JSON variante de compatibilidad
+
+Migrado desde `app/smt_routes_clean.py` (2026-05-22). Mismo blueprint name
+('smt_api') y mismas rutas; el frontend no requiere cambios.
+
+NOTA: la ruta /api/historial_smt_data tambien la define
+`smt_historial_simple.py` (migrado desde smt_routes_date_fixed.py).
+Por orden de registro Flask, smt_historial_simple SE REGISTRA PRIMERO
+(durante import de routes.py) y por tanto SU implementacion es la que
+responde a esa URL. La version de aqui es codigo muerto pero se conserva
+intencionalmente — mantener el comportamiento legacy hasta decidir
+unificacion.
+
+NOTA WF_003: conserva `get_db_connection()` directo con mysql.connector.
+Migrar a execute_query es trivial aqui (no usa lastrowid ni transacciones),
+queda pendiente para una pasada futura.
 """
 
-from flask import Blueprint, request, jsonify, render_template
-import mysql.connector
 import logging
 import os
 
-# Configuración del logger
+import mysql.connector
+from flask import Blueprint, jsonify, render_template, request
+
+
 logger = logging.getLogger(__name__)
 
-# Configuración MySQL (variables de entorno obligatorias - sin fallback)
 DB_CONFIG = {
     'host': os.getenv('MYSQL_HOST'),
     'port': int(os.getenv('MYSQL_PORT', 3306)),
@@ -22,32 +43,34 @@ DB_CONFIG = {
     'charset': 'utf8mb4'
 }
 
-# Crear Blueprint
-smt_api = Blueprint('smt_api', __name__)
+
+bp = Blueprint('smt_api', __name__)
+
 
 def get_db_connection():
-    """Crear conexión a la base de datos"""
+    """Crear conexion a la base de datos"""
     return mysql.connector.connect(**DB_CONFIG)
 
-@smt_api.route('/smt/historial', methods=['GET'])
+
+@bp.route('/smt/historial', methods=['GET'])
 def smt_historial():
-    """
-    Página HTML para visualizar historial SMT con filtros optimizados
-    """
+    """Pagina HTML para visualizar historial SMT con filtros optimizados"""
     try:
         return render_template('Control de calidad/historial_cambio_material_smt_ajax.html')
     except Exception as e:
         logger.error(f"Error en /smt/historial: {e}")
         return f"Error cargando template: {e}", 500
 
-@smt_api.route('/api/historial_smt_data', methods=['GET'])
+
+@bp.route('/api/historial_smt_data', methods=['GET'])
 def api_historial_smt_data():
-    """
-    API optimizada para cargar datos SMT con filtros
-    Filtros optimizados para cargar solo datos del día actual por defecto
+    """API optimizada para cargar datos SMT con filtros.
+
+    Filtros optimizados para cargar solo datos del dia actual por defecto.
+    NOTA: en runtime, esta funcion NO responde — smt_historial_simple.py
+    registra primero la misma ruta y gana en el routing de Flask.
     """
     try:
-        # Obtener parámetros de filtro
         folder = request.args.get('folder', '')
         part_name = request.args.get('part_name', '')
         result = request.args.get('result', '')
@@ -59,11 +82,9 @@ def api_historial_smt_data():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Construir filtros dinámicamente
         filters = []
         params = []
 
-        # Filtro por fecha (opcional para no limitar resultados por defecto)
         if date_from or date_to:
             if date_from:
                 date_from_formatted = date_from.replace('-', '')
@@ -73,41 +94,34 @@ def api_historial_smt_data():
                 date_to_formatted = date_to.replace('-', '')
                 filters.append('ScanDate <= %s')
                 params.append(date_to_formatted)
-        # Si no hay filtros de fecha, mostrar datos recientes (últimos 30 días por defecto)
-        elif not filters:  # Solo si no hay otros filtros
+        elif not filters:
             from datetime import datetime, timedelta
             thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y%m%d')
             filters.append('ScanDate >= %s')
             params.append(thirty_days_ago)
 
-        # Filtro por línea
         if linea:
             filters.append('linea = %s')
             params.append(linea)
 
-        # Filtro por máquina
         if maquina:
             filters.append('maquina = %s')
             params.append(maquina)
 
-        # Filtro por carpeta/archivo (compatible con versión anterior)
         if folder:
             filters.append('(archivo LIKE %s OR linea LIKE %s OR maquina LIKE %s)')
             params.extend([f"%{folder}%", f"%{folder}%", f"%{folder}%"])
 
-        # Filtro por nombre de parte
         if part_name:
             filters.append('PartName LIKE %s')
             params.append(f"%{part_name}%")
 
-        # Filtro por resultado
         if result:
             filters.append('Result = %s')
             params.append(result)
 
-        # Construir cláusula WHERE
         where_clause = 'WHERE ' + ' AND '.join(filters) if filters else ''
-        
+
         query = f"""
             SELECT
                 ScanDate, ScanTime, SlotNo, Result,
@@ -123,7 +137,6 @@ def api_historial_smt_data():
         cursor.execute(query, params)
         results = cursor.fetchall()
 
-        # Formatear resultados con todas las columnas
         data = []
         for i, row in enumerate(results, 1):
             data.append({
@@ -133,7 +146,7 @@ def api_historial_smt_data():
                 'slotno': row['SlotNo'],
                 'result': row['Result'],
                 'lotno': row['LOTNO'],
-                'serial': row['Barcode'],  # Para compatibilidad
+                'serial': row['Barcode'],
                 'barcode': row['Barcode'],
                 'source_file': row['archivo'],
                 'linea': row['linea'],
@@ -142,16 +155,13 @@ def api_historial_smt_data():
                 'quantity': row['Quantity'],
                 'seq': row['SEQ'],
                 'vendor': row['Vendor'],
-                # Campos adicionales que SÍ están disponibles en la tabla
                 'previousbarcode': row.get('PreviousBarcode', '') or '',
                 'productdate': row.get('Productdate', row['ScanDate']) or row['ScanDate'],
                 'feederbase': row.get('FeederBase', '') or '',
-                # Campos que no están en la tabla
-                'l_position': '',  # No disponible en esta tabla
-                'm_position': ''   # No disponible en esta tabla
+                'l_position': '',
+                'm_position': ''
             })
 
-        # Calcular estadísticas
         total_records = len(data)
         ok_count = sum(1 for row in data if row['result'] == 'OK')
         ng_count = sum(1 for row in data if row['result'] == 'NG')
@@ -185,16 +195,14 @@ def api_historial_smt_data():
             'total': 0
         }), 500
 
-@smt_api.route('/api/smt/filtros/opciones', methods=['GET'])
+
+@bp.route('/api/smt/filtros/opciones', methods=['GET'])
 def get_filtros_opciones():
-    """
-    Obtener opciones disponibles para los filtros (líneas, máquinas)
-    """
+    """Obtener opciones disponibles para los filtros (lineas, maquinas)"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Obtener líneas únicas
         cursor.execute("""
             SELECT DISTINCT linea
             FROM historial_cambio_material_smt
@@ -203,7 +211,6 @@ def get_filtros_opciones():
         """)
         lineas = [row['linea'] for row in cursor.fetchall()]
 
-        # Obtener máquinas únicas
         cursor.execute("""
             SELECT DISTINCT maquina
             FROM historial_cambio_material_smt
@@ -228,11 +235,10 @@ def get_filtros_opciones():
             'error': str(e)
         }), 500
 
-@smt_api.route('/api/smt/historial/data', methods=['GET'])
+
+@bp.route('/api/smt/historial/data', methods=['GET'])
 def get_smt_historial_data():
-    """
-    API endpoint para obtener datos del historial SMT (compatibilidad)
-    """
+    """API endpoint para obtener datos del historial SMT (compatibilidad)"""
     try:
         folder = request.args.get('folder', '')
 
@@ -265,7 +271,6 @@ def get_smt_historial_data():
 
         results = cursor.fetchall()
 
-        # Formatear resultados para compatibilidad con frontend
         data = []
         for row in results:
             data.append({
@@ -287,7 +292,6 @@ def get_smt_historial_data():
                 'feederbase': row.get('FeederBase', '') or ''
             })
 
-        # Calcular estadísticas básicas
         total_records = len(data)
         ok_count = sum(1 for row in data if row['result'] == 'OK')
         ng_count = sum(1 for row in data if row['result'] == 'NG')
@@ -319,8 +323,3 @@ def get_smt_historial_data():
             cursor.close()
         if 'conn' in locals():
             conn.close()
-
-def register_smt_routes(app):
-    """Registrar las rutas SMT en la aplicación Flask"""
-    app.register_blueprint(smt_api)
-    logger.info("SMT routes registradas exitosamente")

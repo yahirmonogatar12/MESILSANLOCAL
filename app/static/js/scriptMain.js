@@ -796,26 +796,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ============== FUNCIONES PARA CONTROL DE CALIDAD ==============
 
-  // Función global para mostrar historial de cambio de material de SMT
+  // mostrarHistorialSMT: ahora delega directo a mostrarHistorialCambioSMT
+  // (definida en MaterialTemplate.html con prepararPanelSeccion('calidad')).
+  // Se conserva el alias porque LISTA_CONTROL_DE_CALIDAD.html lo llama por
+  // ese nombre via window.parent.mostrarHistorialSMT.
   window.mostrarHistorialSMT = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    // Llamar a la función específica del MaterialTemplate
     if (typeof window.mostrarHistorialCambioSMT === "function") {
       window.mostrarHistorialCambioSMT();
     } else {
-      console.warn(" mostrarHistorialCambioSMT no disponible");
-      // Fallback básico
-      const appContent = document.querySelector("main.app-content");
-      if (appContent) {
-        appContent.innerHTML = `
-                            <div class="container-fluid mt-4">
-                                <h2>Historial de cambio de material de SMT</h2>
-                                <p>Funcionalidad en desarrollo...</p>
-                            </div>
-                        `;
-      }
+      console.warn("mostrarHistorialCambioSMT no esta disponible");
     }
   };
 
@@ -852,133 +841,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  // Función para control de item reparado
-  window.mostrarControlItemReparado = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Control de item reparado</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
-  // Función para historial de uso de pegamento de soldadura
-  window.mostrarHistorialPegamento = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Historial de uso de pegamento de soldadura</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
-  // Función para historial de uso de mask de metal
-  window.mostrarHistorialMask = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Historial de uso de mask de metal</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
-  // Función para historial de uso de squeeguee
-  window.mostrarHistorialSqueeguee = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Historial de uso de squeeguee</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
-  // Función para process interlock history
-  window.mostrarProcessInterlockHistory = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Process Interlock History</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
-  // Función para control de master sample de SMT
-  window.mostrarControlMasterSample = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Control de Master Sample de SMT</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
-  // Función para historial de inspección de master sample de SMT
-  window.mostrarHistorialInspeccionMaster = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Historial de inspección de Master Sample de SMT</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
-
-  // Función para control de inspección de OQC
-  window.mostrarControlInspeccionOQC = function () {
-    hideAllContent();
-    controlCalidadContent.style.display = "block";
-
-    const appContent = document.querySelector("main.app-content");
-    if (appContent) {
-      appContent.innerHTML = `
-                        <div class="container-fluid mt-4">
-                            <h2>Control de inspección de OQC</h2>
-                            <p>Funcionalidad en desarrollo...</p>
-                        </div>
-                    `;
-    }
-  };
+  // NOTA: las funciones mostrar*ItemReparado / mostrarHistorialPegamento /
+  // mostrarHistorialMask / mostrarHistorialSqueeguee / mostrarProcessInterlockHistory /
+  // mostrarControlMasterSample / mostrarHistorialInspeccionMaster /
+  // mostrarControlInspeccionOQC tenian aqui versiones zombie que renderizaban
+  // "Funcionalidad en desarrollo..." y eran sobreescritas mas abajo en este
+  // mismo archivo por las versiones reales. Eliminadas para simplificar.
+  // Las versiones activas estan ~linea 3700+ y usan _mostrarModuloCalidad().
 
   // NOTA: mostrarControlMaterialInfo está definida en MaterialTemplate.html con AJAX
   // No redefinir aquí para evitar conflictos
@@ -3749,563 +3618,118 @@ window.mostrarHistorialTensionMaskMetal = function () {
 // FUNCIONES PARA CONTROL DE CALIDAD
 // ============================================================================
 
-window.mostrarControlResultadoReparacion = function () {
+// ============================================================
+// Funciones mostrar* de Control de calidad (WF_002 compliant).
+// Antes: cada funcion tenia ~50 lineas con boilerplate manual de ocultar
+// secciones y mostrar areas. Ahora todas usan _mostrarModuloCalidad(),
+// que invoca prepararPanelSeccion('calidad') + muestra el container
+// -unique-container correspondiente y dispara cargarContenidoDinamico.
+// El sistema de tabs (sidebar-tabs.js) abre pestaña por modulo porque
+// el containerId termina en -unique-container.
+// ============================================================
+function _mostrarModuloCalidad(containerId, ruta, initCb) {
   try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
+    if (typeof window.prepararPanelSeccion === "function") {
+      window.prepararPanelSeccion("calidad");
+    }
+    const container = document.getElementById(containerId);
+    if (container) container.style.display = "block";
+
+    if (typeof window.cargarContenidoDinamico !== "function") {
+      console.error("cargarContenidoDinamico no esta disponible");
+      return;
+    }
+    const result = window.cargarContenidoDinamico(containerId, ruta, initCb || (() => {}));
+    if (result && typeof result.catch === "function") {
+      result.catch((error) => {
+        console.error(`Error cargando ${ruta}:`, error);
       });
     }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/control-resultado-reparacion-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error(
-            "Error cargando Control de resultado de reparación:",
-            error,
-          );
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
   } catch (error) {
-    console.error("Error crítico en mostrarControlResultadoReparacion:", error);
+    console.error(`Error critico cargando ${ruta}:`, error);
   }
+}
+
+window.mostrarControlResultadoReparacion = function () {
+  _mostrarModuloCalidad(
+    "control-resultado-reparacion-unique-container",
+    "/control-resultado-reparacion-ajax",
+  );
 };
 
 window.mostrarControlItemReparado = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/control-item-reparado-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error("Error cargando Control de item reparado:", error);
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarControlItemReparado:", error);
-  }
+  _mostrarModuloCalidad(
+    "control-item-reparado-unique-container",
+    "/control-item-reparado-ajax",
+  );
 };
 
 window.mostrarHistorialCambioMaterialMaquina = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/historial-cambio-material-maquina-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error(
-            "Error cargando Historial de cambio de material por máquina:",
-            error,
-          );
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error(
-      "Error crítico en mostrarHistorialCambioMaterialMaquina:",
-      error,
-    );
-  }
+  _mostrarModuloCalidad(
+    "historial-cambio-material-maquina-unique-container",
+    "/historial-cambio-material-maquina-ajax",
+  );
 };
 
 window.mostrarHistorialUsoPegamentoSoldadura = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/historial-uso-pegamento-soldadura-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error(
-            "Error cargando Historial de uso de pegamento de soldadura:",
-            error,
-          );
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error(
-      "Error crítico en mostrarHistorialUsoPegamentoSoldadura:",
-      error,
-    );
-  }
+  _mostrarModuloCalidad(
+    "historial-uso-pegamento-soldadura-unique-container",
+    "/historial-uso-pegamento-soldadura-ajax",
+  );
 };
 
 window.mostrarHistorialUsoMaskMetal = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/historial-uso-mask-metal-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error(
-            "Error cargando Historial de uso de mask de metal:",
-            error,
-          );
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarHistorialUsoMaskMetal:", error);
-  }
+  _mostrarModuloCalidad(
+    "historial-uso-mask-metal-unique-container",
+    "/historial-uso-mask-metal-ajax",
+  );
 };
 
 window.mostrarHistorialUsoSqueegee = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/historial-uso-squeegee-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error("Error cargando Historial de uso de squeegee:", error);
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarHistorialUsoSqueegee:", error);
-  }
+  _mostrarModuloCalidad(
+    "historial-uso-squeegee-unique-container",
+    "/historial-uso-squeegee-ajax",
+  );
 };
 
 window.mostrarProcessInterlockHistory = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/process-interlock-history-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error("Error cargando Process interlock History:", error);
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarProcessInterlockHistory:", error);
-  }
+  _mostrarModuloCalidad(
+    "process-interlock-history-unique-container",
+    "/process-interlock-history-ajax",
+  );
 };
 
 window.mostrarControlMasterSampleSMT = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/control-master-sample-smt-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error(
-            "Error cargando Control de Master Sample de SMT:",
-            error,
-          );
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarControlMasterSampleSMT:", error);
-  }
+  _mostrarModuloCalidad(
+    "control-master-sample-smt-unique-container",
+    "/control-master-sample-smt-ajax",
+  );
 };
 
 window.mostrarHistorialInspeccionMasterSampleSMT = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/historial-inspeccion-master-sample-smt-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error(
-            "Error cargando Historial de inspección de Master Sample de SMT:",
-            error,
-          );
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error(
-      "Error crítico en mostrarHistorialInspeccionMasterSampleSMT:",
-      error,
-    );
-  }
+  _mostrarModuloCalidad(
+    "historial-inspeccion-master-sample-smt-unique-container",
+    "/historial-inspeccion-master-sample-smt-ajax",
+  );
 };
 
 window.mostrarControlInspeccionOQC = function () {
-  try {
-    // Activar el botón "Control de calidad"
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById(
-      "control-calidad-content",
-    );
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/control-inspeccion-oqc-ajax",
-          () => {},
-        )
-        .catch((error) => {
-          console.error("Error cargando Control de inspección de OQC:", error);
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarControlInspeccionOQC:", error);
-  }
+  _mostrarModuloCalidad(
+    "control-inspeccion-oqc-unique-container",
+    "/control-inspeccion-oqc-ajax",
+  );
 };
 
-// Función AJAX para Historial de liberacion LQC - GLOBAL
 window.mostrarHistorialLiberacionLQC = function () {
-  try {
-    // Activar el botón correcto en la navegación
-    const controlCalidadButton = document.getElementById("Control de calidad");
-    if (controlCalidadButton) {
-      controlCalidadButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Control de calidad") {
-          btn.classList.remove("active");
-        }
-      });
-    }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Mostrar el área de calidad — igual que todos los demás módulos de calidad
-    const materialContainer = document.getElementById("material-container");
-    const controlCalidadContent = document.getElementById("control-calidad-content");
-    const calidadContentArea = document.getElementById("calidad-content-area");
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (controlCalidadContent) controlCalidadContent.style.display = "block";
-    if (calidadContentArea) calidadContentArea.style.display = "block";
-
-    // Cargar contenido directamente en calidad-content-area (mismo patrón que OQC y demás)
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window
-        .cargarContenidoDinamico(
-          "calidad-content-area",
-          "/historial-liberacion-lqc-ajax",
-          () => {
-            if (typeof window.inicializarHistorialLiberacionLQC === "function") {
-              window.inicializarHistorialLiberacionLQC();
-            }
-          },
-        )
-        .catch((error) => {
-          console.error("Error cargando Historial de liberacion LQC:", error);
-        });
-    } else {
-      console.error("La función cargarContenidoDinamico no está disponible");
-    }
-  } catch (error) {
-    console.error("Error crítico en mostrarHistorialLiberacionLQC:", error);
-  }
+  _mostrarModuloCalidad(
+    "historial-liberacion-lqc-unique-container",
+    "/historial-liberacion-lqc-ajax",
+    () => {
+      if (typeof window.inicializarHistorialLiberacionLQC === "function") {
+        window.inicializarHistorialLiberacionLQC();
+      }
+    },
+  );
 };
 
 // Función AJAX para Historial AOI - GLOBAL

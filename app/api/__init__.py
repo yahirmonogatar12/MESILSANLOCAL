@@ -33,8 +33,15 @@ Convencion de nuevos modulos:
 # Formato: "seccion.modulo" -> se importa como `app.api.<seccion>.<modulo>`
 # y se espera que exponga un atributo `bp` (Flask Blueprint).
 _MODULOS_REGISTRADOS = [
+    "admin.permisos",
+    "admin.usuarios",
     "control_material.material_admin",
     "control_material.smd_inventory",
+    # control_calidad.smt_historial_simple DEBE ir antes que smt_historial:
+    # ambos definen /api/historial_smt_data y Flask deja responder al primero
+    # registrado (preserva comportamiento legacy de smt_routes_date_fixed.py).
+    "control_calidad.smt_historial_simple",
+    "control_calidad.smt_historial",
     "control_resultados.aoi",
     "control_produccion.po_wo",
     "shared.raw_modelos",

@@ -47,6 +47,7 @@
     <link id="ict-css" rel="stylesheet" href="{{ url_for('static', filename='css/ict.css', v='20260522a') }}">
     <link id="index-styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/index-styles.css', v='20260522a') }}">
     <link id="styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='20260522a') }}">
+    <link id="historial-cambio-material-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_cambio_material_smt.css', v='20260522a') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -426,9 +427,8 @@
         <div id="control-almacen-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
-        <div id="historial-cambio-smt-container" style="display: none;">
-            <!-- El contenido se cargará dinámicamente con JavaScript -->
-        </div>
+        <!-- historial-cambio-smt-container migrado a calidad-content-area
+             (es de Control de calidad, no de Control de material). -->
     </div>
 
     <!-- Contenedor específico para el contenido de Control de Producción (LADO DERECHO) -->
@@ -593,9 +593,22 @@
         <!-- </div> -->
     </div>
 
-    <!-- Contenedor específico para el contenido de Control de Calidad (LADO DERECHO) -->
+    <!-- Contenedor específico para el contenido de Control de Calidad (LADO DERECHO).
+         Cada modulo carga en su propio *-unique-container hijo para que el sistema
+         de tabs (`sidebar-tabs.js`) abra una pestaña por modulo. -->
     <div class="calidad-content-area" id="calidad-content-area" style="display: none;">
-        <!-- El contenido se cargará dinámicamente con AJAX (cargarContenidoDinamico) -->
+        <div id="control-resultado-reparacion-unique-container" style="display: none;"></div>
+        <div id="control-item-reparado-unique-container" style="display: none;"></div>
+        <div id="historial-cambio-smt-unique-container" style="display: none;"></div>
+        <div id="historial-cambio-material-maquina-unique-container" style="display: none;"></div>
+        <div id="historial-uso-pegamento-soldadura-unique-container" style="display: none;"></div>
+        <div id="historial-uso-mask-metal-unique-container" style="display: none;"></div>
+        <div id="historial-uso-squeegee-unique-container" style="display: none;"></div>
+        <div id="process-interlock-history-unique-container" style="display: none;"></div>
+        <div id="control-master-sample-smt-unique-container" style="display: none;"></div>
+        <div id="historial-inspeccion-master-sample-smt-unique-container" style="display: none;"></div>
+        <div id="control-inspeccion-oqc-unique-container" style="display: none;"></div>
+        <div id="historial-liberacion-lqc-unique-container" style="display: none;"></div>
     </div>
 
     <!-- Contenedor específico para el contenido de Control de Resultados (LADO DERECHO) -->
@@ -2172,7 +2185,9 @@
             const historialInventarioContainer = document.getElementById('historial-inventario-container');
             const inventarioRollosSMDContainer = document.getElementById('inventario-rollos-smd-container');
             const ajusteNumeroContainer = document.getElementById('ajuste-numero-container');
-            const historialCambioSmtContainer = document.getElementById('historial-cambio-smt-container');
+            // historial-cambio-smt-container fue eliminado; el modulo carga
+            // directo en calidad-content-area. Stub para no romper hideAllMaterialContainers.
+            const historialCambioSmtContainer = { style: {} };
             const produccionInfoContainer = document.getElementById('produccion-info-container');
             const navButtons = document.querySelectorAll('.nav-button');
 
@@ -3103,31 +3118,18 @@ function hideAllMaterialContainers() {
                 });
             };
 
-            // Función global para mostrar Historial de cambio de material SMT
+            // Funcion global para mostrar Historial de cambio de material SMT.
+            // WF_002: usa prepararPanelSeccion('calidad') + container -unique-container
+            // para que sidebar-tabs.js abra una pestaña por modulo.
             window.mostrarHistorialCambioSMT = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                historialCambioSmtContainer.style.display = 'block';
+                prepararPanelSeccion('calidad');
+                const container = document.getElementById('historial-cambio-smt-unique-container');
+                if (container) container.style.display = 'block';
 
-                // Cargar estilos específicos para SMT si no están cargados
-                if (!document.getElementById('historial-smt-styles')) {
-                    const link = document.createElement('link');
-                    link.id = 'historial-smt-styles';
-                    link.rel = 'stylesheet';
-                    link.href = '/static/css/historial-smt.css';
-                    document.head.appendChild(link);
-                    // // // // // // // console.log(' Estilos SMT cargados dinámicamente');
-                }
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('historial-cambio-smt-container', '/historial-cambio-material-smt-ajax', () => {
-
-                    // Inicializar funcionalidades específicas del historial de cambio de material SMT
-                    if (typeof initHistorialCambioSMT === 'function') {
-                        initHistorialCambioSMT();
+                cargarContenidoDinamico('historial-cambio-smt-unique-container', '/historial-cambio-material-smt-ajax', () => {
+                    if (typeof window.initHistorialSMT === 'function') {
+                        window.initHistorialSMT();
                     }
-
-                    // // // // // // // console.log(' Historial de cambio de material SMT cargado correctamente');
                 });
             };
 
