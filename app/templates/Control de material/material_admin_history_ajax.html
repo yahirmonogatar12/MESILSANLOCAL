@@ -44,5 +44,6 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
+<!-- WF_004: material_admin_inventory.css se carga globalmente en MaterialTemplate.html
+     y el JS tiene ensureModuleStyles() como seguro. -->
 <script src="{{ url_for('static', filename='js/material_admin_inventory.js', v='20260520j') }}"></script>

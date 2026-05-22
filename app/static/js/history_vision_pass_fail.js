@@ -1,3 +1,27 @@
+// ====== WF_004: Garantizar CSS del modulo en <head> ======
+(function ensureModuleStyles() {
+  const sheets = [
+    { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
+    { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
+    { id: "history-vision-pass-fail-css", href: "/static/css/history_vision_pass_fail.css?v=20260522a" },
+  ];
+  sheets.forEach(({ id, href }) => {
+    let link = document.getElementById(id);
+    if (link) {
+      const version = href.split("v=")[1];
+      if (version && !link.getAttribute("href")?.includes(version)) {
+        link.setAttribute("href", href);
+      }
+      return;
+    }
+    link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  });
+})();
+
 let visionPassFailModuleData = [];
 const VISION_PASS_FAIL_FILTERS_STORAGE_KEY =
   "historialVisionPassFailFilters";

@@ -58,8 +58,9 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from .admin_api import admin_bp
-from .api_po_wo import registrar_rutas_po_wo
-from .api_raw_modelos import api_raw
+# api_po_wo migrado a app/api/control_produccion/po_wo.py
+# api_raw_modelos migrado a app/api/shared/raw_modelos.py
+# Ambos se registran via registrar_blueprints_api() en app_factory.py
 
 # Importar sistema de autenticación mejorado
 from .auth_system import AuthSystem, ECO_CREATE_PERMISSION
@@ -141,7 +142,8 @@ from .shipping_material_api import (
     register_shipping_material_routes,
     to_sql_datetime,
 )
-from .smd_inventory_api import register_smd_inventory_routes
+# smd_inventory_api migrado a app/api/control_material/smd_inventory.py
+# Se registra via registrar_blueprints_api() en app_factory.py
 from .services.ict_lgd_parser import (
     IctLgdError,
     IctLgdNotFoundError,
@@ -149,7 +151,8 @@ from .services.ict_lgd_parser import (
     get_lgd_parameters_for_barcode,
     resolve_lgd_path,
 )
-from .tickets_portal import create_tickets_blueprint
+# tickets_portal migrado a app/api/portal/tickets.py
+# Se registra via registrar_blueprints_api() en app_factory.py
 from .user_admin import user_admin_bp
 
 app = Flask(__name__)
@@ -189,23 +192,14 @@ def _startup_log(msg):
     print(f"[startup {elapsed}s] {msg}")
 
 
-# Registrar rutas SMD Inventory después de crear la app
-register_smd_inventory_routes(app)
+# smd_inventory ahora se registra via app/api/__init__.py
 
 # Registrar rutas Shipping API (App móvil de embarques)
 register_shipping_routes(app)
 register_shipping_material_routes(app)
 
-# Registrar rutas API PO → WO
-# registrar_rutas_po_wo(app)  # Comentado para evitar conflicto con run.py
-
-# Registrar API RAW (modelos desde tabla raw) si no está ya registrado
-try:
-    if "api_raw" not in app.blueprints:
-        app.register_blueprint(api_raw)
-        print(" API RAW (part_no) registrado en app.routes")
-except Exception as e:
-    print(f"Error registrando API RAW en app.routes: {e}")
+# api_po_wo y api_raw migrados a app/api/ y se registran centralmente
+# desde app_factory.py via registrar_blueprints_api().
 
 # Las inicializaciones (init_db, auth_system.init_database, shipping)
 # se movieron a app/startup_init.py. Solo se instancia auth_system aqui
@@ -258,12 +252,7 @@ def smt_simple():
 app.register_blueprint(user_admin_bp, url_prefix="/admin")
 app.register_blueprint(admin_bp)
 
-try:
-    if "tickets_portal" not in app.blueprints:
-        app.register_blueprint(create_tickets_blueprint(auth_system))
-        print(" Portal de Tickets registrado")
-except Exception as e:
-    print(f" Error registrando Portal de Tickets: {e}")
+# tickets_portal: registro movido a app/api/__init__.py
 
 
 def requiere_permiso_dropdown(pagina, seccion, boton):
@@ -24990,7 +24979,7 @@ def api_plan_run_start():
             return None
 
         aoi_line_no = _map_line_no(linea)
-        from .aoi_api import classify_shift, compute_shift_date
+        from app.api.control_resultados.aoi import classify_shift, compute_shift_date
         from .auth_system import AuthSystem as _AS
 
         now_mx = _AS.get_mexico_time()

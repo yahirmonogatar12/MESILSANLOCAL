@@ -32,29 +32,30 @@ def create_app():
     # Importes diferidos para evitar side-effects pesados antes de configurar entorno.
     from app.routes import app
     from app.smt_routes_clean import register_smt_routes
-    from app.api_po_wo import registrar_rutas_po_wo
-    from app.aoi_api import aoi_api
     from app.py.control_modelos_smt import control_modelos_bp
-    from app.api_raw_modelos import api_raw
-    from app.Almacen_api import material_admin_bp
     from app.shipping_api import register_shipping_routes
     from app.startup_init import run_startup_init
 
+    # Paquete app.api/ organizado por seccion del navbar.
+    # Cada modulo es un Flask Blueprint en app/api/<seccion>/<modulo>.py
+    # y se auto-registra via _MODULOS_REGISTRADOS en app/api/__init__.py.
+    from app.api import registrar_blueprints_api
+
     if not getattr(app, "_mes_factory_initialized", False):
         register_smt_routes(app)
-        registrar_rutas_po_wo(app)
-
-        if "aoi_api" not in app.blueprints:
-            app.register_blueprint(aoi_api)
 
         if "control_modelos_bp" not in app.blueprints:
             app.register_blueprint(control_modelos_bp)
 
-        if "api_raw" not in app.blueprints:
-            app.register_blueprint(api_raw)
-
-        if "material_admin" not in app.blueprints:
-            app.register_blueprint(material_admin_bp)
+        # Registrar todos los blueprints del paquete app.api/
+        # Migrados hasta ahora:
+        #   - control_material.material_admin  (ex Almacen_api.py)
+        #   - control_material.smd_inventory   (ex smd_inventory_api.py)
+        #   - control_resultados.aoi           (ex aoi_api.py)
+        #   - control_produccion.po_wo         (ex api_po_wo.py)
+        #   - shared.raw_modelos               (ex api_raw_modelos.py)
+        #   - portal.tickets                   (ex tickets_portal.py)
+        registrar_blueprints_api(app)
 
         register_shipping_routes(app)
 

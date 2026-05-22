@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Historial Vision - ILSAN</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ilsan-theme.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/ict.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/history_vision.css') }}">
+  <!-- WF_004: ilsan-theme.css e ict.css se cargan globalmente en MaterialTemplate.html.
+       history_vision.css lo garantiza ensureModuleStyles() en el JS del modulo. -->
   <script defer src="{{ url_for('static', filename='js/history_vision.js') }}"></script>
 </head>
 <body id="vision-container">

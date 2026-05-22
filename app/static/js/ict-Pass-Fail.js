@@ -1,3 +1,27 @@
+// ====== WF_004: Garantizar CSS del modulo en <head> ======
+(function ensureModuleStyles() {
+  const sheets = [
+    { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
+    { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
+    { id: "ict-pass-fail-css", href: "/static/css/ict-Pass-Fail.css?v=20260429e" },
+  ];
+  sheets.forEach(({ id, href }) => {
+    let link = document.getElementById(id);
+    if (link) {
+      const version = href.split("v=")[1];
+      if (version && !link.getAttribute("href")?.includes(version)) {
+        link.setAttribute("href", href);
+      }
+      return;
+    }
+    link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  });
+})();
+
 let ictPassFailModuleData = [];
 let ictPassFailDetailContext = null;
 let ictPassFailDetailSearchTimer = null;

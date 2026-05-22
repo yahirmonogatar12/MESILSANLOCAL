@@ -1,12 +1,49 @@
+"""Portal de tickets / soporte interno.
+
+Accesible desde landing.html (`/portal-tickets`). NO esta en el navbar
+del MES principal, vive en `app/api/portal/`.
+
+Rutas:
+  GET  /portal-tickets                       -> render HTML
+  GET  /api/tickets                          -> listar tickets
+  POST /api/tickets                          -> crear ticket (con adjuntos)
+  GET  /api/tickets/<id>                     -> detalle + mensajes
+  POST /api/tickets/<id>/reply               -> responder ticket
+  POST /api/tickets/<id>/status              -> cambiar estado (solo superadmin)
+
+Migrado desde `app/tickets_portal.py` (2026-05-22). El legacy usaba una
+factory `create_tickets_blueprint(auth_system)` para inyectar `auth_system`;
+aqui se importa directo desde `app.api.shared` para encajar en el patron
+estandar de `_MODULOS_REGISTRADOS`.
+
+NOTA WF_003: este modulo conserva `get_db_connection()` directo en lugar
+de `execute_query()` porque usa:
+  - `cursor.lastrowid` (varias veces, para encadenar inserts ticket -> message -> attachment)
+  - Transacciones multi-query con `rollback()` ante error
+  - CREATE TABLE IF NOT EXISTS en `_ensure_ticket_tables()`
+Que `execute_query()` no soporta atomicamente.
+"""
+
 import os
 import secrets
 import threading
 from datetime import date, datetime
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from werkzeug.utils import secure_filename
 
-from .db import get_db_connection
+from app.api.shared import auth_system
+from app.db import get_db_connection
+
 
 TICKET_ALLOWED_TYPES = {"normal", "superticket"}
 TICKET_ALLOWED_PRIORITIES = {"baja", "media", "alta", "critica"}
@@ -16,331 +53,333 @@ TICKET_MAX_ATTACHMENTS = 5
 
 _ticket_schema_lock = threading.Lock()
 _ticket_schema_ready = False
-_auth_system = None
 
 
-def create_tickets_blueprint(auth_system):
-    global _auth_system
-    _auth_system = auth_system
+bp = Blueprint("tickets_portal", __name__)
 
-    tickets_bp = Blueprint("tickets_portal", __name__)
 
-    @tickets_bp.route("/portal-tickets")
-    def portal_tickets():
-        auth_response, user_context = _require_ticket_login()
-        if auth_response is not None:
-            return auth_response
+@bp.route("/portal-tickets")
+def portal_tickets():
+    auth_response, user_context = _require_ticket_login()
+    if auth_response is not None:
+        return auth_response
 
-        _ensure_ticket_tables()
+    _ensure_ticket_tables()
 
-        return render_template(
-            "portal_tickets.html",
-            ticket_bootstrap={
-                "current_user": {
-                    "username": user_context["username"],
-                    "display_name": user_context["display_name"],
-                    "roles": user_context["roles"],
-                    "primary_role": user_context["primary_role"],
-                    "is_superadmin": user_context["is_superadmin"],
-                },
-                "allowed_statuses": list(TICKET_ALLOWED_STATUSES),
-                "allowed_priorities": list(TICKET_ALLOWED_PRIORITIES),
-                "allowed_types": list(TICKET_ALLOWED_TYPES),
+    return render_template(
+        "portal_tickets.html",
+        ticket_bootstrap={
+            "current_user": {
+                "username": user_context["username"],
+                "display_name": user_context["display_name"],
+                "roles": user_context["roles"],
+                "primary_role": user_context["primary_role"],
+                "is_superadmin": user_context["is_superadmin"],
             },
+            "allowed_statuses": list(TICKET_ALLOWED_STATUSES),
+            "allowed_priorities": list(TICKET_ALLOWED_PRIORITIES),
+            "allowed_types": list(TICKET_ALLOWED_TYPES),
+        },
+    )
+
+
+@bp.route("/api/tickets", methods=["GET", "POST"])
+def api_tickets():
+    auth_response, user_context = _require_ticket_login(api=True)
+    if auth_response is not None:
+        return auth_response
+
+    _ensure_ticket_tables()
+
+    if request.method == "GET":
+        return _handle_list_tickets(user_context)
+
+    return _handle_create_ticket(user_context)
+
+
+@bp.route("/api/tickets/<int:ticket_id>")
+def api_ticket_detail(ticket_id):
+    auth_response, user_context = _require_ticket_login(api=True)
+    if auth_response is not None:
+        return auth_response
+
+    _ensure_ticket_tables()
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ticket_row = _load_ticket_row(cursor, ticket_id)
+        if not ticket_row:
+            return jsonify({"success": False, "message": "Ticket no encontrado"}), 404
+
+        ticket_payload = _ticket_payload(ticket_row, user_context)
+        if not ticket_payload["permissions"]["can_view"]:
+            return jsonify({"success": False, "message": "No tienes acceso a este ticket"}), 403
+
+        messages = _load_ticket_messages(cursor, ticket_id, user_context)
+        return jsonify({"success": True, "ticket": ticket_payload, "messages": messages})
+    except Exception as exc:
+        print(f"Error cargando detalle de ticket {ticket_id}: {exc}")
+        return jsonify({"success": False, "message": "No fue posible cargar el ticket"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@bp.route("/api/tickets/<int:ticket_id>/reply", methods=["POST"])
+def api_ticket_reply(ticket_id):
+    auth_response, user_context = _require_ticket_login(api=True)
+    if auth_response is not None:
+        return auth_response
+
+    _ensure_ticket_tables()
+
+    payload = _ticket_request_payload()
+    message_body = _normalize_ticket_text(payload.get("message"), max_length=4000)
+    if not message_body:
+        return jsonify({"success": False, "message": "El mensaje es obligatorio"}), 400
+
+    conn = None
+    cursor = None
+    saved_attachments = []
+    try:
+        attachments = _ticket_uploaded_images()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ticket_row = _load_ticket_row(cursor, ticket_id)
+        if not ticket_row:
+            return jsonify({"success": False, "message": "Ticket no encontrado"}), 404
+
+        ticket_payload = _ticket_payload(ticket_row, user_context)
+        permissions = ticket_payload["permissions"]
+
+        if not permissions["can_view"]:
+            return jsonify({"success": False, "message": "No tienes acceso a este ticket"}), 403
+
+        if not permissions["can_reply"]:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Solo superadmin puede contestar un superticket",
+                    }
+                ),
+                403,
+            )
+
+        now_text = _ticket_now_text()
+        cursor.execute(
+            """
+            INSERT INTO support_ticket_messages (
+                ticket_id,
+                author_username,
+                author_name,
+                author_role,
+                message_body,
+                created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                ticket_id,
+                user_context["username"],
+                user_context["display_name"],
+                user_context["primary_role"],
+                message_body,
+                now_text,
+            ),
+        )
+        message_id = cursor.lastrowid
+
+        next_status = ticket_payload["status"]
+        assigned_to_username = ticket_payload.get("assigned_to_username")
+        assigned_to_name = ticket_payload.get("assigned_to_name")
+        if user_context["is_superadmin"]:
+            assigned_to_username = user_context["username"]
+            assigned_to_name = user_context["display_name"]
+            if next_status == "abierto":
+                next_status = "en_proceso"
+        elif ticket_payload["ticket_type"] == "normal" and next_status in {"resuelto", "cerrado"}:
+            next_status = "abierto"
+
+        cursor.execute(
+            """
+            UPDATE support_tickets
+            SET updated_at = %s,
+                last_message_at = %s,
+                last_message_preview = %s,
+                status = %s,
+                assigned_to_username = %s,
+                assigned_to_name = %s
+            WHERE id = %s
+            """,
+            (
+                now_text,
+                now_text,
+                _ticket_preview(message_body),
+                next_status,
+                assigned_to_username,
+                assigned_to_name,
+                ticket_id,
+            ),
         )
 
-    @tickets_bp.route("/api/tickets", methods=["GET", "POST"])
-    def api_tickets():
-        auth_response, user_context = _require_ticket_login(api=True)
-        if auth_response is not None:
-            return auth_response
+        saved_attachments = _ticket_save_attachments(
+            cursor, ticket_id, ticket_payload["ticket_no"], message_id, attachments
+        )
+        conn.commit()
 
-        _ensure_ticket_tables()
+        auth_system.registrar_auditoria(
+            usuario=user_context["username"],
+            modulo="tickets",
+            accion="responder_ticket",
+            descripcion=f"Respuesta registrada en ticket {ticket_payload['ticket_no']}",
+            resultado="EXITOSO",
+        )
 
-        if request.method == "GET":
-            return _handle_list_tickets(user_context)
+        ticket_row = _load_ticket_row(cursor, ticket_id)
+        return jsonify(
+            {
+                "success": True,
+                "message": "Respuesta registrada",
+                "ticket": _ticket_payload(ticket_row, user_context),
+                "messages": _load_ticket_messages(cursor, ticket_id, user_context),
+            }
+        )
+    except ValueError as exc:
+        if conn:
+            conn.rollback()
+        for attachment in saved_attachments:
+            try:
+                os.remove(attachment["path"])
+            except OSError:
+                pass
+        return jsonify({"success": False, "message": str(exc)}), 400
+    except Exception as exc:
+        if conn:
+            conn.rollback()
+        for attachment in saved_attachments:
+            try:
+                os.remove(attachment["path"])
+            except OSError:
+                pass
+        print(f"Error respondiendo ticket {ticket_id}: {exc}")
+        return jsonify({"success": False, "message": "No fue posible guardar la respuesta"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
-        return _handle_create_ticket(user_context)
 
-    @tickets_bp.route("/api/tickets/<int:ticket_id>")
-    def api_ticket_detail(ticket_id):
-        auth_response, user_context = _require_ticket_login(api=True)
-        if auth_response is not None:
-            return auth_response
+@bp.route("/api/tickets/<int:ticket_id>/status", methods=["POST"])
+def api_ticket_status(ticket_id):
+    auth_response, user_context = _require_ticket_login(api=True)
+    if auth_response is not None:
+        return auth_response
 
-        _ensure_ticket_tables()
+    if not user_context["is_superadmin"]:
+        return jsonify({"success": False, "message": "Solo superadmin puede cambiar estados"}), 403
 
-        conn = None
-        cursor = None
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            ticket_row = _load_ticket_row(cursor, ticket_id)
-            if not ticket_row:
-                return jsonify({"success": False, "message": "Ticket no encontrado"}), 404
+    _ensure_ticket_tables()
 
-            ticket_payload = _ticket_payload(ticket_row, user_context)
-            if not ticket_payload["permissions"]["can_view"]:
-                return jsonify({"success": False, "message": "No tienes acceso a este ticket"}), 403
+    payload = request.get_json(silent=True) or request.form
+    status_value = _normalize_ticket_text(payload.get("status"), max_length=32)
+    comment = _normalize_ticket_text(payload.get("comment"), max_length=1000)
 
-            messages = _load_ticket_messages(cursor, ticket_id, user_context)
-            return jsonify({"success": True, "ticket": ticket_payload, "messages": messages})
-        except Exception as exc:
-            print(f"Error cargando detalle de ticket {ticket_id}: {exc}")
-            return jsonify({"success": False, "message": "No fue posible cargar el ticket"}), 500
-        finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
+    if status_value not in TICKET_ALLOWED_STATUSES:
+        return jsonify({"success": False, "message": "Estado de ticket no valido"}), 400
 
-    @tickets_bp.route("/api/tickets/<int:ticket_id>/reply", methods=["POST"])
-    def api_ticket_reply(ticket_id):
-        auth_response, user_context = _require_ticket_login(api=True)
-        if auth_response is not None:
-            return auth_response
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        ticket_row = _load_ticket_row(cursor, ticket_id)
+        if not ticket_row:
+            return jsonify({"success": False, "message": "Ticket no encontrado"}), 404
 
-        _ensure_ticket_tables()
+        now_text = _ticket_now_text()
+        status_message = comment or f"Estado actualizado a {status_value}"
+        resolved_at = now_text if status_value in {"resuelto", "cerrado"} else None
+        closed_at = now_text if status_value == "cerrado" else None
 
-        payload = _ticket_request_payload()
-        message_body = _normalize_ticket_text(payload.get("message"), max_length=4000)
-        if not message_body:
-            return jsonify({"success": False, "message": "El mensaje es obligatorio"}), 400
+        cursor.execute(
+            """
+            UPDATE support_tickets
+            SET status = %s,
+                updated_at = %s,
+                last_message_at = %s,
+                last_message_preview = %s,
+                assigned_to_username = %s,
+                assigned_to_name = %s,
+                resolved_at = %s,
+                closed_at = %s
+            WHERE id = %s
+            """,
+            (
+                status_value,
+                now_text,
+                now_text,
+                _ticket_preview(status_message),
+                user_context["username"],
+                user_context["display_name"],
+                resolved_at,
+                closed_at,
+                ticket_id,
+            ),
+        )
 
-        conn = None
-        cursor = None
-        saved_attachments = []
-        try:
-            attachments = _ticket_uploaded_images()
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            ticket_row = _load_ticket_row(cursor, ticket_id)
-            if not ticket_row:
-                return jsonify({"success": False, "message": "Ticket no encontrado"}), 404
+        cursor.execute(
+            """
+            INSERT INTO support_ticket_messages (
+                ticket_id,
+                author_username,
+                author_name,
+                author_role,
+                message_body,
+                created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (
+                ticket_id,
+                user_context["username"],
+                user_context["display_name"],
+                user_context["primary_role"],
+                status_message,
+                now_text,
+            ),
+        )
 
-            ticket_payload = _ticket_payload(ticket_row, user_context)
-            permissions = ticket_payload["permissions"]
+        conn.commit()
 
-            if not permissions["can_view"]:
-                return jsonify({"success": False, "message": "No tienes acceso a este ticket"}), 403
+        ticket_row = _load_ticket_row(cursor, ticket_id)
+        return jsonify(
+            {
+                "success": True,
+                "message": "Estado actualizado",
+                "ticket": _ticket_payload(ticket_row, user_context),
+                "messages": _load_ticket_messages(cursor, ticket_id, user_context),
+            }
+        )
+    except Exception as exc:
+        if conn:
+            conn.rollback()
+        print(f"Error actualizando estado de ticket {ticket_id}: {exc}")
+        return jsonify({"success": False, "message": "No fue posible actualizar el ticket"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
-            if not permissions["can_reply"]:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "message": "Solo superadmin puede contestar un superticket",
-                        }
-                    ),
-                    403,
-                )
 
-            now_text = _ticket_now_text()
-            cursor.execute(
-                """
-                INSERT INTO support_ticket_messages (
-                    ticket_id,
-                    author_username,
-                    author_name,
-                    author_role,
-                    message_body,
-                    created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    ticket_id,
-                    user_context["username"],
-                    user_context["display_name"],
-                    user_context["primary_role"],
-                    message_body,
-                    now_text,
-                ),
-            )
-            message_id = cursor.lastrowid
-
-            next_status = ticket_payload["status"]
-            assigned_to_username = ticket_payload.get("assigned_to_username")
-            assigned_to_name = ticket_payload.get("assigned_to_name")
-            if user_context["is_superadmin"]:
-                assigned_to_username = user_context["username"]
-                assigned_to_name = user_context["display_name"]
-                if next_status == "abierto":
-                    next_status = "en_proceso"
-            elif ticket_payload["ticket_type"] == "normal" and next_status in {"resuelto", "cerrado"}:
-                next_status = "abierto"
-
-            cursor.execute(
-                """
-                UPDATE support_tickets
-                SET updated_at = %s,
-                    last_message_at = %s,
-                    last_message_preview = %s,
-                    status = %s,
-                    assigned_to_username = %s,
-                    assigned_to_name = %s
-                WHERE id = %s
-                """,
-                (
-                    now_text,
-                    now_text,
-                    _ticket_preview(message_body),
-                    next_status,
-                    assigned_to_username,
-                    assigned_to_name,
-                    ticket_id,
-                ),
-            )
-
-            saved_attachments = _ticket_save_attachments(
-                cursor, ticket_id, ticket_payload["ticket_no"], message_id, attachments
-            )
-            conn.commit()
-
-            _auth_system.registrar_auditoria(
-                usuario=user_context["username"],
-                modulo="tickets",
-                accion="responder_ticket",
-                descripcion=f"Respuesta registrada en ticket {ticket_payload['ticket_no']}",
-                resultado="EXITOSO",
-            )
-
-            ticket_row = _load_ticket_row(cursor, ticket_id)
-            return jsonify(
-                {
-                    "success": True,
-                    "message": "Respuesta registrada",
-                    "ticket": _ticket_payload(ticket_row, user_context),
-                    "messages": _load_ticket_messages(cursor, ticket_id, user_context),
-                }
-            )
-        except ValueError as exc:
-            if conn:
-                conn.rollback()
-            for attachment in saved_attachments:
-                try:
-                    os.remove(attachment["path"])
-                except OSError:
-                    pass
-            return jsonify({"success": False, "message": str(exc)}), 400
-        except Exception as exc:
-            if conn:
-                conn.rollback()
-            for attachment in saved_attachments:
-                try:
-                    os.remove(attachment["path"])
-                except OSError:
-                    pass
-            print(f"Error respondiendo ticket {ticket_id}: {exc}")
-            return jsonify({"success": False, "message": "No fue posible guardar la respuesta"}), 500
-        finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
-
-    @tickets_bp.route("/api/tickets/<int:ticket_id>/status", methods=["POST"])
-    def api_ticket_status(ticket_id):
-        auth_response, user_context = _require_ticket_login(api=True)
-        if auth_response is not None:
-            return auth_response
-
-        if not user_context["is_superadmin"]:
-            return jsonify({"success": False, "message": "Solo superadmin puede cambiar estados"}), 403
-
-        _ensure_ticket_tables()
-
-        payload = request.get_json(silent=True) or request.form
-        status_value = _normalize_ticket_text(payload.get("status"), max_length=32)
-        comment = _normalize_ticket_text(payload.get("comment"), max_length=1000)
-
-        if status_value not in TICKET_ALLOWED_STATUSES:
-            return jsonify({"success": False, "message": "Estado de ticket no valido"}), 400
-
-        conn = None
-        cursor = None
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            ticket_row = _load_ticket_row(cursor, ticket_id)
-            if not ticket_row:
-                return jsonify({"success": False, "message": "Ticket no encontrado"}), 404
-
-            now_text = _ticket_now_text()
-            status_message = comment or f"Estado actualizado a {status_value}"
-            resolved_at = now_text if status_value in {"resuelto", "cerrado"} else None
-            closed_at = now_text if status_value == "cerrado" else None
-
-            cursor.execute(
-                """
-                UPDATE support_tickets
-                SET status = %s,
-                    updated_at = %s,
-                    last_message_at = %s,
-                    last_message_preview = %s,
-                    assigned_to_username = %s,
-                    assigned_to_name = %s,
-                    resolved_at = %s,
-                    closed_at = %s
-                WHERE id = %s
-                """,
-                (
-                    status_value,
-                    now_text,
-                    now_text,
-                    _ticket_preview(status_message),
-                    user_context["username"],
-                    user_context["display_name"],
-                    resolved_at,
-                    closed_at,
-                    ticket_id,
-                ),
-            )
-
-            cursor.execute(
-                """
-                INSERT INTO support_ticket_messages (
-                    ticket_id,
-                    author_username,
-                    author_name,
-                    author_role,
-                    message_body,
-                    created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-                """,
-                (
-                    ticket_id,
-                    user_context["username"],
-                    user_context["display_name"],
-                    user_context["primary_role"],
-                    status_message,
-                    now_text,
-                ),
-            )
-
-            conn.commit()
-
-            ticket_row = _load_ticket_row(cursor, ticket_id)
-            return jsonify(
-                {
-                    "success": True,
-                    "message": "Estado actualizado",
-                    "ticket": _ticket_payload(ticket_row, user_context),
-                    "messages": _load_ticket_messages(cursor, ticket_id, user_context),
-                }
-            )
-        except Exception as exc:
-            if conn:
-                conn.rollback()
-            print(f"Error actualizando estado de ticket {ticket_id}: {exc}")
-            return jsonify({"success": False, "message": "No fue posible actualizar el ticket"}), 500
-        finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
-
-    return tickets_bp
-
+# ============================================================
+# Helpers internos
+# ============================================================
 
 def _require_ticket_login(api=False):
     user_context = _ticket_user_context()
@@ -360,7 +399,7 @@ def _ticket_user_context():
 
     roles = session.get("roles")
     if not isinstance(roles, list) or not roles:
-        roles = _auth_system.obtener_roles_usuario(username) or []
+        roles = auth_system.obtener_roles_usuario(username) or []
         session["roles"] = roles
         session["rol_principal"] = roles[0] if roles else None
         session.modified = True
@@ -377,7 +416,7 @@ def _ticket_user_context():
 
 
 def _ticket_now_text():
-    return _auth_system.get_mexico_time_mysql()
+    return auth_system.get_mexico_time_mysql()
 
 
 def _ticket_preview(text, limit=220):
@@ -820,7 +859,7 @@ def _handle_create_ticket(user_context):
         )
         conn.commit()
 
-        _auth_system.registrar_auditoria(
+        auth_system.registrar_auditoria(
             usuario=user_context["username"],
             modulo="tickets",
             accion="crear_ticket",
