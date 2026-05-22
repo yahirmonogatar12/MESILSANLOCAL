@@ -1,3 +1,29 @@
+// ====== WF_004: Garantizar CSS del modulo en <head> ======
+// Estos CSS estan declarados en MaterialTemplate.html con cache-busting.
+// Esta funcion es un seguro: si un template AJAX se carga sin pasar por
+// MaterialTemplate, igual inyecta los <link> en head para que el modulo
+// no se renderice sin estilos.
+(function ensureModuleStyles() {
+  const sheets = [
+    { id: "ilsan-theme-css", href: "/static/css/ilsan-theme.css?v=20260522a" },
+    { id: "ict-css", href: "/static/css/ict.css?v=20260522a" },
+  ];
+  sheets.forEach(({ id, href }) => {
+    let link = document.getElementById(id);
+    if (link) {
+      if (!link.getAttribute("href")?.includes("20260522a")) {
+        link.setAttribute("href", href);
+      }
+      return;
+    }
+    link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  });
+})();
+
 // ====== Variables Globales del Módulo ICT ======
 let ictModuleData = [];
 let allDefects = [];

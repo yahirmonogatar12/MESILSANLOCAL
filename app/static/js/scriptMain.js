@@ -376,9 +376,19 @@ document.addEventListener("DOMContentLoaded", function () {
     hideAllInformacionBasicaContainers;
   window.hideAllMaterialContainers = hideAllMaterialContainers;
 
-  // Funciones globales para mostrar cada contenedor de Información Básica
+  // Funciones globales para mostrar cada contenedor de Información Básica.
+  // WF_002: usar prepararPanelInformacionBasica() (definida en
+  // MaterialTemplate.html) en vez del bloque manual de ocultar.
+  function _prepInfoBasica() {
+    if (typeof window.prepararPanelInformacionBasica === "function") {
+      window.prepararPanelInformacionBasica();
+    } else {
+      hideAllInformacionBasicaContainers();
+    }
+  }
+
   window.mostrarAdminUsuarioInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById("admin-usuario-info-container");
     if (container) {
       container.style.display = "block";
@@ -386,7 +396,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarAdminMenuInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById("admin-menu-info-container");
     if (container) {
       container.style.display = "block";
@@ -394,7 +404,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarAdminAutoridadInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById("admin-autoridad-info-container");
     if (container) {
       container.style.display = "block";
@@ -402,7 +412,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlCodigoInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById("control-codigo-info-container");
     if (container) {
       container.style.display = "block";
@@ -410,7 +420,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarAdminItinerarioInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "admin-itinerario-info-container",
     );
@@ -420,7 +430,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarConsultarLicenciasInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "consultar-licencias-info-container",
     );
@@ -430,7 +440,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlDepartamentoInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "control-departamento-info-container",
     );
@@ -440,7 +450,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlProcesoInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById("control-proceso-info-container");
     if (container) {
       container.style.display = "block";
@@ -448,7 +458,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlOrdenProcesoInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "control-orden-proceso-info-container",
     );
@@ -458,7 +468,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlOrdenProceso2Info = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "control-orden-proceso2-info-container",
     );
@@ -468,7 +478,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlDefectoInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById("control-defecto-info-container");
     if (container) {
       container.style.display = "block";
@@ -476,7 +486,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlInterfacesInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "control-interfaces-info-container",
     );
@@ -486,7 +496,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlInterlockInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "control-interlock-info-container",
     );
@@ -496,7 +506,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarConfiguracionMSLInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "configuracion-msl-info-container",
     );
@@ -506,7 +516,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlClienteInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById("control-cliente-info-container");
     if (container) {
       container.style.display = "block";
@@ -514,7 +524,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.mostrarControlProveedorInfo = function () {
-    hideAllInformacionBasicaContainers();
+    _prepInfoBasica();
     const container = document.getElementById(
       "control-proveedor-info-container",
     );

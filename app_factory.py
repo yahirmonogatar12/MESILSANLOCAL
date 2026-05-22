@@ -36,9 +36,12 @@ def create_app():
     from app.aoi_api import aoi_api
     from app.py.control_modelos_smt import control_modelos_bp
     from app.api_raw_modelos import api_raw
-    from app.Almacen_api import material_admin_bp
     from app.shipping_api import register_shipping_routes
     from app.startup_init import run_startup_init
+
+    # Nuevo: paquete app.api/ organizado por seccion del navbar.
+    # Reemplaza imports sueltos como `from app.Almacen_api import ...`.
+    from app.api import registrar_blueprints_api
 
     if not getattr(app, "_mes_factory_initialized", False):
         register_smt_routes(app)
@@ -53,8 +56,9 @@ def create_app():
         if "api_raw" not in app.blueprints:
             app.register_blueprint(api_raw)
 
-        if "material_admin" not in app.blueprints:
-            app.register_blueprint(material_admin_bp)
+        # Registrar todos los blueprints del paquete app.api/
+        # (incluye material_admin migrado desde Almacen_api.py).
+        registrar_blueprints_api(app)
 
         register_shipping_routes(app)
 
