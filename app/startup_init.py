@@ -45,8 +45,8 @@ def run_startup_init():
     from . import routes as _routes
     from .db import init_db
     from .auth_system import AuthSystem
-    from .shipping_api import init_shipping_tables
-    from .shipping_material_api import init_shipping_material_tables
+    from .api.pda.shipping import init_shipping_tables
+    from .api.pda.shipping_material import init_shipping_material_tables
 
     log("Iniciando init_db()")
     init_db()

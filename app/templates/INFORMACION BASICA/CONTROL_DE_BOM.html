@@ -17,7 +17,15 @@
                 {% endif %}
             </div>
         </div>
-        
+
+        <div class="bom-revision-container">
+            <label for="bomRevisionFilter">Revision BOM</label>
+            <select id="bomRevisionFilter" class="bom-revision-filter" data-modelo="">
+                <option value="">Vigente</option>
+            </select>
+            <span id="bomRevisionStatus" class="bom-revision-status">KS vigente</span>
+        </div>
+
         <!-- Filtro por Classification -->
         <div class="bom-filter-container" style="display: flex; align-items: center; gap: 6px; margin-left: 15px;">
             <label style="font-weight: 600; color: #ffffff; font-size: 0.85em;">Filtrar:</label>
@@ -471,6 +479,7 @@
             document.body.addEventListener('keyup', function(e) {
                 if (e.target.id === 'bomModeloSearch') {
                     filtrarModelos();
+                    limpiarRevisionSiCambioModelo(e.target.value);
                 }
             });
             
@@ -501,6 +510,10 @@
                 // Filtro por classification
                 if (e.target.id === 'bomClassificationFilter') {
                     aplicarFiltroClassification();
+                }
+
+                if (e.target.id === 'bomRevisionFilter') {
+                    aplicarFiltroRevisionBOM();
                 }
             });
             
@@ -1367,11 +1380,15 @@
             
             // Obtener filtro de classification
             const classificationFilter = document.getElementById('bomClassificationFilter').value;
-            
+            const bomRevision = obtenerRevisionBOMSeleccionada(modelo);
+
             // Construir body de la petición
             const requestBody = { modelo: modelo };
             if (classificationFilter && classificationFilter !== 'TODOS') {
                 requestBody.classification = classificationFilter;
+            }
+            if (bomRevision) {
+                requestBody.bom_revision = bomRevision;
             }
             
             console.log('📡 Consultando BOM con filtros:', requestBody);
@@ -1432,7 +1449,8 @@
     function mostrarDatosEnTabla(datos) {
         const tbody = document.querySelector('#bomTableBody');
         tbody.innerHTML = '';
-        
+        actualizarEstadoRevisionBOM(datos);
+
         if (!datos || datos.length === 0) {
             tbody.innerHTML = '<tr><td colspan="12" class="no-data">No hay datos de BOM registrados. Use el botón "Registrar" para añadir nuevos elementos.</td></tr>';
             return;
@@ -1537,8 +1555,12 @@
             
             // Obtener filtro de classification
             const classificationFilter = document.getElementById('bomClassificationFilter').value;
-            
+            const bomRevision = obtenerRevisionBOMSeleccionada(modeloSeleccionado);
+
             let mensaje = `Generando archivo Excel de BOM para modelo: ${modeloSeleccionado}`;
+            if (bomRevision) {
+                mensaje += ` - Revision: ${bomRevision}`;
+            }
             if (classificationFilter && classificationFilter !== 'TODOS') {
                 mensaje += ` - Filtro: ${classificationFilter}`;
             }
@@ -1546,6 +1568,9 @@
             
             // Construir URL con parámetros
             let url = `/exportar_excel_bom?modelo=${encodeURIComponent(modeloSeleccionado)}`;
+            if (bomRevision) {
+                url += `&bom_revision=${encodeURIComponent(bomRevision)}`;
+            }
             if (classificationFilter && classificationFilter !== 'TODOS') {
                 url += `&classification=${encodeURIComponent(classificationFilter)}`;
             }
@@ -1564,8 +1589,11 @@
                 const urlBlob = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = urlBlob;
-                
+
                 let filename = `bom_export_${modeloSeleccionado}`;
+                if (bomRevision) {
+                    filename += `_${bomRevision}`;
+                }
                 if (classificationFilter && classificationFilter !== 'TODOS') {
                     filename += `_${classificationFilter}`;
                 }
@@ -1823,6 +1851,135 @@
         dropdownList.style.display = 'block';
     }
 
+    function actualizarTextoRevisionBOM(texto) {
+        const status = document.getElementById('bomRevisionStatus');
+        if (status) {
+            status.textContent = texto || 'KS vigente';
+            status.title = status.textContent;
+        }
+    }
+
+    function reiniciarSelectorRevisionesBOM(modelo = '') {
+        const select = document.getElementById('bomRevisionFilter');
+        if (!select) return;
+
+        select.dataset.modelo = String(modelo || '').trim().toUpperCase();
+        select.innerHTML = '<option value="">Vigente</option>';
+        select.value = '';
+        actualizarTextoRevisionBOM(modelo ? 'Consultando revision vigente' : 'KS vigente');
+    }
+
+    function limpiarRevisionSiCambioModelo(modelo) {
+        const select = document.getElementById('bomRevisionFilter');
+        if (!select) return;
+
+        const modeloActual = String(modelo || '').trim().toUpperCase();
+        if (select.dataset.modelo && select.dataset.modelo !== modeloActual) {
+            reiniciarSelectorRevisionesBOM();
+        }
+    }
+
+    function obtenerRevisionBOMSeleccionada(modelo) {
+        const select = document.getElementById('bomRevisionFilter');
+        const modeloActual = String(modelo || '').trim().toUpperCase();
+        if (!select || select.dataset.modelo !== modeloActual) {
+            return '';
+        }
+        return String(select.value || '').trim();
+    }
+
+    async function cargarRevisionesBOM(modelo, preservarSeleccion = true) {
+        const select = document.getElementById('bomRevisionFilter');
+        const modeloNormalizado = String(modelo || '').trim().toUpperCase();
+        if (!select || !modeloNormalizado || modeloNormalizado === 'TODOS') {
+            reiniciarSelectorRevisionesBOM();
+            return;
+        }
+
+        const revisionPrevia = preservarSeleccion && select.dataset.modelo === modeloNormalizado
+            ? String(select.value || '').trim()
+            : '';
+        reiniciarSelectorRevisionesBOM(modeloNormalizado);
+        actualizarTextoRevisionBOM('Cargando revisiones KS...');
+
+        try {
+            const response = await fetch(`/api/bom/revisions?modelo=${encodeURIComponent(modeloNormalizado)}`);
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'No se pudieron cargar revisiones KS');
+            }
+
+            const modeloEnPantalla = String(document.getElementById('bomModeloSearch')?.value || '').trim().toUpperCase();
+            if (modeloEnPantalla !== modeloNormalizado) {
+                return;
+            }
+
+            const revisiones = Array.isArray(data.data) ? data.data : [];
+            revisiones.forEach(revision => {
+                const option = document.createElement('option');
+                option.value = revision.bom_rev || '';
+                let texto = revision.bom_rev || 'Sin revision';
+                if (revision.is_current) {
+                    texto += ' - vigente';
+                }
+                if (revision.eco_no) {
+                    texto += ` - ECO ${revision.eco_no}`;
+                }
+                option.textContent = texto;
+                select.appendChild(option);
+            });
+
+            if (revisionPrevia && revisiones.some(revision => String(revision.bom_rev || '').toUpperCase() === revisionPrevia.toUpperCase())) {
+                select.value = revisionPrevia;
+            }
+
+            const cacheDelModelo = Array.isArray(bomDataCache)
+                && bomDataCache.some(item => String(item.modelo || '').trim().toUpperCase() === modeloNormalizado);
+            if (cacheDelModelo) {
+                actualizarEstadoRevisionBOM(bomDataCache);
+            } else {
+                actualizarTextoRevisionBOM(
+                    revisiones.length
+                        ? `${revisiones.length} revision(es) KS disponibles`
+                        : 'Sin revisiones KS'
+                );
+            }
+        } catch (error) {
+            console.error('Error al cargar revisiones BOM KS:', error);
+            actualizarTextoRevisionBOM('No se pudieron cargar revisiones');
+        }
+    }
+
+    function aplicarFiltroRevisionBOM() {
+        const modeloSeleccionado = document.getElementById('bomModeloSearch')?.value || '';
+        if (!modeloSeleccionado.trim() || modeloSeleccionado === 'todos') {
+            return;
+        }
+        cargarDatosBOMEnTabla(modeloSeleccionado);
+    }
+
+    function actualizarEstadoRevisionBOM(datos) {
+        const modeloSeleccionado = document.getElementById('bomModeloSearch')?.value || '';
+        const revisionSeleccionada = obtenerRevisionBOMSeleccionada(modeloSeleccionado);
+        const revisionCargada = Array.isArray(datos) && datos.length
+            ? String(datos[0].bomRevision || '').trim()
+            : '';
+
+        if (revisionCargada) {
+            actualizarTextoRevisionBOM(
+                revisionSeleccionada
+                    ? `Viendo BOM rev ${revisionCargada}`
+                    : `Vigente: BOM rev ${revisionCargada}`
+            );
+            return;
+        }
+        if (revisionSeleccionada) {
+            actualizarTextoRevisionBOM(`Sin datos para BOM rev ${revisionSeleccionada}`);
+            return;
+        }
+        actualizarTextoRevisionBOM('Sin datos de revision vigente');
+    }
+
     // Función para seleccionar un modelo del dropdown
     function seleccionarModelo(modelo) {
         const searchInput = document.getElementById('bomModeloSearch');
@@ -1834,12 +1991,14 @@
             dropdownList.style.display = 'none';
             return;
         }
-        
+
         searchInput.value = modelo;
         dropdownList.style.display = 'none';
-        
-        
+        cargarRevisionesBOM(modelo, false);
+
+
         // Limpiar tabla previa
+        bomDataCache = [];
         const tbody = document.querySelector('#bomTableBody');
         tbody.innerHTML = '';
     }
@@ -1979,8 +2138,12 @@
         // Mostrar indicador de carga
         const tbody = document.querySelector('#bomTableBody');
         tbody.innerHTML = '<tr><td colspan="12" class="bom-loading"><div>Cargando datos de BOM para modelo: ' + modeloSeleccionado + '...</div></td></tr>';
-        
-        
+
+        const revisionSelect = document.getElementById('bomRevisionFilter');
+        if (!revisionSelect || revisionSelect.dataset.modelo !== modeloSeleccionado.trim().toUpperCase()) {
+            cargarRevisionesBOM(modeloSeleccionado, false);
+        }
+
         // Cargar datos desde el servidor
         cargarDatosBOMEnTabla(modeloSeleccionado);
     }

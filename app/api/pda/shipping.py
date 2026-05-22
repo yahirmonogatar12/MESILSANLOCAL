@@ -1,20 +1,44 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Shipping Entries API - Sistema de Registro de Entradas de Embarques
-Endpoints REST para la app móvil PDA Zebra TC15
+"""Shipping Entries API - Sistema de Registro de Entradas de Embarques.
 
-Autor: ILSAN MES Team
-Fecha: Marzo 2026
+Endpoints REST para la app movil PDA Zebra TC15.
+
+Rutas (con url_prefix `/api/shipping`):
+  POST /api/shipping/auth/login
+  POST /api/shipping/auth/logout
+  GET  /api/shipping/auth/verify/<user_id>
+  GET  /api/shipping/users/<user_id>/permissions
+  GET  /api/shipping/permissions/available
+  GET  /api/shipping/departments
+  GET  /api/shipping/cargos
+  GET  /api/shipping/quality/<box_id>
+  POST /api/shipping/entries
+  GET  /api/shipping/entries
+  GET  /api/shipping/entries/<entry_id>
+  GET  /api/shipping/stats/today
+  GET  /api/shipping/stats/summary
+
+Migrado desde `app/shipping_api.py` (2026-05-22).
+
+NOTA WF_003: conserva `get_db_connection()` directo (mysql.connector via
+MySQLdb adapter) porque usa `cursor.lastrowid`, transacciones multi-query
+con commit y CREATE TABLE IF NOT EXISTS en init_shipping_tables().
+
+EXPORTS PUBLICOS (usados desde otros modulos):
+  - AVAILABLE_DEPARTMENTS, AVAILABLE_CARGOS  -> consumidos por admin/usuarios.py
+  - get_shipping_permission_dropdown_catalog -> consumido por admin/usuarios.py
+  - init_shipping_tables                     -> consumido por startup_init.py
+  - SHIPPING_PERMISSION_DEFINITIONS, etc.    -> consumidos por shipping_material_api.py
 """
 
-from flask import Blueprint, request, jsonify
-from datetime import datetime, timedelta, timezone
+import functools
 import hashlib
 import logging
-import functools
 import os
 import traceback
+from datetime import datetime, timedelta, timezone
+
+from flask import Blueprint, jsonify, request
+
 
 # Intentar importar MySQLdb/pymysql
 try:
@@ -24,13 +48,13 @@ try:
     MYSQL_AVAILABLE = True
 except ImportError:
     MYSQL_AVAILABLE = False
-    print("⚠️ MySQLdb no disponible para shipping_api")
+    print("MySQLdb no disponible para shipping_api")
 
-# Configurar logging
+
 logger = logging.getLogger(__name__)
 
-# Crear Blueprint
-shipping_api = Blueprint('shipping_api', __name__, url_prefix='/api/shipping')
+
+bp = Blueprint('shipping_api', __name__, url_prefix='/api/shipping')
 
 
 MAX_FAILED_ATTEMPTS = 5
@@ -472,38 +496,23 @@ def manejo_errores(func):
 # AUTENTICACIÓN
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@shipping_api.route('/auth/login', methods=['POST'])
+@bp.route('/auth/login', methods=['POST'])
 @manejo_errores
 def login():
-    """
-    POST /api/shipping/auth/login
-    Autenticar usuario del sistema para el módulo de embarques
-    
-    Body:
-    {
-        "username": "1247",
-        "password": "contraseña"
-    }
-    
-    Response:
-    {
-        "success": true,
-        "user": { id, username, full_name, department, cargo }
-    }
-    """
+    """POST /api/shipping/auth/login - Autenticar usuario del modulo de embarques."""
     data = request.get_json(silent=True) or {}
     username = data.get('username', '').strip()
     password = data.get('password', '')
-    
+
     if not username or not password:
         return jsonify({
             "success": False,
             "message": "Usuario y contraseña son requeridos"
         }), 400
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     try:
         cursor.execute("""
             SELECT id, username, password_hash, email, nombre_completo,
@@ -511,15 +520,15 @@ def login():
             FROM usuarios_sistema
             WHERE username = %s
         """, (username,))
-        
+
         user = cursor.fetchone()
-        
+
         if not user:
             return jsonify({
                 "success": False,
                 "message": "Usuario o contraseña incorrectos"
             }), 401
-        
+
         if int(user.get('activo') or 0) != 1:
             return jsonify({
                 "success": False,
@@ -547,7 +556,7 @@ def login():
             user['bloqueado_hasta'] = None
 
         password_valid = verify_shipping_password(user['password_hash'], password)
-        
+
         if not password_valid:
             intentos = int(user.get('intentos_fallidos') or 0) + 1
             intentos_restantes = max(0, MAX_FAILED_ATTEMPTS - intentos)
@@ -578,7 +587,7 @@ def login():
                 "message": "Usuario o contraseña incorrectos",
                 "intentosRestantes": intentos_restantes,
             }), 401
-        
+
         cursor.execute("""
             UPDATE usuarios_sistema
             SET intentos_fallidos = 0,
@@ -586,24 +595,21 @@ def login():
                 ultimo_acceso = %s
             WHERE id = %s
         """, (get_mexico_time(), user['id']))
-        
+
         return jsonify({
             "success": True,
             "user": build_user_payload(user)
         })
-        
+
     finally:
         cursor.close()
         conn.close()
 
 
-@shipping_api.route('/auth/logout', methods=['POST'])
+@bp.route('/auth/logout', methods=['POST'])
 @manejo_errores
 def logout():
-    """
-    POST /api/shipping/auth/logout
-    Cerrar sesión del usuario y registrar su último acceso.
-    """
+    """POST /api/shipping/auth/logout - Cerrar sesion y registrar ultimo acceso."""
     data = request.get_json(silent=True) or {}
     user_id = data.get('userId')
 
@@ -626,13 +632,10 @@ def logout():
     })
 
 
-@shipping_api.route('/auth/verify/<int:user_id>', methods=['GET'])
+@bp.route('/auth/verify/<int:user_id>', methods=['GET'])
 @manejo_errores
 def verify_user(user_id):
-    """
-    GET /api/shipping/auth/verify/{user_id}
-    Verificar que el usuario siga existiendo y permanezca activo.
-    """
+    """GET /api/shipping/auth/verify/{user_id} - Verificar usuario activo."""
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
@@ -668,13 +671,10 @@ def verify_user(user_id):
         conn.close()
 
 
-@shipping_api.route('/users/<int:user_id>/permissions', methods=['GET'])
+@bp.route('/users/<int:user_id>/permissions', methods=['GET'])
 @manejo_errores
 def get_user_permissions(user_id):
-    """
-    GET /api/shipping/users/{user_id}/permissions
-    Obtener permisos efectivos del catálogo compartido entre escritorio y móvil.
-    """
+    """GET /api/shipping/users/{user_id}/permissions - Permisos efectivos del usuario."""
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
 
@@ -723,7 +723,7 @@ def get_user_permissions(user_id):
         conn.close()
 
 
-@shipping_api.route('/permissions/available', methods=['GET'])
+@bp.route('/permissions/available', methods=['GET'])
 @manejo_errores
 def get_available_permissions():
     """Catálogo hardcodeado de permisos compartidos entre escritorio y móvil."""
@@ -733,7 +733,7 @@ def get_available_permissions():
     })
 
 
-@shipping_api.route('/departments', methods=['GET'])
+@bp.route('/departments', methods=['GET'])
 @manejo_errores
 def get_departments():
     """Catálogo hardcodeado de departamentos expuesto por API."""
@@ -743,7 +743,7 @@ def get_departments():
     })
 
 
-@shipping_api.route('/cargos', methods=['GET'])
+@bp.route('/cargos', methods=['GET'])
 @manejo_errores
 def get_cargos():
     """Catálogo hardcodeado de cargos expuesto por API."""
@@ -757,33 +757,19 @@ def get_cargos():
 # CONSULTA DE CALIDAD
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@shipping_api.route('/quality/<box_id>', methods=['GET'])
+@bp.route('/quality/<box_id>', methods=['GET'])
 @manejo_errores
 def get_quality_status(box_id):
-    """
-    GET /api/shipping/quality/{box_id}
-    Consultar el estatus de calidad de un Box ID
-    
-    Response:
-    {
-        "box_id": "BOX-2026-001847",
-        "product_name": "Componente electrónico A",
-        "lot_number": "LOT-2026-0218A",
-        "quality_status": "released",
-        "validated_by": "1249",
-        "validated_at": "2026-03-12T10:30:00",
-        "rejection_reason": null
-    }
-    """
+    """GET /api/shipping/quality/{box_id} - Consultar estatus de calidad de un Box ID."""
     if not box_id or len(box_id) < 3:
         return jsonify({
             "success": False,
             "message": "Box ID inválido"
         }), 400
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     try:
         cursor.execute("""
             SELECT box_id, product_name, lot_number, quality_status,
@@ -791,21 +777,20 @@ def get_quality_status(box_id):
             FROM quality_validations
             WHERE box_id = %s
         """, (box_id,))
-        
+
         result = cursor.fetchone()
-        
+
         if not result:
             return jsonify({
                 "success": False,
                 "message": "Box ID no encontrado en el sistema"
             }), 404
-        
-        # Convertir datetime a string
+
         if result.get('validated_at'):
             result['validated_at'] = result['validated_at'].strftime('%Y-%m-%dT%H:%M:%S')
-        
+
         return jsonify(result)
-        
+
     finally:
         cursor.close()
         conn.close()
@@ -815,45 +800,27 @@ def get_quality_status(box_id):
 # REGISTRO DE EMBARQUES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@shipping_api.route('/entries', methods=['POST'])
+@bp.route('/entries', methods=['POST'])
 @manejo_errores
 def create_entry():
-    """
-    POST /api/shipping/entries
-    Registrar una nueva entrada de embarque
-    
-    Body:
-    {
-        "box_id": "BOX-2026-001850",
-        "quality_status": "released",
-        "scanned_by": "1247",
-        "product_name": "Componente A",
-        "lot_number": "LOT-2026-0218A",
-        "warehouse_zone": "A1",
-        "notes": "Sin observaciones",
-        "device_id": "PDA-TC15-001",
-        "scanned_at": "2026-03-12T14:32:00"
-    }
-    """
+    """POST /api/shipping/entries - Registrar nueva entrada de embarque."""
     data = request.get_json(force=True)
-    
-    # Validaciones
+
     box_id = data.get('box_id', '').strip()
     scanned_by = data.get('scanned_by', '').strip()
-    
+
     if not box_id:
         return jsonify({
             "success": False,
             "message": "El campo box_id es requerido"
         }), 400
-    
+
     if not scanned_by:
         return jsonify({
             "success": False,
             "message": "El campo scanned_by es requerido"
         }), 400
-    
-    # Parsear fecha de escaneo o usar actual
+
     scanned_at_str = data.get('scanned_at')
     if scanned_at_str:
         try:
@@ -863,34 +830,31 @@ def create_entry():
             scanned_at = get_mexico_time()
     else:
         scanned_at = get_mexico_time()
-    
-    # Obtener estatus de calidad (de la petición o consultar BD)
+
     quality_status = data.get('quality_status', 'pending')
     product_name = data.get('product_name')
     lot_number = data.get('lot_number')
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     try:
-        # Si no se proporcionó info del producto, intentar obtenerla de quality_validations
         if not product_name or not lot_number:
             cursor.execute("""
                 SELECT product_name, lot_number, quality_status
                 FROM quality_validations
                 WHERE box_id = %s
             """, (box_id,))
-            
+
             quality_info = cursor.fetchone()
             if quality_info:
                 product_name = product_name or quality_info.get('product_name')
                 lot_number = lot_number or quality_info.get('lot_number')
                 quality_status = quality_info.get('quality_status', quality_status)
-        
-        # Insertar registro de entrada
+
         cursor.execute("""
-            INSERT INTO shipping_entries 
-                (box_id, quality_status, scanned_at, scanned_by, product_name, 
+            INSERT INTO shipping_entries
+                (box_id, quality_status, scanned_at, scanned_by, product_name,
                  lot_number, warehouse_zone, notes, device_id, synced_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
@@ -905,82 +869,65 @@ def create_entry():
             data.get('device_id'),
             get_mexico_time()
         ))
-        
+
         entry_id = cursor.lastrowid
-        
+
         return jsonify({
             "success": True,
             "id": entry_id,
             "message": "Entrada registrada correctamente"
         }), 201
-        
+
     finally:
         cursor.close()
         conn.close()
 
 
-@shipping_api.route('/entries', methods=['GET'])
+@bp.route('/entries', methods=['GET'])
 @manejo_errores
 def list_entries():
-    """
-    GET /api/shipping/entries
-    Listar historial de escaneos con filtros
-    
-    Query params:
-    - limit: int (default 50)
-    - offset: int (default 0)
-    - status: released|pending|rejected|in_process
-    - search: string (busca en box_id, product_name)
-    - from_date: ISO8601
-    - to_date: ISO8601
-    - scanned_by: ID del operador
-    """
-    # Parámetros de paginación
-    limit = min(int(request.args.get('limit', 50)), 200)  # Máximo 200
+    """GET /api/shipping/entries - Listar historial de escaneos con filtros."""
+    limit = min(int(request.args.get('limit', 50)), 200)
     offset = int(request.args.get('offset', 0))
-    
-    # Filtros
+
     status_filter = request.args.get('status', '').strip()
     search_query = request.args.get('search', '').strip()
     from_date = request.args.get('from_date', '').strip()
     to_date = request.args.get('to_date', '').strip()
     scanned_by = request.args.get('scanned_by', '').strip()
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     try:
-        # Construir query con filtros
         where_clauses = []
         params = []
-        
+
         if status_filter:
             where_clauses.append("quality_status = %s")
             params.append(status_filter)
-        
+
         if search_query:
             where_clauses.append("(box_id LIKE %s OR product_name LIKE %s)")
             params.extend([f"%{search_query}%", f"%{search_query}%"])
-        
+
         if from_date:
             where_clauses.append("scanned_at >= %s")
             params.append(from_date)
-        
+
         if to_date:
             where_clauses.append("scanned_at <= %s")
             params.append(to_date + ' 23:59:59')
-        
+
         if scanned_by:
             where_clauses.append("scanned_by = %s")
             params.append(scanned_by)
-        
+
         where_sql = 'WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
-        
-        # Obtener total
+
         cursor.execute(f"SELECT COUNT(*) as total FROM shipping_entries {where_sql}", params)
         total = cursor.fetchone()['total']
-        
-        # Obtener registros
+
         query = f"""
             SELECT id, box_id, quality_status, scanned_at, scanned_by,
                    product_name, lot_number, warehouse_zone
@@ -989,15 +936,14 @@ def list_entries():
             ORDER BY scanned_at DESC
             LIMIT %s OFFSET %s
         """
-        
+
         cursor.execute(query, params + [limit, offset])
         entries = cursor.fetchall()
-        
-        # Convertir datetime a string
+
         for entry in entries:
             if entry.get('scanned_at'):
                 entry['scanned_at'] = entry['scanned_at'].strftime('%Y-%m-%dT%H:%M:%S')
-        
+
         return jsonify({
             "success": True,
             "total": total,
@@ -1005,22 +951,19 @@ def list_entries():
             "offset": offset,
             "entries": entries
         })
-        
+
     finally:
         cursor.close()
         conn.close()
 
 
-@shipping_api.route('/entries/<int:entry_id>', methods=['GET'])
+@bp.route('/entries/<int:entry_id>', methods=['GET'])
 @manejo_errores
 def get_entry(entry_id):
-    """
-    GET /api/shipping/entries/{id}
-    Obtener detalle de una entrada específica
-    """
+    """GET /api/shipping/entries/{id} - Detalle de una entrada especifica."""
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     try:
         cursor.execute("""
             SELECT se.*,
@@ -1030,25 +973,24 @@ def get_entry(entry_id):
                 ON CAST(u.id AS CHAR) = se.scanned_by OR u.username = se.scanned_by
             WHERE se.id = %s
         """, (entry_id,))
-        
+
         entry = cursor.fetchone()
-        
+
         if not entry:
             return jsonify({
                 "success": False,
                 "message": "Entrada no encontrada"
             }), 404
-        
-        # Convertir datetime a string
+
         for key in ['scanned_at', 'synced_at', 'created_at', 'updated_at']:
             if entry.get(key):
                 entry[key] = entry[key].strftime('%Y-%m-%dT%H:%M:%S')
-        
+
         return jsonify({
             "success": True,
             "entry": entry
         })
-        
+
     finally:
         cursor.close()
         conn.close()
@@ -1058,21 +1000,13 @@ def get_entry(entry_id):
 # ESTADÍSTICAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@shipping_api.route('/stats/today', methods=['GET'])
+@bp.route('/stats/today', methods=['GET'])
 @manejo_errores
 def get_today_stats():
-    """
-    GET /api/shipping/stats/today
-    Obtener estadísticas del día actual
-    
-    Query params:
-    - date: YYYY-MM-DD (default: hoy)
-    - scanned_by: filtrar por operador
-    """
+    """GET /api/shipping/stats/today - Estadisticas del dia actual."""
     date_param = request.args.get('date', '').strip()
     scanned_by = request.args.get('scanned_by', '').strip()
-    
-    # Usar fecha proporcionada o fecha actual de México
+
     if date_param:
         try:
             target_date = datetime.strptime(date_param, '%Y-%m-%d').date()
@@ -1080,21 +1014,20 @@ def get_today_stats():
             target_date = get_mexico_time().date()
     else:
         target_date = get_mexico_time().date()
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     try:
-        # Construir filtro de operador si se proporciona
         operator_filter = ""
         params = [target_date]
-        
+
         if scanned_by:
             operator_filter = "AND scanned_by = %s"
             params.append(scanned_by)
-        
+
         cursor.execute(f"""
-            SELECT 
+            SELECT
                 COUNT(*) AS total,
                 SUM(CASE WHEN quality_status = 'released' THEN 1 ELSE 0 END) AS released,
                 SUM(CASE WHEN quality_status = 'pending' THEN 1 ELSE 0 END) AS pending,
@@ -1103,61 +1036,47 @@ def get_today_stats():
             FROM shipping_entries
             WHERE DATE(scanned_at) = %s {operator_filter}
         """, params)
-        
+
         stats = cursor.fetchone()
-        
-        # Asegurar valores no nulos
+
         for key in ['total', 'released', 'pending', 'rejected', 'in_process']:
             stats[key] = int(stats.get(key) or 0)
-        
+
         stats['date'] = target_date.strftime('%Y-%m-%d')
-        
+
         return jsonify(stats)
-        
+
     finally:
         cursor.close()
         conn.close()
 
 
-@shipping_api.route('/stats/summary', methods=['GET'])
+@bp.route('/stats/summary', methods=['GET'])
 @manejo_errores
 def get_stats_summary():
-    """
-    GET /api/shipping/stats/summary
-    Obtener resumen de estadísticas por período
-    
-    Query params:
-    - from_date: YYYY-MM-DD
-    - to_date: YYYY-MM-DD  
-    - group_by: day|week|month (default: day)
-    """
+    """GET /api/shipping/stats/summary - Resumen de estadisticas por periodo."""
     from_date = request.args.get('from_date', '').strip()
     to_date = request.args.get('to_date', '').strip()
     group_by = request.args.get('group_by', 'day').strip()
-    
-    # Valores por defecto: última semana
+
     if not to_date:
         to_date = get_mexico_time().strftime('%Y-%m-%d')
     if not from_date:
         from_date = (get_mexico_time() - timedelta(days=7)).strftime('%Y-%m-%d')
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(MySQLdb.cursors.DictCursor)
-    
+
     try:
-        # Determinar agrupación
         if group_by == 'week':
-            date_format = '%Y-%u'  # Año-Semana
             date_label = "CONCAT(YEAR(scanned_at), '-W', LPAD(WEEK(scanned_at), 2, '0'))"
         elif group_by == 'month':
-            date_format = '%Y-%m'
             date_label = "DATE_FORMAT(scanned_at, '%Y-%m')"
         else:
-            date_format = '%Y-%m-%d'
             date_label = "DATE(scanned_at)"
-        
+
         cursor.execute(f"""
-            SELECT 
+            SELECT
                 {date_label} AS period,
                 COUNT(*) AS total,
                 SUM(CASE WHEN quality_status = 'released' THEN 1 ELSE 0 END) AS released,
@@ -1169,14 +1088,13 @@ def get_stats_summary():
             GROUP BY {date_label}
             ORDER BY period DESC
         """, (from_date, to_date))
-        
+
         results = cursor.fetchall()
-        
-        # Convertir a enteros
+
         for row in results:
             for key in ['total', 'released', 'pending', 'rejected', 'in_process']:
                 row[key] = int(row.get(key) or 0)
-        
+
         return jsonify({
             "success": True,
             "from_date": from_date,
@@ -1184,26 +1102,10 @@ def get_stats_summary():
             "group_by": group_by,
             "data": results
         })
-        
+
     finally:
         cursor.close()
         conn.close()
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# FUNCIÓN DE REGISTRO
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def register_shipping_routes(app):
-    """Registrar el blueprint de shipping en la aplicación Flask"""
-    try:
-        if 'shipping_api' not in app.blueprints:
-            app.register_blueprint(shipping_api)
-            print("✅ Shipping API registrada en /api/shipping")
-        return True
-    except Exception as e:
-        print(f"❌ Error registrando Shipping API: {e}")
-        return False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1211,32 +1113,29 @@ def register_shipping_routes(app):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def init_shipping_tables():
-    """Crear las tablas necesarias para el módulo de embarques si no existen"""
+    """Crear las tablas necesarias para el módulo de embarques si no existen."""
     if not MYSQL_AVAILABLE:
         print("MySQL no disponible, no se pueden crear tablas de shipping")
         return False
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Limpiar tabla operators_shipping si tiene problemas de estructura
+
         try:
             cursor.execute("DROP TABLE IF EXISTS operators_shipping_old")
-        except:
+        except Exception:
             pass
-        
-        # Verificar si operators_shipping ya existe
+
         cursor.execute("SHOW TABLES LIKE 'operators_shipping'")
         table_exists = cursor.fetchone() is not None
-        
+
         if not table_exists:
-            # Tabla dedicada de operadores para la app de embarques
             print("Creando tabla operators_shipping...")
             try:
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS operators_shipping (
-                        id VARCHAR(20) PRIMARY KEY COMMENT 'Número de empleado',
+                        id VARCHAR(20) PRIMARY KEY COMMENT 'Numero de empleado',
                         full_name VARCHAR(100) NOT NULL,
                         department VARCHAR(50) NULL,
                         shift ENUM('A', 'B', 'C', 'admin') DEFAULT 'A',
@@ -1252,8 +1151,7 @@ def init_shipping_tables():
             except Exception as e:
                 print(f"Error creando tabla operators_shipping: {e}")
                 traceback.print_exc()
-            
-            # Migrar operadores legacy si la tabla anterior existe.
+
             try:
                 cursor.execute("SHOW TABLES LIKE 'operators'")
                 if cursor.fetchone():
@@ -1290,11 +1188,10 @@ def init_shipping_tables():
             except Exception as e:
                 print(f"No se pudo migrar operadores legacy: {e}, continuando...")
 
-            # Registrar admin por defecto para embarques si no existe.
             cursor.execute("""
                 SELECT COUNT(*) FROM operators_shipping WHERE id = %s
             """, ('admin',))
-            
+
             if cursor.fetchone()[0] == 0:
                 try:
                     cursor.execute("""
@@ -1313,9 +1210,8 @@ def init_shipping_tables():
                 except Exception as e:
                     print(f"No se pudo insertar admin: {e}")
         else:
-            print("Tabla operators_shipping ya existe, se omite creación")
-        
-        # Tabla de validaciones de calidad
+            print("Tabla operators_shipping ya existe, se omite creacion")
+
         try:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS quality_validations (
@@ -1336,7 +1232,6 @@ def init_shipping_tables():
         except Exception as e:
             print(f"Tabla quality_validations: {e}")
 
-        # Tabla de permisos compartida por escritorio y app móvil.
         try:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_permissions_materiales (
@@ -1351,8 +1246,7 @@ def init_shipping_tables():
             """)
         except Exception as e:
             print(f"Tabla user_permissions_materiales: {e}")
-        
-        # Tabla de entradas de embarque
+
         try:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS shipping_entries (
@@ -1377,16 +1271,15 @@ def init_shipping_tables():
             """)
         except Exception as e:
             print(f"Tabla shipping_entries: {e}")
-        
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         print("Tablas de shipping creadas/verificadas correctamente")
         return True
-        
+
     except Exception as e:
-        print(f"❌ Error creando tablas de shipping: {e}")
-        import traceback
+        print(f"Error creando tablas de shipping: {e}")
         traceback.print_exc()
         return False

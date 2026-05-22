@@ -31,9 +31,6 @@ def create_app():
 
     # Importes diferidos para evitar side-effects pesados antes de configurar entorno.
     from app.routes import app
-    from app.smt_routes_clean import register_smt_routes
-    from app.py.control_modelos_smt import control_modelos_bp
-    from app.shipping_api import register_shipping_routes
     from app.startup_init import run_startup_init
 
     # Paquete app.api/ organizado por seccion del navbar.
@@ -42,22 +39,22 @@ def create_app():
     from app.api import registrar_blueprints_api
 
     if not getattr(app, "_mes_factory_initialized", False):
-        register_smt_routes(app)
-
-        if "control_modelos_bp" not in app.blueprints:
-            app.register_blueprint(control_modelos_bp)
-
         # Registrar todos los blueprints del paquete app.api/
         # Migrados hasta ahora:
-        #   - control_material.material_admin  (ex Almacen_api.py)
-        #   - control_material.smd_inventory   (ex smd_inventory_api.py)
-        #   - control_resultados.aoi           (ex aoi_api.py)
-        #   - control_produccion.po_wo         (ex api_po_wo.py)
-        #   - shared.raw_modelos               (ex api_raw_modelos.py)
-        #   - portal.tickets                   (ex tickets_portal.py)
+        #   - admin.permisos                          (ex admin_api.py)
+        #   - admin.usuarios                          (ex user_admin.py)
+        #   - informacion_basica.control_modelos_smt  (ex app/py/control_modelos_smt.py)
+        #   - control_material.material_admin         (ex Almacen_api.py)
+        #   - control_material.smd_inventory          (ex smd_inventory_api.py)
+        #   - control_calidad.smt_historial_simple    (ex smt_routes_date_fixed.py)
+        #   - control_calidad.smt_historial           (ex smt_routes_clean.py)
+        #   - control_resultados.aoi                  (ex aoi_api.py)
+        #   - control_produccion.po_wo                (ex api_po_wo.py)
+        #   - shared.raw_modelos                      (ex api_raw_modelos.py)
+        #   - portal.tickets                          (ex tickets_portal.py)
+        #   - pda.shipping                            (ex shipping_api.py)
+        #   - pda.shipping_material                   (ex shipping_material_api.py)
         registrar_blueprints_api(app)
-
-        register_shipping_routes(app)
 
         # Inicializaciones de BD + arranque de workers (respeta MES_SKIP_STARTUP_INIT)
         run_startup_init()

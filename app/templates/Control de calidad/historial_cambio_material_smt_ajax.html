@@ -1,7 +1,13 @@
-
+<!DOCTYPE html>
+<html lang="es">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMT - Historial Simple</title>
+    <!-- WF_004: CSS externo se garantiza tambien via ensureModuleStyles() en
+         scriptMain.js cuando se carga via AJAX. Aqui se incluye para que el
+         linter no marque las clases y para soporte de carga directa. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/historial_cambio_material_smt.css', v='20260522a') }}">
     <style>
         * {
             margin: 0;
@@ -956,6 +962,27 @@
     </div>
 
     <script>
+        // ====== WF_004: Garantizar CSS del modulo en <head> ======
+        // El CSS ya esta en MaterialTemplate.html, pero si este template se
+        // carga directo (sin pasar por MaterialTemplate), inyectarlo aqui.
+        (function ensureModuleStyles() {
+            const id = 'historial-cambio-material-smt-css';
+            const version = '20260522a';
+            const href = '/static/css/historial_cambio_material_smt.css?v=' + version;
+            let link = document.getElementById(id);
+            if (link) {
+                if (!link.getAttribute('href')?.includes(version)) {
+                    link.setAttribute('href', href);
+                }
+                return;
+            }
+            link = document.createElement('link');
+            link.id = id;
+            link.rel = 'stylesheet';
+            link.href = href;
+            document.head.appendChild(link);
+        })();
+
         // Variables globales
         let datosActuales = [];
         let datosFiltrados = [];
@@ -1693,32 +1720,39 @@
             }
         }
         
-        // Inicialización
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Página cargada - Lista para usar');
-            
-            // Establecer fechas múltiples veces para asegurar que se apliquen
+        // Inicializacion: extraida a funcion global para que funcione tambien
+        // cuando el template se carga via AJAX (DOMContentLoaded ya disparo).
+        function initHistorialSMT() {
+            console.log('Historial SMT - Inicializando');
+
             establecerFechasPorDefecto();
-            
-            // Usar setTimeout para asegurar que los elementos estén completamente cargados
+
             setTimeout(() => {
                 establecerFechasPorDefecto();
                 forzarFechaActual();
             }, 100);
-            
-            // Otra verificación después de 500ms
+
             setTimeout(() => {
                 forzarFechaActual();
             }, 500);
-            
-            // Solo cargar estadísticas iniciales una vez al inicio
-            // No volverá a llamarse para evitar sobrescribir las estadísticas del día
+
             cargarEstadisticas();
-            
-            // Cargar automáticamente los datos del día actual
             cargarDatos();
             mostrarMensaje('Cargando datos del día actual...', 'success');
-        });
+        }
+        window.initHistorialSMT = initHistorialSMT;
+
+        // Carga directa o dinamica:
+        //  - Si el template se sirve como pagina normal, DOMContentLoaded
+        //    aun no disparo -> esperar al evento.
+        //  - Si se inyecta via cargarContenidoDinamico, el script corre con
+        //    document.readyState ya 'interactive' o 'complete' -> ejecutar
+        //    en el siguiente tick para que el DOM del fragment este listo.
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initHistorialSMT);
+        } else {
+            setTimeout(initHistorialSMT, 0);
+        }
         
         // Cerrar filtros SMT al hacer clic fuera
         document.addEventListener('click', function(event) {

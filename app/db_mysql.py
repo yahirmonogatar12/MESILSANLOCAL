@@ -856,6 +856,17 @@ def _eco_normalize_date(value, default=''):
     return text.split(' ')[0]
 
 
+def _eco_effective_valid_from(value, effective_date):
+    """Prevent ECO rows from becoming valid before the ECO effective date."""
+    item_valid_from = _eco_normalize_date(value)
+    eco_valid_from = _eco_normalize_date(effective_date)
+    if not eco_valid_from:
+        return item_valid_from or None
+    if not item_valid_from or item_valid_from < eco_valid_from:
+        return eco_valid_from
+    return item_valid_from
+
+
 def _eco_plant_date():
     try:
         return (datetime.utcnow() - timedelta(hours=6)).strftime('%Y-%m-%d')
@@ -2442,7 +2453,50 @@ def validar_eco_para_aprobacion(eco_id):
             errors.append(f"Item {idx}: material_code/numero_parte requerido")
         if _eco_parse_qty(item.get('qty'), 0) <= 0:
             errors.append(f"Item {idx}: qty debe ser mayor a 0")
+    errors.extend(_validar_revision_eco_futura(eco_id, eco))
     return errors
+
+
+def _validar_revision_eco_futura(eco_id, eco):
+    """A future ECO must publish a new KS revision so current plans keep the old BOM."""
+    effective_date = _eco_normalize_date((eco or {}).get('effective_at'))
+    bom_rev = _eco_normalize_upper((eco or {}).get('bom_revision'))
+    if not effective_date or not bom_rev or effective_date <= _eco_plant_date():
+        return []
+
+    if _eco_normalize_upper((eco or {}).get('scope_kind')) == 'FAMILY':
+        scope = obtener_scope_eco(eco_id) or []
+        part_numbers = [_eco_normalize_upper(row.get('part_no')) for row in scope]
+    else:
+        part_numbers = [_eco_normalize_upper((eco or {}).get('part_no'))]
+    part_numbers = sorted({part_no for part_no in part_numbers if part_no})
+    if not part_numbers:
+        return []
+
+    placeholders = ','.join(['%s'] * len(part_numbers))
+    existing = execute_query(
+        f"""
+        SELECT part_no
+        FROM ks_bom_headers
+        WHERE UPPER(bom_rev) = UPPER(%s)
+          AND UPPER(part_no) IN ({placeholders})
+        ORDER BY part_no
+        LIMIT 10
+        """,
+        tuple([bom_rev] + part_numbers),
+        fetch='all'
+    ) or []
+    if not existing:
+        return []
+    examples = ', '.join(
+        _eco_normalize_upper(row.get('part_no')) for row in existing if row.get('part_no')
+    )
+    return [
+        (
+            f"ECO futuro requiere nueva revision BOM: {bom_rev} ya existe en KS"
+            + (f" para {examples}" if examples else "")
+        )
+    ]
 
 
 def _eco_item_key(item_no, bom_level):
@@ -2471,7 +2525,7 @@ def _eco_component_tuple(part_no, bom_rev, item, effective_date, eco, idx):
         item_process,
         _eco_normalize_text(item.get('proveedor') or item.get('supplier')),
         _eco_normalize_text(item.get('item_class') or item.get('classification')),
-        _eco_normalize_date(item.get('valid_from'), effective_date),
+        _eco_effective_valid_from(item.get('valid_from'), effective_date),
         _eco_normalize_date(item.get('valid_to')) or None,
         '사용',
         _eco_parse_bool(item.get('is_alternate')),
@@ -2811,7 +2865,7 @@ def aprobar_eco(eco_id, approved_by='desconocido'):
                 item_process,
                 _eco_normalize_text(item.get('proveedor')),
                 _eco_normalize_text(item.get('item_class') or item.get('classification')),
-                _eco_normalize_date(item.get('valid_from'), effective_date),
+                _eco_effective_valid_from(item.get('valid_from'), effective_date),
                 _eco_normalize_date(item.get('valid_to')) or None,
                 '사용',
                 _eco_parse_bool(item.get('is_alternate')),
@@ -3459,38 +3513,51 @@ def _map_ks_bom_row(row):
     }
 
 
-def listar_bom_por_modelo(modelo, classification=None):
+def listar_bom_por_modelo(modelo, classification=None, bom_revision=None):
     """Listar BOM desde v_ecos_bom_current con shape legacy para la pantalla."""
     try:
+        selected_revision = str(bom_revision or '').strip()
         plant_date = _eco_plant_date()
         where = [
             "(status_name IS NULL OR status_name = '' OR status_name = '사용')",
-            "(valid_from IS NULL OR valid_from <= %s)",
-            "(valid_to IS NULL OR valid_to >= %s)",
         ]
-        params = [plant_date, plant_date]
+        params = []
+
+        # La consulta normal muestra el BOM vigente por fecha. Cuando Control BOM
+        # pide una revision explicita debe poder inspeccionar revisiones pasadas o futuras.
+        if not selected_revision:
+            where.extend([
+                "(valid_from IS NULL OR valid_from <= %s)",
+                "(valid_to IS NULL OR valid_to >= %s)",
+            ])
+            params.extend([plant_date, plant_date])
 
         if modelo and modelo != 'todos':
             where.append("UPPER(bom_part_no) = UPPER(%s)")
             params.append(modelo)
-            latest = execute_query(
-                """
-                SELECT bom_rev
-                FROM v_ecos_bom_current
-                WHERE UPPER(bom_part_no) = UPPER(%s)
-                  AND (status_name IS NULL OR status_name = '' OR status_name = '사용')
-                  AND (valid_from IS NULL OR valid_from <= %s)
-                  AND (valid_to IS NULL OR valid_to >= %s)
-                GROUP BY bom_rev
-                ORDER BY MAX(header_synced_at) DESC, bom_rev DESC
-                LIMIT 1
-                """,
-                (modelo, plant_date, plant_date),
-                fetch='one'
-            )
-            if latest and latest.get('bom_rev'):
-                where.append("UPPER(bom_rev) = UPPER(%s)")
-                params.append(latest.get('bom_rev'))
+            if not selected_revision:
+                latest = execute_query(
+                    """
+                    SELECT bom_rev
+                    FROM v_ecos_bom_current
+                    WHERE UPPER(bom_part_no) = UPPER(%s)
+                      AND (status_name IS NULL OR status_name = '' OR status_name = '사용')
+                      AND (valid_from IS NULL OR valid_from <= %s)
+                      AND (valid_to IS NULL OR valid_to >= %s)
+                    GROUP BY bom_rev
+                    ORDER BY MAX(header_synced_at) DESC, bom_rev DESC
+                    LIMIT 1
+                    """,
+                    (modelo, plant_date, plant_date),
+                    fetch='one'
+                )
+                if latest and latest.get('bom_rev'):
+                    where.append("UPPER(bom_rev) = UPPER(%s)")
+                    params.append(latest.get('bom_rev'))
+
+        if selected_revision:
+            where.append("UPPER(bom_rev) = UPPER(%s)")
+            params.append(selected_revision)
 
         if classification and classification != 'TODOS':
             where.append("""
@@ -3508,7 +3575,11 @@ def listar_bom_por_modelo(modelo, classification=None):
             ORDER BY bom_part_no, header_synced_at DESC, bom_rev DESC, item_seq, item_no
         """
         result = execute_query(query, tuple(params), fetch='all') or []
-        print(f" Query BOM KS: modelo={modelo}, classification={classification}, resultados={len(result)}")
+        print(
+            " Query BOM KS: "
+            f"modelo={modelo}, classification={classification}, bom_revision={selected_revision or 'vigente'}, "
+            f"resultados={len(result)}"
+        )
         return [_map_ks_bom_row(row) for row in result]
     except Exception as e:
         print(f"Error listando BOM por modelo: {e}")

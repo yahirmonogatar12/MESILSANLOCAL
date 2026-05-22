@@ -1,3 +1,44 @@
+"""Shipping Material API - Modulo de movimiento de material para app movil PDA.
+
+15 rutas con url_prefix `/api/shipping/material`:
+  POST /api/shipping/material/catalog/import
+  GET  /api/shipping/material/boxes/<box_code>
+  POST /api/shipping/material/entries/boxes
+  GET  /api/shipping/material/entries
+  POST /api/shipping/material/entries
+  POST /api/shipping/material/exits/boxes
+  GET  /api/shipping/material/exits
+  POST /api/shipping/material/exits
+  GET  /api/shipping/material/returns
+  POST /api/shipping/material/returns
+  POST /api/shipping/material/exits/<exit_id>/departure (POST/PUT/PATCH)
+  GET  /api/shipping/material/departures/history
+  GET  /api/shipping/material/inventory
+  GET  /api/shipping/material/stats/today
+
+Migrado desde `app/shipping_material_api.py` (2026-05-22). Mantenido el
+nombre interno del blueprint `shipping_material_api` para no romper los
+15+ decoradores `@shipping_material_api.route(...)` existentes. El loader
+de app.api accede via el alias `bp = shipping_material_api`.
+
+EXPORTS PUBLICOS (consumidos desde app/routes.py):
+  - SHIPPING_TABLES                     -> diccionario de nombres de tabla
+  - adjust_shipping_movement_record     -> helper
+  - assign_exit_departure_value         -> helper
+  - delete_shipping_movement_record     -> helper
+  - ensure_inventory_record             -> helper
+  - generate_movement_folio             -> helper
+  - get_departure_history_records       -> helper
+  - get_dict_cursor                     -> helper
+  - init_shipping_material_tables       -> bootstrap (tambien en startup_init.py)
+  - normalize_integer, normalize_part_number, normalize_search
+  - rebuild_part_inventory_state
+  - to_sql_datetime
+
+NOTA WF_003: conserva `get_db_connection()` directo (importado de
+app.api.pda.shipping). Usa stored procs, lastrowid y transacciones complejas.
+"""
+
 import json
 import os
 import random
@@ -7,7 +48,7 @@ from datetime import datetime
 import pandas as pd
 from flask import Blueprint, jsonify, request
 
-from .shipping_api import (
+from app.api.pda.shipping import (
     MYSQL_AVAILABLE,
     MySQLdb,
     get_db_connection,
@@ -39,6 +80,11 @@ shipping_material_api = Blueprint(
     __name__,
     url_prefix="/api/shipping/material",
 )
+# Alias para el loader de app/api/__init__.py (_MODULOS_REGISTRADOS).
+# Se conserva `shipping_material_api` con su nombre original para que los
+# decoradores @shipping_material_api.route(...) existentes sigan funcionando
+# sin tener que reescribir 15 rutas.
+bp = shipping_material_api
 
 
 def get_dict_cursor(conn):
@@ -4236,12 +4282,5 @@ def get_today_stats():
         conn.close()
 
 
-def register_shipping_material_routes(app):
-    try:
-        if "shipping_material_api" not in app.blueprints:
-            app.register_blueprint(shipping_material_api)
-            print("Shipping Material API registrada en /api/shipping/material")
-        return True
-    except Exception as exc:
-        print(f"Error registrando Shipping Material API: {exc}")
-        return False
+# register_shipping_material_routes() eliminada — el blueprint se registra
+# automaticamente desde app/api/__init__.py via _MODULOS_REGISTRADOS ("pda.shipping_material").

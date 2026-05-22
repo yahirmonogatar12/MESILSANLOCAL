@@ -33,21 +33,38 @@ Convencion de nuevos modulos:
 # Formato: "seccion.modulo" -> se importa como `app.api.<seccion>.<modulo>`
 # y se espera que exponga un atributo `bp` (Flask Blueprint).
 _MODULOS_REGISTRADOS = [
+    "admin.permisos",
+    "admin.usuarios",
+    "informacion_basica.control_modelos_smt",
     "control_material.material_admin",
     "control_material.smd_inventory",
+    # control_calidad.smt_historial_simple DEBE ir antes que smt_historial:
+    # ambos definen /api/historial_smt_data y Flask deja responder al primero
+    # registrado (preserva comportamiento legacy de smt_routes_date_fixed.py).
+    "control_calidad.smt_historial_simple",
+    "control_calidad.smt_historial",
     "control_resultados.aoi",
     "control_produccion.po_wo",
     "shared.raw_modelos",
     "portal.tickets",
+    "pda.shipping",
+    "pda.shipping_material",
 ]
 
 
 def registrar_blueprints_api(app):
     """Registra todos los blueprints de `app.api.*` en la Flask app dada.
 
+    Reconoce dos formas de exportar blueprints en cada modulo:
+      - `bp`         (obligatorio): el blueprint principal del modulo.
+      - `bp_<sufijo>` (opcional): blueprints adicionales (p.ej. para rutas
+        sin url_prefix o que viven fuera del namespace principal).
+
     Idempotente: si un blueprint ya esta registrado (mismo `name`), lo salta.
     """
     import importlib
+
+    from flask import Blueprint
 
     for ruta in _MODULOS_REGISTRADOS:
         modulo = importlib.import_module(f"app.api.{ruta}")
@@ -56,6 +73,17 @@ def registrar_blueprints_api(app):
             raise RuntimeError(
                 f"app.api.{ruta} no define un atributo 'bp' (Flask Blueprint)"
             )
-        if bp.name in app.blueprints:
-            continue
-        app.register_blueprint(bp)
+
+        # Recolectar bp + cualquier bp_<sufijo> adicional.
+        blueprints_a_registrar = [bp]
+        for atributo in dir(modulo):
+            if not atributo.startswith("bp_") or atributo == "bp":
+                continue
+            extra = getattr(modulo, atributo)
+            if isinstance(extra, Blueprint):
+                blueprints_a_registrar.append(extra)
+
+        for blueprint in blueprints_a_registrar:
+            if blueprint.name in app.blueprints:
+                continue
+            app.register_blueprint(blueprint)

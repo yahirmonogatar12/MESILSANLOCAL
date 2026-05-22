@@ -45,6 +45,52 @@ function getTodayIMD() {
   return formatter.format(new Date());
 }
 
+function escapePlanImdHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function partNoWithBomRevisionIMD(plan) {
+  const partNo = escapePlanImdHtml(plan?.part_no || '');
+  const bomRev = String(plan?.assigned_bom_rev || '').trim();
+  if (!bomRev) return partNo;
+  return `${partNo}<div style="font-size:10px; color:#7fb3d5; opacity:.9;">BOM rev ${escapePlanImdHtml(bomRev)}</div>`;
+}
+
+async function loadBomRevisionOptionsIMD(partNo, selectedRev, selectEl) {
+  if (!selectEl) return;
+  selectEl.disabled = true;
+  selectEl.innerHTML = '<option value="">Automatico - revision vigente</option>';
+  try {
+    const response = await axios.get(`/api/plan/bom-revisions?part_no=${encodeURIComponent(partNo || '')}`);
+    const revisions = Array.isArray(response.data?.data) ? response.data.data : [];
+    revisions.forEach((row) => {
+      const option = document.createElement('option');
+      option.value = row.bom_rev || '';
+      const labels = [`BOM rev ${row.bom_rev}`];
+      if (row.is_current) labels.push('vigente');
+      if (row.eco_no) labels.push(`ECO ${row.eco_no}${row.eco_effective_at ? ` ${String(row.eco_effective_at).slice(0, 10)}` : ''}`);
+      option.textContent = labels.join(' - ');
+      selectEl.appendChild(option);
+    });
+    selectEl.value = selectedRev || '';
+  } catch (error) {
+    const option = document.createElement('option');
+    option.value = selectedRev || '';
+    option.textContent = selectedRev
+      ? `BOM rev ${selectedRev} - catalogo no disponible`
+      : 'No se pudieron cargar revisiones KS';
+    selectEl.appendChild(option);
+    selectEl.value = selectedRev || '';
+  } finally {
+    selectEl.disabled = false;
+  }
+}
+
 // ====== Cargar Planes IMD ======
 async function loadPlansIMD() {
   try {
@@ -183,7 +229,7 @@ function renderTableIMD(plans) {
           <td style="color: ${color}; font-weight: bold;">${displayName}</td>
           <td>${plan.shift || 'DIA'}</td>
           <td>${plan.model_code || ''}</td>
-          <td>${plan.part_no || ''}</td>
+          <td>${partNoWithBomRevisionIMD(plan)}</td>
           <td>${plan.process || ''}</td>
           <td>${plan.ct || 0}</td>
           <td>${plan.uph || 0}</td>
@@ -308,7 +354,7 @@ async function saveSequencesIMD() {
 }
 
 // ====== Doble Click para Editar ======
-function openEditModalIMD(planId) {
+async function openEditModalIMD(planId) {
   const plan = planningDataIMD.find(p => String(p.id) === String(planId));
   if (!plan) return;
 
@@ -337,6 +383,7 @@ function openEditModalIMD(planId) {
             </div>
             <div><label style="color: #888; font-size: 12px;">Part No</label><input type="text" name="part_no" id="imd-edit-part_no" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
             <div><label style="color: #888; font-size: 12px;">Cantidad</label><input type="number" name="plan_count" id="imd-edit-plan_count" min="0" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"></div>
+            <div style="grid-column: 1 / -1;"><label style="color: #888; font-size: 12px;">Revision BOM</label><select name="assigned_bom_rev" id="imd-edit-assigned_bom_rev" style="width: 100%; background: #1a1b26; border: 1px solid #444; color: lightgray; padding: 8px; border-radius: 4px;"><option value="">Automatico - revision vigente</option></select></div>
           </div>
           <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
             <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
@@ -358,6 +405,11 @@ function openEditModalIMD(planId) {
   document.getElementById('imd-edit-shift').value = plan.shift || 'DIA';
   document.getElementById('imd-edit-part_no').value = plan.part_no || '';
   document.getElementById('imd-edit-plan_count').value = plan.plan_count || 0;
+  await loadBomRevisionOptionsIMD(
+    plan.part_no,
+    plan.assigned_bom_rev,
+    document.getElementById('imd-edit-assigned_bom_rev')
+  );
 
   const cancelBtn = document.getElementById('imd-edit-cancel-plan-btn');
   if (cancelBtn) {
@@ -388,7 +440,8 @@ async function updatePlanIMD(formData) {
       line: formData.get('line'),
       shift: formData.get('shift'),
       part_no: partNo,
-      plan_count: parseInt(formData.get('plan_count'), 10) || 0
+      plan_count: parseInt(formData.get('plan_count'), 10) || 0,
+      assigned_bom_rev: formData.get('assigned_bom_rev') || ''
     };
 
     const response = await axios.post('/api/plan-imd/update', data);
