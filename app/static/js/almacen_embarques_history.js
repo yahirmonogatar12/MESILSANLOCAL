@@ -2807,15 +2807,47 @@
   }
 
   function bindModuleResize(moduleRoot) {
-    if (!moduleRoot || moduleRoot.dataset.resizeBound === "true") {
-      return;
-    }
+    if (!moduleRoot) return;
 
     const updateHeight = () => {
       bindColumnResizers(moduleRoot);
       syncScrollableHeight(moduleRoot);
       syncTableWidths(moduleRoot);
     };
+
+    // Bug fix: cuando el modulo se restaura tras F5 con un tab oculto,
+    // las tablas se miden con clientWidth=0 y quedan desplazadas hasta
+    // que algo dispara un reflow (Consultar, F12). ResizeObserver detecta
+    // el cambio 0 -> ancho real al hacerse visible y resincroniza. Se
+    // instala SIEMPRE (incluso si ya hay resizeBound) porque el moduleRoot
+    // puede haber sido reinyectado en el DOM.
+    if (typeof ResizeObserver === "function" && !moduleRoot.__aeResizeObserver) {
+      let lastWidth = Math.floor(moduleRoot.getBoundingClientRect().width || 0);
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const width = Math.floor(entry.contentRect?.width || 0);
+          if (width <= 0) continue;
+          if (Math.abs(width - lastWidth) < 1) continue;
+          const transicionDesdeOculto = lastWidth === 0;
+          lastWidth = width;
+          if (transicionDesdeOculto) {
+            // Primera vez que el modulo es visible: invalidar caches de
+            // ancho de columna (pudieron haberse calculado con width=0
+            // durante restauracion de tabs en F5).
+            moduleRoot.querySelectorAll(".ae-table-shell").forEach((shell) => {
+              delete shell.dataset.columnWidthsReady;
+            });
+          }
+          updateHeight();
+        }
+      });
+      ro.observe(moduleRoot);
+      moduleRoot.__aeResizeObserver = ro;
+    }
+
+    if (moduleRoot.dataset.resizeBound === "true") {
+      return;
+    }
 
     window.addEventListener("resize", updateHeight);
     requestAnimationFrame(() => requestAnimationFrame(updateHeight));

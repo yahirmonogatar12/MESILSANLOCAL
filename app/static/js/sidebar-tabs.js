@@ -215,6 +215,15 @@
         if (!area) return;
         markActive(area, containerId);
 
+        // Red de seguridad: algunos modulos (ej. embarques) calculan
+        // anchos de tabla a partir de clientWidth. Si se restauraron tras
+        // un F5 mientras estaban ocultos, midieron 0 y quedaron mal hasta
+        // que algo dispare reflow. Forzar 'resize' tras el switch los
+        // hace recalcular sin acoplar sidebar-tabs a cada modulo.
+        requestAnimationFrame(() => {
+            try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+        });
+
         const navTab = containerToNavTab.get(containerId) || getNavTabActiva();
         if (navTab) {
             const state = readState();
