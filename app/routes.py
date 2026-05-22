@@ -14494,12 +14494,10 @@ def export_almacen_embarques_retorno():
             rows = [
                 row
                 for row in rows
-                if (row.get("return_quantity") or 0) - (row.get("loss_quantity") or 0) > 0
+                if (row.get("return_quantity") or 0) > 0
             ]
             for row in rows:
-                row["movement_quantity"] = max(
-                    0, (row.get("return_quantity") or 0) - (row.get("loss_quantity") or 0)
-                )
+                row["movement_quantity"] = row.get("return_quantity") or 0
             sheet_name = "Entradas Retorno"
             filename = "entradas_retorno_almacen_embarques.xlsx"
             headers = {

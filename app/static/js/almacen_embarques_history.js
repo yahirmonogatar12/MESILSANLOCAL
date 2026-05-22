@@ -1680,10 +1680,7 @@
   function renderReturnEntryRows(rows) {
     return rows
       .map((row) => {
-        const quantity = Math.max(
-          0,
-          Number(row.return_quantity || 0) - Number(row.loss_quantity || 0),
-        );
+        const quantity = Number(row.return_quantity || 0) || 0;
         return `
           <tr>
             <td>${escapeHtml(row.fecha)}</td>
@@ -2459,9 +2456,7 @@
         throw new Error("Respuesta inválida del servidor");
       }
 
-      const entryRows = rows.filter(
-        (row) => Number(row.return_quantity || 0) - Number(row.loss_quantity || 0) > 0,
-      );
+      const entryRows = rows.filter((row) => Number(row.return_quantity || 0) > 0);
       const exitRows = rows
         .filter((row) => Number(row.loss_quantity || 0) > 0)
         .map((row) => ({
@@ -2477,7 +2472,7 @@
         entryRows,
         "No hay entradas de retorno registradas.",
         renderReturnEntryRows,
-        (row) => Math.max(0, Number(row.return_quantity || 0) - Number(row.loss_quantity || 0)),
+        (row) => Number(row.return_quantity || 0) || 0,
       );
       renderReturnHistoryTable(
         elements.exitBody,
