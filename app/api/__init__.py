@@ -46,6 +46,8 @@ _MODULOS_REGISTRADOS = [
     "control_produccion.po_wo",
     "shared.raw_modelos",
     "portal.tickets",
+    "pda.shipping",
+    "pda.shipping_material",
 ]
 
 

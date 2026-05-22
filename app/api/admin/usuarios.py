@@ -41,9 +41,8 @@ Migrado desde `app/user_admin.py` (2026-05-22). Cambios respecto al legacy:
     desde `app.api.shared`
   - Eliminada la funcion `init_admin_routes()` (codigo muerto)
 
-Sigue importando `AVAILABLE_CARGOS`, `AVAILABLE_DEPARTMENTS`, etc. de
-`app.shipping_api` (no migrado todavia). Cuando shipping_api se mueva
-a app/api/control_proceso/, actualizar ese import.
+Importa `AVAILABLE_CARGOS`, `AVAILABLE_DEPARTMENTS` y
+`get_shipping_permission_dropdown_catalog` de `app.api.pda.shipping`.
 
 NOTA WF_003: este modulo conserva `get_db_connection()` y `get_dict_cursor()`
 directos porque tiene multiples transacciones complejas (crear_rol con
@@ -78,7 +77,7 @@ from flask import (
 from app.api.shared import auth_system
 from app.auth_system import ECO_CREATE_PERMISSION
 from app.db_mysql import get_db_connection
-from app.shipping_api import (
+from app.api.pda.shipping import (
     AVAILABLE_CARGOS,
     AVAILABLE_DEPARTMENTS,
     get_shipping_permission_dropdown_catalog,

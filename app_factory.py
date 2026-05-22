@@ -32,7 +32,6 @@ def create_app():
     # Importes diferidos para evitar side-effects pesados antes de configurar entorno.
     from app.routes import app
     from app.py.control_modelos_smt import control_modelos_bp
-    from app.shipping_api import register_shipping_routes
     from app.startup_init import run_startup_init
 
     # Paquete app.api/ organizado por seccion del navbar.
@@ -56,9 +55,9 @@ def create_app():
         #   - control_produccion.po_wo             (ex api_po_wo.py)
         #   - shared.raw_modelos                   (ex api_raw_modelos.py)
         #   - portal.tickets                       (ex tickets_portal.py)
+        #   - pda.shipping                         (ex shipping_api.py)
+        #   - pda.shipping_material                (ex shipping_material_api.py)
         registrar_blueprints_api(app)
-
-        register_shipping_routes(app)
 
         # Inicializaciones de BD + arranque de workers (respeta MES_SKIP_STARTUP_INIT)
         run_startup_init()

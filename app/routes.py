@@ -124,8 +124,12 @@ from .po_wo_models import (
     verificar_po_existe,
     verificar_wo_existe,
 )
-from .shipping_api import init_shipping_tables, register_shipping_routes
-from .shipping_material_api import (
+# shipping_api migrado a app/api/pda/shipping.py
+# Se registra via registrar_blueprints_api() en app_factory.py
+from .api.pda.shipping import init_shipping_tables
+# shipping_material_api migrado a app/api/pda/shipping_material.py
+# Se registra via registrar_blueprints_api() en app_factory.py
+from .api.pda.shipping_material import (
     SHIPPING_TABLES,
     adjust_shipping_movement_record,
     assign_exit_departure_value,
@@ -139,7 +143,6 @@ from .shipping_material_api import (
     normalize_part_number,
     normalize_search,
     rebuild_part_inventory_state,
-    register_shipping_material_routes,
     to_sql_datetime,
 )
 # smd_inventory_api migrado a app/api/control_material/smd_inventory.py
@@ -194,9 +197,8 @@ def _startup_log(msg):
 
 # smd_inventory ahora se registra via app/api/__init__.py
 
-# Registrar rutas Shipping API (App móvil de embarques)
-register_shipping_routes(app)
-register_shipping_material_routes(app)
+# shipping y shipping_material (apps moviles PDA) registrados
+# via registrar_blueprints_api() en app_factory.py
 
 # api_po_wo y api_raw migrados a app/api/ y se registran centralmente
 # desde app_factory.py via registrar_blueprints_api().
