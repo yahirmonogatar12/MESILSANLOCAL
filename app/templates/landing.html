@@ -1536,7 +1536,7 @@
                     <ul>
                         {% if 'material' in permisos or True %}
                         <li>
-                            <a href="/ILSAN-ELECTRONICS" target="_blank" rel="noopener noreferrer">
+                            <a href="/ILSAN-ELECTRONICS">
                                 <span class="dropdown-item-title">ILSAN MES</span>
                             </a>
                         </li>
@@ -1544,23 +1544,16 @@
                         
                         {% if 'calidad' in permisos or 'admin' in roles or True %}
                         <li>
-                            <a href="/defect-management" target="_blank" rel="noopener noreferrer">
+                            <a href="/defect-management">
                                 <span class="dropdown-item-title">Defect Management</span>
                             </a>
                         </li>
                         {% endif %}
                         
-                        {% if usuario_autenticado %}
-                        <li>
-                            <a href="/portal-tickets">
-                                <span class="dropdown-item-title">Portal de Tickets</span>
-                            </a>
-                        </li>
-                        {% endif %}
                     </ul>
                 </div>
             </li>
-            <li><a href="/soporte">Support</a></li>
+            <li><a href="/portal-tickets">Support</a></li>
             <li><a href="/calendario">Calendar</a></li>
         </ul>
     </nav>
