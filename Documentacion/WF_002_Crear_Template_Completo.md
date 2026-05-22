@@ -20,7 +20,7 @@ Este documento detalla el flujo completo para crear un **nuevo módulo con templ
 | ✨ CREAR | `app/templates/<Carpeta>/<nombre>.html` | Template HTML del módulo |
 | ✨ CREAR | `app/static/css/<nombre>.css` | Estilos propios del módulo |
 | ✨ CREAR | `app/static/js/<nombre>.js` | Lógica JS propia del módulo |
-| ✏️ MODIFICAR | `app/routes.py` | Ruta Flask para servir el template |
+| ✨ CREAR / MODIFICAR | `app/api/<seccion>/<modulo>.py` | Blueprint con ruta Flask para servir el template |
 | ✏️ MODIFICAR | `app/templates/LISTAS/LISTA_<SECCION>.html` | Botón `<li>` en el sidebar |
 | ✏️ MODIFICAR | `app/static/js/scriptMain.js` | Función `mostrar*()` + contenedor en lista de ocultar |
 | ✏️ MODIFICAR | `app/templates/MaterialTemplate.html` | Div contenedor para carga dinámica |
@@ -142,12 +142,20 @@ Buscar la zona de contenedores (cerca de línea ~574) y agregar:
 
 ---
 
-## Paso 6 — Agregar la Ruta Flask
+## Paso 6 — Agregar la Ruta Flask al Blueprint
 
-**Archivo:** `app/routes.py`
+**Archivo:** `app/api/<seccion>/<modulo>.py`
 
 ```python
-@app.route("/mi-modulo")
+from flask import Blueprint, render_template
+
+from app.api.shared import login_requerido
+
+
+bp = Blueprint("mi_modulo", __name__)
+
+
+@bp.route("/mi-modulo")
 @login_requerido
 def mi_modulo():
     """Servir la página de Mi Módulo"""
@@ -162,6 +170,8 @@ def mi_modulo():
 - **El nombre del archivo en `render_template`** debe coincidir EXACTAMENTE con el archivo real (case sensitive en Linux)
 - **No necesitas ruta `-ajax`** separada si usas la misma ruta para carga directa y dinámica
 - Decorar con `@login_requerido`
+- Registrar el Blueprint en `app/api/__init__.py`
+- El backend propio del módulo debe quedar en ese paquete Blueprint; si crece, crear módulos hermanos como `<modulo>_data.py` según [WF_003](./WF_003_Integracion_API_JS_Template.md)
 
 ---
 
@@ -374,7 +384,7 @@ Luego, asignar el permiso del nuevo botón a los roles correspondientes.
 [ ] CSS creado con selectores prefijados
 [ ] JS creado con variables/funciones/IDs prefijados
 [ ] Contenedor div agregado en MaterialTemplate.html
-[ ] Ruta Flask agregada en routes.py
+[ ] Ruta Flask agregada en el Blueprint del módulo
 [ ] Función mostrar*() en scriptMain.js
 [ ] mostrar*() usa prepararPanelSeccion() (NO copia bloque manual de ocultar)
 [ ] Contenedor agregado en AMBAS listas de ocultar en scriptMain.js
@@ -414,7 +424,7 @@ MaterialTemplate.html
   │     │              cargarContenidoDinamico()
   │     │                    │
   │     │                    ▼
-  │     │              routes.py ──── /mi-modulo
+  │     │              Blueprint app/api/<seccion>/<modulo>.py ──── /mi-modulo
   │     │                    │
   │     │                    ▼
   │     │              mi_modulo.html

@@ -35,6 +35,7 @@ Convencion de nuevos modulos:
 _MODULOS_REGISTRADOS = [
     "admin.permisos",
     "admin.usuarios",
+    "informacion_basica.control_bom",
     "informacion_basica.control_modelos_smt",
     "control_material.material_admin",
     "control_material.smd_inventory",

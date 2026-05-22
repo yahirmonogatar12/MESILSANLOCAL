@@ -472,7 +472,7 @@
 }
 
 /* Modal personalizado */
-#customAlertModal {
+#controlBomAlertModal {
     display: none;
     position: fixed;
     z-index: 2147483647;
@@ -486,7 +486,7 @@
 }
 
 /* Modal de carga con progreso */
-#loadingModal {
+#controlBomLoadingModal {
     display: none;
     position: fixed;
     z-index: 2147483647;
@@ -499,7 +499,7 @@
     align-items: center;
 }
 
-#loadingDialog {
+#controlBomLoadingDialog {
     background: #2c3e50;
     padding: 30px;
     border-radius: 15px;
@@ -512,24 +512,24 @@
     outline: none;
 }
 
-#loadingTitle {
+#controlBomLoadingTitle {
     color: #3498db;
     font-size: 1.3em;
     margin-bottom: 15px;
     font-weight: bold;
 }
 
-#loadingMessage {
+#controlBomLoadingMessage {
     color: #ecf0f1;
     font-size: 1em;
     margin-bottom: 20px;
 }
 
-#loadingProgressContainer {
+#controlBomLoadingProgressContainer {
     margin: 20px 0;
 }
 
-#loadingProgressBar {
+#controlBomLoadingProgressBar {
     width: 100%;
     height: 20px;
     background-color: #34495e;
@@ -538,7 +538,7 @@
     margin-bottom: 10px;
 }
 
-#loadingProgressFill {
+#controlBomLoadingProgressFill {
     height: 100%;
     background: linear-gradient(90deg, #3498db, #2980b9);
     width: 0%;
@@ -546,18 +546,18 @@
     border-radius: 10px;
 }
 
-#loadingProgressText {
+#controlBomLoadingProgressText {
     color: #95a5a6;
     font-size: 0.9em;
     margin-bottom: 5px;
 }
 
-#loadingTimeEstimate {
+#controlBomLoadingTimeEstimate {
     color: #f39c12;
     font-size: 0.85em;
 }
 
-#loadingSpinner {
+#controlBomLoadingSpinner {
     width: 40px;
     height: 40px;
     border: 4px solid #34495e;
@@ -572,7 +572,7 @@
     100% { transform: rotate(360deg); }
 }
 
-#customAlertDialog {
+#controlBomAlertDialog {
     background: #39515F;
     padding: 32px 24px 20px 24px;
     border-radius: 10px;
@@ -585,13 +585,13 @@
     outline: none;
 }
 
-#customAlertMessage {
+#controlBomAlertMessage {
     color: #fff;
     font-size: 1.1em;
     margin-bottom: 18px;
 }
 
-#customAlertOkBtn {
+#controlBomAlertOkBtn {
     background: #2D363D;
     color: #fff;
     border: 2px;
@@ -717,18 +717,18 @@
     }
 
     /* Modal en móvil */
-    #customAlertDialog {
+    #controlBomAlertDialog {
         margin: 20px;
         padding: 20px;
         max-width: calc(100vw - 40px);
     }
 
-    #customAlertMessage {
+    #controlBomAlertMessage {
         font-size: 14px;
         margin-bottom: 20px;
     }
 
-    #customAlertOkBtn {
+    #controlBomAlertOkBtn {
         padding: 12px 24px;
         font-size: 14px;
     }
@@ -789,16 +789,16 @@
     }
 
     /* Modal en pantallas muy pequeñas */
-    #customAlertDialog {
+    #controlBomAlertDialog {
         margin: 10px;
         padding: 15px;
     }
 
-    #customAlertMessage {
+    #controlBomAlertMessage {
         font-size: 12px;
     }
 
-    #customAlertOkBtn {
+    #controlBomAlertOkBtn {
         padding: 10px 20px;
         font-size: 12px;
     }

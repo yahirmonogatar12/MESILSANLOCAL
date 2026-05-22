@@ -25,14 +25,16 @@ try:
         guardar_material,
         obtener_inventario,
         actualizar_inventario,
-        obtener_bom_por_modelo,
-        guardar_bom_item,
         crear_usuario,
         obtener_usuario,
         verificar_usuario,
         guardar_configuracion,
         cargar_configuracion,
         migrar_desde_sqlite
+    )
+    from .api.informacion_basica.control_bom_data import (
+        guardar_bom_item,
+        obtener_bom_por_modelo,
     )
     # Probar conexión MySQL
     try:
