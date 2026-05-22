@@ -24351,20 +24351,8 @@ def control_modelos_visor_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/control-modelos-smt-ajax")
-@login_requerido
-def control_modelos_smt_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de Modelos SMT"""
-    try:
-        usuario_actual = session.get(
-            "nombre_completo", session.get("usuario", "Usuario no identificado")
-        ).strip()
-        return render_template(
-            "INFORMACION BASICA/control_modelos_smt_ajax.html", usuario=usuario_actual
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control de Modelos SMT AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# /control-modelos-smt-ajax migrado a app/api/informacion_basica/control_modelos_smt.py
+# (registrado via bp_ajax para conservar la URL absoluta sin url_prefix)
 
 
 @app.route("/api/mysql/columns")

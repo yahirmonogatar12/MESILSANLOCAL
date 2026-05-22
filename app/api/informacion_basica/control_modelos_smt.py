@@ -1,77 +1,103 @@
-# -*- coding: utf-8 -*-
-import json
-import hashlib
-from typing import List, Dict, Any
-from decimal import Decimal
+"""Endpoints HTTP del modulo Control de modelos SMT.
+
+Forma parte de Informacion Basica (LISTA_INFORMACIONBASICA). Gestiona la
+tabla `raw_smd` que es el catalogo maestro de modelos para SMT.
+
+Rutas:
+  GET    /control-modelos-smt-ajax       -> render del template AJAX (fragment)
+  GET    /control-modelos/               -> render del template standalone (legacy)
+  GET    /control-modelos/api/data       -> JSON con columnas + filas
+  POST   /control-modelos/api/rows       -> crear fila
+  PUT    /control-modelos/api/rows/<rowhash>    -> actualizar fila (con check de hash)
+  DELETE /control-modelos/api/rows/<rowhash>    -> borrar fila (con check de hash)
+
+Migrado desde `app/py/control_modelos_smt.py` (2026-05-22). Cambios:
+  - Se INLINE las 3 constantes que estaban en `app/py/settings.py`
+    (TABLE_NAME, SAFETY_LIMIT, USER_NAME) — no vale la pena un settings.py
+    aparte para 3 constantes especificas del modulo.
+  - Se integra la ruta huerfana `/control-modelos-smt-ajax` que vivia en
+    `app/routes.py:24354` (solo renderizaba el template; sin razon para
+    estar separada).
+  - Mismo blueprint name 'control_modelos' y mismas rutas: frontend y JS
+    no requieren cambios.
+
+NOTA WF_003: usa `execute_query()` correctamente — el modulo ya cumplia
+WF_003 desde antes de la migracion.
+"""
+
 import datetime
+import hashlib
+import json
+from decimal import Decimal
+from typing import Any, Dict, List
 
-from flask import Blueprint, render_template, request, jsonify, session
+from flask import Blueprint, jsonify, render_template, request, session
 
-from ..config_mysql import execute_query
-from .settings import TABLE_NAME, SAFETY_LIMIT, USER_NAME
+from app.api.shared import execute_query
+
+
+# Constantes del modulo (ex `app/py/settings.py`)
+TABLE_NAME = "raw_smd"
+SAFETY_LIMIT = 2000
+USER_NAME = "sistema"
 
 EXCLUDE_COLS = {"id", "created_at", "updated_at"}
 MANDATORY_EXTRA_COL = "usuario"
 
 
+bp = Blueprint('control_modelos', __name__, url_prefix='/control-modelos')
+
+
+# ============================================================
+# Helpers de tabla y normalizacion
+# ============================================================
+
 def init_control_modelos_table():
-    """Verifica que la tabla raw_smd exista y tiene la estructura necesaria"""
+    """Verifica que la tabla raw_smd exista y tiene la estructura necesaria."""
     try:
-        # Verificar si la tabla existe
         result = execute_query(
             "SHOW TABLES LIKE %s",
             (TABLE_NAME,),
             fetch='one'
         )
-        
+
         if result:
             print(f"Tabla {TABLE_NAME} encontrada")
-            # Solo verificar/agregar la columna usuario
             ensure_usuario_column()
         else:
             print(f"ADVERTENCIA: La tabla {TABLE_NAME} no existe en la base de datos")
-            
+
     except Exception as e:
         print(f"Error verificando tabla: {e}")
 
 
-def insert_sample_data():
-    """Esta función ya no se usa ya que la tabla tiene datos reales"""
-    pass
-
-
 def get_current_user():
-    """Obtiene el usuario actual de la sesión"""
+    """Obtiene el usuario actual de la sesion."""
     try:
-        # Primero intentar obtener el nombre completo
         nombre_completo = session.get('nombre_completo', '')
         if nombre_completo:
             return nombre_completo
-        
-        # Si no hay nombre completo, usar el usuario
+
         usuario = session.get('usuario', '')
         if usuario:
             return usuario
-            
-        # Fallback al valor por defecto
+
         return USER_NAME
     except Exception as e:
-        print(f"Error obteniendo usuario de sesión: {e}")
+        print(f"Error obteniendo usuario de sesion: {e}")
         return USER_NAME
 
 
 def ensure_usuario_column():
-    """Asegura que la columna 'usuario' exista en la tabla"""
+    """Asegura que la columna 'usuario' exista en la tabla."""
     try:
-        # Verificar si la columna existe
         result = execute_query(
             f"SHOW COLUMNS FROM `{TABLE_NAME}` LIKE %s",
             (MANDATORY_EXTRA_COL,),
             fetch='one'
         )
-        
+
         if not result:
-            # Agregar la columna si no existe
             execute_query(
                 f"ALTER TABLE `{TABLE_NAME}` ADD COLUMN `{MANDATORY_EXTRA_COL}` varchar(128) NULL"
             )
@@ -80,11 +106,11 @@ def ensure_usuario_column():
 
 
 def get_columns_excluding() -> List[str]:
-    """Obtiene las columnas de la tabla excluyendo las especificadas"""
+    """Obtiene las columnas de la tabla excluyendo las especificadas."""
     try:
         result = execute_query(f"SHOW COLUMNS FROM `{TABLE_NAME}`", fetch='all')
         cols = [row['Field'] for row in result if row['Field'] not in EXCLUDE_COLS]
-        
+
         if MANDATORY_EXTRA_COL not in cols:
             cols.append(MANDATORY_EXTRA_COL)
         return cols
@@ -114,162 +140,17 @@ def compute_rowhash(row: Dict[str, Any], columns: List[str]) -> str:
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
 
-def control_modelos_smt_index():
-    """Función principal que muestra la tabla de modelos SMT"""
-    ensure_usuario_column()
-    columns = get_columns_excluding()
+# ============================================================
+# Rutas: vistas HTML
+# ============================================================
 
-    try:
-        select_cols = ", ".join([f"`{c}`" for c in columns]) if columns else "*"
-        limit_clause = f" LIMIT {SAFETY_LIMIT}" if SAFETY_LIMIT and SAFETY_LIMIT > 0 else ""
-        
-        # Ordenar por ID descendente para mostrar los más nuevos primero
-        query = f"SELECT {select_cols} FROM `{TABLE_NAME}` ORDER BY id DESC{limit_clause}"
-        result = execute_query(query, fetch='all')
-        rows = result if result else []
-
-        norm_rows = []
-        for r in rows:
-            n = normalize_row(r, columns)
-            n["__rowhash"] = compute_rowhash(n, columns)
-            norm_rows.append(n)
-
-        return render_template(
-            "INFORMACION BASICA/Control_modelos_SMT.html",
-            columns=columns,
-            rows=norm_rows,
-            table_name=TABLE_NAME,
-            total=len(norm_rows),
-            user_name=USER_NAME,
-        )
-    except Exception as e:
-        print(f"Error en control_modelos_smt_index: {e}")
-        return render_template(
-            "INFORMACION BASICA/Control_modelos_SMT.html",
-            columns=[],
-            rows=[],
-            table_name=TABLE_NAME,
-            total=0,
-            user_name=USER_NAME,
-        )
-
-
-def api_create_row():
-    """API para crear un nuevo registro"""
-    ensure_usuario_column()
-    payload = request.get_json(force=True) or {}
-    columns = get_columns_excluding()
-
-    # Obtener el usuario actual de la sesión
-    current_user = get_current_user()
-    
-    if (MANDATORY_EXTRA_COL in columns) and (not payload.get(MANDATORY_EXTRA_COL)):
-        payload[MANDATORY_EXTRA_COL] = current_user
-
-    insert_cols = [c for c in columns if c in payload]
-    if not insert_cols:
-        return jsonify({"ok": False, "error": "No hay campos válidos para insertar."}), 400
-
-    try:
-        values = [payload.get(c) for c in insert_cols]
-        placeholders = ", ".join(["%s"] * len(insert_cols))
-        colnames = ", ".join([f"`{c}`" for c in insert_cols])
-        
-        query = f"INSERT INTO `{TABLE_NAME}` ({colnames}) VALUES ({placeholders})"
-        execute_query(query, values)
-        
-        print(f" Registro creado por usuario: {current_user}")
-        return jsonify({"ok": True})
-    except Exception as e:
-        print(f"Error creando registro: {e}")
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-def api_update_row(rowhash: str):
-    """API para actualizar un registro existente"""
-    ensure_usuario_column()
-    data = request.get_json(force=True) or {}
-    original = data.get("original") or {}
-    changes = data.get("changes") or {}
-
-    columns = get_columns_excluding()
-    original_norm = normalize_row(original, columns)
-
-    if compute_rowhash(original_norm, columns) != rowhash:
-        return jsonify({"ok": False, "error": "Rowhash no coincide con los datos originales."}), 409
-
-    set_cols = [c for c in changes.keys() if c in columns]
-    if not set_cols:
-        return jsonify({"ok": False, "error": "Sin cambios válidos."}), 400
-
-    try:
-        # Construir la consulta UPDATE
-        set_expr = ", ".join([f"`{c}` = %s" for c in set_cols])
-        values = [changes[c] for c in set_cols]
-        
-        # Construir las condiciones WHERE
-        where_parts = []
-        for c in columns:
-            if original_norm.get(c) is None:
-                where_parts.append(f"`{c}` IS NULL")
-            else:
-                where_parts.append(f"`{c}` = %s")
-                values.append(original_norm.get(c))
-        
-        query = f"UPDATE `{TABLE_NAME}` SET {set_expr} WHERE " + " AND ".join(where_parts) + " LIMIT 1"
-        result = execute_query(query, values)
-        
-        # Verificar que se actualizó al menos una fila
-        if result is None:  # Si no hay información de filas afectadas, asumimos éxito
-            return jsonify({"ok": True})
-        
-        return jsonify({"ok": True})
-    except Exception as e:
-        print(f"Error actualizando registro: {e}")
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-def api_delete_row(rowhash: str):
-    """API para eliminar un registro"""
-    data = request.get_json(force=True) or {}
-    original = data.get("original") or {}
-    columns = get_columns_excluding()
-
-    original_norm = normalize_row(original, columns)
-
-    if compute_rowhash(original_norm, columns) != rowhash:
-        return jsonify({"ok": False, "error": "Rowhash no coincide."}), 409
-
-    try:
-        values = []
-        where_parts = []
-        for c in columns:
-            if original_norm.get(c) is None:
-                where_parts.append(f"`{c}` IS NULL")
-            else:
-                where_parts.append(f"`{c}` = %s")
-                values.append(original_norm.get(c))
-
-        query = f"DELETE FROM `{TABLE_NAME}` WHERE " + " AND ".join(where_parts) + " LIMIT 1"
-        result = execute_query(query, values)
-        
-        return jsonify({"ok": True})
-    except Exception as e:
-        print(f"Error eliminando registro: {e}")
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-# Crear el blueprint
-control_modelos_bp = Blueprint('control_modelos', __name__, url_prefix='/control-modelos')
-
-@control_modelos_bp.route("/", methods=["GET"])
+@bp.route("/", methods=["GET"])
 def index():
-    """Página principal del control de modelos SMT"""
+    """Pagina standalone del control de modelos SMT (legacy / acceso directo)."""
     init_control_modelos_table()
     ensure_usuario_column()
     columns = get_columns_excluding()
 
-    # Obtener el usuario actual de la sesión
     current_user = get_current_user()
 
     if not columns:
@@ -316,35 +197,42 @@ def index():
         )
 
 
-@control_modelos_bp.route("/api/rows", methods=["POST"])
-def api_create():
-    """API para crear un nuevo registro"""
-    return api_create_row()
+# Segundo blueprint SIN url_prefix para la ruta huerfana
+# `/control-modelos-smt-ajax` (era una ruta absoluta en routes.py que solo
+# renderizaba el template AJAX). Se expone como `bp_ajax` y se registra
+# junto con `bp` desde app/api/__init__.py.
+bp_ajax = Blueprint('control_modelos_smt_ajax', __name__)
 
 
-@control_modelos_bp.route("/api/rows/<rowhash>", methods=["PUT"])
-def api_update(rowhash: str):
-    """API para actualizar un registro"""
-    return api_update_row(rowhash)
+@bp_ajax.route("/control-modelos-smt-ajax", methods=["GET"])
+def control_modelos_smt_ajax():
+    """Ruta AJAX para cargar dinamicamente el contenido (fragment HTML)."""
+    try:
+        usuario_actual = session.get(
+            "nombre_completo", session.get("usuario", "Usuario no identificado")
+        ).strip()
+        return render_template(
+            "INFORMACION BASICA/control_modelos_smt_ajax.html", usuario=usuario_actual
+        )
+    except Exception as e:
+        print(f"Error al cargar template Control de Modelos SMT AJAX: {e}")
+        return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@control_modelos_bp.route("/api/rows/<rowhash>", methods=["DELETE"])
-def api_delete(rowhash: str):
-    """API para eliminar un registro"""
-    return api_delete_row(rowhash)
+# ============================================================
+# Rutas: APIs JSON
+# ============================================================
 
-
-@control_modelos_bp.route("/api/data", methods=["GET"])
+@bp.route("/api/data", methods=["GET"])
 def api_get_data():
-    """API para obtener datos actualizados sin recargar la página"""
+    """API para obtener datos actualizados sin recargar la pagina."""
     ensure_usuario_column()
     columns = get_columns_excluding()
 
     try:
         select_cols = ", ".join([f"`{c}`" for c in columns]) if columns else "*"
         limit_clause = f" LIMIT {SAFETY_LIMIT}" if SAFETY_LIMIT and SAFETY_LIMIT > 0 else ""
-        
-        # Ordenar por ID descendente para mostrar los más nuevos primero
+
         query = f"SELECT {select_cols} FROM `{TABLE_NAME}` ORDER BY id DESC{limit_clause}"
         result = execute_query(query, fetch='all')
         rows = result if result else []
@@ -364,3 +252,108 @@ def api_get_data():
     except Exception as e:
         print(f"Error obteniendo datos actualizados: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/rows", methods=["POST"])
+def api_create():
+    """API para crear un nuevo registro."""
+    ensure_usuario_column()
+    payload = request.get_json(force=True) or {}
+    columns = get_columns_excluding()
+
+    current_user = get_current_user()
+
+    if (MANDATORY_EXTRA_COL in columns) and (not payload.get(MANDATORY_EXTRA_COL)):
+        payload[MANDATORY_EXTRA_COL] = current_user
+
+    insert_cols = [c for c in columns if c in payload]
+    if not insert_cols:
+        return jsonify({"ok": False, "error": "No hay campos validos para insertar."}), 400
+
+    try:
+        values = [payload.get(c) for c in insert_cols]
+        placeholders = ", ".join(["%s"] * len(insert_cols))
+        colnames = ", ".join([f"`{c}`" for c in insert_cols])
+
+        query = f"INSERT INTO `{TABLE_NAME}` ({colnames}) VALUES ({placeholders})"
+        execute_query(query, values)
+
+        print(f"Registro creado por usuario: {current_user}")
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"Error creando registro: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/rows/<rowhash>", methods=["PUT"])
+def api_update(rowhash: str):
+    """API para actualizar un registro (con check de rowhash para concurrencia)."""
+    ensure_usuario_column()
+    data = request.get_json(force=True) or {}
+    original = data.get("original") or {}
+    changes = data.get("changes") or {}
+
+    columns = get_columns_excluding()
+    original_norm = normalize_row(original, columns)
+
+    if compute_rowhash(original_norm, columns) != rowhash:
+        return jsonify({"ok": False, "error": "Rowhash no coincide con los datos originales."}), 409
+
+    set_cols = [c for c in changes.keys() if c in columns]
+    if not set_cols:
+        return jsonify({"ok": False, "error": "Sin cambios validos."}), 400
+
+    try:
+        set_expr = ", ".join([f"`{c}` = %s" for c in set_cols])
+        values = [changes[c] for c in set_cols]
+
+        where_parts = []
+        for c in columns:
+            if original_norm.get(c) is None:
+                where_parts.append(f"`{c}` IS NULL")
+            else:
+                where_parts.append(f"`{c}` = %s")
+                values.append(original_norm.get(c))
+
+        query = f"UPDATE `{TABLE_NAME}` SET {set_expr} WHERE " + " AND ".join(where_parts) + " LIMIT 1"
+        execute_query(query, values)
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"Error actualizando registro: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/rows/<rowhash>", methods=["DELETE"])
+def api_delete(rowhash: str):
+    """API para eliminar un registro (con check de rowhash)."""
+    data = request.get_json(force=True) or {}
+    original = data.get("original") or {}
+    columns = get_columns_excluding()
+
+    original_norm = normalize_row(original, columns)
+
+    if compute_rowhash(original_norm, columns) != rowhash:
+        return jsonify({"ok": False, "error": "Rowhash no coincide."}), 409
+
+    try:
+        values = []
+        where_parts = []
+        for c in columns:
+            if original_norm.get(c) is None:
+                where_parts.append(f"`{c}` IS NULL")
+            else:
+                where_parts.append(f"`{c}` = %s")
+                values.append(original_norm.get(c))
+
+        query = f"DELETE FROM `{TABLE_NAME}` WHERE " + " AND ".join(where_parts) + " LIMIT 1"
+        execute_query(query, values)
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"Error eliminando registro: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# Alias publico para mantener compatibilidad con el nombre anterior.
+control_modelos_bp = bp

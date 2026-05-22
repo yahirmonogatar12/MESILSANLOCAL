@@ -4557,76 +4557,34 @@ window.mostrarControlModelosVisor = function () {
 };
 
 // Función AJAX para Control de Modelos SMT - GLOBAL
+// WF_002: usa prepararPanelInformacionBasica() en vez de bloque manual.
+// El container 'control-modelos-smt-unique-container' es hijo de
+// informacion-basica-content-area; al prepararse el panel, todos los
+// otros containers de la seccion quedan ocultos y este se muestra.
 window.mostrarControlModelosSMT = function () {
   try {
-    // Activar el botón correcto en la navegación
-    const informacionBasicaButton =
-      document.getElementById("Información básica");
-    if (informacionBasicaButton) {
-      informacionBasicaButton.classList.add("active");
-      informacionBasicaButton.click();
+    if (typeof window.prepararPanelInformacionBasica === "function") {
+      window.prepararPanelInformacionBasica();
     }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    if (typeof window.hideAllInformacionBasicaContainers === "function") {
-      window.hideAllInformacionBasicaContainers();
-    }
-
-    // Mostrar la jerarquía de contenedores necesaria
-    const materialContainer = document.getElementById("material-container");
-    const informacionBasicaContent = document.getElementById(
-      "informacion-basica-content",
-    );
-    const informacionBasicaContentArea = document.getElementById(
-      "informacion-basica-content-area",
-    );
-    const controlModelosSMTContainer = document.getElementById(
+    const container = document.getElementById(
       "control-modelos-smt-unique-container",
     );
+    if (container) container.style.display = "block";
 
-    if (materialContainer) {
-      materialContainer.style.display = "block";
-      materialContainer.style.opacity = "1";
-    }
-
-    if (informacionBasicaContent) {
-      informacionBasicaContent.style.display = "block";
-      informacionBasicaContent.style.opacity = "1";
-    }
-
-    if (informacionBasicaContentArea) {
-      informacionBasicaContentArea.style.display = "block";
-      informacionBasicaContentArea.style.opacity = "1";
-    }
-
-    if (!controlModelosSMTContainer) {
-      console.error(
-        "Contenedor control-modelos-smt-unique-container no encontrado",
-      );
+    if (typeof window.cargarContenidoDinamico !== "function") {
+      console.error("cargarContenidoDinamico no esta disponible");
       return;
     }
-
-    controlModelosSMTContainer.style.display = "block";
-    controlModelosSMTContainer.style.opacity = "1";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window.cargarContenidoDinamico(
-        "control-modelos-smt-unique-container",
-        "/control-modelos-smt-ajax",
-        () => {
-          // Ejecutar inicialización del módulo
-          if (typeof window.inicializarControlModelosSMTAjax === "function") {
-            window.inicializarControlModelosSMTAjax();
-          }
-        },
-      );
-    }
+    window.cargarContenidoDinamico(
+      "control-modelos-smt-unique-container",
+      "/control-modelos-smt-ajax",
+      () => {
+        if (typeof window.inicializarControlModelosSMTAjax === "function") {
+          window.inicializarControlModelosSMTAjax();
+        }
+      },
+    );
   } catch (error) {
-    console.error("Error crítico en mostrarControlModelosSMT:", error);
+    console.error("Error critico en mostrarControlModelosSMT:", error);
   }
 };
