@@ -182,7 +182,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const controlProcesoSpecificContainers = [
       "control-proceso-info-container",
       "control-produccion-smt-container",
-      "inventario-imd-terminado-unique-container",
     ];
 
     controlProcesoSpecificContainers.forEach((containerId) => {
@@ -826,7 +825,6 @@ document.addEventListener("DOMContentLoaded", function () {
         "control-proceso-info-container",
         "control-produccion-smt-container",
         "Control de produccion SMT-unique-container",
-        "inventario-imd-terminado-unique-container",
         "control-cuchillas-corte-unique-container",
         "bom-unique-container",
       ];
@@ -1044,87 +1042,30 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   // Función AJAX: Control de Cuchillas de Corte (ASSY)
+  // Refactor WF_002 (2026-05-25): usar prepararPanelSeccion + contenedor unique
   window.mostrarControlCuchillasCorte = function () {
-    try {
-      const controlProduccionButton = document.getElementById(
-        "Control de produccion",
-      );
-      if (controlProduccionButton) {
-        controlProduccionButton.classList.add("active");
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de produccion")
-            btn.classList.remove("active");
-        });
-      }
-
-      if (typeof window.hideAllMaterialContainers === "function")
-        window.hideAllMaterialContainers();
-      if (typeof window.hideAllInformacionBasicaContainers === "function")
-        window.hideAllInformacionBasicaContainers();
-
-      const produccionContainers = [
-        "produccion-info-container",
-        "crear-plan-produccion-unique-container",
-        "plan-smt-unique-container",
-        "control-embarque-unique-container",
-        "control-cuchillas-corte-unique-container",
-      ];
-      produccionContainers.forEach((containerId) => {
-        const container = document.getElementById(containerId);
-        if (container) {
-          container.style.display = "none";
-        }
-      });
-
-      const materialContainer = document.getElementById("material-container");
-      const produccionContent = document.getElementById("produccion-content");
-      const produccionContentArea = document.getElementById(
-        "produccion-content-area",
-      );
-      const controlProcesoContent = document.getElementById(
-        "control-proceso-content",
-      );
-      const controlProcesoContentArea = document.getElementById(
-        "control-proceso-content-area",
-      );
-      if (materialContainer) materialContainer.style.display = "block";
-      if (produccionContent) produccionContent.style.display = "block";
-      if (produccionContentArea) produccionContentArea.style.display = "block";
-      if (controlProcesoContent) controlProcesoContent.style.display = "none";
-      if (controlProcesoContentArea)
-        controlProcesoContentArea.style.display = "none";
-
-      const containerId = "control-cuchillas-corte-unique-container";
-      const cont = document.getElementById(containerId);
-      if (!cont) return console.error("Contenedor no existe:", containerId);
-
-      cont.style.display = "block";
-      cont.style.opacity = "1";
-
-      if (typeof window.cargarContenidoDinamico === "function") {
-        window.cargarContenidoDinamico(
-          containerId,
-          "/control-cuchillas-corte-ajax",
-          () => {
-            const init = () => {
-              if (
-                typeof window.initializeControlCuchillasCorteEventListeners ===
-                "function"
-              ) {
-                window.initializeControlCuchillasCorteEventListeners();
-              }
-              if (typeof window.cuchillasCorteLoadInitialData === "function") {
-                window.cuchillasCorteLoadInitialData();
-              }
-            };
-            init();
-            setTimeout(init, 120);
-          },
-        );
-      }
-    } catch (e) {
-      console.error("Error en mostrarControlCuchillasCorte:", e);
+    if (typeof window.prepararPanelSeccion !== "function") {
+      console.error("prepararPanelSeccion no disponible");
+      return;
     }
+    window.prepararPanelSeccion("produccion");
+
+    const containerId = "control-cuchillas-corte-unique-container";
+    const cont = document.getElementById(containerId);
+    if (cont) cont.style.display = "block";
+
+    window.cargarContenidoDinamico(containerId, "/control-cuchillas-corte-ajax", () => {
+      const init = () => {
+        if (typeof window.initializeControlCuchillasCorteEventListeners === "function") {
+          window.initializeControlCuchillasCorteEventListeners();
+        }
+        if (typeof window.cuchillasCorteLoadInitialData === "function") {
+          window.cuchillasCorteLoadInitialData();
+        }
+      };
+      init();
+      setTimeout(init, 120);
+    });
   };
 
   // Función AJAX: Plan Main IMD
@@ -2444,7 +2385,6 @@ document.addEventListener("DOMContentLoaded", function () {
         "control-proceso-info-container",
         "control-produccion-smt-container",
         "operacion-linea-smt-unique-container",
-        "inventario-imd-terminado-unique-container",
         "control-cuchillas-corte-unique-container",
       ];
 
@@ -2546,122 +2486,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  // ========================================
-  // FUNCIÓN PARA CREAR PLAN MICOM
-  // ========================================
-
-  // Crear plan micom - SIGUIENDO EL PATRÓN EXITOSO
-  window.mostrarCrearPlanMicom = function () {
-    try {
-      // IMPORTANTE: Asegurar que estamos en la sección correcta
-      // Activar el botón "Control de produccion" para que scriptMain.js no interfiera
-      const controlProduccionButton = document.getElementById(
-        "Control de produccion",
-      );
-      if (controlProduccionButton) {
-        controlProduccionButton.classList.add("active");
-        // Remover active de otros botones
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de produccion") {
-            btn.classList.remove("active");
-          }
-        });
-      }
-
-      // Ocultar todos los contenedores primero
-      if (typeof window.hideAllMaterialContainers === "function") {
-        window.hideAllMaterialContainers();
-      }
-
-      // Ocultar otros contenedores dentro del área de produccion
-      const produccionContainers = [
-        "produccion-info-container",
-        "crear-plan-produccion-unique-container",
-        "plan-smt-unique-container",
-        "control-embarque-unique-container",
-      ];
-
-      produccionContainers.forEach((containerId) => {
-        const container = document.getElementById(containerId);
-        if (container) {
-          container.style.display = "none";
-        }
-      });
-
-      // Mostrar el área de produccion (esto es lo que scriptMain.js maneja)
-      const materialContainer = document.getElementById("material-container");
-      const produccionContent = document.getElementById("produccion-content");
-      const produccionContentArea = document.getElementById(
-        "produccion-content-area",
-      );
-
-      if (materialContainer) {
-        materialContainer.style.display = "block";
-      }
-      if (produccionContent) {
-        produccionContent.style.display = "block";
-      }
-      if (produccionContentArea) {
-        produccionContentArea.style.display = "block";
-      }
-
-      // Obtener el contenedor específico
-      const crearPlanMicomContainer = document.getElementById(
-        "produccion-info-container",
-      );
-      if (!crearPlanMicomContainer) {
-        console.error(
-          "El contenedor produccion-info-container no existe en el HTML",
-        );
-        return;
-      }
-
-      // Mostrar el contenedor específico
-      crearPlanMicomContainer.style.display = "block";
-      crearPlanMicomContainer.style.opacity = "1";
-
-      // Cargar contenido dinámicamente usando la ruta AJAX
-      if (typeof window.cargarContenidoDinamico === "function") {
-        window
-          .cargarContenidoDinamico(
-            "produccion-info-container",
-            "/crear-plan-micom-ajax",
-            () => {
-              // Verificar que el contenedor esté visible
-              const containerAfterLoad = document.getElementById(
-                "produccion-info-container",
-              );
-              if (containerAfterLoad) {
-                // Verificar que el contenedor esté realmente visible
-
-                // Verificar que los contenedores padre también estén visibles
-                const materialContainerAfter =
-                  document.getElementById("material-container");
-                const produccionContentAfter =
-                  document.getElementById("produccion-content");
-                const produccionContentAreaAfter = document.getElementById(
-                  "produccion-content-area",
-                );
-              }
-
-              // Ejecutar inicialización específica del módulo si existe
-              if (
-                typeof window.inicializarCrearPlanMicomModule === "function"
-              ) {
-                window.inicializarCrearPlanMicomModule();
-              }
-            },
-          )
-          .catch((error) => {
-            console.error("Error cargando Crear plan micom:", error);
-          });
-      } else {
-        console.error("La función cargarContenidoDinamico no está disponible");
-      }
-    } catch (error) {
-      console.error("Error crítico en mostrarCrearPlanMicom:", error);
-    }
-  };
+  // mostrarCrearPlanMicom eliminado (modulo Crear plan micom removido el 2026-05-25)
 
   // ========================================
   // FUNCIÓN PARA CONTROL BOM
@@ -2714,10 +2539,8 @@ document.addEventListener("DOMContentLoaded", function () {
         "control-proceso-info-container",
         "control-produccion-smt-container",
         "operacion-linea-smt-unique-container",
-        "inventario-imd-terminado-unique-container",
         "control-cuchillas-corte-unique-container",
         "Control de produccion SMT-unique-container",
-        "crear-plan-micom-unique-container",
         "line-material-status-unique-container",
       ];
 
@@ -3789,6 +3612,7 @@ window.mostrarHistorialICT = function () {
       "historial-cambios-parametros-ict-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -3901,6 +3725,7 @@ window.mostrarHistorialVision = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -4015,6 +3840,7 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -4132,6 +3958,7 @@ window.mostrarHistorialVisionPassFail = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {

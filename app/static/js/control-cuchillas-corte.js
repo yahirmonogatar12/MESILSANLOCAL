@@ -1,6 +1,9 @@
 ﻿(function() {
   var MODULE_ROOT_ID = 'control-cuchillas-corte-module';
   var POLL_INTERVAL_MS = 12000;
+  var STYLESHEET_ID = 'control-cuchillas-corte-css';
+  var ASSET_VERSION = '20260525a';
+  var STYLESHEET_HREF = '/static/css/control_cuchillas_corte.css?v=' + ASSET_VERSION;
   var pollingTimer = null;
   var state = {
     selectedLinea: '',
@@ -9,6 +12,22 @@
     historialSesiones: [],
     globalButtonsLocked: false
   };
+
+  function ensureModuleStyles() {
+    var currentLink = document.getElementById(STYLESHEET_ID);
+    if (currentLink) {
+      var href = currentLink.getAttribute('href') || '';
+      if (href.indexOf(ASSET_VERSION) === -1) {
+        currentLink.setAttribute('href', STYLESHEET_HREF);
+      }
+      return;
+    }
+    var link = document.createElement('link');
+    link.id = STYLESHEET_ID;
+    link.rel = 'stylesheet';
+    link.href = STYLESHEET_HREF;
+    document.head.appendChild(link);
+  }
 
   function getEl(id) {
     return document.getElementById(id);
@@ -1330,6 +1349,7 @@
   }
 
   function initializeControlCuchillasCorteEventListeners() {
+    ensureModuleStyles();
     if (!document.body.dataset.controlCuchillasCorteListenersAttached) {
       document.body.addEventListener('click', handleDocumentClick);
       document.body.addEventListener('change', handleDocumentChange);

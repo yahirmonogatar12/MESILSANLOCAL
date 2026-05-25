@@ -105,76 +105,14 @@ def control_bom_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-def _ks_current_bom_revision(part_no):
-    plant_date = obtener_fecha_hora_mexico().strftime("%Y-%m-%d")
-    row = execute_query(
-        """
-        SELECT bom_rev
-        FROM v_ecos_bom_current
-        WHERE UPPER(bom_part_no) = UPPER(%s)
-          AND status_name = '사용'
-          AND (valid_from IS NULL OR valid_from <= %s)
-          AND (valid_to IS NULL OR valid_to >= %s)
-        GROUP BY bom_rev
-        ORDER BY MAX(header_synced_at) DESC, bom_rev DESC
-        LIMIT 1
-        """,
-        (part_no, plant_date, plant_date),
-        fetch="one",
-    )
-    return (row or {}).get("bom_rev") if isinstance(row, dict) else (row[0] if row else None)
-
-
-def _eco_for_part_revision(part_no, bom_rev):
-    return execute_query(
-        """
-        SELECT ec.eco_no, ec.effective_at, ec.status
-        FROM engineering_changes ec
-        WHERE (
-            UPPER(ec.part_no) = UPPER(%s)
-            AND UPPER(ec.bom_revision) = UPPER(%s)
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM engineering_change_scope ecs
-            WHERE ecs.engineering_change_id = ec.id
-              AND UPPER(ecs.part_no) = UPPER(%s)
-              AND UPPER(COALESCE(NULLIF(ecs.bom_revision, ''), ec.bom_revision)) = UPPER(%s)
-          )
-        ORDER BY ec.effective_at DESC, ec.id DESC
-        LIMIT 1
-        """,
-        (part_no, bom_rev, part_no, bom_rev),
-        fetch="one",
-    )
-
-
-def _bom_revision_catalog(part_no):
-    normalized_part = str(part_no or "").strip().upper()
-    current_rev = _ks_current_bom_revision(normalized_part)
-    rows = execute_query(
-        """
-        SELECT bom_rev, synced_at
-        FROM ks_bom_headers
-        WHERE UPPER(part_no) = UPPER(%s)
-        ORDER BY synced_at DESC, bom_rev DESC
-        """,
-        (normalized_part,),
-        fetch="all",
-    ) or []
-    revisions = []
-    for row in rows:
-        bom_rev = row.get("bom_rev") if isinstance(row, dict) else row[0]
-        eco = _eco_for_part_revision(normalized_part, bom_rev) or {}
-        effective_at = eco.get("effective_at") if isinstance(eco, dict) else None
-        revisions.append({
-            "bom_rev": bom_rev,
-            "is_current": str(bom_rev or "").upper() == str(current_rev or "").upper(),
-            "eco_no": eco.get("eco_no") if isinstance(eco, dict) else None,
-            "eco_effective_at": str(effective_at or "") if effective_at else None,
-            "eco_status": eco.get("status") if isinstance(eco, dict) else None,
-        })
-    return revisions
+# Helpers _ks_current_bom_revision, _eco_for_part_revision y _bom_revision_catalog
+# consolidados en app/api/shared/bom_revisions.py (2026-05-25). Antes vivian
+# duplicados aqui y en app/routes.py.
+from app.api.shared.bom_revisions import (  # noqa: E402, F401
+    _ks_current_bom_revision,
+    _eco_for_part_revision,
+    _bom_revision_catalog,
+)
 
 
 @bp.route("/importar_excel_bom", methods=["POST"])

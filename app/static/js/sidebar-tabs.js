@@ -546,10 +546,53 @@
         }
     }
 
+    // ====================================================
+    // Migracion: si un container fue movido a otra seccion
+    // navbar (cambio de codigo) pero el state persistido
+    // todavia lo apunta a la seccion vieja, moverlo a la
+    // seccion correcta en base al *-content-area real del DOM.
+    // ====================================================
+    function migrarTabsACorrectaSeccion() {
+        const state = readState();
+        let cambio = false;
+        // areaId -> navTab (espejo invertido de SECCIONES_AREAS_MAP)
+        const areaIdToNavTab = {};
+        Object.entries(SECCIONES_AREAS_MAP).forEach(([navTab, areaId]) => {
+            areaIdToNavTab[areaId] = navTab;
+        });
+
+        Object.entries(state).forEach(([navTabActual, seccion]) => {
+            if (!seccion || !Array.isArray(seccion.tabs)) return;
+            const tabsAMover = [];
+            seccion.tabs = seccion.tabs.filter(tab => {
+                const cont = document.getElementById(tab.container);
+                if (!cont) return true; // container no en DOM aun: dejarlo
+                const area = cont.closest('[id$="-content-area"]');
+                if (!area) return true;
+                const navTabReal = areaIdToNavTab[area.id];
+                if (!navTabReal || navTabReal === navTabActual) return true;
+                tabsAMover.push({ tab, navTabReal });
+                return false; // sacarlo de la seccion actual
+            });
+            tabsAMover.forEach(({ tab, navTabReal }) => {
+                if (!state[navTabReal]) state[navTabReal] = { tabs: [], active: null };
+                const yaExiste = (state[navTabReal].tabs || []).some(t => t.container === tab.container);
+                if (!yaExiste) state[navTabReal].tabs.push(tab);
+                // Si el tab era el activo de la seccion vieja, transferir
+                if (seccion.active === tab.container) seccion.active = null;
+                cambio = true;
+                console.log('[TABS-MIGRATE]', tab.container, navTabActual, '->', navTabReal);
+            });
+        });
+
+        if (cambio) writeState(state);
+    }
+
     // Pinta TODOS los chips de TODAS las secciones en la barra global,
     // sin cargar el contenido (eso lo hace restaurarTabsDeSeccion
     // solo para la seccion activa, los demas tabs cargan lazy al click).
     function renderChipsGlobales() {
+        migrarTabsACorrectaSeccion();
         const bar = ensureGlobalTabsBar();
         bar.innerHTML = '';
         const state = readState();
