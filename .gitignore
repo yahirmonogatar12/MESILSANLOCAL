@@ -75,3 +75,8 @@ run_dev.py
 
 # Uploads
 app/static/uploads/
+.graphify_detect.json
+.graphify_ast.json
+.graphify_detect_selected.json
+.graphify_uncached.txt
+app/api/graphify-out/

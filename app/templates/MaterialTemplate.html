@@ -2957,21 +2957,6 @@ function hideAllMaterialContainers() {
                 }
             };
 
-            window.mostrarReciboPago = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                reciboPagoContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('recibo-pago-container', '/material/recibo_pago', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initReciboPago === 'function') {
-                        initReciboPago();
-                    }
-                });
-            };
-
             function mostrarVistaHistorialMaterialAdmin(tipo) {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
@@ -3000,51 +2985,6 @@ function hideAllMaterialContainers() {
                 window.mostrarHistorialEntradas();
             };
 
-            window.mostrarEstatusMaterial = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                estatusMaterialContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente usando la ruta del servidor
-                cargarContenidoDinamico('estatus-material-container', '/material/estatus_material', () => {
-
-                    // Inicializar funcionalidades específicas del estatus de material si es necesario
-                    if (typeof window.initEstatusMaterial === 'function') {
-                        window.initEstatusMaterial();
-                    }
-                });
-            };
-
-            window.mostrarMaterialSustituto = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                materialSustitutoContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('material-sustituto-container', '/material/material_sustituto', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initMaterialSustituto === 'function') {
-                        initMaterialSustituto();
-                    }
-                });
-            };
-
-            window.mostrarConsultarPeps = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                consultarPepsContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('consultar-peps-container', '/material/consultar_peps', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initConsultarPeps === 'function') {
-                        initConsultarPeps();
-                    }
-                });
-            };
-
             window.mostrarInventarioActual = function() {
                 hideAllMaterialContainers();
                 materialContentArea.style.display = 'block';
@@ -3059,66 +2999,6 @@ function hideAllMaterialContainers() {
 
             window.mostrarLongtermInventory = function() {
                 window.mostrarInventarioActual();
-            };
-
-            window.mostrarRegistroMaterial = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                registroMaterialContainer.style.display = 'block';
-
-                // Cargar el contenido dinámicamente
-                cargarContenidoDinamico('registro-material-container', '/material/registro_material', () => {
-
-                    // Inicializar funcionalidades específicas del registro de material si es necesario
-                    if (typeof initRegistroMaterial === 'function') {
-                        initRegistroMaterial();
-                    }
-                });
-            };
-
-            window.mostrarHistorialInventario = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                historialInventarioContainer.style.display = 'block';
-
-                // Cargar el contenido dinámicamente
-                cargarContenidoDinamico('historial-inventario-container', '/material/historial_inventario', () => {
-
-                    // Inicializar funcionalidades específicas del historial de inventario si es necesario
-                    if (typeof initHistorialInventario === 'function') {
-                        initHistorialInventario();
-                    }
-                });
-            };
-
-            window.mostrarInventarioRollosSMD = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                inventarioRollosSMDContainer.style.display = 'block';
-
-                // Cargar el contenido dinámicamente
-                cargarContenidoDinamico('inventario-rollos-smd-container', '/smd/inventario', () => {
-
-                    // Inicializar funcionalidades específicas del inventario de rollos SMD si es necesario
-                    if (typeof initInventarioRollosSMD === 'function') {
-                        initInventarioRollosSMD();
-                    }
-                });
-            };
-
-            window.mostrarAjusteNumero = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                ajusteNumeroContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('ajuste-numero-container', '/material/ajuste_numero', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initAjusteNumero === 'function') {
-                        initAjusteNumero();
-                    }
-                });
             };
 
             // Funcion global para mostrar Historial de cambio de material SMT.
