@@ -4456,103 +4456,34 @@ window.mostrarPlanSmdDiario = function () {
 };
 
 // Función AJAX para Control de modelos - VISOR MYSQL - GLOBAL
+// WF_002: usa prepararPanelInformacionBasica() en vez del bloque manual.
+// Antes eran ~98 lineas con lista hardcoded de 22 IDs para ocultar y
+// activacion manual del nav button. El helper hace todo eso.
 window.mostrarControlModelosVisor = function () {
   try {
-    // Activar el botón correcto en la navegación
-    const informacionBasicaButton =
-      document.getElementById("Información Básica");
-    if (informacionBasicaButton) {
-      informacionBasicaButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Información Básica") {
-          btn.classList.remove("active");
-        }
-      });
+    if (typeof window.prepararPanelInformacionBasica === "function") {
+      window.prepararPanelInformacionBasica();
     }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Ocultar otros contenedores dentro del área de información básica
-    const informacionBasicaContainers = [
-      "info-basica-default-container",
-      "admin-usuario-info-container",
-      "admin-menu-info-container",
-      "admin-autoridad-info-container",
-      "control-codigo-info-container",
-      "admin-itinerario-info-container",
-      "consultar-licencias-info-container",
-      "control-departamento-info-container",
-      "control-proceso-info-container",
-      "control-orden-proceso-info-container",
-      "control-orden-proceso2-info-container",
-      "control-defecto-info-container",
-      "control-interfaces-info-container",
-      "control-interlock-info-container",
-      "control-material-info-container",
-      "configuracion-msl-info-container",
-      "control-cliente-info-container",
-      "control-proveedor-info-container",
-      "control-moneda-info-container",
-      "info-empresa-info-container",
-      "control-modelos-info-container",
-      "control-bom-info-container",
-      "control-bom-smt-info-container",
-    ];
-
-    informacionBasicaContainers.forEach((containerId) => {
-      const container = document.getElementById(containerId);
-      if (container) {
-        container.style.display = "none";
-      }
-    });
-
-    // Mostrar TODAS las áreas necesarias
-    const materialContainer = document.getElementById("material-container");
-    const informacionBasicaContent = document.getElementById(
-      "informacion-basica-content",
-    );
-    const informacionBasicaContentArea = document.getElementById(
-      "informacion-basica-content-area",
-    );
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (informacionBasicaContent)
-      informacionBasicaContent.style.display = "block";
-    if (informacionBasicaContentArea)
-      informacionBasicaContentArea.style.display = "block";
-
-    // Obtener y mostrar el contenedor específico
-    const controlModelosVisorContainer = document.getElementById(
+    const container = document.getElementById(
       "control-modelos-visor-unique-container",
     );
-    if (!controlModelosVisorContainer) {
-      console.error(
-        "El contenedor control-modelos-visor-unique-container no existe en el HTML",
-      );
+    if (container) container.style.display = "block";
+
+    if (typeof window.cargarContenidoDinamico !== "function") {
+      console.error("cargarContenidoDinamico no esta disponible");
       return;
     }
-
-    controlModelosVisorContainer.style.display = "block";
-    controlModelosVisorContainer.style.opacity = "1";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window.cargarContenidoDinamico(
-        "control-modelos-visor-unique-container",
-        "/control-modelos-visor-ajax",
-        () => {
-          // Ejecutar inicialización del módulo
-          if (typeof window.inicializarControlModelosVisorAjax === "function") {
-            window.inicializarControlModelosVisorAjax();
-          }
-        },
-      );
-    }
+    window.cargarContenidoDinamico(
+      "control-modelos-visor-unique-container",
+      "/control-modelos-visor-ajax",
+      () => {
+        if (typeof window.inicializarControlModelosVisorAjax === "function") {
+          window.inicializarControlModelosVisorAjax();
+        }
+      },
+    );
   } catch (error) {
-    console.error("Error crítico en mostrarControlModelosVisor:", error);
+    console.error("Error critico en mostrarControlModelosVisor:", error);
   }
 };
 

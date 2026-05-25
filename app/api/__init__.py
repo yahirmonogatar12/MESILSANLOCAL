@@ -37,6 +37,7 @@ _MODULOS_REGISTRADOS = [
     "admin.usuarios",
     "informacion_basica.control_bom",
     "informacion_basica.control_modelos_smt",
+    "informacion_basica.control_modelos_visor",
     "control_material.material_admin",
     "control_material.smd_inventory",
     # control_calidad.smt_historial_simple DEBE ir antes que smt_historial:
