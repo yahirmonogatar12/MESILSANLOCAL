@@ -80,3 +80,4 @@ app/static/uploads/
 .graphify_detect_selected.json
 .graphify_uncached.txt
 app/api/graphify-out/
+app/graphify-out/

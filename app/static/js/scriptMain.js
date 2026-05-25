@@ -42,8 +42,14 @@ document.addEventListener("DOMContentLoaded", function () {
     "control-retorno-container",
   );
   const reciboPagoContainer = document.getElementById("recibo-pago-container");
-  const historialMaterialContainer = document.getElementById(
-    "historial-material-container",
+  const historialEntradasContainer = document.getElementById(
+    "historial-entradas-unique-container",
+  );
+  const historialSalidasContainer = document.getElementById(
+    "historial-salidas-unique-container",
+  );
+  const historialRetornosContainer = document.getElementById(
+    "historial-retornos-unique-container",
   );
   const estatusMaterialContainer = document.getElementById(
     "estatus-material-container",
@@ -55,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
     "consultar-peps-container",
   );
   const longtermInventoryContainer = document.getElementById(
-    "longterm-inventory-container",
+    "longterm-inventory-unique-container",
   );
   const registroMaterialContainer = document.getElementById(
     "registro-material-container",
@@ -110,19 +116,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Función para ocultar todos los contenedores de material
   function hideAllMaterialContainers() {
-    materialInfoContainer.style.display = "none";
-    controlAlmacenContainer.style.display = "none";
-    controlSalidaContainer.style.display = "none";
-    controlRetornoContainer.style.display = "none";
-    reciboPagoContainer.style.display = "none";
-    historialMaterialContainer.style.display = "none";
-    estatusMaterialContainer.style.display = "none";
-    materialSustitutoContainer.style.display = "none";
-    consultarPepsContainer.style.display = "none";
-    longtermInventoryContainer.style.display = "none";
-    registroMaterialContainer.style.display = "none";
-    historialInventarioContainer.style.display = "none";
-    ajusteNumeroContainer.style.display = "none";
+    if (materialInfoContainer) materialInfoContainer.style.display = "none";
+    if (controlAlmacenContainer) controlAlmacenContainer.style.display = "none";
+    if (controlSalidaContainer) controlSalidaContainer.style.display = "none";
+    if (controlRetornoContainer) controlRetornoContainer.style.display = "none";
+    if (reciboPagoContainer) reciboPagoContainer.style.display = "none";
+    if (historialEntradasContainer) historialEntradasContainer.style.display = "none";
+    if (historialSalidasContainer) historialSalidasContainer.style.display = "none";
+    if (historialRetornosContainer) historialRetornosContainer.style.display = "none";
+    if (estatusMaterialContainer) estatusMaterialContainer.style.display = "none";
+    if (materialSustitutoContainer) materialSustitutoContainer.style.display = "none";
+    if (consultarPepsContainer) consultarPepsContainer.style.display = "none";
+    if (longtermInventoryContainer) longtermInventoryContainer.style.display = "none";
+    if (registroMaterialContainer) registroMaterialContainer.style.display = "none";
+    if (historialInventarioContainer) historialInventarioContainer.style.display = "none";
+    if (ajusteNumeroContainer) ajusteNumeroContainer.style.display = "none";
 
     // Ocultar contenedor de operación de línea SMT
     const operacionLineaSMTContainer = document.getElementById(
@@ -546,37 +554,10 @@ document.addEventListener("DOMContentLoaded", function () {
     reciboPagoContainer.style.display = "block";
   };
 
-  function mostrarVistaHistorialMaterialAdmin(tipo) {
-    hideAllMaterialContainers();
-    materialContentArea.style.display = "block";
-    historialMaterialContainer.style.display = "block";
-
-    cargarContenidoDinamico(
-      "historial-material-container",
-      `/material/historial_admin/${tipo}`,
-      () => {
-        if (typeof window.initMaterialAdminHistory === "function") {
-          window.initMaterialAdminHistory(tipo);
-        }
-      },
-    );
-  }
-
-  window.mostrarHistorialEntradas = function () {
-    mostrarVistaHistorialMaterialAdmin("entradas");
-  };
-
-  window.mostrarHistorialSalidas = function () {
-    mostrarVistaHistorialMaterialAdmin("salidas");
-  };
-
-  window.mostrarHistorialRetornos = function () {
-    mostrarVistaHistorialMaterialAdmin("retornos");
-  };
-
-  window.mostrarHistorialMaterial = function () {
-    window.mostrarHistorialEntradas();
-  };
+  // mostrarHistorialEntradas/Salidas/Retornos, mostrarHistorialMaterial,
+  // mostrarInventarioActual y mostrarLongtermInventory estan definidas en
+  // MaterialTemplate.html (WF_002 con prepararPanelSeccion('material') +
+  // *-unique-container). No re-definir aqui para evitar shadowing.
 
   window.mostrarMaterialSustituto = function () {
     hideAllMaterialContainers();
@@ -588,26 +569,6 @@ document.addEventListener("DOMContentLoaded", function () {
     hideAllMaterialContainers();
     materialContentArea.style.display = "block";
     consultarPepsContainer.style.display = "block";
-  };
-
-  window.mostrarInventarioActual = function () {
-    hideAllMaterialContainers();
-    materialContentArea.style.display = "block";
-    longtermInventoryContainer.style.display = "block";
-
-    cargarContenidoDinamico(
-      "longterm-inventory-container",
-      "/material/inventario_actual",
-      () => {
-        if (typeof window.initMaterialCurrentInventory === "function") {
-          window.initMaterialCurrentInventory();
-        }
-      },
-    );
-  };
-
-  window.mostrarLongtermInventory = function () {
-    window.mostrarInventarioActual();
   };
 
   window.mostrarRegistroMaterial = function () {
