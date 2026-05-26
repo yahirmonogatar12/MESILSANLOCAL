@@ -57,7 +57,8 @@ Ubicación: `app/templates/LISTAS/`
 
 | Archivo | Responsabilidad |
 |---|---|
-| `app/routes.py` | Rutas Flask para servir listas y templates AJAX |
+| `app/api/<seccion>/<modulo>.py` | Blueprint con rutas de template/API del módulo nuevo |
+| `app/routes.py` | Rutas legacy que se migran cuando se toque su módulo; no recibe backend nuevo |
 | `app/auth_system.py` | Sistema de permisos: roles, botones, verificación |
 | `app/user_admin.py` | CRUD de permisos, sincronización HTML→BD |
 
@@ -172,12 +173,20 @@ window.miNuevaFuncion = function() {
 };
 ```
 
-### Paso 3: Crear la ruta Flask
+### Paso 3: Crear la ruta Flask en el Blueprint
 
-En `app/routes.py`:
+En `app/api/<seccion>/<modulo>.py`:
 
 ```python
-@app.route("/mi_modulo/mi_template")
+from flask import Blueprint, render_template
+
+from app.api.shared import login_requerido
+
+
+bp = Blueprint("mi_modulo", __name__)
+
+
+@bp.route("/mi_modulo/mi_template")
 @login_requerido
 def mi_template_ajax():
     """Ruta AJAX para cargar dinámicamente mi template"""
@@ -187,6 +196,8 @@ def mi_template_ajax():
         print(f"Error al cargar MI_TEMPLATE: {e}")
         return f"Error al cargar el contenido: {str(e)}", 500
 ```
+
+Registrar el Blueprint en `app/api/__init__.py` como indica [WF_003](./WF_003_Integracion_API_JS_Template.md). Si el módulo requiere API, permisos o consultas propias, ese backend también queda en el paquete Blueprint.
 
 ### Paso 4: Crear el archivo HTML del template
 
@@ -257,10 +268,18 @@ Crear `app/templates/LISTAS/LISTA_MI_SECCION.html`:
 
 ### Paso 2: Crear la ruta Flask para la lista
 
-En `app/routes.py`:
+En un Blueprint de la sección nueva bajo `app/api/`:
 
 ```python
-@app.route("/listas/mi_seccion")
+from flask import Blueprint, render_template
+
+from app.api.shared import login_requerido
+
+
+bp = Blueprint("mi_seccion_sidebar", __name__)
+
+
+@bp.route("/listas/mi_seccion")
 @login_requerido
 def lista_mi_seccion():
     """Cargar dinámicamente la lista de Mi Sección"""
@@ -344,21 +363,21 @@ Y en `detectActiveSection()` (~línea 1199), agregar:
 ### Para un nuevo **botón** en lista existente:
 - [ ] Agregar `<li>` con `data-permiso-*` al archivo LISTA
 - [ ] Crear función `window.miNuevaFuncion()` en MaterialTemplate.html
-- [ ] Crear ruta Flask en `routes.py`
+- [ ] Crear ruta Flask en el Blueprint del módulo
 - [ ] Crear template HTML del contenido
 - [ ] Sincronizar permisos (POST `/admin/sincronizar_permisos_dropdowns`)
 - [ ] Asignar permiso al rol correspondiente
 
 ### Para una nueva **sección completa**:
 - [ ] Crear `LISTA_MI_SECCION.html` en `app/templates/LISTAS/`
-- [ ] Crear ruta Flask `/listas/mi_seccion` en `routes.py`
+- [ ] Crear ruta Flask `/listas/mi_seccion` en un Blueprint de `app/api/`
 - [ ] Agregar botón de navegación en MaterialTemplate.html
 - [ ] Crear función `mostrarMiSeccion()` en MaterialTemplate.html
 - [ ] Agregar content-area div en MaterialTemplate.html
 - [ ] Agregar mapeo en `buttonActions` para móvil
 - [ ] Actualizar `detectActiveSection()` y `loadListContent()` para móvil
 - [ ] Crear los templates de contenido individual
-- [ ] Crear las rutas Flask para cada template
+- [ ] Crear las rutas Flask para cada template en sus Blueprints
 - [ ] Sincronizar permisos
 - [ ] Asignar permisos a roles
 

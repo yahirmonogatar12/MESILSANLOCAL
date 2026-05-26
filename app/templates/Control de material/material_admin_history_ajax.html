@@ -1,41 +1,41 @@
-<div id="mat-admin-history-unique-container" class="mat-admin-page" data-history-type="{{ tipo }}">
+<div id="mat-admin-history-{{ tipo }}-root" class="mat-admin-page" data-history-type="{{ tipo }}">
     <div class="mat-admin-toolbar">
         <label>
             Desde
-            <input id="mat-admin-history-start" type="date">
+            <input id="mat-admin-history-start-{{ tipo }}" type="date">
         </label>
         <label>
             Hasta
-            <input id="mat-admin-history-end" type="date">
+            <input id="mat-admin-history-end-{{ tipo }}" type="date">
         </label>
         <label>
             Buscar
-            <input id="mat-admin-history-text" type="text" autocomplete="off" placeholder="Codigo, parte, lote, usuario">
+            <input id="mat-admin-history-text-{{ tipo }}" type="text" autocomplete="off" placeholder="Codigo, parte, lote, usuario">
         </label>
         <div class="mat-admin-actions">
-            <button id="mat-admin-history-btn-search" class="mat-admin-btn primary" type="button">Consultar</button>
-            <button id="mat-admin-history-btn-clear" class="mat-admin-btn" type="button">Limpiar</button>
-            <button id="mat-admin-history-btn-export" class="mat-admin-btn success" type="button">Exportar Excel</button>
+            <button id="mat-admin-history-btn-search-{{ tipo }}" class="mat-admin-btn primary" type="button">Consultar</button>
+            <button id="mat-admin-history-btn-clear-{{ tipo }}" class="mat-admin-btn" type="button">Limpiar</button>
+            <button id="mat-admin-history-btn-export-{{ tipo }}" class="mat-admin-btn success" type="button">Exportar Excel</button>
         </div>
     </div>
 
-    <div id="mat-admin-history-loading" class="mat-admin-loading">Cargando...</div>
-    <div id="mat-admin-history-message" class="mat-admin-message" hidden></div>
+    <div id="mat-admin-history-loading-{{ tipo }}" class="mat-admin-loading">Cargando...</div>
+    <div id="mat-admin-history-message-{{ tipo }}" class="mat-admin-message" hidden></div>
 
     <div class="mat-admin-grid-wrap">
         <table class="mat-admin-table">
-            <thead id="mat-admin-history-head"></thead>
-            <tbody id="mat-admin-history-body"></tbody>
+            <thead id="mat-admin-history-head-{{ tipo }}"></thead>
+            <tbody id="mat-admin-history-body-{{ tipo }}"></tbody>
         </table>
     </div>
 
     <div class="mat-admin-footer">
-        <span id="mat-admin-history-count">Total Rows: 0</span>
-        <div id="mat-admin-history-pagination" class="mat-admin-pagination">
-            <button id="mat-admin-history-prev" class="mat-admin-btn small" type="button">Anterior</button>
-            <span id="mat-admin-history-page">Pagina 1</span>
-            <button id="mat-admin-history-next" class="mat-admin-btn small" type="button">Siguiente</button>
-            <select id="mat-admin-history-page-size">
+        <span id="mat-admin-history-count-{{ tipo }}">Total Rows: 0</span>
+        <div id="mat-admin-history-pagination-{{ tipo }}" class="mat-admin-pagination">
+            <button id="mat-admin-history-prev-{{ tipo }}" class="mat-admin-btn small" type="button">Anterior</button>
+            <span id="mat-admin-history-page-{{ tipo }}">Pagina 1</span>
+            <button id="mat-admin-history-next-{{ tipo }}" class="mat-admin-btn small" type="button">Siguiente</button>
+            <select id="mat-admin-history-page-size-{{ tipo }}">
                 <option value="100">100</option>
                 <option value="500" selected>500</option>
                 <option value="1000">1000</option>
@@ -46,4 +46,4 @@
 
 <!-- WF_004: material_admin_inventory.css se carga globalmente en MaterialTemplate.html
      y el JS tiene ensureModuleStyles() como seguro. -->
-<script src="{{ url_for('static', filename='js/material_admin_inventory.js', v='20260520j') }}"></script>
+<script src="{{ url_for('static', filename='js/material_admin_inventory.js', v='20260525a') }}"></script>

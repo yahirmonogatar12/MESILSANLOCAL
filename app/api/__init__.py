@@ -35,9 +35,10 @@ Convencion de nuevos modulos:
 _MODULOS_REGISTRADOS = [
     "admin.permisos",
     "admin.usuarios",
+    "informacion_basica.control_bom",
     "informacion_basica.control_modelos_smt",
+    "informacion_basica.control_modelos_visor",
     "control_material.material_admin",
-    "control_material.smd_inventory",
     # control_calidad.smt_historial_simple DEBE ir antes que smt_historial:
     # ambos definen /api/historial_smt_data y Flask deja responder al primero
     # registrado (preserva comportamiento legacy de smt_routes_date_fixed.py).
@@ -45,6 +46,10 @@ _MODULOS_REGISTRADOS = [
     "control_calidad.smt_historial",
     "control_resultados.aoi",
     "control_produccion.po_wo",
+    "control_produccion.cuchillas_corte",
+    "control_produccion.plan_smt",
+    "control_produccion.plan_smd",
+    "control_produccion.views",
     "shared.raw_modelos",
     "portal.tickets",
     "pda.shipping",

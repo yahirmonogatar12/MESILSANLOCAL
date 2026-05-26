@@ -15,11 +15,29 @@
     total: 0,
   };
 
-  const historyState = {
-    limit: 500,
-    offset: 0,
-    total: 0,
+  // historyStates: un estado por tipo (entradas/salidas/retornos).
+  // Cada tipo es una pestaña independiente con su propio paginado.
+  const historyStates = {
+    entradas: { limit: 500, offset: 0, total: 0 },
+    salidas: { limit: 500, offset: 0, total: 0 },
+    retornos: { limit: 500, offset: 0, total: 0 },
   };
+  function getHistoryState(tipo) {
+    if (!historyStates[tipo]) {
+      historyStates[tipo] = { limit: 500, offset: 0, total: 0 };
+    }
+    return historyStates[tipo];
+  }
+  // Helper: construye un ID interno sufijado por tipo.
+  function H(tipo, suffix) {
+    return `mat-admin-history-${suffix}-${tipo}`;
+  }
+  // Extrae el tipo de un ID con formato mat-admin-history-<suffix>-<tipo>
+  function tipoFromElementId(id) {
+    if (!id) return null;
+    const match = id.match(/^mat-admin-history-(?:[a-z-]+)-(entradas|salidas|retornos)$/);
+    return match ? match[1] : null;
+  }
   let columnFilterReloadTimer = null;
 
   const historyTitles = {
@@ -298,7 +316,10 @@
   }
 
   function rowNumberOffset(tableKey) {
-    if (tableKey.startsWith("history:")) return historyState.offset;
+    if (tableKey.startsWith("history:")) {
+      const tipo = tableKey.split(":")[1];
+      return getHistoryState(tipo).offset;
+    }
     if (tableKey.startsWith("inventory:detail")) return inventoryState.offset;
     return 0;
   }
@@ -678,32 +699,31 @@
     loadInventory(true);
   }
 
-  function historyParams(historyType = null) {
+  function historyParams(historyType) {
+    const state = getHistoryState(historyType);
     const params = new URLSearchParams();
-    const start = el("mat-admin-history-start")?.value;
-    const end = el("mat-admin-history-end")?.value;
-    const text = el("mat-admin-history-text")?.value.trim();
+    const start = el(H(historyType, "start"))?.value;
+    const end = el(H(historyType, "end"))?.value;
+    const text = el(H(historyType, "text"))?.value.trim();
 
     if (start) params.set("fecha_inicio", start);
     if (end) params.set("fecha_fin", end);
     if (text) params.set("texto", text);
-    historyState.limit = Number(el("mat-admin-history-page-size")?.value || 500);
-    params.set("limit", String(historyState.limit));
-    params.set("offset", String(historyState.offset));
-    appendColumnFilters(params, `history:${historyType || el("mat-admin-history-unique-container")?.dataset.historyType || "entradas"}`);
+    state.limit = Number(el(H(historyType, "page-size"))?.value || 500);
+    params.set("limit", String(state.limit));
+    params.set("offset", String(state.offset));
+    appendColumnFilters(params, `history:${historyType}`);
     return params;
   }
 
   async function loadHistory(tipo, resetPage = false) {
-    if (typeof tipo === "boolean") {
-      resetPage = tipo;
-      tipo = null;
-    }
-    const historyType = tipo || el("mat-admin-history-unique-container")?.dataset.historyType || "entradas";
+    const historyType = tipo;
+    if (!historyType) return;
+    const state = getHistoryState(historyType);
     ensureModuleStyles();
-    setMessage("mat-admin-history-message", "");
-    setLoading("mat-admin-history-loading", true);
-    if (resetPage) historyState.offset = 0;
+    setMessage(H(historyType, "message"), "");
+    setLoading(H(historyType, "loading"), true);
+    if (resetPage) state.offset = 0;
 
     try {
       const res = await fetch(`/api/material_admin/history/${encodeURIComponent(historyType)}?${historyParams(historyType).toString()}`, {
@@ -713,34 +733,34 @@
       if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
 
       const rows = Array.isArray(data) ? data : data.data || [];
-      historyState.total = Array.isArray(data) ? rows.length : Number(data.total || rows.length);
-      historyState.limit = Array.isArray(data) ? historyState.limit : Number(data.limit || historyState.limit);
-      historyState.offset = Array.isArray(data) ? historyState.offset : Number(data.offset || historyState.offset);
+      state.total = Array.isArray(data) ? rows.length : Number(data.total || rows.length);
+      state.limit = Array.isArray(data) ? state.limit : Number(data.limit || state.limit);
+      state.offset = Array.isArray(data) ? state.offset : Number(data.offset || state.offset);
 
-      renderTable("mat-admin-history-head", "mat-admin-history-body", historyColumns[historyType], rows, `history:${historyType}`, (visibleRows, pageRows) => {
-        const count = el("mat-admin-history-count");
+      renderTable(H(historyType, "head"), H(historyType, "body"), historyColumns[historyType], rows, `history:${historyType}`, (visibleRows, pageRows) => {
+        const count = el(H(historyType, "count"));
         if (!count) return;
-        const start = historyState.total === 0 ? 0 : historyState.offset + 1;
-        const end = Math.min(historyState.offset + pageRows, historyState.total);
+        const start = state.total === 0 ? 0 : state.offset + 1;
+        const end = Math.min(state.offset + pageRows, state.total);
         const filteredText = visibleRows === pageRows ? "" : `, Filtrado: ${visibleRows}/${pageRows}`;
-        count.textContent = `Total Rows: ${historyState.total} (${start}-${end}${filteredText})`;
+        count.textContent = `Total Rows: ${state.total} (${start}-${end}${filteredText})`;
       });
 
-      const page = el("mat-admin-history-page");
+      const page = el(H(historyType, "page"));
       if (page) {
-        const pageNumber = Math.floor(historyState.offset / historyState.limit) + 1;
+        const pageNumber = Math.floor(state.offset / state.limit) + 1;
         page.textContent = `Pagina ${pageNumber}`;
       }
     } catch (err) {
       console.error(`Error cargando ${historyType}:`, err);
-      setMessage("mat-admin-history-message", `Error al cargar ${historyTitles[historyType] || "historial"}: ${err.message}`);
+      setMessage(H(historyType, "message"), `Error al cargar ${historyTitles[historyType] || "historial"}: ${err.message}`);
     } finally {
-      setLoading("mat-admin-history-loading", false);
+      setLoading(H(historyType, "loading"), false);
     }
   }
 
-  function exportHistory() {
-    const historyType = el("mat-admin-history-unique-container")?.dataset.historyType || "entradas";
+  function exportHistory(historyType) {
+    if (!historyType) return;
     window.location.href = `/api/material_admin/history/${encodeURIComponent(historyType)}/export?${historyParams(historyType).toString()}`;
   }
 
@@ -748,8 +768,9 @@
     window.clearTimeout(columnFilterReloadTimer);
     columnFilterReloadTimer = window.setTimeout(() => {
       if (tableKey.startsWith("history:")) {
-        historyState.offset = 0;
-        loadHistory(tableKey.split(":")[1], true);
+        const tipo = tableKey.split(":")[1];
+        getHistoryState(tipo).offset = 0;
+        loadHistory(tipo, true);
         return;
       }
       if (tableKey.startsWith("inventory:detail")) {
@@ -759,14 +780,16 @@
     }, 300);
   }
 
-  function resetHistoryFilters() {
-    if (el("mat-admin-history-start")) el("mat-admin-history-start").value = todayIso();
-    if (el("mat-admin-history-end")) el("mat-admin-history-end").value = todayIso();
-    const text = el("mat-admin-history-text");
+  function resetHistoryFilters(historyType) {
+    if (!historyType) return;
+    const state = getHistoryState(historyType);
+    if (el(H(historyType, "start"))) el(H(historyType, "start")).value = todayIso();
+    if (el(H(historyType, "end"))) el(H(historyType, "end")).value = todayIso();
+    const text = el(H(historyType, "text"));
     if (text) text.value = "";
-    historyState.offset = 0;
-    clearColumnFiltersByPrefix("history:");
-    loadHistory(true);
+    state.offset = 0;
+    clearColumnFiltersByPrefix(`history:${historyType}`);
+    loadHistory(historyType, true);
   }
 
   function initListeners() {
@@ -989,33 +1012,42 @@
         }
         return;
       }
-      if (target.closest("#mat-admin-history-btn-search")) {
+      const histSearchBtn = target.closest("[id^='mat-admin-history-btn-search-']");
+      if (histSearchBtn) {
         event.preventDefault();
-        loadHistory(true);
+        loadHistory(tipoFromElementId(histSearchBtn.id), true);
         return;
       }
-      if (target.closest("#mat-admin-history-btn-clear")) {
+      const histClearBtn = target.closest("[id^='mat-admin-history-btn-clear-']");
+      if (histClearBtn) {
         event.preventDefault();
-        resetHistoryFilters();
+        resetHistoryFilters(tipoFromElementId(histClearBtn.id));
         return;
       }
-      if (target.closest("#mat-admin-history-btn-export")) {
+      const histExportBtn = target.closest("[id^='mat-admin-history-btn-export-']");
+      if (histExportBtn) {
         event.preventDefault();
-        exportHistory();
+        exportHistory(tipoFromElementId(histExportBtn.id));
         return;
       }
-      if (target.closest("#mat-admin-history-prev")) {
+      const histPrevBtn = target.closest("[id^='mat-admin-history-prev-']");
+      if (histPrevBtn) {
         event.preventDefault();
-        historyState.offset = Math.max(0, historyState.offset - historyState.limit);
-        loadHistory(false);
+        const tipo = tipoFromElementId(histPrevBtn.id);
+        const state = getHistoryState(tipo);
+        state.offset = Math.max(0, state.offset - state.limit);
+        loadHistory(tipo, false);
         return;
       }
-      if (target.closest("#mat-admin-history-next")) {
+      const histNextBtn = target.closest("[id^='mat-admin-history-next-']");
+      if (histNextBtn) {
         event.preventDefault();
-        const nextOffset = historyState.offset + historyState.limit;
-        if (nextOffset < historyState.total) {
-          historyState.offset = nextOffset;
-          loadHistory(false);
+        const tipo = tipoFromElementId(histNextBtn.id);
+        const state = getHistoryState(tipo);
+        const nextOffset = state.offset + state.limit;
+        if (nextOffset < state.total) {
+          state.offset = nextOffset;
+          loadHistory(tipo, false);
         }
       }
     });
@@ -1032,9 +1064,10 @@
         loadInventory(true);
         return;
       }
-      if (target.id === "mat-admin-history-page-size") {
-        historyState.offset = 0;
-        loadHistory(true);
+      if (target.id && target.id.startsWith("mat-admin-history-page-size-")) {
+        const tipo = tipoFromElementId(target.id);
+        getHistoryState(tipo).offset = 0;
+        loadHistory(tipo, true);
       }
     });
 
@@ -1061,23 +1094,23 @@
   window.initMaterialAdminHistory = function (tipo) {
     ensureModuleStyles();
     initListeners();
-    removeLegacyPageHeaders("mat-admin-history-unique-container");
-    const root = el("mat-admin-history-unique-container");
-    const historyType = tipo || root?.dataset.historyType || "entradas";
-    if (root) root.dataset.historyType = historyType;
+    const historyType = tipo || "entradas";
+    removeLegacyPageHeaders(`mat-admin-history-${historyType}-root`);
 
-    if (el("mat-admin-history-start") && !el("mat-admin-history-start").value) {
-      el("mat-admin-history-start").value = todayIso();
-    }
-    if (el("mat-admin-history-end") && !el("mat-admin-history-end").value) {
-      el("mat-admin-history-end").value = todayIso();
-    }
-    historyState.offset = 0;
+    const startEl = el(H(historyType, "start"));
+    const endEl = el(H(historyType, "end"));
+    if (startEl && !startEl.value) startEl.value = todayIso();
+    if (endEl && !endEl.value) endEl.value = todayIso();
+
+    const state = getHistoryState(historyType);
+    state.offset = 0;
     loadHistory(historyType, true);
   };
 
   window.limpiarMaterialAdminInventory = function () {
     setLoading("mat-admin-inv-loading", false);
-    setLoading("mat-admin-history-loading", false);
+    setLoading(H("entradas", "loading"), false);
+    setLoading(H("salidas", "loading"), false);
+    setLoading(H("retornos", "loading"), false);
   };
 })();

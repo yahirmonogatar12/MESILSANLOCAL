@@ -434,8 +434,13 @@ class AuthSystem:
             
             # LISTA CONTROL DE PRODUCCIÓN - Información básica
             ('LISTA_CONTROLDEPRODUCCION', 'Información básica', 'Información básica', 'Acceso a información básica de producción'),
-            
-            # LISTA CONTROL DE PRODUCCIÓN - Control de proceso  
+
+            # LISTA CONTROL DE PRODUCCIÓN - Control de plan de produccion
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de plan de produccion', 'Control de embarque', 'Acceso a Control de embarque'),
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de plan de produccion', 'Crear Plan de produccion', 'Acceso a Crear Plan de produccion'),
+            ('LISTA_CONTROLDEPRODUCCION', 'Control de plan de produccion', 'Control de cuchillas de corte', 'Acceso al Control de cuchillas de corte'),
+
+            # LISTA CONTROL DE PRODUCCIÓN - Control de proceso
             ('LISTA_CONTROLDEPRODUCCION', 'Control de proceso', 'Control de proceso', 'Acceso al control de proceso de producción'),
             
             # LISTA CONTROL DE PRODUCCIÓN - Control de calidad
@@ -466,8 +471,9 @@ class AuthSystem:
             # LISTA CONTROL DE PROCESO - Control de material Scrap
             ('LISTA_CONTROL_DE_PROCESO', 'Control de material Scrap', 'Control de Scrap', 'Acceso al control de Scrap'),
             
-            # LISTA CONTROL DE PROCESO - Inventario IMD Terminado
-            ('LISTA_CONTROL_DE_PROCESO', 'Inventario', 'IMD-SMD TERMINADO', 'Acceso al inventario de productos IMD terminados'),
+            # LISTA CONTROL DE RESULTADOS - Inventario IMD Terminado
+            # (Movido desde LISTA_CONTROL_DE_PROCESO/Inventario el 2026-05-25.)
+            ('LISTA_DE_CONTROL_DE_RESULTADOS', 'Control de inventario', 'IMD-SMD TERMINADO', 'Acceso al inventario de productos IMD terminados'),
             
             # LISTA CONTROL DE CALIDAD - Control de calidad  
             ('LISTA_CONTROL_DE_CALIDAD', 'Control de calidad', 'Inspección de entrada', 'Acceso a inspección de entrada'),

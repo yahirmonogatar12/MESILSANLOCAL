@@ -1,7 +1,7 @@
 # WF_003 — Integración de API Backend + JS Frontend para Nuevos Templates
 
-> **Versión:** 2.0
-> **Fecha:** 2026-05-22 (v2.0 — nueva estructura `app/api/`)
+> **Versión:** 2.1
+> **Fecha:** 2026-05-22 (v2.1 — backend completo por Blueprint)
 > **Prerequisitos:** [WF_001](./WF_001_Nuevos_Modulos_AJAX_Templates.md), [WF_002](./WF_002_Crear_Template_Completo.md)
 > **Ejemplo de referencia:** Módulo "Historial ICT % Pass/Fail" con API `/api/ict/pass-fail`
 
@@ -11,7 +11,7 @@
 
 Este documento cubre el proceso de crear los **endpoints de API en Flask** y la **lógica JS del frontend** que conectan un template HTML a la base de datos. Es el complemento de WF_002, que cubre la estructura visual (HTML/CSS) y el registro en la app.
 
-> **Cambio v2.0 (2026-05-22):** Los endpoints nuevos ya **NO** van a `app/routes.py`. Ahora se organizan en el paquete `app/api/` espejando la estructura de `app/templates/`. Ver sección [Arquitectura del paquete app/api/](#arquitectura-del-paquete-appapi).
+> **Cambio v2.1 (2026-05-22):** El backend completo de cada módulo nuevo debe vivir bajo su paquete Blueprint en `app/api/`. No basta con mover los endpoints: también se quedan ahí sus rutas de template, permisos, serialización, exportación y lógica de datos propia. Ver sección [Arquitectura del paquete app/api/](#arquitectura-del-paquete-appapi).
 
 ---
 
@@ -65,6 +65,30 @@ app/api/
    ]
    ```
    `app_factory.py` se encarga de llamar `registrar_blueprints_api(app)` y todo queda registrado.
+5. **Todo backend propio del módulo vive en el paquete Blueprint** dentro de `app/api/<seccion>/`.
+6. **`app/routes.py`, `app/db_mysql.py` y archivos `*_api.py` sueltos no son destino para backend nuevo de un módulo.** Solo permanecen como infraestructura compartida o legado pendiente de migrar.
+
+### Frontera obligatoria del backend del módulo
+
+Para módulos nuevos o para una migración que ya se está tocando, el backend debe quedar localizado por sección:
+
+| Debe vivir junto al Blueprint | Ejemplos |
+|---|---|
+| Rutas HTML/AJAX del template | `@bp.route("/mi-modulo")` con `render_template(...)` |
+| APIs JSON y exportaciones | `GET /api/...`, `POST /api/...`, `.xlsx` |
+| Permisos y validaciones HTTP | decoradores, lectura de `session`, respuestas `403/400` |
+| Serializadores y adaptadores de respuesta | fechas, shape legacy del frontend, metadatos |
+| SQL/CRUD/lógica de negocio propia | helpers de consulta, servicios y publicación del módulo |
+
+El archivo que expone `bp` es la puerta HTTP. Si la lógica crece, se divide en módulos hermanos dentro de la misma sección, por ejemplo:
+
+```
+app/api/informacion_basica/
+├── control_bom.py          # Blueprint, rutas, permisos HTTP
+└── control_bom_data.py     # consultas, ECO/KS, serialización de datos propia
+```
+
+No se debe dejar una ruta en el Blueprint y mover su SQL o CRUD a `db_mysql.py` solo para reducir el tamaño del archivo. `db_mysql.py` puede seguir exponiendo conexión, inicialización general o legado compartido mientras se migra, pero no debe recibir backend nuevo específico de un módulo.
 
 **Por qué importa:**
 
@@ -80,6 +104,7 @@ app/api/
 | Acción | Archivo | Descripción |
 |--------|---------|-------------|
 | ✨ CREAR | `app/api/<seccion>/<modulo>.py` | Blueprint con endpoint(s) API (JSON / Excel) |
+| ✨ CREAR opcional | `app/api/<seccion>/<modulo>_data.py` o `_<servicio>.py` | Lógica de datos propia si no cabe limpiamente en el archivo del Blueprint |
 | ✏️ MODIFICAR | `app/api/__init__.py` | Agregar `"<seccion>.<modulo>"` a `_MODULOS_REGISTRADOS` |
 | ✏️ MODIFICAR | `app/static/js/<nombre>.js` | Lógica de carga, render y exportación |
 | — REFERENCIA | `app/api/shared/__init__.py` | Reexporta `execute_query`, `login_requerido`, `auth_system` |
@@ -140,7 +165,24 @@ LIMIT 2000
 
 **Archivo:** `app/api/<seccion>/<modulo>.py`
 
-> **v2.0:** Los endpoints NO van más a `routes.py`. Cada módulo es un Blueprint Flask en su propio archivo dentro de la sección que corresponde.
+> **v2.1:** El backend nuevo NO va más a `routes.py` ni a `db_mysql.py` por conveniencia. Cada módulo queda bajo su Blueprint y sus módulos hermanos dentro de la sección que corresponde.
+
+La ruta que renderiza el template AJAX también pertenece al mismo Blueprint:
+
+```python
+from flask import Blueprint, render_template
+
+from app.api.shared import login_requerido
+
+
+bp = Blueprint("mi_modulo", __name__)
+
+
+@bp.route("/mi-modulo")
+@login_requerido
+def mi_modulo_template():
+    return render_template("MI_SECCION/mi_modulo.html")
+```
 
 ### Estructura base:
 
@@ -595,7 +637,7 @@ http://localhost:5000/api/<modulo>/<accion>?fecha=<fecha_con_datos>
 Abrir DevTools → Console (F12) y buscar:
 
 ```
-❌ Errores 404: la URL del API no coincide con la ruta en routes.py
+❌ Errores 404: la URL del API no coincide con la ruta registrada por el Blueprint
 ❌ Errores CORS: no debería haber (mismo origen)
 ❌ TypeError: un ID del HTML no coincide con el ID en el JS
 ✅ Sin errores: todo correcto
@@ -619,8 +661,11 @@ Abrir DevTools → Console (F12) y buscar:
 [ ] Query SQL diseñada y probada en MySQL
 [ ] Blueprint creado en app/api/<seccion>/<modulo>.py
 [ ] Blueprint expone atributo `bp` y usa imports desde app.api.shared
+[ ] Ruta HTML/AJAX del template creada dentro del Blueprint si el módulo la necesita
 [ ] Endpoint de datos creado dentro del blueprint (retorna JSON)
 [ ] Endpoint de exportación creado dentro del blueprint (retorna .xlsx)
+[ ] SQL/CRUD/servicios propios viven en el paquete app/api/<seccion>/ del módulo
+[ ] No se agregó backend nuevo del módulo a routes.py, db_mysql.py ni archivos *_api.py sueltos
 [ ] Modulo agregado a _MODULOS_REGISTRADOS en app/api/__init__.py
 [ ] JS implementado con todas las funciones (load, render, export, listeners)
 [ ] IDs del HTML coinciden con los del JS
@@ -646,7 +691,7 @@ Para un módulo nuevo "Historial ICT % Pass/Fail" en la sección Control de resu
 | JS | `app/static/js/ict-Pass-Fail.js` | — |
 | Blueprint | `app/api/control_resultados/ict_pass_fail.py` | `bp = Blueprint("ict_pass_fail", ...)` |
 | Registrado en | `app/api/__init__.py` | `_MODULOS_REGISTRADOS += ["control_resultados.ict_pass_fail"]` |
-| Ruta página | `routes.py` (legacy) o nuevo blueprint | `/historial-maquina-ict-pass-fail` |
+| Ruta página | `app/api/control_resultados/ict_pass_fail.py` | `/historial-maquina-ict-pass-fail` |
 | API datos | `app/api/control_resultados/ict_pass_fail.py` | `GET /api/ict/pass-fail` |
 | API export | `app/api/control_resultados/ict_pass_fail.py` | `GET /api/ict/pass-fail/export` |
 | Tabla HTML | `#pf-ict-table` | tbody: `#pf-ict-body` |
@@ -664,14 +709,20 @@ Hasta la migración completa de `routes.py` (~28k líneas) y los archivos `*_api
 
 | Estado | Ubicación | Ejemplo |
 |---|---|---|
-| ✅ Nuevo (v2.0) | `app/api/<seccion>/<modulo>.py` | `app/api/control_material/material_admin.py` |
+| ✅ Nuevo (v2.1) | `app/api/<seccion>/<modulo>.py` | `app/api/control_material/material_admin.py` |
 | ⚠️ Legacy | `app/routes.py`, `app/aoi_api.py`, `app/shipping_api.py`, etc. | endpoints sueltos a migrar |
 
-**Para nuevos módulos: usar siempre v2.0.** Para módulos existentes legacy, migrar oportunisticamente cuando se tocan (no como refactor masivo de un solo PR).
+**Para nuevos módulos: usar siempre v2.1.** Para módulos existentes legacy, migrar oportunisticamente cuando se tocan (no como refactor masivo de un solo PR). Al migrar un módulo, mover una porción coherente: ruta, API, permisos y datos propios deben quedar bajo su Blueprint.
 
 ---
 
 ## Changelog
+
+### 2026-05-22 — v2.1 (ownership del backend por Blueprint)
+- Regla dura: todo backend nuevo del módulo vive bajo `app/api/<seccion>/`.
+- Las rutas HTML/AJAX del template se documentan dentro del mismo Blueprint.
+- Si la lógica de datos crece, se separa en módulos hermanos del Blueprint y no se agrega a `db_mysql.py`.
+- `routes.py`, `db_mysql.py` y `*_api.py` sueltos quedan solo para infraestructura compartida o legado pendiente de migrar.
 
 ### 2026-05-22 — v2.0 (refactor `app/api/`)
 - Nueva regla: los endpoints nuevos van a `app/api/<seccion>/<modulo>.py` como Flask Blueprints.

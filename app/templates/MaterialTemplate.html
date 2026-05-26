@@ -40,6 +40,7 @@
     <link rel="stylesheet" href="/static/styleHeader.css">
     <link rel="stylesheet" href="/static/css/responsive-mobile.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/control_material.css', v='20260520a') }}">
+    <link id="control-bom-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_bom.css', v='20260522a') }}">
     <link id="almacen-embarques-history-css" rel="stylesheet" href="{{ url_for('static', filename='css/almacen_embarques_history.css', v='20260513b') }}">
     <link id="material-admin-inventory-css" rel="stylesheet" href="{{ url_for('static', filename='css/material_admin_inventory.css', v='20260520j') }}">
     <!-- WF_004: CSS compartidos por modulos AJAX (Control de resultados / Control de proceso) -->
@@ -49,6 +50,7 @@
     <link id="styles-css" rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='20260522a') }}">
     <link id="historial-cambio-material-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_cambio_material_smt.css', v='20260522a') }}">
     <link id="control-modelos-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_modelos_smt.css', v='20260522a') }}">
+    <link id="visor-mysql-css" rel="stylesheet" href="{{ url_for('static', filename='css/visor_mysql.css', v='20260522a') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -277,7 +279,7 @@
     <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
-    <script src="/static/js/scriptMain.js?v=20260522b"></script>
+    <script src="/static/js/scriptMain.js?v=20260525f"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -398,7 +400,13 @@
         <div id="recibo-pago-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
-        <div id="historial-material-container" style="display: none;">
+        <div id="historial-entradas-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+        <div id="historial-salidas-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con JavaScript -->
+        </div>
+        <div id="historial-retornos-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="estatus-material-container" style="display: none;">
@@ -410,7 +418,7 @@
         <div id="consultar-peps-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
-        <div id="longterm-inventory-container" style="display: none;">
+        <div id="longterm-inventory-unique-container" style="display: none;">
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
         <div id="registro-material-container" style="display: none;">
@@ -439,13 +447,12 @@
             <!-- El contenido se cargará dinámicamente con JavaScript -->
         </div>
 
-        <!-- Aquí se pueden agregar más contenedores específicos para Control de Producción -->
-        <!-- Por ejemplo: -->
-        <!-- <div id="control-embarque-container" style="display: none;"> -->
-        <!--     El contenido se cargará dinámicamente con JavaScript -->
-        <!-- </div> -->
+        <!-- Control de embarque (contenedor unico para sistema de tabs) -->
+        <div id="control-embarque-unique-container" style="display: none;">
+                <!-- El contenido se cargará dinámicamente con AJAX -->
+            </div>
 
-        <!-- Crear plan micom -->
+        <!-- Control de cuchillas de corte -->
         <div id="control-cuchillas-corte-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
@@ -489,9 +496,7 @@
         <div id="plan-smd-diario-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
-        <div id="inventario-imd-terminado-unique-container" style="display: none;">
-                <!-- El contenido se cargará dinámicamente con AJAX -->
-            </div>
+        <!-- inventario-imd-terminado-unique-container movido a Control de Resultados -->
 
         <!-- CONTENEDORES AJAX PARA CONTROL DE PROCESO -->
         <!-- Control de produccion -->
@@ -646,6 +651,11 @@
         <!-- Contenedor especifico para Historial Vision % Pass/Fail -->
         <div id="historial-vision-pass-fail-unique-container" style="display: none;">
             <!-- El contenido se cargara dinamicamente con AJAX -->
+        </div>
+
+        <!-- Inventario IMD-SMD Terminado (Control de inventario) -->
+        <div id="inventario-imd-terminado-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
         </div>
 
         <!-- Aquí se pueden agregar más contenedores específicos para Control de Resultados -->
@@ -887,7 +897,7 @@
 
     <!-- SISTEMA UNIFICADO DE DROPDOWNS - ÚNICO ARCHIVO NECESARIO -->
     <script src="../static/js/unified-dropdowns.js"></script>
-    <script src="../static/js/sidebar-tabs.js?v=20260522h"></script>
+    <script src="../static/js/sidebar-tabs.js?v=20260525a"></script>
 
     <!-- MOBILE LISTS HAMBURGER MENU -->
     <script src="../static/js/mobile-lists-hamburger.js"></script>
@@ -2177,11 +2187,13 @@
             const controlSalidaContainer = document.getElementById('control-salida-container');
             const controlRetornoContainer = document.getElementById('control-retorno-container');
             const reciboPagoContainer = document.getElementById('recibo-pago-container');
-            const historialMaterialContainer = document.getElementById('historial-material-container');
+            const historialEntradasContainer = document.getElementById('historial-entradas-unique-container');
+            const historialSalidasContainer = document.getElementById('historial-salidas-unique-container');
+            const historialRetornosContainer = document.getElementById('historial-retornos-unique-container');
             const estatusMaterialContainer = document.getElementById('estatus-material-container');
             const materialSustitutoContainer = document.getElementById('material-sustituto-container');
             const consultarPepsContainer = document.getElementById('consultar-peps-container');
-            const longtermInventoryContainer = document.getElementById('longterm-inventory-container');
+            const longtermInventoryContainer = document.getElementById('longterm-inventory-unique-container');
             const registroMaterialContainer = document.getElementById('registro-material-container');
             const historialInventarioContainer = document.getElementById('historial-inventario-container');
             const inventarioRollosSMDContainer = document.getElementById('inventario-rollos-smd-container');
@@ -2265,21 +2277,23 @@
 
             // Función para ocultar todos los contenedores de material
 function hideAllMaterialContainers() {
-    materialInfoContainer.style.display = 'none';
-    controlAlmacenContainer.style.display = 'none';
-    controlSalidaContainer.style.display = 'none';
-    controlRetornoContainer.style.display = 'none';
-    reciboPagoContainer.style.display = 'none';
-    historialMaterialContainer.style.display = 'none';
-    estatusMaterialContainer.style.display = 'none';
-    materialSustitutoContainer.style.display = 'none';
-    consultarPepsContainer.style.display = 'none';
-    longtermInventoryContainer.style.display = 'none';
-    registroMaterialContainer.style.display = 'none';
-    historialInventarioContainer.style.display = 'none';
-    inventarioRollosSMDContainer.style.display = 'none';
-    ajusteNumeroContainer.style.display = 'none';
-    historialCambioSmtContainer.style.display = 'none';
+    if (materialInfoContainer) materialInfoContainer.style.display = 'none';
+    if (controlAlmacenContainer) controlAlmacenContainer.style.display = 'none';
+    if (controlSalidaContainer) controlSalidaContainer.style.display = 'none';
+    if (controlRetornoContainer) controlRetornoContainer.style.display = 'none';
+    if (reciboPagoContainer) reciboPagoContainer.style.display = 'none';
+    if (historialEntradasContainer) historialEntradasContainer.style.display = 'none';
+    if (historialSalidasContainer) historialSalidasContainer.style.display = 'none';
+    if (historialRetornosContainer) historialRetornosContainer.style.display = 'none';
+    if (estatusMaterialContainer) estatusMaterialContainer.style.display = 'none';
+    if (materialSustitutoContainer) materialSustitutoContainer.style.display = 'none';
+    if (consultarPepsContainer) consultarPepsContainer.style.display = 'none';
+    if (longtermInventoryContainer) longtermInventoryContainer.style.display = 'none';
+    if (registroMaterialContainer) registroMaterialContainer.style.display = 'none';
+    if (historialInventarioContainer) historialInventarioContainer.style.display = 'none';
+    if (inventarioRollosSMDContainer) inventarioRollosSMDContainer.style.display = 'none';
+    if (ajusteNumeroContainer) ajusteNumeroContainer.style.display = 'none';
+    if (historialCambioSmtContainer) historialCambioSmtContainer.style.display = 'none';
 
     const controlProcesoContentArea = document.getElementById('control-proceso-content-area');
     if (controlProcesoContentArea) controlProcesoContentArea.style.display = 'none';
@@ -2658,29 +2672,18 @@ function hideAllMaterialContainers() {
             };
 
             // Función global para mostrar Control de Embarque
+            // Refactor WF_002 (2026-05-25): usar helper prepararPanelSeccion + contenedor unique
             window.mostrarControlEmbarque = function() {
-                hideAllMaterialContainers();
-                produccionContentArea.style.display = 'block';
-                produccionInfoContainer.style.display = 'block';
+                prepararPanelSeccion('produccion');
 
-                // IMPORTANTE: Ocultar contenedor de material
-                materialContentArea.style.display = 'none';
+                const container = document.getElementById('control-embarque-unique-container');
+                if (container) {
+                    container.style.display = 'block';
+                }
 
-                // Cargar contenido dinámicamente de Control de Embarque en el contenedor de producción
-                cargarContenidoDinamico('produccion-info-container', '/control_produccion/control_embarque', () => {
-                    // Después de cargar, asegurar que el contenedor esté visible
-                    const embarqueContainer = document.querySelector('#embarque-main-container-unique');
-                    if (embarqueContainer) {
-                        embarqueContainer.style.display = 'block';
-                        embarqueContainer.style.visibility = 'visible';
-                        embarqueContainer.style.opacity = '1';
-                        // // // // // // console.log('Control de Embarque cargado y mostrado correctamente');
-                    }
-
-                    // Inicializar el módulo de Control de Embarque
+                cargarContenidoDinamico('control-embarque-unique-container', '/control_produccion/control_embarque', () => {
                     if (typeof window.initControlEmbarque === 'function') {
                         window.initControlEmbarque();
-                        // // // // // // console.log('Módulo Control de Embarque inicializado');
                     } else {
                         console.warn('Función initControlEmbarque no encontrada');
                     }
@@ -2808,174 +2811,28 @@ function hideAllMaterialContainers() {
                 }
             };
 
-            // Función AJAX para Inventario IMD Terminado
+            // WF_002: Inventario IMD-SMD TERMINADO esta en Control de Resultados / Control de inventario.
+            // Movido desde Control de Proceso el 2026-05-25. Usa prepararPanelSeccion('resultados').
             window.mostrarInventarioIMDTerminado = function() {
-                // // // // // // console.log('🚀 Iniciando carga AJAX de Inventario IMD Terminado...');
+                prepararPanelSeccion('resultados');
+                const container = document.getElementById('inventario-imd-terminado-unique-container');
+                if (container) container.style.display = 'block';
 
-                try {
-                    hideAllMaterialContainers();
-
-                    // Mostrar el área de control de proceso
-                    controlProcesoContentArea.style.display = 'block';
-
-                    // IMPORTANTE: Ocultar otras áreas
-                    materialContentArea.style.display = 'none';
-                    produccionContentArea.style.display = 'none';
-
-                    // Asegurar que el contenedor específico exista y esté disponible
-                    let imdContainer = document.getElementById('inventario-imd-terminado-unique-container');
-
-                    if (!imdContainer) {
-                        // Si no existe, crearlo dentro del área de control de proceso
-                        // // // // // // console.log('🔧 Creando contenedor inventario-imd-terminado-unique-container');
-                        imdContainer = document.createElement('div');
-                        imdContainer.id = 'inventario-imd-terminado-unique-container';
-                        // Estilos SIN !important para que puedan ser limpiados
-                        imdContainer.style.display = 'block';
-                        imdContainer.style.visibility = 'visible';
-                        imdContainer.style.opacity = '1';
-                        imdContainer.style.position = 'relative';
-                        imdContainer.style.zIndex = '1001';
-                        imdContainer.style.width = '100%';
-                        imdContainer.style.minHeight = '400px';
-                        imdContainer.style.padding = '5px';
-                        controlProcesoContentArea.appendChild(imdContainer);
-                    } else {
-                        // Estilos SIN !important para que puedan ser limpiados
-                        imdContainer.style.display = 'block';
-                        imdContainer.style.visibility = 'visible';
-                        imdContainer.style.opacity = '1';
-                        imdContainer.style.position = 'relative';
-                        imdContainer.style.zIndex = '1001';
-                        imdContainer.style.width = '100%';
-                        imdContainer.style.minHeight = '400px';
-                        imdContainer.style.padding = '5px';
-                    }
-
-                    // Ocultar otros contenedores específicos
-                    const otherContainers = [
-                        'control-proceso-info-container',
-                        'Control de produccion SMT-unique-container',
-                        'operacion-linea-smt-unique-container',
-                        'plan-main-assy-unique-container',
-                        'control-cuchillas-corte-unique-container',
-                        'plan-main-imd-unique-container',
-                        'plan-main-smt-unique-container'
-                    ];
-
-                    otherContainers.forEach(containerId => {
-                        const container = document.getElementById(containerId);
-                        if (container) {
-                            container.style.cssText = '';
-                            container.style.display = 'none';
-                        }
-                    });
-
-                    // Cargar contenido dinámicamente usando la versión AJAX
-                    cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_proceso/inventario_imd_terminado', () => {
-                        // // // // // // // console.log(' Inventario IMD Terminado AJAX cargado exitosamente');
-
-                        // Verificar que el contenedor específico esté visible
-                        const inventarioContainer = document.querySelector('#inventario-imd-terminado-unique-container');
-                        if (inventarioContainer) {
-                            inventarioContainer.style.display = 'block';
-                            inventarioContainer.style.visibility = 'visible';
-                            inventarioContainer.style.opacity = '1';
-
-                            // // // // // // // console.log(' Contenedor de Inventario IMD Terminado inicializado');
-                            // // // // // // // console.log(' Inventario IMD Terminado AJAX completamente funcional');
-                        } else {
-                            console.error(' No se encontró el contenedor inventario-imd-terminado-unique-container');
-                        }
-                    })
-                    .catch(error => {
-                        console.error(' Error cargando Inventario IMD Terminado AJAX:', error);
-
-                        // Manejo específico de errores
-                        let errorMessage = 'Error desconocido al cargar el módulo';
-                        let shouldRedirect = false;
-
-                        // Verificar tipo de error
-                        if (error.message && error.message.includes('Permisos insuficientes')) {
-                            errorMessage = 'No tienes permisos para acceder a este módulo';
-                        } else if (error.message && error.message.includes('Usuario no autenticado')) {
-                            errorMessage = 'Sesión expirada. Redirigiendo al login...';
-                            shouldRedirect = true;
-                        } else if (error.status === 404) {
-                            errorMessage = 'Módulo Inventario IMD Terminado no encontrado';
-                        } else if (error.status === 500) {
-                            errorMessage = 'Error interno del servidor';
-                        } else if (error.status === 401 || error.status === 403) {
-                            errorMessage = 'Error de autenticación. Redirigiendo al login...';
-                            shouldRedirect = true;
-                        } else if (error.status === 0 || !error.status) {
-                            errorMessage = 'Error de conexión al servidor';
-                        } else {
-                            errorMessage = `Error ${error.status}: ${error.message || 'Error del servidor'}`;
-                        }
-
-                        // Mostrar mensaje específico en consola para debugging
-                        console.error(`Error específico: ${errorMessage}`, error);
-
-                        // Redirigir si es necesario
-                        if (shouldRedirect) {
-                            setTimeout(() => {
-                                window.location.href = '/login';
-                            }, 2000);
-                        }
-
-                        // Mostrar contenedor con mensaje de error y botón de reintentar
-                        const errorContainer = document.getElementById('inventario-imd-terminado-unique-container');
-                        if (errorContainer) {
-                            errorContainer.innerHTML = `
-                                <div style="text-align: center; padding: 40px; background: #32323E; color: #ecf0f1; border-radius: 8px;">
-                                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #e74c3c; margin-bottom: 20px;"></i>
-                                    <h3>Error al cargar Inventario IMD Terminado</h3>
-                                    <p>${errorMessage}</p>
-                                    ${!shouldRedirect ? `
-                                    <button onclick="window.mostrarInventarioIMDTerminado()" style="
-                                        background: #3498db;
-                                        color: white;
-                                        border: none;
-                                        padding: 10px 20px;
-                                        border-radius: 5px;
-                                        cursor: pointer;
-                                        margin-top: 20px;
-                                        font-size: 14px;
-                                    ">Reintentar</button>
-                                    ` : ''}
-                                </div>
-                            `;
-                        }
-                    });
-
-                } catch (error) {
-                    console.error(' Error crítico en mostrarInventarioIMDTerminado:', error);
-                    alert('Error crítico al cargar el módulo Inventario IMD Terminado');
-                }
+                cargarContenidoDinamico('inventario-imd-terminado-unique-container', '/control_proceso/inventario_imd_terminado');
             };
 
-            window.mostrarReciboPago = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                reciboPagoContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('recibo-pago-container', '/material/recibo_pago', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initReciboPago === 'function') {
-                        initReciboPago();
-                    }
-                });
-            };
-
+            // WF_002: Historial admin (entradas/salidas/retornos) e Inventario actual
+            // usan prepararPanelSeccion('material') + container -unique-container
+            // para que sidebar-tabs.js abra una pestaña por modulo.
+            // Cada tipo (entradas/salidas/retornos) tiene su PROPIO container
+            // para que cada uno sea una pestaña independiente.
             function mostrarVistaHistorialMaterialAdmin(tipo) {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                historialMaterialContainer.style.display = 'block';
+                prepararPanelSeccion('material');
+                const containerId = `historial-${tipo}-unique-container`;
+                const container = document.getElementById(containerId);
+                if (container) container.style.display = 'block';
 
-                cargarContenidoDinamico('historial-material-container', `/material/historial_admin/${tipo}`, () => {
+                cargarContenidoDinamico(containerId, `/material/historial_admin/${tipo}`, () => {
                     if (typeof window.initMaterialAdminHistory === 'function') {
                         window.initMaterialAdminHistory(tipo);
                     }
@@ -2998,57 +2855,12 @@ function hideAllMaterialContainers() {
                 window.mostrarHistorialEntradas();
             };
 
-            window.mostrarEstatusMaterial = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                estatusMaterialContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente usando la ruta del servidor
-                cargarContenidoDinamico('estatus-material-container', '/material/estatus_material', () => {
-
-                    // Inicializar funcionalidades específicas del estatus de material si es necesario
-                    if (typeof window.initEstatusMaterial === 'function') {
-                        window.initEstatusMaterial();
-                    }
-                });
-            };
-
-            window.mostrarMaterialSustituto = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                materialSustitutoContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('material-sustituto-container', '/material/material_sustituto', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initMaterialSustituto === 'function') {
-                        initMaterialSustituto();
-                    }
-                });
-            };
-
-            window.mostrarConsultarPeps = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                consultarPepsContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('consultar-peps-container', '/material/consultar_peps', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initConsultarPeps === 'function') {
-                        initConsultarPeps();
-                    }
-                });
-            };
-
             window.mostrarInventarioActual = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                longtermInventoryContainer.style.display = 'block';
+                prepararPanelSeccion('material');
+                const container = document.getElementById('longterm-inventory-unique-container');
+                if (container) container.style.display = 'block';
 
-                cargarContenidoDinamico('longterm-inventory-container', '/material/inventario_actual', () => {
+                cargarContenidoDinamico('longterm-inventory-unique-container', '/material/inventario_actual', () => {
                     if (typeof window.initMaterialCurrentInventory === 'function') {
                         window.initMaterialCurrentInventory();
                     }
@@ -3057,66 +2869,6 @@ function hideAllMaterialContainers() {
 
             window.mostrarLongtermInventory = function() {
                 window.mostrarInventarioActual();
-            };
-
-            window.mostrarRegistroMaterial = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                registroMaterialContainer.style.display = 'block';
-
-                // Cargar el contenido dinámicamente
-                cargarContenidoDinamico('registro-material-container', '/material/registro_material', () => {
-
-                    // Inicializar funcionalidades específicas del registro de material si es necesario
-                    if (typeof initRegistroMaterial === 'function') {
-                        initRegistroMaterial();
-                    }
-                });
-            };
-
-            window.mostrarHistorialInventario = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                historialInventarioContainer.style.display = 'block';
-
-                // Cargar el contenido dinámicamente
-                cargarContenidoDinamico('historial-inventario-container', '/material/historial_inventario', () => {
-
-                    // Inicializar funcionalidades específicas del historial de inventario si es necesario
-                    if (typeof initHistorialInventario === 'function') {
-                        initHistorialInventario();
-                    }
-                });
-            };
-
-            window.mostrarInventarioRollosSMD = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                inventarioRollosSMDContainer.style.display = 'block';
-
-                // Cargar el contenido dinámicamente
-                cargarContenidoDinamico('inventario-rollos-smd-container', '/smd/inventario', () => {
-
-                    // Inicializar funcionalidades específicas del inventario de rollos SMD si es necesario
-                    if (typeof initInventarioRollosSMD === 'function') {
-                        initInventarioRollosSMD();
-                    }
-                });
-            };
-
-            window.mostrarAjusteNumero = function() {
-                hideAllMaterialContainers();
-                materialContentArea.style.display = 'block';
-                ajusteNumeroContainer.style.display = 'block';
-
-                // Cargar contenido dinámicamente
-                cargarContenidoDinamico('ajuste-numero-container', '/material/ajuste_numero', () => {
-
-                    // Inicializar funcionalidades específicas si es necesario
-                    if (typeof initAjusteNumero === 'function') {
-                        initAjusteNumero();
-                    }
-                });
             };
 
             // Funcion global para mostrar Historial de cambio de material SMT.

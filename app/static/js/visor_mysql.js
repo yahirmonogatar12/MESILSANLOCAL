@@ -1,4 +1,27 @@
 // Visor MySQL - Sistema MES con Modal de Edición
+
+// ====== WF_004: Garantizar CSS del modulo en <head> ======
+// El CSS ya esta en MaterialTemplate.html, pero si este JS se carga desde
+// el visor standalone (/visor-mysql) sin pasar por MaterialTemplate,
+// inyectarlo aqui como red de seguridad.
+(function ensureModuleStyles() {
+  const id = 'visor-mysql-css';
+  const version = '20260522a';
+  const href = '/static/css/visor_mysql.css?v=' + version;
+  let link = document.getElementById(id);
+  if (link) {
+    if (!link.getAttribute('href')?.includes(version)) {
+      link.setAttribute('href', href);
+    }
+    return;
+  }
+  link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+})();
+
 (() => {
   const RX = {
     table: "raw", // Siempre usar tabla raw
@@ -295,46 +318,69 @@
     window.rawEditModal.abrir(emptyRow, 'NUEVO');
   }
 
-  // Event Listeners
-  $("ix-refresh").addEventListener("click", () => {
-    RX.offset = 0;
-    refreshAll();
-  });
+  // Bindear event listeners a los elementos del fragment.
+  // Idempotente: usa dataset.boundVisor para no duplicar al re-inicializar.
+  function bindVisorListeners() {
+    const refreshBtn = $("ix-refresh");
+    const registerBtn = $("ix-register");
+    const searchInput = $("ix-search");
 
-  $("ix-register").addEventListener("click", () => {
-    abrirModalRegistro();
-  });
-
-  $("ix-search").addEventListener("input", (e) => {
-    RX.search = e.target.value.trim();
-    applyLocalFilter();
-    render();
-  });
-
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey || e.metaKey) {
-      switch(e.key) {
-        case 'r':
-          e.preventDefault();
-          refreshAll();
-          break;
-        case 'f':
-          e.preventDefault();
-          $("ix-search").focus();
-          break;
-      }
+    if (refreshBtn && refreshBtn.dataset.boundVisor !== "true") {
+      refreshBtn.addEventListener("click", () => {
+        RX.offset = 0;
+        refreshAll();
+      });
+      refreshBtn.dataset.boundVisor = "true";
     }
-  });
 
-  // Initialize
-  (async function init() {
+    if (registerBtn && registerBtn.dataset.boundVisor !== "true") {
+      registerBtn.addEventListener("click", () => {
+        abrirModalRegistro();
+      });
+      registerBtn.dataset.boundVisor = "true";
+    }
+
+    if (searchInput && searchInput.dataset.boundVisor !== "true") {
+      searchInput.addEventListener("input", (e) => {
+        RX.search = e.target.value.trim();
+        applyLocalFilter();
+        render();
+      });
+      searchInput.dataset.boundVisor = "true";
+    }
+  }
+
+  // Keyboard shortcuts (global, bind solo una vez)
+  if (!window.__visorMysqlKeyboardBound) {
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case 'r':
+            e.preventDefault();
+            if (typeof window.refreshAll === "function") window.refreshAll();
+            break;
+          case 'f':
+            e.preventDefault();
+            const searchEl = $("ix-search");
+            if (searchEl) searchEl.focus();
+            break;
+        }
+      }
+    });
+    window.__visorMysqlKeyboardBound = true;
+  }
+
+  // Inicializacion expuesta global para que ejecutarScriptsDinamicos no
+  // sea necesario para re-disparar la carga. Cada vez que se inyecta el
+  // fragment via AJAX, el callback de mostrarControlModelosVisor llama
+  // esta funcion, lo que re-bindea los listeners (idempotente) y dispara
+  // refreshAll() en los nuevos elementos del DOM.
+  window.inicializarControlModelosVisorAjax = async function () {
     try {
-      // Esperar a que el modal esté inicializado
       let modalReady = false;
       let attempts = 0;
-      const maxAttempts = 50; // 5 segundos máximo
-      
+      const maxAttempts = 50;
+
       while (!modalReady && attempts < maxAttempts) {
         if (window.rawEditModal) {
           modalReady = true;
@@ -343,16 +389,20 @@
           attempts++;
         }
       }
-      
+
+      bindVisorListeners();
       await refreshAll();
-      
+
       setStatus("Visor MySQL listo - Ctrl+R para actualizar, Ctrl+F para buscar");
-      
     } catch (error) {
       console.error('Initialization error:', error);
       setStatus(`Error de inicialización: ${error.message}`, 'error');
     }
-  })();
+  };
+
+  // Auto-init la primera vez que se carga el script (cubre tanto la carga
+  // standalone /visor-mysql como la primera carga del fragment AJAX).
+  window.inicializarControlModelosVisorAjax();
 
   // Función global para abrir modal de edición
   window.abrirModalEdicion = function(row) {

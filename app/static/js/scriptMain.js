@@ -42,8 +42,14 @@ document.addEventListener("DOMContentLoaded", function () {
     "control-retorno-container",
   );
   const reciboPagoContainer = document.getElementById("recibo-pago-container");
-  const historialMaterialContainer = document.getElementById(
-    "historial-material-container",
+  const historialEntradasContainer = document.getElementById(
+    "historial-entradas-unique-container",
+  );
+  const historialSalidasContainer = document.getElementById(
+    "historial-salidas-unique-container",
+  );
+  const historialRetornosContainer = document.getElementById(
+    "historial-retornos-unique-container",
   );
   const estatusMaterialContainer = document.getElementById(
     "estatus-material-container",
@@ -55,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
     "consultar-peps-container",
   );
   const longtermInventoryContainer = document.getElementById(
-    "longterm-inventory-container",
+    "longterm-inventory-unique-container",
   );
   const registroMaterialContainer = document.getElementById(
     "registro-material-container",
@@ -110,19 +116,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Función para ocultar todos los contenedores de material
   function hideAllMaterialContainers() {
-    materialInfoContainer.style.display = "none";
-    controlAlmacenContainer.style.display = "none";
-    controlSalidaContainer.style.display = "none";
-    controlRetornoContainer.style.display = "none";
-    reciboPagoContainer.style.display = "none";
-    historialMaterialContainer.style.display = "none";
-    estatusMaterialContainer.style.display = "none";
-    materialSustitutoContainer.style.display = "none";
-    consultarPepsContainer.style.display = "none";
-    longtermInventoryContainer.style.display = "none";
-    registroMaterialContainer.style.display = "none";
-    historialInventarioContainer.style.display = "none";
-    ajusteNumeroContainer.style.display = "none";
+    if (materialInfoContainer) materialInfoContainer.style.display = "none";
+    if (controlAlmacenContainer) controlAlmacenContainer.style.display = "none";
+    if (controlSalidaContainer) controlSalidaContainer.style.display = "none";
+    if (controlRetornoContainer) controlRetornoContainer.style.display = "none";
+    if (reciboPagoContainer) reciboPagoContainer.style.display = "none";
+    if (historialEntradasContainer) historialEntradasContainer.style.display = "none";
+    if (historialSalidasContainer) historialSalidasContainer.style.display = "none";
+    if (historialRetornosContainer) historialRetornosContainer.style.display = "none";
+    if (estatusMaterialContainer) estatusMaterialContainer.style.display = "none";
+    if (materialSustitutoContainer) materialSustitutoContainer.style.display = "none";
+    if (consultarPepsContainer) consultarPepsContainer.style.display = "none";
+    if (longtermInventoryContainer) longtermInventoryContainer.style.display = "none";
+    if (registroMaterialContainer) registroMaterialContainer.style.display = "none";
+    if (historialInventarioContainer) historialInventarioContainer.style.display = "none";
+    if (ajusteNumeroContainer) ajusteNumeroContainer.style.display = "none";
 
     // Ocultar contenedor de operación de línea SMT
     const operacionLineaSMTContainer = document.getElementById(
@@ -174,7 +182,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const controlProcesoSpecificContainers = [
       "control-proceso-info-container",
       "control-produccion-smt-container",
-      "inventario-imd-terminado-unique-container",
     ];
 
     controlProcesoSpecificContainers.forEach((containerId) => {
@@ -546,55 +553,10 @@ document.addEventListener("DOMContentLoaded", function () {
     reciboPagoContainer.style.display = "block";
   };
 
-  function mostrarVistaHistorialMaterialAdmin(tipo) {
-    hideAllMaterialContainers();
-    materialContentArea.style.display = "block";
-    historialMaterialContainer.style.display = "block";
-
-    cargarContenidoDinamico(
-      "historial-material-container",
-      `/material/historial_admin/${tipo}`,
-      () => {
-        if (typeof window.initMaterialAdminHistory === "function") {
-          window.initMaterialAdminHistory(tipo);
-        }
-      },
-    );
-  }
-
-  window.mostrarHistorialEntradas = function () {
-    mostrarVistaHistorialMaterialAdmin("entradas");
-  };
-
-  window.mostrarHistorialSalidas = function () {
-    mostrarVistaHistorialMaterialAdmin("salidas");
-  };
-
-  window.mostrarHistorialRetornos = function () {
-    mostrarVistaHistorialMaterialAdmin("retornos");
-  };
-
-  window.mostrarHistorialMaterial = function () {
-    window.mostrarHistorialEntradas();
-  };
-
-  window.mostrarEstatusMaterial = function () {
-    hideAllMaterialContainers();
-    materialContentArea.style.display = "block";
-    estatusMaterialContainer.style.display = "block";
-
-    // Cargar contenido dinámicamente usando la ruta del servidor
-    cargarContenidoDinamico(
-      "estatus-material-container",
-      "/material/estatus_material",
-      () => {
-        // Inicializar funcionalidades específicas del estatus de material si es necesario
-        if (typeof window.initEstatusMaterial === "function") {
-          window.initEstatusMaterial();
-        }
-      },
-    );
-  };
+  // mostrarHistorialEntradas/Salidas/Retornos, mostrarHistorialMaterial,
+  // mostrarInventarioActual y mostrarLongtermInventory estan definidas en
+  // MaterialTemplate.html (WF_002 con prepararPanelSeccion('material') +
+  // *-unique-container). No re-definir aqui para evitar shadowing.
 
   window.mostrarMaterialSustituto = function () {
     hideAllMaterialContainers();
@@ -606,26 +568,6 @@ document.addEventListener("DOMContentLoaded", function () {
     hideAllMaterialContainers();
     materialContentArea.style.display = "block";
     consultarPepsContainer.style.display = "block";
-  };
-
-  window.mostrarInventarioActual = function () {
-    hideAllMaterialContainers();
-    materialContentArea.style.display = "block";
-    longtermInventoryContainer.style.display = "block";
-
-    cargarContenidoDinamico(
-      "longterm-inventory-container",
-      "/material/inventario_actual",
-      () => {
-        if (typeof window.initMaterialCurrentInventory === "function") {
-          window.initMaterialCurrentInventory();
-        }
-      },
-    );
-  };
-
-  window.mostrarLongtermInventory = function () {
-    window.mostrarInventarioActual();
   };
 
   window.mostrarRegistroMaterial = function () {
@@ -883,7 +825,6 @@ document.addEventListener("DOMContentLoaded", function () {
         "control-proceso-info-container",
         "control-produccion-smt-container",
         "Control de produccion SMT-unique-container",
-        "inventario-imd-terminado-unique-container",
         "control-cuchillas-corte-unique-container",
         "bom-unique-container",
       ];
@@ -1101,87 +1042,30 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   // Función AJAX: Control de Cuchillas de Corte (ASSY)
+  // Refactor WF_002 (2026-05-25): usar prepararPanelSeccion + contenedor unique
   window.mostrarControlCuchillasCorte = function () {
-    try {
-      const controlProduccionButton = document.getElementById(
-        "Control de produccion",
-      );
-      if (controlProduccionButton) {
-        controlProduccionButton.classList.add("active");
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de produccion")
-            btn.classList.remove("active");
-        });
-      }
-
-      if (typeof window.hideAllMaterialContainers === "function")
-        window.hideAllMaterialContainers();
-      if (typeof window.hideAllInformacionBasicaContainers === "function")
-        window.hideAllInformacionBasicaContainers();
-
-      const produccionContainers = [
-        "produccion-info-container",
-        "crear-plan-produccion-unique-container",
-        "plan-smt-unique-container",
-        "control-embarque-unique-container",
-        "control-cuchillas-corte-unique-container",
-      ];
-      produccionContainers.forEach((containerId) => {
-        const container = document.getElementById(containerId);
-        if (container) {
-          container.style.display = "none";
-        }
-      });
-
-      const materialContainer = document.getElementById("material-container");
-      const produccionContent = document.getElementById("produccion-content");
-      const produccionContentArea = document.getElementById(
-        "produccion-content-area",
-      );
-      const controlProcesoContent = document.getElementById(
-        "control-proceso-content",
-      );
-      const controlProcesoContentArea = document.getElementById(
-        "control-proceso-content-area",
-      );
-      if (materialContainer) materialContainer.style.display = "block";
-      if (produccionContent) produccionContent.style.display = "block";
-      if (produccionContentArea) produccionContentArea.style.display = "block";
-      if (controlProcesoContent) controlProcesoContent.style.display = "none";
-      if (controlProcesoContentArea)
-        controlProcesoContentArea.style.display = "none";
-
-      const containerId = "control-cuchillas-corte-unique-container";
-      const cont = document.getElementById(containerId);
-      if (!cont) return console.error("Contenedor no existe:", containerId);
-
-      cont.style.display = "block";
-      cont.style.opacity = "1";
-
-      if (typeof window.cargarContenidoDinamico === "function") {
-        window.cargarContenidoDinamico(
-          containerId,
-          "/control-cuchillas-corte-ajax",
-          () => {
-            const init = () => {
-              if (
-                typeof window.initializeControlCuchillasCorteEventListeners ===
-                "function"
-              ) {
-                window.initializeControlCuchillasCorteEventListeners();
-              }
-              if (typeof window.cuchillasCorteLoadInitialData === "function") {
-                window.cuchillasCorteLoadInitialData();
-              }
-            };
-            init();
-            setTimeout(init, 120);
-          },
-        );
-      }
-    } catch (e) {
-      console.error("Error en mostrarControlCuchillasCorte:", e);
+    if (typeof window.prepararPanelSeccion !== "function") {
+      console.error("prepararPanelSeccion no disponible");
+      return;
     }
+    window.prepararPanelSeccion("produccion");
+
+    const containerId = "control-cuchillas-corte-unique-container";
+    const cont = document.getElementById(containerId);
+    if (cont) cont.style.display = "block";
+
+    window.cargarContenidoDinamico(containerId, "/control-cuchillas-corte-ajax", () => {
+      const init = () => {
+        if (typeof window.initializeControlCuchillasCorteEventListeners === "function") {
+          window.initializeControlCuchillasCorteEventListeners();
+        }
+        if (typeof window.cuchillasCorteLoadInitialData === "function") {
+          window.cuchillasCorteLoadInitialData();
+        }
+      };
+      init();
+      setTimeout(init, 120);
+    });
   };
 
   // Función AJAX: Plan Main IMD
@@ -2501,7 +2385,6 @@ document.addEventListener("DOMContentLoaded", function () {
         "control-proceso-info-container",
         "control-produccion-smt-container",
         "operacion-linea-smt-unique-container",
-        "inventario-imd-terminado-unique-container",
         "control-cuchillas-corte-unique-container",
       ];
 
@@ -2603,122 +2486,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  // ========================================
-  // FUNCIÓN PARA CREAR PLAN MICOM
-  // ========================================
-
-  // Crear plan micom - SIGUIENDO EL PATRÓN EXITOSO
-  window.mostrarCrearPlanMicom = function () {
-    try {
-      // IMPORTANTE: Asegurar que estamos en la sección correcta
-      // Activar el botón "Control de produccion" para que scriptMain.js no interfiera
-      const controlProduccionButton = document.getElementById(
-        "Control de produccion",
-      );
-      if (controlProduccionButton) {
-        controlProduccionButton.classList.add("active");
-        // Remover active de otros botones
-        document.querySelectorAll(".nav-button").forEach((btn) => {
-          if (btn.id !== "Control de produccion") {
-            btn.classList.remove("active");
-          }
-        });
-      }
-
-      // Ocultar todos los contenedores primero
-      if (typeof window.hideAllMaterialContainers === "function") {
-        window.hideAllMaterialContainers();
-      }
-
-      // Ocultar otros contenedores dentro del área de produccion
-      const produccionContainers = [
-        "produccion-info-container",
-        "crear-plan-produccion-unique-container",
-        "plan-smt-unique-container",
-        "control-embarque-unique-container",
-      ];
-
-      produccionContainers.forEach((containerId) => {
-        const container = document.getElementById(containerId);
-        if (container) {
-          container.style.display = "none";
-        }
-      });
-
-      // Mostrar el área de produccion (esto es lo que scriptMain.js maneja)
-      const materialContainer = document.getElementById("material-container");
-      const produccionContent = document.getElementById("produccion-content");
-      const produccionContentArea = document.getElementById(
-        "produccion-content-area",
-      );
-
-      if (materialContainer) {
-        materialContainer.style.display = "block";
-      }
-      if (produccionContent) {
-        produccionContent.style.display = "block";
-      }
-      if (produccionContentArea) {
-        produccionContentArea.style.display = "block";
-      }
-
-      // Obtener el contenedor específico
-      const crearPlanMicomContainer = document.getElementById(
-        "produccion-info-container",
-      );
-      if (!crearPlanMicomContainer) {
-        console.error(
-          "El contenedor produccion-info-container no existe en el HTML",
-        );
-        return;
-      }
-
-      // Mostrar el contenedor específico
-      crearPlanMicomContainer.style.display = "block";
-      crearPlanMicomContainer.style.opacity = "1";
-
-      // Cargar contenido dinámicamente usando la ruta AJAX
-      if (typeof window.cargarContenidoDinamico === "function") {
-        window
-          .cargarContenidoDinamico(
-            "produccion-info-container",
-            "/crear-plan-micom-ajax",
-            () => {
-              // Verificar que el contenedor esté visible
-              const containerAfterLoad = document.getElementById(
-                "produccion-info-container",
-              );
-              if (containerAfterLoad) {
-                // Verificar que el contenedor esté realmente visible
-
-                // Verificar que los contenedores padre también estén visibles
-                const materialContainerAfter =
-                  document.getElementById("material-container");
-                const produccionContentAfter =
-                  document.getElementById("produccion-content");
-                const produccionContentAreaAfter = document.getElementById(
-                  "produccion-content-area",
-                );
-              }
-
-              // Ejecutar inicialización específica del módulo si existe
-              if (
-                typeof window.inicializarCrearPlanMicomModule === "function"
-              ) {
-                window.inicializarCrearPlanMicomModule();
-              }
-            },
-          )
-          .catch((error) => {
-            console.error("Error cargando Crear plan micom:", error);
-          });
-      } else {
-        console.error("La función cargarContenidoDinamico no está disponible");
-      }
-    } catch (error) {
-      console.error("Error crítico en mostrarCrearPlanMicom:", error);
-    }
-  };
+  // mostrarCrearPlanMicom eliminado (modulo Crear plan micom removido el 2026-05-25)
 
   // ========================================
   // FUNCIÓN PARA CONTROL BOM
@@ -2771,10 +2539,8 @@ document.addEventListener("DOMContentLoaded", function () {
         "control-proceso-info-container",
         "control-produccion-smt-container",
         "operacion-linea-smt-unique-container",
-        "inventario-imd-terminado-unique-container",
         "control-cuchillas-corte-unique-container",
         "Control de produccion SMT-unique-container",
-        "crear-plan-micom-unique-container",
         "line-material-status-unique-container",
       ];
 
@@ -3846,6 +3612,7 @@ window.mostrarHistorialICT = function () {
       "historial-cambios-parametros-ict-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -3958,6 +3725,7 @@ window.mostrarHistorialVision = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -4072,6 +3840,7 @@ window.mostrarHistorialMaquinaICTPassFail = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -4189,6 +3958,7 @@ window.mostrarHistorialVisionPassFail = function () {
       "historial-maquina-ict-pass-fail-unique-container",
       "historial-vision-unique-container",
       "historial-vision-pass-fail-unique-container",
+      "inventario-imd-terminado-unique-container",
     ];
 
     controlResultadosContainers.forEach((containerId) => {
@@ -4456,103 +4226,34 @@ window.mostrarPlanSmdDiario = function () {
 };
 
 // Función AJAX para Control de modelos - VISOR MYSQL - GLOBAL
+// WF_002: usa prepararPanelInformacionBasica() en vez del bloque manual.
+// Antes eran ~98 lineas con lista hardcoded de 22 IDs para ocultar y
+// activacion manual del nav button. El helper hace todo eso.
 window.mostrarControlModelosVisor = function () {
   try {
-    // Activar el botón correcto en la navegación
-    const informacionBasicaButton =
-      document.getElementById("Información Básica");
-    if (informacionBasicaButton) {
-      informacionBasicaButton.classList.add("active");
-      document.querySelectorAll(".nav-button").forEach((btn) => {
-        if (btn.id !== "Información Básica") {
-          btn.classList.remove("active");
-        }
-      });
+    if (typeof window.prepararPanelInformacionBasica === "function") {
+      window.prepararPanelInformacionBasica();
     }
-
-    // Ocultar todos los contenedores primero
-    if (typeof window.hideAllMaterialContainers === "function") {
-      window.hideAllMaterialContainers();
-    }
-
-    // Ocultar otros contenedores dentro del área de información básica
-    const informacionBasicaContainers = [
-      "info-basica-default-container",
-      "admin-usuario-info-container",
-      "admin-menu-info-container",
-      "admin-autoridad-info-container",
-      "control-codigo-info-container",
-      "admin-itinerario-info-container",
-      "consultar-licencias-info-container",
-      "control-departamento-info-container",
-      "control-proceso-info-container",
-      "control-orden-proceso-info-container",
-      "control-orden-proceso2-info-container",
-      "control-defecto-info-container",
-      "control-interfaces-info-container",
-      "control-interlock-info-container",
-      "control-material-info-container",
-      "configuracion-msl-info-container",
-      "control-cliente-info-container",
-      "control-proveedor-info-container",
-      "control-moneda-info-container",
-      "info-empresa-info-container",
-      "control-modelos-info-container",
-      "control-bom-info-container",
-      "control-bom-smt-info-container",
-    ];
-
-    informacionBasicaContainers.forEach((containerId) => {
-      const container = document.getElementById(containerId);
-      if (container) {
-        container.style.display = "none";
-      }
-    });
-
-    // Mostrar TODAS las áreas necesarias
-    const materialContainer = document.getElementById("material-container");
-    const informacionBasicaContent = document.getElementById(
-      "informacion-basica-content",
-    );
-    const informacionBasicaContentArea = document.getElementById(
-      "informacion-basica-content-area",
-    );
-
-    if (materialContainer) materialContainer.style.display = "block";
-    if (informacionBasicaContent)
-      informacionBasicaContent.style.display = "block";
-    if (informacionBasicaContentArea)
-      informacionBasicaContentArea.style.display = "block";
-
-    // Obtener y mostrar el contenedor específico
-    const controlModelosVisorContainer = document.getElementById(
+    const container = document.getElementById(
       "control-modelos-visor-unique-container",
     );
-    if (!controlModelosVisorContainer) {
-      console.error(
-        "El contenedor control-modelos-visor-unique-container no existe en el HTML",
-      );
+    if (container) container.style.display = "block";
+
+    if (typeof window.cargarContenidoDinamico !== "function") {
+      console.error("cargarContenidoDinamico no esta disponible");
       return;
     }
-
-    controlModelosVisorContainer.style.display = "block";
-    controlModelosVisorContainer.style.opacity = "1";
-
-    // Cargar contenido dinámicamente
-    if (typeof window.cargarContenidoDinamico === "function") {
-      window.cargarContenidoDinamico(
-        "control-modelos-visor-unique-container",
-        "/control-modelos-visor-ajax",
-        () => {
-          // Ejecutar inicialización del módulo
-          if (typeof window.inicializarControlModelosVisorAjax === "function") {
-            window.inicializarControlModelosVisorAjax();
-          }
-        },
-      );
-    }
+    window.cargarContenidoDinamico(
+      "control-modelos-visor-unique-container",
+      "/control-modelos-visor-ajax",
+      () => {
+        if (typeof window.inicializarControlModelosVisorAjax === "function") {
+          window.inicializarControlModelosVisorAjax();
+        }
+      },
+    );
   } catch (error) {
-    console.error("Error crítico en mostrarControlModelosVisor:", error);
+    console.error("Error critico en mostrarControlModelosVisor:", error);
   }
 };
 
