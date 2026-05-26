@@ -461,6 +461,16 @@ class AuthSystem:
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Historial de operacion por proceso', 'Acceso al historial de operación por proceso'),
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'BOM Management By Process', 'Acceso a BOM Management por proceso'),
             ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de salida de lineas', 'Acceso a Control de salida de lineas'),
+            # Migracion 2026-05-26: Control de produccion SMT (sidebarProduccionSMT) - 4 botones
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de produccion SMT', 'Acceso a Control de produccion SMT'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de operacion de linea de SMT', 'Acceso a Control de operacion de linea de SMT'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de impresion de identificacion de SMT', 'Acceso a Control de impresion de identificacion de SMT'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de registro de identificacion de SMT', 'Acceso a Control de registro de identificacion de SMT'),
+            # Migracion 2026-05-26: Control de produccion Main/ASSY/IMT/SMT Plan (sidebarMSL) - 4 botones
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de produccion ASSY', 'Acceso a Control de produccion ASSY'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de produccion IMT', 'Acceso a Control de produccion IMT'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de produccion SMT Plan', 'Acceso a Control de produccion SMT Plan'),
+            ('LISTA_CONTROL_DE_PROCESO', 'Control de produccion', 'Control de operacion de linea Main', 'Acceso a Control de operacion de linea Main'),
             
             # LISTA CONTROL DE PROCESO - Reporte diario de inspeccion
             ('LISTA_CONTROL_DE_PROCESO', 'Reporte diario de inspeccion', 'Reporte diario de inspeccion', 'Acceso a reporte diario de inspección'),

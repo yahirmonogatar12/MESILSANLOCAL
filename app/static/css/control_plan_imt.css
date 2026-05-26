@@ -1,0 +1,122 @@
+/* control_plan_imt.css */
+/* Migracion 2026-05-26: extraido del <style> inline en Control_produccion_imt.html (WF_004). */
+
+/* Animaciones para notificaciones de conflicto */
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+}
+
+/* Estilo para filas con conflicto (compartida con plan-row de ASSY/IMD/SMT) */
+tr.plan-row[style*="background-color: rgb(192, 57, 43)"] {
+  animation: pulseRed 2s infinite;
+}
+
+@keyframes pulseRed {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+  }
+}
+
+/* ====== Estilos IMT (IDs imd-*) ====== */
+#imd-plan-container {
+  font-family: 'LG regular', sans-serif;
+  background-color: #32323E;
+  color: lightgray;
+  min-height: 100vh;
+  padding: 2px;
+}
+#imd-plan-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 8px;
+  background-color: #34334E;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  border: #20688C 1px solid;
+  flex-wrap: nowrap;
+}
+#imd-plan-table-container {
+  background-color: #40424F;
+  padding: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow-x: auto;
+  overflow-y: auto;
+  width: 100%;
+  max-height: calc(100vh - 120px);
+  position: relative;
+}
+#imd-plan-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 11px;
+  background-color: #40424F;
+  table-layout: auto !important;
+}
+#imd-plan-table th {
+  background-color: #172A46;
+  color: #ecf0f1;
+  padding: 6px 4px;
+  text-align: center;
+  border: 1px solid #20688C;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+#imd-plan-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+#imd-plan-table thead tr {
+  position: sticky;
+  top: 0;
+}
+#imd-plan-table td {
+  padding: 5px 8px;
+  text-align: center;
+  border: 1px solid #5F6375;
+  background-color: #40424F;
+  color: lightgray;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#imd-plan-table td:nth-child(1), #imd-plan-table th:nth-child(1) { width: auto; min-width: auto; }
+#imd-plan-table td:nth-child(2), #imd-plan-table th:nth-child(2) { width: auto; min-width: auto; }
+#imd-plan-table tr:hover td {
+  background-color: #485563;
+}
+#imd-plan-table tr:nth-child(even) td {
+  background-color: #44475A;
+}
+#imd-plan-table tr:nth-child(even):hover td {
+  background-color: #485563;
+}

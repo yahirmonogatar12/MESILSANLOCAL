@@ -213,76 +213,9 @@ def init_sqlite_db():
 
 # === FUNCIONES DE COMPATIBILIDAD ===
 
-def agregar_entrada_aereo(data):
-    """Agregar entrada de material aéreo"""
-    try:
-        if MYSQL_AVAILABLE:
-            query = """
-                INSERT INTO entrada_aereo 
-                (forma_material, cliente, codigo_material, fecha_fabricacion, 
-                 origen_material, cantidad_actual, fecha_recibo, lote_material, 
-                 codigo_recibido, numero_parte, propiedad)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            params = (
-                data.get('forma_material'),
-                data.get('cliente'),
-                data.get('codigo_material'),
-                data.get('fecha_fabricacion'),
-                data.get('origen_material'),
-                data.get('cantidad_actual', 0),
-                data.get('fecha_recibo'),
-                data.get('lote_material'),
-                data.get('codigo_recibido'),
-                data.get('numero_parte'),
-                data.get('propiedad')
-            )
-            return execute_query(query, params) > 0
-        else:
-            # Fallback SQLite
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO entrada_aereo 
-                (forma_material, cliente, codigo_material, fecha_fabricacion, 
-                 origen_material, cantidad_actual, fecha_recibo, lote_material, 
-                 codigo_recibido, numero_parte, propiedad)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                data.get('forma_material'),
-                data.get('cliente'),
-                data.get('codigo_material'),
-                data.get('fecha_fabricacion'),
-                data.get('origen_material'),
-                data.get('cantidad_actual', 0),
-                data.get('fecha_recibo'),
-                data.get('lote_material'),
-                data.get('codigo_recibido'),
-                data.get('numero_parte'),
-                data.get('propiedad')
-            ))
-            conn.commit()
-            conn.close()
-            return True
-    except Exception as e:
-        print(f"Error agregando entrada aéreo: {e}")
-        return False
-
-def obtener_entradas_aereo():
-    """Obtener todas las entradas de material aéreo"""
-    try:
-        if MYSQL_AVAILABLE:
-            return execute_query("SELECT * FROM entrada_aereo ORDER BY id DESC", fetch='all') or []
-        else:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM entrada_aereo ORDER BY id DESC")
-            result = cursor.fetchall()
-            conn.close()
-            return [dict(row) for row in result]
-    except Exception as e:
-        print(f"Error obteniendo entradas aéreo: {e}")
-        return []
+# Limpieza 2026-05-26: agregar_entrada_aereo / obtener_entradas_aereo eliminadas.
+# Las rutas /guardar_entrada_aereo y /listar_entradas_aereo en routes.py tambien
+# fueron eliminadas. Tabla entrada_aereo (SQLite legacy) sin consumidores activos.
 
 def agregar_control_material_almacen(data):
     """Agregar control de material de almacén"""

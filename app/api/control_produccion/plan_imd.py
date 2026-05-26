@@ -1,30 +1,37 @@
-"""Endpoints HTTP del modulo Plan SMT (tabla plan_smt).
+"""Endpoints HTTP del modulo Control de produccion IMT (tabla plan_imd).
 
-Migrado desde `app/routes.py` (2026-05-25). Sin cambios funcionales.
+Migrado desde `app/routes.py` (2026-05-26). Sin cambios funcionales.
 
-Rutas:
-  GET    /api/plan-smt                     -> listar planes (con filtros de fecha)
-  POST   /api/plan-smt                     -> crear plan
-  POST   /api/plan-smt/batch-update        -> update batch
-  POST   /api/plan-smt/update              -> update single
-  POST   /api/plan-smt/save-sequences      -> guardar secuencias
-  GET    /api/plan-smt/pending             -> pendientes
-  POST   /api/plan-smt/reschedule          -> reschedule
-  POST   /api/plan-smt/export-excel        -> export
-  POST   /api/plan-smt/import-excel        -> import
+Rutas render:
+  GET  /plan-main-imd-ajax                         -> render fragment AJAX
 
-Bootstrap `crear_tabla_plan_smt_v2` se reexporta desde `app/routes.py`
-para preservar consumidores legacy (`startup_init.py`).
+Rutas API (sobre tabla plan_imd):
+  GET  /api/plan-imd                               -> listar planes IMD
+  POST /api/plan-imd                               -> crear plan IMD
+  POST /api/plan-imd/batch-update                  -> update batch (group_no, sequence)
+  POST /api/plan-imd/update                        -> editar plan IMD
+  POST /api/plan-imd/save-sequences                -> guardar secuencias
+  GET  /api/plan-imd/pending                       -> obtener planes pendientes
+  GET  /api/plan-imd/pending-reschedule            -> obtener planes para reprogramar
+  POST /api/plan-imd/reschedule                    -> reprogramar (crea sublotes)
+  POST /api/plan-imd/export-excel                  -> exportar a Excel
+  POST /api/plan-imd/import-excel                  -> importar desde Excel
+
+Helpers (_ensure_plan_bom_assignment_columns, _validate_plan_bom_assignment, etc.)
+viven en `app.api.control_produccion.plan_assy` para no duplicar codigo.
 """
 
 import io
-from datetime import date, datetime
+from datetime import datetime
 from functools import wraps
 
-import pandas as pd
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, render_template, request, send_file, session
 
 from app.db_mysql import execute_query
+from app.api.shared.bom_revisions import (
+    _ensure_plan_bom_assignment_columns,
+    _validate_plan_bom_assignment,
+)
 from app.api.shared.plan_lot_no import _fp_safe_date
 
 
@@ -38,63 +45,57 @@ def login_requerido(f):
     return decorated_function
 
 
-bp = Blueprint("control_produccion_plan_smt", __name__)
+def requiere_permiso_dropdown(pagina, seccion, boton):
+    """Proxy del decorador real definido en `app.routes`."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            from app import routes as _r
+            real_decorator = _r.requiere_permiso_dropdown(pagina, seccion, boton)
+            return real_decorator(f)(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
 
 
-# ====== RUTAS API PARA PLAN SMT (tabla plan_smt) ======
-def crear_tabla_plan_smt_v2():
-    """Crear tabla plan_smt si no existe (misma estructura que plan_imd)"""
-    try:
-        query = """
-        CREATE TABLE IF NOT EXISTS plan_smt (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            lot_no VARCHAR(50),
-            wo_code VARCHAR(100),
-            po_code VARCHAR(100),
-            working_date DATE,
-            line VARCHAR(20),
-            shift VARCHAR(20) DEFAULT 'DIA',
-            model_code VARCHAR(100),
-            part_no VARCHAR(100),
-            project VARCHAR(100),
-            process VARCHAR(50) DEFAULT 'SMT',
-            ct DECIMAL(10,2) DEFAULT 0,
-            uph INT DEFAULT 0,
-            plan_count INT DEFAULT 0,
-            produced_count INT DEFAULT 0,
-            output INT DEFAULT 0,
-            entregadas_main INT DEFAULT 0,
-            status VARCHAR(30) DEFAULT 'PLAN',
-            group_no INT DEFAULT 1,
-            sequence INT DEFAULT 1,
-            routing VARCHAR(100),
-            plan_start_date DATE,
-            planned_start VARCHAR(10),
-            planned_end VARCHAR(10),
-            effective_minutes INT DEFAULT 0,
-            breaks_minutes INT DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_lot_no (lot_no),
-            INDEX idx_working_date (working_date),
-            INDEX idx_line (line),
-            INDEX idx_part_no (part_no)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        """
-        execute_query(query)
-        print("Tabla plan_smt creada/verificada")
-    except Exception as e:
-        print(f"Error creando tabla plan_smt: {e}")
+bp = Blueprint("control_produccion_plan_imd", __name__)
 
 
-# crear_tabla_plan_smt_v2 movido a app/startup_init.py
+# =============================
+# CONTROL DE PRODUCCION IMT
+# =============================
+
+IMD_PERMISO_PAGINA = "LISTA_CONTROL_DE_PROCESO"
+IMD_PERMISO_SECCION = "Control de produccion"
+IMD_PERMISO_BOTON = "Control de produccion IMT"
 
 
-@bp.route("/api/plan-smt", methods=["GET"])
+# =============================
+# RUTAS RENDER
+# =============================
+
+@bp.route("/plan-main-imd-ajax")
 @login_requerido
-def api_plan_smt_list():
-    """Listar planes de la tabla plan_smt"""
+@requiere_permiso_dropdown(IMD_PERMISO_PAGINA, IMD_PERMISO_SECCION, IMD_PERMISO_BOTON)
+def plan_main_imd_ajax():
+    """Ruta AJAX para cargar dinamicamente el contenido de Plan Main IMT."""
     try:
+        return render_template("Control de proceso/Control_produccion_imt.html")
+    except Exception as e:
+        return f"Error al cargar el contenido: {str(e)}", 500
+
+
+# =============================
+# RUTAS API CORE PLAN IMD
+# =============================
+
+@bp.route("/api/plan-imd", methods=["GET"])
+@login_requerido
+def api_plan_imd_list():
+    """Listar planes de la tabla plan_imd"""
+    try:
+        _ensure_plan_bom_assignment_columns()
         start = request.args.get("start")
         end = request.args.get("end")
         where = []
@@ -113,7 +114,7 @@ def api_plan_smt_list():
             "SELECT id, lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
             "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
             "COALESCE(produced_count,0) AS produced_count, COALESCE(output,0) AS output, COALESCE(entregadas_main,0) AS entregadas_main, "
-            "status, group_no, sequence, routing FROM plan_smt"
+            "status, group_no, sequence, routing, assigned_bom_rev, assigned_bom_rev_by, assigned_bom_rev_at FROM plan_imd"
         )
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -150,6 +151,11 @@ def api_plan_smt_list():
                     "group_no": r.get("group_no") if isinstance(r, dict) else r[18],
                     "sequence": r.get("sequence") if isinstance(r, dict) else r[19],
                     "routing": r.get("routing") if isinstance(r, dict) else r[20],
+                    "assigned_bom_rev": r.get("assigned_bom_rev") if isinstance(r, dict) else r[21],
+                    "assigned_bom_rev_by": r.get("assigned_bom_rev_by") if isinstance(r, dict) else r[22],
+                    "assigned_bom_rev_at": str(
+                        (r.get("assigned_bom_rev_at") if isinstance(r, dict) else r[23]) or ""
+                    ),
                 }
             )
         return jsonify(data)
@@ -157,10 +163,10 @@ def api_plan_smt_list():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt", methods=["POST"])
+@bp.route("/api/plan-imd", methods=["POST"])
 @login_requerido
-def api_plan_smt_create():
-    """Crear un nuevo plan en plan_smt"""
+def api_plan_imd_create():
+    """Crear un nuevo plan en plan_imd"""
     try:
         data = request.get_json() or {}
         working_date = data.get("working_date")
@@ -179,8 +185,8 @@ def api_plan_smt_create():
 
         fecha = _fp_safe_date(working_date) or datetime.utcnow().date()
 
-        lot_prefix = f"SMT-{fecha.strftime('%y%m%d')}"
-        count_query = "SELECT COUNT(*) as cnt FROM plan_smt WHERE lot_no LIKE %s"
+        lot_prefix = f"IMD-{fecha.strftime('%y%m%d')}"
+        count_query = "SELECT COUNT(*) as cnt FROM plan_imd WHERE lot_no LIKE %s"
         count_result = execute_query(count_query, (f"{lot_prefix}%",), fetch="one")
         count = count_result.get("cnt", 0) if count_result else 0
         lot_no = f"{lot_prefix}-{int(count) + 1:03d}"
@@ -204,10 +210,10 @@ def api_plan_smt_create():
 
         group_no = data.get("group_no", 1)
         sequence = data.get("sequence", 1)
-        process = data.get("process") or "SMT"
+        process = data.get("process") or "IMD"
 
         sql = (
-            "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
+            "INSERT INTO plan_imd (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
             "plan_count, ct, uph, status, group_no, sequence, created_at) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'PLAN',%s,%s,NOW())"
         )
@@ -235,51 +241,62 @@ def api_plan_smt_create():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt/batch-update", methods=["POST"])
+@bp.route("/api/plan-imd/batch-update", methods=["POST"])
 @login_requerido
-def api_plan_smt_batch_update():
-    """Actualizar group_no y sequence de multiples planes SMT"""
+def api_plan_imd_batch_update():
+    """Actualizar group_no y sequence de multiples planes IMD"""
     try:
         payload = request.get_json() or {}
         updates = payload.get("updates", [])
         updated = 0
+
         for item in updates:
             plan_id = item.get("id")
             group_no = item.get("group_no")
             sequence = item.get("sequence")
+
             if not plan_id:
                 continue
+
             sets = []
             vals = []
+
             if group_no is not None:
                 sets.append("group_no = %s")
                 vals.append(int(group_no))
             if sequence is not None:
                 sets.append("sequence = %s")
                 vals.append(int(sequence))
+
             if not sets:
                 continue
+
             sets.append("updated_at = NOW()")
             vals.append(plan_id)
-            sql = f"UPDATE plan_smt SET {', '.join(sets)} WHERE id = %s"
+
+            sql = f"UPDATE plan_imd SET {', '.join(sets)} WHERE id = %s"
             execute_query(sql, tuple(vals))
             updated += 1
+
         return jsonify({"success": True, "updated_count": updated})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt/update", methods=["POST"])
+@bp.route("/api/plan-imd/update", methods=["POST"])
 @login_requerido
-def api_plan_smt_update():
-    """Actualizar un plan SMT"""
+def api_plan_imd_update():
+    """Actualizar un plan IMD"""
     try:
+        _ensure_plan_bom_assignment_columns()
         data = request.get_json() or {}
         lot_no = data.get("lot_no")
         if not lot_no:
             return jsonify({"error": "lot_no requerido"}), 400
+
         sets = []
         vals = []
+
         allowed_fields = [
             "status",
             "plan_count",
@@ -296,25 +313,47 @@ def api_plan_smt_update():
             "group_no",
             "sequence",
         ]
+
         for field in allowed_fields:
             if field in data:
                 sets.append(f"{field} = %s")
                 vals.append(data[field])
+        if "assigned_bom_rev" in data:
+            assigned_bom_rev, assignment_error = _validate_plan_bom_assignment(
+                "plan_imd",
+                lot_no,
+                "IMD",
+                data.get("assigned_bom_rev"),
+            )
+            if assignment_error:
+                return jsonify({"error": assignment_error}), 409
+            sets.extend(
+                [
+                    "assigned_bom_rev = %s",
+                    "assigned_bom_rev_by = %s",
+                    "assigned_bom_rev_at = NOW()",
+                ]
+            )
+            vals.extend([assigned_bom_rev, session.get("usuario", "desconocido")])
+
         if not sets:
             return jsonify({"error": "No hay campos para actualizar"}), 400
+
         sets.append("updated_at = NOW()")
         vals.append(lot_no)
-        sql = f"UPDATE plan_smt SET {', '.join(sets)} WHERE lot_no = %s"
+
+        sql = f"UPDATE plan_imd SET {', '.join(sets)} WHERE lot_no = %s"
         execute_query(sql, tuple(vals))
+
         return jsonify({"success": True, "lot_no": lot_no})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt/save-sequences", methods=["POST"])
+@bp.route("/api/plan-imd/save-sequences", methods=["POST"])
 @login_requerido
-def api_plan_smt_save_sequences():
-    """Guardar secuencias de planes SMT"""
+def api_plan_imd_save_sequences():
+    """Guardar secuencias de planes IMD"""
     try:
         payload = request.get_json() or {}
         sequences = payload.get("sequences", [])
@@ -348,7 +387,7 @@ def api_plan_smt_save_sequences():
                 vals.append(int(item.get("breaks_minutes") or 0))
             sets.append("updated_at = NOW()")
             vals.append(lot_no)
-            sql = f"UPDATE plan_smt SET {', '.join(sets)} WHERE lot_no = %s"
+            sql = f"UPDATE plan_imd SET {', '.join(sets)} WHERE lot_no = %s"
             execute_query(sql, tuple(vals))
             updated += 1
         return jsonify(
@@ -362,10 +401,64 @@ def api_plan_smt_save_sequences():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt/pending", methods=["GET"])
+@bp.route("/api/plan-imd/pending", methods=["GET"])
 @login_requerido
-def api_plan_smt_pending():
-    """Obtener planes SMT con cantidad pendiente para reprogramar"""
+def api_plan_imd_pending():
+    """Obtener planes IMD pendientes"""
+    try:
+        start = request.args.get("start")
+        end = request.args.get("end")
+        where = ["status = 'PLAN'"]
+        params = []
+        if start:
+            where.append("DATE(working_date) >= %s")
+            params.append(start)
+        if end:
+            where.append("DATE(working_date) <= %s")
+            params.append(end)
+
+        sql = (
+            "SELECT id, lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
+            "COALESCE(ct,0) AS ct, COALESCE(uph,0) AS uph, COALESCE(plan_count,0) AS plan_count, "
+            "COALESCE(output,0) AS output, status, group_no, sequence FROM plan_imd"
+        )
+        sql += " WHERE " + " AND ".join(where)
+        sql += " ORDER BY working_date, created_at"
+
+        rows = execute_query(sql, tuple(params) if params else None, fetch="all")
+        data = []
+        for r in rows:
+            data.append(
+                {
+                    "id": r.get("id"),
+                    "lot_no": r.get("lot_no"),
+                    "wo_code": r.get("wo_code"),
+                    "po_code": r.get("po_code"),
+                    "working_date": str(r.get("working_date") or "")[:10],
+                    "line": r.get("line"),
+                    "shift": r.get("shift"),
+                    "model_code": r.get("model_code"),
+                    "part_no": r.get("part_no"),
+                    "project": r.get("project"),
+                    "process": r.get("process"),
+                    "ct": r.get("ct"),
+                    "uph": r.get("uph"),
+                    "plan_count": r.get("plan_count"),
+                    "output": r.get("output"),
+                    "status": r.get("status"),
+                    "group_no": r.get("group_no"),
+                    "sequence": r.get("sequence"),
+                }
+            )
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/plan-imd/pending-reschedule", methods=["GET"])
+@login_requerido
+def api_plan_imd_pending_reschedule():
+    """Obtener planes IMD con cantidad pendiente para reprogramar"""
     try:
         start = request.args.get("start")
         end = request.args.get("end")
@@ -383,7 +476,7 @@ def api_plan_smt_pending():
         sql = f"""
             SELECT lot_no, working_date, part_no, line, model_code, plan_count,
                    COALESCE(produced_count, 0) as produced_count, status
-            FROM plan_smt
+            FROM plan_imd
             WHERE {" AND ".join(where)}
             ORDER BY working_date, line, sequence
         """
@@ -412,10 +505,10 @@ def api_plan_smt_pending():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt/reschedule", methods=["POST"])
+@bp.route("/api/plan-imd/reschedule", methods=["POST"])
 @login_requerido
-def api_plan_smt_reschedule():
-    """Reprogramar planes SMT: crear sublotes con cantidad pendiente y cerrar originales"""
+def api_plan_imd_reschedule():
+    """Reprogramar planes IMD: crear sublotes con cantidad pendiente y cerrar originales"""
     try:
         data = request.get_json() or {}
         lot_nos = data.get("lot_nos", [])
@@ -431,7 +524,7 @@ def api_plan_smt_reschedule():
             SELECT lot_no, wo_code, po_code, working_date, line, model_code,
                    part_no, project, process, plan_count, produced_count, ct, uph,
                    routing, status, group_no, sequence, shift
-            FROM plan_smt WHERE lot_no IN ({placeholders})
+            FROM plan_imd WHERE lot_no IN ({placeholders})
         """,
                 tuple(lot_nos),
                 fetch="all",
@@ -451,17 +544,19 @@ def api_plan_smt_reschedule():
             if pendiente <= 0:
                 continue
 
-            # Determinar lote base
             parts = lot_original.split("-")
-            # SMT-YYMMDD-NNN formato base tiene 3 partes separadas por -
             if len(parts) > 3:
                 lot_base = "-".join(parts[:3])
             else:
                 lot_base = lot_original
 
-            # Buscar siguiente secuencia de sublotes
+            result = execute_query(
+                "SELECT COUNT(*) as c FROM plan_imd WHERE lot_no LIKE %s AND lot_no <> %s",
+                (f"{lot_base}-%", lot_base),
+                fetch="one",
+            )
             sub_count = execute_query(
-                "SELECT COUNT(*) as c FROM plan_smt WHERE lot_no LIKE %s AND lot_no <> %s AND CHAR_LENGTH(lot_no) > CHAR_LENGTH(%s)",
+                "SELECT COUNT(*) as c FROM plan_imd WHERE lot_no LIKE %s AND lot_no <> %s AND CHAR_LENGTH(lot_no) > CHAR_LENGTH(%s)",
                 (f"{lot_base}-%", lot_base, lot_base),
                 fetch="one",
             )
@@ -470,7 +565,7 @@ def api_plan_smt_reschedule():
 
             execute_query(
                 """
-                INSERT INTO plan_smt
+                INSERT INTO plan_imd
                 (lot_no, wo_code, po_code, working_date, line, shift, model_code,
                  part_no, project, process, plan_count, ct, uph, routing, status,
                  group_no, sequence, created_at)
@@ -496,9 +591,8 @@ def api_plan_smt_reschedule():
                 ),
             )
 
-            # Cerrar plan original
             execute_query(
-                "UPDATE plan_smt SET plan_count = %s, status = 'TERMINADO', updated_at = NOW() WHERE lot_no = %s",
+                "UPDATE plan_imd SET plan_count = %s, status = 'TERMINADO', updated_at = NOW() WHERE lot_no = %s",
                 (produced, lot_original),
             )
             creados += 1
@@ -514,23 +608,22 @@ def api_plan_smt_reschedule():
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt/export-excel", methods=["POST"])
+@bp.route("/api/plan-imd/export-excel", methods=["POST"])
 @login_requerido
-def api_plan_smt_export_excel():
-    """Exportar planes SMT a Excel"""
+def api_plan_imd_export_excel():
+    """Exportar planes IMD a Excel"""
     try:
         payload = request.get_json() or {}
         plans = payload.get("plans", [])
         if not plans:
             return jsonify({"error": "No hay datos para exportar"}), 400
-        import io
 
         from openpyxl import Workbook
         from openpyxl.styles import Alignment, Font
 
         wb = Workbook()
         ws = wb.active
-        ws.title = "Plan SMT"
+        ws.title = "Plan IMD"
         headers = [
             "Sec",
             "LOT NO",
@@ -548,6 +641,10 @@ def api_plan_smt_export_excel():
             "Plan",
             "Output",
             "Status",
+            "Tiempo",
+            "Inicio",
+            "Fin",
+            "Grupo",
         ]
         ws.append(headers)
         for c in ws[1]:
@@ -575,6 +672,10 @@ def api_plan_smt_export_excel():
                     p.get("plan_count", ""),
                     p.get("output", ""),
                     p.get("status", ""),
+                    p.get("tiempo_produccion", ""),
+                    p.get("inicio", ""),
+                    p.get("fin", ""),
+                    p.get("grupo", ""),
                 ]
             )
         bio = io.BytesIO()
@@ -584,17 +685,17 @@ def api_plan_smt_export_excel():
         return send_file(
             bio,
             as_attachment=True,
-            download_name=f"Plan_SMT_{ts}.xlsx",
+            download_name=f"Plan_IMD_{ts}.xlsx",
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@bp.route("/api/plan-smt/import-excel", methods=["POST"])
+@bp.route("/api/plan-imd/import-excel", methods=["POST"])
 @login_requerido
-def api_plan_smt_import_excel():
-    """Importar planes SMT desde archivo Excel"""
+def api_plan_imd_import_excel():
+    """Importar planes IMD desde archivo Excel"""
     try:
         if "file" not in request.files:
             return jsonify({"error": "No se envio archivo"}), 400
@@ -603,7 +704,6 @@ def api_plan_smt_import_excel():
         working_date_default = request.form.get(
             "working_date"
         ) or datetime.utcnow().strftime("%Y-%m-%d")
-        import io
 
         import pandas as pd
 
@@ -611,11 +711,10 @@ def api_plan_smt_import_excel():
         filename = (file.filename or "").lower()
 
         line_reverse_map = {
-            "SMT A": "SA",
-            "SMT B": "SB",
-            "SMT C": "SC",
-            "SMT D": "SD",
-            "SMT E": "SE",
+            "PANA A": "P1",
+            "PANA B": "P2",
+            "PANA C": "P3",
+            "PANA D": "P4",
         }
         line_reverse_map_upper = {k.upper(): v for k, v in line_reverse_map.items()}
 
@@ -696,11 +795,9 @@ def api_plan_smt_import_excel():
                 {"success": True, "imported": 0, "message": "0 planes importados"}
             )
 
-        # Ordenar por linea para que lotes sean consecutivos por linea
-        line_priority_smt = {"SA": 0, "SB": 1, "SC": 2, "SD": 3, "SE": 4}
-        parsed_rows.sort(key=lambda x: line_priority_smt.get(x["line"], 99))
+        line_priority_imd = {"P1": 0, "P2": 1, "P3": 2, "P4": 3}
+        parsed_rows.sort(key=lambda x: line_priority_imd.get(x["line"], 99))
 
-        # Resolver datos de raw_smd en lotes para evitar consultas por fila
         raw_by_part = {}
         unique_parts = sorted({item["part_no"] for item in parsed_rows})
         lookup_batch_size = 400
@@ -714,16 +811,14 @@ def api_plan_smt_import_excel():
                 if raw_part_no and raw_part_no not in raw_by_part:
                     raw_by_part[raw_part_no] = raw
 
-        # Obtener base de lotes una sola vez
-        lot_prefix = f"SMT-{fecha_default.strftime('%y%m%d')}"
+        lot_prefix = f"IMD-{fecha_default.strftime('%y%m%d')}"
         count_result = execute_query(
-            "SELECT COUNT(*) as cnt FROM plan_smt WHERE lot_no LIKE %s",
+            "SELECT COUNT(*) as cnt FROM plan_imd WHERE lot_no LIKE %s",
             (f"{lot_prefix}%",),
             fetch="one",
         )
         base_count = int((count_result or {}).get("cnt", 0) or 0)
 
-        # Preparar filas para insercion masiva
         records = []
         for idx, item in enumerate(parsed_rows, start=1):
             part_no = item["part_no"]
@@ -747,27 +842,27 @@ def api_plan_smt_import_excel():
 
             records.append(
                 (
-                    lot_no,  # lot_no
-                    "SIN-WO",  # wo_code
-                    "SIN-PO",  # po_code
-                    fecha_default,  # working_date
-                    item["line"],  # line
-                    item["shift"],  # shift
-                    model_code,  # model_code
-                    part_no,  # part_no
-                    "",  # project
-                    "SMT",  # process
-                    item["plan_count"],  # plan_count
-                    ct,  # ct
-                    uph,  # uph
-                    "PLAN",  # status
-                    1,  # group_no
-                    idx,  # sequence
+                    lot_no,
+                    "SIN-WO",
+                    "SIN-PO",
+                    fecha_default,
+                    item["line"],
+                    item["shift"],
+                    model_code,
+                    part_no,
+                    "",
+                    "IMD",
+                    item["plan_count"],
+                    ct,
+                    uph,
+                    "PLAN",
+                    1,
+                    idx,
                 )
             )
 
         insert_prefix = (
-            "INSERT INTO plan_smt (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
+            "INSERT INTO plan_imd (lot_no, wo_code, po_code, working_date, line, shift, model_code, part_no, project, process, "
             "plan_count, ct, uph, status, group_no, sequence, created_at) VALUES "
         )
         row_placeholders = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())"
@@ -792,4 +887,3 @@ def api_plan_smt_import_excel():
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-

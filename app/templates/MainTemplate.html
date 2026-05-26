@@ -55,6 +55,10 @@
     <link id="control-metal-mask-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_metal_mask.css', v='20260526a') }}">
     <link id="control-caja-metal-mask-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_caja_metal_mask.css', v='20260526a') }}">
     <link id="control-squeegee-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_squeegee.css', v='20260526a') }}">
+    <!-- WF_004: CSS persistente Control de produccion (ASSY / IMT / SMT Plan) -->
+    <link id="control-plan-assy-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_assy.css', v='20260526a') }}">
+    <link id="control-plan-imt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_imt.css', v='20260526a') }}">
+    <link id="control-plan-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_plan_smt.css', v='20260526a') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -281,6 +285,8 @@
 
     <!-- Utilidades globales -->
     <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
+    <!-- WF_004: axios local (reemplaza CDN cdn.jsdelivr.net/npm/axios) -->
+    <script src="{{ url_for('static', filename='js/lib/axios.min.js', v='20260526a') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
     <script src="/static/js/scriptMain.js?v=20260526a"></script>

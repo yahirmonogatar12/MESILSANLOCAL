@@ -1,5 +1,18 @@
 // ====== Plan IMD - Vista Simple por Filas ======
 
+// WF_004: Inyectar CSS persistente al cargarse, idempotente.
+(function ensureImtModuleStyles(){
+  const STYLESHEET_ID = "control-plan-imt-css";
+  const STYLESHEET_HREF = "/static/css/control_plan_imt.css?v=20260526a";
+  if (!document.getElementById(STYLESHEET_ID)) {
+    const link = document.createElement("link");
+    link.id = STYLESHEET_ID;
+    link.rel = "stylesheet";
+    link.href = STYLESHEET_HREF;
+    document.head.appendChild(link);
+  }
+})();
+
 // Mapeo de líneas: Frontend <-> MySQL
 const LINE_MAP_IMD = {
   'P1': 'PANA A',

@@ -1,64 +1,18 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Plan Main</title>
-  <!-- WF_004: styles.css e index-styles.css se cargan globalmente en MainTemplate.html. -->
-  <style>
-    /* Fallback por si no cargan los estilos */
-    body { background: #32323E; color: lightgray; font-family: sans-serif; }
-    
-    /* Animaciones para notificaciones de conflicto */
-    @keyframes slideInRight {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    
-    @keyframes slideOutRight {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-    }
-    
-    /* Estilo para filas con conflicto */
-    tr.plan-row[style*="background-color: rgb(192, 57, 43)"] {
-      animation: pulseRed 2s infinite;
-    }
-    
-    @keyframes pulseRed {
-      0%, 100% {
-        box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
-      }
-      50% {
-        box-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
-      }
-    }
-  </style>
-  </head>
-<body id="plan-container">
+<!-- Fragment AJAX. CSS persistente en MainTemplate.html (WF_004).
+     Migracion 2026-05-26: prefijo asasy- en lugar de plan-* para evitar colisiones con IMT/SMT. -->
+<div id="assy-container">
 
   <!-- Toolbar -->
-  <div id="plan-toolbar">
-    <button id="plan-openModalBtn" class="plan-btn plan-btn-add">+ Nuevo Plan</button>
-    <button id="wo-openModalBtn" class="plan-btn">Importar WOs</button>
-    <button id="export-excel-btn" class="plan-btn">Exportar Excel</button>
-    <button id="reschedule-openModalBtn" class="plan-btn">Reprogramar</button>
-    <button id="scan-lots-openModalBtn" class="plan-btn" style="background-color:#d35400;">Lotes SCAN sin asignar</button>
-    
-    <div class="planning-controls">
+  <div id="assy-toolbar">
+    <button id="assy-openModalBtn" class="assy-btn assy-btn-add">+ Nuevo Plan</button>
+    <button id="assy-wo-openModalBtn" class="assy-btn">Importar WOs</button>
+    <button id="assy-export-excel-btn" class="assy-btn">Exportar Excel</button>
+    <button id="assy-reschedule-openModalBtn" class="assy-btn">Reprogramar</button>
+    <button id="assy-scan-lots-openModalBtn" class="assy-btn" style="background-color:#d35400;">Lotes SCAN sin asignar</button>
+
+    <div class="assy-planning-controls">
       <label>Grupos:</label>
-      <select id="groups-count" class="plan-input">
+      <select id="assy-groups-count" class="assy-input">
         <option value="3">3</option>
         <option value="4">4</option>
         <option value="5">5</option>
@@ -66,24 +20,24 @@
         <option value="7">7</option>
         <option value="8">8</option>
       </select>
-      <button id="auto-arrange-btn" class="plan-btn">Auto Acomodo</button>
-      <button id="save-sequences-btn" class="plan-btn">Guardar Orden</button>
-      
+      <button id="assy-auto-arrange-btn" class="assy-btn">Auto Acomodo</button>
+      <button id="assy-save-sequences-btn" class="assy-btn">Guardar Orden</button>
+
       <div style="border-left: 1px solid #20688C; padding-left: 10px; margin-left: 6px; display: flex; gap: 6px; align-items: center;">
-        <button id="toggle-view-btn" class="plan-btn" style="background-color: #16a085;">Vista por Lineas</button>
-        <select id="line-filter" class="plan-input" style="width: 80px; display: none;">
+        <button id="assy-toggle-view-btn" class="assy-btn" style="background-color: #16a085;">Vista por Lineas</button>
+        <select id="assy-line-filter" class="assy-input" style="width: 80px; display: none;">
           <option value="">Todas</option>
         </select>
       </div>
     </div>
-    
-    <input type="date" id="filter-start" class="plan-input">
-    <button onclick="loadPlans()" class="plan-btn plan-btn-refresh">Filtrar</button>
+
+    <input type="date" id="assy-filter-start" class="assy-input">
+    <button onclick="window.assyLoadPlans && window.assyLoadPlans()" class="assy-btn assy-btn-refresh">Filtrar</button>
   </div>
 
   <!-- Tabla -->
-  <div id="plan-table-container">
-    <table id="plan-table">
+  <div id="assy-table-container">
+    <table id="assy-table">
       <thead>
         <tr>
           <th>Sec</th>
@@ -110,99 +64,18 @@
           <th>Turno</th>
         </tr>
       </thead>
-      <tbody id="plan-tableBody"></tbody>
+      <tbody id="assy-tableBody"></tbody>
     </table>
   </div>
 
-  <!-- Los modales se crean dinámicamente en JavaScript (ver plan.js - createModalsInBody()) -->
-  
-  <!-- Script inline para cargar dependencias y asegurar inicialización -->
-  <script>
-    (function() {
-      console.log('📝 Script inline de Control_produccion_assy ejecutándose...');
-      
-      // Función para cargar un script dinámicamente
-      function loadScript(src) {
-        return new Promise((resolve, reject) => {
-          // Verificar si el script ya está cargado
-          const existingScript = document.querySelector(`script[src="${src}"]`);
-          if (existingScript) {
-            console.log(` Script ya cargado: ${src}`);
-            resolve();
-            return;
-          }
-          
-          const script = document.createElement('script');
-          script.src = src;
-          script.onload = () => {
-            console.log(` Script cargado: ${src}`);
-            resolve();
-          };
-          script.onerror = () => {
-            console.error(` Error cargando script: ${src}`);
-            reject(new Error(`Failed to load ${src}`));
-          };
-          document.head.appendChild(script);
-        });
-      }
-      
-      // Función para inicializar el módulo
-      async function initializeModule() {
-        try {
-          // Cargar axios si no está disponible
-          if (typeof axios === 'undefined') {
-            console.log('📦 Cargando axios...');
-            await loadScript('https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js');
-          }
-          
-          // Cargar plan.js si no está disponible
-          if (typeof window.initializePlanEventListeners === 'undefined' || typeof window.loadPlans === 'undefined') {
-            console.log('📦 Cargando plan.js...');
-            await loadScript('{{ url_for("static", filename="js/plan.js") }}');
-          }
-          
-          // Cargar index-functions.js si es necesario
-          if (typeof window.exportarExcel === 'undefined') {
-            console.log('📦 Cargando index-functions.js...');
-            await loadScript('{{ url_for("static", filename="js/index-functions.js") }}');
-          }
-          
-          // Esperar un momento para asegurar que todo esté listo
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // IMPORTANTE: Crear modales dinámicamente en el body primero
-          if (typeof window.createModalsInBody === 'function') {
-            console.log('🏗️ Creando modales en el body...');
-            window.createModalsInBody();
-          }
-          
-          // Inicializar event listeners
-          if (typeof window.initializePlanEventListeners === 'function') {
-            console.log(' Inicializando event listeners de Plan Main ASSY');
-            window.initializePlanEventListeners();
-            
-            // Cargar datos iniciales
-            if (typeof window.loadPlans === 'function') {
-              console.log(' Cargando planes iniciales...');
-              window.loadPlans();
-            }
-          } else {
-            console.error(' initializePlanEventListeners no disponible después de cargar scripts');
-          }
-          
-        } catch (error) {
-          console.error(' Error inicializando módulo Plan Main ASSY:', error);
-        }
-      }
-      
-      // Ejecutar inicialización
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeModule);
-      } else {
-        initializeModule();
-      }
-    })();
-  </script>
+  <!-- Los modales se crean dinamicamente en JavaScript (ver plan-assy-core.js - createModalsInBody()) -->
+</div>
 
-</body>
-</html>
+<!-- WF_004: axios se carga persistente desde MainTemplate.html. -->
+<!-- Scripts cargan en orden: helpers (vars globales) -> workorders -> reschedule -> excel -> groups -> core (init y auto-arranque). -->
+<script src="{{ url_for('static', filename='js/plan-assy-helpers.js', v='20260526a') }}"></script>
+<script src="{{ url_for('static', filename='js/plan-assy-workorders.js', v='20260526a') }}"></script>
+<script src="{{ url_for('static', filename='js/plan-assy-reschedule.js', v='20260526a') }}"></script>
+<script src="{{ url_for('static', filename='js/plan-assy-excel.js', v='20260526a') }}"></script>
+<script src="{{ url_for('static', filename='js/plan-assy-groups.js', v='20260526a') }}"></script>
+<script src="{{ url_for('static', filename='js/plan-assy-core.js', v='20260526a') }}"></script>

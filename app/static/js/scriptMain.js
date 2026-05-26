@@ -1017,17 +1017,17 @@ document.addEventListener("DOMContentLoaded", function () {
             // Esperar a que los scripts se carguen completamente
             function tryInitialize() {
               if (
-                typeof window.initializePlanEventListeners === "function" &&
-                typeof window.loadPlans === "function"
+                typeof window.assyInitializePlanEventListeners === "function" &&
+                typeof window.assyLoadPlans === "function"
               ) {
                 // console.log(" Inicializando event listeners de Plan Main ASSY");
-                window.initializePlanEventListeners();
+                window.assyInitializePlanEventListeners();
 
                 // Cargar datos iniciales
                 // console.log(" Cargando planes iniciales...");
-                window.loadPlans();
+                window.assyLoadPlans();
               } else {
-                // console.log("⏳ Esperando a que plan.js se cargue completamente...");
+                // console.log("⏳ Esperando a que plan-assy-*.js se cargue completamente...");
                 setTimeout(tryInitialize, 100);
               }
             }
@@ -1115,14 +1115,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 typeof window.initializePlanIMDEventListeners === "function" &&
                 typeof window.loadPlansIMD === "function"
               ) {
-                // console.log(" Inicializando event listeners de Plan Main IMD");
+                // Crear modales en el body (Nuevo Plan / Edit / Reschedule)
+                // antes de cablear los listeners que los abren.
+                if (typeof window.createModalsInBodyIMD === "function") {
+                  window.createModalsInBodyIMD();
+                }
                 window.initializePlanIMDEventListeners();
-
-                // Cargar datos iniciales
-                // console.log(" Cargando planes IMD iniciales...");
                 window.loadPlansIMD();
               } else {
-                // console.log("⏳ Esperando a que plan_imd.js se cargue completamente...");
                 setTimeout(tryInitialize, 100);
               }
             }
@@ -1177,6 +1177,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 typeof window.initializePlanSMTEventListeners === "function" &&
                 typeof window.loadPlansSMT === "function"
               ) {
+                // Crear modales en el body (Nuevo Plan / Edit / Reschedule)
+                // antes de cablear los listeners que los abren.
+                if (typeof window.createModalsInBodySMT === "function") {
+                  window.createModalsInBodySMT();
+                }
                 window.initializePlanSMTEventListeners();
                 window.loadPlansSMT();
               } else {

@@ -54,6 +54,9 @@ _MODULOS_REGISTRADOS = [
     "control_produccion.metal_mask",
     "control_produccion.squeegee",
     "control_produccion.caja_metal_mask",
+    # Migracion 2026-05-26: Plan ASSY + Plan IMD a blueprints
+    "control_produccion.plan_assy",
+    "control_produccion.plan_imd",
     "shared.raw_modelos",
     "portal.tickets",
     "pda.shipping",

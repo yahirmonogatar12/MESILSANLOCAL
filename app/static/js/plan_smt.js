@@ -1,5 +1,18 @@
 // ====== Plan SMT - Vista Simple por Filas ======
 
+// WF_004: Inyectar CSS persistente al cargarse, idempotente.
+(function ensureSmtModuleStyles(){
+  const STYLESHEET_ID = "control-plan-smt-css";
+  const STYLESHEET_HREF = "/static/css/control_plan_smt.css?v=20260526a";
+  if (!document.getElementById(STYLESHEET_ID)) {
+    const link = document.createElement("link");
+    link.id = STYLESHEET_ID;
+    link.rel = "stylesheet";
+    link.href = STYLESHEET_HREF;
+    document.head.appendChild(link);
+  }
+})();
+
 // Mapeo de lineas: Frontend <-> MySQL
 const LINE_MAP_SMT = {
   'SA': 'SMT A',
