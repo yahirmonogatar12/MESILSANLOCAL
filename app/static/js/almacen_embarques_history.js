@@ -2456,7 +2456,11 @@
         throw new Error("Respuesta inválida del servidor");
       }
 
-      const entryRows = rows.filter((row) => Number(row.return_quantity || 0) > 0);
+      const entryRows = rows.filter(
+        (row) =>
+          Number(row.return_quantity || 0) > 0 &&
+          Number(row.loss_quantity || 0) <= 0,
+      );
       const exitRows = rows
         .filter((row) => Number(row.loss_quantity || 0) > 0)
         .map((row) => ({

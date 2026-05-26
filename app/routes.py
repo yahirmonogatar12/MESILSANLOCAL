@@ -8949,6 +8949,12 @@ def _obtener_historial_cierres_inventario_embarques(limit=20, include_last_draft
     return history_rows
 
 
+def _agregar_timestamp_nombre_archivo(filename):
+    stem, extension = os.path.splitext(filename)
+    timestamp = obtener_fecha_hora_mexico().strftime("%y%m%d_%H%M%S")
+    return f"{stem}_{timestamp}{extension}"
+
+
 def _exportar_historial_embarques_excel(sheet_name, filename, headers, rows):
     """Generar archivo Excel para cualquiera de los historiales de embarques."""
     from io import BytesIO
@@ -8990,10 +8996,12 @@ def _exportar_historial_embarques_excel(sheet_name, filename, headers, rows):
     wb.save(output)
     output.seek(0)
 
+    download_filename = _agregar_timestamp_nombre_archivo(filename)
+
     return Response(
         output.getvalue(),
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{download_filename}"'},
     )
 
 
@@ -10150,6 +10158,7 @@ def export_almacen_embarques_retorno():
                 row
                 for row in rows
                 if (row.get("return_quantity") or 0) > 0
+                and (row.get("loss_quantity") or 0) <= 0
             ]
             for row in rows:
                 row["movement_quantity"] = row.get("return_quantity") or 0
