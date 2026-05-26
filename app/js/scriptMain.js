@@ -336,7 +336,7 @@
                     
                     if (this.id === 'Información Basica') {
                         
-                        // Usar la función global de MaterialTemplate.html si está disponible
+                        // Usar la función global de MainTemplate.html si está disponible
                         if (typeof window.mostrarInformacionBasica === 'function') {
                             window.mostrarInformacionBasica();
                         } else {
@@ -353,7 +353,7 @@
                         
                     } else if (this.id === 'Control de material') {
                         
-                        // Usar la función global de MaterialTemplate.html si está disponible
+                        // Usar la función global de MainTemplate.html si está disponible
                         if (typeof window.mostrarControlMaterial === 'function') {
                             window.mostrarControlMaterial();
                         } else {
@@ -364,7 +364,7 @@
                         }
                         
                     } else if (this.id === 'Control de producción') {
-                        // Usar la función global de MaterialTemplate.html si está disponible
+                        // Usar la función global de MainTemplate.html si está disponible
                         if (typeof window.mostrarControlProduccion === 'function') {
                             window.mostrarControlProduccion();
                         } else {
@@ -429,6 +429,6 @@
             }
             
             
-            // NOTA: mostrarControlMaterialInfo está definida en MaterialTemplate.html con AJAX
+            // NOTA: mostrarControlMaterialInfo está definida en MainTemplate.html con AJAX
             // No redefinir aquí para evitar conflictos
         });

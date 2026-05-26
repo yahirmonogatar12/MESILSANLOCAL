@@ -627,7 +627,7 @@
 
     /**
      * Configurar eventos de la interfaz usando Event Delegation
-     * Compatible con MaterialTemplate AJAX loading
+     * Compatible con MainTemplate AJAX loading
      */
     function configurarEventos() {
         // Verificar si hay modo focus activo al cargar

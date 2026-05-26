@@ -2,7 +2,7 @@
 <!-- SUFIJO ÚNICO: -smt -->
 <!-- CONTENEDOR: control-modelos-smt-unique-container -->
 <!-- WF_004: CSS externo en /static/css/control_modelos_smt.css.
-     Registrado globalmente en MaterialTemplate.html + red de seguridad
+     Registrado globalmente en MainTemplate.html + red de seguridad
      via ensureModuleStyles() en el bloque <script> de abajo. -->
 
 <div id="smt-main-container-unique-smt" class="smt-container">
@@ -53,8 +53,8 @@
 
 <script>
 // ====== WF_004: Garantizar CSS del modulo en <head> ======
-// El CSS esta en MaterialTemplate.html, pero si este template se carga
-// directo (sin pasar por MaterialTemplate), inyectarlo aqui.
+// El CSS esta en MainTemplate.html, pero si este template se carga
+// directo (sin pasar por MainTemplate), inyectarlo aqui.
 (function ensureModuleStyles() {
     const id = 'control-modelos-smt-css';
     const version = '20260522a';

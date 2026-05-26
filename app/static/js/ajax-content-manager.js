@@ -243,22 +243,11 @@
         return newlyLoaded;
     }
 
-    // Desactiva CSS de módulos no activos para evitar conflicto de #mm-grid entre pantallas
-    function applyModuleStyles(mod) {
-        try {
-            const known = ['control_metal_mask.css', 'control_storage_box.css'];
-            const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
-            links.forEach(link => {
-                const href = link.getAttribute('href') || '';
-                if (!known.some(n => href.includes(n))) return;
-                const enable = (mod === 'metal-mask' && href.includes('control_metal_mask.css')) ||
-                               (mod === 'storage-box' && href.includes('control_storage_box.css'));
-                link.disabled = !enable;
-            });
-        } catch (e) {
-            console.warn('applyModuleStyles error:', e);
-        }
-    }
+    // No-op desde 2026-05-26 (WF_002+WF_004): Caja Metal Mask se refactorizo
+    // a prefijo #cmm-* asi que ya no colisiona con Metal Mask (#mm-*).
+    // El CSS de ambos modulos vive persistente en MainTemplate.html via WF_004.
+    // Se conserva la firma para no romper el call site en linea 372.
+    function applyModuleStyles(mod) { /* no-op */ }
 
     async function loadContent(url, targetSelector = '.main-wrapper', showLoader = true) {
         const target = document.querySelector(targetSelector);

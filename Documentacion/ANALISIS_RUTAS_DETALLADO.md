@@ -120,7 +120,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 - **Función**: `login` (Línea 590 en `routes.py`)
 - **Referencias encontradas**:
   - `app\templates\landing.html` (Línea/s: 1507)
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2003, 2035, 2754, 2879)
+  - `app\templates\MainTemplate.html` (Línea/s: 2003, 2035, 2754, 2879)
   - `app\admin_api.py` (Línea/s: 19, 33, 41, 73, 115)
   - `app\Almacen_api.py` (Línea/s: 14, 72, 92, 104, 700)
   - `app\auth_system.py` (Línea/s: 1002, 1041, 1083, 1093)
@@ -191,7 +191,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 - **Función**: `logout` (Línea 1173 en `routes.py`)
 - **Referencias encontradas**:
   - `app\templates\landing.html` (Línea/s: 1499, 2018)
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3424)
+  - `app\templates\MainTemplate.html` (Línea/s: 3424)
   - `app\templates\admin\auditoria.html` (Línea/s: 1100)
   - `app\templates\admin\panel_usuarios.html` (Línea/s: 825)
   - `app\shipping_api.py` (Línea/s: 600, 602, 604)
@@ -410,7 +410,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/cargar_template` (POST)
 - **Función**: `cargar_template` (Línea 6657 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1306)
+  - `app\templates\MainTemplate.html` (Línea/s: 1306)
 
 ### `/importar_excel_bom` (POST)
 - **Función**: `importar_excel_bom` (Línea 6682 en `routes.py`)
@@ -420,7 +420,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/listar_modelos_bom` (GET)
 - **Función**: `listar_modelos_bom` (Línea 6720 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3444, 3445)
+  - `app\templates\MainTemplate.html` (Línea/s: 3444, 3445)
   - `app\templates\INFORMACION BASICA\CONTROL_DE_BOM.html` (Línea/s: 1759, 1865)
   - `app\static\js\control-embarque.js` (Línea/s: 312, 313, 513, 514)
   - `app\db_mysql.py` (Línea/s: 4195)
@@ -555,56 +555,56 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/control_calidad` (GET)
 - **Función**: `control_calidad` (Línea 8837 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1574, 3332)
+  - `app\templates\MainTemplate.html` (Línea/s: 1574, 3332)
   - `app\db.py` (Línea/s: 158, 159)
 
 ### `/informacion_basica/control_de_material` (GET)
 - **Función**: `control_de_material_ajax` (Línea 9445 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2445)
+  - `app\templates\MainTemplate.html` (Línea/s: 2445)
 
 ### `/informacion_basica/control_de_bom` (GET)
 - **Función**: `control_de_bom_ajax` (Línea 9456 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2538)
+  - `app\templates\MainTemplate.html` (Línea/s: 2538)
   - `app\templates\LISTAS\LISTA_INFORMACIONBASICA.html` (Línea/s: 92, 97)
 
 ### `/listas/informacion_basica` (GET)
 - **Función**: `lista_informacion_basica` (Línea 9474 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1550, 3280)
+  - `app\templates\MainTemplate.html` (Línea/s: 1550, 3280)
 
 ### `/listas/control_material` (GET)
 - **Función**: `lista_control_material` (Línea 9485 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1556, 3122)
+  - `app\templates\MainTemplate.html` (Línea/s: 1556, 3122)
 
 ### `/listas/control_produccion` (GET)
 - **Función**: `lista_control_produccion` (Línea 9496 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1562, 3318)
+  - `app\templates\MainTemplate.html` (Línea/s: 1562, 3318)
 
 ### `/control_produccion/control_embarque` (GET)
 - **Función**: `control_embarque` (Línea 9507 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2615)
+  - `app\templates\MainTemplate.html` (Línea/s: 2615)
   - `app\templates\LISTAS\LISTA_CONTROLDEPRODUCCION.html` (Línea/s: 15)
 
 ### `/Control de embarque` (GET)
 - **Función**: `control_embarque_ajax` (Línea 9518 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2720)
+  - `app\templates\MainTemplate.html` (Línea/s: 2720)
 
 ### `/control_produccion/crear_plan` (GET)
 - **Función**: `crear_plan_produccion` (Línea 9529 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2648)
+  - `app\templates\MainTemplate.html` (Línea/s: 2648)
   - `app\templates\LISTAS\LISTA_CONTROLDEPRODUCCION.html` (Línea/s: 20, 25)
 
 ### `/control_produccion/plan_smt` (GET)
 - **Función**: `plan_smt_ajax` (Línea 9546 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2681)
+  - `app\templates\MainTemplate.html` (Línea/s: 2681)
 
 ### `/api/work-orders` (GET)
 - **Función**: `api_work_orders` (Línea 9597 en `routes.py`)
@@ -992,17 +992,17 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/listas/control_proceso` (GET)
 - **Función**: `lista_control_proceso` (Línea 15942 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1568, 3190)
+  - `app\templates\MainTemplate.html` (Línea/s: 1568, 3190)
 
 ### `/listas/control_calidad` (GET)
 - **Función**: `lista_control_calidad` (Línea 15953 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1574, 3332)
+  - `app\templates\MainTemplate.html` (Línea/s: 1574, 3332)
 
 ### `/listas/control_resultados` (GET)
 - **Función**: `lista_control_resultados` (Línea 15964 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1580, 3234, 3347)
+  - `app\templates\MainTemplate.html` (Línea/s: 1580, 3234, 3347)
 
 ### `/historial-aoi` (GET)
 - **Función**: `historial_aoi` (Línea 15975 en `routes.py`)
@@ -1072,33 +1072,33 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/listas/control_reporte` (GET)
 - **Función**: `lista_control_reporte` (Línea 17216 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1586, 3357)
+  - `app\templates\MainTemplate.html` (Línea/s: 1586, 3357)
 
 ### `/listas/configuracion_programa` (GET)
 - **Función**: `lista_configuracion_programa` (Línea 17227 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1592, 3366)
+  - `app\templates\MainTemplate.html` (Línea/s: 1592, 3366)
 
 ### `/material/info` (GET)
 - **Función**: `material_info` (Línea 17238 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2601)
+  - `app\templates\MainTemplate.html` (Línea/s: 2601)
   - `app\db_mysql.py` (Línea/s: 4126, 4128, 4149)
 
 ### `/material/historial_inventario` (GET)
 - **Función**: `material_historial_inventario` (Línea 17409 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3039)
+  - `app\templates\MainTemplate.html` (Línea/s: 3039)
 
 ### `/material/registro_material` (GET)
 - **Función**: `material_registro_material` (Línea 17420 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3024)
+  - `app\templates\MainTemplate.html` (Línea/s: 3024)
 
 ### `/material/estatus_material` (GET)
 - **Función**: `material_estatus_material` (Línea 17431 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2963)
+  - `app\templates\MainTemplate.html` (Línea/s: 2963)
   - `app\static\js\scriptMain.js` (Línea/s: 579)
 
 ### `/api/estatus_material/consultar` (POST)
@@ -1144,7 +1144,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/templates/LISTAS/<filename>` (GET)
 - **Función**: `serve_list_template` (Línea 19365 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 1281, 1285, 1289, 1293, 1297)
+  - `app\templates\MainTemplate.html` (Línea/s: 1281, 1285, 1289, 1293, 1297)
 
 ### `/verificar_permiso_dropdown` (POST)
 - **Función**: `verificar_permiso_dropdown` (Línea 19404 en `routes.py`)
@@ -1160,7 +1160,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/historial-cambio-material-smt` (GET)
 - **Función**: `historial_cambio_material_smt` (Línea 19518 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3095)
+  - `app\templates\MainTemplate.html` (Línea/s: 3095)
   - `app\templates\LISTAS\LISTA_CONTROL_DE_CALIDAD.html` (Línea/s: 34)
   - `app\smt_csv_handler.py` (Línea/s: 59, 143, 204, 271)
   - `app\smt_routes_clean.py` (Línea/s: 38, 117, 200, 209, 249)
@@ -1171,7 +1171,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/historial-cambio-material-smt-ajax` (GET)
 - **Función**: `historial_cambio_material_smt_ajax` (Línea 19529 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3095)
+  - `app\templates\MainTemplate.html` (Línea/s: 3095)
   - `app\templates\LISTAS\LISTA_CONTROL_DE_CALIDAD.html` (Línea/s: 34)
   - `app\smt_routes_clean.py` (Línea/s: 38)
   - `app\smt_routes_fixed.py` (Línea/s: 92, 97)
@@ -1189,27 +1189,27 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/produccion/info` (GET)
 - **Función**: `produccion_info` (Línea 21115 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3156)
+  - `app\templates\MainTemplate.html` (Línea/s: 3156)
 
 ### `/material/recibo_pago` (GET)
 - **Función**: `material_recibo_pago` (Línea 21129 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2920)
+  - `app\templates\MainTemplate.html` (Línea/s: 2920)
 
 ### `/material/material_sustituto` (GET)
 - **Función**: `material_material_sustituto` (Línea 21140 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2978)
+  - `app\templates\MainTemplate.html` (Línea/s: 2978)
 
 ### `/material/consultar_peps` (GET)
 - **Función**: `material_consultar_peps` (Línea 21151 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2993)
+  - `app\templates\MainTemplate.html` (Línea/s: 2993)
 
 ### `/material/ajuste_numero` (GET)
 - **Función**: `material_ajuste_numero` (Línea 21175 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 3069)
+  - `app\templates\MainTemplate.html` (Línea/s: 3069)
 
 ### `/importar_excel_registro` (POST)
 - **Función**: `importar_excel_registro` (Línea 21409 en `routes.py`)
@@ -1424,7 +1424,7 @@ Estas rutas son llamadas activamente desde el frontend (AJAX, enlaces, formulari
 ### `/visor-mysql` (GET)
 - **Función**: `visor_mysql` (Línea 24086 en `routes.py`)
 - **Referencias encontradas**:
-  - `app\templates\MaterialTemplate.html` (Línea/s: 2586)
+  - `app\templates\MainTemplate.html` (Línea/s: 2586)
 
 ### `/control-modelos-visor-ajax` (GET)
 - **Función**: `control_modelos_visor_ajax` (Línea 24096 en `routes.py`)

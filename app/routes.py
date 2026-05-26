@@ -1049,7 +1049,7 @@ def material():
         tiene_permisos_usuarios = "usuarios" in permisos["sistema"]
 
     return render_template(
-        "MaterialTemplate.html",
+        "MainTemplate.html",
         usuario=nombre_completo,  # Pasar nombre completo en lugar de username
         tiene_permisos_usuarios=tiene_permisos_usuarios,
     )
@@ -1058,7 +1058,7 @@ def material():
 @app.route("/dashboard")
 @login_requerido
 def dashboard():
-    """Alias para la página principal (MaterialTemplate)"""
+    """Alias para la página principal (MainTemplate)"""
     usuario = session.get("usuario")
     nombre_completo = session.get("nombre_completo")
 
@@ -1083,7 +1083,7 @@ def dashboard():
         tiene_permisos_usuarios = "usuarios" in permisos["sistema"]
 
     return render_template(
-        "MaterialTemplate.html",
+        "MainTemplate.html",
         usuario=nombre_completo,
         tiene_permisos_usuarios=tiene_permisos_usuarios,
     )
@@ -11488,39 +11488,9 @@ def line_material_status_ajax():
         return f"Error al cargar el contenido: {str(e)}", 500
 
 
-@app.route("/control-mask-metal-ajax")
-@login_requerido
-def control_mask_metal_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de mask de metal"""
-    try:
-        return render_template("Control de produccion/control_mask_metal_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Control de mask de metal AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/control-squeegee-ajax")
-@login_requerido
-def control_squeegee_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de squeegee"""
-    try:
-        return render_template("Control de produccion/control_squeegee_ajax.html")
-    except Exception as e:
-        print(f"Error al cargar template Control de squeegee AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-@app.route("/control-caja-mask-metal-ajax")
-@login_requerido
-def control_caja_mask_metal_ajax():
-    """Ruta AJAX para cargar dinámicamente el contenido de Control de caja de mask de metal"""
-    try:
-        return render_template(
-            "Control de produccion/control_caja_mask_metal_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al cargar template Control de caja de mask de metal AJAX: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Migracion 2026-05-26: 3 rutas template de Control de SMT (Metal Mask,
+# Squeegee, Caja Metal Mask) movidas a sus blueprints en
+# app/api/control_produccion/{metal_mask,squeegee,caja_metal_mask}.py
 
 
 @app.route("/estandares-soldadura-ajax")
@@ -18883,293 +18853,18 @@ def init_metal_mask_tables():
 # init_metal_mask_tables movido a app/startup_init.py
 
 
-# Poginas nuevas (HTML integrados)
-@app.route("/control/metal-mask")
-@login_requerido
-def pagina_control_metal_mask():
-    try:
-        return render_template("Control de produccion/control_mask_metal_ajax.html")
-    except Exception as e:
-        print(f"Error al renderizar Control de metal mask: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
+# Migracion 2026-05-26: rutas alternas /control/metal-mask y
+# /control/metal-mask/caja eliminadas (no consumidas por el frontend; el
+# sidebar y scriptMain.js usan /control-mask-metal-ajax y
+# /control-caja-mask-metal-ajax que ahora viven en sus blueprints).
+
+# Migracion 2026-05-26: api_list_masks + api_create_mask + api_update_mask movidos a
+# app/api/control_produccion/metal_mask.py
 
 
-@app.route("/control/metal-mask/caja")
-@login_requerido
-def pagina_control_caja_metal_mask():
-    try:
-        return render_template(
-            "Control de produccion/control_caja_mask_metal_ajax.html"
-        )
-    except Exception as e:
-        print(f"Error al renderizar Control de caja de metal mask: {e}")
-        return f"Error al cargar el contenido: {str(e)}", 500
-
-
-# API: Masks
-@app.route("/api/masks", methods=["GET"])
-@login_requerido
-def api_list_masks():
-    try:
-        disuse = request.args.get("disuse", "ALL")
-        sql = (
-            "SELECT id, management_no, storage_box, pcb_code, side, "
-            "COALESCE(DATE_FORMAT(production_date, '%Y-%m-%d'), '') AS production_date, "
-            "used_count, max_count, allowance, model_name, tension_min, tension_max, thickness, "
-            "supplier, registration_date, disuse FROM masks"
-        )
-        params = []
-        if disuse and disuse != "ALL":
-            sql += " WHERE disuse=%s"
-            params.append(disuse)
-        sql += " ORDER BY id DESC"
-        rows = execute_query(sql, tuple(params) if params else None, fetch="all") or []
-
-        # Normalizacion ligera de tipos para JSON
-        out = []
-        for r in rows:
-            r = dict(r)
-            for k in ("used_count", "max_count", "allowance"):
-                try:
-                    r[k] = int(r.get(k) or 0)
-                except Exception:
-                    pass
-            for k in ("tension_min", "tension_max", "thickness"):
-                v = r.get(k)
-                try:
-                    r[k] = float(v) if v is not None else None
-                except Exception:
-                    pass
-            out.append(r)
-        return jsonify(out)
-    except Exception as e:
-        print(f"Error en api_list_masks: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/masks", methods=["POST"])
-@login_requerido
-def api_create_mask():
-    try:
-        data = request.get_json(force=True) or {}
-        data.setdefault("used_count", 0)
-        data.setdefault("max_count", 0)
-        data.setdefault("allowance", 0)
-        data.setdefault("disuse", "Uso")
-
-        pd = data.get("production_date")
-        if isinstance(pd, str) and len(pd) >= 10:
-            data["production_date"] = pd[:10]
-        else:
-            data["production_date"] = None
-
-        cols = (
-            "management_no",
-            "storage_box",
-            "pcb_code",
-            "side",
-            "production_date",
-            "used_count",
-            "max_count",
-            "allowance",
-            "model_name",
-            "tension_min",
-            "tension_max",
-            "thickness",
-            "supplier",
-            "registration_date",
-            "disuse",
-        )
-        placeholders = ",".join(["%s"] * len(cols))
-        values = [data.get(c) for c in cols]
-        sql = f"INSERT INTO masks ({','.join(cols)}) VALUES ({placeholders})"
-        execute_query(sql, tuple(values))
-        return jsonify({"success": True, "message": "Registrado", "data": data}), 201
-    except Exception as e:
-        msg = str(e)
-        if "Duplicate entry" in msg:
-            return jsonify({"error": "El Nomero de Gestion ya existe"}), 400
-        print(f"Error en api_create_mask: {e}")
-        return jsonify({"error": msg}), 500
-
-
-@app.route("/api/masks/<int:mask_id>", methods=["PUT"])
-@login_requerido
-def api_update_mask(mask_id: int):
-    try:
-        p = request.get_json(force=True) or {}
-        required = p.get("management_no", "").strip()
-        if not required:
-            return jsonify({"error": "Nomero de Gestion es requerido"}), 400
-
-        sql = (
-            "UPDATE masks SET management_no=%s, storage_box=%s, pcb_code=%s, side=%s, "
-            "production_date=%s, used_count=%s, max_count=%s, allowance=%s, "
-            "model_name=%s, tension_min=%s, tension_max=%s, thickness=%s, "
-            "supplier=%s, registration_date=%s, disuse=%s WHERE id=%s"
-        )
-        params = (
-            p.get("management_no", "").strip(),
-            p.get("storage_box", "").strip(),
-            p.get("pcb_code", "").strip(),
-            p.get("side", "").strip(),
-            (p.get("production_date") or None),
-            p.get("used_count", 0),
-            p.get("max_count", 0),
-            p.get("allowance", 0),
-            p.get("model_name", "").strip(),
-            p.get("tension_min", 0),
-            p.get("tension_max", 0),
-            p.get("thickness", 0),
-            p.get("supplier", "").strip(),
-            p.get("registration_date", "").strip(),
-            p.get("disuse", "Uso"),
-            mask_id,
-        )
-        affected = execute_query(sql, params)
-        if affected == 0:
-            return jsonify({"error": "Moscara no encontrada"}), 404
-        return jsonify({"success": True, "message": "Actualizado"})
-    except Exception as e:
-        msg = str(e)
-        if "Duplicate entry" in msg:
-            return jsonify({"error": "El Nomero de Gestion ya existe"}), 400
-        print(f"Error en api_update_mask: {e}")
-        return jsonify({"error": msg}), 500
-
-
-# API: Storage Boxes
-@app.route("/api/storage", methods=["GET"])
-@login_requerido
-def api_get_storage():
-    try:
-        offset = int(request.args.get("offset", 0))
-        limit = int(request.args.get("limit", 100))
-        search = (request.args.get("search", "") or "").strip()
-        filter_storage_status = (
-            request.args.get("filter_storage_status", "") or ""
-        ).strip()
-        filter_used_status = (request.args.get("filter_used_status", "") or "").strip()
-
-        clauses = []
-        params = []
-        if search:
-            like = f"%{search}%"
-            clauses.append(
-                "(management_no LIKE %s OR code LIKE %s OR name LIKE %s OR location LIKE %s OR note LIKE %s)"
-            )
-            params += [like, like, like, like, like]
-        if filter_storage_status:
-            clauses.append("storage_status=%s")
-            params.append(filter_storage_status)
-        if filter_used_status:
-            clauses.append("used_status=%s")
-            params.append(filter_used_status)
-        where = " AND ".join(clauses) if clauses else "1=1"
-
-        total_row = execute_query(
-            f"SELECT COUNT(*) AS total FROM storage_boxes WHERE {where}",
-            tuple(params) if params else None,
-            fetch="one",
-        ) or {"total": 0}
-        data = (
-            execute_query(
-                f"""
-            SELECT id, management_no, code, name, location, storage_status, used_status, note, registration_date
-            FROM storage_boxes WHERE {where}
-            ORDER BY id DESC
-            LIMIT %s OFFSET %s
-            """,
-                tuple(params + [limit, offset]) if params else (limit, offset),
-                fetch="all",
-            )
-            or []
-        )
-        return jsonify({"data": data, "total": total_row.get("total", 0)})
-    except Exception as e:
-        print(f"Error en api_get_storage: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/storage", methods=["POST"])
-@login_requerido
-def api_add_storage():
-    try:
-        p = request.get_json(force=True) or {}
-        management_no = (p.get("management_no", "") or "").strip()
-        if not management_no:
-            return jsonify({"error": "Nomero de Gestion es requerido"}), 400
-        sql = (
-            "INSERT INTO storage_boxes (management_no, code, name, location, storage_status, used_status, note, registration_date) "
-            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
-        )
-        params = (
-            management_no,
-            (p.get("code", "") or "").strip(),
-            (p.get("name", "") or "").strip(),
-            (p.get("location", "") or "").strip(),
-            (p.get("storage_status", "Disponible") or "Disponible"),
-            (p.get("used_status", "Usado") or "Usado"),
-            (p.get("note", "") or "").strip(),
-            (p.get("registration_date", "") or "").strip(),
-        )
-        execute_query(sql, params)
-        return jsonify(
-            {
-                "success": True,
-                "message": "Caja de almacenamiento registrada exitosamente",
-            }
-        )
-    except Exception as e:
-        msg = str(e)
-        if "Duplicate entry" in msg:
-            return jsonify(
-                {
-                    "error": f'El Nomero de Gestion "{management_no}" ya existe. Por favor use un codigo/ubicacion diferente.'
-                }
-            ), 400
-        print(f"Error en api_add_storage: {e}")
-        return jsonify({"error": msg}), 500
-
-
-@app.route("/api/storage/<int:storage_id>", methods=["PUT"])
-@login_requerido
-def api_update_storage(storage_id: int):
-    try:
-        p = request.get_json(force=True) or {}
-        management_no = (p.get("management_no", "") or "").strip()
-        if not management_no:
-            return jsonify({"error": "Nomero de Gestion es requerido"}), 400
-        sql = (
-            "UPDATE storage_boxes SET management_no=%s, code=%s, name=%s, location=%s, "
-            "storage_status=%s, used_status=%s, note=%s, registration_date=%s WHERE id=%s"
-        )
-        params = (
-            management_no,
-            (p.get("code", "") or "").strip(),
-            (p.get("name", "") or "").strip(),
-            (p.get("location", "") or "").strip(),
-            (p.get("storage_status", "Disponible") or "Disponible"),
-            (p.get("used_status", "Usado") or "Usado"),
-            (p.get("note", "") or "").strip(),
-            (p.get("registration_date", "") or "").strip(),
-            storage_id,
-        )
-        affected = execute_query(sql, params)
-        if affected == 0:
-            return jsonify({"error": "Caja de almacenamiento no encontrada"}), 404
-        return jsonify(
-            {
-                "success": True,
-                "message": "Caja de almacenamiento actualizada exitosamente",
-            }
-        )
-    except Exception as e:
-        msg = str(e)
-        if "Duplicate entry" in msg:
-            return jsonify({"error": "El Nomero de Gestion ya existe"}), 400
-        print(f"Error en api_update_storage: {e}")
-        return jsonify({"error": msg}), 500
+# Migracion 2026-05-26: api_get_storage + api_add_storage + api_update_storage
+# movidos a app/api/control_produccion/caja_metal_mask.py (sigue siendo
+# consumida tambien por MetalMask.js -- los blueprints comparten URL space).
 
 
 @app.route("/api/bom-smt-data", methods=["GET"])

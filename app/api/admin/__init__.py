@@ -1,7 +1,7 @@
 """Endpoints HTTP del Panel de Administracion.
 
 Accesible desde el boton 'Panel de Administracion' del navbar
-(MaterialTemplate.html linea 338, ruta `/admin/panel`). NO esta en
+(MainTemplate.html linea 338, ruta `/admin/panel`). NO esta en
 ninguna LISTA_*.html porque es su propia entidad paralela a las 8
 secciones del navbar.
 

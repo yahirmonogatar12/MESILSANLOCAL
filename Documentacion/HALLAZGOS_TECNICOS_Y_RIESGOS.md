@@ -118,7 +118,7 @@ Recomendacion:
 
 Solapamientos:
 
-- `MaterialTemplate.html` contiene orquestacion AJAX extensa.
+- `MainTemplate.html` contiene orquestacion AJAX extensa.
 - `app/static/js/scriptMain.js` reimplementa flujos equivalentes.
 - Modulos inline (ej. `CONTROL_DE_BOM.html`) agregan otra capa de logica.
 

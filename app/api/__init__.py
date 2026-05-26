@@ -50,6 +50,10 @@ _MODULOS_REGISTRADOS = [
     "control_produccion.plan_smt",
     "control_produccion.plan_smd",
     "control_produccion.views",
+    # Migracion 2026-05-26: 3 modulos Control de SMT
+    "control_produccion.metal_mask",
+    "control_produccion.squeegee",
+    "control_produccion.caja_metal_mask",
     "shared.raw_modelos",
     "portal.tickets",
     "pda.shipping",

@@ -239,7 +239,7 @@
     }
 
     // Mapa local: nombre de seccion -> id del sidebar (espejo del
-    // SECCIONES_SIDEBARS de MaterialTemplate.html). Necesario para
+    // SECCIONES_SIDEBARS de MainTemplate.html). Necesario para
     // el fast-path porque no podemos importarlo.
     const SECCIONES_SIDEBARS_MAP = {
         'Información Basica': 'informacion-basica-content',

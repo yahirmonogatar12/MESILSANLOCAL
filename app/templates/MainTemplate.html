@@ -51,6 +51,10 @@
     <link id="historial-cambio-material-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/historial_cambio_material_smt.css', v='20260522a') }}">
     <link id="control-modelos-smt-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_modelos_smt.css', v='20260522a') }}">
     <link id="visor-mysql-css" rel="stylesheet" href="{{ url_for('static', filename='css/visor_mysql.css', v='20260522a') }}">
+    <!-- WF_004: CSS persistente Control de SMT (Metal Mask / Caja Metal Mask / Squeegee) -->
+    <link id="control-metal-mask-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_metal_mask.css', v='20260526a') }}">
+    <link id="control-caja-metal-mask-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_caja_metal_mask.css', v='20260526a') }}">
+    <link id="control-squeegee-css" rel="stylesheet" href="{{ url_for('static', filename='css/control_squeegee.css', v='20260526a') }}">
 
     <style>
         /* ESTILOS ESPECÍFICOS PARA PREVENIR PROBLEMAS DE DROPDOWN */
@@ -279,7 +283,7 @@
     <script src="{{ url_for('static', filename='js/close-mobile-sidebar.js') }}"></script>
     <!-- Sistema de Permisos Dropdowns -->
     <script src="/static/js/permisos-dropdowns.js?v=20260520a"></script>
-    <script src="/static/js/scriptMain.js?v=20260525f"></script>
+    <script src="/static/js/scriptMain.js?v=20260526a"></script>
 
     <!-- Sistema de Gestión AJAX para Contenido Dinámico -->
     <script src="{{ url_for('static', filename='js/ajax-content-manager.js') }}"></script>
@@ -456,6 +460,21 @@
         <div id="control-cuchillas-corte-unique-container" style="display: none;">
                 <!-- El contenido se cargará dinámicamente con AJAX -->
             </div>
+
+        <!-- Control de SMT: Metal Mask (WF_002, 2026-05-26) -->
+        <div id="control-mask-metal-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Control de SMT: Squeegee (WF_002, 2026-05-26) -->
+        <div id="control-squeegee-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
+
+        <!-- Control de SMT: Caja Metal Mask (WF_002, 2026-05-26) -->
+        <div id="control-caja-mask-metal-unique-container" style="display: none;">
+            <!-- El contenido se cargará dinámicamente con AJAX -->
+        </div>
 
         <!-- Crear Plan de Produccion (contenedor unico para sistema de tabs) -->
         <div id="crear-plan-produccion-unique-container" style="display: none;">
@@ -2309,6 +2328,13 @@ function hideAllMaterialContainers() {
     if (controlCuchillasCorteContainer) controlCuchillasCorteContainer.style.display = 'none';
     const controlSalidaLineasContainer = document.getElementById('control-salida-lineas-unique-container');
     if (controlSalidaLineasContainer) controlSalidaLineasContainer.style.display = 'none';
+    // Control de SMT (WF_002, 2026-05-26)
+    const controlMaskMetalContainer = document.getElementById('control-mask-metal-unique-container');
+    if (controlMaskMetalContainer) controlMaskMetalContainer.style.display = 'none';
+    const controlSqueegeeContainer = document.getElementById('control-squeegee-unique-container');
+    if (controlSqueegeeContainer) controlSqueegeeContainer.style.display = 'none';
+    const controlCajaMaskMetalContainer = document.getElementById('control-caja-mask-metal-unique-container');
+    if (controlCajaMaskMetalContainer) controlCajaMaskMetalContainer.style.display = 'none';
 }
 
 

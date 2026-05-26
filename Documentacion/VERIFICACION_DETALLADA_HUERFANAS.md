@@ -303,7 +303,7 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/cargar_template` (POST)
 - **Función**: `cargar_template` (Línea 6657)
-- **Evidencia**: Path exacto '/cargar_template' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/cargar_template' en app\templates\MainTemplate.html
 
 ### `/importar_excel_bom` (POST)
 - **Función**: `importar_excel_bom` (Línea 6682)
@@ -311,7 +311,7 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/listar_modelos_bom` (GET)
 - **Función**: `listar_modelos_bom` (Línea 6720)
-- **Evidencia**: Path exacto '/listar_modelos_bom' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listar_modelos_bom' en app\templates\MainTemplate.html
 
 ### `/listar_bom` (POST)
 - **Función**: `listar_bom` (Línea 6736)
@@ -419,43 +419,43 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/control_calidad` (GET)
 - **Función**: `control_calidad` (Línea 8837)
-- **Evidencia**: Path exacto '/control_calidad' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/control_calidad' en app\templates\MainTemplate.html
 
 ### `/informacion_basica/control_de_material` (GET)
 - **Función**: `control_de_material_ajax` (Línea 9445)
-- **Evidencia**: Path exacto '/informacion_basica/control_de_material' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/informacion_basica/control_de_material' en app\templates\MainTemplate.html
 
 ### `/informacion_basica/control_de_bom` (GET)
 - **Función**: `control_de_bom_ajax` (Línea 9456)
-- **Evidencia**: Path exacto '/informacion_basica/control_de_bom' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/informacion_basica/control_de_bom' en app\templates\MainTemplate.html
 
 ### `/listas/informacion_basica` (GET)
 - **Función**: `lista_informacion_basica` (Línea 9474)
-- **Evidencia**: Path exacto '/listas/informacion_basica' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/informacion_basica' en app\templates\MainTemplate.html
 
 ### `/listas/control_material` (GET)
 - **Función**: `lista_control_material` (Línea 9485)
-- **Evidencia**: Path exacto '/listas/control_material' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/control_material' en app\templates\MainTemplate.html
 
 ### `/listas/control_produccion` (GET)
 - **Función**: `lista_control_produccion` (Línea 9496)
-- **Evidencia**: Path exacto '/listas/control_produccion' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/control_produccion' en app\templates\MainTemplate.html
 
 ### `/control_produccion/control_embarque` (GET)
 - **Función**: `control_embarque` (Línea 9507)
-- **Evidencia**: Path exacto '/control_produccion/control_embarque' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/control_produccion/control_embarque' en app\templates\MainTemplate.html
 
 ### `/Control de embarque` (GET)
 - **Función**: `control_embarque_ajax` (Línea 9518)
-- **Evidencia**: Path exacto '/Control de embarque' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/Control de embarque' en app\templates\MainTemplate.html
 
 ### `/control_produccion/crear_plan` (GET)
 - **Función**: `crear_plan_produccion` (Línea 9529)
-- **Evidencia**: Path exacto '/control_produccion/crear_plan' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/control_produccion/crear_plan' en app\templates\MainTemplate.html
 
 ### `/control_produccion/plan_smt` (GET)
 - **Función**: `plan_smt_ajax` (Línea 9546)
-- **Evidencia**: Path exacto '/control_produccion/plan_smt' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/control_produccion/plan_smt' en app\templates\MainTemplate.html
 
 ### `/api/work-orders` (GET)
 - **Función**: `api_work_orders` (Línea 9597)
@@ -743,15 +743,15 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/listas/control_proceso` (GET)
 - **Función**: `lista_control_proceso` (Línea 15942)
-- **Evidencia**: Path exacto '/listas/control_proceso' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/control_proceso' en app\templates\MainTemplate.html
 
 ### `/listas/control_calidad` (GET)
 - **Función**: `lista_control_calidad` (Línea 15953)
-- **Evidencia**: Path exacto '/listas/control_calidad' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/control_calidad' en app\templates\MainTemplate.html
 
 ### `/listas/control_resultados` (GET)
 - **Función**: `lista_control_resultados` (Línea 15964)
-- **Evidencia**: Path exacto '/listas/control_resultados' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/control_resultados' en app\templates\MainTemplate.html
 
 ### `/historial-aoi` (GET)
 - **Función**: `historial_aoi` (Línea 15975)
@@ -803,27 +803,27 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/listas/control_reporte` (GET)
 - **Función**: `lista_control_reporte` (Línea 17216)
-- **Evidencia**: Path exacto '/listas/control_reporte' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/control_reporte' en app\templates\MainTemplate.html
 
 ### `/listas/configuracion_programa` (GET)
 - **Función**: `lista_configuracion_programa` (Línea 17227)
-- **Evidencia**: Path exacto '/listas/configuracion_programa' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/listas/configuracion_programa' en app\templates\MainTemplate.html
 
 ### `/material/info` (GET)
 - **Función**: `material_info` (Línea 17238)
-- **Evidencia**: Path exacto '/material/info' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/info' en app\templates\MainTemplate.html
 
 ### `/material/historial_inventario` (GET)
 - **Función**: `material_historial_inventario` (Línea 17409)
-- **Evidencia**: Path exacto '/material/historial_inventario' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/historial_inventario' en app\templates\MainTemplate.html
 
 ### `/material/registro_material` (GET)
 - **Función**: `material_registro_material` (Línea 17420)
-- **Evidencia**: Path exacto '/material/registro_material' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/registro_material' en app\templates\MainTemplate.html
 
 ### `/material/estatus_material` (GET)
 - **Función**: `material_estatus_material` (Línea 17431)
-- **Evidencia**: Path exacto '/material/estatus_material' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/estatus_material' en app\templates\MainTemplate.html
 
 ### `/api/estatus_material/consultar` (POST)
 - **Función**: `consultar_estatus_material` (Línea 17442)
@@ -851,7 +851,7 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/templates/LISTAS/<filename>` (GET)
 - **Función**: `serve_list_template` (Línea 19365)
-- **Evidencia**: Path limpio '/templates/LISTAS' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path limpio '/templates/LISTAS' en app\templates\MainTemplate.html
 
 ### `/verificar_permiso_dropdown` (POST)
 - **Función**: `verificar_permiso_dropdown` (Línea 19404)
@@ -863,11 +863,11 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/historial-cambio-material-smt` (GET)
 - **Función**: `historial_cambio_material_smt` (Línea 19518)
-- **Evidencia**: Path exacto '/historial-cambio-material-smt' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/historial-cambio-material-smt' en app\templates\MainTemplate.html
 
 ### `/historial-cambio-material-smt-ajax` (GET)
 - **Función**: `historial_cambio_material_smt_ajax` (Línea 19529)
-- **Evidencia**: Path exacto '/historial-cambio-material-smt-ajax' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/historial-cambio-material-smt-ajax' en app\templates\MainTemplate.html
 
 ### `/api/csv_data` (GET)
 - **Función**: `get_csv_data` (Línea 19542)
@@ -879,23 +879,23 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/produccion/info` (GET)
 - **Función**: `produccion_info` (Línea 21115)
-- **Evidencia**: Path exacto '/produccion/info' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/produccion/info' en app\templates\MainTemplate.html
 
 ### `/material/recibo_pago` (GET)
 - **Función**: `material_recibo_pago` (Línea 21129)
-- **Evidencia**: Path exacto '/material/recibo_pago' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/recibo_pago' en app\templates\MainTemplate.html
 
 ### `/material/material_sustituto` (GET)
 - **Función**: `material_material_sustituto` (Línea 21140)
-- **Evidencia**: Path exacto '/material/material_sustituto' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/material_sustituto' en app\templates\MainTemplate.html
 
 ### `/material/consultar_peps` (GET)
 - **Función**: `material_consultar_peps` (Línea 21151)
-- **Evidencia**: Path exacto '/material/consultar_peps' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/consultar_peps' en app\templates\MainTemplate.html
 
 ### `/material/ajuste_numero` (GET)
 - **Función**: `material_ajuste_numero` (Línea 21175)
-- **Evidencia**: Path exacto '/material/ajuste_numero' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/material/ajuste_numero' en app\templates\MainTemplate.html
 
 ### `/importar_excel_registro` (POST)
 - **Función**: `importar_excel_registro` (Línea 21409)
@@ -1051,7 +1051,7 @@ Estas rutas **no fueron encontradas** por ninguna de las 5 estrategias de detecc
 
 ### `/visor-mysql` (GET)
 - **Función**: `visor_mysql` (Línea 24086)
-- **Evidencia**: Path exacto '/visor-mysql' en app\templates\MaterialTemplate.html
+- **Evidencia**: Path exacto '/visor-mysql' en app\templates\MainTemplate.html
 
 ### `/control-modelos-visor-ajax` (GET)
 - **Función**: `control_modelos_visor_ajax` (Línea 24096)

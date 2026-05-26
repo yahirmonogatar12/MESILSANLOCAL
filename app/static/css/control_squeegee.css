@@ -1,0 +1,228 @@
+/* Estilos especificos del modulo Control de squeegee.
+ * Extraido desde el bloque <style> inline del template AJAX (2026-05-26).
+ * Selectores prefijados con `sq-` y scope `#control-squeegee-unique-container`
+ * para evitar colision con otros modulos cargados persistentemente. */
+
+#control-squeegee-unique-container #sq-main {
+    padding: 20px;
+    background-color: #2B2D3E;
+    color: #E0E0E0;
+    min-height: 100%;
+}
+
+#control-squeegee-unique-container .sq-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+#control-squeegee-unique-container .sq-header h2 {
+    color: #9C27B0;
+    margin-bottom: 10px;
+    font-size: 2.2em;
+}
+
+#control-squeegee-unique-container .sq-subtitle {
+    color: #B0B0B0;
+    font-size: 1.1em;
+    margin: 0;
+}
+
+#control-squeegee-unique-container .sq-filtros {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+#control-squeegee-unique-container .sq-filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#control-squeegee-unique-container .sq-filtro-grupo label {
+    font-weight: 600;
+    color: #9C27B0;
+    font-size: 0.9em;
+}
+
+#control-squeegee-unique-container .sq-filtro-fecha,
+#control-squeegee-unique-container .sq-filtro-select {
+    padding: 8px 12px;
+    border: 2px solid #9C27B0;
+    border-radius: 6px;
+    background-color: #1E1E2E;
+    color: #E0E0E0;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+#control-squeegee-unique-container .sq-filtro-fecha:focus,
+#control-squeegee-unique-container .sq-filtro-select:focus {
+    outline: none;
+    border-color: #BA68C8;
+    box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.1);
+}
+
+#control-squeegee-unique-container .sq-btn-consultar {
+    background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    min-height: 40px;
+    align-self: end;
+}
+
+#control-squeegee-unique-container .sq-btn-consultar:hover {
+    background: linear-gradient(135deg, #7B1FA2, #6A1B9A);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+}
+
+#control-squeegee-unique-container .sq-contador {
+    background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.2);
+}
+
+#control-squeegee-unique-container .sq-contador-label {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+#control-squeegee-unique-container .sq-contador-valor {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+#control-squeegee-unique-container .sq-tabla-container {
+    background-color: #1E1E2E;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+#control-squeegee-unique-container .sq-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1E1E2E;
+}
+
+#control-squeegee-unique-container .sq-tabla th {
+    background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+#control-squeegee-unique-container .sq-tabla td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #3A3A4A;
+    color: #E0E0E0;
+    font-size: 14px;
+}
+
+#control-squeegee-unique-container .sq-tabla tbody tr:hover {
+    background-color: #2A2A3A;
+    transition: background-color 0.2s ease;
+}
+
+#control-squeegee-unique-container .sq-tabla tbody tr:last-child td {
+    border-bottom: none;
+}
+
+#control-squeegee-unique-container .sq-btn-accion {
+    background-color: #9C27B0;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+#control-squeegee-unique-container .sq-btn-accion:hover {
+    background-color: #7B1FA2;
+}
+
+#control-squeegee-unique-container .sq-estado-activo {
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+#control-squeegee-unique-container .sq-estado-mantenimiento {
+    color: #FF9800;
+    font-weight: 600;
+}
+
+/* Modal de carga -- portalizado al body, NO scopeado dentro del container */
+.sq-modal-carga {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.sq-modal-contenido {
+    background-color: #2B2D3E;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    color: #E0E0E0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.sq-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #3A3A4A;
+    border-top: 4px solid #9C27B0;
+    border-radius: 50%;
+    animation: sq-spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes sq-spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #control-squeegee-unique-container .sq-filtros {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #control-squeegee-unique-container .sq-filtro-fecha,
+    #control-squeegee-unique-container .sq-filtro-select {
+        min-width: auto;
+    }
+    #control-squeegee-unique-container .sq-btn-consultar {
+        align-self: stretch;
+    }
+    #control-squeegee-unique-container .sq-tabla-container {
+        overflow-x: auto;
+    }
+    #control-squeegee-unique-container .sq-tabla {
+        min-width: 700px;
+    }
+}
