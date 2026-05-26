@@ -104,8 +104,8 @@ Archivo principal con +12,000 líneas que contiene la instancia Flask y la mayor
 
 | Ruta | Método | Descripción | Autenticación |
 |------|--------|-------------|---------------|
-| `/ILSAN-ELECTRONICS` | GET | Página principal MaterialTemplate |  |
-| `/dashboard` | GET | Alias para MaterialTemplate |  |
+| `/ILSAN-ELECTRONICS` | GET | Página principal MainTemplate |  |
+| `/dashboard` | GET | Alias para MainTemplate |  |
 | `/calendario` | GET | Calendario de producción |  |
 | `/defect-management` | GET | Gestión de defectos (en desarrollo) |  |
 | `/sistemas` | GET | Redirección al hub |  |

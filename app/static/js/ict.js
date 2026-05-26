@@ -1,7 +1,7 @@
 // ====== WF_004: Garantizar CSS del modulo en <head> ======
-// Estos CSS estan declarados en MaterialTemplate.html con cache-busting.
+// Estos CSS estan declarados en MainTemplate.html con cache-busting.
 // Esta funcion es un seguro: si un template AJAX se carga sin pasar por
-// MaterialTemplate, igual inyecta los <link> en head para que el modulo
+// MainTemplate, igual inyecta los <link> en head para que el modulo
 // no se renderice sin estilos.
 (function ensureModuleStyles() {
   const sheets = [

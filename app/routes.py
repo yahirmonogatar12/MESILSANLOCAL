@@ -1049,7 +1049,7 @@ def material():
         tiene_permisos_usuarios = "usuarios" in permisos["sistema"]
 
     return render_template(
-        "MaterialTemplate.html",
+        "MainTemplate.html",
         usuario=nombre_completo,  # Pasar nombre completo en lugar de username
         tiene_permisos_usuarios=tiene_permisos_usuarios,
     )
@@ -1058,7 +1058,7 @@ def material():
 @app.route("/dashboard")
 @login_requerido
 def dashboard():
-    """Alias para la página principal (MaterialTemplate)"""
+    """Alias para la página principal (MainTemplate)"""
     usuario = session.get("usuario")
     nombre_completo = session.get("nombre_completo")
 
@@ -1083,7 +1083,7 @@ def dashboard():
         tiene_permisos_usuarios = "usuarios" in permisos["sistema"]
 
     return render_template(
-        "MaterialTemplate.html",
+        "MainTemplate.html",
         usuario=nombre_completo,
         tiene_permisos_usuarios=tiene_permisos_usuarios,
     )

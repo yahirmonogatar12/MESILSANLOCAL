@@ -385,7 +385,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Funciones globales para mostrar cada contenedor de Información Básica.
   // WF_002: usar prepararPanelInformacionBasica() (definida en
-  // MaterialTemplate.html) en vez del bloque manual de ocultar.
+  // MainTemplate.html) en vez del bloque manual de ocultar.
   function _prepInfoBasica() {
     if (typeof window.prepararPanelInformacionBasica === "function") {
       window.prepararPanelInformacionBasica();
@@ -555,7 +555,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // mostrarHistorialEntradas/Salidas/Retornos, mostrarHistorialMaterial,
   // mostrarInventarioActual y mostrarLongtermInventory estan definidas en
-  // MaterialTemplate.html (WF_002 con prepararPanelSeccion('material') +
+  // MainTemplate.html (WF_002 con prepararPanelSeccion('material') +
   // *-unique-container). No re-definir aqui para evitar shadowing.
 
   window.mostrarMaterialSustituto = function () {
@@ -594,7 +594,7 @@ document.addEventListener("DOMContentLoaded", function () {
     hideAllMaterialContainers();
   };
 
-  // Persistencia de pestaña activa (compartida con MaterialTemplate.html)
+  // Persistencia de pestaña activa (compartida con MainTemplate.html)
   const STORAGE_KEY_NAV_SM = "mes_nav_active_v1";
   function guardarPestanaActivaSM(id) {
     try { localStorage.setItem(STORAGE_KEY_NAV_SM, id); } catch (e) {}
@@ -640,7 +640,7 @@ document.addEventListener("DOMContentLoaded", function () {
       hideAllContent();
 
       if (this.id === "Información Basica") {
-        // Usar la función global de MaterialTemplate.html si está disponible
+        // Usar la función global de MainTemplate.html si está disponible
         if (typeof window.mostrarInformacionBasica === "function") {
           window.mostrarInformacionBasica();
         } else {
@@ -657,7 +657,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
       } else if (this.id === "Control de material") {
-        // Usar la función global de MaterialTemplate.html si está disponible
+        // Usar la función global de MainTemplate.html si está disponible
         if (typeof window.mostrarControlMaterial === "function") {
           window.mostrarControlMaterial();
         } else {
@@ -667,7 +667,7 @@ document.addEventListener("DOMContentLoaded", function () {
           mostrarInfoMaterial();
         }
       } else if (this.id === "Control de producción") {
-        // Usar la función global de MaterialTemplate.html si está disponible
+        // Usar la función global de MainTemplate.html si está disponible
         if (typeof window.mostrarControlProduccion === "function") {
           window.mostrarControlProduccion();
         } else {
@@ -739,7 +739,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // ============== FUNCIONES PARA CONTROL DE CALIDAD ==============
 
   // mostrarHistorialSMT: ahora delega directo a mostrarHistorialCambioSMT
-  // (definida en MaterialTemplate.html con prepararPanelSeccion('calidad')).
+  // (definida en MainTemplate.html con prepararPanelSeccion('calidad')).
   // Se conserva el alias porque LISTA_CONTROL_DE_CALIDAD.html lo llama por
   // ese nombre via window.parent.mostrarHistorialSMT.
   window.mostrarHistorialSMT = function () {
@@ -791,7 +791,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // mismo archivo por las versiones reales. Eliminadas para simplificar.
   // Las versiones activas estan ~linea 3700+ y usan _mostrarModuloCalidad().
 
-  // NOTA: mostrarControlMaterialInfo está definida en MaterialTemplate.html con AJAX
+  // NOTA: mostrarControlMaterialInfo está definida en MainTemplate.html con AJAX
   // No redefinir aquí para evitar conflictos
 
   // Función AJAX para Control de operación de línea SMT - GLOBAL

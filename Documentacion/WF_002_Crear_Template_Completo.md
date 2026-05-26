@@ -23,7 +23,7 @@ Este documento detalla el flujo completo para crear un **nuevo módulo con templ
 | ✨ CREAR / MODIFICAR | `app/api/<seccion>/<modulo>.py` | Blueprint con ruta Flask para servir el template |
 | ✏️ MODIFICAR | `app/templates/LISTAS/LISTA_<SECCION>.html` | Botón `<li>` en el sidebar |
 | ✏️ MODIFICAR | `app/static/js/scriptMain.js` | Función `mostrar*()` + contenedor en lista de ocultar |
-| ✏️ MODIFICAR | `app/templates/MaterialTemplate.html` | Div contenedor para carga dinámica |
+| ✏️ MODIFICAR | `app/templates/MainTemplate.html` | Div contenedor para carga dinámica |
 | ✏️ MODIFICAR | `app/static/permisos_dropdowns.js` | Registro del permiso del nuevo botón |
 
 ---
@@ -75,7 +75,7 @@ Este documento detalla el flujo completo para crear un **nuevo módulo con templ
 1. **Todos los IDs** llevan el prefijo elegido (`xx-`)
 2. **CSS y JS** propios, no compartidos con otro módulo
 3. **`ilsan-theme.css`** sí se comparte (es el tema global)
-4. El **`id` del `<body>`** debe coincidir con el nombre del contenedor en `MaterialTemplate.html`
+4. El **`id` del `<body>`** debe coincidir con el nombre del contenedor en `MainTemplate.html`
 5. Usar `{{ url_for('static', ...) }}` para assets
 
 ---
@@ -125,9 +125,9 @@ window.loadMiModuloData = pfLoadData;
 
 ---
 
-## Paso 5 — Agregar el Contenedor en MaterialTemplate.html
+## Paso 5 — Agregar el Contenedor en MainTemplate.html
 
-**Archivo:** `app/templates/MaterialTemplate.html`
+**Archivo:** `app/templates/MainTemplate.html`
 
 Buscar la zona de contenedores (cerca de línea ~574) y agregar:
 
@@ -177,9 +177,9 @@ def mi_modulo():
 
 ## Paso 7 — Crear la Función mostrar*() en scriptMain.js
 
-**Archivo:** `app/static/js/scriptMain.js` (o `MaterialTemplate.html` para módulos de Información Básica)
+**Archivo:** `app/static/js/scriptMain.js` (o `MainTemplate.html` para módulos de Información Básica)
 
-> **⚠️ ACTUALIZACIÓN 2026-05-21:** El bloque manual de "ocultar otras secciones + mostrar padres" se reemplazó por **helpers reutilizables** definidos en `MaterialTemplate.html`. Ya NO copies ese bloque en cada `mostrar*()`. Usa el helper correspondiente. Ver sección [7c — Helpers de preparación de panel](#7c--helpers-de-preparación-de-panel).
+> **⚠️ ACTUALIZACIÓN 2026-05-21:** El bloque manual de "ocultar otras secciones + mostrar padres" se reemplazó por **helpers reutilizables** definidos en `MainTemplate.html`. Ya NO copies ese bloque en cada `mostrar*()`. Usa el helper correspondiente. Ver sección [7c — Helpers de preparación de panel](#7c--helpers-de-preparación-de-panel).
 
 ### 7a. Agregar el contenedor a la lista de "ocultar" del grupo
 
@@ -254,7 +254,7 @@ window.mostrarMiModulo = function () {
 
 ### 7c — Helpers de preparación de panel
 
-**Ubicación:** `MaterialTemplate.html` (línea ~2316 aprox.)
+**Ubicación:** `MainTemplate.html` (línea ~2316 aprox.)
 
 El sistema expone tres helpers globales que encapsulan toda la lógica de "ocultar otras secciones / mostrar la mía":
 
@@ -383,7 +383,7 @@ Luego, asignar el permiso del nuevo botón a los roles correspondientes.
 [ ] HTML creado con IDs prefijados
 [ ] CSS creado con selectores prefijados
 [ ] JS creado con variables/funciones/IDs prefijados
-[ ] Contenedor div agregado en MaterialTemplate.html
+[ ] Contenedor div agregado en MainTemplate.html
 [ ] Ruta Flask agregada en el Blueprint del módulo
 [ ] Función mostrar*() en scriptMain.js
 [ ] mostrar*() usa prepararPanelSeccion() (NO copia bloque manual de ocultar)
@@ -403,7 +403,7 @@ Luego, asignar el permiso del nuevo botón a los roles correspondientes.
 ## Diagrama de Dependencias entre Archivos
 
 ```
-MaterialTemplate.html
+MainTemplate.html
   │
   ├── HELPERS GLOBALES (definidos 1 sola vez)
   │     ├── prepararPanelSeccion(seccion)         ← úsalo en mostrar*()
@@ -449,7 +449,7 @@ MaterialTemplate.html
 
 ### 2026-05-21 — Refactor de helpers de panel
 - Eliminado el bloque manual repetido de "ocultar otras secciones + mostrar padres" que aparecía en ~25 funciones `mostrar*()`.
-- Introducidos los helpers globales `prepararPanelSeccion(seccion)`, `prepararPanelInformacionBasica()` y `ocultarOtrasSecciones(seccion)` en `MaterialTemplate.html`.
+- Introducidos los helpers globales `prepararPanelSeccion(seccion)`, `prepararPanelInformacionBasica()` y `ocultarOtrasSecciones(seccion)` en `MainTemplate.html`.
 - Introducidos los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` como fuente única de verdad sobre qué IDs pertenecen a cada sección.
 - Refactorizadas:
   - `mostrarControlMaterial`, `mostrarControlProduccion`, `mostrarControlProceso`, `mostrarControlResultados`, `mostrarInformacionBasica` (funciones padre de navbar).

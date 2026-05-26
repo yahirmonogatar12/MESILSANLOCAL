@@ -526,7 +526,7 @@ html, body {
        (padre). Si se deja aquí, se generan scrolls anidados. */
 }
 
-/* Estilos específicos para PLAN SMD dentro de MaterialTemplate */
+/* Estilos específicos para PLAN SMD dentro de MainTemplate */
 .produccion-content-area .smd-container {
     height: calc(100vh - 150px) !important;
     min-height: 600px !important;
@@ -1344,7 +1344,7 @@ select {
 }
 
 /* ESTILOS ADICIONALES PARA MATERIALTEMPLATE - SCROLL FORZADO */
-/* Forzar scroll en todos los contenedores de MaterialTemplate */
+/* Forzar scroll en todos los contenedores de MainTemplate */
 .material-content-area,
 .control-proceso-content-area,
 .informacion-basica-content-area,
@@ -1355,7 +1355,7 @@ select {
     min-height: 0 !important;
 }
 
-/* Contenedores de tabla específicos para MaterialTemplate */
+/* Contenedores de tabla específicos para MainTemplate */
 .material-content-area .smd-table-container,
 .control-proceso-content-area .smd-table-container,
 .informacion-basica-content-area .smd-table-container,
@@ -1367,7 +1367,7 @@ select {
     background: var(--color-background) !important;
 }
 
-/* Scroll visible siempre en MaterialTemplate */
+/* Scroll visible siempre en MainTemplate */
 .material-content-area .smd-table-container::-webkit-scrollbar,
 .control-proceso-content-area .smd-table-container::-webkit-scrollbar,
 .informacion-basica-content-area .smd-table-container::-webkit-scrollbar,
@@ -1902,7 +1902,7 @@ body {
     margin-top: 5px !important;
 }
 
-/* El contenedor real de Control de Calidad en MaterialTemplate es `calidad-content-area`.
+/* El contenedor real de Control de Calidad en MainTemplate es `calidad-content-area`.
    Mantenerlo explícito evita que el panel derecho se mida solo por el contenido cargado. */
 .calidad-content-area {
     flex: 1 1 auto !important;

@@ -10,14 +10,14 @@
 
 La app utiliza un sistema de **carga dinámica de contenido** donde:
 
-1. **MaterialTemplate.html** es el layout principal (navbar + área de contenido).
+1. **MainTemplate.html** es el layout principal (navbar + área de contenido).
 2. Los **botones de navegación** en la navbar cargan archivos **LISTA_*.html** dentro del sidebar.
 3. Cada **LISTA** contiene un sidebar con elementos `<li>` que cargan templates específicos al área de contenido principal.
 4. Un sistema de **permisos granulares** (`data-permiso-*`) controla qué botones ve cada usuario según su rol.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  MaterialTemplate.html (Layout Principal)           │
+│  MainTemplate.html (Layout Principal)           │
 │  ┌──────────────┐  ┌─────────────────────────────┐  │
 │  │ Navbar       │  │                             │  │
 │  │ (8 botones)  │  │   Área de Contenido         │  │
@@ -66,7 +66,7 @@ Ubicación: `app/templates/LISTAS/`
 
 | Archivo | Responsabilidad |
 |---|---|
-| `app/templates/MaterialTemplate.html` | Layout principal, `cargarContenidoDinamico()`, nav buttons |
+| `app/templates/MainTemplate.html` | Layout principal, `cargarContenidoDinamico()`, nav buttons |
 | `app/static/js/permisos-dropdowns.js` | Validación de permisos en frontend (ocultar/mostrar) |
 
 ### 2.4 Tablas en MySQL
@@ -158,7 +158,7 @@ Abrir el archivo LISTA correspondiente y agregar un nuevo `<li>` dentro de la se
 
 ### Paso 2: Crear la función JS que cargará el contenido
 
-En `MaterialTemplate.html`, agregar la función `window`:
+En `MainTemplate.html`, agregar la función `window`:
 
 ```javascript
 window.miNuevaFuncion = function() {
@@ -290,9 +290,9 @@ def lista_mi_seccion():
         return f"Error al cargar el contenido: {str(e)}", 500
 ```
 
-### Paso 3: Agregar el botón en la navbar de MaterialTemplate.html
+### Paso 3: Agregar el botón en la navbar de MainTemplate.html
 
-Buscar la sección de `navButtons` en `MaterialTemplate.html` y agregar el nuevo botón con su acción correspondiente. Hay **dos lugares** que se deben actualizar:
+Buscar la sección de `navButtons` en `MainTemplate.html` y agregar el nuevo botón con su acción correspondiente. Hay **dos lugares** que se deben actualizar:
 
 **A) El HTML del botón de navegación:**  
 Agregar un `<button class="nav-button">` en la barra de navegación.
@@ -309,7 +309,7 @@ En la sección `buttonActions` (~línea 1508), agregar:
 },
 ```
 
-### Paso 4: Crear la función `mostrarMiSeccion()` en MaterialTemplate
+### Paso 4: Crear la función `mostrarMiSeccion()` en MainTemplate
 
 Seguir el patrón de las funciones existentes como `mostrarInformacionBasica()`:
 
@@ -327,7 +327,7 @@ window.mostrarMiSeccion = function() {
 };
 ```
 
-### Paso 5: Agregar el content-area en el HTML de MaterialTemplate
+### Paso 5: Agregar el content-area en el HTML de MainTemplate
 
 Agregar un nuevo div contenedor donde se renderizará el contenido:
 
@@ -362,7 +362,7 @@ Y en `detectActiveSection()` (~línea 1199), agregar:
 
 ### Para un nuevo **botón** en lista existente:
 - [ ] Agregar `<li>` con `data-permiso-*` al archivo LISTA
-- [ ] Crear función `window.miNuevaFuncion()` en MaterialTemplate.html
+- [ ] Crear función `window.miNuevaFuncion()` en MainTemplate.html
 - [ ] Crear ruta Flask en el Blueprint del módulo
 - [ ] Crear template HTML del contenido
 - [ ] Sincronizar permisos (POST `/admin/sincronizar_permisos_dropdowns`)
@@ -371,9 +371,9 @@ Y en `detectActiveSection()` (~línea 1199), agregar:
 ### Para una nueva **sección completa**:
 - [ ] Crear `LISTA_MI_SECCION.html` en `app/templates/LISTAS/`
 - [ ] Crear ruta Flask `/listas/mi_seccion` en un Blueprint de `app/api/`
-- [ ] Agregar botón de navegación en MaterialTemplate.html
-- [ ] Crear función `mostrarMiSeccion()` en MaterialTemplate.html
-- [ ] Agregar content-area div en MaterialTemplate.html
+- [ ] Agregar botón de navegación en MainTemplate.html
+- [ ] Crear función `mostrarMiSeccion()` en MainTemplate.html
+- [ ] Agregar content-area div en MainTemplate.html
 - [ ] Agregar mapeo en `buttonActions` para móvil
 - [ ] Actualizar `detectActiveSection()` y `loadListContent()` para móvil
 - [ ] Crear los templates de contenido individual

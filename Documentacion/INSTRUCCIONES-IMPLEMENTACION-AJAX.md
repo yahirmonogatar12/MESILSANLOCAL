@@ -1,10 +1,10 @@
 # INSTRUCCIONES PARA IMPLEMENTAR MÓDULOS AJAX
 
-> **⚠️ Actualizado 2026-05-21:** Las funciones `mostrar*()` ya NO copian el bloque manual de "ocultar otras secciones". Usan el helper `prepararPanelSeccion()` definido en `MaterialTemplate.html`. Ver [PASO 2.5](#paso-25-usar-el-helper-de-preparación-de-panel) y la guía completa en [WF_002 §7c](./WF_002_Crear_Template_Completo.md#7c--helpers-de-preparación-de-panel).
+> **⚠️ Actualizado 2026-05-21:** Las funciones `mostrar*()` ya NO copian el bloque manual de "ocultar otras secciones". Usan el helper `prepararPanelSeccion()` definido en `MainTemplate.html`. Ver [PASO 2.5](#paso-25-usar-el-helper-de-preparación-de-panel) y la guía completa en [WF_002 §7c](./WF_002_Crear_Template_Completo.md#7c--helpers-de-preparación-de-panel).
 
 ## PASO 1: PREPARACIÓN DE LA LISTA (YA COMPLETADO)
 - Los botones en `LISTA_CONTROL_DE_PROCESO.html` ya están preparados con el patrón AJAX
-- Los contenedores ya están agregados en `MaterialTemplate.html`
+- Los contenedores ya están agregados en `MainTemplate.html`
 - La función `hideAllMaterialContainers` ya incluye todos los contenedores
 
 ## PASO 2: AGREGAR FUNCIONES JAVASCRIPT
@@ -86,7 +86,7 @@ window.mostrarMiModulo = function() {
 };
 ```
 
-**Por qué:** cada copia tenía variaciones sutiles → bugs de paneles superpuestos al navegar entre pestañas. Si agregas una nueva sección al sistema, tendrías que editar las 25+ funciones manualmente. Con el helper, solo añades una línea a los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` en `MaterialTemplate.html` y todas las funciones la respetan automáticamente.
+**Por qué:** cada copia tenía variaciones sutiles → bugs de paneles superpuestos al navegar entre pestañas. Si agregas una nueva sección al sistema, tendrías que editar las 25+ funciones manualmente. Con el helper, solo añades una línea a los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` en `MainTemplate.html` y todas las funciones la respetan automáticamente.
 
 ## PASO 3: AGREGAR RUTAS EN FLASK
 1. Abrir `app/routes.py`

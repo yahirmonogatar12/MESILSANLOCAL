@@ -1,8 +1,8 @@
 // Visor MySQL - Sistema MES con Modal de Edición
 
 // ====== WF_004: Garantizar CSS del modulo en <head> ======
-// El CSS ya esta en MaterialTemplate.html, pero si este JS se carga desde
-// el visor standalone (/visor-mysql) sin pasar por MaterialTemplate,
+// El CSS ya esta en MainTemplate.html, pero si este JS se carga desde
+// el visor standalone (/visor-mysql) sin pasar por MainTemplate,
 // inyectarlo aqui como red de seguridad.
 (function ensureModuleStyles() {
   const id = 'visor-mysql-css';

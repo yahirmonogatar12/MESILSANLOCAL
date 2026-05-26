@@ -2,7 +2,7 @@
 
 /* Contenedor principal del modulo Control de Material.
    Acotado a #control-material-container para no afectar al
-   wrapper #material-container del MaterialTemplate (que ya tiene
+   wrapper #material-container del MainTemplate (que ya tiene
    su propio sizing y NO debe heredar min-height:100vh, eso
    causa contenidos empujados hacia abajo cuando hay tabs). */
 #control-material-container,

@@ -44,7 +44,7 @@ Durante la implementación de `Almacén de Embarques` se detectó que:
 
 El portal usa esta arquitectura:
 
-1. `MaterialTemplate.html` funciona como layout principal.
+1. `MainTemplate.html` funciona como layout principal.
 2. El contenido de cada módulo se inyecta dinámicamente vía AJAX.
 3. Los módulos `Entradas`, `Salidas` y `Retorno` comparten:
    - `app/static/css/almacen_embarques_history.css`
@@ -72,7 +72,7 @@ El archivo `almacen_embarques_history.css` cambió varias veces durante la itera
 
 ### 3. Layout persistente + módulos intercambiables
 
-Aunque `MaterialTemplate.html` sigue visible todo el tiempo, los módulos AJAX pueden inicializarse en distinto orden. Eso hacía posible que un módulo renderizara antes de que el stylesheet correcto estuviera garantizado en `head`.
+Aunque `MainTemplate.html` sigue visible todo el tiempo, los módulos AJAX pueden inicializarse en distinto orden. Eso hacía posible que un módulo renderizara antes de que el stylesheet correcto estuviera garantizado en `head`.
 
 ---
 
@@ -82,10 +82,10 @@ La solución final se implementó en **dos capas**.
 
 ### Capa 1 — Carga persistente del CSS desde el layout principal
 
-Se agregó la hoja compartida al `<head>` de `MaterialTemplate.html`:
+Se agregó la hoja compartida al `<head>` de `MainTemplate.html`:
 
 **Archivo:**
-`app/templates/MaterialTemplate.html`
+`app/templates/MainTemplate.html`
 
 **Implementación:**
 
@@ -140,7 +140,7 @@ function initializeModule(config) {
 
 | Archivo | Rol |
 |--------|-----|
-| `app/templates/MaterialTemplate.html` | Layout persistente; carga global del stylesheet |
+| `app/templates/MainTemplate.html` | Layout persistente; carga global del stylesheet |
 | `app/static/js/almacen_embarques_history.js` | Garantiza la presencia y versión del CSS en `head` |
 | `app/static/css/almacen_embarques_history.css` | Hoja compartida de Entradas/Salidas/Retorno |
 | `app/templates/Control de proceso/almacen_embarques_entradas_ajax.html` | Template AJAX del historial de entradas |

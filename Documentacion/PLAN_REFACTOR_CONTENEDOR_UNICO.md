@@ -25,7 +25,7 @@ Persistencia (`mes_tabs_v1`, `mes_nav_active_v1`, `mes_sidebar_item_v1`) se mant
 
 ## Diseño
 
-### Estructura nueva en `MaterialTemplate.html`
+### Estructura nueva en `MainTemplate.html`
 
 ```html
 <header class="app-header">...</header>
@@ -55,7 +55,7 @@ Persistencia (`mes_tabs_v1`, `mes_nav_active_v1`, `mes_sidebar_item_v1`) se mant
 
 ### Migración de funciones `mostrar*()`
 
-Cada función `mostrar*` (hay ~50 distribuidas entre `MaterialTemplate.html` y `scriptMain.js`) se reescribe a la forma mínima:
+Cada función `mostrar*` (hay ~50 distribuidas entre `MainTemplate.html` y `scriptMain.js`) se reescribe a la forma mínima:
 
 ```js
 window.mostrarXxx = function() {
@@ -65,7 +65,7 @@ window.mostrarXxx = function() {
 ```
 
 Donde:
-- `ensureUniversalContainer(id)` crea el div como hijo de `#universal-content` si no existe (eliminando la necesidad de declararlos pre-renderizados en `MaterialTemplate.html`).
+- `ensureUniversalContainer(id)` crea el div como hijo de `#universal-content` si no existe (eliminando la necesidad de declararlos pre-renderizados en `MainTemplate.html`).
 - Las llamadas a `prepararPanelSeccion`, `hideAllMaterialContainers`, `hideAllInformacionBasicaContainers` **se eliminan** porque el sistema de tabs gestiona la visibilidad.
 
 ### Migración de `sidebar-tabs.js`
@@ -88,7 +88,7 @@ El localStorage actual (`mes_tabs_v1`) ya guarda `{ container, label, path, oncl
 ## Implementación por fases
 
 ### Fase 1: Preparación (sin cambios visibles)
-1. Crear `#universal-content` y `#universal-sidebar` en `MaterialTemplate.html` (vacíos, `display: none` por defecto).
+1. Crear `#universal-content` y `#universal-sidebar` en `MainTemplate.html` (vacíos, `display: none` por defecto).
 2. Crear funciones helper `ensureUniversalContainer(id)`, `getUniversalContent()`, `moveToUniversal(id)`.
 3. Crear `#welcome-placeholder` con el mensaje "Seleccione una opción del menú".
 
@@ -100,7 +100,7 @@ Por cada sección navbar (Información Básica, Material, Producción, Proceso, 
 4. Probar la sección antes de pasar a la siguiente.
 
 ### Fase 3: Limpiar HTML estructural
-1. Borrar los 6 `*-content-area` del `MaterialTemplate.html`.
+1. Borrar los 6 `*-content-area` del `MainTemplate.html`.
 2. Borrar los `*-content` sidebar wrappers (`informacion-basica-content`, etc.).
 3. Borrar los ~30 `*-info-container` placeholders pre-renderizados.
 4. Borrar los `*-unique-container` pre-declarados (ahora `ensureUniversalContainer` los crea on-demand).
@@ -124,21 +124,21 @@ Al cargar la app por primera vez post-refactor, leer `mes_tabs_v1` y para cada t
 
 | Archivo | Cambio |
 |---|---|
-| `app/templates/MaterialTemplate.html` | Reescribir estructura HTML (líneas 348-845). Reescribir ~30 `window.mostrar*Info` (líneas 2400-2700) |
+| `app/templates/MainTemplate.html` | Reescribir estructura HTML (líneas 348-845). Reescribir ~30 `window.mostrar*Info` (líneas 2400-2700) |
 | `app/static/js/scriptMain.js` | Reescribir ~25 funciones `mostrar*` (líneas 750-3800). Eliminar variables locales de containers (líneas 1-300) |
 | `app/static/js/sidebar-tabs.js` | Simplificar `findAreaFor`, `markActive`, eliminar lógica de placeholders |
 | `app/static/css/sidebar-tabs.css` | Reescribir reglas de áreas. Añadir `#universal-content`, `#universal-sidebar` |
 | `app/static/style.css` | Borrar reglas de `*-content-area`, `*-content` sidebars (~líneas 389-600) |
 | `app/static/css/almacen_embarques_history.css` | Borrar reglas con `:has(> #x-unique-container[style*="display: block"])` líneas 13-47 |
 | `app/static/css/control_material.css` | Verificar que selectores `#control-material-info-container` sigan funcionando |
-| `app/templates/MaterialTemplate.html` (líneas 1230-1500) | Simplificar `loadCurrentSidebarContent`, `loadListContent`, mobile menu |
+| `app/templates/MainTemplate.html` (líneas 1230-1500) | Simplificar `loadCurrentSidebarContent`, `loadListContent`, mobile menu |
 
 ## Funciones existentes a reutilizar
 
-- `window.cargarContenidoDinamico(containerId, path, initCallback)` — sigue siendo el loader AJAX principal (MaterialTemplate.html línea 1888)
-- `window.cargarSidebarDinamico(containerId, path)` — para cargar el sidebar (MaterialTemplate.html línea 2068)
+- `window.cargarContenidoDinamico(containerId, path, initCallback)` — sigue siendo el loader AJAX principal (MainTemplate.html línea 1888)
+- `window.cargarSidebarDinamico(containerId, path)` — para cargar el sidebar (MainTemplate.html línea 2068)
 - `window.sidebarTabs.openTab/closeTab/switchTab` — API de tabs existente
-- `ejecutarScriptsDinamicos(container)` — re-ejecuta scripts inline al inyectar HTML (MaterialTemplate.html línea 1823)
+- `ejecutarScriptsDinamicos(container)` — re-ejecuta scripts inline al inyectar HTML (MainTemplate.html línea 1823)
 - `inicializarContenidoDinamico(container, initCallback)` — corre tooltips Bootstrap + initCallback (línea 1870)
 
 ## Verificación end-to-end

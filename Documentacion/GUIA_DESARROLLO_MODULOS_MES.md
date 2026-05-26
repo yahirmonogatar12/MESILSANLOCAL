@@ -2,7 +2,7 @@
 
 ## 🎯 Objetivo
 
-Este documento define los estándares y patrones para desarrollar módulos nuevos que sean compatibles con el sistema MES y su arquitectura de carga dinámica vía MaterialTemplate.
+Este documento define los estándares y patrones para desarrollar módulos nuevos que sean compatibles con el sistema MES y su arquitectura de carga dinámica vía MainTemplate.
 
 ---
 
@@ -20,7 +20,7 @@ El sistema MES utiliza una arquitectura de **carga dinámica de contenido** que 
 ### Componentes Principales
 
 ```
-MaterialTemplate.html (Contenedor principal)
+MainTemplate.html (Contenedor principal)
     ↓
 scriptMain.js (Orquestador de navegación)
     ↓
@@ -389,7 +389,7 @@ def api_tu_modulo_accion1():
 
 **Archivo:** `app/static/js/scriptMain.js`
 
-> **Patrón actual (2026-05-21):** usa el helper global `prepararPanelSeccion()` definido en `MaterialTemplate.html`. Encapsula toda la lógica de "ocultar otras secciones, mostrar padres propios". Ver [§ 5b](#5b-helper-prepararpanelseccion) para el detalle de qué hace y por qué.
+> **Patrón actual (2026-05-21):** usa el helper global `prepararPanelSeccion()` definido en `MainTemplate.html`. Encapsula toda la lógica de "ocultar otras secciones, mostrar padres propios". Ver [§ 5b](#5b-helper-prepararpanelseccion) para el detalle de qué hace y por qué.
 
 ```javascript
 // Agregar función para mostrar tu módulo
@@ -445,7 +445,7 @@ window.mostrarTuModulo = function () {
 
 ### 5b. Helper `prepararPanelSeccion()`
 
-**Definido en:** `MaterialTemplate.html` (línea ~2316).
+**Definido en:** `MainTemplate.html` (línea ~2316).
 
 Una sola función que ejecuta el flujo correcto para activar cualquier sección del navbar:
 
@@ -477,7 +477,7 @@ Una sola función que ejecuta el flujo correcto para activar cualquier sección 
 **Por qué importa:**
 
 - **Bug evitado:** al navegar entre pestañas y volver, antes los paneles viejos quedaban superpuestos porque cada `mostrar*()` ocultaba un subconjunto distinto de areas/sidebars.
-- **Mantenibilidad:** agregar una sección nueva (ej. "Control de mantenimiento") solo requiere añadir una línea a los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` en `MaterialTemplate.html`. Todos los handlers `mostrar*()` la respetan automáticamente. Sin el helper, había que editar 25+ funciones.
+- **Mantenibilidad:** agregar una sección nueva (ej. "Control de mantenimiento") solo requiere añadir una línea a los mapas `SECCIONES_AREAS` y `SECCIONES_SIDEBARS` en `MainTemplate.html`. Todos los handlers `mostrar*()` la respetan automáticamente. Sin el helper, había que editar 25+ funciones.
 
 **Detalle completo:** ver [WF_002 §7c](./WF_002_Crear_Template_Completo.md#7c--helpers-de-preparación-de-panel).
 
@@ -780,7 +780,7 @@ Este archivo contiene un ejemplo completo de:
 
 ### Archivos a Estudiar
 
-1. `app/templates/MaterialTemplate.html` - Contenedor principal y función `cargarContenidoDinamico`
+1. `app/templates/MainTemplate.html` - Contenedor principal y función `cargarContenidoDinamico`
 2. `app/static/js/scriptMain.js` - Orquestador de navegación
 3. `app/static/js/plan.js` - Ejemplo de módulo bien implementado
 4. `app/templates/Control de proceso/Control_produccion_assy.html` - Template de referencia
@@ -807,7 +807,7 @@ Este archivo contiene un ejemplo completo de:
 - [ ]  Endpoint AJAX creado en routes.py
 - [ ]  Función de navegación agregada en scriptMain.js
 - [ ]  `mostrar*()` usa `prepararPanelSeccion()` (no copia el bloque manual)
-- [ ]  Contenedor único creado en MaterialTemplate.html
+- [ ]  Contenedor único creado en MainTemplate.html
 - [ ]  Manejo de errores implementado
 - [ ]  Feedback visual al usuario implementado
 - [ ]  Testing manual completado en consola del navegador
@@ -817,7 +817,7 @@ Este archivo contiene un ejemplo completo de:
 
 ## 🚀 Próximos Pasos Después de Crear tu Módulo
 
-1. Crear contenedor en MaterialTemplate.html
+1. Crear contenedor en MainTemplate.html
 2. Agregar función de navegación en scriptMain.js
 3. Agregar botón/enlace en el menú de navegación
 4. Implementar endpoints backend

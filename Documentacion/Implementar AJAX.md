@@ -5,7 +5,7 @@ REQUISITOS: (Los nombres son ejemplos, usa dependiendo a template a importar)
 - Template AJAX: control_bom_ajax.html
 - Sufijo único: -bom
 - Contenedor específico: bom-unique-container
-- Función AJAX en MaterialTemplate: mostrarControlBOM()
+- Función AJAX en MainTemplate: mostrarControlBOM()
 - Estilos CSS incrustados directamente
 - IDs únicos con sufijo para evitar conflictos
 - Manejo robusto de errores (404, 500, autenticación)
@@ -50,7 +50,7 @@ El usuario reportó: "el problema es este, estas anadiendo directamente en la si
 
 # ARCHIVOS MODIFICADOS
 
-1. **MaterialTemplate.html**:
+1. **MainTemplate.html**:
    - Estructura HTML de áreas de contenido
    - Variables JavaScript
    - Funciones de navegación
@@ -83,7 +83,7 @@ Ran tool
 ## PROMPT: IMPLEMENTACIÓN EXITOSA DE CARGA AJAX DINÁMICA PARA MÓDULOS EN FLASK
 
 ### CONTEXTO
-Este prompt documenta la solución completa para implementar carga AJAX dinámica de módulos en una aplicación Flask con MaterialTemplate. La implementación permite cargar módulos específicos sin recargar toda la página, manteniendo el estado de la aplicación y mejorando la experiencia del usuario.
+Este prompt documenta la solución completa para implementar carga AJAX dinámica de módulos en una aplicación Flask con MainTemplate. La implementación permite cargar módulos específicos sin recargar toda la página, manteniendo el estado de la aplicación y mejorando la experiencia del usuario.
 
 ### PROBLEMA RESUELTO
 - Módulo no se mostraba aunque se cargaba correctamente vía AJAX
@@ -93,7 +93,7 @@ Este prompt documenta la solución completa para implementar carga AJAX dinámic
 
 ### SOLUCIÓN IMPLEMENTADA
 
-#### 1. ESTRUCTURA HTML EN MaterialTemplate.html
+#### 1. ESTRUCTURA HTML EN MainTemplate.html
 ```html
 <!-- Dentro del área de contenido principal -->
 <div class="control-proceso-content-area" id="control-proceso-content-area" style="display: none;">
@@ -305,7 +305,7 @@ Para implementar un nuevo módulo AJAX:
 
 1. Crear ruta en Flask con sufijo `-ajax`
 2. Crear template HTML con estructura documentada
-3. Agregar contenedor único en MaterialTemplate
+3. Agregar contenedor único en MainTemplate
 4. Crear función `mostrarNombreModulo()` en scriptMain.js siguiendo el patrón
 5. Actualizar `hideAllMaterialContainers` si es necesario
 6. Agregar enlace en el sidebar correspondiente
